@@ -428,6 +428,7 @@ func TestGetAvailableMethodLimitsUsesConfiguredVisibleMethodSource(t *testing.T)
 				entClient: client,
 				settingRepo: &paymentConfigSettingRepoStub{
 					values: map[string]string{
+						SettingPaymentEnabled:                   "true",
 						SettingPaymentVisibleMethodAlipaySource: tt.sourceSetting,
 					},
 				},
@@ -495,8 +496,10 @@ func TestGetAvailableMethodLimitsPreservesLegacyCrossProviderBehaviorWhenVisible
 	require.NoError(t, err)
 
 	svc := &PaymentConfigService{
-		entClient:   client,
-		settingRepo: &paymentConfigSettingRepoStub{values: map[string]string{}},
+		entClient: client,
+		settingRepo: &paymentConfigSettingRepoStub{values: map[string]string{
+			SettingPaymentEnabled: "true",
+		}},
 	}
 
 	resp, err := svc.GetAvailableMethodLimits(ctx)

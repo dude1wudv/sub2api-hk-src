@@ -18,10 +18,22 @@ type Proxy struct {
 	Status    string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	CooldownUntil  *time.Time
+	CooldownReason string
+	FailureCount   int
+	LastErrorAt    *time.Time
 }
 
 func (p *Proxy) IsActive() bool {
 	return p.Status == StatusActive
+}
+
+func (p *Proxy) IsAvailable(now time.Time) bool {
+	if p == nil || !p.IsActive() {
+		return false
+	}
+	return p.CooldownUntil == nil || !now.Before(*p.CooldownUntil)
 }
 
 func (p *Proxy) URL() string {

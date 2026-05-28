@@ -418,6 +418,7 @@ export default {
     loginFailed: 'Login failed. Please check your credentials and try again.',
     errors: {
       USER_NOT_ACTIVE: 'Account has been disabled.',
+      REGISTRATION_FULL: 'User capacity is full. Please wait for expansion.',
     },
     registrationFailed: 'Registration failed. Please try again.',
     emailSuffixNotAllowed: 'This email domain is not allowed for registration.',
@@ -6773,6 +6774,9 @@ export default {
     tabSubscribe: 'Subscribe',
     noPlans: 'No subscription plans available',
     notAvailable: 'Top-up is currently unavailable',
+    redeemCodeOnlyTitle: 'Redeem-code checkout only',
+    redeemCodeOnlyDescription: 'Online payment channels are disabled. Buy a redeem code first, then redeem it on the redeem-code page.',
+    buyRedeemCode: 'Buy Redeem Code',
     confirmSubscription: 'Confirm Subscription',
     confirmCancel: 'Are you sure you want to cancel this order?',
     amountTooLow: 'Minimum amount is {min}',

@@ -493,6 +493,17 @@ var proxyQualityTargets = []proxyQualityTarget{
 		},
 	},
 	{
+		Target: "chatgpt_codex",
+		URL:    "https://chatgpt.com/backend-api/codex/responses",
+		Method: http.MethodGet,
+		AllowedStatuses: map[int]struct{}{
+			http.StatusUnauthorized:     {},
+			http.StatusMethodNotAllowed: {},
+			http.StatusNotFound:         {},
+			http.StatusBadRequest:       {},
+		},
+	},
+	{
 		Target: "anthropic",
 		URL:    "https://api.anthropic.com/v1/messages",
 		Method: http.MethodGet,
@@ -2467,6 +2478,15 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 		}
 	}
 
+	proxyID := input.ProxyID
+	if proxyID == nil {
+		selectedProxyID, err := s.selectProxyForNewAccount(ctx, input.Platform)
+		if err != nil {
+			return nil, err
+		}
+		proxyID = selectedProxyID
+	}
+
 	account := &Account{
 		Name:        input.Name,
 		Notes:       normalizeAccountNotes(input.Notes),
@@ -2474,7 +2494,7 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 		Type:        input.Type,
 		Credentials: input.Credentials,
 		Extra:       input.Extra,
-		ProxyID:     input.ProxyID,
+		ProxyID:     proxyID,
 		Concurrency: input.Concurrency,
 		Priority:    input.Priority,
 		Status:      StatusActive,
@@ -3169,6 +3189,9 @@ func (s *adminServiceImpl) TestProxy(ctx context.Context, id int64) (*ProxyTestR
 	}
 
 	latency := latencyMs
+	if err := s.proxyRepo.ClearCooldown(ctx, id); err != nil {
+		slog.Warn("proxy_clear_cooldown_failed", "proxy_id", id, "error", err)
+	}
 	s.saveProxyLatency(ctx, id, &ProxyLatencyInfo{
 		Success:     true,
 		LatencyMs:   &latency,
@@ -3531,6 +3554,48 @@ func (s *adminServiceImpl) checkMixedChannelRisk(ctx context.Context, currentAcc
 	}
 
 	return nil
+}
+
+func (s *adminServiceImpl) selectProxyForNewAccount(ctx context.Context, platform string) (*int64, error) {
+	if s == nil || s.proxyRepo == nil || platform != PlatformOpenAI {
+		return nil, nil
+	}
+
+	proxies, err := s.proxyRepo.ListAssignableWithAccountCount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(proxies) == 0 {
+		return nil, nil
+	}
+
+	s.attachProxyLatency(ctx, proxies)
+	sort.SliceStable(proxies, func(i, j int) bool {
+		iUS := isUSProxy(proxies[i])
+		jUS := isUSProxy(proxies[j])
+		if iUS != jUS {
+			return iUS
+		}
+		if proxies[i].AccountCount != proxies[j].AccountCount {
+			return proxies[i].AccountCount < proxies[j].AccountCount
+		}
+		if proxies[i].FailureCount != proxies[j].FailureCount {
+			return proxies[i].FailureCount < proxies[j].FailureCount
+		}
+		return proxies[i].ID < proxies[j].ID
+	})
+
+	id := proxies[0].ID
+	return &id, nil
+}
+
+func isUSProxy(proxy ProxyWithAccountCount) bool {
+	countryCode := strings.TrimSpace(proxy.CountryCode)
+	if strings.EqualFold(countryCode, "US") || strings.EqualFold(countryCode, "USA") {
+		return true
+	}
+	country := strings.ToLower(strings.TrimSpace(proxy.Country))
+	return strings.Contains(country, "united states") || country == "us" || country == "usa"
 }
 
 func (s *adminServiceImpl) validateGroupIDsExist(ctx context.Context, groupIDs []int64) error {

@@ -796,6 +796,15 @@ func (m *mockGeminiProxyRepo) ListActive(ctx context.Context) ([]Proxy, error) {
 func (m *mockGeminiProxyRepo) ListActiveWithAccountCount(ctx context.Context) ([]ProxyWithAccountCount, error) {
 	panic("not impl")
 }
+func (m *mockGeminiProxyRepo) ListAssignableWithAccountCount(ctx context.Context) ([]ProxyWithAccountCount, error) {
+	panic("not impl")
+}
+func (m *mockGeminiProxyRepo) SetCooldown(ctx context.Context, id int64, until time.Time, reason string) error {
+	panic("not impl")
+}
+func (m *mockGeminiProxyRepo) ClearCooldown(ctx context.Context, id int64) error {
+	panic("not impl")
+}
 func (m *mockGeminiProxyRepo) ExistsByHostPortAuth(ctx context.Context, host string, port int, username, password string) (bool, error) {
 	panic("not impl")
 }

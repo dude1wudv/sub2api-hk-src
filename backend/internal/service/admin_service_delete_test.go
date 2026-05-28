@@ -303,6 +303,18 @@ func (s *proxyRepoStub) ListActiveWithAccountCount(ctx context.Context) ([]Proxy
 	panic("unexpected ListActiveWithAccountCount call")
 }
 
+func (s *proxyRepoStub) ListAssignableWithAccountCount(ctx context.Context) ([]ProxyWithAccountCount, error) {
+	panic("unexpected ListAssignableWithAccountCount call")
+}
+
+func (s *proxyRepoStub) SetCooldown(ctx context.Context, id int64, until time.Time, reason string) error {
+	panic("unexpected SetCooldown call")
+}
+
+func (s *proxyRepoStub) ClearCooldown(ctx context.Context, id int64) error {
+	panic("unexpected ClearCooldown call")
+}
+
 func (s *proxyRepoStub) ListWithFiltersAndAccountCount(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]ProxyWithAccountCount, *pagination.PaginationResult, error) {
 	panic("unexpected ListWithFiltersAndAccountCount call")
 }

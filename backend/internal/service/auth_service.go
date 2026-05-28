@@ -15,6 +15,7 @@ import (
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
+	dbuser "github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
@@ -39,6 +40,7 @@ var (
 	ErrEmailVerifyRequired     = infraerrors.BadRequest("EMAIL_VERIFY_REQUIRED", "email verification is required")
 	ErrEmailSuffixNotAllowed   = infraerrors.BadRequest("EMAIL_SUFFIX_NOT_ALLOWED", "email suffix is not allowed")
 	ErrRegDisabled             = infraerrors.Forbidden("REGISTRATION_DISABLED", "registration is currently disabled")
+	ErrRegistrationFull        = infraerrors.Forbidden("REGISTRATION_FULL", "用户已满，等待扩容")
 	ErrServiceUnavailable      = infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "service temporarily unavailable")
 	ErrInvitationCodeRequired  = infraerrors.BadRequest("INVITATION_CODE_REQUIRED", "invitation code is required")
 	ErrInvitationCodeInvalid   = infraerrors.BadRequest("INVITATION_CODE_INVALID", "invalid or used invitation code")
@@ -47,6 +49,8 @@ var (
 
 // maxTokenLength 限制 token 大小，避免超长 header 触发解析时的异常内存分配。
 const maxTokenLength = 8192
+
+const maxRegisteredUsers = 50
 
 // refreshTokenPrefix is the prefix for refresh tokens to distinguish them from access tokens.
 const refreshTokenPrefix = "rt_"
@@ -138,6 +142,9 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	// 检查是否开放注册（默认关闭：settingService 未配置时不允许注册）
 	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 		return "", nil, ErrRegDisabled
+	}
+	if err := s.ensureRegistrationCapacity(ctx); err != nil {
+		return "", nil, err
 	}
 
 	// 防止用户注册 LinuxDo OAuth 合成邮箱，避免第三方登录与本地账号发生碰撞。
@@ -284,6 +291,9 @@ func (s *AuthService) SendVerifyCode(ctx context.Context, email string, locale .
 	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 		return ErrRegDisabled
 	}
+	if err := s.ensureRegistrationCapacity(ctx); err != nil {
+		return err
+	}
 
 	if isReservedEmail(email) {
 		return ErrEmailReserved
@@ -324,6 +334,9 @@ func (s *AuthService) SendVerifyCodeAsync(ctx context.Context, email string, loc
 	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 		logger.LegacyPrintf("service.auth", "%s", "[Auth] Registration is disabled")
 		return nil, ErrRegDisabled
+	}
+	if err := s.ensureRegistrationCapacity(ctx); err != nil {
+		return nil, err
 	}
 
 	if isReservedEmail(email) {
@@ -495,6 +508,9 @@ func (s *AuthService) LoginOrRegisterOAuth(ctx context.Context, email, username 
 			if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 				return "", nil, ErrRegDisabled
 			}
+			if err := s.ensureRegistrationCapacity(ctx); err != nil {
+				return "", nil, err
+			}
 
 			randomPassword, err := randomHexString(32)
 			if err != nil {
@@ -611,6 +627,9 @@ func (s *AuthService) LoginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 			// OAuth 首次登录视为注册
 			if s.settingService == nil || (!s.settingService.IsRegistrationEnabled(ctx) && !s.canBypassRegistrationDisabledForOAuth(ctx, signupSource)) {
 				return nil, nil, ErrRegDisabled
+			}
+			if err := s.ensureRegistrationCapacity(ctx); err != nil {
+				return nil, nil, err
 			}
 
 			// 检查是否需要邀请码
@@ -744,6 +763,21 @@ func (s *AuthService) LoginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 		return nil, nil, fmt.Errorf("generate token pair: %w", err)
 	}
 	return tokenPair, user, nil
+}
+
+func (s *AuthService) ensureRegistrationCapacity(ctx context.Context) error {
+	if s == nil || s.entClient == nil {
+		return nil
+	}
+	count, err := s.entClient.User.Query().Where(dbuser.RoleEQ(RoleUser)).Count(ctx)
+	if err != nil {
+		logger.LegacyPrintf("service.auth", "[Auth] Database error checking registration capacity: %v", err)
+		return ErrServiceUnavailable
+	}
+	if int64(count) >= maxRegisteredUsers {
+		return ErrRegistrationFull
+	}
+	return nil
 }
 
 func (s *AuthService) assignSubscriptions(ctx context.Context, userID int64, items []DefaultSubscriptionSetting, notes string) {

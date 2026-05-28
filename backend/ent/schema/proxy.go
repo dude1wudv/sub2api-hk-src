@@ -52,6 +52,17 @@ func (Proxy) Fields() []ent.Field {
 		field.String("status").
 			MaxLen(20).
 			Default("active"),
+		field.Time("cooldown_until").
+			Optional().
+			Nillable(),
+		field.String("cooldown_reason").
+			Optional().
+			Nillable(),
+		field.Int("failure_count").
+			Default(0),
+		field.Time("last_error_at").
+			Optional().
+			Nillable(),
 	}
 }
 

@@ -906,6 +906,7 @@ async function handleRegister(): Promise<void> {
 
     // Handle registration error
     errorMessage.value = buildAuthErrorMessage(error, {
+      t,
       fallback: t('auth.registrationFailed')
     })
 

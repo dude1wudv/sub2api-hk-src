@@ -1195,6 +1195,122 @@ func (h *GatewayHandler) Usage(c *gin.Context) {
 	h.usageUnrestricted(c, ctx, apiKey, subject, usageData, dailyUsage, modelStats)
 }
 
+// BillingCreditGrants returns an OpenAI-compatible balance shape for clients
+// that still probe dashboard/billing/credit_grants instead of /v1/usage.
+func (h *GatewayHandler) BillingCreditGrants(c *gin.Context) {
+	apiKey, ok := middleware2.GetAPIKeyFromContext(c)
+	if !ok {
+		h.errorResponse(c, http.StatusUnauthorized, "authentication_error", "Invalid API key")
+		return
+	}
+
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		h.errorResponse(c, http.StatusUnauthorized, "authentication_error", "Invalid API key")
+		return
+	}
+
+	remaining, used, limit, unit, valid, err := h.balanceSnapshot(c, apiKey, subject)
+	if err != nil {
+		h.errorResponse(c, http.StatusInternalServerError, "api_error", "Failed to get balance info")
+		return
+	}
+	totalGranted := limit
+	if totalGranted < 0 {
+		totalGranted = remaining
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"object":          "credit_summary",
+		"total_granted":   totalGranted,
+		"total_used":      used,
+		"total_available": remaining,
+		"remaining":       remaining,
+		"balance":         remaining,
+		"current_balance": remaining,
+		"available":       remaining,
+		"unit":            unit,
+		"isValid":         valid,
+		"is_active":       valid,
+		"data": gin.H{
+			"balance":         remaining,
+			"remaining":       remaining,
+			"total_available": remaining,
+			"unit":            unit,
+		},
+		"quota": gin.H{
+			"limit":     limit,
+			"used":      used,
+			"remaining": remaining,
+			"unit":      unit,
+		},
+		"grants": gin.H{
+			"object": "list",
+			"data":   []any{},
+		},
+	})
+}
+
+func (h *GatewayHandler) balanceSnapshot(c *gin.Context, apiKey *service.APIKey, subject middleware2.AuthSubject) (remaining, used, limit float64, unit string, valid bool, err error) {
+	unit = "USD"
+	valid = apiKey.Status == service.StatusAPIKeyActive || apiKey.Status == service.StatusAPIKeyQuotaExhausted || apiKey.Status == service.StatusAPIKeyExpired
+	limit = -1
+
+	if apiKey.Quota > 0 {
+		remaining = apiKey.GetQuotaRemaining()
+		used = apiKey.QuotaUsed
+		limit = apiKey.Quota
+		return remaining, used, limit, unit, valid, nil
+	}
+
+	if apiKey.Group != nil && apiKey.Group.IsSubscriptionType() {
+		if subscription, ok := middleware2.GetSubscriptionFromContext(c); ok {
+			remaining = h.calculateSubscriptionRemaining(apiKey.Group, subscription)
+			if apiKey.Group.DailyLimitUSD != nil {
+				used = subscription.DailyUsageUSD
+				limit = *apiKey.Group.DailyLimitUSD
+			} else if apiKey.Group.WeeklyLimitUSD != nil {
+				used = subscription.WeeklyUsageUSD
+				limit = *apiKey.Group.WeeklyLimitUSD
+			} else if apiKey.Group.MonthlyLimitUSD != nil {
+				used = subscription.MonthlyUsageUSD
+				limit = *apiKey.Group.MonthlyLimitUSD
+			}
+			return remaining, used, limit, unit, true, nil
+		}
+		return -1, 0, -1, unit, true, nil
+	}
+
+	latestUser, err := h.userService.GetByID(c.Request.Context(), subject.UserID)
+	if err != nil {
+		return 0, 0, -1, unit, false, err
+	}
+	return latestUser.Balance, 0, -1, unit, true, nil
+}
+
+func addBalanceCompatFields(resp gin.H, remaining, used, limit float64, unit string, valid bool) {
+	resp["remaining"] = remaining
+	resp["balance"] = remaining
+	resp["current_balance"] = remaining
+	resp["available"] = remaining
+	resp["total_available"] = remaining
+	resp["unit"] = unit
+	resp["isValid"] = valid
+	resp["is_active"] = valid
+	resp["data"] = gin.H{
+		"balance":         remaining,
+		"remaining":       remaining,
+		"total_available": remaining,
+		"unit":            unit,
+	}
+	resp["quota"] = gin.H{
+		"limit":     limit,
+		"used":      used,
+		"remaining": remaining,
+		"unit":      unit,
+	}
+}
+
 // parseUsageDateRange 解析 start_date / end_date query params，默认返回近 30 天范围
 func (h *GatewayHandler) parseUsageDateRange(c *gin.Context) (time.Time, time.Time) {
 	now := timezone.Now()
@@ -1273,6 +1389,7 @@ func (h *GatewayHandler) usageQuotaLimited(c *gin.Context, ctx context.Context, 
 	// 总额度信息
 	if apiKey.Quota > 0 {
 		remaining := apiKey.GetQuotaRemaining()
+		valid := apiKey.Status == service.StatusAPIKeyActive || apiKey.Status == service.StatusAPIKeyQuotaExhausted || apiKey.Status == service.StatusAPIKeyExpired
 		resp["quota"] = gin.H{
 			"limit":     apiKey.Quota,
 			"used":      apiKey.QuotaUsed,
@@ -1281,6 +1398,7 @@ func (h *GatewayHandler) usageQuotaLimited(c *gin.Context, ctx context.Context, 
 		}
 		resp["remaining"] = remaining
 		resp["unit"] = "USD"
+		addBalanceCompatFields(resp, remaining, apiKey.QuotaUsed, apiKey.Quota, "USD", valid)
 	}
 
 	// 速率限制信息（从 DB 获取实时用量）
@@ -1351,6 +1469,10 @@ func (h *GatewayHandler) usageQuotaLimited(c *gin.Context, ctx context.Context, 
 	if modelStats != nil {
 		resp["model_stats"] = modelStats
 	}
+	if _, ok := resp["remaining"]; !ok {
+		valid := apiKey.Status == service.StatusAPIKeyActive || apiKey.Status == service.StatusAPIKeyQuotaExhausted || apiKey.Status == service.StatusAPIKeyExpired
+		addBalanceCompatFields(resp, -1, 0, -1, "USD", valid)
+	}
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -1370,7 +1492,7 @@ func (h *GatewayHandler) usageUnrestricted(c *gin.Context, ctx context.Context, 
 		subscription, ok := middleware2.GetSubscriptionFromContext(c)
 		if ok {
 			remaining := h.calculateSubscriptionRemaining(apiKey.Group, subscription)
-			resp["remaining"] = remaining
+			addBalanceCompatFields(resp, remaining, subscription.DailyUsageUSD, -1, "USD", true)
 			resp["subscription"] = gin.H{
 				"daily_usage_usd":   subscription.DailyUsageUSD,
 				"weekly_usage_usd":  subscription.WeeklyUsageUSD,
@@ -1391,6 +1513,9 @@ func (h *GatewayHandler) usageUnrestricted(c *gin.Context, ctx context.Context, 
 		if modelStats != nil {
 			resp["model_stats"] = modelStats
 		}
+		if _, ok := resp["remaining"]; !ok {
+			addBalanceCompatFields(resp, -1, 0, -1, "USD", true)
+		}
 		c.JSON(http.StatusOK, resp)
 		return
 	}
@@ -1410,6 +1535,7 @@ func (h *GatewayHandler) usageUnrestricted(c *gin.Context, ctx context.Context, 
 		"unit":      "USD",
 		"balance":   latestUser.Balance,
 	}
+	addBalanceCompatFields(resp, latestUser.Balance, 0, -1, "USD", true)
 	if usageData != nil {
 		resp["usage"] = usageData
 	}

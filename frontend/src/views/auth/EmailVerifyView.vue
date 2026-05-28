@@ -549,6 +549,7 @@ async function handleVerify(): Promise<void> {
     await router.push(pendingRedirect.value || '/dashboard')
   } catch (error: unknown) {
     errorMessage.value = buildAuthErrorMessage(error, {
+      t,
       fallback: t('auth.verifyFailed')
     })
 

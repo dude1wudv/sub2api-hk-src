@@ -15,6 +15,12 @@ import (
 // instances and returns limits for each, plus the global widest range.
 // Stripe sub-types (card, link) are aggregated under "stripe".
 func (s *PaymentConfigService) GetAvailableMethodLimits(ctx context.Context) (*MethodLimitsResponse, error) {
+	if s.settingRepo != nil && !s.IsPaymentEnabled(ctx) {
+		return &MethodLimitsResponse{
+			Methods: map[string]MethodLimits{},
+		}, nil
+	}
+
 	instances, err := s.entClient.PaymentProviderInstance.Query().
 		Where(paymentproviderinstance.EnabledEQ(true)).All(ctx)
 	if err != nil {

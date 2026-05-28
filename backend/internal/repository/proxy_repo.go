@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"sort"
 	"strings"
+	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/proxy"
@@ -410,6 +411,124 @@ func (r *proxyRepository) ListActiveWithAccountCount(ctx context.Context) ([]ser
 	}
 
 	return result, nil
+}
+
+func (r *proxyRepository) ListAssignableWithAccountCount(ctx context.Context) ([]service.ProxyWithAccountCount, error) {
+	rows, err := r.sql.QueryContext(ctx, `
+		SELECT
+			p.id,
+			p.name,
+			p.protocol,
+			p.host,
+			p.port,
+			p.username,
+			p.password,
+			p.status,
+			p.created_at,
+			p.updated_at,
+			p.cooldown_until,
+			p.cooldown_reason,
+			p.failure_count,
+			p.last_error_at,
+			COUNT(a.id) AS account_count
+		FROM proxies p
+		LEFT JOIN accounts a ON a.proxy_id = p.id AND a.deleted_at IS NULL
+		WHERE p.deleted_at IS NULL
+			AND p.status = $1
+			AND (p.cooldown_until IS NULL OR p.cooldown_until <= NOW())
+		GROUP BY p.id
+		ORDER BY p.id ASC
+	`, service.StatusActive)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make([]service.ProxyWithAccountCount, 0)
+	for rows.Next() {
+		var (
+			out            service.ProxyWithAccountCount
+			username       sql.NullString
+			password       sql.NullString
+			cooldownUntil  sql.NullTime
+			cooldownReason sql.NullString
+			lastErrorAt    sql.NullTime
+		)
+		if err := rows.Scan(
+			&out.ID,
+			&out.Name,
+			&out.Protocol,
+			&out.Host,
+			&out.Port,
+			&username,
+			&password,
+			&out.Status,
+			&out.CreatedAt,
+			&out.UpdatedAt,
+			&cooldownUntil,
+			&cooldownReason,
+			&out.FailureCount,
+			&lastErrorAt,
+			&out.AccountCount,
+		); err != nil {
+			return nil, err
+		}
+		if username.Valid {
+			out.Username = username.String
+		}
+		if password.Valid {
+			out.Password = password.String
+		}
+		if cooldownUntil.Valid {
+			out.CooldownUntil = &cooldownUntil.Time
+		}
+		if cooldownReason.Valid {
+			out.CooldownReason = cooldownReason.String
+		}
+		if lastErrorAt.Valid {
+			out.LastErrorAt = &lastErrorAt.Time
+		}
+		result = append(result, out)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (r *proxyRepository) SetCooldown(ctx context.Context, id int64, until time.Time, reason string) error {
+	var updatedID int64
+	err := scanSingleRow(ctx, r.sql, `
+		UPDATE proxies
+		SET cooldown_until = GREATEST(COALESCE(cooldown_until, $2), $2),
+			cooldown_reason = $3,
+			failure_count = failure_count + 1,
+			last_error_at = NOW(),
+			updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL
+		RETURNING id
+	`, []any{id, until, reason}, &updatedID)
+	if err == sql.ErrNoRows {
+		return service.ErrProxyNotFound
+	}
+	return err
+}
+
+func (r *proxyRepository) ClearCooldown(ctx context.Context, id int64) error {
+	var updatedID int64
+	err := scanSingleRow(ctx, r.sql, `
+		UPDATE proxies
+		SET cooldown_until = NULL,
+			cooldown_reason = NULL,
+			failure_count = 0,
+			updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL
+		RETURNING id
+	`, []any{id}, &updatedID)
+	if err == sql.ErrNoRows {
+		return service.ErrProxyNotFound
+	}
+	return err
 }
 
 func proxyEntityToService(m *dbent.Proxy) *service.Proxy {

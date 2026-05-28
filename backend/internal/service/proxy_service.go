@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -25,6 +26,9 @@ type ProxyRepository interface {
 	ListWithFiltersAndAccountCount(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]ProxyWithAccountCount, *pagination.PaginationResult, error)
 	ListActive(ctx context.Context) ([]Proxy, error)
 	ListActiveWithAccountCount(ctx context.Context) ([]ProxyWithAccountCount, error)
+	ListAssignableWithAccountCount(ctx context.Context) ([]ProxyWithAccountCount, error)
+	SetCooldown(ctx context.Context, id int64, until time.Time, reason string) error
+	ClearCooldown(ctx context.Context, id int64) error
 
 	ExistsByHostPortAuth(ctx context.Context, host string, port int, username, password string) (bool, error)
 	CountAccountsByProxyID(ctx context.Context, proxyID int64) (int64, error)

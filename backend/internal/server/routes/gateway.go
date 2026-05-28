@@ -65,6 +65,8 @@ func RegisterGatewayRoutes(
 		})
 		gateway.GET("/models", h.Gateway.Models)
 		gateway.GET("/usage", h.Gateway.Usage)
+		gateway.GET("/billing/credit_grants", h.Gateway.BillingCreditGrants)
+		gateway.GET("/dashboard/billing/credit_grants", h.Gateway.BillingCreditGrants)
 		// OpenAI Responses API: auto-route based on group platform
 		gateway.POST("/responses", func(c *gin.Context) {
 			if getGroupPlatform(c) == service.PlatformOpenAI {
@@ -143,6 +145,8 @@ func RegisterGatewayRoutes(
 	r.POST("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
 	r.POST("/responses/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
 	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, h.OpenAIGateway.ResponsesWebSocket)
+	r.GET("/billing/credit_grants", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, h.Gateway.BillingCreditGrants)
+	r.GET("/dashboard/billing/credit_grants", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, h.Gateway.BillingCreditGrants)
 	codexDirect := r.Group("/backend-api/codex")
 	codexDirect.Use(bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic)
 	{

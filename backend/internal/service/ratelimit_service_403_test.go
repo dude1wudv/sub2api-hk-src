@@ -29,17 +29,38 @@ func (r *runtimeBlockRecorder) ClearAccountSchedulingBlock(accountID int64) {
 	r.clearedIDs = append(r.clearedIDs, accountID)
 }
 
+type proxyRepoCooldownRecorder struct {
+	proxyRepoStub
+	calls     int
+	proxyID   int64
+	until     time.Time
+	reason    string
+	cooldownE error
+}
+
+func (r *proxyRepoCooldownRecorder) SetCooldown(ctx context.Context, id int64, until time.Time, reason string) error {
+	r.calls++
+	r.proxyID = id
+	r.until = until
+	r.reason = reason
+	return r.cooldownE
+}
+
 func TestRateLimitService_HandleUpstreamError_OpenAI403FirstHitTempUnschedulable(t *testing.T) {
 	repo := &rateLimitAccountRepoStub{}
+	proxyRepo := &proxyRepoCooldownRecorder{}
 	counter := &openAI403CounterCacheStub{counts: []int64{1}}
 	blocker := &runtimeBlockRecorder{}
 	service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
 	service.SetOpenAI403CounterCache(counter)
+	service.SetProxyRepository(proxyRepo)
 	service.SetAccountRuntimeBlocker(blocker)
+	proxyID := int64(8)
 	account := &Account{
 		ID:       301,
 		Platform: PlatformOpenAI,
 		Type:     AccountTypeOAuth,
+		ProxyID:  &proxyID,
 	}
 
 	shouldDisable := service.HandleUpstreamError(
@@ -55,6 +76,10 @@ func TestRateLimitService_HandleUpstreamError_OpenAI403FirstHitTempUnschedulable
 	require.Equal(t, 1, repo.tempCalls)
 	require.Contains(t, repo.lastTempReason, "temporary edge rejection")
 	require.Contains(t, repo.lastTempReason, "(1/3)")
+	require.Equal(t, 1, proxyRepo.calls)
+	require.Equal(t, proxyID, proxyRepo.proxyID)
+	require.Contains(t, proxyRepo.reason, "temporary edge rejection")
+	require.True(t, proxyRepo.until.After(time.Now()))
 	require.Len(t, blocker.accounts, 1)
 	require.Equal(t, account.ID, blocker.accounts[0].ID)
 	require.Equal(t, "openai_403_temp", blocker.reasons[0])

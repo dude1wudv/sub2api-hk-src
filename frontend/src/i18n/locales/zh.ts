@@ -418,6 +418,7 @@ export default {
     loginFailed: '登录失败，请检查您的凭据后重试。',
     errors: {
       USER_NOT_ACTIVE: '账号已被禁用',
+      REGISTRATION_FULL: '用户已满，等待扩容',
     },
     registrationFailed: '注册失败，请重试。',
     emailSuffixNotAllowed: '该邮箱域名不在允许注册范围内。',
@@ -6955,6 +6956,9 @@ export default {
     tabSubscribe: '订阅',
     noPlans: '暂无可用订阅套餐',
     notAvailable: '充值功能暂未开放',
+    redeemCodeOnlyTitle: '仅支持兑换码充值',
+    redeemCodeOnlyDescription: '在线支付通道已关闭。请先购买兑换码，再回到兑换码页面完成充值或订阅。',
+    buyRedeemCode: '购买兑换码',
     confirmSubscription: '确认订阅',
     confirmCancel: '确定要取消此订单吗？',
     amountTooLow: '最低金额为 {min}',

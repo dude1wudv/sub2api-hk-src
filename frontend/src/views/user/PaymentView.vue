@@ -37,10 +37,8 @@
               <p class="mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ user?.username || '' }}</p>
               <p class="mt-0.5 text-sm font-medium text-green-600 dark:text-green-400">{{ t('payment.currentBalance') }}: {{ user?.balance?.toFixed(2) || '0.00' }}</p>
             </div>
-            <div v-if="enabledMethods.length === 0" class="card py-16 text-center">
-              <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
-            </div>
-            <template v-else>
+            <ExternalRedeemCodeCard />
+            <template v-if="enabledMethods.length > 0">
             <div class="card p-6">
               <AmountInput
                 v-model="amount"
@@ -173,6 +171,7 @@
             </template>
             <!-- Plan list -->
             <template v-else>
+              <ExternalRedeemCodeCard v-if="enabledMethods.length === 0" />
               <div v-if="checkout.plans.length === 0" class="card py-16 text-center">
                 <Icon name="gift" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-dark-600" />
                 <p class="text-gray-500 dark:text-gray-400">{{ t('payment.noPlans') }}</p>
@@ -274,6 +273,7 @@ import {
 import { platformAccentBarClass, platformBadgeLightClass, platformBadgeClass, platformTextClass, platformLabel } from '@/utils/platformColors'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
+import ExternalRedeemCodeCard from '@/components/payment/ExternalRedeemCodeCard.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatPaymentAmount, normalizePaymentCurrency } from '@/components/payment/currency'
 import type { PaymentMethodOption } from '@/components/payment/PaymentMethodSelector.vue'

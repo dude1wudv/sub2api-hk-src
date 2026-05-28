@@ -20,6 +20,7 @@ import (
 // RateLimitService 处理限流和过载状态管理
 type RateLimitService struct {
 	accountRepo           AccountRepository
+	proxyRepo             ProxyRepository
 	usageRepo             UsageLogRepository
 	cfg                   *config.Config
 	geminiQuotaService    *GeminiQuotaService
@@ -92,6 +93,10 @@ func (s *RateLimitService) SetTimeoutCounterCache(cache TimeoutCounterCache) {
 // SetOpenAI403CounterCache 设置 OpenAI 403 连续失败计数器（可选依赖）
 func (s *RateLimitService) SetOpenAI403CounterCache(cache OpenAI403CounterCache) {
 	s.openAI403CounterCache = cache
+}
+
+func (s *RateLimitService) SetProxyRepository(repo ProxyRepository) {
+	s.proxyRepo = repo
 }
 
 // SetSettingService 设置系统设置服务（可选依赖）
@@ -788,6 +793,7 @@ func (s *RateLimitService) handleOpenAI403(ctx context.Context, account *Account
 
 	until := time.Now().Add(time.Duration(openAI403CooldownMinutesDefault) * time.Minute)
 	reason := fmt.Sprintf("OpenAI 403 temporary cooldown (%d/%d): %s", count, openAI403DisableThreshold, msg)
+	s.cooldownProxyForOpenAI403(ctx, account, until, reason)
 	s.notifyAccountSchedulingBlocked(account, until, "openai_403_temp")
 	if err := s.accountRepo.SetTempUnschedulable(ctx, account.ID, until, reason); err != nil {
 		slog.Warn("openai_403_set_temp_unschedulable_failed", "account_id", account.ID, "error", err)
@@ -803,6 +809,17 @@ func (s *RateLimitService) handleOpenAI403(ctx context.Context, account *Account
 		"threshold", openAI403DisableThreshold,
 	)
 	return true
+}
+
+func (s *RateLimitService) cooldownProxyForOpenAI403(ctx context.Context, account *Account, until time.Time, reason string) {
+	if s == nil || s.proxyRepo == nil || account == nil || account.ProxyID == nil || *account.ProxyID <= 0 {
+		return
+	}
+	if err := s.proxyRepo.SetCooldown(ctx, *account.ProxyID, until, reason); err != nil {
+		slog.Warn("openai_403_proxy_cooldown_failed", "account_id", account.ID, "proxy_id", *account.ProxyID, "error", err)
+		return
+	}
+	slog.Warn("openai_403_proxy_cooldown", "account_id", account.ID, "proxy_id", *account.ProxyID, "until", until)
 }
 
 // handleAntigravity403 处理 Antigravity 平台的 403 错误

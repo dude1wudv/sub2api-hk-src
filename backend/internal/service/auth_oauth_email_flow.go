@@ -42,6 +42,9 @@ func (s *AuthService) SendPendingOAuthVerifyCode(ctx context.Context, email stri
 	if s == nil || s.emailService == nil {
 		return nil, ErrServiceUnavailable
 	}
+	if err := s.ensureRegistrationCapacity(ctx); err != nil {
+		return nil, err
+	}
 
 	siteName := "Sub2API"
 	if s.settingService != nil {
@@ -112,6 +115,9 @@ func (s *AuthService) RegisterOAuthEmailAccount(
 	}
 	if s.settingService == nil || (!s.settingService.IsRegistrationEnabled(ctx) && !s.canBypassRegistrationDisabledForOAuth(ctx, signupSource)) {
 		return nil, nil, ErrRegDisabled
+	}
+	if err := s.ensureRegistrationCapacity(ctx); err != nil {
+		return nil, nil, err
 	}
 
 	email = strings.TrimSpace(strings.ToLower(email))
@@ -189,6 +195,9 @@ func (s *AuthService) RegisterVerifiedOAuthEmailAccount(
 	}
 	if s.settingService == nil || (!s.settingService.IsRegistrationEnabled(ctx) && !s.canBypassRegistrationDisabledForOAuth(ctx, signupSource)) {
 		return nil, nil, ErrRegDisabled
+	}
+	if err := s.ensureRegistrationCapacity(ctx); err != nil {
+		return nil, nil, err
 	}
 
 	email = strings.TrimSpace(strings.ToLower(email))
