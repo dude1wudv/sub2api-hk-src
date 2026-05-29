@@ -2663,9 +2663,11 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 		if isAvailable {
 			proxy.available++
 		}
-		if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_5h_used_percent", "codex_5h_reset_at", now); ok {
-			fiveHour.add(value)
-			proxy.fiveHour.add(value)
+		if openAIAccountCountsCodex5hQuota(acc) {
+			if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_5h_used_percent", "codex_5h_reset_at", now); ok {
+				fiveHour.add(value)
+				proxy.fiveHour.add(value)
+			}
 		}
 		if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_7d_used_percent", "codex_7d_reset_at", now); ok {
 			sevenDay.add(value)
@@ -2677,6 +2679,18 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 	summary.Codex7d = sevenDay.summary()
 	summary.ProxyDistribution = buildAccountProxySummary(proxyStats)
 	return summary
+}
+
+func openAIAccountCountsCodex5hQuota(account *Account) bool {
+	if account == nil || !account.IsOpenAIOAuth() {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(account.GetCredential("plan_type"))) {
+	case "plus", "pro", "chatgptpro", "team", "enterprise", "business":
+		return true
+	default:
+		return false
+	}
 }
 
 func accountSummaryProxyKey(account *Account) (string, *int64, string) {
