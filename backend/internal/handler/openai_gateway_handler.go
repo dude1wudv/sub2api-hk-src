@@ -96,6 +96,18 @@ func isOpenAILargeRequestBody(bodyBytes int) bool {
 	return bodyBytes >= 256*1024
 }
 
+func logOpenAIResponsesTiming(reqLog *zap.Logger, stage string, started time.Time, fields ...zap.Field) {
+	if reqLog == nil {
+		return
+	}
+	allFields := []zap.Field{
+		zap.String("stage", stage),
+		zap.Int64("elapsed_ms", time.Since(started).Milliseconds()),
+	}
+	allFields = append(allFields, fields...)
+	reqLog.Info("openai.responses_timing", allFields...)
+}
+
 // Responses handles OpenAI Responses API endpoint
 // POST /openai/v1/responses
 func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
@@ -146,6 +158,11 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Request body is empty")
 		return
 	}
+	logOpenAIResponsesTiming(reqLog, "body_read_done", requestStart,
+		zap.Int("request_body_bytes", len(body)),
+		zap.String("request_size_bucket", openAIRequestSizeBucket(len(body))),
+		zap.Bool("large_request", isOpenAILargeRequestBody(len(body))),
+	)
 
 	setOpsRequestContext(c, "", false)
 	sessionHashBody := body
@@ -219,6 +236,11 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		h.errorResponse(c, contentModerationStatus(decision), contentModerationErrorCode(decision), decision.Message)
 		return
 	}
+	logOpenAIResponsesTiming(reqLog, "local_checks_done", requestStart,
+		zap.Int("request_body_bytes", len(body)),
+		zap.String("request_size_bucket", openAIRequestSizeBucket(len(body))),
+		zap.Bool("large_request", isOpenAILargeRequestBody(len(body))),
+	)
 
 	imageIntent := service.IsImageGenerationIntent("/v1/responses", reqModel, body)
 	if imageIntent && !service.GroupAllowsImageGeneration(apiKey.Group) {
@@ -344,6 +366,17 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		sessionHash = ensureOpenAIPoolModeSessionHash(sessionHash, account)
 		reqLog.Debug("openai.account_selected", zap.Int64("account_id", account.ID), zap.String("account_name", account.Name))
 		setOpsSelectedAccount(c, account.ID, account.Platform)
+		logOpenAIResponsesTiming(reqLog, "account_selected", requestStart,
+			zap.Int64("account_id", account.ID),
+			zap.String("account_type", account.Type),
+			zap.String("account_name", account.Name),
+			zap.String("scheduler_layer", scheduleDecision.Layer),
+			zap.Bool("sticky_session_hit", scheduleDecision.StickySessionHit),
+			zap.Bool("sticky_previous_hit", scheduleDecision.StickyPreviousHit),
+			zap.Int64("scheduler_latency_ms", scheduleDecision.LatencyMs),
+			zap.Int("request_body_bytes", len(body)),
+			zap.String("request_size_bucket", openAIRequestSizeBucket(len(body))),
+		)
 
 		accountReleaseFunc, acquired := h.acquireResponsesAccountSlot(c, apiKey.GroupID, sessionHash, selection, reqStream, &streamStarted, reqLog)
 		if !acquired {
@@ -365,6 +398,12 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 					accountReleaseFunc()
 				}
 			}()
+			logOpenAIResponsesTiming(reqLog, "forward_start", requestStart,
+				zap.Int64("account_id", account.ID),
+				zap.String("account_type", account.Type),
+				zap.Int("request_body_bytes", len(forwardBody)),
+				zap.String("request_size_bucket", openAIRequestSizeBucket(len(forwardBody))),
+			)
 			return h.gatewayService.Forward(c.Request.Context(), c, account, forwardBody)
 		}()
 		forwardDurationMs := time.Since(forwardStart).Milliseconds()
@@ -377,6 +416,29 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		if err == nil && result != nil && result.FirstTokenMs != nil {
 			service.SetOpsLatencyMs(c, service.OpsTimeToFirstTokenMsKey, int64(*result.FirstTokenMs))
 		}
+		timingFields := []zap.Field{
+			zap.Int64("account_id", account.ID),
+			zap.String("account_type", account.Type),
+			zap.Int64("forward_duration_ms", forwardDurationMs),
+			zap.Int64("upstream_latency_ms", upstreamLatencyMs),
+			zap.Int64("response_latency_ms", responseLatencyMs),
+		}
+		if result != nil {
+			timingFields = append(timingFields,
+				zap.Bool("stream", result.Stream),
+				zap.Bool("openai_ws_mode", result.OpenAIWSMode),
+			)
+			if result.FirstTokenMs != nil {
+				timingFields = append(timingFields, zap.Int("first_token_ms", *result.FirstTokenMs))
+			}
+			if result.RequestID != "" {
+				timingFields = append(timingFields, zap.String("upstream_request_id", result.RequestID))
+			}
+		}
+		if err != nil {
+			timingFields = append(timingFields, zap.Error(err))
+		}
+		logOpenAIResponsesTiming(reqLog, "forward_done", requestStart, timingFields...)
 		if err != nil {
 			if result != nil && result.ImageCount > 0 {
 				reqLog.Warn("openai.forward_partial_error_with_image_result",

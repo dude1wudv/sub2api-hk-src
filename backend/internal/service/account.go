@@ -1065,7 +1065,9 @@ func (a *Account) IsOpenAICodexQuotaDraining() bool {
 	if a == nil || !a.IsOpenAI() || !a.IsOAuth() {
 		return false
 	}
-	return a.openAICodexEffectiveUsedPercent(openAICodexPrimaryUsedPercentExtraKey, openAICodexPrimaryResetAtExtraKey) >= openAICodexQuotaDrainThresholdPercent
+	return a.openAICodexEffectiveUsedPercent(openAICodexPrimaryUsedPercentExtraKey, openAICodexPrimaryResetAtExtraKey) >= openAICodexQuotaDrainThresholdPercent ||
+		a.openAICodexEffectiveUsedPercent(openAICodex5hUsedPercentExtraKey, openAICodex5hResetAtExtraKey) >= openAICodexQuotaDrainThresholdPercent ||
+		a.openAICodexEffectiveUsedPercent(openAICodex7dUsedPercentExtraKey, openAICodex7dResetAtExtraKey) >= openAICodexQuotaDrainThresholdPercent
 }
 
 func (a *Account) IsOpenAICodexUsageExhausted() bool {

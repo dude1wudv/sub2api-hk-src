@@ -162,6 +162,28 @@ func TestAccountIsOpenAICodexQuotaDraining(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "openai oauth 5h at drain threshold",
+			account: &Account{
+				Platform: PlatformOpenAI,
+				Type:     AccountTypeOAuth,
+				Extra: map[string]any{
+					openAICodex5hUsedPercentExtraKey: 99.0,
+				},
+			},
+			want: true,
+		},
+		{
+			name: "openai oauth 7d at drain threshold",
+			account: &Account{
+				Platform: PlatformOpenAI,
+				Type:     AccountTypeOAuth,
+				Extra: map[string]any{
+					openAICodex7dUsedPercentExtraKey: 99.0,
+				},
+			},
+			want: true,
+		},
+		{
 			name: "openai setup token at drain threshold",
 			account: &Account{
 				Platform: PlatformOpenAI,

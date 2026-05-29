@@ -1595,6 +1595,29 @@ func TestOpenAINonStreamingContentTypeDefault(t *testing.T) {
 	}
 }
 
+func TestOpenAIPassthroughResponseHeadersStripCodexQuotaHeaders(t *testing.T) {
+	filter := compileResponseHeaderFilter(&config.Config{
+		Security: config.SecurityConfig{
+			ResponseHeaders: config.ResponseHeaderConfig{Enabled: false},
+		},
+	})
+
+	dst := http.Header{}
+	src := http.Header{
+		"Content-Type":                          []string{"application/json"},
+		"X-Request-Id":                          []string{"req-123"},
+		"X-Codex-Primary-Used-Percent":          []string{"99"},
+		"X-Codex-Secondary-Reset-After-Seconds": []string{"3600"},
+	}
+
+	writeOpenAIPassthroughResponseHeaders(dst, src, filter)
+
+	require.Equal(t, "application/json", dst.Get("Content-Type"))
+	require.Equal(t, "req-123", dst.Get("X-Request-Id"))
+	require.Empty(t, dst.Get("X-Codex-Primary-Used-Percent"))
+	require.Empty(t, dst.Get("X-Codex-Secondary-Reset-After-Seconds"))
+}
+
 func TestOpenAIStreamingHeadersOverride(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{

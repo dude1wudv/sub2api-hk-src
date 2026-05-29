@@ -61,6 +61,42 @@ const (
 	openAICodexSnapshotPersistMinInterval = 30 * time.Second
 )
 
+func openAIPassthroughRequestSizeBucket(bodyBytes int) string {
+	switch {
+	case bodyBytes < 64*1024:
+		return "small"
+	case bodyBytes < 256*1024:
+		return "medium"
+	case bodyBytes < 1024*1024:
+		return "large"
+	default:
+		return "xlarge"
+	}
+}
+
+func logOpenAIPassthroughTiming(ctx context.Context, stage string, started time.Time, account *Account, fields ...zap.Field) {
+	if started.IsZero() {
+		started = time.Now()
+	}
+	allFields := []zap.Field{
+		zap.String("component", "service.openai_gateway"),
+		zap.String("stage", stage),
+		zap.Int64("forward_elapsed_ms", time.Since(started).Milliseconds()),
+	}
+	if account != nil {
+		allFields = append(allFields,
+			zap.Int64("account_id", account.ID),
+			zap.String("account_name", account.Name),
+			zap.String("account_type", account.Type),
+		)
+		if account.ProxyID != nil {
+			allFields = append(allFields, zap.Int64("proxy_id", *account.ProxyID))
+		}
+	}
+	allFields = append(allFields, fields...)
+	logger.FromContext(ctx).Info("openai.passthrough_timing", allFields...)
+}
+
 // OpenAI allowed headers whitelist (for non-passthrough).
 var openaiAllowedHeaders = map[string]bool{
 	"accept-language":       true,
@@ -3160,6 +3196,14 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		imageSizeTier = imageCfg.SizeTier
 		imageInputSize = imageCfg.InputSize
 	}
+	logOpenAIPassthroughTiming(ctx, "local_prepare_done", startTime, account,
+		zap.String("model", reqModel),
+		zap.Bool("stream", reqStream),
+		zap.Int("request_body_bytes", len(body)),
+		zap.String("request_size_bucket", openAIPassthroughRequestSizeBucket(len(body))),
+		zap.Bool("sanitized_empty_images", sanitized),
+		zap.Bool("image_intent", IsImageGenerationIntent(openAIResponsesEndpoint, reqModel, body)),
+	)
 
 	logger.LegacyPrintf("service.openai_gateway",
 		"[OpenAI 自动透传] 命中自动透传分支: account=%d name=%s type=%s model=%s stream=%v",
@@ -3207,9 +3251,24 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 	}
 
 	upstreamStart := time.Now()
+	logOpenAIPassthroughTiming(ctx, "upstream_request_start", startTime, account,
+		zap.String("model", reqModel),
+		zap.Bool("stream", reqStream),
+		zap.Int("request_body_bytes", len(body)),
+		zap.String("request_size_bucket", openAIPassthroughRequestSizeBucket(len(body))),
+		zap.String("upstream_host", upstreamReq.URL.Host),
+		zap.String("upstream_path", upstreamReq.URL.Path),
+		zap.Bool("has_proxy", proxyURL != ""),
+	)
 	resp, err := s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
 	SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
 	if err != nil {
+		logOpenAIPassthroughTiming(ctx, "upstream_request_error", startTime, account,
+			zap.String("model", reqModel),
+			zap.Bool("stream", reqStream),
+			zap.Int64("upstream_request_elapsed_ms", time.Since(upstreamStart).Milliseconds()),
+			zap.Error(err),
+		)
 		safeErr := sanitizeUpstreamErrorMessage(err.Error())
 		setOpsUpstreamError(c, 0, safeErr, "")
 		appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
@@ -3230,6 +3289,14 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		return nil, fmt.Errorf("upstream request failed: %s", safeErr)
 	}
 	defer func() { _ = resp.Body.Close() }()
+	logOpenAIPassthroughTiming(ctx, "upstream_headers_received", startTime, account,
+		zap.String("model", reqModel),
+		zap.Bool("stream", reqStream),
+		zap.Int64("upstream_request_elapsed_ms", time.Since(upstreamStart).Milliseconds()),
+		zap.Int("upstream_status", resp.StatusCode),
+		zap.String("upstream_request_id", resp.Header.Get("x-request-id")),
+		zap.String("content_type", resp.Header.Get("content-type")),
+	)
 
 	if resp.StatusCode >= 400 {
 		// 透传模式默认保持原样代理；但 429/529 属于网关必须兜底的
@@ -3746,6 +3813,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 	failedMessage := ""
 	clientOutputStarted := false
 	upstreamRequestID := strings.TrimSpace(resp.Header.Get("x-request-id"))
+	firstSSEEventLogged := false
 	pendingLines := make([]string, 0, 8)
 	writePendingLines := func() bool {
 		for _, pending := range pendingLines {
@@ -3793,6 +3861,16 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 				}
 			}
 			eventType := strings.TrimSpace(gjson.Get(trimmedData, "type").String())
+			if !firstSSEEventLogged && trimmedData != "" {
+				firstSSEEventLogged = true
+				logOpenAIPassthroughTiming(ctx, "first_sse_event", startTime, account,
+					zap.String("event_type", eventType),
+					zap.Bool("preamble_event", openAIStreamEventIsPreamble(eventType)),
+					zap.Bool("done_event", trimmedData == "[DONE]"),
+					zap.Int("sse_data_bytes", len(dataBytes)),
+					zap.String("upstream_request_id", upstreamRequestID),
+				)
+			}
 			if eventType == "response.failed" {
 				failedMessage = extractOpenAISSEErrorMessage(dataBytes)
 				if !openAIStreamClientOutputStarted(c, clientOutputStarted) && openAIStreamFailedEventShouldFailover(dataBytes, failedMessage) {
@@ -3813,6 +3891,13 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 			if firstTokenMs == nil && lineStartsClientOutput && trimmedData != "[DONE]" {
 				ms := int(time.Since(startTime).Milliseconds())
 				firstTokenMs = &ms
+				logOpenAIPassthroughTiming(ctx, "first_client_output_event", startTime, account,
+					zap.String("event_type", eventType),
+					zap.Int("first_token_ms", ms),
+					zap.Int("pending_line_count", len(pendingLines)),
+					zap.Int("sse_data_bytes", len(dataBytes)),
+					zap.String("upstream_request_id", upstreamRequestID),
+				)
 			}
 			s.parseSSEUsageBytes(dataBytes, usage)
 		}
@@ -3837,6 +3922,18 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 		}
 	}
 	if err := scanner.Err(); err != nil {
+		logFields := []zap.Field{
+			zap.Bool("saw_done", sawDone),
+			zap.Bool("saw_terminal_event", sawTerminalEvent),
+			zap.Bool("saw_failed_event", sawFailedEvent),
+			zap.Bool("client_disconnected", clientDisconnected),
+			zap.String("upstream_request_id", upstreamRequestID),
+			zap.Error(err),
+		}
+		if firstTokenMs != nil {
+			logFields = append(logFields, zap.Int("first_token_ms", *firstTokenMs))
+		}
+		logOpenAIPassthroughTiming(ctx, "stream_scan_error", startTime, account, logFields...)
 		if sawTerminalEvent && !sawFailedEvent {
 			return resultWithUsage(), nil
 		}
@@ -3869,6 +3966,18 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 		)
 		return resultWithUsage(), fmt.Errorf("stream read error: %w", err)
 	}
+	streamDoneFields := []zap.Field{
+		zap.Bool("saw_done", sawDone),
+		zap.Bool("saw_terminal_event", sawTerminalEvent),
+		zap.Bool("saw_failed_event", sawFailedEvent),
+		zap.Bool("client_disconnected", clientDisconnected),
+		zap.String("upstream_request_id", upstreamRequestID),
+		zap.Int("image_count", imageCounter.Count()),
+	}
+	if firstTokenMs != nil {
+		streamDoneFields = append(streamDoneFields, zap.Int("first_token_ms", *firstTokenMs))
+	}
+	logOpenAIPassthroughTiming(ctx, "stream_done", startTime, account, streamDoneFields...)
 	if sawFailedEvent {
 		return resultWithUsage(), fmt.Errorf("upstream response failed: %s", failedMessage)
 	}
@@ -4012,40 +4121,6 @@ func writeOpenAIPassthroughResponseHeaders(dst http.Header, src http.Header, fil
 		// 兜底：尽量保留最基础的 content-type
 		if v := strings.TrimSpace(src.Get("Content-Type")); v != "" {
 			dst.Set("Content-Type", v)
-		}
-	}
-	// 透传模式强制放行 x-codex-* 响应头（若上游返回）。
-	// 注意：真实 http.Response.Header 的 key 一般会被 canonicalize；但为了兼容测试/自建响应，
-	// 这里用 EqualFold 做一次大小写不敏感的查找。
-	getCaseInsensitiveValues := func(h http.Header, want string) []string {
-		if h == nil {
-			return nil
-		}
-		for k, vals := range h {
-			if strings.EqualFold(k, want) {
-				return vals
-			}
-		}
-		return nil
-	}
-
-	for _, rawKey := range []string{
-		"x-codex-primary-used-percent",
-		"x-codex-primary-reset-after-seconds",
-		"x-codex-primary-window-minutes",
-		"x-codex-secondary-used-percent",
-		"x-codex-secondary-reset-after-seconds",
-		"x-codex-secondary-window-minutes",
-		"x-codex-primary-over-secondary-limit-percent",
-	} {
-		vals := getCaseInsensitiveValues(src, rawKey)
-		if len(vals) == 0 {
-			continue
-		}
-		key := http.CanonicalHeaderKey(rawKey)
-		dst.Del(key)
-		for _, v := range vals {
-			dst.Add(key, v)
 		}
 	}
 }
