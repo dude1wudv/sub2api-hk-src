@@ -3743,6 +3743,7 @@ watch(
   [accountCategory, () => form.platform],
   ([category, platform]) => {
     if (platform === 'openai' && category !== 'oauth-based') {
+      openaiPassthroughEnabled.value = false
       codexCLIOnlyEnabled.value = false
     }
     if (platform !== 'anthropic' || category !== 'apikey') {
@@ -4189,10 +4190,14 @@ const buildOpenAIExtra = (base?: Record<string, unknown>): Record<string, unknow
   // 清理兼容旧键，统一改用分类型开关。
   delete extra.responses_websockets_v2_enabled
   delete extra.openai_ws_enabled
-  if (openaiPassthroughEnabled.value) {
+  if (accountCategory.value === 'oauth-based' && openaiPassthroughEnabled.value) {
     extra.openai_passthrough = true
   } else {
-    delete extra.openai_passthrough
+    if (accountCategory.value === 'oauth-based') {
+      extra.openai_passthrough = false
+    } else {
+      delete extra.openai_passthrough
+    }
     delete extra.openai_oauth_passthrough
   }
 

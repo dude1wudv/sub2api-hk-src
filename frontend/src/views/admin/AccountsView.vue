@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <TablePageLayout>
+    <TablePageLayout page-scroll>
       <template #filters>
         <div class="flex flex-wrap-reverse items-start justify-between gap-3">
           <AccountTableFilters
@@ -132,6 +132,34 @@
                       <span class="flex-1 text-left">{{ t('admin.tlsFingerprintProfiles.title') }}</span>
                     </button>
 
+                    <button
+                      class="account-tools-menu-item"
+                      :disabled="accountMaintenanceBusy"
+                      @click="handleRunOpenAIMaintenanceScan"
+                    >
+                      <span class="account-tools-menu-icon bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300">
+                        <Icon name="refresh" size="sm" :class="{ 'animate-spin': accountMaintenanceBusy }" />
+                      </span>
+                      <span class="flex-1 text-left">{{ t('admin.accounts.maintenance.scanNow') }}</span>
+                    </button>
+                    <button
+                      class="account-tools-menu-item"
+                      :disabled="riskPartitionBusy || !accountRiskOverview?.move_candidates"
+                      :class="{ 'opacity-50': riskPartitionBusy || !accountRiskOverview?.move_candidates }"
+                      @click="handleApplyOpenAIRiskPartition"
+                    >
+                      <span class="account-tools-menu-icon bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300">
+                        <Icon name="shield" size="sm" />
+                      </span>
+                      <span class="flex-1 text-left">{{ t('admin.accounts.maintenance.partitionRiskPool') }}</span>
+                      <span
+                        v-if="accountRiskOverview?.move_candidates"
+                        class="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                      >
+                        {{ accountRiskOverview.move_candidates }}
+                      </span>
+                    </button>
+
                     <div class="my-2 border-t border-gray-100 dark:border-gray-700"></div>
                     <div class="px-2 py-2">
                       <div class="flex items-center justify-between gap-3">
@@ -170,6 +198,161 @@
             {{ t('admin.accounts.listPendingSyncAction') }}
           </button>
         </div>
+        <div
+          v-if="accountRiskOverview"
+          :class="[
+            'mt-3 rounded-lg border px-3 py-3 text-sm',
+            accountRiskHasWarnings
+              ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-100'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:text-emerald-100'
+          ]"
+        >
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="font-medium">{{ t('admin.accounts.maintenance.riskAlerts') }}</div>
+              <div class="mt-2 flex flex-wrap gap-2 text-xs">
+                <span class="account-risk-chip">{{ t('admin.accounts.maintenance.drain95', { count: accountRiskOverview.drain_95 }) }}</span>
+                <span class="account-risk-chip">{{ t('admin.accounts.maintenance.exhausted99', { count: accountRiskOverview.exhausted_99 }) }}</span>
+                <span class="account-risk-chip">{{ t('admin.accounts.maintenance.challenge', { count: accountRiskOverview.challenge }) }}</span>
+                <span class="account-risk-chip">{{ t('admin.accounts.maintenance.banned', { count: accountRiskOverview.banned }) }}</span>
+                <span class="account-risk-chip">{{ t('admin.accounts.maintenance.highFailure', { count: accountRiskOverview.high_failure }) }}</span>
+              </div>
+              <div
+                v-if="accountRiskCandidatePreview.length"
+                class="mt-2 truncate text-xs opacity-80"
+                :title="accountRiskCandidatePreview.join(' / ')"
+              >
+                {{ accountRiskCandidatePreview.join(' / ') }}
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                class="btn btn-secondary px-2 py-1 text-xs"
+                :disabled="accountMaintenanceBusy"
+                @click="handleRunOpenAIMaintenanceScan"
+              >
+                {{ t('admin.accounts.maintenance.scanNowShort') }}
+              </button>
+              <button
+                class="btn btn-secondary px-2 py-1 text-xs"
+                :disabled="riskPartitionBusy || !accountRiskOverview.move_candidates"
+                @click="handleApplyOpenAIRiskPartition"
+              >
+                {{ t('admin.accounts.maintenance.partitionRiskPoolShort', { count: accountRiskOverview.move_candidates }) }}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 grid gap-3 lg:grid-cols-4">
+          <div class="account-summary-panel">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="account-summary-label">{{ t('admin.accounts.summary.statusTitle') }}</p>
+                <p class="account-summary-value">
+                  {{ accountSummary?.available ?? '-' }} / {{ accountSummary?.total ?? '-' }}
+                </p>
+              </div>
+              <span class="account-summary-pill text-emerald-700 dark:text-emerald-300">
+                {{ t('admin.accounts.summary.available') }}
+              </span>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <span class="account-summary-subvalue text-emerald-600 dark:text-emerald-300">{{ accountSummary?.active ?? '-' }}</span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.summary.active') }}</span>
+              </div>
+              <div>
+                <span class="account-summary-subvalue text-rose-600 dark:text-rose-300">{{ accountSummary?.error ?? '-' }}</span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.summary.error') }}</span>
+              </div>
+              <div>
+                <span class="account-summary-subvalue text-amber-600 dark:text-amber-300">{{ accountSummary?.paused ?? '-' }}</span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.summary.paused') }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="account-summary-panel">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="account-summary-label">{{ t('admin.accounts.summary.codex5h') }}</p>
+                <p class="account-summary-value">{{ formatSummaryPercent(accountSummary?.codex_5h?.remaining_percent) }}</p>
+              </div>
+              <span class="account-summary-pill">{{ t('admin.accounts.summary.sampled', { count: accountSummary?.codex_5h?.sampled ?? 0 }) }}</span>
+            </div>
+            <div class="account-summary-meter mt-3">
+              <div class="account-summary-meter-fill bg-emerald-500" :style="{ width: summaryMeterWidth(accountSummary?.codex_5h?.remaining_percent) }"></div>
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span>{{ t('admin.accounts.summary.used', { percent: formatSummaryPercent(accountSummary?.codex_5h?.used_percent) }) }}</span>
+              <span>{{ t('admin.accounts.summary.exhausted', { count: accountSummary?.codex_5h?.exhausted ?? 0 }) }}</span>
+            </div>
+          </div>
+
+          <div class="account-summary-panel">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="account-summary-label">{{ t('admin.accounts.summary.codex7d') }}</p>
+                <p class="account-summary-value">{{ formatSummaryPercent(accountSummary?.codex_7d?.remaining_percent) }}</p>
+              </div>
+              <span class="account-summary-pill">{{ t('admin.accounts.summary.sampled', { count: accountSummary?.codex_7d?.sampled ?? 0 }) }}</span>
+            </div>
+            <div class="account-summary-meter mt-3">
+              <div class="account-summary-meter-fill bg-sky-500" :style="{ width: summaryMeterWidth(accountSummary?.codex_7d?.remaining_percent) }"></div>
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span>{{ t('admin.accounts.summary.used', { percent: formatSummaryPercent(accountSummary?.codex_7d?.used_percent) }) }}</span>
+              <span>{{ t('admin.accounts.summary.exhausted', { count: accountSummary?.codex_7d?.exhausted ?? 0 }) }}</span>
+            </div>
+          </div>
+
+          <div class="account-summary-panel lg:col-span-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="account-summary-label">{{ t('admin.accounts.summary.proxyTitle') }}</p>
+                <p class="account-summary-value">{{ accountSummary?.openai ?? '-' }}</p>
+              </div>
+              <span class="account-summary-pill">{{ t('admin.accounts.summary.tokyoPool') }}</span>
+            </div>
+            <div class="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              <div
+                v-for="proxy in tokyoProxyHealth"
+                :key="proxy.proxy_id ?? 'none'"
+                class="proxy-health-row"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span :class="['proxy-health-dot', proxyHealthDotClass(proxy)]"></span>
+                      <span class="truncate text-sm font-medium text-gray-900 dark:text-gray-100" :title="proxy.name">{{ proxy.name }}</span>
+                    </div>
+                    <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400" :title="proxyHealthMessage(proxy)">
+                      {{ proxyHealthMessage(proxy) }}
+                    </p>
+                  </div>
+                  <span :class="['proxy-health-chip', proxyHealthChipClass(proxy)]">
+                    {{ proxyHealthLabel(proxy) }}
+                  </span>
+                </div>
+                <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <span class="account-summary-subvalue text-gray-900 dark:text-gray-100">{{ proxy.total }}</span>
+                    <span class="account-summary-sublabel">{{ t('admin.accounts.summary.accounts') }}</span>
+                  </div>
+                  <div>
+                    <span class="account-summary-subvalue text-emerald-600 dark:text-emerald-300">{{ proxy.available }}</span>
+                    <span class="account-summary-sublabel">{{ t('admin.accounts.summary.usable') }}</span>
+                  </div>
+                  <div>
+                    <span class="account-summary-subvalue text-sky-600 dark:text-sky-300">{{ formatProxyLatency(proxy) }}</span>
+                    <span class="account-summary-sublabel">{{ t('admin.accounts.summary.latency') }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="tokyoProxyHealth.length === 0" class="text-xs text-gray-400 dark:text-gray-500">-</div>
+            </div>
+          </div>
+        </div>
       </template>
       <template #table>
         <AccountBulkActionsBar
@@ -183,7 +366,7 @@
           @select-page="selectPage"
           @toggle-schedulable="handleBulkToggleSchedulable"
         />
-        <div ref="accountTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div ref="accountTableRef" class="account-table-shell">
         <DataTable
           ref="dataTableRef"
           :columns="cols"
@@ -280,6 +463,22 @@
               :today-stats-loading="todayStatsLoading"
               :manual-refresh-token="usageManualRefreshToken"
             />
+          </template>
+          <template #cell-risk="{ row }">
+            <div v-if="getCodexRiskMeta(row)" class="flex min-w-[150px] flex-col gap-1">
+              <span :class="['inline-flex w-fit items-center rounded px-2 py-0.5 text-xs font-medium', getCodexRiskMeta(row)?.className]">
+                {{ getCodexRiskMeta(row)?.label }}
+              </span>
+              <div class="flex flex-wrap gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                <span>5h {{ formatCodexPercent(row.extra?.codex_5h_used_percent) }}</span>
+                <span>7d {{ formatCodexPercent(row.extra?.codex_7d_used_percent) }}</span>
+                <span>P {{ formatCodexPercent(row.extra?.codex_primary_used_percent) }}</span>
+              </div>
+              <span v-if="row.extra?.codex_usage_updated_at" class="text-[11px] text-gray-400 dark:text-dark-500">
+                {{ formatRelativeTime(row.extra.codex_usage_updated_at) }}
+              </span>
+            </div>
+            <span v-else class="text-sm text-gray-400 dark:text-dark-500">-</span>
           </template>
           <template #cell-proxy="{ row }">
             <div v-if="row.proxy" class="flex items-center gap-2">
@@ -415,6 +614,7 @@ import TLSFingerprintProfilesModal from '@/components/admin/TLSFingerprintProfil
 import { buildOpenAIUsageRefreshKey } from '@/utils/accountUsageRefresh'
 import { formatDateTime, formatRelativeTime } from '@/utils/format'
 import type { Account, AccountPlatform, AccountType, Proxy as AccountProxy, AdminGroup, WindowStats, ClaudeModel } from '@/types'
+import type { AccountSummary, AccountProxySummary, OpenAIAccountRiskOverview } from '@/api/admin/accounts'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -552,6 +752,132 @@ const todayStatsError = ref<string | null>(null)
 const todayStatsReqSeq = ref(0)
 const pendingTodayStatsRefresh = ref(false)
 const usageManualRefreshToken = ref(0)
+const accountSummary = ref<AccountSummary | null>(null)
+const accountSummaryReqSeq = ref(0)
+const accountRiskOverview = ref<OpenAIAccountRiskOverview | null>(null)
+const accountRiskReqSeq = ref(0)
+const accountMaintenanceBusy = ref(false)
+const riskPartitionBusy = ref(false)
+
+const tokyoProxyHealth = computed<AccountProxySummary[]>(() => {
+  const proxies = accountSummary.value?.proxy_distribution ?? []
+  const tokyo = proxies.filter((proxy) => /tokyo|東京|日本|japan|jp/i.test(proxy.name))
+  return (tokyo.length > 0 ? tokyo : proxies).slice(0, 4)
+})
+
+const accountRiskHasWarnings = computed(() => {
+  const risk = accountRiskOverview.value
+  if (!risk) return false
+  return risk.drain_95 > 0 ||
+    risk.exhausted_99 > 0 ||
+    risk.challenge > 0 ||
+    risk.banned > 0 ||
+    risk.high_failure > 0
+})
+
+const accountRiskCandidatePreview = computed(() => {
+  const candidates = accountRiskOverview.value?.candidates ?? []
+  return candidates.slice(0, 4).map((candidate) => (
+    `${candidate.name}: ${riskLabel(candidate.risk)} -> ${candidate.target_proxy_name}`
+  ))
+})
+
+const buildAccountSummaryFilters = () => {
+  const rawParams = toRaw(params) as Record<string, unknown>
+  return {
+    platform: typeof rawParams.platform === 'string' ? rawParams.platform : '',
+    type: typeof rawParams.type === 'string' ? rawParams.type : '',
+    status: typeof rawParams.status === 'string' ? rawParams.status : '',
+    group: typeof rawParams.group === 'string' ? rawParams.group : '',
+    search: typeof rawParams.search === 'string' ? rawParams.search : '',
+    privacy_mode: typeof rawParams.privacy_mode === 'string' ? rawParams.privacy_mode : ''
+  }
+}
+
+const refreshAccountSummary = async () => {
+  const reqSeq = ++accountSummaryReqSeq.value
+  try {
+    const summary = await adminAPI.accounts.getSummary(buildAccountSummaryFilters())
+    if (reqSeq !== accountSummaryReqSeq.value) return
+    accountSummary.value = summary
+  } catch (error) {
+    if (reqSeq !== accountSummaryReqSeq.value) return
+    console.error('Failed to load account summary:', error)
+  }
+}
+
+const refreshAccountRiskOverview = async () => {
+  const reqSeq = ++accountRiskReqSeq.value
+  try {
+    const overview = await adminAPI.accounts.getOpenAIRiskOverview()
+    if (reqSeq !== accountRiskReqSeq.value) return
+    accountRiskOverview.value = overview
+  } catch (error) {
+    if (reqSeq !== accountRiskReqSeq.value) return
+    console.error('Failed to load OpenAI account risk overview:', error)
+  }
+}
+
+const formatSummaryPercent = (value?: number | null) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '-'
+  return `${Math.max(0, Math.min(100, value)).toFixed(1)}%`
+}
+
+const summaryMeterWidth = (value?: number | null) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '0%'
+  return `${Math.max(0, Math.min(100, value))}%`
+}
+
+const isProxyCoolingDown = (proxy: AccountProxySummary) => {
+  if (!proxy.cooldown_until) return false
+  const until = new Date(proxy.cooldown_until).getTime()
+  return Number.isFinite(until) && until > Date.now()
+}
+
+const proxyHealthState = (proxy: AccountProxySummary): 'healthy' | 'degraded' | 'failed' => {
+  if (isProxyCoolingDown(proxy) || proxy.latency_status === 'failed') return 'failed'
+  if (proxy.available <= 0 || (proxy.failure_count ?? 0) > 0) return 'degraded'
+  return 'healthy'
+}
+
+const proxyHealthLabel = (proxy: AccountProxySummary) => {
+  const state = proxyHealthState(proxy)
+  if (state === 'failed') return t('admin.accounts.summary.proxyFailed')
+  if (state === 'degraded') return t('admin.accounts.summary.proxyDegraded')
+  return t('admin.accounts.summary.proxyHealthy')
+}
+
+const proxyHealthDotClass = (proxy: AccountProxySummary) => {
+  const state = proxyHealthState(proxy)
+  if (state === 'failed') return 'bg-rose-500'
+  if (state === 'degraded') return 'bg-amber-500'
+  return 'bg-emerald-500'
+}
+
+const proxyHealthChipClass = (proxy: AccountProxySummary) => {
+  const state = proxyHealthState(proxy)
+  if (state === 'failed') return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+  if (state === 'degraded') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+  return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+}
+
+const formatProxyLatency = (proxy: AccountProxySummary) => {
+  return typeof proxy.latency_ms === 'number' ? `${proxy.latency_ms}ms` : '-'
+}
+
+const proxyHealthMessage = (proxy: AccountProxySummary) => {
+  if (isProxyCoolingDown(proxy) && proxy.cooldown_reason) return proxy.cooldown_reason
+  if (proxy.latency_message) return proxy.latency_message
+  if (proxy.last_error_at) return t('admin.accounts.summary.lastErrorAt', { time: formatRelativeTime(proxy.last_error_at) })
+  return t('admin.accounts.summary.noRecentError')
+}
+
+const riskLabel = (risk: string) => {
+  if (risk === 'challenge') return t('admin.accounts.maintenance.riskChallenge')
+  if (risk === 'banned') return t('admin.accounts.maintenance.riskBanned')
+  if (risk === 'high_failure') return t('admin.accounts.maintenance.riskHighFailure')
+  return risk
+}
 
 const buildDefaultTodayStats = (): WindowStats => ({
   requests: 0,
@@ -787,7 +1113,11 @@ const load = async () => {
     isFirstLoad.value = false
     delete requestParams.lite
   }
-  await refreshTodayStatsBatch()
+  await Promise.all([
+    refreshTodayStatsBatch(),
+    refreshAccountSummary(),
+    refreshAccountRiskOverview()
+  ])
 }
 
 const reload = async () => {
@@ -795,13 +1125,23 @@ const reload = async () => {
   resetAutoRefreshCache()
   pendingTodayStatsRefresh.value = false
   await baseReload()
-  await refreshTodayStatsBatch()
+  await Promise.all([
+    refreshTodayStatsBatch(),
+    refreshAccountSummary(),
+    refreshAccountRiskOverview()
+  ])
 }
 
 const debouncedReload = () => {
   hasPendingListSync.value = false
   resetAutoRefreshCache()
   pendingTodayStatsRefresh.value = true
+  refreshAccountSummary().catch((error) => {
+    console.error('Failed to refresh account summary after filter change:', error)
+  })
+  refreshAccountRiskOverview().catch((error) => {
+    console.error('Failed to refresh account risk overview after filter change:', error)
+  })
   baseDebouncedReload()
 }
 
@@ -953,7 +1293,11 @@ const refreshAccountsIncrementally = async () => {
       hasPendingListSync.value = false
     }
 
-    await refreshTodayStatsBatch()
+    await Promise.all([
+      refreshTodayStatsBatch(),
+      refreshAccountSummary(),
+      refreshAccountRiskOverview()
+    ])
   } catch (error) {
     console.error('Auto refresh failed:', error)
   } finally {
@@ -994,6 +1338,57 @@ const openErrorPassthrough = () => {
 const openTLSFingerprintProfiles = () => {
   closeAccountToolsDropdown()
   showTLSFingerprintProfiles.value = true
+}
+
+const handleRunOpenAIMaintenanceScan = async () => {
+  if (accountMaintenanceBusy.value) return
+  closeAccountToolsDropdown()
+  accountMaintenanceBusy.value = true
+  try {
+    const result = await adminAPI.accounts.runOpenAIMaintenanceScan()
+    appStore.showSuccess(t('admin.accounts.maintenance.scanResult', {
+      slow: result.moved_to_slow_pool,
+      normal: result.moved_to_normal_pool
+    }))
+    await Promise.all([
+      load(),
+      refreshAccountRiskOverview()
+    ])
+    usageManualRefreshToken.value += 1
+  } catch (error: any) {
+    console.error('Failed to run OpenAI account maintenance scan:', error)
+    appStore.showError(error?.message || t('admin.accounts.maintenance.scanFailed'))
+  } finally {
+    accountMaintenanceBusy.value = false
+  }
+}
+
+const handleApplyOpenAIRiskPartition = async () => {
+  if (riskPartitionBusy.value) return
+  const candidates = accountRiskOverview.value?.move_candidates ?? 0
+  if (candidates <= 0) return
+  closeAccountToolsDropdown()
+  if (!confirm(t('admin.accounts.maintenance.partitionConfirm', { count: candidates }))) {
+    return
+  }
+  riskPartitionBusy.value = true
+  try {
+    const result = await adminAPI.accounts.applyOpenAIRiskPartition()
+    appStore.showSuccess(t('admin.accounts.maintenance.partitionResult', {
+      moved: result.moved,
+      already: result.already_partitioned
+    }))
+    await Promise.all([
+      load(),
+      refreshAccountRiskOverview()
+    ])
+    usageManualRefreshToken.value += 1
+  } catch (error: any) {
+    console.error('Failed to apply OpenAI risk partition:', error)
+    appStore.showError(error?.message || t('admin.accounts.maintenance.partitionFailed'))
+  } finally {
+    riskPartitionBusy.value = false
+  }
 }
 
 const syncPendingListChanges = async () => {
@@ -1101,6 +1496,39 @@ function getOpenAICompactTitle(row: any): string {
   return `${label} | ${t('admin.accounts.openai.compactLastChecked')}: ${formatDateTime(new Date(checkedAt))}`
 }
 
+function codexPercent(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
+function formatCodexPercent(value: unknown): string {
+  const pct = codexPercent(value)
+  if (pct === null) return '-'
+  return `${Math.round(pct)}%`
+}
+
+function getCodexRiskMeta(row: any): { label: string; className: string } | null {
+  if (row.platform !== 'openai' || row.type !== 'oauth') return null
+  const extra = row.extra as Record<string, unknown> | undefined
+  if (!extra) return null
+  const p5h = codexPercent(extra.codex_5h_used_percent)
+  const p7d = codexPercent(extra.codex_7d_used_percent)
+  const primary = codexPercent(extra.codex_primary_used_percent)
+  if (p5h === null && p7d === null && primary === null) return null
+  const maxPct = Math.max(p5h ?? 0, p7d ?? 0, primary ?? 0)
+  if (maxPct >= 99) {
+    return { label: t('admin.accounts.risk.exhausted'), className: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' }
+  }
+  if (maxPct >= 95) {
+    return { label: t('admin.accounts.risk.draining'), className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' }
+  }
+  return { label: t('admin.accounts.risk.healthy'), className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' }
+}
+
 function getAntigravityTierClass(row: any): string {
   const tier = getAntigravityTierFromRow(row)
   switch (tier) {
@@ -1127,6 +1555,7 @@ const allColumns = computed(() => {
   }
   c.push(
     { key: 'usage', label: t('admin.accounts.columns.usageWindows'), sortable: false },
+    { key: 'risk', label: t('admin.accounts.columns.risk'), sortable: false },
     { key: 'proxy', label: t('admin.accounts.columns.proxy'), sortable: false },
     { key: 'priority', label: t('admin.accounts.columns.priority'), sortable: true },
     { key: 'rate_multiplier', label: t('admin.accounts.columns.billingRateMultiplier'), sortable: true },
@@ -1492,6 +1921,12 @@ const patchAccountInList = (updatedAccount: Account) => {
 const handleAccountUpdated = (updatedAccount: Account) => {
   patchAccountInList(updatedAccount)
   enterAutoRefreshSilentWindow()
+  refreshAccountSummary().catch((error) => {
+    console.error('Failed to refresh account summary after account update:', error)
+  })
+  refreshAccountRiskOverview().catch((error) => {
+    console.error('Failed to refresh account risk overview after account update:', error)
+  })
 }
 const formatExportTimestamp = () => {
   const now = new Date()
@@ -1599,6 +2034,9 @@ const handleToggleSchedulable = async (a: Account) => {
     const updated = await adminAPI.accounts.setSchedulable(a.id, nextSchedulable)
     updateSchedulableInList([a.id], updated?.schedulable ?? nextSchedulable)
     enterAutoRefreshSilentWindow()
+    refreshAccountSummary().catch((error) => {
+      console.error('Failed to refresh account summary after schedulable toggle:', error)
+    })
   } catch (error) {
     console.error('Failed to toggle schedulable:', error)
     appStore.showError(t('admin.accounts.failedToToggleSchedulable'))
@@ -1680,7 +2118,63 @@ onUnmounted(() => {
   @apply flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700;
 }
 
+.account-tools-menu-item:disabled {
+  @apply cursor-not-allowed opacity-50 hover:bg-transparent dark:hover:bg-transparent;
+}
+
 .account-tools-menu-icon {
   @apply inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md;
+}
+
+.account-table-shell {
+  @apply flex min-h-fit flex-col overflow-visible;
+}
+
+.account-summary-panel {
+  @apply rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800;
+}
+
+.account-summary-label {
+  @apply text-xs font-medium uppercase text-gray-500 dark:text-gray-400;
+}
+
+.account-summary-value {
+  @apply mt-1 text-xl font-semibold text-gray-900 dark:text-gray-100;
+}
+
+.account-summary-pill {
+  @apply inline-flex flex-shrink-0 items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300;
+}
+
+.account-risk-chip {
+  @apply inline-flex items-center rounded-md bg-white/70 px-2 py-1 font-medium text-gray-700 ring-1 ring-black/5 dark:bg-gray-800/70 dark:text-gray-200 dark:ring-white/10;
+}
+
+.account-summary-subvalue {
+  @apply block text-sm font-semibold;
+}
+
+.account-summary-sublabel {
+  @apply block text-gray-500 dark:text-gray-400;
+}
+
+.account-summary-meter {
+  @apply h-2 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-700;
+}
+
+.account-summary-meter-fill {
+  @apply h-full rounded-md transition-all;
+}
+
+.proxy-health-row {
+  @apply rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/30;
+}
+
+.proxy-health-dot {
+  @apply h-2 w-2 flex-shrink-0 rounded-full;
+}
+
+.proxy-health-chip {
+  @apply inline-flex flex-shrink-0 items-center rounded-md px-2 py-1 text-xs font-medium;
 }
 </style>

@@ -33,6 +33,7 @@ type stubOpenAIAccountRepo struct {
 type snapshotUpdateAccountRepo struct {
 	stubOpenAIAccountRepo
 	updateExtraCalls chan map[string]any
+	bulkUpdates      chan AccountBulkUpdate
 }
 
 func (r *snapshotUpdateAccountRepo) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {
@@ -44,6 +45,13 @@ func (r *snapshotUpdateAccountRepo) UpdateExtra(ctx context.Context, id int64, u
 		r.updateExtraCalls <- copied
 	}
 	return nil
+}
+
+func (r *snapshotUpdateAccountRepo) BulkUpdate(ctx context.Context, ids []int64, updates AccountBulkUpdate) (int64, error) {
+	if r.bulkUpdates != nil {
+		r.bulkUpdates <- updates
+	}
+	return int64(len(ids)), nil
 }
 
 func (r stubOpenAIAccountRepo) GetByID(ctx context.Context, id int64) (*Account, error) {

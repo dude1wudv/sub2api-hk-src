@@ -151,3 +151,152 @@ export function extractApiErrorMessage(
   const str = String(err)
   return str === '[object Object]' ? fallback : str
 }
+
+export interface HumanApiError {
+  title: string
+  description: string
+  action: string
+  severity: 'info' | 'warning' | 'error'
+  code?: string
+}
+
+const normalizeErrorText = (value: unknown): string => String(value ?? '').toLowerCase()
+
+/**
+ * Convert common API/upstream/redeem errors into actionable user-facing copy.
+ * Keeps raw backend text as fallback context, but avoids exposing internal terms
+ * as the only explanation.
+ */
+export function explainHumanApiError(err: unknown, fallback = '操作失败'): HumanApiError {
+  const code = extractApiErrorCode(err)
+  const message = extractApiErrorMessage(err, fallback)
+  const haystack = `${code ?? ''} ${message}`.toLowerCase()
+
+  if (code === 'REDEEM_CODE_NOT_FOUND' || haystack.includes('redeem code not found')) {
+    return {
+      title: '兑换码不存在',
+      description: '系统没有找到这个兑换码。常见原因是输错、复制时多了空格，或购买链接还没有发放成功。',
+      action: '重新复制完整兑换码后再试；仍失败就联系购买渠道。',
+      severity: 'warning',
+      code,
+    }
+  }
+
+  if (code === 'REDEEM_CODE_USED' || haystack.includes('already used')) {
+    return {
+      title: '兑换码已使用',
+      description: '这个兑换码已经被兑换过，不能重复使用。',
+      action: '在最近活动里确认是否已经到账；如果不是本人兑换，联系管理员核查。',
+      severity: 'warning',
+      code,
+    }
+  }
+
+  if (code === 'REDEEM_CODE_EXPIRED' || haystack.includes('expired')) {
+    return {
+      title: '兑换码已过期',
+      description: '兑换码超过了可使用时间，系统不会再发放权益。',
+      action: '联系购买渠道换新码，或购买新的兑换码。',
+      severity: 'warning',
+      code,
+    }
+  }
+
+  if (code === 'REDEEM_RATE_LIMITED' || haystack.includes('too many failed attempts')) {
+    return {
+      title: '尝试次数过多',
+      description: '短时间内失败次数太多，系统临时限制了兑换请求。',
+      action: '等一小时后再试，避免继续连续提交错误兑换码。',
+      severity: 'warning',
+      code,
+    }
+  }
+
+  if (code === 'REDEEM_CODE_LOCKED' || haystack.includes('being processed')) {
+    return {
+      title: '兑换码正在处理中',
+      description: '同一个兑换码有并发兑换请求，系统已锁定避免重复发放。',
+      action: '稍等几秒刷新余额或订阅状态，再决定是否重试。',
+      severity: 'info',
+      code,
+    }
+  }
+
+  if (code === 'INSUFFICIENT_BALANCE' || haystack.includes('insufficient balance')) {
+    return {
+      title: '余额不足',
+      description: '当前余额不够完成本次请求或扣减。',
+      action: '前往兑换码页面充值，或降低请求消耗后重试。',
+      severity: 'warning',
+      code,
+    }
+  }
+
+  if (haystack.includes('group_deleted') || haystack.includes('group deleted')) {
+    return {
+      title: '服务分组不可用',
+      description: '当前 API Key 绑定的模型分组已经被删除或上游账号状态失效。',
+      action: '换一个可用 API Key，或联系管理员重新分配分组。',
+      severity: 'error',
+      code,
+    }
+  }
+
+  if (haystack.includes('quota') && (haystack.includes('exhaust') || haystack.includes('limit'))) {
+    return {
+      title: '额度已用完',
+      description: '当前 Key、账号或订阅分组的额度限制已触发。',
+      action: '查看用量页确认消耗来源，充值或等待额度窗口重置。',
+      severity: 'warning',
+      code,
+    }
+  }
+
+  if (haystack.includes('rate limit') || haystack.includes('429')) {
+    return {
+      title: '请求太频繁',
+      description: '短时间内请求过多，上游或平台限流。',
+      action: '降低并发或等待几分钟后重试；持续出现则联系管理员扩容。',
+      severity: 'warning',
+      code,
+    }
+  }
+
+  if (haystack.includes('403') || haystack.includes('forbidden')) {
+    return {
+      title: '上游拒绝访问',
+      description: '上游账号、出口代理或模型权限暂时不可用。',
+      action: '稍后重试；如果一直失败，请把错误码和请求时间发给管理员。',
+      severity: 'error',
+      code,
+    }
+  }
+
+  if (haystack.includes('timeout') || haystack.includes('network') || haystack.includes('eof')) {
+    return {
+      title: '网络或上游超时',
+      description: '请求没有稳定到达上游，或上游返回过程中断。',
+      action: '重试一次；若多次出现，请到渠道状态页查看服务状态。',
+      severity: 'warning',
+      code,
+    }
+  }
+
+  if (normalizeErrorText(message) !== normalizeErrorText(fallback)) {
+    return {
+      title: fallback,
+      description: message,
+      action: '如果看不懂这条错误，把完整提示发给管理员。',
+      severity: 'error',
+      code,
+    }
+  }
+
+  return {
+    title: fallback,
+    description: '请求没有成功，系统没有返回更具体的原因。',
+    action: '刷新后重试；如果仍失败，联系管理员。',
+    severity: 'error',
+    code,
+  }
+}

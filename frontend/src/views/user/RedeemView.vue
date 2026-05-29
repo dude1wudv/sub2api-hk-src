@@ -127,6 +127,26 @@
                       >
                     </p>
                   </div>
+                  <div class="mt-4 rounded-lg bg-white/70 p-3 text-sm dark:bg-dark-900/60">
+                    <p class="font-semibold text-emerald-800 dark:text-emerald-300">
+                      {{ redeemSuccessTitle }}
+                    </p>
+                    <p class="mt-1 text-emerald-700 dark:text-emerald-400">
+                      {{ redeemSuccessDescription }}
+                    </p>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                      <router-link to="/usage-summary" class="btn btn-secondary btn-sm">
+                        {{ t('redeem.viewUsageSummary') }}
+                      </router-link>
+                      <router-link
+                        v-if="redeemResult.type === 'subscription'"
+                        to="/subscriptions"
+                        class="btn btn-secondary btn-sm"
+                      >
+                        {{ t('redeem.viewSubscriptions') }}
+                      </router-link>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -153,10 +173,13 @@
               </div>
               <div class="flex-1">
                 <h3 class="text-sm font-semibold text-red-800 dark:text-red-300">
-                  {{ t('redeem.redeemFailed') }}
+                  {{ errorInfo?.title || t('redeem.redeemFailed') }}
                 </h3>
                 <p class="mt-2 text-sm text-red-700 dark:text-red-400">
-                  {{ errorMessage }}
+                  {{ errorInfo?.description || errorMessage }}
+                </p>
+                <p v-if="errorInfo?.action" class="mt-2 text-xs font-medium text-red-700 dark:text-red-300">
+                  {{ errorInfo.action }}
                 </p>
               </div>
             </div>
@@ -354,6 +377,7 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import ExternalRedeemCodeCard from '@/components/payment/ExternalRedeemCodeCard.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateTime } from '@/utils/format'
+import { explainHumanApiError, type HumanApiError } from '@/utils/apiError'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -374,6 +398,7 @@ const redeemResult = ref<{
   validity_days?: number
 } | null>(null)
 const errorMessage = ref('')
+const errorInfo = ref<HumanApiError | null>(null)
 
 // History data
 const history = ref<RedeemHistoryItem[]>([])
@@ -423,6 +448,38 @@ const formatHistoryValue = (item: RedeemHistoryItem) => {
   }
 }
 
+const redeemSuccessTitle = computed(() => {
+  if (!redeemResult.value) return ''
+  if (redeemResult.value.type === 'subscription') {
+    return t('redeem.successSubscriptionTitle')
+  }
+  if (redeemResult.value.type === 'concurrency') {
+    return t('redeem.successConcurrencyTitle')
+  }
+  return t('redeem.successBalanceTitle')
+})
+
+const redeemSuccessDescription = computed(() => {
+  const result = redeemResult.value
+  if (!result) return ''
+  if (result.type === 'subscription') {
+    return t('redeem.successSubscriptionDesc', {
+      groupName: result.group_name || t('common.unknown'),
+      days: result.validity_days || Math.round(result.value)
+    })
+  }
+  if (result.type === 'concurrency') {
+    return t('redeem.successConcurrencyDesc', {
+      value: result.value,
+      concurrency: result.new_concurrency ?? user.value?.concurrency ?? 0
+    })
+  }
+  return t('redeem.successBalanceDesc', {
+    value: result.value.toFixed(2),
+    balance: (result.new_balance ?? user.value?.balance ?? 0).toFixed(2)
+  })
+})
+
 const fetchHistory = async () => {
   loadingHistory.value = true
   try {
@@ -442,6 +499,7 @@ const handleRedeem = async () => {
 
   submitting.value = true
   errorMessage.value = ''
+  errorInfo.value = null
   redeemResult.value = null
 
   try {
@@ -470,8 +528,9 @@ const handleRedeem = async () => {
 
     // Show success toast
     appStore.showSuccess(t('redeem.codeRedeemSuccess'))
-  } catch (error: any) {
-    errorMessage.value = error.response?.data?.detail || t('redeem.failedToRedeem')
+  } catch (error: unknown) {
+    errorInfo.value = explainHumanApiError(error, t('redeem.failedToRedeem'))
+    errorMessage.value = errorInfo.value.description
 
     appStore.showError(t('redeem.redeemFailed'))
   } finally {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -73,6 +74,7 @@ type AdminService interface {
 
 	// Account management
 	ListAccounts(ctx context.Context, page, pageSize int, platform, accountType, status, search string, groupID int64, privacyMode string, sortBy, sortOrder string) ([]Account, int64, error)
+	GetAccountSummary(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) (*AccountSummary, error)
 	GetAccount(ctx context.Context, id int64) (*Account, error)
 	GetAccountsByIDs(ctx context.Context, ids []int64) ([]*Account, error)
 	CreateAccount(ctx context.Context, input *CreateAccountInput) (*Account, error)
@@ -95,6 +97,9 @@ type AdminService interface {
 	SetAccountSchedulable(ctx context.Context, id int64, schedulable bool) (*Account, error)
 	BulkUpdateAccounts(ctx context.Context, input *BulkUpdateAccountsInput) (*BulkUpdateAccountsResult, error)
 	CheckMixedChannelRisk(ctx context.Context, currentAccountID int64, currentAccountPlatform string, groupIDs []int64) error
+	RunOpenAIAccountMaintenanceScan(ctx context.Context) (*OpenAIAccountMaintenanceResult, error)
+	GetOpenAIAccountRiskOverview(ctx context.Context) (*OpenAIAccountRiskOverview, error)
+	ApplyOpenAIAccountRiskPartition(ctx context.Context) (*OpenAIAccountRiskPartitionResult, error)
 
 	// Proxy management
 	ListProxies(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]Proxy, int64, error)
@@ -382,6 +387,52 @@ type BulkUpdateAccountsResult struct {
 	Results    []BulkUpdateAccountResult `json:"results"`
 }
 
+type AccountUsageWindowSummary struct {
+	Sampled          int      `json:"sampled"`
+	UsedPercent      *float64 `json:"used_percent,omitempty"`
+	RemainingPercent *float64 `json:"remaining_percent,omitempty"`
+	Exhausted        int      `json:"exhausted"`
+}
+
+type AccountProxySummary struct {
+	ProxyID            *int64     `json:"proxy_id"`
+	Name               string     `json:"name"`
+	Total              int        `json:"total"`
+	Available          int        `json:"available"`
+	Used5hPercent      *float64   `json:"used_5h_percent,omitempty"`
+	Used7dPercent      *float64   `json:"used_7d_percent,omitempty"`
+	Remaining5hPercent *float64   `json:"remaining_5h_percent,omitempty"`
+	Remaining7dPercent *float64   `json:"remaining_7d_percent,omitempty"`
+	LatencyMs          *int64     `json:"latency_ms,omitempty"`
+	LatencyStatus      string     `json:"latency_status,omitempty"`
+	LatencyMessage     string     `json:"latency_message,omitempty"`
+	CooldownUntil      *time.Time `json:"cooldown_until,omitempty"`
+	CooldownReason     string     `json:"cooldown_reason,omitempty"`
+	FailureCount       int        `json:"failure_count,omitempty"`
+	LastErrorAt        *time.Time `json:"last_error_at,omitempty"`
+}
+
+type AccountSummary struct {
+	Total             int64                     `json:"total"`
+	Available         int                       `json:"available"`
+	Active            int                       `json:"active"`
+	Inactive          int                       `json:"inactive"`
+	Error             int                       `json:"error"`
+	Paused            int                       `json:"paused"`
+	Unschedulable     int                       `json:"unschedulable"`
+	RateLimited       int                       `json:"rate_limited"`
+	TempUnschedulable int                       `json:"temp_unschedulable"`
+	Overloaded        int                       `json:"overloaded"`
+	Expired           int                       `json:"expired"`
+	QuotaExceeded     int                       `json:"quota_exceeded"`
+	OpenAI            int                       `json:"openai"`
+	Codex5h           AccountUsageWindowSummary `json:"codex_5h"`
+	Codex7d           AccountUsageWindowSummary `json:"codex_7d"`
+	RecentlyUsed      int                       `json:"recently_used"`
+	NeverUsed         int                       `json:"never_used"`
+	ProxyDistribution []AccountProxySummary     `json:"proxy_distribution"`
+}
+
 type CreateProxyInput struct {
 	Name     string
 	Protocol string
@@ -529,6 +580,8 @@ const (
 	proxyQualityResponseHeaderTimeout = 10 * time.Second
 	proxyQualityMaxBodyBytes          = int64(8 * 1024)
 	proxyQualityClientUserAgent       = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+	primaryProxyAccountLimit          = int64(20)
+	secondaryProxyAccountLimit        = int64(10)
 )
 
 var ErrRPMStatusUnavailable = infraerrors.New(http.StatusNotImplemented, "RPM_STATUS_UNAVAILABLE", "RPM cache not available")
@@ -2437,8 +2490,250 @@ func (s *adminServiceImpl) ListAccounts(ctx context.Context, page, pageSize int,
 	return accounts, result.Total, nil
 }
 
+func (s *adminServiceImpl) GetAccountSummary(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) (*AccountSummary, error) {
+	const pageSize = 1000
+	allAccounts := make([]Account, 0)
+	var total int64
+	for page := 1; ; page++ {
+		params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: "name", SortOrder: "asc"}
+		accounts, result, err := s.accountRepo.ListWithFilters(ctx, params, platform, accountType, status, search, groupID, privacyMode)
+		if err != nil {
+			return nil, err
+		}
+		if result != nil {
+			total = result.Total
+		}
+		allAccounts = append(allAccounts, accounts...)
+		if len(accounts) < pageSize {
+			break
+		}
+		if total > 0 && len(allAccounts) >= int(total) {
+			break
+		}
+	}
+
+	summary := buildAccountSummary(allAccounts)
+	if total > 0 {
+		summary.Total = total
+	}
+	s.attachAccountSummaryProxyHealth(ctx, summary.ProxyDistribution)
+	return summary, nil
+}
+
 func (s *adminServiceImpl) GetAccount(ctx context.Context, id int64) (*Account, error) {
 	return s.accountRepo.GetByID(ctx, id)
+}
+
+func (s *adminServiceImpl) RunOpenAIAccountMaintenanceScan(ctx context.Context) (*OpenAIAccountMaintenanceResult, error) {
+	if s == nil {
+		return &OpenAIAccountMaintenanceResult{}, nil
+	}
+	return runOpenAICodexRecoveryMaintenance(ctx, s.accountRepo, s.proxyRepo, s.proxyLatencyCache)
+}
+
+func (s *adminServiceImpl) GetOpenAIAccountRiskOverview(ctx context.Context) (*OpenAIAccountRiskOverview, error) {
+	if s == nil {
+		return &OpenAIAccountRiskOverview{}, nil
+	}
+	return buildOpenAIAccountRiskOverview(ctx, s.accountRepo, s.proxyRepo, s.proxyLatencyCache)
+}
+
+func (s *adminServiceImpl) ApplyOpenAIAccountRiskPartition(ctx context.Context) (*OpenAIAccountRiskPartitionResult, error) {
+	if s == nil {
+		return &OpenAIAccountRiskPartitionResult{}, nil
+	}
+	return applyOpenAIAccountRiskPartition(ctx, s.accountRepo, s.proxyRepo, s.proxyLatencyCache)
+}
+
+type accountUsageAccumulator struct {
+	count     int
+	totalUsed float64
+	exhausted int
+}
+
+func (a *accountUsageAccumulator) add(value float64) {
+	if value < 0 {
+		value = 0
+	}
+	if value > 100 {
+		value = 100
+	}
+	a.count++
+	a.totalUsed += value
+	if value >= 100 {
+		a.exhausted++
+	}
+}
+
+func (a accountUsageAccumulator) summary() AccountUsageWindowSummary {
+	result := AccountUsageWindowSummary{
+		Sampled:   a.count,
+		Exhausted: a.exhausted,
+	}
+	if a.count == 0 {
+		return result
+	}
+	used := roundPercent(a.totalUsed / float64(a.count))
+	remaining := roundPercent(100 - used)
+	result.UsedPercent = &used
+	result.RemainingPercent = &remaining
+	return result
+}
+
+type accountProxyAccumulator struct {
+	id        *int64
+	name      string
+	total     int
+	available int
+	fiveHour  accountUsageAccumulator
+	sevenDay  accountUsageAccumulator
+}
+
+func buildAccountSummary(accounts []Account) *AccountSummary {
+	now := time.Now()
+	recentSince := now.Add(-time.Hour)
+	summary := &AccountSummary{}
+	proxyStats := make(map[string]*accountProxyAccumulator)
+	var fiveHour accountUsageAccumulator
+	var sevenDay accountUsageAccumulator
+
+	for i := range accounts {
+		acc := &accounts[i]
+		summary.Total++
+		if acc.Status == StatusActive {
+			summary.Active++
+		}
+		switch acc.Status {
+		case StatusDisabled, "inactive":
+			summary.Inactive++
+		case StatusError:
+			summary.Error++
+		}
+		if acc.LastUsedAt == nil {
+			summary.NeverUsed++
+		} else if acc.LastUsedAt.After(recentSince) {
+			summary.RecentlyUsed++
+		}
+		if acc.Platform == PlatformOpenAI {
+			summary.OpenAI++
+		}
+
+		isRateLimited := acc.IsRateLimited()
+		isOverloaded := acc.IsOverloaded()
+		isTempUnschedulable := acc.TempUnschedulableUntil != nil && now.Before(*acc.TempUnschedulableUntil)
+		isExpired := acc.AutoPauseOnExpired && acc.ExpiresAt != nil && !now.Before(*acc.ExpiresAt)
+		isQuotaExceeded := acc.IsAPIKeyOrBedrock() && acc.IsQuotaExceeded()
+		isAvailable := acc.IsSchedulable()
+
+		if isAvailable {
+			summary.Available++
+		}
+		if !isAvailable && acc.Status != StatusError {
+			summary.Paused++
+		}
+		if acc.Status == StatusActive && !acc.Schedulable {
+			summary.Unschedulable++
+		}
+		if isRateLimited {
+			summary.RateLimited++
+		}
+		if isTempUnschedulable {
+			summary.TempUnschedulable++
+		}
+		if isOverloaded {
+			summary.Overloaded++
+		}
+		if isExpired {
+			summary.Expired++
+		}
+		if isQuotaExceeded {
+			summary.QuotaExceeded++
+		}
+
+		if acc.Platform != PlatformOpenAI {
+			continue
+		}
+		proxyKey, proxyID, proxyName := accountSummaryProxyKey(acc)
+		proxy := proxyStats[proxyKey]
+		if proxy == nil {
+			proxy = &accountProxyAccumulator{id: proxyID, name: proxyName}
+			proxyStats[proxyKey] = proxy
+		}
+		proxy.total++
+		if isAvailable {
+			proxy.available++
+		}
+		if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_5h_used_percent", "codex_5h_reset_at", now); ok {
+			fiveHour.add(value)
+			proxy.fiveHour.add(value)
+		}
+		if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_7d_used_percent", "codex_7d_reset_at", now); ok {
+			sevenDay.add(value)
+			proxy.sevenDay.add(value)
+		}
+	}
+
+	summary.Codex5h = fiveHour.summary()
+	summary.Codex7d = sevenDay.summary()
+	summary.ProxyDistribution = buildAccountProxySummary(proxyStats)
+	return summary
+}
+
+func accountSummaryProxyKey(account *Account) (string, *int64, string) {
+	if account == nil || account.ProxyID == nil {
+		return "none", nil, "No proxy"
+	}
+	id := *account.ProxyID
+	name := fmt.Sprintf("Proxy #%d", id)
+	if account.Proxy != nil && strings.TrimSpace(account.Proxy.Name) != "" {
+		name = account.Proxy.Name
+	}
+	return fmt.Sprintf("proxy:%d", id), &id, name
+}
+
+func codexUsagePercentFromExtra(extra map[string]any, usedKey, resetAtKey string, now time.Time) (float64, bool) {
+	if len(extra) == 0 {
+		return 0, false
+	}
+	usedRaw, ok := extra[usedKey]
+	if !ok {
+		return 0, false
+	}
+	if resetAtRaw, ok := extra[resetAtKey]; ok {
+		if resetAt, err := parseTime(fmt.Sprint(resetAtRaw)); err == nil && !now.Before(resetAt) {
+			return 0, true
+		}
+	}
+	return parseExtraFloat64(usedRaw), true
+}
+
+func buildAccountProxySummary(stats map[string]*accountProxyAccumulator) []AccountProxySummary {
+	out := make([]AccountProxySummary, 0, len(stats))
+	for _, stat := range stats {
+		fiveHour := stat.fiveHour.summary()
+		sevenDay := stat.sevenDay.summary()
+		out = append(out, AccountProxySummary{
+			ProxyID:            stat.id,
+			Name:               stat.name,
+			Total:              stat.total,
+			Available:          stat.available,
+			Used5hPercent:      fiveHour.UsedPercent,
+			Used7dPercent:      sevenDay.UsedPercent,
+			Remaining5hPercent: fiveHour.RemainingPercent,
+			Remaining7dPercent: sevenDay.RemainingPercent,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Total != out[j].Total {
+			return out[i].Total > out[j].Total
+		}
+		return out[i].Name < out[j].Name
+	})
+	return out
+}
+
+func roundPercent(value float64) float64 {
+	return math.Round(value*10) / 10
 }
 
 func (s *adminServiceImpl) GetAccountsByIDs(ctx context.Context, ids []int64) ([]*Account, error) {
@@ -2459,15 +2754,9 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	groupIDs := input.GroupIDs
 	// 如果没有指定分组,自动绑定对应平台的默认分组
 	if len(groupIDs) == 0 && !input.SkipDefaultGroupBind {
-		defaultGroupName := input.Platform + "-default"
-		groups, err := s.groupRepo.ListActiveByPlatform(ctx, input.Platform)
-		if err == nil {
-			for _, g := range groups {
-				if g.Name == defaultGroupName {
-					groupIDs = []int64{g.ID}
-					break
-				}
-			}
+		resolvedGroupIDs, err := s.defaultGroupIDsForNewAccount(ctx, input.Platform)
+		if err == nil && len(resolvedGroupIDs) > 0 {
+			groupIDs = resolvedGroupIDs
 		}
 	}
 
@@ -2479,7 +2768,9 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	}
 
 	proxyID := input.ProxyID
-	if proxyID == nil {
+	if isNoProxyAccountName(input.Name) {
+		proxyID = nil
+	} else if proxyID == nil {
 		selectedProxyID, err := s.selectProxyForNewAccount(ctx, input.Platform)
 		if err != nil {
 			return nil, err
@@ -2493,7 +2784,7 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 		Platform:    input.Platform,
 		Type:        input.Type,
 		Credentials: input.Credentials,
-		Extra:       input.Extra,
+		Extra:       defaultExtraForNewAccount(input.Platform, input.Type, input.Extra),
 		ProxyID:     proxyID,
 		Concurrency: input.Concurrency,
 		Priority:    input.Priority,
@@ -2567,6 +2858,63 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	return account, nil
 }
 
+func (s *adminServiceImpl) defaultGroupIDsForNewAccount(ctx context.Context, platform string) ([]int64, error) {
+	if s == nil || s.groupRepo == nil {
+		return nil, nil
+	}
+
+	groups, err := s.groupRepo.ListActiveByPlatform(ctx, platform)
+	if err != nil {
+		return nil, err
+	}
+	if len(groups) == 0 {
+		return nil, nil
+	}
+
+	if platform == PlatformOpenAI {
+		groupIDs := make([]int64, 0, len(groups))
+		for _, g := range groups {
+			if g.ID > 0 {
+				groupIDs = append(groupIDs, g.ID)
+			}
+		}
+		return groupIDs, nil
+	}
+
+	defaultGroupName := platform + "-default"
+	for _, g := range groups {
+		if g.Name == defaultGroupName {
+			return []int64{g.ID}, nil
+		}
+	}
+	return nil, nil
+}
+
+func defaultExtraForNewAccount(platform, accountType string, extra map[string]any) map[string]any {
+	if platform != PlatformOpenAI || accountType != AccountTypeOAuth {
+		return extra
+	}
+
+	out := make(map[string]any, len(extra)+3)
+	for k, v := range extra {
+		out[k] = v
+	}
+	out["openai_passthrough"] = false
+	delete(out, "openai_oauth_passthrough")
+	out["openai_oauth_responses_websockets_v2_mode"] = OpenAIWSIngressModeOff
+	out["openai_oauth_responses_websockets_v2_enabled"] = false
+	return out
+}
+
+func isNoProxyAccountName(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "oto", "oto2":
+		return true
+	default:
+		return false
+	}
+}
+
 func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *UpdateAccountInput) (*Account, error) {
 	account, err := s.accountRepo.GetByID(ctx, id)
 	if err != nil {
@@ -2623,6 +2971,10 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 			account.ProxyID = input.ProxyID
 		}
 		account.Proxy = nil // 清除关联对象，防止 GORM Save 时根据 Proxy.ID 覆盖 ProxyID
+	}
+	if isNoProxyAccountName(account.Name) {
+		account.ProxyID = nil
+		account.Proxy = nil
 	}
 	// 只在指针非 nil 时更新 Concurrency（支持设置为 0）
 	if input.Concurrency != nil {
@@ -2775,6 +3127,10 @@ func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUp
 	}
 	if input.ProxyID != nil {
 		repoUpdates.ProxyID = input.ProxyID
+	}
+	if repoUpdates.Name != nil && isNoProxyAccountName(*repoUpdates.Name) {
+		clearProxyID := int64(0)
+		repoUpdates.ProxyID = &clearProxyID
 	}
 	if input.Concurrency != nil {
 		repoUpdates.Concurrency = input.Concurrency
@@ -3570,32 +3926,57 @@ func (s *adminServiceImpl) selectProxyForNewAccount(ctx context.Context, platfor
 	}
 
 	s.attachProxyLatency(ctx, proxies)
+	proxies = filterAssignableProxyHealth(proxies)
+	if len(proxies) == 0 {
+		return nil, nil
+	}
 	sort.SliceStable(proxies, func(i, j int) bool {
-		iUS := isUSProxy(proxies[i])
-		jUS := isUSProxy(proxies[j])
-		if iUS != jUS {
-			return iUS
-		}
-		if proxies[i].AccountCount != proxies[j].AccountCount {
-			return proxies[i].AccountCount < proxies[j].AccountCount
+		iLatency := proxyAssignmentLatency(proxies[i])
+		jLatency := proxyAssignmentLatency(proxies[j])
+		if iLatency != jLatency {
+			return iLatency < jLatency
 		}
 		if proxies[i].FailureCount != proxies[j].FailureCount {
 			return proxies[i].FailureCount < proxies[j].FailureCount
 		}
+		if proxies[i].AccountCount != proxies[j].AccountCount {
+			return proxies[i].AccountCount < proxies[j].AccountCount
+		}
 		return proxies[i].ID < proxies[j].ID
 	})
 
-	id := proxies[0].ID
-	return &id, nil
+	for i := range proxies {
+		if proxies[i].AccountCount < proxyAssignmentAccountLimit(i) {
+			id := proxies[i].ID
+			return &id, nil
+		}
+	}
+	return nil, nil
 }
 
-func isUSProxy(proxy ProxyWithAccountCount) bool {
-	countryCode := strings.TrimSpace(proxy.CountryCode)
-	if strings.EqualFold(countryCode, "US") || strings.EqualFold(countryCode, "USA") {
-		return true
+func filterAssignableProxyHealth(proxies []ProxyWithAccountCount) []ProxyWithAccountCount {
+	filtered := proxies[:0]
+	for _, proxy := range proxies {
+		if proxy.LatencyStatus == "failed" || proxy.QualityStatus == "failed" || proxy.QualityStatus == "challenge" {
+			continue
+		}
+		filtered = append(filtered, proxy)
 	}
-	country := strings.ToLower(strings.TrimSpace(proxy.Country))
-	return strings.Contains(country, "united states") || country == "us" || country == "usa"
+	return filtered
+}
+
+func proxyAssignmentAccountLimit(sortedIndex int) int64 {
+	if sortedIndex == 0 {
+		return primaryProxyAccountLimit
+	}
+	return secondaryProxyAccountLimit
+}
+
+func proxyAssignmentLatency(proxy ProxyWithAccountCount) int64 {
+	if proxy.LatencyStatus == "success" && proxy.LatencyMs != nil && *proxy.LatencyMs >= 0 {
+		return *proxy.LatencyMs
+	}
+	return math.MaxInt64
 }
 
 func (s *adminServiceImpl) validateGroupIDsExist(ctx context.Context, groupIDs []int64) error {
@@ -3670,6 +4051,80 @@ func (s *adminServiceImpl) attachProxyLatency(ctx context.Context, proxies []Pro
 		proxies[i].QualityGrade = info.QualityGrade
 		proxies[i].QualitySummary = info.QualitySummary
 		proxies[i].QualityChecked = info.QualityCheckedAt
+	}
+}
+
+func (s *adminServiceImpl) attachAccountSummaryProxyHealth(ctx context.Context, proxies []AccountProxySummary) {
+	if len(proxies) == 0 {
+		return
+	}
+
+	ids := make([]int64, 0, len(proxies))
+	seen := make(map[int64]struct{}, len(proxies))
+	for i := range proxies {
+		if proxies[i].ProxyID == nil {
+			continue
+		}
+		id := *proxies[i].ProxyID
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return
+	}
+
+	if s.proxyRepo != nil {
+		proxyRows, err := s.proxyRepo.ListByIDs(ctx, ids)
+		if err != nil {
+			logger.LegacyPrintf("service.admin", "Warning: load account summary proxy health failed: %v", err)
+		} else {
+			byID := make(map[int64]Proxy, len(proxyRows))
+			for _, proxy := range proxyRows {
+				byID[proxy.ID] = proxy
+			}
+			for i := range proxies {
+				if proxies[i].ProxyID == nil {
+					continue
+				}
+				if proxy, ok := byID[*proxies[i].ProxyID]; ok {
+					if strings.TrimSpace(proxy.Name) != "" {
+						proxies[i].Name = proxy.Name
+					}
+					proxies[i].CooldownUntil = proxy.CooldownUntil
+					proxies[i].CooldownReason = proxy.CooldownReason
+					proxies[i].FailureCount = proxy.FailureCount
+					proxies[i].LastErrorAt = proxy.LastErrorAt
+				}
+			}
+		}
+	}
+
+	if s.proxyLatencyCache == nil {
+		return
+	}
+	latencies, err := s.proxyLatencyCache.GetProxyLatencies(ctx, ids)
+	if err != nil {
+		logger.LegacyPrintf("service.admin", "Warning: load account summary proxy latency failed: %v", err)
+		return
+	}
+	for i := range proxies {
+		if proxies[i].ProxyID == nil {
+			continue
+		}
+		info := latencies[*proxies[i].ProxyID]
+		if info == nil {
+			continue
+		}
+		if info.Success {
+			proxies[i].LatencyStatus = "success"
+			proxies[i].LatencyMs = info.LatencyMs
+		} else {
+			proxies[i].LatencyStatus = "failed"
+		}
+		proxies[i].LatencyMessage = info.Message
 	}
 }
 

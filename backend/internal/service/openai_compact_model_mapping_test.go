@@ -133,3 +133,41 @@ func TestOpenAIGatewayService_OAuthPassthrough_CompactOnlyModelMappingOverridesU
 	require.Equal(t, "gpt-5.4-openai-compact", gjson.GetBytes(upstream.lastBody, "model").String())
 	require.Equal(t, "gpt-5.4", gjson.GetBytes(rec.Body.Bytes(), "model").String())
 }
+
+func TestNormalizeOpenAIPassthroughOAuthBody_WrapsStringInputForChatGPTInternal(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.4-mini","stream":false,"store":true,"input":"hello"}`)
+
+	normalized, changed, err := normalizeOpenAIPassthroughOAuthBody(body, false)
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.True(t, gjson.GetBytes(normalized, "stream").Bool())
+	require.False(t, gjson.GetBytes(normalized, "store").Bool())
+	require.Equal(t, "message", gjson.GetBytes(normalized, "input.0.type").String())
+	require.Equal(t, "user", gjson.GetBytes(normalized, "input.0.role").String())
+	require.Equal(t, "input_text", gjson.GetBytes(normalized, "input.0.content.0.type").String())
+	require.Equal(t, "hello", gjson.GetBytes(normalized, "input.0.content.0.text").String())
+	require.Equal(t, openAIPassthroughDefaultInstructions, gjson.GetBytes(normalized, "instructions").String())
+}
+
+func TestNormalizeOpenAIPassthroughOAuthBody_PreservesArrayInput(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.4-mini","instructions":"custom","input":[{"type":"input_text","text":"hello"}]}`)
+
+	normalized, changed, err := normalizeOpenAIPassthroughOAuthBody(body, false)
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.Equal(t, "input_text", gjson.GetBytes(normalized, "input.0.type").String())
+	require.Equal(t, "hello", gjson.GetBytes(normalized, "input.0.text").String())
+	require.Equal(t, "custom", gjson.GetBytes(normalized, "instructions").String())
+}
+
+func TestNormalizeOpenAIPassthroughOAuthBody_CompactWrapsStringInputAndDropsStreamStore(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.4-mini","stream":true,"store":true,"input":"compact hello"}`)
+
+	normalized, changed, err := normalizeOpenAIPassthroughOAuthBody(body, true)
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.False(t, gjson.GetBytes(normalized, "stream").Exists())
+	require.False(t, gjson.GetBytes(normalized, "store").Exists())
+	require.Equal(t, "message", gjson.GetBytes(normalized, "input.0.type").String())
+	require.Equal(t, "compact hello", gjson.GetBytes(normalized, "input.0.content.0.text").String())
+}

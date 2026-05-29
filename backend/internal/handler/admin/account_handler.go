@@ -229,33 +229,15 @@ func (h *AccountHandler) List(c *gin.Context) {
 	platform := c.Query("platform")
 	accountType := c.Query("type")
 	status := c.Query("status")
-	search := c.Query("search")
+	search := normalizeAccountSearchQuery(c.Query("search"))
 	privacyMode := strings.TrimSpace(c.Query("privacy_mode"))
 	sortBy := c.DefaultQuery("sort_by", "name")
 	sortOrder := c.DefaultQuery("sort_order", "asc")
-	// 标准化和验证 search 参数
-	search = strings.TrimSpace(search)
-	if len(search) > 100 {
-		search = search[:100]
-	}
 	lite := parseBoolQueryWithDefault(c.Query("lite"), false)
 
-	var groupID int64
-	if groupIDStr := c.Query("group"); groupIDStr != "" {
-		if groupIDStr == accountListGroupUngroupedQueryValue {
-			groupID = service.AccountListGroupUngrouped
-		} else {
-			parsedGroupID, parseErr := strconv.ParseInt(groupIDStr, 10, 64)
-			if parseErr != nil {
-				response.ErrorFrom(c, infraerrors.BadRequest("INVALID_GROUP_FILTER", "invalid group filter"))
-				return
-			}
-			if parsedGroupID < 0 {
-				response.ErrorFrom(c, infraerrors.BadRequest("INVALID_GROUP_FILTER", "invalid group filter"))
-				return
-			}
-			groupID = parsedGroupID
-		}
+	groupID, ok := parseAccountListGroupQuery(c)
+	if !ok {
+		return
 	}
 
 	accounts, total, err := h.adminService.ListAccounts(c.Request.Context(), page, pageSize, platform, accountType, status, search, groupID, privacyMode, sortBy, sortOrder)
@@ -393,6 +375,60 @@ func (h *AccountHandler) List(c *gin.Context) {
 	response.Paginated(c, result, total, page, pageSize)
 }
 
+// Summary handles account aggregate status and usage summary.
+// GET /api/v1/admin/accounts/summary
+func (h *AccountHandler) Summary(c *gin.Context) {
+	platform := c.Query("platform")
+	accountType := c.Query("type")
+	status := c.Query("status")
+	search := normalizeAccountSearchQuery(c.Query("search"))
+	privacyMode := strings.TrimSpace(c.Query("privacy_mode"))
+	groupID, ok := parseAccountListGroupQuery(c)
+	if !ok {
+		return
+	}
+
+	summary, err := h.adminService.GetAccountSummary(c.Request.Context(), platform, accountType, status, search, groupID, privacyMode)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, summary)
+}
+
+// RunOpenAIMaintenanceScan runs Codex quota recovery and daily-style rebalance on demand.
+// POST /api/v1/admin/accounts/openai-maintenance/scan
+func (h *AccountHandler) RunOpenAIMaintenanceScan(c *gin.Context) {
+	result, err := h.adminService.RunOpenAIAccountMaintenanceScan(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
+// GetOpenAIRiskOverview reports quota and operational account risks without moving accounts.
+// GET /api/v1/admin/accounts/openai-maintenance/risk
+func (h *AccountHandler) GetOpenAIRiskOverview(c *gin.Context) {
+	overview, err := h.adminService.GetOpenAIAccountRiskOverview(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, overview)
+}
+
+// ApplyOpenAIRiskPartition moves challenged/banned/high-failure accounts to the slow pool after admin confirmation.
+// POST /api/v1/admin/accounts/openai-maintenance/risk/partition
+func (h *AccountHandler) ApplyOpenAIRiskPartition(c *gin.Context) {
+	result, err := h.adminService.ApplyOpenAIAccountRiskPartition(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
 func buildAccountsListETag(
 	items []AccountWithConcurrency,
 	total int64,
@@ -446,6 +482,30 @@ func ifNoneMatchMatched(ifNoneMatch, etag string) bool {
 		}
 	}
 	return false
+}
+
+func parseAccountListGroupQuery(c *gin.Context) (int64, bool) {
+	var groupID int64
+	if groupIDStr := c.Query("group"); groupIDStr != "" {
+		if groupIDStr == accountListGroupUngroupedQueryValue {
+			return service.AccountListGroupUngrouped, true
+		}
+		parsedGroupID, parseErr := strconv.ParseInt(groupIDStr, 10, 64)
+		if parseErr != nil || parsedGroupID < 0 {
+			response.ErrorFrom(c, infraerrors.BadRequest("INVALID_GROUP_FILTER", "invalid group filter"))
+			return 0, false
+		}
+		groupID = parsedGroupID
+	}
+	return groupID, true
+}
+
+func normalizeAccountSearchQuery(raw string) string {
+	search := strings.TrimSpace(raw)
+	if len(search) > 100 {
+		search = search[:100]
+	}
+	return search
 }
 
 // GetByID handles getting an account by ID

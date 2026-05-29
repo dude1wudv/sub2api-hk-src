@@ -73,6 +73,18 @@ type TempUnschedulableRule struct {
 	Description     string   `json:"description"`
 }
 
+const (
+	openAICodexQuotaDrainThresholdPercent    = 99.0
+	openAICodexQuotaRecoverThresholdPercent  = 95.0
+	openAICodexPrimaryUsedPercentExtraKey    = "codex_primary_used_percent"
+	openAICodexPrimaryResetAtExtraKey        = "codex_primary_reset_at"
+	openAICodex5hUsedPercentExtraKey         = "codex_5h_used_percent"
+	openAICodex5hResetAtExtraKey             = "codex_5h_reset_at"
+	openAICodex7dUsedPercentExtraKey         = "codex_7d_used_percent"
+	openAICodex7dResetAtExtraKey             = "codex_7d_reset_at"
+	openAICodexRecoveredFromSlowPoolExtraKey = "codex_recovered_from_slow_pool_at"
+)
+
 func (a *Account) IsActive() bool {
 	return a.Status == StatusActive
 }
@@ -1047,6 +1059,50 @@ func (a *Account) IsAnthropic() bool {
 
 func (a *Account) IsOpenAIOAuth() bool {
 	return a.IsOpenAI() && a.Type == AccountTypeOAuth
+}
+
+func (a *Account) IsOpenAICodexQuotaDraining() bool {
+	if a == nil || !a.IsOpenAI() || !a.IsOAuth() {
+		return false
+	}
+	return a.openAICodexEffectiveUsedPercent(openAICodexPrimaryUsedPercentExtraKey, openAICodexPrimaryResetAtExtraKey) >= openAICodexQuotaDrainThresholdPercent
+}
+
+func (a *Account) IsOpenAICodexUsageExhausted() bool {
+	if a == nil || !a.IsOpenAI() || !a.IsOAuth() {
+		return false
+	}
+	return a.openAICodexEffectiveUsedPercent(openAICodex5hUsedPercentExtraKey, openAICodex5hResetAtExtraKey) >= openAICodexQuotaDrainThresholdPercent ||
+		a.openAICodexEffectiveUsedPercent(openAICodex7dUsedPercentExtraKey, openAICodex7dResetAtExtraKey) >= openAICodexQuotaDrainThresholdPercent
+}
+
+func (a *Account) IsOpenAICodexUsageRecovered() bool {
+	if a == nil || !a.IsOpenAI() || !a.IsOAuth() {
+		return false
+	}
+	return a.openAICodexEffectiveUsedPercent(openAICodexPrimaryUsedPercentExtraKey, openAICodexPrimaryResetAtExtraKey) < openAICodexQuotaRecoverThresholdPercent &&
+		a.openAICodexEffectiveUsedPercent(openAICodex5hUsedPercentExtraKey, openAICodex5hResetAtExtraKey) < openAICodexQuotaRecoverThresholdPercent &&
+		a.openAICodexEffectiveUsedPercent(openAICodex7dUsedPercentExtraKey, openAICodex7dResetAtExtraKey) < openAICodexQuotaRecoverThresholdPercent
+}
+
+func (a *Account) openAICodexEffectiveUsedPercent(usedKey, resetAtKey string) float64 {
+	used := a.getExtraFloat64(usedKey)
+	if used < openAICodexQuotaRecoverThresholdPercent {
+		return used
+	}
+	resetAt := a.getExtraTime(resetAtKey)
+	if !resetAt.IsZero() && !time.Now().Before(resetAt) {
+		return 0
+	}
+	return used
+}
+
+func openAICodexUsageExhausted(updates map[string]any) bool {
+	if len(updates) == 0 {
+		return false
+	}
+	return parseExtraFloat64(updates[openAICodex5hUsedPercentExtraKey]) >= openAICodexQuotaDrainThresholdPercent ||
+		parseExtraFloat64(updates[openAICodex7dUsedPercentExtraKey]) >= openAICodexQuotaDrainThresholdPercent
 }
 
 func (a *Account) IsOpenAIApiKey() bool {

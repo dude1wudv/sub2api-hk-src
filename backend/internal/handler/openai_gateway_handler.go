@@ -79,6 +79,23 @@ func NewOpenAIGatewayHandler(
 	}
 }
 
+func openAIRequestSizeBucket(bodyBytes int) string {
+	switch {
+	case bodyBytes < 64*1024:
+		return "small"
+	case bodyBytes < 256*1024:
+		return "medium"
+	case bodyBytes < 1024*1024:
+		return "large"
+	default:
+		return "xlarge"
+	}
+}
+
+func isOpenAILargeRequestBody(bodyBytes int) bool {
+	return bodyBytes >= 256*1024
+}
+
 // Responses handles OpenAI Responses API endpoint
 // POST /openai/v1/responses
 func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
@@ -167,6 +184,12 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 	}
 	reqStream := streamResult.Bool()
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
+	if isOpenAILargeRequestBody(len(body)) {
+		reqLog.Info("openai.large_request_observed",
+			zap.Int("request_body_bytes", len(body)),
+			zap.String("request_size_bucket", openAIRequestSizeBucket(len(body))),
+		)
+	}
 	previousResponseID := strings.TrimSpace(gjson.GetBytes(body, "previous_response_id").String())
 	if previousResponseID != "" {
 		previousResponseIDKind := service.ClassifyOpenAIPreviousResponseIDKind(previousResponseID)
@@ -313,6 +336,9 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 			zap.Int("top_k", scheduleDecision.TopK),
 			zap.Int64("latency_ms", scheduleDecision.LatencyMs),
 			zap.Float64("load_skew", scheduleDecision.LoadSkew),
+			zap.Int("request_body_bytes", len(body)),
+			zap.String("request_size_bucket", openAIRequestSizeBucket(len(body))),
+			zap.Bool("large_request", isOpenAILargeRequestBody(len(body))),
 		)
 		account := selection.Account
 		sessionHash = ensureOpenAIPoolModeSessionHash(sessionHash, account)
@@ -402,6 +428,9 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 						zap.Int("upstream_status", failoverErr.StatusCode),
 						zap.Int("switch_count", switchCount),
 						zap.Int("max_switches", maxAccountSwitches),
+						zap.Int("request_body_bytes", len(body)),
+						zap.String("request_size_bucket", openAIRequestSizeBucket(len(body))),
+						zap.Bool("large_request", isOpenAILargeRequestBody(len(body))),
 					)
 					continue
 				}
@@ -618,6 +647,12 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 	reqStream := gjson.GetBytes(body, "stream").Bool()
 
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
+	if isOpenAILargeRequestBody(len(body)) {
+		reqLog.Info("openai_messages.large_request_observed",
+			zap.Int("request_body_bytes", len(body)),
+			zap.String("request_size_bucket", openAIRequestSizeBucket(len(body))),
+		)
+	}
 
 	setOpsRequestContext(c, reqModel, reqStream)
 	setOpsEndpointContext(c, "", int16(service.RequestTypeFromLegacy(reqStream, false)))
@@ -712,8 +747,19 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		}
 		account := selection.Account
 		sessionHash = ensureOpenAIPoolModeSessionHash(sessionHash, account)
+		reqLog.Debug("openai_messages.account_schedule_decision",
+			zap.String("layer", scheduleDecision.Layer),
+			zap.Bool("sticky_previous_hit", scheduleDecision.StickyPreviousHit),
+			zap.Bool("sticky_session_hit", scheduleDecision.StickySessionHit),
+			zap.Int("candidate_count", scheduleDecision.CandidateCount),
+			zap.Int("top_k", scheduleDecision.TopK),
+			zap.Int64("latency_ms", scheduleDecision.LatencyMs),
+			zap.Float64("load_skew", scheduleDecision.LoadSkew),
+			zap.Int("request_body_bytes", len(body)),
+			zap.String("request_size_bucket", openAIRequestSizeBucket(len(body))),
+			zap.Bool("large_request", isOpenAILargeRequestBody(len(body))),
+		)
 		reqLog.Debug("openai_messages.account_selected", zap.Int64("account_id", account.ID), zap.String("account_name", account.Name))
-		_ = scheduleDecision
 		setOpsSelectedAccount(c, account.ID, account.Platform)
 
 		accountReleaseFunc, acquired := h.acquireResponsesAccountSlot(c, apiKey.GroupID, sessionHash, selection, reqStream, &streamStarted, reqLog)
@@ -796,6 +842,9 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 						zap.Int("upstream_status", failoverErr.StatusCode),
 						zap.Int("switch_count", switchCount),
 						zap.Int("max_switches", maxAccountSwitches),
+						zap.Int("request_body_bytes", len(body)),
+						zap.String("request_size_bucket", openAIRequestSizeBucket(len(body))),
+						zap.Bool("large_request", isOpenAILargeRequestBody(len(body))),
 					)
 					continue
 				}

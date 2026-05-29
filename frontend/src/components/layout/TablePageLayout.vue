@@ -1,5 +1,11 @@
 <template>
-  <div class="table-page-layout" :class="{ 'mobile-mode': isMobile }">
+  <div
+    class="table-page-layout"
+    :class="{
+      'mobile-mode': isMobile,
+      'page-scroll-mode': pageScroll
+    }"
+  >
     <!-- 固定区域：操作按钮 -->
     <div v-if="$slots.actions" class="layout-section-fixed">
       <slot name="actions" />
@@ -27,6 +33,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
+withDefaults(defineProps<{
+  pageScroll?: boolean
+}>(), {
+  pageScroll: false
+})
+
 const isMobile = ref(false)
 
 const checkMobile = () => {
@@ -50,6 +62,11 @@ onUnmounted(() => {
   height: calc(100vh - 64px - 4rem); /* 减去 header + lg:p-8 的上下padding */
 }
 
+.table-page-layout.page-scroll-mode {
+  height: auto;
+  min-height: calc(100vh - 64px - 4rem);
+}
+
 .layout-section-fixed {
   @apply flex-shrink-0;
 }
@@ -63,10 +80,22 @@ onUnmounted(() => {
   @apply flex flex-col overflow-hidden h-full bg-white dark:bg-dark-800 rounded-2xl border border-gray-200 dark:border-dark-700 shadow-sm;
 }
 
+.table-page-layout.page-scroll-mode .layout-section-scrollable {
+  @apply flex-none min-h-fit;
+}
+
+.table-page-layout.page-scroll-mode .table-scroll-container {
+  @apply h-auto;
+}
+
 .table-scroll-container :deep(.table-wrapper) {
   @apply flex-1 overflow-x-auto overflow-y-auto;
   /* 确保横向滚动条显示在最底部 */
   scrollbar-gutter: stable;
+}
+
+.table-page-layout.page-scroll-mode .table-scroll-container :deep(.table-wrapper) {
+  @apply flex-none overflow-x-auto overflow-y-visible;
 }
 
 .table-scroll-container :deep(table) {

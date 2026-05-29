@@ -323,6 +323,14 @@ func (s *stubAdminService) ListAccounts(ctx context.Context, page, pageSize int,
 	return s.accounts, int64(len(s.accounts)), nil
 }
 
+func (s *stubAdminService) GetAccountSummary(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) (*service.AccountSummary, error) {
+	return &service.AccountSummary{
+		Total:     int64(len(s.accounts)),
+		Active:    len(s.accounts),
+		Available: len(s.accounts),
+	}, nil
+}
+
 func (s *stubAdminService) GetAccount(ctx context.Context, id int64) (*service.Account, error) {
 	account := service.Account{ID: id, Name: "account", Status: service.StatusActive}
 	return &account, nil
@@ -395,6 +403,18 @@ func (s *stubAdminService) CheckMixedChannelRisk(ctx context.Context, currentAcc
 	s.lastMixedCheck.platform = currentAccountPlatform
 	s.lastMixedCheck.groupIDs = append([]int64(nil), groupIDs...)
 	return s.checkMixedErr
+}
+
+func (s *stubAdminService) RunOpenAIAccountMaintenanceScan(ctx context.Context) (*service.OpenAIAccountMaintenanceResult, error) {
+	return &service.OpenAIAccountMaintenanceResult{}, nil
+}
+
+func (s *stubAdminService) GetOpenAIAccountRiskOverview(ctx context.Context) (*service.OpenAIAccountRiskOverview, error) {
+	return &service.OpenAIAccountRiskOverview{}, nil
+}
+
+func (s *stubAdminService) ApplyOpenAIAccountRiskPartition(ctx context.Context) (*service.OpenAIAccountRiskPartitionResult, error) {
+	return &service.OpenAIAccountRiskPartitionResult{}, nil
 }
 
 func (s *stubAdminService) ListProxies(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]service.Proxy, int64, error) {

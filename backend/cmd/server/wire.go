@@ -168,6 +168,12 @@ func provideCleanup(
 				tokenRefresh.Stop()
 				return nil
 			}},
+			{"OpenAIGatewayQuotaMaintenance", func() error {
+				if openAIGateway != nil {
+					openAIGateway.StopQuotaMaintenance()
+				}
+				return nil
+			}},
 			{"AccountExpiryService", func() error {
 				accountExpiry.Stop()
 				return nil

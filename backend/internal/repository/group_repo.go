@@ -460,7 +460,7 @@ func (r *groupRepository) ListActive(ctx context.Context) ([]service.Group, erro
 
 func (r *groupRepository) ListActiveByPlatform(ctx context.Context, platform string) ([]service.Group, error) {
 	groups, err := r.client.Group.Query().
-		Where(group.StatusEQ(service.StatusActive), group.PlatformEQ(platform)).
+		Where(group.StatusEQ(service.StatusActive), group.PlatformEQ(platform), group.DeletedAtIsNil()).
 		Order(dbent.Asc(group.FieldSortOrder), dbent.Asc(group.FieldID)).
 		All(ctx)
 	if err != nil {

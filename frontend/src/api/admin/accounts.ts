@@ -64,6 +64,100 @@ export interface AccountListWithEtagResult {
   data: PaginatedResponse<Account> | null
 }
 
+export interface AccountUsageWindowSummary {
+  sampled: number
+  used_percent?: number
+  remaining_percent?: number
+  exhausted: number
+}
+
+export interface AccountProxySummary {
+  proxy_id: number | null
+  name: string
+  total: number
+  available: number
+  used_5h_percent?: number
+  used_7d_percent?: number
+  remaining_5h_percent?: number
+  remaining_7d_percent?: number
+  latency_ms?: number
+  latency_status?: string
+  latency_message?: string
+  cooldown_until?: string
+  cooldown_reason?: string
+  failure_count?: number
+  last_error_at?: string
+}
+
+export interface AccountSummary {
+  total: number
+  available: number
+  active: number
+  inactive: number
+  error: number
+  paused: number
+  unschedulable: number
+  rate_limited: number
+  temp_unschedulable: number
+  overloaded: number
+  expired: number
+  quota_exceeded: number
+  openai: number
+  codex_5h: AccountUsageWindowSummary
+  codex_7d: AccountUsageWindowSummary
+  recently_used: number
+  never_used: number
+  proxy_distribution: AccountProxySummary[]
+}
+
+export interface OpenAIAccountMaintenanceProxyTarget {
+  proxy_id: number
+  name: string
+  latency_ms?: number
+}
+
+export interface OpenAIAccountMaintenanceResult {
+  scanned: number
+  moved_to_slow_pool: number
+  moved_to_normal_pool: number
+  already_in_target_pool: number
+  skipped: number
+  slowest_proxy?: OpenAIAccountMaintenanceProxyTarget
+  normal_proxy_count: number
+}
+
+export interface OpenAIAccountRiskCandidate {
+  account_id: number
+  name: string
+  risk: 'challenge' | 'banned' | 'high_failure' | string
+  reasons: string[]
+  error_message?: string
+  current_proxy_id?: number
+  current_proxy_name?: string
+  target_proxy_id: number
+  target_proxy_name: string
+  requires_move: boolean
+  max_usage_percent: number
+}
+
+export interface OpenAIAccountRiskOverview {
+  drain_95: number
+  exhausted_99: number
+  challenge: number
+  banned: number
+  high_failure: number
+  partition_candidates: number
+  move_candidates: number
+  slowest_proxy?: OpenAIAccountMaintenanceProxyTarget
+  candidates: OpenAIAccountRiskCandidate[]
+}
+
+export interface OpenAIAccountRiskPartitionResult {
+  preview: OpenAIAccountRiskOverview
+  moved: number
+  already_partitioned: number
+}
+
 export async function listWithEtag(
   page: number = 1,
   pageSize: number = 20,
@@ -113,6 +207,35 @@ export async function listWithEtag(
     etag: etagHeader,
     data: response.data
   }
+}
+
+export async function getSummary(filters?: {
+  platform?: string
+  type?: string
+  status?: string
+  group?: string
+  search?: string
+  privacy_mode?: string
+}): Promise<AccountSummary> {
+  const { data } = await apiClient.get<AccountSummary>('/admin/accounts/summary', {
+    params: filters
+  })
+  return data
+}
+
+export async function runOpenAIMaintenanceScan(): Promise<OpenAIAccountMaintenanceResult> {
+  const { data } = await apiClient.post<OpenAIAccountMaintenanceResult>('/admin/accounts/openai-maintenance/scan')
+  return data
+}
+
+export async function getOpenAIRiskOverview(): Promise<OpenAIAccountRiskOverview> {
+  const { data } = await apiClient.get<OpenAIAccountRiskOverview>('/admin/accounts/openai-maintenance/risk')
+  return data
+}
+
+export async function applyOpenAIRiskPartition(): Promise<OpenAIAccountRiskPartitionResult> {
+  const { data } = await apiClient.post<OpenAIAccountRiskPartitionResult>('/admin/accounts/openai-maintenance/risk/partition')
+  return data
 }
 
 /**
@@ -681,6 +804,10 @@ export async function setPrivacy(id: number): Promise<Account> {
 export const accountsAPI = {
   list,
   listWithEtag,
+  getSummary,
+  runOpenAIMaintenanceScan,
+  getOpenAIRiskOverview,
+  applyOpenAIRiskPartition,
   getById,
   create,
   update,

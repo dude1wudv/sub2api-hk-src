@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"sync"
 	"testing"
@@ -1163,15 +1162,15 @@ func TestSelectTopKOpenAICandidates(t *testing.T) {
 
 	top2 := selectTopKOpenAICandidates(candidates, 2)
 	require.Len(t, top2, 2)
-	require.Equal(t, int64(13), top2[0].account.ID)
-	require.Equal(t, int64(11), top2[1].account.ID)
+	require.Equal(t, int64(14), top2[0].account.ID)
+	require.Equal(t, int64(12), top2[1].account.ID)
 
 	topAll := selectTopKOpenAICandidates(candidates, 8)
 	require.Len(t, topAll, len(candidates))
-	require.Equal(t, int64(13), topAll[0].account.ID)
-	require.Equal(t, int64(11), topAll[1].account.ID)
-	require.Equal(t, int64(12), topAll[2].account.ID)
-	require.Equal(t, int64(14), topAll[3].account.ID)
+	require.Equal(t, int64(14), topAll[0].account.ID)
+	require.Equal(t, int64(12), topAll[1].account.ID)
+	require.Equal(t, int64(13), topAll[2].account.ID)
+	require.Equal(t, int64(11), topAll[3].account.ID)
 }
 
 func TestBuildOpenAIWeightedSelectionOrder_DeterministicBySessionSeed(t *testing.T) {
@@ -1207,7 +1206,7 @@ func TestBuildOpenAIWeightedSelectionOrder_DeterministicBySessionSeed(t *testing
 	}
 }
 
-func TestOpenAIGatewayService_SelectAccountWithScheduler_LoadBalanceDistributesAcrossSessions(t *testing.T) {
+func TestOpenAIGatewayService_SelectAccountWithScheduler_LoadBalanceUsesLeastLoaded(t *testing.T) {
 	ctx := context.Background()
 	groupID := int64(15)
 	accounts := []Account{
@@ -1262,83 +1261,55 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_LoadBalanceDistributesA
 		concurrencyService: NewConcurrencyService(concurrencyCache),
 	}
 
-	selected := make(map[int64]int, len(accounts))
-	for i := 0; i < 60; i++ {
-		sessionHash := fmt.Sprintf("session_hash_lb_%d", i)
-		selection, decision, err := svc.SelectAccountWithScheduler(
-			ctx,
-			&groupID,
-			"",
-			sessionHash,
-			"gpt-5.1",
-			nil,
-			OpenAIUpstreamTransportAny,
-			false,
-		)
-		require.NoError(t, err)
-		require.NotNil(t, selection)
-		require.NotNil(t, selection.Account)
-		require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
-		selected[selection.Account.ID]++
-		if selection.ReleaseFunc != nil {
-			selection.ReleaseFunc()
-		}
+	selection, decision, err := svc.SelectAccountWithScheduler(
+		ctx,
+		&groupID,
+		"",
+		"session_hash_lb",
+		"gpt-5.1",
+		nil,
+		OpenAIUpstreamTransportAny,
+		false,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
+	require.Equal(t, int64(5101), selection.Account.ID)
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
 	}
-
-	// 多 session 应该能打散到多个账号，避免“恒定单账号命中”。
-	require.GreaterOrEqual(t, len(selected), 2)
 }
 
-func TestDeriveOpenAISelectionSeed_NoAffinityAddsEntropy(t *testing.T) {
-	req := OpenAIAccountScheduleRequest{
-		RequestedModel: "gpt-5.1",
-	}
-	seed1 := deriveOpenAISelectionSeed(req)
-	time.Sleep(1 * time.Millisecond)
-	seed2 := deriveOpenAISelectionSeed(req)
-	require.NotZero(t, seed1)
-	require.NotZero(t, seed2)
-	require.NotEqual(t, seed1, seed2)
-}
-
-func TestBuildOpenAIWeightedSelectionOrder_HandlesInvalidScores(t *testing.T) {
+func TestBuildOpenAIWeightedSelectionOrder_LeastUsedFirst(t *testing.T) {
+	oldest := time.Now().Add(-2 * time.Hour)
+	newest := time.Now().Add(-5 * time.Minute)
 	candidates := []openAIAccountCandidateScore{
 		{
-			account:  &Account{ID: 901},
-			loadInfo: &AccountLoadInfo{LoadRate: 5, WaitingCount: 0},
-			score:    math.NaN(),
-		},
-		{
-			account:  &Account{ID: 902},
+			account:  &Account{ID: 901, Priority: 0, LastUsedAt: &newest},
 			loadInfo: &AccountLoadInfo{LoadRate: 5, WaitingCount: 0},
 			score:    math.Inf(1),
 		},
 		{
-			account:  &Account{ID: 903},
-			loadInfo: &AccountLoadInfo{LoadRate: 5, WaitingCount: 0},
+			account:  &Account{ID: 902, Priority: 0, LastUsedAt: &oldest},
+			loadInfo: &AccountLoadInfo{LoadRate: 0, WaitingCount: 0},
 			score:    -1,
+		},
+		{
+			account:  &Account{ID: 903, Priority: 0},
+			loadInfo: &AccountLoadInfo{LoadRate: 10, WaitingCount: 0},
+			score:    math.NaN(),
 		},
 	}
 	req := OpenAIAccountScheduleRequest{
-		SessionHash: "seed_invalid_scores",
+		SessionHash: "seed_least_used_first",
 	}
 
 	order := buildOpenAIWeightedSelectionOrder(candidates, req)
 	require.Len(t, order, len(candidates))
-	seen := map[int64]struct{}{}
-	for _, item := range order {
-		seen[item.account.ID] = struct{}{}
-	}
-	require.Len(t, seen, len(candidates))
-}
-
-func TestOpenAISelectionRNG_SeedZeroStillWorks(t *testing.T) {
-	rng := newOpenAISelectionRNG(0)
-	v1 := rng.nextUint64()
-	v2 := rng.nextUint64()
-	require.NotEqual(t, v1, v2)
-	require.GreaterOrEqual(t, rng.nextFloat64(), 0.0)
-	require.Less(t, rng.nextFloat64(), 1.0)
+	require.Equal(t, int64(902), order[0].account.ID)
+	require.Equal(t, int64(901), order[1].account.ID)
+	require.Equal(t, int64(903), order[2].account.ID)
 }
 
 func TestOpenAIAccountCandidateHeap_PushPopAndInvalidType(t *testing.T) {

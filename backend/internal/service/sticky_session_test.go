@@ -120,10 +120,24 @@ func TestShouldClearStickySession(t *testing.T) {
 			want:           false,
 		},
 		{
+			name: "openai codex draining not cleared",
+			account: &Account{
+				Status:      StatusActive,
+				Schedulable: true,
+				Platform:    PlatformOpenAI,
+				Type:        AccountTypeOAuth,
+				Extra: map[string]any{
+					openAICodexPrimaryUsedPercentExtraKey: 99.0,
+				},
+			},
+			requestedModel: "",
+			want:           false,
+		},
+		{
 			name: "overloaded account",
 			account: &Account{
-				Status:       StatusActive,
-				Schedulable:  true,
+				Status:        StatusActive,
+				Schedulable:   true,
 				OverloadUntil: &future,
 			},
 			requestedModel: "",

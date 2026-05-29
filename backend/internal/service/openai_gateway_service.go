@@ -41,7 +41,7 @@ const (
 	chatgptCodexURL = "https://chatgpt.com/backend-api/codex/responses"
 	// OpenAI Platform API for API Key accounts (fallback)
 	openaiPlatformAPIURL   = "https://api.openai.com/v1/responses"
-	openaiStickySessionTTL = time.Hour // 粘性会话TTL
+	openaiStickySessionTTL = 30 * time.Minute // 粘性会话TTL
 	codexCLIUserAgent      = "codex_cli_rs/0.125.0"
 	// codex_cli_only 拒绝时单个请求头日志长度上限（字符）
 	codexCLIOnlyHeaderValueMaxBytes = 256
@@ -321,6 +321,8 @@ var ErrNoAvailableCompactAccounts = errors.New("no available OpenAI accounts sup
 // OpenAIGatewayService handles OpenAI API gateway operations
 type OpenAIGatewayService struct {
 	accountRepo           AccountRepository
+	proxyRepo             ProxyRepository
+	proxyLatencyCache     ProxyLatencyCache
 	usageLogRepo          UsageLogRepository
 	usageBillingRepo      UsageBillingRepository
 	userRepo              UserRepository
@@ -364,6 +366,10 @@ type OpenAIGatewayService struct {
 	codexSnapshotThrottle               *accountWriteThrottle
 	openaiCompatSessionResponses        sync.Map
 	openaiCompatAnthropicDigestSessions sync.Map
+	quotaMaintenanceStop                chan struct{}
+	quotaMaintenanceWake                chan struct{}
+	quotaMaintenanceOnce                sync.Once
+	quotaMaintenanceStopOnce            sync.Once
 }
 
 // NewOpenAIGatewayService creates a new OpenAIGatewayService
@@ -432,6 +438,114 @@ func NewOpenAIGatewayService(
 	}
 	svc.logOpenAIWSModeBootstrap()
 	return svc
+}
+
+func (s *OpenAIGatewayService) SetProxyDeps(proxyRepo ProxyRepository, proxyLatencyCache ProxyLatencyCache) {
+	if s == nil {
+		return
+	}
+	s.proxyRepo = proxyRepo
+	s.proxyLatencyCache = proxyLatencyCache
+	s.StartQuotaMaintenance()
+}
+
+func (s *OpenAIGatewayService) StartQuotaMaintenance() {
+	if s == nil || s.accountRepo == nil || s.proxyRepo == nil || s.proxyLatencyCache == nil {
+		return
+	}
+	s.quotaMaintenanceOnce.Do(func() {
+		s.quotaMaintenanceStop = make(chan struct{})
+		s.quotaMaintenanceWake = make(chan struct{}, 1)
+		go s.runQuotaMaintenanceLoop()
+	})
+}
+
+func (s *OpenAIGatewayService) StopQuotaMaintenance() {
+	if s == nil {
+		return
+	}
+	s.quotaMaintenanceStopOnce.Do(func() {
+		if s.quotaMaintenanceStop != nil {
+			close(s.quotaMaintenanceStop)
+		}
+	})
+}
+
+func (s *OpenAIGatewayService) runQuotaMaintenanceLoop() {
+	recoveryTicker := time.NewTicker(15 * time.Minute)
+	rebalanceTicker := time.NewTicker(24 * time.Hour)
+	defer recoveryTicker.Stop()
+	defer rebalanceTicker.Stop()
+
+	var resetRecoveryTimer *time.Timer
+	var resetRecoveryCh <-chan time.Time
+	defer func() {
+		if resetRecoveryTimer != nil {
+			resetRecoveryTimer.Stop()
+		}
+	}()
+	scheduleNextResetRecovery := func() {
+		if resetRecoveryTimer != nil {
+			if !resetRecoveryTimer.Stop() {
+				select {
+				case <-resetRecoveryTimer.C:
+				default:
+				}
+			}
+			resetRecoveryTimer = nil
+			resetRecoveryCh = nil
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		nextAt, err := nextOpenAICodexQuotaResetRecoveryAt(ctx, s.accountRepo, time.Now())
+		if err != nil || nextAt.IsZero() {
+			return
+		}
+		delay := time.Until(nextAt)
+		if delay < time.Second {
+			delay = time.Second
+		}
+		resetRecoveryTimer = time.NewTimer(delay)
+		resetRecoveryCh = resetRecoveryTimer.C
+	}
+
+	s.runQuotaMaintenanceOnce("startup")
+	scheduleNextResetRecovery()
+	for {
+		select {
+		case <-recoveryTicker.C:
+			s.runQuotaMaintenanceOnce("recovery")
+			scheduleNextResetRecovery()
+		case <-resetRecoveryCh:
+			s.runQuotaMaintenanceOnce("quota_reset_recovery")
+			scheduleNextResetRecovery()
+		case <-s.quotaMaintenanceWake:
+			scheduleNextResetRecovery()
+		case <-rebalanceTicker.C:
+			s.runQuotaMaintenanceOnce("daily_rebalance")
+			scheduleNextResetRecovery()
+		case <-s.quotaMaintenanceStop:
+			return
+		}
+	}
+}
+
+func (s *OpenAIGatewayService) wakeQuotaMaintenanceScheduler() {
+	if s == nil || s.quotaMaintenanceWake == nil {
+		return
+	}
+	select {
+	case s.quotaMaintenanceWake <- struct{}{}:
+	default:
+	}
+}
+
+func (s *OpenAIGatewayService) runQuotaMaintenanceOnce(reason string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := s.RecoverAndRebalanceOpenAICodexAccounts(ctx); err != nil {
+		logger.LegacyPrintf("service.openai_gateway", "[CodexQuotaMaintenance] %s failed: %v", reason, err)
+	}
 }
 
 // ResolveChannelMapping 解析渠道级模型映射（代理到 ChannelService）
@@ -1259,11 +1373,7 @@ func (s *OpenAIGatewayService) BindStickySession(ctx context.Context, groupID *i
 	if sessionHash == "" || accountID <= 0 {
 		return nil
 	}
-	ttl := openaiStickySessionTTL
-	if s != nil && s.cfg != nil && s.cfg.Gateway.OpenAIWS.StickySessionTTLSeconds > 0 {
-		ttl = time.Duration(s.cfg.Gateway.OpenAIWS.StickySessionTTLSeconds) * time.Second
-	}
-	return s.setStickySessionAccountID(ctx, groupID, sessionHash, accountID, ttl)
+	return s.setStickySessionAccountID(ctx, groupID, sessionHash, accountID, s.openAIWSSessionStickyTTL())
 }
 
 // SelectAccount selects an OpenAI account with sticky session support
@@ -1403,7 +1513,7 @@ func (s *OpenAIGatewayService) selectAccountForModelWithExclusions(ctx context.C
 	// 4. 设置粘性会话绑定
 	// Set sticky session binding
 	if sessionHash != "" {
-		_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, selected.ID, openaiStickySessionTTL)
+		_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, selected.ID, s.openAIWSSessionStickyTTL())
 	}
 
 	return hydrated, nil
@@ -1466,7 +1576,7 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 
 	// 刷新会话 TTL 并返回账号
 	// Refresh session TTL and return account
-	_ = s.refreshStickySessionTTL(ctx, groupID, sessionHash, openaiStickySessionTTL)
+	_ = s.refreshStickySessionTTL(ctx, groupID, sessionHash, s.openAIWSSessionStickyTTL())
 	return account
 }
 
@@ -1498,6 +1608,9 @@ func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, groupID *i
 		}
 		fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, false)
 		if fresh == nil {
+			continue
+		}
+		if fresh.IsOpenAICodexQuotaDraining() {
 			continue
 		}
 		if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel, requireCompact) {
@@ -1661,7 +1774,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 							if selectErr != nil {
 								return nil, selectErr
 							}
-							_ = s.refreshStickySessionTTL(ctx, groupID, sessionHash, openaiStickySessionTTL)
+							_ = s.refreshStickySessionTTL(ctx, groupID, sessionHash, s.openAIWSSessionStickyTTL())
 							return selection, nil
 						}
 
@@ -1692,6 +1805,9 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		// re-check schedulability here so recently rate-limited/overloaded accounts
 		// are not selected again before the bucket is rebuilt.
 		if !acc.IsSchedulable() {
+			continue
+		}
+		if acc.IsOpenAICodexQuotaDraining() {
 			continue
 		}
 		if s.isOpenAIAccountRuntimeBlocked(acc) {
@@ -1787,6 +1903,9 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 			if fresh == nil {
 				continue
 			}
+			if fresh.IsOpenAICodexQuotaDraining() {
+				continue
+			}
 			if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel, requireCompact) {
 				continue
 			}
@@ -1797,7 +1916,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 					return nil, true, selectErr
 				}
 				if sessionHash != "" {
-					_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, fresh.ID, openaiStickySessionTTL)
+					_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, fresh.ID, s.openAIWSSessionStickyTTL())
 				}
 				return selection, true, nil
 			}
@@ -1821,6 +1940,9 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 			if fresh == nil {
 				continue
 			}
+			if fresh.IsOpenAICodexQuotaDraining() {
+				continue
+			}
 			if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel, requireCompact) {
 				continue
 			}
@@ -1831,7 +1953,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 					return nil, selectErr
 				}
 				if sessionHash != "" {
-					_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, fresh.ID, openaiStickySessionTTL)
+					_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, fresh.ID, s.openAIWSSessionStickyTTL())
 				}
 				return selection, nil
 			}
@@ -1864,6 +1986,9 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		}
 		fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, requireCompact)
 		if fresh == nil {
+			continue
+		}
+		if fresh.IsOpenAICodexQuotaDraining() {
 			continue
 		}
 		if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel, requireCompact) {
@@ -2953,6 +3078,13 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 	}
 
 	if account != nil && account.Type == AccountTypeOAuth {
+		normalizedBody, normalized, err := normalizeOpenAIPassthroughOAuthBody(body, isOpenAIResponsesCompactPath(c))
+		if err != nil {
+			return nil, err
+		}
+		if normalized {
+			body = normalizedBody
+		}
 		if rejectReason := detectOpenAIPassthroughInstructionsRejectReason(reqModel, body); rejectReason != "" {
 			rejectMsg := "OpenAI codex passthrough requires a non-empty instructions field"
 			MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalPolicyDenied)
@@ -2964,14 +3096,6 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 				},
 			})
 			return nil, fmt.Errorf("openai passthrough rejected before upstream: %s", rejectReason)
-		}
-
-		normalizedBody, normalized, err := normalizeOpenAIPassthroughOAuthBody(body, isOpenAIResponsesCompactPath(c))
-		if err != nil {
-			return nil, err
-		}
-		if normalized {
-			body = normalizedBody
 		}
 		reqStream = gjson.GetBytes(body, "stream").Bool()
 	}
@@ -5894,6 +6018,9 @@ func buildCodexUsageExtraUpdates(snapshot *OpenAICodexUsageSnapshot, fallbackNow
 	}
 	if snapshot.PrimaryResetAfterSeconds != nil {
 		updates["codex_primary_reset_after_seconds"] = *snapshot.PrimaryResetAfterSeconds
+		if resetAt := codexResetAtRFC3339(baseTime, snapshot.PrimaryResetAfterSeconds); resetAt != nil {
+			updates[openAICodexPrimaryResetAtExtraKey] = *resetAt
+		}
 	}
 	if snapshot.PrimaryWindowMinutes != nil {
 		updates["codex_primary_window_minutes"] = *snapshot.PrimaryWindowMinutes
@@ -5964,8 +6091,123 @@ func (s *OpenAIGatewayService) updateCodexUsageSnapshot(ctx context.Context, acc
 	go func() {
 		updateCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = s.accountRepo.UpdateExtra(updateCtx, accountID, updates)
+		if err := s.accountRepo.UpdateExtra(updateCtx, accountID, updates); err != nil {
+			return
+		}
+		s.wakeQuotaMaintenanceScheduler()
+		if openAICodexUsageExhausted(updates) {
+			_ = s.moveOpenAICodexExhaustedAccountToSlowestProxy(updateCtx, accountID)
+		}
 	}()
+}
+
+func (s *OpenAIGatewayService) moveOpenAICodexExhaustedAccountToSlowestProxy(ctx context.Context, accountID int64) error {
+	if s == nil || s.accountRepo == nil || s.proxyRepo == nil || s.proxyLatencyCache == nil || accountID <= 0 {
+		return nil
+	}
+	account, err := s.accountRepo.GetByID(ctx, accountID)
+	if err != nil || account == nil || !account.IsOpenAI() || !account.IsOAuth() || isNoProxyAccountName(account.Name) {
+		return err
+	}
+	proxies, err := s.proxyRepo.ListAssignableWithAccountCount(ctx)
+	if err != nil || len(proxies) == 0 {
+		return err
+	}
+	ids := make([]int64, 0, len(proxies))
+	for i := range proxies {
+		ids = append(ids, proxies[i].ID)
+	}
+	latencies, err := s.proxyLatencyCache.GetProxyLatencies(ctx, ids)
+	if err != nil {
+		return err
+	}
+
+	var selected *ProxyWithAccountCount
+	selectedLatency := int64(-1)
+	for i := range proxies {
+		info := latencies[proxies[i].ID]
+		if info == nil || !info.Success || info.LatencyMs == nil || *info.LatencyMs < 0 {
+			continue
+		}
+		if info.QualityStatus == "failed" || info.QualityStatus == "challenge" {
+			continue
+		}
+		if selected == nil || *info.LatencyMs > selectedLatency || (*info.LatencyMs == selectedLatency && proxies[i].ID > selected.ID) {
+			selected = &proxies[i]
+			selectedLatency = *info.LatencyMs
+		}
+	}
+	if selected == nil {
+		return nil
+	}
+	if account.ProxyID != nil && *account.ProxyID == selected.ID {
+		return nil
+	}
+	_, err = s.accountRepo.BulkUpdate(ctx, []int64{accountID}, AccountBulkUpdate{ProxyID: &selected.ID})
+	return err
+}
+
+func (s *OpenAIGatewayService) RecoverAndRebalanceOpenAICodexAccounts(ctx context.Context) error {
+	if s == nil {
+		return nil
+	}
+	_, err := runOpenAICodexRecoveryMaintenance(ctx, s.accountRepo, s.proxyRepo, s.proxyLatencyCache)
+	return err
+}
+
+func (s *OpenAIGatewayService) sortedOpenAIHealthyProxies(ctx context.Context) ([]ProxyWithAccountCount, error) {
+	proxies, err := s.proxyRepo.ListAssignableWithAccountCount(ctx)
+	if err != nil || len(proxies) == 0 {
+		return proxies, err
+	}
+	ids := make([]int64, 0, len(proxies))
+	for i := range proxies {
+		ids = append(ids, proxies[i].ID)
+	}
+	latencies, err := s.proxyLatencyCache.GetProxyLatencies(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	healthy := make([]ProxyWithAccountCount, 0, len(proxies))
+	for i := range proxies {
+		info := latencies[proxies[i].ID]
+		if info == nil || !info.Success || info.LatencyMs == nil || *info.LatencyMs < 0 {
+			continue
+		}
+		if info.QualityStatus == "failed" || info.QualityStatus == "challenge" {
+			continue
+		}
+		proxies[i].LatencyMs = info.LatencyMs
+		proxies[i].LatencyStatus = "success"
+		proxies[i].QualityStatus = info.QualityStatus
+		healthy = append(healthy, proxies[i])
+	}
+	sort.SliceStable(healthy, func(i, j int) bool {
+		iLatency := proxyAssignmentLatency(healthy[i])
+		jLatency := proxyAssignmentLatency(healthy[j])
+		if iLatency != jLatency {
+			return iLatency < jLatency
+		}
+		return healthy[i].ID < healthy[j].ID
+	})
+	return healthy, nil
+}
+
+func (s *OpenAIGatewayService) buildOpenAINormalProxyAssignments(ctx context.Context, proxies []ProxyWithAccountCount) []int64 {
+	assignments := make([]int64, 0)
+	for i := range proxies {
+		limit := proxyAssignmentAccountLimit(i)
+		for n := int64(0); n < limit; n++ {
+			assignments = append(assignments, proxies[i].ID)
+		}
+	}
+	return assignments
+}
+
+func (s *OpenAIGatewayService) updateAccountProxy(ctx context.Context, accountID int64, proxyID int64) error {
+	_, err := s.accountRepo.BulkUpdate(ctx, []int64{accountID}, AccountBulkUpdate{ProxyID: &proxyID})
+	return err
 }
 
 func (s *OpenAIGatewayService) UpdateCodexUsageSnapshotFromHeaders(ctx context.Context, accountID int64, headers http.Header) {
@@ -6036,7 +6278,9 @@ func extractOpenAIRequestMetaFromBody(body []byte) (model string, stream bool, p
 
 // normalizeOpenAIPassthroughOAuthBody 将透传 OAuth 请求体收敛为旧链路关键行为：
 // 1) 删除 ChatGPT internal API 不支持的顶层 Responses 参数
-// 2) store=false 3) 非 compact 保持 stream=true；compact 强制 stream=false
+// 2) 将 Platform Responses 允许的字符串 input 包装成 ChatGPT internal API 要求的列表
+// 3) 补齐 ChatGPT internal API 必填的 instructions
+// 4) store=false 5) 非 compact 保持 stream=true；compact 强制 stream=false
 func normalizeOpenAIPassthroughOAuthBody(body []byte, compact bool) ([]byte, bool, error) {
 	if len(body) == 0 {
 		return body, false, nil
@@ -6053,6 +6297,24 @@ func normalizeOpenAIPassthroughOAuthBody(body []byte, compact bool) ([]byte, boo
 		if err != nil {
 			return body, false, fmt.Errorf("normalize passthrough body delete %s: %w", field, err)
 		}
+		normalized = next
+		changed = true
+	}
+
+	next, inputChanged, err := normalizeOpenAIPassthroughOAuthInput(normalized)
+	if err != nil {
+		return body, false, err
+	}
+	if inputChanged {
+		normalized = next
+		changed = true
+	}
+
+	next, instructionsChanged, err := normalizeOpenAIPassthroughOAuthInstructions(normalized)
+	if err != nil {
+		return body, false, err
+	}
+	if instructionsChanged {
 		normalized = next
 		changed = true
 	}
@@ -6094,6 +6356,51 @@ func normalizeOpenAIPassthroughOAuthBody(body []byte, compact bool) ([]byte, boo
 	}
 
 	return normalized, changed, nil
+}
+
+const openAIPassthroughDefaultInstructions = "You are a helpful coding assistant."
+
+func normalizeOpenAIPassthroughOAuthInput(body []byte) ([]byte, bool, error) {
+	input := gjson.GetBytes(body, "input")
+	if !input.Exists() || input.Type != gjson.String {
+		return body, false, nil
+	}
+
+	text := input.String()
+	items := []map[string]any{}
+	if strings.TrimSpace(text) != "" {
+		items = append(items, map[string]any{
+			"type": "message",
+			"role": "user",
+			"content": []map[string]any{
+				{
+					"type": "input_text",
+					"text": text,
+				},
+			},
+		})
+	}
+	raw, err := json.Marshal(items)
+	if err != nil {
+		return body, false, fmt.Errorf("normalize passthrough body input list: %w", err)
+	}
+	next, err := sjson.SetRawBytes(body, "input", raw)
+	if err != nil {
+		return body, false, fmt.Errorf("normalize passthrough body input list: %w", err)
+	}
+	return next, true, nil
+}
+
+func normalizeOpenAIPassthroughOAuthInstructions(body []byte) ([]byte, bool, error) {
+	instructions := gjson.GetBytes(body, "instructions")
+	if instructions.Exists() && instructions.Type == gjson.String && strings.TrimSpace(instructions.String()) != "" {
+		return body, false, nil
+	}
+	next, err := sjson.SetBytes(body, "instructions", openAIPassthroughDefaultInstructions)
+	if err != nil {
+		return body, false, fmt.Errorf("normalize passthrough body instructions: %w", err)
+	}
+	return next, true, nil
 }
 
 func detectOpenAIPassthroughInstructionsRejectReason(reqModel string, body []byte) string {

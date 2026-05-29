@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -16,20 +17,16 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 )
 
-type sqlQuerier interface {
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-}
-
 type proxyRepository struct {
 	client *dbent.Client
-	sql    sqlQuerier
+	sql    sqlExecutor
 }
 
 func NewProxyRepository(client *dbent.Client, sqlDB *sql.DB) service.ProxyRepository {
 	return newProxyRepositoryWithSQL(client, sqlDB)
 }
 
-func newProxyRepositoryWithSQL(client *dbent.Client, sqlq sqlQuerier) *proxyRepository {
+func newProxyRepositoryWithSQL(client *dbent.Client, sqlq sqlExecutor) *proxyRepository {
 	return &proxyRepository{client: client, sql: sqlq}
 }
 
@@ -511,6 +508,9 @@ func (r *proxyRepository) SetCooldown(ctx context.Context, id int64, until time.
 	if err == sql.ErrNoRows {
 		return service.ErrProxyNotFound
 	}
+	if err == nil {
+		r.enqueueSchedulerProxyRebuild(ctx)
+	}
 	return err
 }
 
@@ -528,7 +528,19 @@ func (r *proxyRepository) ClearCooldown(ctx context.Context, id int64) error {
 	if err == sql.ErrNoRows {
 		return service.ErrProxyNotFound
 	}
+	if err == nil {
+		r.enqueueSchedulerProxyRebuild(ctx)
+	}
 	return err
+}
+
+func (r *proxyRepository) enqueueSchedulerProxyRebuild(ctx context.Context) {
+	if r == nil || r.sql == nil {
+		return
+	}
+	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventFullRebuild, nil, nil, map[string]any{"reason": "proxy_cooldown_changed"}); err != nil {
+		slog.Warn("proxy_scheduler_rebuild_enqueue_failed", "error", err)
+	}
 }
 
 func proxyEntityToService(m *dbent.Proxy) *service.Proxy {

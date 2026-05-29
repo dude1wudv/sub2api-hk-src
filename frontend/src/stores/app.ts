@@ -239,6 +239,21 @@ export const useAppStore = defineStore('app', () => {
    * @param force - Force refresh from API
    */
   async function fetchVersion(force = false): Promise<VersionInfo | null> {
+    if (!force) {
+      versionLoaded.value = true
+      currentVersion.value = currentVersion.value || siteVersion.value
+      latestVersion.value = ''
+      hasUpdate.value = false
+      releaseInfo.value = null
+      return {
+        current_version: currentVersion.value,
+        latest_version: latestVersion.value,
+        has_update: false,
+        build_type: buildType.value,
+        cached: true
+      }
+    }
+
     // Return cached data if available and not forcing refresh
     if (versionLoaded.value && !force) {
       return {

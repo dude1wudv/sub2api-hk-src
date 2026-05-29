@@ -929,6 +929,7 @@ func (r *accountRepository) ListSchedulable(ctx context.Context) ([]service.Acco
 		Where(
 			dbaccount.StatusEQ(service.StatusActive),
 			dbaccount.SchedulableEQ(true),
+			schedulableProxyPredicate(now),
 			tempUnschedulablePredicate(),
 			notExpiredPredicate(now),
 			dbaccount.Or(dbaccount.OverloadUntilIsNil(), dbaccount.OverloadUntilLTE(now)),
@@ -956,6 +957,7 @@ func (r *accountRepository) ListSchedulableByPlatform(ctx context.Context, platf
 			dbaccount.PlatformEQ(platform),
 			dbaccount.StatusEQ(service.StatusActive),
 			dbaccount.SchedulableEQ(true),
+			schedulableProxyPredicate(now),
 			tempUnschedulablePredicate(),
 			notExpiredPredicate(now),
 			dbaccount.Or(dbaccount.OverloadUntilIsNil(), dbaccount.OverloadUntilLTE(now)),
@@ -990,6 +992,7 @@ func (r *accountRepository) ListSchedulableByPlatforms(ctx context.Context, plat
 			dbaccount.PlatformIn(platforms...),
 			dbaccount.StatusEQ(service.StatusActive),
 			dbaccount.SchedulableEQ(true),
+			schedulableProxyPredicate(now),
 			tempUnschedulablePredicate(),
 			notExpiredPredicate(now),
 			dbaccount.Or(dbaccount.OverloadUntilIsNil(), dbaccount.OverloadUntilLTE(now)),
@@ -1010,6 +1013,7 @@ func (r *accountRepository) ListSchedulableUngroupedByPlatform(ctx context.Conte
 			dbaccount.PlatformEQ(platform),
 			dbaccount.StatusEQ(service.StatusActive),
 			dbaccount.SchedulableEQ(true),
+			schedulableProxyPredicate(now),
 			dbaccount.Not(dbaccount.HasAccountGroups()),
 			tempUnschedulablePredicate(),
 			notExpiredPredicate(now),
@@ -1034,6 +1038,7 @@ func (r *accountRepository) ListSchedulableUngroupedByPlatforms(ctx context.Cont
 			dbaccount.PlatformIn(platforms...),
 			dbaccount.StatusEQ(service.StatusActive),
 			dbaccount.SchedulableEQ(true),
+			schedulableProxyPredicate(now),
 			dbaccount.Not(dbaccount.HasAccountGroups()),
 			tempUnschedulablePredicate(),
 			notExpiredPredicate(now),
@@ -1521,6 +1526,7 @@ func (r *accountRepository) queryAccountsByGroup(ctx context.Context, groupID in
 		now := time.Now()
 		preds = append(preds,
 			dbaccount.SchedulableEQ(true),
+			schedulableProxyPredicate(now),
 			tempUnschedulablePredicate(),
 			notExpiredPredicate(now),
 			dbaccount.Or(dbaccount.OverloadUntilIsNil(), dbaccount.OverloadUntilLTE(now)),
@@ -1621,6 +1627,26 @@ func tempUnschedulablePredicate() dbpredicate.Account {
 		s.Where(entsql.Or(
 			entsql.IsNull(col),
 			entsql.LTE(col, entsql.Expr("NOW()")),
+		))
+	})
+}
+
+func schedulableProxyPredicate(now time.Time) dbpredicate.Account {
+	return dbaccount.Or(
+		dbaccount.ProxyIDIsNil(),
+		dbaccount.HasProxyWith(
+			dbproxy.StatusEQ(service.StatusActive),
+			proxyCooldownAvailablePredicate(now),
+		),
+	)
+}
+
+func proxyCooldownAvailablePredicate(now time.Time) dbpredicate.Proxy {
+	return dbpredicate.Proxy(func(s *entsql.Selector) {
+		col := s.C("cooldown_until")
+		s.Where(entsql.Or(
+			entsql.IsNull(col),
+			entsql.LTE(col, now),
 		))
 	})
 }

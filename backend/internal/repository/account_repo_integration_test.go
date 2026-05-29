@@ -616,6 +616,24 @@ func (s *AccountRepoSuite) TestListSchedulableByPlatform() {
 	s.Require().Equal(service.PlatformAnthropic, accounts[0].Platform)
 }
 
+func (s *AccountRepoSuite) TestListSchedulableByPlatformExcludesUnavailableProxy() {
+	activeProxy := mustCreateProxy(s.T(), s.client, &service.Proxy{Name: "active-proxy"})
+	coolingProxy := mustCreateProxy(s.T(), s.client, &service.Proxy{Name: "cooling-proxy"})
+	disabledProxy := mustCreateProxy(s.T(), s.client, &service.Proxy{Name: "disabled-proxy", Status: service.StatusDisabled})
+	future := time.Now().Add(10 * time.Minute)
+	_, err := s.repo.sql.ExecContext(s.ctx, "UPDATE proxies SET cooldown_until = $1 WHERE id = $2", future, coolingProxy.ID)
+	s.Require().NoError(err)
+
+	active := mustCreateAccount(s.T(), s.client, &service.Account{Name: "active-proxy-account", Platform: service.PlatformOpenAI, Schedulable: true, ProxyID: &activeProxy.ID})
+	direct := mustCreateAccount(s.T(), s.client, &service.Account{Name: "direct-account", Platform: service.PlatformOpenAI, Schedulable: true})
+	mustCreateAccount(s.T(), s.client, &service.Account{Name: "cooling-proxy-account", Platform: service.PlatformOpenAI, Schedulable: true, ProxyID: &coolingProxy.ID})
+	mustCreateAccount(s.T(), s.client, &service.Account{Name: "disabled-proxy-account", Platform: service.PlatformOpenAI, Schedulable: true, ProxyID: &disabledProxy.ID})
+
+	accounts, err := s.repo.ListSchedulableByPlatform(s.ctx, service.PlatformOpenAI)
+	s.Require().NoError(err)
+	s.Require().Equal([]int64{active.ID, direct.ID}, idsOfAccounts(accounts))
+}
+
 func (s *AccountRepoSuite) TestListSchedulableByGroupIDAndPlatform() {
 	group := mustCreateGroup(s.T(), s.client, &service.Group{Name: "g-sp"})
 	a1 := mustCreateAccount(s.T(), s.client, &service.Account{Name: "a1", Platform: service.PlatformAnthropic, Schedulable: true})

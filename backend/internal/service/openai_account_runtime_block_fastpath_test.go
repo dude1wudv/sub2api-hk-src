@@ -26,6 +26,32 @@ func TestOpenAI429FastPath_MarksOAuthAccountCoolingDown(t *testing.T) {
 	require.False(t, svc.isOpenAIAccountRuntimeBlocked(apiKeyAccount))
 }
 
+func TestOpenAI502FastPath_BlocksNonFallbackOpenAIAccounts(t *testing.T) {
+	svc := &OpenAIGatewayService{}
+	account := &Account{ID: 142, Name: "oauth-a", Platform: PlatformOpenAI, Type: AccountTypeOAuth}
+	apiKeyAccount := &Account{ID: 143, Name: "plain-apikey", Platform: PlatformOpenAI, Type: AccountTypeAPIKey}
+
+	shouldDisable := svc.handleOpenAIAccountUpstreamError(context.Background(), account, http.StatusBadGateway, http.Header{}, nil)
+	apiKeyShouldDisable := svc.handleOpenAIAccountUpstreamError(context.Background(), apiKeyAccount, http.StatusBadGateway, http.Header{}, nil)
+
+	require.False(t, shouldDisable)
+	require.False(t, apiKeyShouldDisable)
+	require.True(t, svc.isOpenAIAccountRuntimeBlocked(account))
+	require.True(t, svc.isOpenAIAccountRuntimeBlocked(apiKeyAccount))
+}
+
+func TestOpenAI502FastPath_PreservesOtoFallbackAccounts(t *testing.T) {
+	svc := &OpenAIGatewayService{}
+	oto := &Account{ID: 144, Name: "oto", Platform: PlatformOpenAI, Type: AccountTypeAPIKey}
+	oto2 := &Account{ID: 145, Name: "oto2", Platform: PlatformOpenAI, Type: AccountTypeAPIKey}
+
+	svc.handleOpenAIAccountUpstreamError(context.Background(), oto, http.StatusBadGateway, http.Header{}, nil)
+	svc.handleOpenAIAccountUpstreamError(context.Background(), oto2, http.StatusBadGateway, http.Header{}, nil)
+
+	require.False(t, svc.isOpenAIAccountRuntimeBlocked(oto))
+	require.False(t, svc.isOpenAIAccountRuntimeBlocked(oto2))
+}
+
 func TestOpenAIRuntimeBlock_AppliesToOpenAIAPIKeyWhenRateLimitServiceStopsScheduling(t *testing.T) {
 	svc := &OpenAIGatewayService{}
 	account := &Account{ID: 44, Platform: PlatformOpenAI, Type: AccountTypeAPIKey}

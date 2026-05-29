@@ -87,19 +87,18 @@ const (
 var openAIChatGPTInternalUnsupportedFields = []string{
 	"user",
 	"metadata",
-	"prompt_cache_retention",
-	"safety_identifier",
-	"stream_options",
-}
-
-var openAICodexOAuthUnsupportedFields = append([]string{
 	"max_output_tokens",
 	"max_completion_tokens",
 	"temperature",
 	"top_p",
 	"frequency_penalty",
 	"presence_penalty",
-}, openAIChatGPTInternalUnsupportedFields...)
+	"prompt_cache_retention",
+	"safety_identifier",
+	"stream_options",
+}
+
+var openAICodexOAuthUnsupportedFields = append([]string{}, openAIChatGPTInternalUnsupportedFields...)
 
 func applyCodexOAuthTransform(reqBody map[string]any, isCodexCLI bool, isCompact bool) codexTransformResult {
 	return applyCodexOAuthTransformWithOptions(reqBody, codexOAuthTransformOptions{

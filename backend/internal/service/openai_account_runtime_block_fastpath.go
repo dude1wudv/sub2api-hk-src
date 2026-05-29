@@ -2,13 +2,16 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
 const (
 	openAIAccountStateUpdateTimeout       = 5 * time.Second
 	openAIOAuth429FallbackCooldown        = 5 * time.Second
+	openAIUpstream502RuntimeCooldown      = 90 * time.Second
 	openAIStopSchedulingBridgeCooldown    = 2 * time.Minute
 	openAIOAuth429StormWindow             = 10 * time.Second
 	openAIOAuth429StormThreshold          = 20
@@ -31,12 +34,27 @@ func isOpenAIAccount(account *Account) bool {
 	return account != nil && account.Platform == PlatformOpenAI
 }
 
+func isOpenAIProtectedFallbackAccount(account *Account) bool {
+	if account == nil {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(account.Name)) {
+	case "oto", "oto2":
+		return true
+	default:
+		return false
+	}
+}
+
 func (s *OpenAIGatewayService) handleOpenAIAccountUpstreamError(ctx context.Context, account *Account, statusCode int, headers http.Header, responseBody []byte, requestedModel ...string) bool {
 	stateCtx, cancel := openAIAccountStateContext(ctx)
 	defer cancel()
 
 	if statusCode == http.StatusTooManyRequests {
 		s.markOpenAIOAuth429RateLimited(stateCtx, account, headers, responseBody)
+	}
+	if statusCode == http.StatusBadGateway {
+		s.markOpenAI502RuntimeBlocked(stateCtx, account)
 	}
 	if s == nil || account == nil || s.rateLimitService == nil {
 		return false
@@ -70,6 +88,20 @@ func (s *OpenAIGatewayService) markOpenAIOAuth429RateLimited(ctx context.Context
 		}
 	}
 	s.BlockAccountScheduling(account, cooldownUntil, "429")
+}
+
+func (s *OpenAIGatewayService) markOpenAI502RuntimeBlocked(ctx context.Context, account *Account) {
+	if s == nil || !isOpenAIAccount(account) || isOpenAIProtectedFallbackAccount(account) {
+		return
+	}
+	cooldownUntil := time.Now().Add(openAIUpstream502RuntimeCooldown)
+	s.BlockAccountScheduling(account, cooldownUntil, "502")
+	slog.Warn("openai_502_runtime_block",
+		"account_id", account.ID,
+		"account_name", account.Name,
+		"until", cooldownUntil,
+		"cooldown", openAIUpstream502RuntimeCooldown.String(),
+	)
 }
 
 func (s *OpenAIGatewayService) BlockAccountScheduling(account *Account, until time.Time, reason string) {
