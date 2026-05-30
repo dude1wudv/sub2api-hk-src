@@ -745,6 +745,9 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 		events := apicompat.ResponsesEventToAnthropicEvents(&event, state)
 		if !clientDisconnected {
 			for _, evt := range events {
+				if shouldSuppressAnthropicCompatEvent(evt) {
+					continue
+				}
 				sse, err := apicompat.ResponsesAnthropicEventToSSE(evt)
 				if err != nil {
 					logger.L().Warn("openai messages stream: failed to marshal event",
@@ -772,6 +775,9 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 	finalizeStream := func() (*OpenAIForwardResult, error) {
 		if finalEvents := apicompat.FinalizeResponsesAnthropicStream(state); len(finalEvents) > 0 && !clientDisconnected {
 			for _, evt := range finalEvents {
+				if shouldSuppressAnthropicCompatEvent(evt) {
+					continue
+				}
 				sse, err := apicompat.ResponsesAnthropicEventToSSE(evt)
 				if err != nil {
 					continue

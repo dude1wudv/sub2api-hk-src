@@ -15,6 +15,7 @@ import (
 type ChannelMonitorUserHandler struct {
 	monitorService *service.ChannelMonitorService
 	settingService *service.SettingService
+	channelService *service.ChannelService
 }
 
 // NewChannelMonitorUserHandler 创建 handler。
@@ -22,10 +23,12 @@ type ChannelMonitorUserHandler struct {
 func NewChannelMonitorUserHandler(
 	monitorService *service.ChannelMonitorService,
 	settingService *service.SettingService,
+	channelService *service.ChannelService,
 ) *ChannelMonitorUserHandler {
 	return &ChannelMonitorUserHandler{
 		monitorService: monitorService,
 		settingService: settingService,
+		channelService: channelService,
 	}
 }
 
@@ -72,13 +75,14 @@ type channelMonitorUserDetailResponse struct {
 }
 
 type channelMonitorUserModelStat struct {
-	Model           string  `json:"model"`
-	LatestStatus    string  `json:"latest_status"`
-	LatestLatencyMs *int    `json:"latest_latency_ms"`
-	Availability7d  float64 `json:"availability_7d"`
-	Availability15d float64 `json:"availability_15d"`
-	Availability30d float64 `json:"availability_30d"`
-	AvgLatency7dMs  *int    `json:"avg_latency_7d_ms"`
+	Model           string                     `json:"model"`
+	LatestStatus    string                     `json:"latest_status"`
+	LatestLatencyMs *int                       `json:"latest_latency_ms"`
+	Availability7d  float64                    `json:"availability_7d"`
+	Availability15d float64                    `json:"availability_15d"`
+	Availability30d float64                    `json:"availability_30d"`
+	AvgLatency7dMs  *int                       `json:"avg_latency_7d_ms"`
+	Pricing         *userSupportedModelPricing `json:"pricing"`
 }
 
 func userMonitorViewToItem(v *service.UserMonitorView) channelMonitorUserListItem {
@@ -114,7 +118,7 @@ func userMonitorViewToItem(v *service.UserMonitorView) channelMonitorUserListIte
 	}
 }
 
-func userMonitorDetailToResponse(d *service.UserMonitorDetail) *channelMonitorUserDetailResponse {
+func userMonitorDetailToResponse(d *service.UserMonitorDetail, pricing map[string]*service.ChannelModelPricing) *channelMonitorUserDetailResponse {
 	models := make([]channelMonitorUserModelStat, 0, len(d.Models))
 	for _, m := range d.Models {
 		models = append(models, channelMonitorUserModelStat{
@@ -125,6 +129,7 @@ func userMonitorDetailToResponse(d *service.UserMonitorDetail) *channelMonitorUs
 			Availability15d: m.Availability15d,
 			Availability30d: m.Availability30d,
 			AvgLatency7dMs:  m.AvgLatency7dMs,
+			Pricing:         toUserPricing(pricing[m.Model]),
 		})
 	}
 	return &channelMonitorUserDetailResponse{
@@ -134,6 +139,68 @@ func userMonitorDetailToResponse(d *service.UserMonitorDetail) *channelMonitorUs
 		GroupName: d.GroupName,
 		Models:    models,
 	}
+}
+
+func (h *ChannelMonitorUserHandler) pricingByModel(c *gin.Context, d *service.UserMonitorDetail) map[string]*service.ChannelModelPricing {
+	if d == nil {
+		return map[string]*service.ChannelModelPricing{}
+	}
+	if h.channelService == nil || d.Provider == "" || len(d.Models) == 0 {
+		return map[string]*service.ChannelModelPricing{}
+	}
+	channels, err := h.channelService.ListAvailable(c.Request.Context())
+	if err != nil {
+		return map[string]*service.ChannelModelPricing{}
+	}
+	return monitorPricingByModelFromAvailableChannels(d, channels)
+}
+
+func monitorPricingByModelFromAvailableChannels(
+	d *service.UserMonitorDetail,
+	channels []service.AvailableChannel,
+) map[string]*service.ChannelModelPricing {
+	if d == nil || d.Provider == "" || len(d.Models) == 0 {
+		return map[string]*service.ChannelModelPricing{}
+	}
+	out := make(map[string]*service.ChannelModelPricing, len(d.Models))
+	modelSet := make(map[string]struct{}, len(d.Models))
+	for _, m := range d.Models {
+		modelSet[m.Model] = struct{}{}
+	}
+	for _, ch := range channels {
+		if ch.Status != service.StatusActive || !channelMatchesMonitorChannel(ch, d.GroupName, d.Provider) {
+			continue
+		}
+		for _, sm := range ch.SupportedModels {
+			if sm.Platform != d.Provider || sm.Pricing == nil {
+				continue
+			}
+			if _, ok := modelSet[sm.Name]; !ok {
+				continue
+			}
+			if _, exists := out[sm.Name]; exists {
+				continue
+			}
+			cp := sm.Pricing.Clone()
+			out[sm.Name] = &cp
+		}
+	}
+	return out
+}
+
+func channelMatchesMonitorChannel(ch service.AvailableChannel, groupName, platform string) bool {
+	if groupName == "" {
+		return true
+	}
+	for _, g := range ch.Groups {
+		if g.Platform != platform {
+			continue
+		}
+		if g.Name == groupName {
+			return true
+		}
+	}
+	return false
 }
 
 // --- Handlers ---
@@ -172,5 +239,5 @@ func (h *ChannelMonitorUserHandler) GetStatus(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	response.Success(c, userMonitorDetailToResponse(detail))
+	response.Success(c, userMonitorDetailToResponse(detail, h.pricingByModel(c, detail)))
 }

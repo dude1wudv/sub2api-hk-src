@@ -543,7 +543,8 @@ const diagnosisReport = computed<DiagnosisItem[]>(() => {
   }
 
   const ttftP99 = ov.ttft?.p99_ms ?? 0
-  if (ttftP99 > 500) {
+  const ttftThreshold = props.thresholds?.ttft_p99_ms_max ?? 10000
+  if (ttftP99 > ttftThreshold) {
     report.push({
       type: 'warning',
       message: t('admin.ops.diagnosis.ttftHigh', { ttft: ttftP99.toFixed(0) }),

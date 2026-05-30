@@ -1037,7 +1037,8 @@ export default {
       availability7d: '7 天可用率',
       availability15d: '15 天可用率',
       availability30d: '30 天可用率',
-      avgLatency7d: '7 天平均延迟 (ms)'
+      avgLatency7d: '7 天平均延迟 (ms)',
+      pricing: '模型定价'
     },
     empty: {
       title: '暂无可显示的渠道',
@@ -3158,6 +3159,36 @@ export default {
         noRecentError: '最近无错误',
         lastErrorAt: '最近错误 {time}'
       },
+      quotaPools: {
+        plusTitle: 'Plus 账号池',
+        freeTitle: 'Free 账号池',
+        plusMetric: '5h 剩余',
+        freeMetric: '7d 剩余',
+        bestMetric: '最佳剩余',
+        accounts: '{available} / {total} 可用',
+        openPlus: '查看 Plus 账号池',
+        openFree: '查看 Free 账号池'
+      },
+      plusUsage: {
+        title: 'Plus 标准用量',
+        standardPricing: '标准定价',
+        average: 'Plus 平均',
+        plusAccounts: 'Plus 账号',
+        deletedExpired: '删除 / 过期',
+        withUsage: '有用量 {count}',
+        logs: '记录 {count}',
+        refreshedAt: '刷新于 {time}'
+      },
+      freeUsage: {
+        title: 'Free 标准用量',
+        standardPricing: '标准定价',
+        average: 'Free 平均',
+        freeAccounts: 'Free 账号',
+        deletedExpired: '删除 / 过期',
+        withUsage: '有用量 {count}',
+        logs: '记录 {count}',
+        refreshedAt: '刷新于 {time}'
+      },
       columns: {
         name: '名称',
         platformType: '平台/类型',
@@ -3172,6 +3203,7 @@ export default {
         schedulable: '调度',
         todayStats: '今日统计',
         groups: '分组',
+        quotaRemaining: '剩余额度',
         usageWindows: '用量窗口',
         risk: '风险',
         proxy: '代理',
@@ -5382,7 +5414,7 @@ export default {
         slaMinPercent: 'SLA最低百分比',
         slaMinPercentHint: 'SLA低于此值时显示为红色（默认：99.5%）',
         ttftP99MaxMs: 'TTFT P99最大值（毫秒）',
-        ttftP99MaxMsHint: 'TTFT P99高于此值时显示为红色（默认：500ms）',
+        ttftP99MaxMsHint: 'TTFT P99高于此值时显示为红色（默认：10000ms）',
         requestErrorRateMaxPercent: '请求错误率最大值（%）',
         requestErrorRateMaxPercentHint: '请求错误率高于此值时显示为红色（默认：5%）',
         upstreamErrorRateMaxPercent: '上游错误率最大值（%）',

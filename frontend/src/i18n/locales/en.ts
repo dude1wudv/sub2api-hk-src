@@ -1033,7 +1033,8 @@ export default {
       availability7d: '7d Availability',
       availability15d: '15d Availability',
       availability30d: '30d Availability',
-      avgLatency7d: '7d Avg Latency (ms)'
+      avgLatency7d: '7d Avg Latency (ms)',
+      pricing: 'Model Pricing'
     },
     empty: {
       title: 'No channels available',
@@ -3081,6 +3082,36 @@ export default {
         noRecentError: 'No recent error',
         lastErrorAt: 'Last error {time}'
       },
+      quotaPools: {
+        plusTitle: 'Plus Pool',
+        freeTitle: 'Free Pool',
+        plusMetric: '5h Remaining',
+        freeMetric: '7d Remaining',
+        bestMetric: 'Best Remaining',
+        accounts: '{available} / {total} available',
+        openPlus: 'View Plus pool',
+        openFree: 'View Free pool'
+      },
+      plusUsage: {
+        title: 'Plus Standard Usage',
+        standardPricing: 'Standard pricing',
+        average: 'Plus average',
+        plusAccounts: 'Plus accounts',
+        deletedExpired: 'Deleted / expired',
+        withUsage: 'With usage {count}',
+        logs: 'Logs {count}',
+        refreshedAt: 'Refreshed at {time}'
+      },
+      freeUsage: {
+        title: 'Free Standard Usage',
+        standardPricing: 'Standard pricing',
+        average: 'Free average',
+        freeAccounts: 'Free accounts',
+        deletedExpired: 'Deleted / expired',
+        withUsage: 'With usage {count}',
+        logs: 'Logs {count}',
+        refreshedAt: 'Refreshed at {time}'
+      },
       platforms: {
         anthropic: 'Anthropic',
         claude: 'Claude',
@@ -3134,6 +3165,7 @@ export default {
         schedulable: 'Schedulable',
         todayStats: 'Today Stats',
         groups: 'Groups',
+        quotaRemaining: 'Remaining Quota',
         usageWindows: 'Usage Windows',
         risk: 'Risk',
         proxy: 'Proxy',
@@ -5221,7 +5253,7 @@ export default {
         slaMinPercent: 'SLA Minimum Percentage',
         slaMinPercentHint: 'SLA below this value will be displayed in red (default: 99.5%)',
         ttftP99MaxMs: 'TTFT P99 Maximum (ms)',
-        ttftP99MaxMsHint: 'TTFT P99 above this value will be displayed in red (default: 500ms)',
+        ttftP99MaxMsHint: 'TTFT P99 above this value will be displayed in red (default: 10000ms)',
         requestErrorRateMaxPercent: 'Request Error Rate Maximum (%)',
         requestErrorRateMaxPercentHint: 'Request error rate above this value will be displayed in red (default: 5%)',
         upstreamErrorRateMaxPercent: 'Upstream Error Rate Maximum (%)',

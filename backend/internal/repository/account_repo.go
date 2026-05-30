@@ -15,6 +15,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -615,6 +616,8 @@ func accountListOrder(params pagination.PaginationParams) []func(*entsql.Selecto
 	case "created_at":
 		field = dbaccount.FieldCreatedAt
 		defaultOrder = false
+	case "quota_remaining", "remaining_quota":
+		return accountRemainingQuotaOrder(sortOrder)
 	}
 
 	if sortOrder == pagination.SortOrderDesc {
@@ -624,6 +627,46 @@ func accountListOrder(params pagination.PaginationParams) []func(*entsql.Selecto
 		return []func(*entsql.Selector){dbent.Asc(dbaccount.FieldName), dbent.Asc(dbaccount.FieldID)}
 	}
 	return []func(*entsql.Selector){dbent.Asc(field), dbent.Asc(dbaccount.FieldID)}
+}
+
+func accountRemainingQuotaOrder(sortOrder string) []func(*entsql.Selector) {
+	return []func(*entsql.Selector){
+		func(s *entsql.Selector) {
+			idCol := s.C(dbaccount.FieldID)
+			extraCol := s.C(dbaccount.FieldExtra)
+			used5h := fmt.Sprintf("NULLIF(%s->>'codex_5h_used_percent', '')::double precision", extraCol)
+			used7d := fmt.Sprintf("NULLIF(%s->>'codex_7d_used_percent', '')::double precision", extraCol)
+			freeGroup := fmt.Sprintf(`EXISTS (
+				SELECT 1 FROM account_groups ag
+				JOIN groups g ON g.id = ag.group_id
+				WHERE ag.account_id = %s
+				  AND g.deleted_at IS NULL
+				  AND lower(g.name) LIKE '%%free%%'
+			)`, idCol)
+			plusGroup := fmt.Sprintf(`EXISTS (
+				SELECT 1 FROM account_groups ag
+				JOIN groups g ON g.id = ag.group_id
+				WHERE ag.account_id = %s
+				  AND g.deleted_at IS NULL
+				  AND (lower(g.name) LIKE '%%plus%%' OR lower(g.name) LIKE '%%pro%%')
+			)`, idCol)
+			expr := fmt.Sprintf(`COALESCE(
+				CASE
+					WHEN %s THEN 100 - %s
+					WHEN %s THEN 100 - %s
+					ELSE GREATEST(COALESCE(100 - %s, -1), COALESCE(100 - %s, -1))
+				END,
+				-1
+			)`, plusGroup, used5h, freeGroup, used7d, used5h, used7d)
+			if sortOrder == pagination.SortOrderAsc {
+				s.OrderExpr(entsql.Expr(expr + " ASC"))
+				s.OrderBy(entsql.Asc(idCol))
+				return
+			}
+			s.OrderExpr(entsql.Expr(expr + " DESC"))
+			s.OrderBy(entsql.Desc(idCol))
+		},
+	}
 }
 
 func (r *accountRepository) ListByGroup(ctx context.Context, groupID int64) ([]service.Account, error) {

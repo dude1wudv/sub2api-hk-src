@@ -65,3 +65,39 @@ func TestFilterHeadersEnabledUsesAllowlist(t *testing.T) {
 		t.Fatalf("expected X-Blocked removed, got %q", filtered.Get("X-Blocked"))
 	}
 }
+
+func TestFilterHeadersAlwaysRemovesUserVisibleQuotaSignals(t *testing.T) {
+	src := http.Header{}
+	src.Add("Content-Type", "text/event-stream")
+	src.Add("Anthropic-Ratelimit-Unified-5h-Status", "allowed_warning")
+	src.Add("X-Codex-Primary-Used-Percent", "80")
+	src.Add("X-Codex-Secondary-Reset-After-Seconds", "120")
+	src.Add("X-Codex-Turn-State", "keep")
+
+	cfg := config.ResponseHeaderConfig{
+		Enabled: true,
+		AdditionalAllowed: []string{
+			"anthropic-ratelimit-unified-5h-status",
+			"x-codex-primary-used-percent",
+			"x-codex-secondary-reset-after-seconds",
+			"x-codex-turn-state",
+		},
+	}
+
+	filtered := FilterHeaders(src, CompileHeaderFilter(cfg))
+	if filtered.Get("Content-Type") != "text/event-stream" {
+		t.Fatalf("expected Content-Type allowed, got %q", filtered.Get("Content-Type"))
+	}
+	if filtered.Get("Anthropic-Ratelimit-Unified-5h-Status") != "" {
+		t.Fatalf("expected Anthropic quota header removed, got %q", filtered.Get("Anthropic-Ratelimit-Unified-5h-Status"))
+	}
+	if filtered.Get("X-Codex-Primary-Used-Percent") != "" {
+		t.Fatalf("expected X-Codex primary quota header removed, got %q", filtered.Get("X-Codex-Primary-Used-Percent"))
+	}
+	if filtered.Get("X-Codex-Secondary-Reset-After-Seconds") != "" {
+		t.Fatalf("expected X-Codex secondary quota header removed, got %q", filtered.Get("X-Codex-Secondary-Reset-After-Seconds"))
+	}
+	if filtered.Get("X-Codex-Turn-State") != "keep" {
+		t.Fatalf("expected non-quota x-codex header allowed, got %q", filtered.Get("X-Codex-Turn-State"))
+	}
+}

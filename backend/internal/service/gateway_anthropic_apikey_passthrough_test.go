@@ -886,6 +886,52 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardDirect_NonStreamingSuc
 	require.Equal(t, upstreamJSON, rec.Body.String())
 }
 
+func TestGatewayService_AnthropicAPIKeyPassthrough_KiroCompressesLongToolNames(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+
+	longName := "mcp__plugin_microsoft-docs_microsoft-learn__microsoft_code_sample_search"
+	body := []byte(`{"model":"claude-opus-4.7","messages":[{"role":"user","content":[{"type":"text","text":"search"}]}],"tools":[{"name":"` + longName + `","description":"search","input_schema":{"type":"object"}}],"tool_choice":{"type":"tool","name":"` + longName + `"}}`)
+	upstreamJSON := `{"id":"msg_1","type":"message","content":[{"type":"tool_use","id":"toolu_1","name":"PLACEHOLDER","input":{}}],"usage":{"input_tokens":1,"output_tokens":1}}`
+	upstream := &anthropicHTTPUpstreamRecorder{
+		resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type": []string{"application/json"},
+				"x-request-id": []string{"rid-kiro-tool"},
+			},
+			Body: io.NopCloser(strings.NewReader(upstreamJSON)),
+		},
+	}
+	account := newAnthropicAPIKeyAccountForTest()
+	account.Name = "kiro-claude-google"
+	account.Credentials["base_url"] = "http://kiro-gateway:8000"
+	account.Extra["source"] = "kiro-gateway"
+	svc := &GatewayService{
+		cfg: &config.Config{
+			Security: config.SecurityConfig{
+				URLAllowlist: config.URLAllowlistConfig{Enabled: false, AllowInsecureHTTP: true},
+			},
+		},
+		httpUpstream:     upstream,
+		rateLimitService: &RateLimitService{},
+	}
+
+	result, err := svc.forwardAnthropicAPIKeyPassthrough(context.Background(), c, account, body, "claude-opus-4.7", "claude-opus-4.7", false, time.Now())
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	sentToolName := gjson.GetBytes(upstream.lastBody, "tools.0.name").String()
+	require.NotEqual(t, longName, sentToolName)
+	require.LessOrEqual(t, len(sentToolName), 64)
+	require.Equal(t, sentToolName, gjson.GetBytes(upstream.lastBody, "tool_choice.name").String())
+
+	restoredBody := strings.Replace(upstreamJSON, "PLACEHOLDER", sentToolName, 1)
+	require.JSONEq(t, strings.Replace(upstreamJSON, "PLACEHOLDER", longName, 1), string(reverseToolNamesIfPresent(c, []byte(restoredBody))))
+}
+
 func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardDirect_InvalidTokenType(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rec := httptest.NewRecorder()

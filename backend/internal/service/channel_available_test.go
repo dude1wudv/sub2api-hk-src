@@ -176,6 +176,41 @@ func TestListAvailable_DefaultsEmptyBillingModelSource(t *testing.T) {
 	require.Equal(t, BillingModelSourceUpstream, byName["explicit"])
 }
 
+func TestListAvailable_GeminiPricingOnlyModelsIncludePricing(t *testing.T) {
+	inputPrice := 0.000002
+	outputPrice := 0.000012
+	channels := []Channel{{
+		ID:       4,
+		Name:     "Gemini",
+		Status:   StatusActive,
+		GroupIDs: []int64{11},
+		ModelPricing: []ChannelModelPricing{{
+			ChannelID:   4,
+			Platform:    PlatformGemini,
+			Models:      []string{"gemini-3.1-flash-lite-preview"},
+			BillingMode: BillingModeToken,
+			InputPrice:  &inputPrice,
+			OutputPrice: &outputPrice,
+		}},
+	}}
+	groupRepo := &stubGroupRepoForAvailable{
+		activeGroups: []Group{{ID: 11, Name: "Gemini", Platform: PlatformGemini}},
+	}
+	svc := newAvailableChannelService(channels, groupRepo)
+
+	out, err := svc.ListAvailable(context.Background())
+
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	require.Len(t, out[0].SupportedModels, 1)
+	model := out[0].SupportedModels[0]
+	require.Equal(t, "gemini-3.1-flash-lite-preview", model.Name)
+	require.Equal(t, PlatformGemini, model.Platform)
+	require.NotNil(t, model.Pricing)
+	require.Equal(t, inputPrice, *model.Pricing.InputPrice)
+	require.Equal(t, outputPrice, *model.Pricing.OutputPrice)
+}
+
 func TestPricingNeedsFallback(t *testing.T) {
 	tests := []struct {
 		name string

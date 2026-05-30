@@ -75,6 +75,8 @@ type AdminService interface {
 	// Account management
 	ListAccounts(ctx context.Context, page, pageSize int, platform, accountType, status, search string, groupID int64, privacyMode string, sortBy, sortOrder string) ([]Account, int64, error)
 	GetAccountSummary(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) (*AccountSummary, error)
+	GetPlusAccountUsageSummary(ctx context.Context) (*PlusAccountUsageSummary, error)
+	GetFreeAccountUsageSummary(ctx context.Context) (*FreeAccountUsageSummary, error)
 	GetAccount(ctx context.Context, id int64) (*Account, error)
 	GetAccountsByIDs(ctx context.Context, ids []int64) ([]*Account, error)
 	CreateAccount(ctx context.Context, input *CreateAccountInput) (*Account, error)
@@ -394,6 +396,16 @@ type AccountUsageWindowSummary struct {
 	Exhausted        int      `json:"exhausted"`
 }
 
+type AccountQuotaPoolSummary struct {
+	Total              int      `json:"total"`
+	Available          int      `json:"available"`
+	Sampled            int      `json:"sampled"`
+	RemainingPercent   *float64 `json:"remaining_percent,omitempty"`
+	Remaining5hPercent *float64 `json:"remaining_5h_percent,omitempty"`
+	Remaining7dPercent *float64 `json:"remaining_7d_percent,omitempty"`
+	Exhausted          int      `json:"exhausted"`
+}
+
 type AccountProxySummary struct {
 	ProxyID            *int64     `json:"proxy_id"`
 	Name               string     `json:"name"`
@@ -428,9 +440,47 @@ type AccountSummary struct {
 	OpenAI            int                       `json:"openai"`
 	Codex5h           AccountUsageWindowSummary `json:"codex_5h"`
 	Codex7d           AccountUsageWindowSummary `json:"codex_7d"`
+	PlusPool          AccountQuotaPoolSummary   `json:"plus_pool"`
+	FreePool          AccountQuotaPoolSummary   `json:"free_pool"`
 	RecentlyUsed      int                       `json:"recently_used"`
 	NeverUsed         int                       `json:"never_used"`
 	ProxyDistribution []AccountProxySummary     `json:"proxy_distribution"`
+}
+
+type PlusAccountUsageSummary struct {
+	TotalStandardCost                 float64    `json:"total_standard_cost"`
+	AverageStandardCostPerPlusAccount float64    `json:"average_standard_cost_per_plus_account"`
+	PlusAccountCount                  int64      `json:"plus_account_count"`
+	PlusAccountsWithUsage             int64      `json:"plus_accounts_with_usage"`
+	UsageLogCount                     int64      `json:"usage_log_count"`
+	DeletedPlusAccountCount           int64      `json:"deleted_plus_account_count"`
+	ExpiredPlusAccountCount           int64      `json:"expired_plus_account_count"`
+	FirstUsageAt                      *time.Time `json:"first_usage_at,omitempty"`
+	LastUsageAt                       *time.Time `json:"last_usage_at,omitempty"`
+}
+
+type FreeAccountUsageSummary struct {
+	TotalStandardCost                 float64    `json:"total_standard_cost"`
+	AverageStandardCostPerFreeAccount float64    `json:"average_standard_cost_per_free_account"`
+	FreeAccountCount                  int64      `json:"free_account_count"`
+	FreeAccountsWithUsage             int64      `json:"free_accounts_with_usage"`
+	UsageLogCount                     int64      `json:"usage_log_count"`
+	DeletedFreeAccountCount           int64      `json:"deleted_free_account_count"`
+	ExpiredFreeAccountCount           int64      `json:"expired_free_account_count"`
+	FirstUsageAt                      *time.Time `json:"first_usage_at,omitempty"`
+	LastUsageAt                       *time.Time `json:"last_usage_at,omitempty"`
+}
+
+type openAIPlanUsageSummary struct {
+	TotalStandardCost   float64
+	AverageStandardCost float64
+	AccountCount        int64
+	AccountsWithUsage   int64
+	UsageLogCount       int64
+	DeletedAccountCount int64
+	ExpiredAccountCount int64
+	FirstUsageAt        *time.Time
+	LastUsageAt         *time.Time
 }
 
 type CreateProxyInput struct {
@@ -2520,6 +2570,160 @@ func (s *adminServiceImpl) GetAccountSummary(ctx context.Context, platform, acco
 	return summary, nil
 }
 
+func (s *adminServiceImpl) GetPlusAccountUsageSummary(ctx context.Context) (*PlusAccountUsageSummary, error) {
+	summary, err := s.getOpenAIPlanUsageSummary(ctx, "plus")
+	if err != nil {
+		return nil, err
+	}
+	return &PlusAccountUsageSummary{
+		TotalStandardCost:                 summary.TotalStandardCost,
+		AverageStandardCostPerPlusAccount: summary.AverageStandardCost,
+		PlusAccountCount:                  summary.AccountCount,
+		PlusAccountsWithUsage:             summary.AccountsWithUsage,
+		UsageLogCount:                     summary.UsageLogCount,
+		DeletedPlusAccountCount:           summary.DeletedAccountCount,
+		ExpiredPlusAccountCount:           summary.ExpiredAccountCount,
+		FirstUsageAt:                      summary.FirstUsageAt,
+		LastUsageAt:                       summary.LastUsageAt,
+	}, nil
+}
+
+func (s *adminServiceImpl) GetFreeAccountUsageSummary(ctx context.Context) (*FreeAccountUsageSummary, error) {
+	summary, err := s.getOpenAIPlanUsageSummary(ctx, "free")
+	if err != nil {
+		return nil, err
+	}
+	return &FreeAccountUsageSummary{
+		TotalStandardCost:                 summary.TotalStandardCost,
+		AverageStandardCostPerFreeAccount: summary.AverageStandardCost,
+		FreeAccountCount:                  summary.AccountCount,
+		FreeAccountsWithUsage:             summary.AccountsWithUsage,
+		UsageLogCount:                     summary.UsageLogCount,
+		DeletedFreeAccountCount:           summary.DeletedAccountCount,
+		ExpiredFreeAccountCount:           summary.ExpiredAccountCount,
+		FirstUsageAt:                      summary.FirstUsageAt,
+		LastUsageAt:                       summary.LastUsageAt,
+	}, nil
+}
+
+func (s *adminServiceImpl) getOpenAIPlanUsageSummary(ctx context.Context, planKind string) (*openAIPlanUsageSummary, error) {
+	if s == nil || s.entClient == nil {
+		return &openAIPlanUsageSummary{}, nil
+	}
+
+	rows, err := s.entClient.QueryContext(ctx, `
+WITH target_groups AS (
+	SELECT id
+	FROM groups
+	WHERE platform = 'openai'
+	  AND deleted_at IS NULL
+	  AND (
+		($1 = 'plus' AND (lower(name) LIKE '%plus%' OR lower(name) LIKE '%pro%'))
+		OR ($1 = 'free' AND lower(name) LIKE '%free%')
+	  )
+),
+target_account_ids AS (
+	SELECT a.id
+	FROM accounts a
+	WHERE a.platform = 'openai'
+	  AND (
+		($1 = 'plus' AND lower(trim(COALESCE(a.credentials->>'plan_type', ''))) IN ('plus', 'pro', 'chatgptpro', 'team', 'enterprise', 'business'))
+		OR ($1 = 'free' AND lower(trim(COALESCE(a.credentials->>'plan_type', ''))) IN ('free', 'free-tier'))
+	  )
+	UNION
+	SELECT ag.account_id
+	FROM account_groups ag
+	JOIN target_groups tg ON tg.id = ag.group_id
+),
+target_account_rows AS (
+	SELECT
+		a.id,
+		a.deleted_at,
+		a.auto_pause_on_expired,
+		a.expires_at,
+		COALESCE(NULLIF(lower(trim(COALESCE(a.name, ''))), ''), 'account:' || a.id::text) AS account_key
+	FROM target_account_ids tai
+	JOIN accounts a ON a.id = tai.id
+	WHERE lower(trim(COALESCE(a.name, ''))) NOT IN ('1day', 'opentoken')
+),
+target_account_identities AS (
+	SELECT
+		account_key,
+		bool_or(deleted_at IS NOT NULL) AS deleted,
+		bool_or(auto_pause_on_expired AND expires_at IS NOT NULL AND expires_at <= NOW()) AS expired
+	FROM target_account_rows
+	GROUP BY account_key
+),
+target_usage AS (
+	SELECT tar.account_key, ul.account_id, ul.total_cost, ul.created_at
+	FROM usage_logs ul
+	JOIN target_account_rows tar ON tar.id = ul.account_id
+),
+target_counts AS (
+	SELECT COUNT(*)::bigint AS account_count
+	FROM target_account_identities
+)
+SELECT
+	COALESCE(SUM(tu.total_cost), 0)::double precision AS total_standard_cost,
+	CASE
+		WHEN tc.account_count > 0 THEN (COALESCE(SUM(tu.total_cost), 0) / tc.account_count)::double precision
+		ELSE 0::double precision
+	END AS average_standard_cost,
+	tc.account_count,
+	COUNT(DISTINCT tu.account_key)::bigint AS accounts_with_usage,
+	COUNT(tu.account_id)::bigint AS usage_log_count,
+	(
+		SELECT COUNT(*)::bigint
+		FROM target_account_identities tai
+		WHERE tai.deleted
+	) AS deleted_account_count,
+	(
+		SELECT COUNT(*)::bigint
+		FROM target_account_identities tai
+		WHERE tai.expired
+	) AS expired_account_count,
+	MIN(tu.created_at) AS first_usage_at,
+	MAX(tu.created_at) AS last_usage_at
+FROM target_counts tc
+LEFT JOIN target_usage tu ON TRUE
+GROUP BY tc.account_count`, planKind)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	summary := &openAIPlanUsageSummary{}
+	if !rows.Next() {
+		return summary, rows.Err()
+	}
+
+	var firstUsageAt sql.NullTime
+	var lastUsageAt sql.NullTime
+	if err := rows.Scan(
+		&summary.TotalStandardCost,
+		&summary.AverageStandardCost,
+		&summary.AccountCount,
+		&summary.AccountsWithUsage,
+		&summary.UsageLogCount,
+		&summary.DeletedAccountCount,
+		&summary.ExpiredAccountCount,
+		&firstUsageAt,
+		&lastUsageAt,
+	); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if firstUsageAt.Valid {
+		summary.FirstUsageAt = &firstUsageAt.Time
+	}
+	if lastUsageAt.Valid {
+		summary.LastUsageAt = &lastUsageAt.Time
+	}
+	return summary, nil
+}
+
 func (s *adminServiceImpl) GetAccount(ctx context.Context, id int64) (*Account, error) {
 	return s.accountRepo.GetByID(ctx, id)
 }
@@ -2589,6 +2793,46 @@ type accountProxyAccumulator struct {
 	sevenDay  accountUsageAccumulator
 }
 
+type accountQuotaPoolAccumulator struct {
+	total     int
+	available int
+	fiveHour  accountUsageAccumulator
+	sevenDay  accountUsageAccumulator
+}
+
+func (a *accountQuotaPoolAccumulator) addAccount(available bool) {
+	a.total++
+	if available {
+		a.available++
+	}
+}
+
+func (a *accountQuotaPoolAccumulator) addFiveHour(usedPercent float64) {
+	a.fiveHour.add(usedPercent)
+}
+
+func (a *accountQuotaPoolAccumulator) addSevenDay(usedPercent float64) {
+	a.sevenDay.add(usedPercent)
+}
+
+func (a accountQuotaPoolAccumulator) summary(prefer string) AccountQuotaPoolSummary {
+	fiveHour := a.fiveHour.summary()
+	sevenDay := a.sevenDay.summary()
+	preferred := fiveHour
+	if prefer == "7d" {
+		preferred = sevenDay
+	}
+	return AccountQuotaPoolSummary{
+		Total:              a.total,
+		Available:          a.available,
+		Sampled:            preferred.Sampled,
+		RemainingPercent:   preferred.RemainingPercent,
+		Remaining5hPercent: fiveHour.RemainingPercent,
+		Remaining7dPercent: sevenDay.RemainingPercent,
+		Exhausted:          preferred.Exhausted,
+	}
+}
+
 func buildAccountSummary(accounts []Account) *AccountSummary {
 	now := time.Now()
 	recentSince := now.Add(-time.Hour)
@@ -2596,6 +2840,8 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 	proxyStats := make(map[string]*accountProxyAccumulator)
 	var fiveHour accountUsageAccumulator
 	var sevenDay accountUsageAccumulator
+	var plusPool accountQuotaPoolAccumulator
+	var freePool accountQuotaPoolAccumulator
 
 	for i := range accounts {
 		acc := &accounts[i]
@@ -2673,12 +2919,79 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 			sevenDay.add(value)
 			proxy.sevenDay.add(value)
 		}
+		if accountBelongsToPlusPool(acc) {
+			plusPool.addAccount(isAvailable)
+			if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_5h_used_percent", "codex_5h_reset_at", now); ok {
+				plusPool.addFiveHour(value)
+			}
+			if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_7d_used_percent", "codex_7d_reset_at", now); ok {
+				plusPool.addSevenDay(value)
+			}
+		}
+		if accountBelongsToFreePool(acc) {
+			freePool.addAccount(isAvailable)
+			if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_5h_used_percent", "codex_5h_reset_at", now); ok {
+				freePool.addFiveHour(value)
+			}
+			if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_7d_used_percent", "codex_7d_reset_at", now); ok {
+				freePool.addSevenDay(value)
+			}
+		}
 	}
 
 	summary.Codex5h = fiveHour.summary()
 	summary.Codex7d = sevenDay.summary()
+	summary.PlusPool = plusPool.summary("5h")
+	summary.FreePool = freePool.summary("7d")
 	summary.ProxyDistribution = buildAccountProxySummary(proxyStats)
 	return summary
+}
+
+func accountBelongsToPlusPool(account *Account) bool {
+	if account == nil {
+		return false
+	}
+	if openAIAccountCountsCodex5hQuota(account) {
+		return true
+	}
+	return accountHasGroupNameToken(account, "plus", "pro")
+}
+
+func accountBelongsToFreePool(account *Account) bool {
+	if account == nil {
+		return false
+	}
+	planType := strings.ToLower(strings.TrimSpace(account.GetCredential("plan_type")))
+	if planType == "free" || planType == "free-tier" {
+		return true
+	}
+	return accountHasGroupNameToken(account, "free")
+}
+
+func accountHasGroupNameToken(account *Account, tokens ...string) bool {
+	for _, group := range account.Groups {
+		if group == nil {
+			continue
+		}
+		name := strings.ToLower(strings.TrimSpace(group.Name))
+		for _, token := range tokens {
+			if strings.Contains(name, token) {
+				return true
+			}
+		}
+	}
+	for _, accountGroup := range account.AccountGroups {
+		if accountGroup.Group == nil {
+			continue
+		}
+		name := strings.ToLower(strings.TrimSpace(accountGroup.Group.Name))
+		for _, token := range tokens {
+			if strings.Contains(name, token) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func openAIAccountCountsCodex5hQuota(account *Account) bool {

@@ -279,6 +279,8 @@ func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		accounts.GET("", h.Admin.Account.List)
 		accounts.GET("/summary", h.Admin.Account.Summary)
+		accounts.GET("/plus-usage-summary", h.Admin.Account.PlusUsageSummary)
+		accounts.GET("/free-usage-summary", h.Admin.Account.FreeUsageSummary)
 		accounts.POST("/openai-maintenance/scan", h.Admin.Account.RunOpenAIMaintenanceScan)
 		accounts.GET("/openai-maintenance/risk", h.Admin.Account.GetOpenAIRiskOverview)
 		accounts.POST("/openai-maintenance/risk/partition", h.Admin.Account.ApplyOpenAIRiskPartition)

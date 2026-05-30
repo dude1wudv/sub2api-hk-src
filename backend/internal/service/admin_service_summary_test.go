@@ -84,3 +84,51 @@ func TestBuildAccountSummaryCodex5hCountsPaidOpenAIAccountsOnly(t *testing.T) {
 		t.Fatalf("proxy Remaining5hPercent = %v, want 60", got)
 	}
 }
+
+func TestBuildAccountSummaryQuotaPoolsUsePlus5hAndFree7d(t *testing.T) {
+	accounts := []Account{
+		{
+			Platform:    PlatformOpenAI,
+			Type:        AccountTypeOAuth,
+			Credentials: map[string]any{"plan_type": "plus"},
+			Status:      StatusActive,
+			Schedulable: true,
+			Extra: map[string]any{
+				"codex_5h_used_percent": 25.0,
+				"codex_7d_used_percent": 90.0,
+			},
+		},
+		{
+			Platform:    PlatformOpenAI,
+			Type:        AccountTypeOAuth,
+			Credentials: map[string]any{"plan_type": "free"},
+			Status:      StatusActive,
+			Schedulable: true,
+			Extra: map[string]any{
+				"codex_5h_used_percent": 10.0,
+				"codex_7d_used_percent": 60.0,
+			},
+		},
+	}
+
+	summary := buildAccountSummary(accounts)
+
+	if summary.PlusPool.Total != 1 || summary.PlusPool.Sampled != 1 {
+		t.Fatalf("PlusPool totals = (%d,%d), want (1,1)", summary.PlusPool.Total, summary.PlusPool.Sampled)
+	}
+	if summary.PlusPool.RemainingPercent == nil || *summary.PlusPool.RemainingPercent != 75.0 {
+		t.Fatalf("PlusPool.RemainingPercent = %v, want 75", summary.PlusPool.RemainingPercent)
+	}
+	if summary.PlusPool.Remaining5hPercent == nil || *summary.PlusPool.Remaining5hPercent != 75.0 {
+		t.Fatalf("PlusPool.Remaining5hPercent = %v, want 75", summary.PlusPool.Remaining5hPercent)
+	}
+	if summary.PlusPool.Remaining7dPercent == nil || *summary.PlusPool.Remaining7dPercent != 10.0 {
+		t.Fatalf("PlusPool.Remaining7dPercent = %v, want 10", summary.PlusPool.Remaining7dPercent)
+	}
+	if summary.FreePool.Total != 1 || summary.FreePool.Sampled != 1 {
+		t.Fatalf("FreePool totals = (%d,%d), want (1,1)", summary.FreePool.Total, summary.FreePool.Sampled)
+	}
+	if summary.FreePool.RemainingPercent == nil || *summary.FreePool.RemainingPercent != 40.0 {
+		t.Fatalf("FreePool.RemainingPercent = %v, want 40", summary.FreePool.RemainingPercent)
+	}
+}

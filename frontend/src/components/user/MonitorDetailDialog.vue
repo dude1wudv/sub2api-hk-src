@@ -22,6 +22,7 @@
             <th class="py-2 pr-3">{{ t('channelStatus.detailColumns.availability15d') }}</th>
             <th class="py-2 pr-3">{{ t('channelStatus.detailColumns.availability30d') }}</th>
             <th class="py-2 pr-3">{{ t('channelStatus.detailColumns.avgLatency7d') }}</th>
+            <th class="py-2 pr-3">{{ t('channelStatus.detailColumns.pricing') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -44,6 +45,22 @@
             <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">{{ formatPercent(m.availability_15d) }}</td>
             <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">{{ formatPercent(m.availability_30d) }}</td>
             <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">{{ formatLatency(m.avg_latency_7d_ms) }}</td>
+            <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">
+              <div v-if="m.pricing" class="min-w-[220px] space-y-1 text-xs">
+                <div class="font-medium text-gray-900 dark:text-gray-100">
+                  {{ billingModeLabel(m.pricing.billing_mode) }}
+                </div>
+                <div
+                  v-for="row in pricingRows(m.pricing)"
+                  :key="row.label"
+                  class="flex justify-between gap-3"
+                >
+                  <span class="text-gray-500 dark:text-gray-400">{{ row.label }}</span>
+                  <span class="font-mono">{{ row.value }}</span>
+                </div>
+              </div>
+              <span v-else class="text-xs text-gray-400">{{ t('availableChannels.noPricing') }}</span>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -68,8 +85,16 @@ import {
   status as fetchChannelMonitorDetail,
   type UserMonitorDetail,
 } from '@/api/channelMonitor'
+import type { UserSupportedModelPricing } from '@/api/channels'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useChannelMonitorFormat } from '@/composables/useChannelMonitorFormat'
+import { formatScaled } from '@/utils/pricing'
+import {
+  BILLING_MODE_IMAGE,
+  BILLING_MODE_PER_REQUEST,
+  BILLING_MODE_TOKEN,
+  type BillingMode,
+} from '@/constants/channel'
 
 const props = defineProps<{
   show: boolean
@@ -87,6 +112,59 @@ const { statusLabel, statusBadgeClass, formatLatency, formatPercent } = useChann
 
 const detail = ref<UserMonitorDetail | null>(null)
 const loading = ref(false)
+const perMillionScale = 1_000_000
+
+function billingModeLabel(mode: BillingMode | string): string {
+  switch (mode) {
+    case BILLING_MODE_TOKEN:
+      return t('availableChannels.pricing.billingModeToken')
+    case BILLING_MODE_PER_REQUEST:
+      return t('availableChannels.pricing.billingModePerRequest')
+    case BILLING_MODE_IMAGE:
+      return t('availableChannels.pricing.billingModeImage')
+    default:
+      return t('availableChannels.pricing.billingMode')
+  }
+}
+
+function priceDisplay(value: number | null | undefined, scale = 1, unit = ''): string {
+  if (value == null) return '-'
+  const suffix = unit ? ` ${unit}` : ''
+  return `${formatScaled(value, scale)}${suffix}`
+}
+
+function pricingRows(pricing: UserSupportedModelPricing) {
+  if (pricing.billing_mode === BILLING_MODE_PER_REQUEST || pricing.billing_mode === BILLING_MODE_IMAGE) {
+    return [
+      {
+        label: t('availableChannels.pricing.perRequestPrice'),
+        value: priceDisplay(pricing.per_request_price, 1, t('availableChannels.pricing.unitPerRequest')),
+      },
+      {
+        label: t('availableChannels.pricing.imageOutputPrice'),
+        value: priceDisplay(pricing.image_output_price, perMillionScale, t('availableChannels.pricing.unitPerMillion')),
+      },
+    ].filter(row => row.value !== '-')
+  }
+  return [
+    {
+      label: t('availableChannels.pricing.inputPrice'),
+      value: priceDisplay(pricing.input_price, perMillionScale, t('availableChannels.pricing.unitPerMillion')),
+    },
+    {
+      label: t('availableChannels.pricing.outputPrice'),
+      value: priceDisplay(pricing.output_price, perMillionScale, t('availableChannels.pricing.unitPerMillion')),
+    },
+    {
+      label: t('availableChannels.pricing.cacheWritePrice'),
+      value: priceDisplay(pricing.cache_write_price, perMillionScale, t('availableChannels.pricing.unitPerMillion')),
+    },
+    {
+      label: t('availableChannels.pricing.cacheReadPrice'),
+      value: priceDisplay(pricing.cache_read_price, perMillionScale, t('availableChannels.pricing.unitPerMillion')),
+    },
+  ].filter(row => row.value !== '-')
+}
 
 async function load(id: number) {
   detail.value = null

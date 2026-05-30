@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from './client'
+import type { UserSupportedModelPricing } from './channels'
 import type { Provider, MonitorStatus } from './admin/channelMonitor'
 
 export type { Provider, MonitorStatus } from './admin/channelMonitor'
@@ -47,6 +48,7 @@ export interface UserMonitorModelDetail {
   availability_15d: number
   availability_30d: number
   avg_latency_7d_ms: number | null
+  pricing: UserSupportedModelPricing | null
 }
 
 export interface UserMonitorDetail {

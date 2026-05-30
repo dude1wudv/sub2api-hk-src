@@ -90,6 +90,9 @@ func FilterHeaders(src http.Header, filter *CompiledHeaderFilter) http.Header {
 	filtered := make(http.Header, len(src))
 	for key, values := range src {
 		lower := strings.ToLower(key)
+		if isUserVisibleQuotaSignalHeader(lower) {
+			continue
+		}
 		if _, blocked := filter.forceRemove[lower]; blocked {
 			continue
 		}
@@ -105,6 +108,24 @@ func FilterHeaders(src http.Header, filter *CompiledHeaderFilter) http.Header {
 		}
 	}
 	return filtered
+}
+
+func isUserVisibleQuotaSignalHeader(lower string) bool {
+	if strings.HasPrefix(lower, "anthropic-ratelimit-") {
+		return true
+	}
+	switch lower {
+	case "x-codex-primary-used-percent",
+		"x-codex-primary-reset-after-seconds",
+		"x-codex-primary-window-minutes",
+		"x-codex-secondary-used-percent",
+		"x-codex-secondary-reset-after-seconds",
+		"x-codex-secondary-window-minutes",
+		"x-codex-primary-over-secondary-limit-percent":
+		return true
+	default:
+		return false
+	}
 }
 
 func WriteFilteredHeaders(dst http.Header, src http.Header, filter *CompiledHeaderFilter) {

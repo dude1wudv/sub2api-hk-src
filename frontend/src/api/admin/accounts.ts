@@ -71,6 +71,16 @@ export interface AccountUsageWindowSummary {
   exhausted: number
 }
 
+export interface AccountQuotaPoolSummary {
+  total: number
+  available: number
+  sampled: number
+  remaining_percent?: number
+  remaining_5h_percent?: number
+  remaining_7d_percent?: number
+  exhausted: number
+}
+
 export interface AccountProxySummary {
   proxy_id: number | null
   name: string
@@ -105,9 +115,35 @@ export interface AccountSummary {
   openai: number
   codex_5h: AccountUsageWindowSummary
   codex_7d: AccountUsageWindowSummary
+  plus_pool: AccountQuotaPoolSummary
+  free_pool: AccountQuotaPoolSummary
   recently_used: number
   never_used: number
   proxy_distribution: AccountProxySummary[]
+}
+
+export interface PlusAccountUsageSummary {
+  total_standard_cost: number
+  average_standard_cost_per_plus_account: number
+  plus_account_count: number
+  plus_accounts_with_usage: number
+  usage_log_count: number
+  deleted_plus_account_count: number
+  expired_plus_account_count: number
+  first_usage_at?: string
+  last_usage_at?: string
+}
+
+export interface FreeAccountUsageSummary {
+  total_standard_cost: number
+  average_standard_cost_per_free_account: number
+  free_account_count: number
+  free_accounts_with_usage: number
+  usage_log_count: number
+  deleted_free_account_count: number
+  expired_free_account_count: number
+  first_usage_at?: string
+  last_usage_at?: string
 }
 
 export interface OpenAIAccountMaintenanceProxyTarget {
@@ -219,6 +255,20 @@ export async function getSummary(filters?: {
 }): Promise<AccountSummary> {
   const { data } = await apiClient.get<AccountSummary>('/admin/accounts/summary', {
     params: filters
+  })
+  return data
+}
+
+export async function getPlusUsageSummary(options?: { refreshKey?: number }): Promise<PlusAccountUsageSummary> {
+  const { data } = await apiClient.get<PlusAccountUsageSummary>('/admin/accounts/plus-usage-summary', {
+    params: options?.refreshKey ? { _: options.refreshKey } : undefined
+  })
+  return data
+}
+
+export async function getFreeUsageSummary(options?: { refreshKey?: number }): Promise<FreeAccountUsageSummary> {
+  const { data } = await apiClient.get<FreeAccountUsageSummary>('/admin/accounts/free-usage-summary', {
+    params: options?.refreshKey ? { _: options.refreshKey } : undefined
   })
   return data
 }
@@ -805,6 +855,8 @@ export const accountsAPI = {
   list,
   listWithEtag,
   getSummary,
+  getPlusUsageSummary,
+  getFreeUsageSummary,
   runOpenAIMaintenanceScan,
   getOpenAIRiskOverview,
   applyOpenAIRiskPartition,

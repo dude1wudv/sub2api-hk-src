@@ -63,6 +63,13 @@ func buildDynamicToolMap(toolNames []string) map[string]string {
 	if len(toolNames) <= dynamicToolMapThreshold {
 		return nil
 	}
+	return buildDynamicToolMapForced(toolNames)
+}
+
+func buildDynamicToolMapForced(toolNames []string) map[string]string {
+	if len(toolNames) == 0 {
+		return nil
+	}
 	h := fnv.New64a()
 	for i, n := range toolNames {
 		if i > 0 {
@@ -120,12 +127,17 @@ func shouldMimicToolName(toolType string) bool {
 //
 // 注意：只扫描，不改 body。真正的 body 改写在 applyToolNameRewriteToBody。
 func buildToolNameRewriteFromBody(body []byte) *ToolNameRewrite {
+	return buildToolNameRewriteFromBodyWithMaxLen(body, 0)
+}
+
+func buildToolNameRewriteFromBodyWithMaxLen(body []byte, maxNameLen int) *ToolNameRewrite {
 	tools := gjson.GetBytes(body, "tools")
 	if !tools.IsArray() {
 		return nil
 	}
 
 	mimicableNames := make([]string, 0)
+	hasOverLimitName := false
 	toolsArr := tools.Array()
 	for _, t := range toolsArr {
 		if !shouldMimicToolName(t.Get("type").String()) {
@@ -136,9 +148,15 @@ func buildToolNameRewriteFromBody(body []byte) *ToolNameRewrite {
 			continue
 		}
 		mimicableNames = append(mimicableNames, name)
+		if maxNameLen > 0 && len(name) > maxNameLen {
+			hasOverLimitName = true
+		}
 	}
 
 	dynamic := buildDynamicToolMap(mimicableNames)
+	if dynamic == nil && hasOverLimitName {
+		dynamic = buildDynamicToolMapForced(mimicableNames)
+	}
 
 	rw := &ToolNameRewrite{
 		Forward: make(map[string]string),

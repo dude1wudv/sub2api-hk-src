@@ -5036,6 +5036,18 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 	}
 	// Pre-filter: strip empty text blocks (including nested in tool_result) to prevent upstream 400.
 	input.Body = StripEmptyTextBlocks(input.Body)
+	if s.shouldCompressAnthropicAPIKeyToolNames(account) {
+		if rw := buildToolNameRewriteFromBodyWithMaxLen(input.Body, 64); rw != nil {
+			input.Body = applyToolNameRewriteToBody(input.Body, rw)
+			if c != nil {
+				c.Set(toolNameRewriteKey, rw)
+			}
+			logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] compressed tool names for account=%d name=%s mappings=%d",
+				account.ID, account.Name, len(rw.Forward))
+		} else {
+			input.Body = applyToolsLastCacheBreakpoint(input.Body)
+		}
+	}
 
 	var resp *http.Response
 	retryStart := time.Now()
@@ -5281,6 +5293,17 @@ func (s *GatewayService) buildUpstreamRequestAnthropicAPIKeyPassthrough(
 	}
 
 	return req, nil
+}
+
+func (s *GatewayService) shouldCompressAnthropicAPIKeyToolNames(account *Account) bool {
+	if account == nil || account.Platform != PlatformAnthropic || account.Type != AccountTypeAPIKey {
+		return false
+	}
+	if strings.EqualFold(strings.TrimSpace(account.GetExtraString("source")), "kiro-gateway") {
+		return true
+	}
+	baseURL := strings.ToLower(strings.TrimSpace(account.GetBaseURL()))
+	return strings.Contains(baseURL, "kiro-gateway")
 }
 
 func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
@@ -7424,6 +7447,9 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 		if eventName == "" {
 			eventName = eventType
 		}
+		if shouldSuppressAnthropicMapEvent(event) {
+			return nil, "", nil, nil
+		}
 		eventChanged := false
 
 		// 兼容 Kimi cached_tokens → cache_read_input_tokens
@@ -9189,6 +9215,16 @@ func (s *GatewayService) forwardCountTokensAnthropicAPIKeyPassthrough(ctx contex
 	if tokenType != "apikey" {
 		s.countTokensError(c, http.StatusBadGateway, "upstream_error", "Invalid account token type")
 		return fmt.Errorf("anthropic api key passthrough requires apikey token, got: %s", tokenType)
+	}
+	if s.shouldCompressAnthropicAPIKeyToolNames(account) {
+		if rw := buildToolNameRewriteFromBodyWithMaxLen(body, 64); rw != nil {
+			body = applyToolNameRewriteToBody(body, rw)
+			if c != nil {
+				c.Set(toolNameRewriteKey, rw)
+			}
+		} else {
+			body = applyToolsLastCacheBreakpoint(body)
+		}
 	}
 
 	upstreamReq, err := s.buildCountTokensRequestAnthropicAPIKeyPassthrough(ctx, c, account, body, token)

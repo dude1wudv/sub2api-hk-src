@@ -243,6 +243,21 @@ func TestBuildToolNameRewriteFromBody_ReverseOrderedByLengthDesc(t *testing.T) {
 	}
 }
 
+func TestBuildToolNameRewriteFromBodyWithMaxLen_ForcesDynamicMapping(t *testing.T) {
+	longName := "mcp__plugin_microsoft-docs_microsoft-learn__microsoft_code_sample_search"
+	body := []byte(`{"tools":[{"name":"` + longName + `","input_schema":{}},{"name":"short_tool","input_schema":{}}],"tool_choice":{"type":"tool","name":"` + longName + `"},"messages":[{"role":"assistant","content":[{"type":"tool_use","id":"tu_1","name":"` + longName + `","input":{}}]}]}`)
+
+	rw := buildToolNameRewriteFromBodyWithMaxLen(body, 64)
+	require.NotNil(t, rw)
+	require.Contains(t, rw.Forward, longName)
+	require.LessOrEqual(t, len(rw.Forward[longName]), 64)
+
+	out := applyToolNameRewriteToBody(body, rw)
+	require.Equal(t, rw.Forward[longName], gjson.GetBytes(out, "tools.0.name").String())
+	require.Equal(t, rw.Forward[longName], gjson.GetBytes(out, "tool_choice.name").String())
+	require.Equal(t, rw.Forward[longName], gjson.GetBytes(out, "messages.0.content.0.name").String())
+}
+
 func TestRestoreToolNamesInBytes_NoMapping_NoStaticMatch_IsNoop(t *testing.T) {
 	data := []byte("plain text without any tool names")
 	require.Equal(t, string(data), string(restoreToolNamesInBytes(data, nil)))
