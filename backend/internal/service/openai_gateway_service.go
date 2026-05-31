@@ -2391,6 +2391,22 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		patchDisabled = true
 	}
 
+	if promptCacheKey == "" && shouldInjectConfiguredOpenAIPromptCacheKey(account) {
+		if generated := buildConfiguredOpenAIPromptCacheKey(c, body, account, reqModel); generated != "" {
+			reqBody["prompt_cache_key"] = generated
+			promptCacheKey = generated
+			bodyModified = true
+			markPatchSet("prompt_cache_key", generated)
+		}
+	}
+	if _, hasRetention := reqBody["prompt_cache_retention"]; !hasRetention {
+		if retention := configuredOpenAIPromptCacheRetention(account); retention != "" {
+			reqBody["prompt_cache_retention"] = retention
+			bodyModified = true
+			markPatchSet("prompt_cache_retention", retention)
+		}
+	}
+
 	// 非透传模式下，instructions 为空时注入默认指令。
 	if isInstructionsEmpty(reqBody) && !compatMessagesBridge {
 		reqBody["instructions"] = "You are a helpful coding assistant."
@@ -2593,6 +2609,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		// Remove unsupported fields (not supported by upstream OpenAI API)
 		unsupportedFields := []string{"prompt_cache_retention", "safety_identifier"}
 		for _, unsupportedField := range unsupportedFields {
+			if unsupportedField == "prompt_cache_retention" && shouldPreserveConfiguredOpenAIPromptCacheRetention(account) {
+				continue
+			}
 			if _, has := reqBody[unsupportedField]; has {
 				delete(reqBody, unsupportedField)
 				bodyModified = true

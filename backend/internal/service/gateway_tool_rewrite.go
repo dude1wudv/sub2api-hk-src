@@ -185,6 +185,25 @@ func buildToolNameRewriteFromBodyWithMaxLen(body []byte, maxNameLen int) *ToolNa
 	return rw
 }
 
+func hasToolNameOverMaxLen(body []byte, maxNameLen int) bool {
+	if maxNameLen <= 0 {
+		return false
+	}
+	tools := gjson.GetBytes(body, "tools")
+	if !tools.IsArray() {
+		return false
+	}
+	for _, t := range tools.Array() {
+		if !shouldMimicToolName(t.Get("type").String()) {
+			continue
+		}
+		if len(t.Get("name").String()) > maxNameLen {
+			return true
+		}
+	}
+	return false
+}
+
 // applyToolNameRewriteToBody 把已构造的 ToolNameRewrite 应用到 body 上：
 //
 //   - 改写 $.tools[*].name（仅对 shouldMimicToolName 通过的 tool）

@@ -5036,7 +5036,7 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 	}
 	// Pre-filter: strip empty text blocks (including nested in tool_result) to prevent upstream 400.
 	input.Body = StripEmptyTextBlocks(input.Body)
-	if s.shouldCompressAnthropicAPIKeyToolNames(account) {
+	if s.shouldCompressAnthropicAPIKeyToolNames(account) || hasToolNameOverMaxLen(input.Body, 64) {
 		if rw := buildToolNameRewriteFromBodyWithMaxLen(input.Body, 64); rw != nil {
 			input.Body = applyToolNameRewriteToBody(input.Body, rw)
 			if c != nil {
@@ -9216,7 +9216,7 @@ func (s *GatewayService) forwardCountTokensAnthropicAPIKeyPassthrough(ctx contex
 		s.countTokensError(c, http.StatusBadGateway, "upstream_error", "Invalid account token type")
 		return fmt.Errorf("anthropic api key passthrough requires apikey token, got: %s", tokenType)
 	}
-	if s.shouldCompressAnthropicAPIKeyToolNames(account) {
+	if s.shouldCompressAnthropicAPIKeyToolNames(account) || hasToolNameOverMaxLen(body, 64) {
 		if rw := buildToolNameRewriteFromBodyWithMaxLen(body, 64); rw != nil {
 			body = applyToolNameRewriteToBody(body, rw)
 			if c != nil {
