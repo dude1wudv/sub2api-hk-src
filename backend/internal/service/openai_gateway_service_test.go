@@ -331,6 +331,53 @@ func TestOpenAIGatewayService_GenerateSessionHash_ExplicitSignalWinsOverContent(
 	require.NotEqual(t, contentHash, explicitHash, "explicit session_id should override content fallback")
 }
 
+func TestOpenAIGatewayService_GenerateResponsesSessionHash_APIKeyModelFallback(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	svc := &OpenAIGatewayService{}
+
+	body1 := []byte(`{"model":"gpt-5.5","stream":true,"input":[{"type":"message","role":"user","content":"first turn"}]}`)
+	body2 := []byte(`{"model":"gpt-5.5","stream":true,"input":[{"type":"message","role":"user","content":"later turn with much more context"}]}`)
+
+	rec1 := httptest.NewRecorder()
+	c1, _ := gin.CreateTestContext(rec1)
+	c1.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	h1 := svc.GenerateResponsesSessionHash(c1, body1, 4, "gpt-5.5")
+
+	rec2 := httptest.NewRecorder()
+	c2, _ := gin.CreateTestContext(rec2)
+	c2.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	h2 := svc.GenerateResponsesSessionHash(c2, body2, 4, "gpt-5.5")
+
+	require.NotEmpty(t, h1)
+	require.Equal(t, h1, h2, "same API key and model should keep the same account affinity")
+
+	rec3 := httptest.NewRecorder()
+	c3, _ := gin.CreateTestContext(rec3)
+	c3.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	h3 := svc.GenerateResponsesSessionHash(c3, body2, 5, "gpt-5.5")
+	require.NotEqual(t, h1, h3, "different API keys should not share account affinity")
+
+	rec4 := httptest.NewRecorder()
+	c4, _ := gin.CreateTestContext(rec4)
+	c4.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	h4 := svc.GenerateResponsesSessionHash(c4, body2, 4, "gpt-5.4-mini")
+	require.NotEqual(t, h1, h4, "different models should not share account affinity")
+}
+
+func TestOpenAIGatewayService_GenerateResponsesSessionHash_ExplicitSignalWins(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	svc := &OpenAIGatewayService{}
+	body := []byte(`{"model":"gpt-5.5","prompt_cache_key":"pcache-stable","input":"hello"}`)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	got := svc.GenerateResponsesSessionHash(c, body, 4, "gpt-5.5")
+	want := fmt.Sprintf("%016x", xxhash.Sum64String("pcache-stable"))
+	require.Equal(t, want, got)
+}
+
 func TestOpenAIGatewayService_GenerateSessionHash_EmptyBodyStillEmpty(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rec := httptest.NewRecorder()

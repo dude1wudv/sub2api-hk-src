@@ -975,6 +975,51 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_CompressesOverLimitToolNamesF
 	require.JSONEq(t, strings.Replace(upstreamJSON, "PLACEHOLDER", longName, 1), string(reverseToolNamesIfPresent(c, []byte(restoredBody))))
 }
 
+func TestGatewayService_AnthropicAPIKeyForward_CompressesOverLimitToolNames(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+
+	longName := "mcp__plugin_microsoft-docs_microsoft-learn__microsoft_code_sample_search"
+	body := []byte(`{"model":"claude-opus-4-7","stream":false,"messages":[{"role":"user","content":[{"type":"text","text":"search"}]}],"tools":[{"name":"` + longName + `","description":"search","input_schema":{"type":"object"}}],"tool_choice":{"type":"tool","name":"` + longName + `"}}`)
+	parsed := &ParsedRequest{
+		Body:   body,
+		Model:  "claude-opus-4-7",
+		Stream: false,
+	}
+	upstreamJSON := `{"id":"msg_1","type":"message","content":[],"usage":{"input_tokens":1,"output_tokens":1}}`
+	upstream := &anthropicHTTPUpstreamRecorder{
+		resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type": []string{"application/json"},
+				"x-request-id": []string{"rid-forward-long-tool"},
+			},
+			Body: io.NopCloser(strings.NewReader(upstreamJSON)),
+		},
+	}
+	account := newAnthropicAPIKeyAccountForTest()
+	account.Extra = map[string]any{}
+	svc := &GatewayService{
+		cfg:                 &config.Config{},
+		httpUpstream:        upstream,
+		rateLimitService:    &RateLimitService{},
+		tlsFPProfileService: &TLSFingerprintProfileService{},
+	}
+
+	result, err := svc.Forward(context.Background(), c, account, parsed)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	sentToolName := gjson.GetBytes(upstream.lastBody, "tools.0.name").String()
+	require.NotEqual(t, longName, sentToolName)
+	require.LessOrEqual(t, len(sentToolName), 64)
+	require.Equal(t, sentToolName, gjson.GetBytes(upstream.lastBody, "tool_choice.name").String())
+	require.Equal(t, longName, toolNameRewriteFromContext(c).Reverse[sentToolName])
+	require.JSONEq(t, upstreamJSON, rec.Body.String())
+}
+
 func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardDirect_InvalidTokenType(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rec := httptest.NewRecorder()

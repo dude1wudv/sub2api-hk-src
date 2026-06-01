@@ -4546,6 +4546,17 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		account.ID, account.Name, account.Platform, account.Type, tlsProfile, proxyURL)
 	// Pre-filter: strip empty text blocks (including nested in tool_result) to prevent upstream 400.
 	body = StripEmptyTextBlocks(body)
+	if account.Platform == PlatformAnthropic && account.Type == AccountTypeAPIKey &&
+		(s.shouldCompressAnthropicAPIKeyToolNames(account) || hasToolNameOverMaxLen(body, 64)) {
+		if rw := buildToolNameRewriteFromBodyWithMaxLen(body, 64); rw != nil {
+			body = applyToolNameRewriteToBody(body, rw)
+			if c != nil {
+				c.Set(toolNameRewriteKey, rw)
+			}
+			logger.LegacyPrintf("service.gateway", "[Anthropic forward] compressed tool names for account=%d name=%s mappings=%d",
+				account.ID, account.Name, len(rw.Forward))
+		}
+	}
 
 	// 重试循环
 	var resp *http.Response
@@ -9056,6 +9067,17 @@ func (s *GatewayService) ForwardCountTokens(ctx context.Context, c *gin.Context,
 			body = applyToolNameRewriteToBody(body, rw)
 		} else {
 			body = applyToolsLastCacheBreakpoint(body)
+		}
+	}
+	if account.Platform == PlatformAnthropic && account.Type == AccountTypeAPIKey &&
+		(s.shouldCompressAnthropicAPIKeyToolNames(account) || hasToolNameOverMaxLen(body, 64)) {
+		if rw := buildToolNameRewriteFromBodyWithMaxLen(body, 64); rw != nil {
+			body = applyToolNameRewriteToBody(body, rw)
+			if c != nil {
+				c.Set(toolNameRewriteKey, rw)
+			}
+			logger.LegacyPrintf("service.gateway", "[Anthropic count_tokens] compressed tool names for account=%d name=%s mappings=%d",
+				account.ID, account.Name, len(rw.Forward))
 		}
 	}
 

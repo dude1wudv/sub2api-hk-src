@@ -1373,6 +1373,33 @@ func (s *OpenAIGatewayService) GenerateSessionHash(c *gin.Context, body []byte) 
 	return currentHash
 }
 
+// GenerateResponsesSessionHash keeps Codex-style /v1/responses traffic on a
+// stable account even when clients omit explicit session metadata. Prompt cache
+// locality is account-scoped, so falling back to the full evolving request body
+// can scatter a single cache chain across accounts.
+func (s *OpenAIGatewayService) GenerateResponsesSessionHash(c *gin.Context, body []byte, apiKeyID int64, model string) string {
+	if c == nil {
+		return ""
+	}
+
+	if explicitOpenAISessionID(c, body) != "" {
+		return s.GenerateSessionHash(c, body)
+	}
+
+	if apiKeyID > 0 && shouldAutoInjectPromptCacheKeyForCompat(model) {
+		normalizedModel := normalizeCodexModel(strings.TrimSpace(model))
+		if normalizedModel == "" {
+			normalizedModel = strings.TrimSpace(model)
+		}
+		seed := fmt.Sprintf("openai-responses-api-key:%d:model:%s", apiKeyID, normalizedModel)
+		currentHash, legacyHash := deriveOpenAISessionHashes(seed)
+		attachOpenAILegacySessionHashToGin(c, legacyHash)
+		return currentHash
+	}
+
+	return s.GenerateSessionHash(c, body)
+}
+
 // GenerateSessionHashWithFallback 先按常规信号生成会话哈希；
 // 当未携带 session_id/conversation_id/prompt_cache_key 时，使用 fallbackSeed 生成稳定哈希。
 // 该方法用于 WS ingress，避免会话信号缺失时发生跨账号漂移。

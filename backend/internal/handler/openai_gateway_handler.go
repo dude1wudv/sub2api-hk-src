@@ -298,8 +298,9 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		return
 	}
 
-	// Generate session hash (header first; fallback to prompt_cache_key)
-	sessionHash := h.gatewayService.GenerateSessionHash(c, sessionHashBody)
+	// Generate session hash before account selection. Codex /responses cache
+	// locality depends on staying on the same upstream account.
+	sessionHash := h.gatewayService.GenerateResponsesSessionHash(c, sessionHashBody, apiKey.ID, reqModel)
 	requireCompact := isOpenAIRemoteCompactPath(c)
 
 	maxAccountSwitches := h.maxAccountSwitches

@@ -36,6 +36,18 @@ const gatewayCompatibilityMetricsLogInterval = 1024
 
 var gatewayCompatibilityMetricsLogCounter atomic.Uint64
 
+func isKiroGatewayAnthropicAPIKeyAccount(account *service.Account) bool {
+	if account == nil {
+		return false
+	}
+	if account.Platform != service.PlatformAnthropic || account.Type != service.AccountTypeAPIKey {
+		return false
+	}
+	source := strings.ToLower(strings.TrimSpace(account.GetExtraString("source")))
+	baseURL := strings.ToLower(strings.TrimSpace(account.GetBaseURL()))
+	return source == "kiro-gateway" || strings.Contains(baseURL, "kiro-gateway")
+}
+
 // GatewayHandler handles API gateway requests
 type GatewayHandler struct {
 	gatewayService            *service.GatewayService
@@ -510,6 +522,14 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 
 			// 使用量记录通过有界 worker 池提交，避免请求热路径创建无界 goroutine。
 			quotaPlatform := service.QuotaPlatform(c.Request.Context(), apiKey)
+			forceCacheBilling := fs.ForceCacheBilling
+			if forceCacheBilling && isKiroGatewayAnthropicAPIKeyAccount(account) {
+				forceCacheBilling = false
+				reqLog.Info("gateway.skip_force_cache_billing_kiro",
+					zap.Int64("account_id", account.ID),
+					zap.String("account_name", account.Name),
+				)
+			}
 			h.submitUsageRecordTask(func(ctx context.Context) {
 				if err := h.gatewayService.RecordUsage(ctx, &service.RecordUsageInput{
 					Result:             result,
@@ -524,7 +544,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					UserAgent:          userAgent,
 					IPAddress:          clientIP,
 					RequestPayloadHash: requestPayloadHash,
-					ForceCacheBilling:  fs.ForceCacheBilling,
+					ForceCacheBilling:  forceCacheBilling,
 					APIKeyService:      h.apiKeyService,
 					ChannelUsageFields: channelMapping.ToUsageFields(reqModel, result.UpstreamModel),
 				}); err != nil {
@@ -905,6 +925,14 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 
 			// 使用量记录通过有界 worker 池提交，避免请求热路径创建无界 goroutine。
 			quotaPlatform := service.QuotaPlatform(c.Request.Context(), currentAPIKey)
+			forceCacheBilling := fs.ForceCacheBilling
+			if forceCacheBilling && isKiroGatewayAnthropicAPIKeyAccount(account) {
+				forceCacheBilling = false
+				reqLog.Info("gateway.skip_force_cache_billing_kiro",
+					zap.Int64("account_id", account.ID),
+					zap.String("account_name", account.Name),
+				)
+			}
 			h.submitUsageRecordTask(func(ctx context.Context) {
 				if err := h.gatewayService.RecordUsage(ctx, &service.RecordUsageInput{
 					Result:             result,
@@ -919,7 +947,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					UserAgent:          userAgent,
 					IPAddress:          clientIP,
 					RequestPayloadHash: requestPayloadHash,
-					ForceCacheBilling:  fs.ForceCacheBilling,
+					ForceCacheBilling:  forceCacheBilling,
 					APIKeyService:      h.apiKeyService,
 					ChannelUsageFields: channelMapping.ToUsageFields(reqModel, result.UpstreamModel),
 				}); err != nil {
