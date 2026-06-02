@@ -49,6 +49,7 @@ func TestGetSharedReqClient_ReuseCachedClient(t *testing.T) {
 	second, err := getSharedReqClient(opts)
 	require.NoError(t, err)
 	require.Same(t, first, second)
+	require.Nil(t, first.GetClient().Jar)
 }
 
 func TestGetSharedReqClient_IgnoresNonClientCache(t *testing.T) {

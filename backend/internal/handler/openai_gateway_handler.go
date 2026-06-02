@@ -501,6 +501,16 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 							continue
 						}
 					}
+					if shouldExhaustOpenAIStatefulFailover(account, failoverErr.StatusCode, previousResponseID, sessionHash) {
+						reqLog.Warn("openai.stateful_failover_blocked",
+							zap.Int64("account_id", account.ID),
+							zap.Int("upstream_status", failoverErr.StatusCode),
+							zap.Bool("has_previous_response_id", strings.TrimSpace(previousResponseID) != ""),
+							zap.Bool("has_session_hash", strings.TrimSpace(sessionHash) != ""),
+						)
+						h.handleFailoverExhausted(c, failoverErr, streamStarted)
+						return
+					}
 					h.gatewayService.RecordOpenAIAccountSwitch()
 					failedAccountIDs[account.ID] = struct{}{}
 					lastFailoverErr = failoverErr
@@ -915,6 +925,15 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 							}
 							continue
 						}
+					}
+					if shouldExhaustOpenAIStatefulFailover(account, failoverErr.StatusCode, "", sessionHash) {
+						reqLog.Warn("openai_messages.stateful_failover_blocked",
+							zap.Int64("account_id", account.ID),
+							zap.Int("upstream_status", failoverErr.StatusCode),
+							zap.Bool("has_session_hash", strings.TrimSpace(sessionHash) != ""),
+						)
+						h.handleAnthropicFailoverExhausted(c, failoverErr, streamStarted)
+						return
 					}
 					h.gatewayService.RecordOpenAIAccountSwitch()
 					failedAccountIDs[account.ID] = struct{}{}
@@ -1444,6 +1463,17 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 			}
 			return
 		}
+		if strings.TrimSpace(previousResponseID) != "" && !scheduleDecision.StickyPreviousHit {
+			if selection.ReleaseFunc != nil {
+				selection.ReleaseFunc()
+			}
+			reqLog.Warn("openai.websocket_previous_response_unbound",
+				zap.String("previous_response_id_kind", previousResponseIDKind),
+				zap.Int64("selected_account_id", selection.Account.ID),
+			)
+			closeOpenAIClientWS(wsConn, coderws.StatusPolicyViolation, "previous_response_id is not bound to an available account")
+			return
+		}
 
 		account := selection.Account
 		accountMaxConcurrency := account.Concurrency
@@ -1601,6 +1631,16 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 			if errors.As(err, &failoverErr) {
 				h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
 				releaseAccountSlot()
+				if shouldExhaustOpenAIStatefulFailover(account, failoverErr.StatusCode, previousResponseID, sessionHash) {
+					reqLog.Warn("openai.websocket_stateful_failover_blocked",
+						zap.Int64("account_id", account.ID),
+						zap.Int("upstream_status", failoverErr.StatusCode),
+						zap.Bool("has_previous_response_id", strings.TrimSpace(previousResponseID) != ""),
+						zap.Bool("has_session_hash", strings.TrimSpace(sessionHash) != ""),
+					)
+					closeOpenAIWSFailoverExhausted(wsConn, failoverErr)
+					return
+				}
 				failedAccountIDs[account.ID] = struct{}{}
 				lastFailoverErr = failoverErr
 				if switchCount >= maxAccountSwitches {

@@ -634,7 +634,7 @@ func TestOpenAIGatewayService_OAuthLegacy_CompositeCodexUAUsesCodexOriginator(t 
 	require.NotEqual(t, "opencode", upstream.lastReq.Header.Get("originator"))
 }
 
-func TestOpenAIGatewayService_OAuthPassthrough_ResponseHeadersAllowXCodex(t *testing.T) {
+func TestOpenAIGatewayService_OAuthPassthrough_ResponseHeadersDropUserVisibleQuotaSignals(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	rec := httptest.NewRecorder()
@@ -688,8 +688,8 @@ func TestOpenAIGatewayService_OAuthPassthrough_ResponseHeadersAllowXCodex(t *tes
 	_, err := svc.Forward(context.Background(), c, account, originalBody)
 	require.NoError(t, err)
 
-	require.Equal(t, "12", rec.Header().Get("x-codex-primary-used-percent"))
-	require.Equal(t, "34", rec.Header().Get("x-codex-secondary-used-percent"))
+	require.Empty(t, rec.Header().Get("x-codex-primary-used-percent"))
+	require.Empty(t, rec.Header().Get("x-codex-secondary-used-percent"))
 }
 
 func TestOpenAIGatewayService_OAuthPassthrough_UpstreamErrorIncludesPassthroughFlag(t *testing.T) {

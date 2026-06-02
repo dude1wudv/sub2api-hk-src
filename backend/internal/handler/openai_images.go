@@ -3,9 +3,11 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	pkghttputil "github.com/Wei-Shaw/sub2api/internal/pkg/httputil"
@@ -134,6 +136,20 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 	}
 
 	sessionHash := h.gatewayService.GenerateExplicitSessionHash(c, body)
+
+	if h.tryForwardImagesFanout(
+		c,
+		reqLog,
+		apiKey,
+		subscription,
+		parsed,
+		body,
+		sessionHash,
+		channelMapping,
+		routingStart,
+	) {
+		return
+	}
 
 	maxAccountSwitches := h.maxAccountSwitches
 	switchCount := 0
@@ -347,4 +363,247 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 
 func isMultipartImagesContentType(contentType string) bool {
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(contentType)), "multipart/form-data")
+}
+
+type openAIImagesFanoutShard struct {
+	account *service.Account
+	n       int
+	release func()
+}
+
+type openAIImagesFanoutPart struct {
+	account *service.Account
+	result  *service.OpenAIForwardResult
+	body    []byte
+	imageN  int
+	err     error
+}
+
+func (h *OpenAIGatewayHandler) tryForwardImagesFanout(
+	c *gin.Context,
+	reqLog *zap.Logger,
+	apiKey *service.APIKey,
+	subscription *service.UserSubscription,
+	parsed *service.OpenAIImagesRequest,
+	body []byte,
+	sessionHash string,
+	channelMapping service.ChannelMappingResult,
+	routingStart time.Time,
+) bool {
+	if parsed == nil || parsed.Stream || parsed.N <= 1 {
+		return false
+	}
+
+	shards := h.selectOpenAIImagesFanoutShards(c, reqLog, apiKey.GroupID, sessionHash, parsed)
+	if len(shards) < 2 {
+		for _, shard := range shards {
+			if shard.release != nil {
+				shard.release()
+			}
+		}
+		return false
+	}
+	for i := 0; i < parsed.N; i++ {
+		shards[i%len(shards)].n++
+	}
+
+	service.SetOpsLatencyMs(c, service.OpsRoutingLatencyMsKey, time.Since(routingStart).Milliseconds())
+	results := make([]openAIImagesFanoutPart, len(shards))
+	var wg sync.WaitGroup
+	for i, shard := range shards {
+		partCtx := c.Copy()
+		wg.Add(1)
+		go func(index int, shard openAIImagesFanoutShard, partCtx *gin.Context) {
+			defer wg.Done()
+			if shard.release != nil {
+				defer shard.release()
+			}
+			part := openAIImagesFanoutPart{
+				account: shard.account,
+				imageN:  shard.n,
+			}
+			partParsed := service.CloneOpenAIImagesRequestWithN(parsed, shard.n)
+			collected, err := h.gatewayService.ForwardImagesOAuthNonStreamingCollect(
+				c.Request.Context(),
+				partCtx,
+				shard.account,
+				partParsed,
+				channelMapping.MappedModel,
+			)
+			if err != nil {
+				part.err = err
+				results[index] = part
+				return
+			}
+			if collected == nil || collected.Result == nil || len(collected.Body) == 0 {
+				part.err = errors.New("empty fanout image response")
+				results[index] = part
+				return
+			}
+			part.result = collected.Result
+			part.body = collected.Body
+			results[index] = part
+		}(i, shard, partCtx)
+	}
+	wg.Wait()
+
+	var (
+		bodies     [][]byte
+		usages     []service.OpenAIUsage
+		firstErr   error
+		successes  int
+		firstToken *int
+	)
+	for _, part := range results {
+		if part.account == nil {
+			continue
+		}
+		if part.err != nil {
+			h.gatewayService.ReportOpenAIAccountScheduleResult(part.account.ID, false, nil)
+			if firstErr == nil {
+				firstErr = part.err
+			}
+			reqLog.Warn("openai.images.fanout_part_failed",
+				zap.Int64("account_id", part.account.ID),
+				zap.Int("n", part.imageN),
+				zap.Error(part.err),
+			)
+			continue
+		}
+		successes++
+		bodies = append(bodies, part.body)
+		usages = append(usages, part.result.Usage)
+		if firstToken == nil {
+			firstToken = part.result.FirstTokenMs
+		}
+		if part.account.Type == service.AccountTypeOAuth {
+			h.gatewayService.UpdateCodexUsageSnapshotFromHeaders(c.Request.Context(), part.account.ID, part.result.ResponseHeaders)
+		}
+		h.gatewayService.ReportOpenAIAccountScheduleResult(part.account.ID, true, part.result.FirstTokenMs)
+	}
+
+	if successes == 0 {
+		reqLog.Warn("openai.images.fanout_all_failed", zap.Error(firstErr))
+		return false
+	}
+
+	totalUsage := service.SumOpenAIUsage(usages...)
+	responseBody, imageCount, err := service.BuildOpenAIImagesFanoutAPIResponse(bodies, totalUsage)
+	if err != nil {
+		reqLog.Warn("openai.images.fanout_response_build_failed", zap.Error(err))
+		return false
+	}
+	if firstToken != nil {
+		service.SetOpsLatencyMs(c, service.OpsTimeToFirstTokenMsKey, int64(*firstToken))
+	}
+	service.SetOpsLatencyMs(c, service.OpsResponseLatencyMsKey, 0)
+	c.Header("X-Sub2API-Image-Fanout", strconv.Itoa(successes))
+	c.Data(http.StatusOK, "application/json; charset=utf-8", responseBody)
+
+	h.recordOpenAIImagesFanoutUsage(c, reqLog, apiKey, subscription, parsed, body, channelMapping, results)
+	reqLog.Debug("openai.images.fanout_completed",
+		zap.Int("requested_n", parsed.N),
+		zap.Int("account_count", successes),
+		zap.Int("image_count", imageCount),
+	)
+	return true
+}
+
+func (h *OpenAIGatewayHandler) selectOpenAIImagesFanoutShards(
+	c *gin.Context,
+	reqLog *zap.Logger,
+	groupID *int64,
+	sessionHash string,
+	parsed *service.OpenAIImagesRequest,
+) []openAIImagesFanoutShard {
+	excluded := make(map[int64]struct{})
+	shards := make([]openAIImagesFanoutShard, 0, parsed.N)
+	maxAttempts := parsed.N*3 + 8
+	for attempts := 0; attempts < maxAttempts && len(shards) < parsed.N; attempts++ {
+		selection, _, err := h.gatewayService.SelectAccountWithSchedulerForImages(
+			c.Request.Context(),
+			groupID,
+			fmt.Sprintf("%s|image-fanout-%d", sessionHash, len(shards)),
+			parsed.Model,
+			excluded,
+			parsed.RequiredCapability,
+		)
+		if err != nil || selection == nil || selection.Account == nil {
+			if err != nil {
+				reqLog.Debug("openai.images.fanout_select_stopped", zap.Error(err))
+			}
+			break
+		}
+		account := selection.Account
+		excluded[account.ID] = struct{}{}
+		if account.Type != service.AccountTypeOAuth {
+			if selection.ReleaseFunc != nil {
+				selection.ReleaseFunc()
+			}
+			continue
+		}
+		if !selection.Acquired {
+			if selection.ReleaseFunc != nil {
+				selection.ReleaseFunc()
+			}
+			continue
+		}
+		shards = append(shards, openAIImagesFanoutShard{
+			account: account,
+			release: selection.ReleaseFunc,
+		})
+	}
+	return shards
+}
+
+func (h *OpenAIGatewayHandler) recordOpenAIImagesFanoutUsage(
+	c *gin.Context,
+	reqLog *zap.Logger,
+	apiKey *service.APIKey,
+	subscription *service.UserSubscription,
+	parsed *service.OpenAIImagesRequest,
+	body []byte,
+	channelMapping service.ChannelMappingResult,
+	parts []openAIImagesFanoutPart,
+) {
+	userAgent := c.GetHeader("User-Agent")
+	clientIP := ip.GetClientIP(c)
+	basePayloadHash := service.HashUsageRequestPayload(body)
+	if parsed.Multipart {
+		basePayloadHash = service.HashUsageRequestPayload([]byte(parsed.StickySessionSeed()))
+	}
+	inboundEndpoint := GetInboundEndpoint(c)
+
+	for index, part := range parts {
+		if part.account == nil || part.result == nil || part.err != nil {
+			continue
+		}
+		account := part.account
+		result := part.result
+		requestPayloadHash := service.HashUsageRequestPayload([]byte(fmt.Sprintf("%s|image-fanout|%d|%d", basePayloadHash, index, part.imageN)))
+		upstreamEndpoint := GetUpstreamEndpoint(c, account.Platform)
+		upstreamModel := result.UpstreamModel
+		h.submitMandatoryUsageRecordTask(c.Request.Context(), func(ctx context.Context) {
+			if err := h.gatewayService.RecordUsage(ctx, &service.OpenAIRecordUsageInput{
+				Result:             result,
+				APIKey:             apiKey,
+				User:               apiKey.User,
+				Account:            account,
+				Subscription:       subscription,
+				InboundEndpoint:    inboundEndpoint,
+				UpstreamEndpoint:   upstreamEndpoint,
+				UserAgent:          userAgent,
+				IPAddress:          clientIP,
+				RequestPayloadHash: requestPayloadHash,
+				APIKeyService:      h.apiKeyService,
+				ChannelUsageFields: channelMapping.ToUsageFields(parsed.Model, upstreamModel),
+			}); err != nil {
+				reqLog.Error("openai.images.fanout_record_usage_failed",
+					zap.Int64("account_id", account.ID),
+					zap.Int("part_index", index),
+					zap.Error(err),
+				)
+			}
+		})
+	}
 }

@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,6 +40,13 @@ type OpenAIImagesUpstreamError struct {
 	UpstreamRequestID string
 }
 
+type OpenAIImagesCollectedResponse struct {
+	Result     *OpenAIForwardResult
+	Body       []byte
+	StatusCode int
+	Headers    http.Header
+}
+
 func (e *OpenAIImagesUpstreamError) Error() string {
 	if e == nil {
 		return ""
@@ -57,6 +66,75 @@ func (e *OpenAIImagesUpstreamError) Error() string {
 		return "openai images upstream error: " + code
 	}
 	return "openai images upstream error"
+}
+
+func CloneOpenAIImagesRequestWithN(parsed *OpenAIImagesRequest, n int) *OpenAIImagesRequest {
+	if parsed == nil {
+		return nil
+	}
+	cloned := *parsed
+	if n <= 0 {
+		n = 1
+	}
+	cloned.N = n
+	return &cloned
+}
+
+func SumOpenAIUsage(usages ...OpenAIUsage) OpenAIUsage {
+	var total OpenAIUsage
+	for _, usage := range usages {
+		total.InputTokens += usage.InputTokens
+		total.OutputTokens += usage.OutputTokens
+		total.CacheCreationInputTokens += usage.CacheCreationInputTokens
+		total.CacheReadInputTokens += usage.CacheReadInputTokens
+		total.ImageOutputTokens += usage.ImageOutputTokens
+	}
+	return total
+}
+
+func BuildOpenAIImagesFanoutAPIResponse(parts [][]byte, usage OpenAIUsage) ([]byte, int, error) {
+	out := []byte(`{"created":0,"data":[]}`)
+	createdAt := int64(0)
+	imageCount := 0
+	var firstMeta []byte
+
+	for _, part := range parts {
+		if len(part) == 0 || !gjson.ValidBytes(part) {
+			continue
+		}
+		if createdAt == 0 {
+			createdAt = gjson.GetBytes(part, "created").Int()
+		}
+		if firstMeta == nil {
+			firstMeta = part
+		}
+		for _, item := range gjson.GetBytes(part, "data").Array() {
+			if item.Raw == "" {
+				continue
+			}
+			out, _ = sjson.SetRawBytes(out, "data.-1", []byte(item.Raw))
+			imageCount++
+		}
+	}
+	if createdAt <= 0 {
+		createdAt = time.Now().Unix()
+	}
+	out, _ = sjson.SetBytes(out, "created", createdAt)
+
+	if firstMeta != nil {
+		for _, path := range []string{"background", "output_format", "quality", "size", "model"} {
+			if value := gjson.GetBytes(firstMeta, path); value.Exists() {
+				out, _ = sjson.SetRawBytes(out, path, []byte(value.Raw))
+			}
+		}
+	}
+
+	usageRaw, err := json.Marshal(usage)
+	if err != nil {
+		return nil, 0, err
+	}
+	out, _ = sjson.SetRawBytes(out, "usage", usageRaw)
+	return out, imageCount, nil
 }
 
 func (e *OpenAIImagesUpstreamError) clientStatusCode() int {
@@ -723,9 +801,24 @@ func (s *OpenAIGatewayService) handleOpenAIImagesOAuthNonStreamingResponse(
 	responseFormat string,
 	fallbackModel string,
 ) (OpenAIUsage, int, []string, error) {
-	body, err := ReadUpstreamResponseBody(resp.Body, s.cfg, c, openAITooLargeError)
+	usage, imageCount, sizes, body, _, headers, err := s.collectOpenAIImagesOAuthNonStreamingResponse(resp, c, responseFormat, fallbackModel)
 	if err != nil {
 		return OpenAIUsage{}, 0, nil, err
+	}
+	responseheaders.WriteFilteredHeaders(c.Writer.Header(), headers, s.responseHeaderFilter)
+	c.Data(resp.StatusCode, "application/json; charset=utf-8", body)
+	return usage, imageCount, sizes, nil
+}
+
+func (s *OpenAIGatewayService) collectOpenAIImagesOAuthNonStreamingResponse(
+	resp *http.Response,
+	c *gin.Context,
+	responseFormat string,
+	fallbackModel string,
+) (OpenAIUsage, int, []string, []byte, int, http.Header, error) {
+	body, err := ReadUpstreamResponseBody(resp.Body, s.cfg, c, openAITooLargeError)
+	if err != nil {
+		return OpenAIUsage{}, 0, nil, nil, 0, nil, err
 	}
 
 	var usage OpenAIUsage
@@ -734,15 +827,14 @@ func (s *OpenAIGatewayService) handleOpenAIImagesOAuthNonStreamingResponse(
 	})
 	results, createdAt, usageRaw, firstMeta, _, err := collectOpenAIImagesFromResponsesBody(body)
 	if err != nil {
-		return OpenAIUsage{}, 0, nil, err
+		return OpenAIUsage{}, 0, nil, nil, 0, nil, err
 	}
 	if len(results) == 0 {
 		if upstreamErr := extractOpenAIImagesUpstreamError(body); upstreamErr != nil {
 			setOpsUpstreamError(c, upstreamErr.clientStatusCode(), upstreamErr.clientMessage(), "")
-			writeOpenAIImagesUpstreamErrorResponse(c, upstreamErr)
-			return OpenAIUsage{}, 0, nil, upstreamErr
+			return OpenAIUsage{}, 0, nil, nil, 0, nil, upstreamErr
 		}
-		return OpenAIUsage{}, 0, nil, fmt.Errorf("upstream did not return image output")
+		return OpenAIUsage{}, 0, nil, nil, 0, nil, fmt.Errorf("upstream did not return image output")
 	}
 	if strings.TrimSpace(firstMeta.Model) == "" {
 		firstMeta.Model = strings.TrimSpace(fallbackModel)
@@ -750,11 +842,9 @@ func (s *OpenAIGatewayService) handleOpenAIImagesOAuthNonStreamingResponse(
 
 	responseBody, err := buildOpenAIImagesAPIResponse(results, createdAt, usageRaw, firstMeta, responseFormat)
 	if err != nil {
-		return OpenAIUsage{}, 0, nil, err
+		return OpenAIUsage{}, 0, nil, nil, 0, nil, err
 	}
-	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
-	c.Data(resp.StatusCode, "application/json; charset=utf-8", responseBody)
-	return usage, len(results), openAIResponsesImageResultSizes(results), nil
+	return usage, len(results), openAIResponsesImageResultSizes(results), responseBody, resp.StatusCode, resp.Header.Clone(), nil
 }
 
 func (s *OpenAIGatewayService) handleOpenAIImagesOAuthStreamingResponse(
@@ -1112,6 +1202,14 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesOAuth(
 	parsed *OpenAIImagesRequest,
 	channelMappedModel string,
 ) (*OpenAIForwardResult, error) {
+	if parsed != nil && !parsed.Stream {
+		collected, err := s.forwardOpenAIImagesOAuthNonStreaming(ctx, c, account, parsed, channelMappedModel, true)
+		if collected == nil {
+			return nil, err
+		}
+		return collected.Result, err
+	}
+
 	startTime := time.Now()
 	requestModel := strings.TrimSpace(parsed.Model)
 	if mapped := strings.TrimSpace(channelMappedModel); mapped != "" {
@@ -1249,4 +1347,172 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesOAuth(
 		ImageInputSize:   parsed.Size,
 		ImageOutputSizes: imageOutputSizes,
 	}, nil
+}
+
+func (s *OpenAIGatewayService) ForwardImagesOAuthNonStreamingCollect(
+	ctx context.Context,
+	c *gin.Context,
+	account *Account,
+	parsed *OpenAIImagesRequest,
+	channelMappedModel string,
+) (*OpenAIImagesCollectedResponse, error) {
+	return s.forwardOpenAIImagesOAuthNonStreaming(ctx, c, account, parsed, channelMappedModel, false)
+}
+
+func (s *OpenAIGatewayService) forwardOpenAIImagesOAuthNonStreaming(
+	ctx context.Context,
+	c *gin.Context,
+	account *Account,
+	parsed *OpenAIImagesRequest,
+	channelMappedModel string,
+	writeResponse bool,
+) (*OpenAIImagesCollectedResponse, error) {
+	if parsed == nil {
+		return nil, fmt.Errorf("parsed images request is required")
+	}
+	if parsed.Stream {
+		return nil, fmt.Errorf("streaming images request cannot be collected")
+	}
+	if account == nil || account.Type != AccountTypeOAuth {
+		return nil, fmt.Errorf("unsupported account type: %s", accountTypeForError(account))
+	}
+
+	startTime := time.Now()
+	requestModel := strings.TrimSpace(parsed.Model)
+	if mapped := strings.TrimSpace(channelMappedModel); mapped != "" {
+		requestModel = mapped
+	}
+	if requestModel == "" {
+		requestModel = "gpt-image-2"
+	}
+	if err := validateOpenAIImagesModel(requestModel); err != nil {
+		return nil, err
+	}
+	logger.LegacyPrintf(
+		"service.openai_gateway",
+		"[OpenAI] Images request routing request_model=%s endpoint=%s account_type=%s uploads=%d n=%d",
+		requestModel,
+		parsed.Endpoint,
+		account.Type,
+		len(parsed.Uploads),
+		parsed.N,
+	)
+	upstreamCtx, releaseUpstreamCtx := detachUpstreamContext(ctx)
+	defer releaseUpstreamCtx()
+
+	token, _, err := s.GetAccessToken(upstreamCtx, account)
+	if err != nil {
+		return nil, err
+	}
+
+	responsesBody, err := buildOpenAIImagesResponsesRequest(parsed, requestModel)
+	if err != nil {
+		return nil, err
+	}
+	upstreamReq, err := s.buildUpstreamRequest(upstreamCtx, c, account, responsesBody, token, true, parsed.StickySessionSeed(), false)
+	if err != nil {
+		return nil, err
+	}
+	upstreamReq.Header.Set("Content-Type", "application/json")
+	upstreamReq.Header.Set("Accept", "text/event-stream")
+
+	proxyURL := ""
+	if account.ProxyID != nil && account.Proxy != nil {
+		proxyURL = account.Proxy.URL()
+	}
+	upstreamStart := time.Now()
+	resp, err := s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
+	SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
+	if err != nil {
+		safeErr := sanitizeUpstreamErrorMessage(err.Error())
+		setOpsUpstreamError(c, 0, safeErr, "")
+		appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+			Platform:           account.Platform,
+			AccountID:          account.ID,
+			AccountName:        account.Name,
+			UpstreamStatusCode: 0,
+			UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
+			Kind:               "request_error",
+			Message:            safeErr,
+		})
+		return nil, fmt.Errorf("upstream request failed: %s", safeErr)
+	}
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+		_ = resp.Body.Close()
+		resp.Body = io.NopCloser(bytes.NewReader(respBody))
+		upstreamMsg := strings.TrimSpace(extractUpstreamErrorMessage(respBody))
+		upstreamMsg = sanitizeUpstreamErrorMessage(upstreamMsg)
+		if s.shouldFailoverOpenAIUpstreamResponse(resp.StatusCode, upstreamMsg, respBody) {
+			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+				Platform:           account.Platform,
+				AccountID:          account.ID,
+				AccountName:        account.Name,
+				UpstreamStatusCode: resp.StatusCode,
+				UpstreamRequestID:  resp.Header.Get("x-request-id"),
+				UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
+				Kind:               "failover",
+				Message:            upstreamMsg,
+			})
+			s.handleFailoverSideEffects(upstreamCtx, resp, account, requestModel)
+			return nil, &UpstreamFailoverError{
+				StatusCode:             resp.StatusCode,
+				ResponseBody:           respBody,
+				RetryableOnSameAccount: account.IsPoolMode() && account.IsPoolModeRetryableStatus(resp.StatusCode),
+			}
+		}
+		if writeResponse {
+			_, err := s.handleErrorResponse(upstreamCtx, resp, c, account, responsesBody)
+			return nil, err
+		}
+		if upstreamErr := extractOpenAIImagesUpstreamError(respBody); upstreamErr != nil {
+			return nil, upstreamErr
+		}
+		return nil, fmt.Errorf("upstream images request failed: status=%d", resp.StatusCode)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	usage, imageCount, imageOutputSizes, responseBody, statusCode, headers, err := s.collectOpenAIImagesOAuthNonStreamingResponse(resp, c, parsed.ResponseFormat, requestModel)
+	if err != nil {
+		if writeResponse {
+			var upstreamErr *OpenAIImagesUpstreamError
+			if errors.As(err, &upstreamErr) {
+				writeOpenAIImagesUpstreamErrorResponse(c, upstreamErr)
+			}
+		}
+		return nil, err
+	}
+	if imageCount <= 0 {
+		imageCount = parsed.N
+	}
+	result := &OpenAIForwardResult{
+		RequestID:        headers.Get("x-request-id"),
+		Usage:            usage,
+		Model:            requestModel,
+		UpstreamModel:    requestModel,
+		Stream:           false,
+		ResponseHeaders:  headers.Clone(),
+		Duration:         time.Since(startTime),
+		ImageCount:       imageCount,
+		ImageSize:        parsed.SizeTier,
+		ImageInputSize:   parsed.Size,
+		ImageOutputSizes: imageOutputSizes,
+	}
+	if writeResponse {
+		responseheaders.WriteFilteredHeaders(c.Writer.Header(), headers, s.responseHeaderFilter)
+		c.Data(statusCode, "application/json; charset=utf-8", responseBody)
+	}
+	return &OpenAIImagesCollectedResponse{
+		Result:     result,
+		Body:       responseBody,
+		StatusCode: statusCode,
+		Headers:    headers.Clone(),
+	}, nil
+}
+
+func accountTypeForError(account *Account) string {
+	if account == nil {
+		return "<nil>"
+	}
+	return account.Type
 }

@@ -50,6 +50,7 @@ func getSharedReqClient(opts reqClientOptions) (*req.Client, error) {
 	if opts.Impersonate {
 		client = client.ImpersonateChrome()
 	}
+	client.SetCookieJar(nil)
 	trimmed, _, err := proxyurl.Parse(opts.ProxyURL)
 	if err != nil {
 		return nil, err

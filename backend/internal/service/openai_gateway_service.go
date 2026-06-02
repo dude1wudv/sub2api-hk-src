@@ -1354,7 +1354,7 @@ func (s *OpenAIGatewayService) GenerateExplicitSessionHash(c *gin.Context, body 
 		return ""
 	}
 
-	currentHash, legacyHash := deriveOpenAISessionHashes(sessionID)
+	currentHash, legacyHash := deriveScopedOpenAISessionHashes(getAPIKeyIDFromContext(c), sessionID)
 	attachOpenAILegacySessionHashToGin(c, legacyHash)
 	return currentHash
 }
@@ -1379,7 +1379,7 @@ func (s *OpenAIGatewayService) GenerateSessionHash(c *gin.Context, body []byte) 
 		return ""
 	}
 
-	currentHash, legacyHash := deriveOpenAISessionHashes(sessionID)
+	currentHash, legacyHash := deriveScopedOpenAISessionHashes(getAPIKeyIDFromContext(c), sessionID)
 	attachOpenAILegacySessionHashToGin(c, legacyHash)
 	return currentHash
 }
@@ -1393,8 +1393,10 @@ func (s *OpenAIGatewayService) GenerateResponsesSessionHash(c *gin.Context, body
 		return ""
 	}
 
-	if explicitOpenAISessionID(c, body) != "" {
-		return s.GenerateSessionHash(c, body)
+	if sessionID := explicitOpenAISessionID(c, body); sessionID != "" {
+		currentHash, legacyHash := deriveScopedOpenAISessionHashes(apiKeyID, sessionID)
+		attachOpenAILegacySessionHashToGin(c, legacyHash)
+		return currentHash
 	}
 
 	if apiKeyID > 0 && shouldAutoInjectPromptCacheKeyForCompat(model) {
@@ -1403,7 +1405,7 @@ func (s *OpenAIGatewayService) GenerateResponsesSessionHash(c *gin.Context, body
 			normalizedModel = strings.TrimSpace(model)
 		}
 		seed := fmt.Sprintf("openai-responses-api-key:%d:model:%s", apiKeyID, normalizedModel)
-		currentHash, legacyHash := deriveOpenAISessionHashes(seed)
+		currentHash, legacyHash := deriveScopedOpenAISessionHashes(apiKeyID, seed)
 		attachOpenAILegacySessionHashToGin(c, legacyHash)
 		return currentHash
 	}
@@ -1425,7 +1427,7 @@ func (s *OpenAIGatewayService) GenerateSessionHashWithFallback(c *gin.Context, b
 		return ""
 	}
 
-	currentHash, legacyHash := deriveOpenAISessionHashes(seed)
+	currentHash, legacyHash := deriveScopedOpenAISessionHashes(getAPIKeyIDFromContext(c), seed)
 	attachOpenAILegacySessionHashToGin(c, legacyHash)
 	return currentHash
 }

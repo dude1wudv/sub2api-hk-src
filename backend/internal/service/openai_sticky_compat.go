@@ -48,6 +48,20 @@ func deriveOpenAISessionHashes(sessionID string) (currentHash string, legacyHash
 	return currentHash, legacyHash
 }
 
+func deriveScopedOpenAISessionHashes(apiKeyID int64, sessionID string) (currentHash string, legacyHash string) {
+	normalized := strings.TrimSpace(sessionID)
+	if normalized == "" {
+		return "", ""
+	}
+	_, legacyHash = deriveOpenAISessionHashes(normalized)
+	scoped := normalized
+	if apiKeyID > 0 {
+		scoped = fmt.Sprintf("api_key:%d:%s", apiKeyID, normalized)
+	}
+	currentHash, _ = deriveOpenAISessionHashes(scoped)
+	return currentHash, legacyHash
+}
+
 func withOpenAILegacySessionHash(ctx context.Context, legacyHash string) context.Context {
 	if ctx == nil {
 		return nil

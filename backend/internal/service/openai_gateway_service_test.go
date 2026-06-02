@@ -219,6 +219,29 @@ func TestOpenAIGatewayService_GenerateSessionHash_UsesXXHash64(t *testing.T) {
 	require.Equal(t, want, got)
 }
 
+func TestOpenAIGatewayService_GenerateResponsesSessionHash_ScopesExplicitSessionByAPIKey(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	svc := &OpenAIGatewayService{}
+	body := []byte(`{"model":"gpt-5.5","prompt_cache_key":"shared-session","input":"hello"}`)
+
+	rec1 := httptest.NewRecorder()
+	c1, _ := gin.CreateTestContext(rec1)
+	c1.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	h1 := svc.GenerateResponsesSessionHash(c1, body, 41, "gpt-5.5")
+
+	rec2 := httptest.NewRecorder()
+	c2, _ := gin.CreateTestContext(rec2)
+	c2.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	h2 := svc.GenerateResponsesSessionHash(c2, body, 42, "gpt-5.5")
+
+	require.NotEmpty(t, h1)
+	require.NotEmpty(t, h2)
+	require.NotEqual(t, h1, h2)
+	require.Equal(t, fmt.Sprintf("%016x", xxhash.Sum64String("api_key:41:shared-session")), h1)
+	require.Equal(t, fmt.Sprintf("%016x", xxhash.Sum64String("api_key:42:shared-session")), h2)
+	require.Equal(t, openAILegacySessionHashFromContext(c1.Request.Context()), openAILegacySessionHashFromContext(c2.Request.Context()))
+}
+
 func TestOpenAIGatewayService_GenerateSessionHash_AttachesLegacyHashToContext(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rec := httptest.NewRecorder()
@@ -374,7 +397,7 @@ func TestOpenAIGatewayService_GenerateResponsesSessionHash_ExplicitSignalWins(t 
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 
 	got := svc.GenerateResponsesSessionHash(c, body, 4, "gpt-5.5")
-	want := fmt.Sprintf("%016x", xxhash.Sum64String("pcache-stable"))
+	want := fmt.Sprintf("%016x", xxhash.Sum64String("api_key:4:pcache-stable"))
 	require.Equal(t, want, got)
 }
 

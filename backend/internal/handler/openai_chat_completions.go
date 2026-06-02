@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	pkghttputil "github.com/Wei-Shaw/sub2api/internal/pkg/httputil"
@@ -232,6 +233,15 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 							}
 							continue
 						}
+					}
+					if shouldExhaustOpenAIStatefulFailover(account, failoverErr.StatusCode, "", sessionHash) {
+						reqLog.Warn("openai_chat_completions.stateful_failover_blocked",
+							zap.Int64("account_id", account.ID),
+							zap.Int("upstream_status", failoverErr.StatusCode),
+							zap.Bool("has_session_hash", strings.TrimSpace(sessionHash) != ""),
+						)
+						h.handleFailoverExhausted(c, failoverErr, streamStarted)
+						return
 					}
 					h.gatewayService.RecordOpenAIAccountSwitch()
 					failedAccountIDs[account.ID] = struct{}{}
