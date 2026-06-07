@@ -65,6 +65,8 @@ describe("groupsModelsList", () => {
 
     expect(buildModelsListConfig(state)).toEqual({
       enabled: true,
+      allow_fast_mode: false,
+      allow_context_1m: false,
       models: ["gpt-5.4", "gpt-5.5"],
     });
   });
@@ -77,6 +79,8 @@ describe("groupsModelsList", () => {
 
     expect(buildModelsListConfig(state)).toEqual({
       enabled: false,
+      allow_fast_mode: false,
+      allow_context_1m: false,
       models: ["gpt-5.5"],
     });
   });
@@ -89,7 +93,27 @@ describe("groupsModelsList", () => {
 
     expect(buildModelsListConfig(state)).toEqual({
       enabled: true,
+      allow_fast_mode: false,
+      allow_context_1m: false,
       models: ["gpt-5.5", "gpt-5.4"],
+    });
+  });
+
+  it("round-trips fast mode and 1M context switches", () => {
+    const state = createModelsListState({
+      enabled: true,
+      allow_fast_mode: true,
+      allow_context_1m: true,
+      models: ["gpt-5.5"],
+    });
+
+    expect(state.allowFastMode).toBe(true);
+    expect(state.allowContext1M).toBe(true);
+    expect(buildModelsListConfig(state)).toEqual({
+      enabled: true,
+      allow_fast_mode: true,
+      allow_context_1m: true,
+      models: ["gpt-5.5"],
     });
   });
 

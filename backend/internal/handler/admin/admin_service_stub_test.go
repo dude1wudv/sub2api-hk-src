@@ -335,10 +335,6 @@ func (s *stubAdminService) GetPlusAccountUsageSummary(ctx context.Context) (*ser
 	return &service.PlusAccountUsageSummary{}, nil
 }
 
-func (s *stubAdminService) GetFreeAccountUsageSummary(ctx context.Context) (*service.FreeAccountUsageSummary, error) {
-	return &service.FreeAccountUsageSummary{}, nil
-}
-
 func (s *stubAdminService) GetAccount(ctx context.Context, id int64) (*service.Account, error) {
 	account := service.Account{ID: id, Name: "account", Status: service.StatusActive}
 	return &account, nil

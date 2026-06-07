@@ -76,7 +76,6 @@ type AdminService interface {
 	ListAccounts(ctx context.Context, page, pageSize int, platform, accountType, status, search string, groupID int64, privacyMode string, sortBy, sortOrder string) ([]Account, int64, error)
 	GetAccountSummary(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) (*AccountSummary, error)
 	GetPlusAccountUsageSummary(ctx context.Context) (*PlusAccountUsageSummary, error)
-	GetFreeAccountUsageSummary(ctx context.Context) (*FreeAccountUsageSummary, error)
 	GetAccount(ctx context.Context, id int64) (*Account, error)
 	GetAccountsByIDs(ctx context.Context, ids []int64) ([]*Account, error)
 	CreateAccount(ctx context.Context, input *CreateAccountInput) (*Account, error)
@@ -455,18 +454,6 @@ type PlusAccountUsageSummary struct {
 	UsageLogCount                     int64      `json:"usage_log_count"`
 	DeletedPlusAccountCount           int64      `json:"deleted_plus_account_count"`
 	ExpiredPlusAccountCount           int64      `json:"expired_plus_account_count"`
-	FirstUsageAt                      *time.Time `json:"first_usage_at,omitempty"`
-	LastUsageAt                       *time.Time `json:"last_usage_at,omitempty"`
-}
-
-type FreeAccountUsageSummary struct {
-	TotalStandardCost                 float64    `json:"total_standard_cost"`
-	AverageStandardCostPerFreeAccount float64    `json:"average_standard_cost_per_free_account"`
-	FreeAccountCount                  int64      `json:"free_account_count"`
-	FreeAccountsWithUsage             int64      `json:"free_accounts_with_usage"`
-	UsageLogCount                     int64      `json:"usage_log_count"`
-	DeletedFreeAccountCount           int64      `json:"deleted_free_account_count"`
-	ExpiredFreeAccountCount           int64      `json:"expired_free_account_count"`
 	FirstUsageAt                      *time.Time `json:"first_usage_at,omitempty"`
 	LastUsageAt                       *time.Time `json:"last_usage_at,omitempty"`
 }
@@ -2588,24 +2575,6 @@ func (s *adminServiceImpl) GetPlusAccountUsageSummary(ctx context.Context) (*Plu
 	}, nil
 }
 
-func (s *adminServiceImpl) GetFreeAccountUsageSummary(ctx context.Context) (*FreeAccountUsageSummary, error) {
-	summary, err := s.getOpenAIPlanUsageSummary(ctx, "free")
-	if err != nil {
-		return nil, err
-	}
-	return &FreeAccountUsageSummary{
-		TotalStandardCost:                 summary.TotalStandardCost,
-		AverageStandardCostPerFreeAccount: summary.AverageStandardCost,
-		FreeAccountCount:                  summary.AccountCount,
-		FreeAccountsWithUsage:             summary.AccountsWithUsage,
-		UsageLogCount:                     summary.UsageLogCount,
-		DeletedFreeAccountCount:           summary.DeletedAccountCount,
-		ExpiredFreeAccountCount:           summary.ExpiredAccountCount,
-		FirstUsageAt:                      summary.FirstUsageAt,
-		LastUsageAt:                       summary.LastUsageAt,
-	}, nil
-}
-
 func (s *adminServiceImpl) getOpenAIPlanUsageSummary(ctx context.Context, planKind string) (*openAIPlanUsageSummary, error) {
 	if s == nil || s.entClient == nil {
 		return &openAIPlanUsageSummary{}, nil
@@ -2626,6 +2595,7 @@ target_account_ids AS (
 	SELECT a.id
 	FROM accounts a
 	WHERE a.platform = 'openai'
+	  AND a.type = 'oauth'
 	  AND (
 		($1 = 'plus' AND lower(trim(COALESCE(a.credentials->>'plan_type', ''))) IN ('plus', 'pro', 'chatgptpro', 'team', 'enterprise', 'business'))
 		OR ($1 = 'free' AND lower(trim(COALESCE(a.credentials->>'plan_type', ''))) IN ('free', 'free-tier'))
@@ -2634,6 +2604,9 @@ target_account_ids AS (
 	SELECT ag.account_id
 	FROM account_groups ag
 	JOIN target_groups tg ON tg.id = ag.group_id
+	JOIN accounts a ON a.id = ag.account_id
+	WHERE a.platform = 'openai'
+	  AND a.type = 'oauth'
 ),
 target_account_rows AS (
 	SELECT
@@ -2909,15 +2882,17 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 		if isAvailable {
 			proxy.available++
 		}
-		if openAIAccountCountsCodex5hQuota(acc) {
+		if openAIAccountCountsCodexQuota(acc) {
 			if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_5h_used_percent", "codex_5h_reset_at", now); ok {
 				fiveHour.add(value)
 				proxy.fiveHour.add(value)
 			}
 		}
-		if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_7d_used_percent", "codex_7d_reset_at", now); ok {
-			sevenDay.add(value)
-			proxy.sevenDay.add(value)
+		if openAIAccountCountsCodexQuota(acc) {
+			if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_7d_used_percent", "codex_7d_reset_at", now); ok {
+				sevenDay.add(value)
+				proxy.sevenDay.add(value)
+			}
 		}
 		if accountBelongsToPlusPool(acc) {
 			plusPool.addAccount(isAvailable)
@@ -2930,12 +2905,6 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 		}
 		if accountBelongsToFreePool(acc) {
 			freePool.addAccount(isAvailable)
-			if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_5h_used_percent", "codex_5h_reset_at", now); ok {
-				freePool.addFiveHour(value)
-			}
-			if value, ok := codexUsagePercentFromExtra(acc.Extra, "codex_7d_used_percent", "codex_7d_reset_at", now); ok {
-				freePool.addSevenDay(value)
-			}
 		}
 	}
 
@@ -2948,24 +2917,23 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 }
 
 func accountBelongsToPlusPool(account *Account) bool {
-	if account == nil {
+	if account == nil || !strings.EqualFold(account.Platform, PlatformOpenAI) {
 		return false
 	}
-	if openAIAccountCountsCodex5hQuota(account) {
+	if accountHasGroupNameToken(account, "plus") {
 		return true
 	}
-	return accountHasGroupNameToken(account, "plus", "pro")
+	if !account.IsOpenAIOAuth() {
+		return false
+	}
+	if strings.ToLower(strings.TrimSpace(account.GetCredential("plan_type"))) == "plus" {
+		return true
+	}
+	return false
 }
 
 func accountBelongsToFreePool(account *Account) bool {
-	if account == nil {
-		return false
-	}
-	planType := strings.ToLower(strings.TrimSpace(account.GetCredential("plan_type")))
-	if planType == "free" || planType == "free-tier" {
-		return true
-	}
-	return accountHasGroupNameToken(account, "free")
+	return false
 }
 
 func accountHasGroupNameToken(account *Account, tokens ...string) bool {
@@ -2994,7 +2962,11 @@ func accountHasGroupNameToken(account *Account, tokens ...string) bool {
 	return false
 }
 
-func openAIAccountCountsCodex5hQuota(account *Account) bool {
+func openAIAccountCountsCodexQuota(account *Account) bool {
+	return accountBelongsToPaidOpenAIAuthPool(account)
+}
+
+func accountBelongsToPaidOpenAIAuthPool(account *Account) bool {
 	if account == nil || !account.IsOpenAIOAuth() {
 		return false
 	}
@@ -3002,7 +2974,7 @@ func openAIAccountCountsCodex5hQuota(account *Account) bool {
 	case "plus", "pro", "chatgptpro", "team", "enterprise", "business":
 		return true
 	default:
-		return false
+		return accountHasGroupNameToken(account, "plus", "pro")
 	}
 }
 

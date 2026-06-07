@@ -121,6 +121,14 @@ func serviceTierCostMultiplier(serviceTier string) float64 {
 	}
 }
 
+func cloneModelPricing(pricing *ModelPricing) *ModelPricing {
+	if pricing == nil {
+		return nil
+	}
+	cloned := *pricing
+	return &cloned
+}
+
 // UsageTokens 使用的token数量
 type UsageTokens struct {
 	InputTokens           int
@@ -255,8 +263,20 @@ func (s *BillingService) initFallbackPricing() {
 		LongContextInputMultiplier:     openAIGPT54LongContextInputMultiplier,
 		LongContextOutputMultiplier:    openAIGPT54LongContextOutputMultiplier,
 	}
-	// GPT-5.5 暂无独立定价，回退到 GPT-5.4
-	s.fallbackPrices["gpt-5.5"] = s.fallbackPrices["gpt-5.4"]
+	// OpenAI GPT-5.5（业务指定价格）
+	s.fallbackPrices["gpt-5.5"] = &ModelPricing{
+		InputPricePerToken:             5e-6,   // $5 per MTok
+		InputPricePerTokenPriority:     10e-6,  // $10 per MTok
+		OutputPricePerToken:            30e-6,  // $30 per MTok
+		OutputPricePerTokenPriority:    60e-6,  // $60 per MTok
+		CacheCreationPricePerToken:     5e-6,   // $5 per MTok
+		CacheReadPricePerToken:         0.5e-6, // $0.5 per MTok
+		CacheReadPricePerTokenPriority: 1.0e-6, // $1 per MTok
+		SupportsCacheBreakdown:         false,
+		LongContextInputThreshold:      openAIGPT54LongContextInputThreshold,
+		LongContextInputMultiplier:     openAIGPT54LongContextInputMultiplier,
+		LongContextOutputMultiplier:    openAIGPT54LongContextOutputMultiplier,
+	}
 
 	s.fallbackPrices["gpt-5.4-mini"] = &ModelPricing{
 		InputPricePerToken:     7.5e-7,
@@ -406,13 +426,14 @@ func (s *BillingService) GetModelPricingWithChannel(model string, channelPricing
 	if channelPricing == nil {
 		return pricing, nil
 	}
+	pricing = cloneModelPricing(pricing)
 	if channelPricing.InputPrice != nil {
 		pricing.InputPricePerToken = *channelPricing.InputPrice
-		pricing.InputPricePerTokenPriority = *channelPricing.InputPrice
+		pricing.InputPricePerTokenPriority = 0
 	}
 	if channelPricing.OutputPrice != nil {
 		pricing.OutputPricePerToken = *channelPricing.OutputPrice
-		pricing.OutputPricePerTokenPriority = *channelPricing.OutputPrice
+		pricing.OutputPricePerTokenPriority = 0
 	}
 	if channelPricing.CacheWritePrice != nil {
 		pricing.CacheCreationPricePerToken = *channelPricing.CacheWritePrice
@@ -421,7 +442,7 @@ func (s *BillingService) GetModelPricingWithChannel(model string, channelPricing
 	}
 	if channelPricing.CacheReadPrice != nil {
 		pricing.CacheReadPricePerToken = *channelPricing.CacheReadPrice
-		pricing.CacheReadPricePerTokenPriority = *channelPricing.CacheReadPrice
+		pricing.CacheReadPricePerTokenPriority = 0
 	}
 	if channelPricing.ImageOutputPrice != nil {
 		pricing.ImageOutputPricePerToken = *channelPricing.ImageOutputPrice
@@ -517,20 +538,24 @@ func (s *BillingService) computeTokenBreakdown(
 	outputPrice := pricing.OutputPricePerToken
 	cacheReadPrice := pricing.CacheReadPricePerToken
 	cacheCreationMultiplier := 1.0
-	tierMultiplier := 1.0
+	tierMultiplier := serviceTierCostMultiplier(serviceTier)
+	inputMultiplier := tierMultiplier
+	outputMultiplier := tierMultiplier
+	cacheReadMultiplier := tierMultiplier
 
 	if usePriorityServiceTierPricing(serviceTier, pricing) {
 		if pricing.InputPricePerTokenPriority > 0 {
 			inputPrice = pricing.InputPricePerTokenPriority
+			inputMultiplier = 1.0
 		}
 		if pricing.OutputPricePerTokenPriority > 0 {
 			outputPrice = pricing.OutputPricePerTokenPriority
+			outputMultiplier = 1.0
 		}
 		if pricing.CacheReadPricePerTokenPriority > 0 {
 			cacheReadPrice = pricing.CacheReadPricePerTokenPriority
+			cacheReadMultiplier = 1.0
 		}
-	} else {
-		tierMultiplier = serviceTierCostMultiplier(serviceTier)
 	}
 
 	if applyLongCtx && s.shouldApplySessionLongContextPricing(tokens, pricing) {
@@ -546,36 +571,30 @@ func (s *BillingService) computeTokenBreakdown(
 	}
 
 	bd := &CostBreakdown{}
-	bd.InputCost = float64(tokens.InputTokens) * inputPrice
+	bd.InputCost = float64(tokens.InputTokens) * inputPrice * inputMultiplier
 
 	// 分离图片输出 token 与文本输出 token
 	textOutputTokens := tokens.OutputTokens - tokens.ImageOutputTokens
 	if textOutputTokens < 0 {
 		textOutputTokens = 0
 	}
-	bd.OutputCost = float64(textOutputTokens) * outputPrice
+	bd.OutputCost = float64(textOutputTokens) * outputPrice * outputMultiplier
 
 	// 图片输出 token 费用（独立费率）
 	if tokens.ImageOutputTokens > 0 {
 		imgPrice := pricing.ImageOutputPricePerToken
+		imgMultiplier := tierMultiplier
 		if imgPrice == 0 {
 			imgPrice = outputPrice // 回退到常规输出价格
+			imgMultiplier = outputMultiplier
 		}
-		bd.ImageOutputCost = float64(tokens.ImageOutputTokens) * imgPrice
+		bd.ImageOutputCost = float64(tokens.ImageOutputTokens) * imgPrice * imgMultiplier
 	}
 
 	// 缓存创建费用
-	bd.CacheCreationCost = s.computeCacheCreationCost(pricing, tokens, cacheCreationMultiplier)
+	bd.CacheCreationCost = s.computeCacheCreationCost(pricing, tokens, cacheCreationMultiplier*tierMultiplier)
 
-	bd.CacheReadCost = float64(tokens.CacheReadTokens) * cacheReadPrice
-
-	if tierMultiplier != 1.0 {
-		bd.InputCost *= tierMultiplier
-		bd.OutputCost *= tierMultiplier
-		bd.ImageOutputCost *= tierMultiplier
-		bd.CacheCreationCost *= tierMultiplier
-		bd.CacheReadCost *= tierMultiplier
-	}
+	bd.CacheReadCost = float64(tokens.CacheReadTokens) * cacheReadPrice * cacheReadMultiplier
 
 	bd.TotalCost = bd.InputCost + bd.OutputCost + bd.ImageOutputCost +
 		bd.CacheCreationCost + bd.CacheReadCost

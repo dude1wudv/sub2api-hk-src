@@ -134,18 +134,6 @@ export interface PlusAccountUsageSummary {
   last_usage_at?: string
 }
 
-export interface FreeAccountUsageSummary {
-  total_standard_cost: number
-  average_standard_cost_per_free_account: number
-  free_account_count: number
-  free_accounts_with_usage: number
-  usage_log_count: number
-  deleted_free_account_count: number
-  expired_free_account_count: number
-  first_usage_at?: string
-  last_usage_at?: string
-}
-
 export interface OpenAIAccountMaintenanceProxyTarget {
   proxy_id: number
   name: string
@@ -261,13 +249,6 @@ export async function getSummary(filters?: {
 
 export async function getPlusUsageSummary(options?: { refreshKey?: number }): Promise<PlusAccountUsageSummary> {
   const { data } = await apiClient.get<PlusAccountUsageSummary>('/admin/accounts/plus-usage-summary', {
-    params: options?.refreshKey ? { _: options.refreshKey } : undefined
-  })
-  return data
-}
-
-export async function getFreeUsageSummary(options?: { refreshKey?: number }): Promise<FreeAccountUsageSummary> {
-  const { data } = await apiClient.get<FreeAccountUsageSummary>('/admin/accounts/free-usage-summary', {
     params: options?.refreshKey ? { _: options.refreshKey } : undefined
   })
   return data
@@ -856,7 +837,6 @@ export const accountsAPI = {
   listWithEtag,
   getSummary,
   getPlusUsageSummary,
-  getFreeUsageSummary,
   runOpenAIMaintenanceScan,
   getOpenAIRiskOverview,
   applyOpenAIRiskPartition,

@@ -1,10 +1,12 @@
 package service
 
 import (
+	"context"
 	"strings"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/domain"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 )
 
 type OpenAIMessagesDispatchModelConfig = domain.OpenAIMessagesDispatchModelConfig
@@ -128,6 +130,31 @@ func IsGroupContextValid(group *Group) bool {
 		return false
 	}
 	return true
+}
+
+func groupFromRequestContext(ctx context.Context) *Group {
+	if ctx == nil {
+		return nil
+	}
+	group, ok := ctx.Value(ctxkey.Group).(*Group)
+	if !ok || !IsGroupContextValid(group) {
+		return nil
+	}
+	return group
+}
+
+func groupAllowsFastModeOverride(group *Group) *bool {
+	if group == nil {
+		return nil
+	}
+	return group.ModelsListConfig.AllowFastMode
+}
+
+func groupAllowsContext1MOverride(group *Group) *bool {
+	if group == nil {
+		return nil
+	}
+	return group.ModelsListConfig.AllowContext1M
 }
 
 // GetRoutingAccountIDs 根据请求模型获取路由账号 ID 列表

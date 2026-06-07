@@ -6626,12 +6626,13 @@ type betaPolicyResult struct {
 
 // evaluateBetaPolicy loads settings once and evaluates all rules against the given request.
 func (s *GatewayService) evaluateBetaPolicy(ctx context.Context, betaHeader string, account *Account, model string) betaPolicyResult {
+	group := groupFromRequestContext(ctx)
 	if s.settingService == nil {
-		return betaPolicyResult{}
+		return applyGroupBetaPolicyOverrides(betaPolicyResult{}, group)
 	}
 	settings, err := s.settingService.GetBetaPolicySettings(ctx)
 	if err != nil || settings == nil {
-		return betaPolicyResult{}
+		return applyGroupBetaPolicyOverrides(betaPolicyResult{}, group)
 	}
 	isOAuth := account.IsOAuth()
 	isBedrock := account.IsBedrock()
@@ -6657,6 +6658,29 @@ func (s *GatewayService) evaluateBetaPolicy(ctx context.Context, betaHeader stri
 			result.filterSet[rule.BetaToken] = struct{}{}
 		}
 	}
+	return applyGroupBetaPolicyOverrides(result, group)
+}
+
+func applyGroupBetaPolicyOverrides(result betaPolicyResult, group *Group) betaPolicyResult {
+	result = applyGroupBetaTokenOverride(result, claude.BetaFastMode, groupAllowsFastModeOverride(group))
+	result = applyGroupBetaTokenOverride(result, claude.BetaContext1M, groupAllowsContext1MOverride(group))
+	return result
+}
+
+func applyGroupBetaTokenOverride(result betaPolicyResult, token string, allowed *bool) betaPolicyResult {
+	if allowed == nil || strings.TrimSpace(token) == "" {
+		return result
+	}
+	if *allowed {
+		if result.filterSet != nil {
+			delete(result.filterSet, token)
+		}
+		return result
+	}
+	if result.filterSet == nil {
+		result.filterSet = make(map[string]struct{})
+	}
+	result.filterSet[token] = struct{}{}
 	return result
 }
 

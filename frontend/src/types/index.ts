@@ -557,6 +557,8 @@ export interface AdminGroup extends Group {
 export interface ModelsListConfig {
   enabled: boolean
   models: string[]
+  allow_fast_mode?: boolean
+  allow_context_1m?: boolean
 }
 
 export interface ApiKey {

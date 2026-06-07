@@ -6848,22 +6848,38 @@ func (e *OpenAIFastBlockedError) Error() string { return e.Message }
 //     发生重叠，admin 可通过规则顺序明确意图。因此采用 first-match 而
 //     非 BetaPolicy 那样的"block 覆盖 filter 覆盖 pass"语义。
 func (s *OpenAIGatewayService) evaluateOpenAIFastPolicy(ctx context.Context, account *Account, model, serviceTier string) (action, errMsg string) {
-	if s == nil || s.settingService == nil {
-		return BetaPolicyActionPass, ""
-	}
 	tier := strings.ToLower(strings.TrimSpace(serviceTier))
 	if tier == "" {
+		return BetaPolicyActionPass, ""
+	}
+	groupFastOverride := groupAllowsFastModeOverride(groupFromRequestContext(ctx))
+	if s == nil || s.settingService == nil {
+		if groupFastOverride != nil && !*groupFastOverride && tier == OpenAIFastTierPriority {
+			return BetaPolicyActionFilter, ""
+		}
 		return BetaPolicyActionPass, ""
 	}
 	settings := openAIFastPolicySettingsFromContext(ctx)
 	if settings == nil {
 		fetched, err := s.settingService.GetOpenAIFastPolicySettings(ctx)
 		if err != nil || fetched == nil {
+			if groupFastOverride != nil && !*groupFastOverride && tier == OpenAIFastTierPriority {
+				return BetaPolicyActionFilter, ""
+			}
 			return BetaPolicyActionPass, ""
 		}
 		settings = fetched
 	}
-	return evaluateOpenAIFastPolicyWithSettings(settings, account, model, tier)
+	action, errMsg = evaluateOpenAIFastPolicyWithSettings(settings, account, model, tier)
+	if groupFastOverride != nil && tier == OpenAIFastTierPriority {
+		if !*groupFastOverride && action != BetaPolicyActionBlock {
+			return BetaPolicyActionFilter, ""
+		}
+		if *groupFastOverride && action == BetaPolicyActionFilter {
+			return BetaPolicyActionPass, ""
+		}
+	}
+	return action, errMsg
 }
 
 // evaluateOpenAIFastPolicyWithSettings is the pure-function core extracted so

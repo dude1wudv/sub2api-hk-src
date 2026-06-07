@@ -2303,7 +2303,11 @@ export default {
         title: '自定义 /v1/models 模型列表',
         hint: '仅影响 /v1/models 展示结果，不影响白名单模型调用和账号调度。',
         loading: '正在加载模型列表...',
-        empty: '暂无可展示模型'
+        empty: '暂无可展示模型',
+        allowFastMode: '允许 Fast 模式',
+        allowFastModeHint: '允许当前分组透传 OpenAI service_tier=priority / fast。',
+        allowContext1M: '允许 1M 上下文',
+        allowContext1MHint: '允许当前分组透传 context-1m-2025-08-07 beta。'
       },
       claudeCode: {
         title: 'Claude Code 客户端限制',
@@ -3184,29 +3188,16 @@ export default {
       },
       quotaPools: {
         plusTitle: 'Plus 账号池',
-        freeTitle: 'Free 账号池',
         plusMetric: '5h 剩余',
-        freeMetric: '7d 剩余',
         bestMetric: '最佳剩余',
         accounts: '{available} / {total} 可用',
-        openPlus: '查看 Plus 账号池',
-        openFree: '查看 Free 账号池'
+        openPlus: '查看 Plus 账号池'
       },
       plusUsage: {
-        title: 'Plus 标准用量',
+        title: 'Plus+Pro 标准用量',
         standardPricing: '标准定价',
-        average: 'Plus 平均',
-        plusAccounts: 'Plus 账号',
-        deletedExpired: '删除 / 过期',
-        withUsage: '有用量 {count}',
-        logs: '记录 {count}',
-        refreshedAt: '刷新于 {time}'
-      },
-      freeUsage: {
-        title: 'Free 标准用量',
-        standardPricing: '标准定价',
-        average: 'Free 平均',
-        freeAccounts: 'Free 账号',
+        average: 'Plus+Pro 平均',
+        plusAccounts: 'Plus+Pro 账号',
         deletedExpired: '删除 / 过期',
         withUsage: '有用量 {count}',
         logs: '记录 {count}',
@@ -7126,8 +7117,6 @@ export default {
     redeemCodeOnlyDescription: '充值请联系 QQ:320985943，管理员确认后为您处理余额或订阅。',
     buyRedeemCode: '联系充值',
     copyRechargeContact: '复制 QQ',
-    rechargePricingTitle: '可选充值方案',
-    rechargeCardTag: '卡密',
     confirmSubscription: '确认订阅',
     confirmCancel: '确定要取消此订单吗？',
     amountTooLow: '最低金额为 {min}',

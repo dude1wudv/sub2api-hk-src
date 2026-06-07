@@ -345,45 +345,6 @@
             </div>
           </div>
 
-          <div class="account-summary-panel">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="account-summary-label">{{ t('admin.accounts.freeUsage.title') }}</p>
-                <p class="account-summary-value">{{ formatStandardCost(freeUsageSummary?.total_standard_cost) }}</p>
-              </div>
-              <span class="account-summary-pill text-emerald-700 dark:text-emerald-300">
-                {{ t('admin.accounts.freeUsage.standardPricing') }}
-              </span>
-            </div>
-            <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
-              <div>
-                <span class="account-summary-subvalue text-emerald-600 dark:text-emerald-300">
-                  {{ formatStandardCost(freeUsageSummary?.average_standard_cost_per_free_account) }}
-                </span>
-                <span class="account-summary-sublabel">{{ t('admin.accounts.freeUsage.average') }}</span>
-              </div>
-              <div>
-                <span class="account-summary-subvalue text-gray-900 dark:text-gray-100">
-                  {{ freeUsageSummary?.free_account_count ?? '-' }}
-                </span>
-                <span class="account-summary-sublabel">{{ t('admin.accounts.freeUsage.freeAccounts') }}</span>
-              </div>
-              <div>
-                <span class="account-summary-subvalue text-amber-600 dark:text-amber-300">
-                  {{ freeUsageSummary?.deleted_free_account_count ?? 0 }} / {{ freeUsageSummary?.expired_free_account_count ?? 0 }}
-                </span>
-                <span class="account-summary-sublabel">{{ t('admin.accounts.freeUsage.deletedExpired') }}</span>
-              </div>
-            </div>
-            <div class="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
-              <span>{{ t('admin.accounts.freeUsage.withUsage', { count: freeUsageSummary?.free_accounts_with_usage ?? 0 }) }}</span>
-              <span>{{ t('admin.accounts.freeUsage.logs', { count: freeUsageSummary?.usage_log_count ?? 0 }) }}</span>
-            </div>
-            <div class="mt-1 text-right text-[11px] text-gray-400 dark:text-gray-500">
-              {{ t('admin.accounts.freeUsage.refreshedAt', { time: freeUsageSummaryRefreshedAt || '-' }) }}
-            </div>
-          </div>
-
           <div class="account-summary-panel lg:col-span-4">
             <div class="flex items-center justify-between gap-3">
               <div>
@@ -431,7 +392,7 @@
             </div>
           </div>
         </div>
-        <div class="mt-3 grid gap-3 lg:grid-cols-2">
+        <div class="mt-3">
           <div
             role="button"
             tabindex="0"
@@ -460,35 +421,6 @@
               <span>{{ t('admin.accounts.quotaPools.accounts', { total: quotaPoolSummaryView?.plus_pool?.total ?? 0, available: quotaPoolSummaryView?.plus_pool?.available ?? 0 }) }}</span>
               <span>{{ t('admin.accounts.summary.sampled', { count: quotaPoolSummaryView?.plus_pool?.sampled ?? 0 }) }}</span>
               <span>{{ t('admin.accounts.summary.exhausted', { count: quotaPoolSummaryView?.plus_pool?.exhausted ?? 0 }) }}</span>
-            </div>
-          </div>
-          <div
-            role="button"
-            tabindex="0"
-            :class="['quota-pool-card quota-pool-card-free', { 'quota-pool-card-active': activeQuotaPool === 'free' }]"
-            @click="openQuotaPool('free')"
-            @keydown.enter.prevent="openQuotaPool('free')"
-            @keydown.space.prevent="openQuotaPool('free')"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="quota-pool-label">{{ t('admin.accounts.quotaPools.freeTitle') }}</p>
-                <p class="quota-pool-value">{{ formatSummaryPercent(quotaPoolSummaryView?.free_pool?.remaining_percent) }}</p>
-              </div>
-              <div class="quota-pool-enter" :title="t('admin.accounts.quotaPools.openFree')">
-                <div class="quota-pool-enter-metrics">
-                  <span>7d {{ formatSummaryPercent(quotaPoolSummaryView?.free_pool?.remaining_7d_percent) }}</span>
-                </div>
-                <Icon name="arrowRight" size="sm" />
-              </div>
-            </div>
-            <div class="quota-pool-meter">
-              <div class="quota-pool-meter-fill bg-sky-500" :style="{ width: summaryMeterWidth(quotaPoolSummaryView?.free_pool?.remaining_percent) }"></div>
-            </div>
-            <div class="quota-pool-stats">
-              <span>{{ t('admin.accounts.quotaPools.accounts', { total: quotaPoolSummaryView?.free_pool?.total ?? 0, available: quotaPoolSummaryView?.free_pool?.available ?? 0 }) }}</span>
-              <span>{{ t('admin.accounts.summary.sampled', { count: quotaPoolSummaryView?.free_pool?.sampled ?? 0 }) }}</span>
-              <span>{{ t('admin.accounts.summary.exhausted', { count: quotaPoolSummaryView?.free_pool?.exhausted ?? 0 }) }}</span>
             </div>
           </div>
         </div>
@@ -768,7 +700,7 @@ import TLSFingerprintProfilesModal from '@/components/admin/TLSFingerprintProfil
 import { buildOpenAIUsageRefreshKey } from '@/utils/accountUsageRefresh'
 import { formatCurrency, formatDateTime, formatRelativeTime } from '@/utils/format'
 import type { Account, AccountPlatform, AccountType, Proxy as AccountProxy, AdminGroup, WindowStats, ClaudeModel } from '@/types'
-import type { AccountSummary, AccountProxySummary, OpenAIAccountRiskOverview, PlusAccountUsageSummary, FreeAccountUsageSummary } from '@/api/admin/accounts'
+import type { AccountSummary, AccountProxySummary, OpenAIAccountRiskOverview, PlusAccountUsageSummary } from '@/api/admin/accounts'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -911,21 +843,17 @@ const accountSummary = ref<AccountSummary | null>(null)
 const quotaPoolSummary = ref<AccountSummary | null>(null)
 const plusUsageSummary = ref<PlusAccountUsageSummary | null>(null)
 const plusUsageSummaryRefreshedAt = ref('')
-const freeUsageSummary = ref<FreeAccountUsageSummary | null>(null)
-const freeUsageSummaryRefreshedAt = ref('')
 const accountSummaryReqSeq = ref(0)
 const quotaPoolSummaryReqSeq = ref(0)
 const plusUsageSummaryReqSeq = ref(0)
 const plusUsageSummaryRefreshKey = ref(0)
-const freeUsageSummaryReqSeq = ref(0)
-const freeUsageSummaryRefreshKey = ref(0)
 const plusUsageSummaryTimer = ref<number | null>(null)
 const accountRiskOverview = ref<OpenAIAccountRiskOverview | null>(null)
 const accountRiskReqSeq = ref(0)
 const accountMaintenanceBusy = ref(false)
 const riskPartitionBusy = ref(false)
 
-type QuotaPoolKind = 'plus' | 'free'
+type QuotaPoolKind = 'plus'
 
 const tokyoProxyHealth = computed<AccountProxySummary[]>(() => {
   const proxies = accountSummary.value?.proxy_distribution ?? []
@@ -934,11 +862,10 @@ const tokyoProxyHealth = computed<AccountProxySummary[]>(() => {
 })
 
 const findQuotaPoolGroup = (kind: QuotaPoolKind): AdminGroup | null => {
-  const tokens = kind === 'plus' ? ['plus', 'pro'] : ['free']
   return groups.value.find((group) => {
     if (group.platform !== 'openai') return false
     const name = String(group.name ?? '').toLowerCase()
-    return tokens.some((token) => name.includes(token))
+    return name.includes(kind)
   }) ?? null
 }
 
@@ -947,8 +874,6 @@ const activeQuotaPool = computed<QuotaPoolKind | null>(() => {
   if (!groupID) return null
   const plusGroup = findQuotaPoolGroup('plus')
   if (plusGroup && String(plusGroup.id) === groupID) return 'plus'
-  const freeGroup = findQuotaPoolGroup('free')
-  if (freeGroup && String(freeGroup.id) === groupID) return 'free'
   return null
 })
 
@@ -1038,20 +963,6 @@ const refreshPlusUsageSummary = async () => {
   } catch (error) {
     if (reqSeq !== plusUsageSummaryReqSeq.value) return
     console.error('Failed to load Plus usage summary:', error)
-  }
-}
-
-const refreshFreeUsageSummary = async () => {
-  const reqSeq = ++freeUsageSummaryReqSeq.value
-  const refreshKey = ++freeUsageSummaryRefreshKey.value
-  try {
-    const summary = await adminAPI.accounts.getFreeUsageSummary({ refreshKey })
-    if (reqSeq !== freeUsageSummaryReqSeq.value) return
-    freeUsageSummary.value = summary
-    freeUsageSummaryRefreshedAt.value = formatClockTime(new Date())
-  } catch (error) {
-    if (reqSeq !== freeUsageSummaryReqSeq.value) return
-    console.error('Failed to load Free usage summary:', error)
   }
 }
 
@@ -1376,7 +1287,6 @@ const load = async () => {
     refreshAccountSummary(),
     refreshQuotaPoolSummary(),
     refreshPlusUsageSummary(),
-    refreshFreeUsageSummary(),
     refreshAccountRiskOverview()
   ])
 }
@@ -1391,7 +1301,6 @@ const reload = async () => {
     refreshAccountSummary(),
     refreshQuotaPoolSummary(),
     refreshPlusUsageSummary(),
-    refreshFreeUsageSummary(),
     refreshAccountRiskOverview()
   ])
 }
@@ -1793,13 +1702,12 @@ function getQuotaRemainingMeta(row: Account): { label: string; display: string; 
   const isPlus = ['plus', 'pro', 'chatgptpro', 'team', 'enterprise', 'business'].includes(planType) ||
     accountHasGroupToken(row, ['plus', 'pro'])
   const isFree = planType === 'free' || planType === 'free-tier' || accountHasGroupToken(row, ['free'])
+  if (isFree) return null
   const used5h = codexPercent(extra?.codex_5h_used_percent)
   const used7d = codexPercent(extra?.codex_7d_used_percent)
   let used: number | null = null
   if (isPlus) {
     used = used5h
-  } else if (isFree) {
-    used = used7d
   } else if (used5h !== null || used7d !== null) {
     used = Math.min(used5h ?? 100, used7d ?? 100)
   }
@@ -1808,9 +1716,7 @@ function getQuotaRemainingMeta(row: Account): { label: string; display: string; 
   const remaining = Math.max(0, Math.min(100, 100 - used))
   const label = isPlus
     ? t('admin.accounts.quotaPools.plusMetric')
-    : isFree
-      ? t('admin.accounts.quotaPools.freeMetric')
-      : t('admin.accounts.quotaPools.bestMetric')
+    : t('admin.accounts.quotaPools.bestMetric')
   const barClass = remaining >= 50
     ? 'bg-emerald-500'
     : remaining >= 20
@@ -2415,7 +2321,7 @@ onMounted(async () => {
   load()
   plusUsageSummaryTimer.value = window.setInterval(() => {
     if (document.hidden) return
-    Promise.all([refreshPlusUsageSummary(), refreshFreeUsageSummary()]).catch((error) => {
+    refreshPlusUsageSummary().catch((error) => {
       console.error('Failed to refresh standard usage summary on interval:', error)
     })
   }, 10000)
@@ -2518,10 +2424,6 @@ onUnmounted(() => {
 
 .quota-pool-card-plus {
   @apply border-emerald-100 dark:border-emerald-900/40;
-}
-
-.quota-pool-card-free {
-  @apply border-sky-100 dark:border-sky-900/40;
 }
 
 .quota-pool-card-active {

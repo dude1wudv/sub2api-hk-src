@@ -1,6 +1,8 @@
 export interface ModelsListConfig {
   enabled: boolean
   models: string[]
+  allow_fast_mode?: boolean
+  allow_context_1m?: boolean
 }
 
 export interface ModelsListItem {
@@ -10,6 +12,8 @@ export interface ModelsListItem {
 
 export interface ModelsListState {
   enabled: boolean
+  allowFastMode: boolean
+  allowContext1M: boolean
   savedModels: string[]
   items: ModelsListItem[]
 }
@@ -18,6 +22,8 @@ export const createModelsListState = (
   config?: Partial<ModelsListConfig> | null,
 ): ModelsListState => ({
   enabled: config?.enabled ?? false,
+  allowFastMode: config?.allow_fast_mode ?? false,
+  allowContext1M: config?.allow_context_1m ?? false,
   savedModels: normalizeModels(config?.models ?? []),
   items: [],
 })
@@ -101,6 +107,8 @@ export const moveModelsListItem = (
 
 export const buildModelsListConfig = (state: ModelsListState): ModelsListConfig => ({
   enabled: state.enabled,
+  allow_fast_mode: state.allowFastMode,
+  allow_context_1m: state.allowContext1M,
   models: state.items.length > 0
     ? state.items.filter(item => item.selected).map(item => item.id)
     : [...state.savedModels],

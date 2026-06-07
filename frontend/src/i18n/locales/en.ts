@@ -2220,7 +2220,11 @@ export default {
         title: 'Custom /v1/models Model List',
         hint: 'Only changes the /v1/models response. Whitelist model calls and account routing are unchanged.',
         loading: 'Loading model list...',
-        empty: 'No displayable models'
+        empty: 'No displayable models',
+        allowFastMode: 'Allow Fast mode',
+        allowFastModeHint: 'Allow this group to pass OpenAI service_tier=priority / fast.',
+        allowContext1M: 'Allow 1M context',
+        allowContext1MHint: 'Allow this group to pass the context-1m-2025-08-07 beta.'
       },
       claudeCode: {
         title: 'Claude Code Client Restriction',
@@ -3107,29 +3111,16 @@ export default {
       },
       quotaPools: {
         plusTitle: 'Plus Pool',
-        freeTitle: 'Free Pool',
         plusMetric: '5h Remaining',
-        freeMetric: '7d Remaining',
         bestMetric: 'Best Remaining',
         accounts: '{available} / {total} available',
-        openPlus: 'View Plus pool',
-        openFree: 'View Free pool'
+        openPlus: 'View Plus pool'
       },
       plusUsage: {
-        title: 'Plus Standard Usage',
+        title: 'Plus+Pro Standard Usage',
         standardPricing: 'Standard pricing',
-        average: 'Plus average',
-        plusAccounts: 'Plus accounts',
-        deletedExpired: 'Deleted / expired',
-        withUsage: 'With usage {count}',
-        logs: 'Logs {count}',
-        refreshedAt: 'Refreshed at {time}'
-      },
-      freeUsage: {
-        title: 'Free Standard Usage',
-        standardPricing: 'Standard pricing',
-        average: 'Free average',
-        freeAccounts: 'Free accounts',
+        average: 'Plus+Pro average',
+        plusAccounts: 'Plus+Pro accounts',
         deletedExpired: 'Deleted / expired',
         withUsage: 'With usage {count}',
         logs: 'Logs {count}',
@@ -6946,8 +6937,6 @@ export default {
     redeemCodeOnlyDescription: 'For recharge, contact QQ:320985943. The admin will process your balance or subscription after confirmation.',
     buyRedeemCode: 'Contact to Recharge',
     copyRechargeContact: 'Copy QQ',
-    rechargePricingTitle: 'Available recharge plans',
-    rechargeCardTag: 'Code',
     confirmSubscription: 'Confirm Subscription',
     confirmCancel: 'Are you sure you want to cancel this order?',
     amountTooLow: 'Minimum amount is {min}',

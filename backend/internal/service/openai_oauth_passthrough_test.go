@@ -58,6 +58,62 @@ func (u *httpUpstreamRecorder) DoWithTLS(req *http.Request, proxyURL string, acc
 	return u.Do(req, proxyURL, accountID, accountConcurrency)
 }
 
+func TestOpenAIGatewayService_ResponsesFastGroupDoesNotInjectPriorityForPassthroughBilling(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	originalBody := []byte(`{"model":"gpt-5.5","stream":false,"input":[{"type":"text","text":"hi"}]}`)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(originalBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+	ctx := groupPolicyContext(&Group{
+		ID:       52,
+		Platform: PlatformOpenAI,
+		Status:   StatusActive,
+		Hydrated: true,
+		ModelsListConfig: GroupModelsListConfig{
+			AllowFastMode: testBoolPtr(true),
+		},
+	})
+	c.Request = c.Request.WithContext(ctx)
+
+	upstream := &httpUpstreamRecorder{resp: &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body: io.NopCloser(strings.NewReader(`{
+			"type":"response.completed",
+			"response":{
+				"id":"resp_fast_group",
+				"model":"gpt-5.5",
+				"usage":{"input_tokens":10,"output_tokens":1,"input_tokens_details":{"cached_tokens":2}}
+			}
+		}`)),
+	}}
+	svc := &OpenAIGatewayService{
+		cfg:          &config.Config{},
+		httpUpstream: upstream,
+	}
+	account := &Account{
+		ID:          123,
+		Name:        "acc",
+		Platform:    PlatformOpenAI,
+		Type:        AccountTypeOAuth,
+		Concurrency: 1,
+		Credentials: map[string]any{
+			"access_token":       "oauth-token",
+			"chatgpt_account_id": "chatgpt-acc",
+		},
+		Status: StatusActive,
+	}
+
+	result, err := svc.Forward(ctx, c, account, originalBody)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Nil(t, result.ServiceTier)
+	require.False(t, gjson.GetBytes(upstream.lastBody, "service_tier").Exists())
+}
+
 func TestOpenAIGatewayService_ResponsesUnknownModelDoesNotFallbackToGPT54(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

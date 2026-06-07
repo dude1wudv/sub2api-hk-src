@@ -409,19 +409,6 @@ func (h *AccountHandler) PlusUsageSummary(c *gin.Context) {
 	response.Success(c, summary)
 }
 
-// FreeUsageSummary handles Free account standard-pricing usage summary.
-// GET /api/v1/admin/accounts/free-usage-summary
-func (h *AccountHandler) FreeUsageSummary(c *gin.Context) {
-	c.Header("Cache-Control", "no-store")
-	c.Header("Pragma", "no-cache")
-	summary, err := h.adminService.GetFreeAccountUsageSummary(c.Request.Context())
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	response.Success(c, summary)
-}
-
 // RunOpenAIMaintenanceScan runs Codex quota recovery and daily-style rebalance on demand.
 // POST /api/v1/admin/accounts/openai-maintenance/scan
 func (h *AccountHandler) RunOpenAIMaintenanceScan(c *gin.Context) {
