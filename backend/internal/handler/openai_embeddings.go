@@ -70,6 +70,17 @@ func (h *OpenAIGatewayHandler) Embeddings(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+	if redirectedBody, redirectedModel, redirected, redirectErr := redirectDeprecatedOpenAIModelInBody(body); redirectErr != nil {
+		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to normalize request model")
+		return
+	} else if redirected {
+		body = redirectedBody
+		reqLog.Info("openai_embeddings.model_redirected",
+			zap.String("from", reqModel),
+			zap.String("to", redirectedModel),
+		)
+		reqModel = redirectedModel
+	}
 	reqLog = reqLog.With(zap.String("model", reqModel))
 	setOpsRequestContext(c, reqModel, false)
 	setOpsEndpointContext(c, "", int16(service.RequestTypeSync))

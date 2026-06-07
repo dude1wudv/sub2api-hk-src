@@ -133,6 +133,28 @@ func TestRedirectDeprecatedOpenAIModelInBody(t *testing.T) {
 	require.Equal(t, "gpt-5.4", gjson.GetBytes(body, "model").String())
 }
 
+func TestRedirectDeprecatedOpenAIModelInBodyForCompatEndpoints(t *testing.T) {
+	tests := []struct {
+		name string
+		body []byte
+	}{
+		{name: "chat completions", body: []byte(`{"model":"gpt-5.4-mini","messages":[{"role":"user","content":"hi"}]}`)},
+		{name: "embeddings", body: []byte(`{"model":"models/gpt-5.4","input":"hello"}`)},
+		{name: "responses", body: []byte(`{"model":"gpt54","input":"hello"}`)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			updatedBody, model, redirected, err := redirectDeprecatedOpenAIModelInBody(tt.body)
+
+			require.NoError(t, err)
+			require.True(t, redirected)
+			require.Equal(t, "gpt-5.5", model)
+			require.Equal(t, "gpt-5.5", gjson.GetBytes(updatedBody, "model").String())
+		})
+	}
+}
+
 func TestResolveOpenAIMessagesMetadataSession_DoesNotDerivePromptCacheKey(t *testing.T) {
 	body := []byte(`{"model":"claude-sonnet-4-5","metadata":{"user_id":"claude-code-session"},"messages":[{"role":"user","content":"hello"}]}`)
 

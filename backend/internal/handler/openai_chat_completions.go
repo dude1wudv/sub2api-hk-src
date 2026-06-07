@@ -75,6 +75,17 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+	if redirectedBody, redirectedModel, redirected, redirectErr := redirectDeprecatedOpenAIModelInBody(body); redirectErr != nil {
+		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to normalize request model")
+		return
+	} else if redirected {
+		body = redirectedBody
+		reqLog.Info("openai_chat_completions.model_redirected",
+			zap.String("from", reqModel),
+			zap.String("to", redirectedModel),
+		)
+		reqModel = redirectedModel
+	}
 	reqStream := gjson.GetBytes(body, "stream").Bool()
 
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
