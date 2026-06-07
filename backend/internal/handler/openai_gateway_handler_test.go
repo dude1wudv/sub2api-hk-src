@@ -94,6 +94,45 @@ func TestOpenAIHandleStreamingAwareError_JSONEscaping(t *testing.T) {
 	}
 }
 
+func TestRedirectDeprecatedOpenAIModel(t *testing.T) {
+	tests := []struct {
+		name       string
+		model      string
+		wantModel  string
+		wantChange bool
+	}{
+		{name: "gpt 5.4", model: "gpt-5.4", wantModel: "gpt-5.5", wantChange: true},
+		{name: "gpt 5.4 mini", model: "gpt-5.4-mini", wantModel: "gpt-5.5", wantChange: true},
+		{name: "gpt 5.4 nano", model: "gpt-5.4-nano", wantModel: "gpt-5.5", wantChange: true},
+		{name: "models prefix", model: "models/gpt-5.4-mini", wantModel: "gpt-5.5", wantChange: true},
+		{name: "compact spelling", model: "gpt5.4", wantModel: "gpt-5.5", wantChange: true},
+		{name: "current default", model: "gpt-5.5", wantModel: "gpt-5.5", wantChange: false},
+		{name: "generic gpt 5 stays unchanged", model: "gpt-5", wantModel: "gpt-5", wantChange: false},
+		{name: "unrelated model stays unchanged", model: "gpt-image-2", wantModel: "gpt-image-2", wantChange: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotModel, gotChange := redirectDeprecatedOpenAIModel(tt.model)
+			require.Equal(t, tt.wantModel, gotModel)
+			require.Equal(t, tt.wantChange, gotChange)
+		})
+	}
+}
+
+func TestRedirectDeprecatedOpenAIModelInBody(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.4","stream":true}`)
+
+	updatedBody, model, redirected, err := redirectDeprecatedOpenAIModelInBody(body)
+
+	require.NoError(t, err)
+	require.True(t, redirected)
+	require.Equal(t, "gpt-5.5", model)
+	require.Equal(t, "gpt-5.5", gjson.GetBytes(updatedBody, "model").String())
+	require.True(t, gjson.GetBytes(updatedBody, "stream").Bool())
+	require.Equal(t, "gpt-5.4", gjson.GetBytes(body, "model").String())
+}
+
 func TestResolveOpenAIMessagesMetadataSession_DoesNotDerivePromptCacheKey(t *testing.T) {
 	body := []byte(`{"model":"claude-sonnet-4-5","metadata":{"user_id":"claude-code-session"},"messages":[{"role":"user","content":"hello"}]}`)
 
@@ -418,14 +457,14 @@ func TestResolveOpenAIMessagesDispatchMappedModel(t *testing.T) {
 				},
 			},
 		}
-		require.Equal(t, "gpt-5.4-mini", resolveOpenAIMessagesDispatchMappedModel(apiKey, "claude-sonnet-4-5-20250929"))
+		require.Equal(t, "gpt-5.5", resolveOpenAIMessagesDispatchMappedModel(apiKey, "claude-sonnet-4-5-20250929"))
 	})
 
 	t.Run("uses_family_default_when_no_override", func(t *testing.T) {
 		apiKey := &service.APIKey{Group: &service.Group{}}
-		require.Equal(t, "gpt-5.4", resolveOpenAIMessagesDispatchMappedModel(apiKey, "claude-opus-4-6"))
+		require.Equal(t, "gpt-5.5", resolveOpenAIMessagesDispatchMappedModel(apiKey, "claude-opus-4-6"))
 		require.Equal(t, "gpt-5.3-codex", resolveOpenAIMessagesDispatchMappedModel(apiKey, "claude-sonnet-4-5-20250929"))
-		require.Equal(t, "gpt-5.4-mini", resolveOpenAIMessagesDispatchMappedModel(apiKey, "claude-haiku-4-5-20251001"))
+		require.Equal(t, "gpt-5.5", resolveOpenAIMessagesDispatchMappedModel(apiKey, "claude-haiku-4-5-20251001"))
 	})
 
 	t.Run("returns_empty_for_non_claude_or_missing_group", func(t *testing.T) {
@@ -899,11 +938,10 @@ func TestOpenAIResponsesWebSocket_PassthroughUsageLogInfersReasoningFromInitialR
 		},
 	})
 
-	require.Equal(t, "gpt-5.4", gjson.GetBytes(got.upstreamFirstPayload, "model").String(),
-		"上游首帧应使用渠道映射后的模型")
-	require.NotNil(t, got.log.ReasoningEffort)
-	require.Equal(t, "xhigh", *got.log.ReasoningEffort,
-		"usage log reasoning effort 必须使用渠道映射前首帧模型后缀推导")
+	require.Equal(t, "gpt-5.5", gjson.GetBytes(got.upstreamFirstPayload, "model").String(),
+		"5.4 系列上游首帧应被重定向到 gpt-5.5")
+	require.Nil(t, got.log.ReasoningEffort,
+		"5.4 系列模型后缀不应在重定向后继续影响 reasoning effort")
 }
 
 func TestOpenAIResponsesWebSocket_PassthroughUsageLogLeavesUserAgentNilWhenMissing(t *testing.T) {

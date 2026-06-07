@@ -23,6 +23,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
 )
 
@@ -44,7 +45,46 @@ func resolveOpenAIMessagesDispatchMappedModel(apiKey *service.APIKey, requestedM
 	if apiKey == nil || apiKey.Group == nil {
 		return ""
 	}
-	return strings.TrimSpace(apiKey.Group.ResolveMessagesDispatchModel(requestedModel))
+	mappedModel := strings.TrimSpace(apiKey.Group.ResolveMessagesDispatchModel(requestedModel))
+	if redirectedModel, redirected := redirectDeprecatedOpenAIModel(mappedModel); redirected {
+		return redirectedModel
+	}
+	return mappedModel
+}
+
+func redirectDeprecatedOpenAIModel(model string) (string, bool) {
+	key := strings.ToLower(strings.TrimSpace(model))
+	if idx := strings.LastIndex(key, "/"); idx >= 0 {
+		key = strings.TrimSpace(key[idx+1:])
+	}
+	key = strings.ReplaceAll(key, "_", "-")
+	key = strings.Join(strings.Fields(key), "-")
+	for strings.Contains(key, "--") {
+		key = strings.ReplaceAll(key, "--", "-")
+	}
+	if strings.HasPrefix(key, "gpt5.4") {
+		key = "gpt-5.4" + strings.TrimPrefix(key, "gpt5.4")
+	}
+	if strings.HasPrefix(key, "gpt54") {
+		key = "gpt-5.4" + strings.TrimPrefix(key, "gpt54")
+	}
+	if strings.HasPrefix(key, "gpt-5.4") {
+		return "gpt-5.5", true
+	}
+	return model, false
+}
+
+func redirectDeprecatedOpenAIModelInBody(body []byte) ([]byte, string, bool, error) {
+	reqModel := gjson.GetBytes(body, "model").String()
+	redirectedModel, redirected := redirectDeprecatedOpenAIModel(reqModel)
+	if !redirected {
+		return body, reqModel, false, nil
+	}
+	updatedBody, err := sjson.SetBytes(body, "model", redirectedModel)
+	if err != nil {
+		return nil, "", false, err
+	}
+	return updatedBody, redirectedModel, true, nil
 }
 
 func usageRecordContext(parent context.Context, base context.Context) context.Context {
@@ -219,6 +259,18 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+	if redirectedBody, redirectedModel, redirected, redirectErr := redirectDeprecatedOpenAIModelInBody(body); redirectErr != nil {
+		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to normalize request model")
+		return
+	} else if redirected {
+		body = redirectedBody
+		sessionHashBody = body
+		reqLog.Info("openai.model_redirected",
+			zap.String("from", reqModel),
+			zap.String("to", redirectedModel),
+		)
+		reqModel = redirectedModel
+	}
 
 	streamResult := gjson.GetBytes(body, "stream")
 	if streamResult.Exists() && streamResult.Type != gjson.True && streamResult.Type != gjson.False {
@@ -742,6 +794,17 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+	if redirectedBody, redirectedModel, redirected, redirectErr := redirectDeprecatedOpenAIModelInBody(body); redirectErr != nil {
+		h.anthropicErrorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to normalize request model")
+		return
+	} else if redirected {
+		body = redirectedBody
+		reqLog.Info("openai_messages.model_redirected",
+			zap.String("from", reqModel),
+			zap.String("to", redirectedModel),
+		)
+		reqModel = redirectedModel
+	}
 	routingModel := service.NormalizeOpenAICompatRequestedModel(reqModel)
 	preferredMappedModel := resolveOpenAIMessagesDispatchMappedModel(apiKey, reqModel)
 	reqStream := gjson.GetBytes(body, "stream").Bool()
@@ -1336,6 +1399,17 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 	if reqModel == "" {
 		closeOpenAIClientWS(wsConn, coderws.StatusPolicyViolation, "model is required in first response.create payload")
 		return
+	}
+	if redirectedBody, redirectedModel, redirected, redirectErr := redirectDeprecatedOpenAIModelInBody(firstMessage); redirectErr != nil {
+		closeOpenAIClientWS(wsConn, coderws.StatusPolicyViolation, "failed to normalize request model")
+		return
+	} else if redirected {
+		firstMessage = redirectedBody
+		reqLog.Info("openai.websocket_model_redirected",
+			zap.String("from", reqModel),
+			zap.String("to", redirectedModel),
+		)
+		reqModel = redirectedModel
 	}
 	previousResponseID := strings.TrimSpace(gjson.GetBytes(firstMessage, "previous_response_id").String())
 	previousResponseIDKind := service.ClassifyOpenAIPreviousResponseIDKind(previousResponseID)
