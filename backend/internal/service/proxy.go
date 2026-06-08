@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+const (
+	FallbackModeNone   = "none"
+	FallbackModeProxy  = "proxy"
+	FallbackModeDirect = "direct"
+)
+
 type Proxy struct {
 	ID        int64
 	Name      string
@@ -19,10 +25,17 @@ type Proxy struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
+	// JP local: runtime health / failure-based cooldown tracking.
 	CooldownUntil  *time.Time
 	CooldownReason string
 	FailureCount   int
 	LastErrorAt    *time.Time
+
+	// Upstream v0.1.135: proxy validity window and fallback configuration.
+	ExpiresAt      *time.Time
+	FallbackMode   string
+	BackupProxyID  *int64
+	ExpiryWarnDays int
 }
 
 func (p *Proxy) IsActive() bool {
@@ -34,6 +47,11 @@ func (p *Proxy) IsAvailable(now time.Time) bool {
 		return false
 	}
 	return p.CooldownUntil == nil || !now.Before(*p.CooldownUntil)
+}
+
+// IsExpired 报告代理是否已过期（基于 expires_at，与 status 无关）。
+func (p *Proxy) IsExpired(now time.Time) bool {
+	return p.ExpiresAt != nil && !p.ExpiresAt.After(now)
 }
 
 func (p *Proxy) URL() string {
