@@ -166,6 +166,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/image2',
+    name: 'ImageWorkbench',
+    component: () => import('@/views/user/ImageWorkbenchView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Image2 Workbench',
+    }
+  },
+  {
     path: '/legal/:documentId',
     name: 'LegalDocument',
     component: () => import('@/views/public/LegalDocumentView.vue'),
