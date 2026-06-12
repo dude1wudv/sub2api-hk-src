@@ -23,6 +23,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitordailyrollup"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
+	"github.com/Wei-Shaw/sub2api/ent/dailybalancegrant"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
@@ -71,6 +72,7 @@ const (
 	TypeChannelMonitorDailyRollup     = "ChannelMonitorDailyRollup"
 	TypeChannelMonitorHistory         = "ChannelMonitorHistory"
 	TypeChannelMonitorRequestTemplate = "ChannelMonitorRequestTemplate"
+	TypeDailyBalanceGrant             = "DailyBalanceGrant"
 	TypeErrorPassthroughRule          = "ErrorPassthroughRule"
 	TypeGroup                         = "Group"
 	TypeIdempotencyRecord             = "IdempotencyRecord"
@@ -13636,6 +13638,975 @@ func (m *ChannelMonitorRequestTemplateMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ChannelMonitorRequestTemplate edge %s", name)
 }
 
+// DailyBalanceGrantMutation represents an operation that mutates the DailyBalanceGrant nodes in the graph.
+type DailyBalanceGrantMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int64
+	user_id       *int64
+	adduser_id    *int64
+	group_id      *int64
+	addgroup_id   *int64
+	amount        *float64
+	addamount     *float64
+	remaining     *float64
+	addremaining  *float64
+	status        *string
+	source        *string
+	source_ref    *string
+	granted_at    *time.Time
+	expires_at    *time.Time
+	created_at    *time.Time
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*DailyBalanceGrant, error)
+	predicates    []predicate.DailyBalanceGrant
+}
+
+var _ ent.Mutation = (*DailyBalanceGrantMutation)(nil)
+
+// dailybalancegrantOption allows management of the mutation configuration using functional options.
+type dailybalancegrantOption func(*DailyBalanceGrantMutation)
+
+// newDailyBalanceGrantMutation creates new mutation for the DailyBalanceGrant entity.
+func newDailyBalanceGrantMutation(c config, op Op, opts ...dailybalancegrantOption) *DailyBalanceGrantMutation {
+	m := &DailyBalanceGrantMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDailyBalanceGrant,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDailyBalanceGrantID sets the ID field of the mutation.
+func withDailyBalanceGrantID(id int64) dailybalancegrantOption {
+	return func(m *DailyBalanceGrantMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DailyBalanceGrant
+		)
+		m.oldValue = func(ctx context.Context) (*DailyBalanceGrant, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DailyBalanceGrant.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDailyBalanceGrant sets the old DailyBalanceGrant of the mutation.
+func withDailyBalanceGrant(node *DailyBalanceGrant) dailybalancegrantOption {
+	return func(m *DailyBalanceGrantMutation) {
+		m.oldValue = func(context.Context) (*DailyBalanceGrant, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DailyBalanceGrantMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DailyBalanceGrantMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DailyBalanceGrantMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DailyBalanceGrantMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DailyBalanceGrant.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetUserID sets the "user_id" field.
+func (m *DailyBalanceGrantMutation) SetUserID(i int64) {
+	m.user_id = &i
+	m.adduser_id = nil
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *DailyBalanceGrantMutation) UserID() (r int64, exists bool) {
+	v := m.user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the DailyBalanceGrant entity.
+// If the DailyBalanceGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyBalanceGrantMutation) OldUserID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// AddUserID adds i to the "user_id" field.
+func (m *DailyBalanceGrantMutation) AddUserID(i int64) {
+	if m.adduser_id != nil {
+		*m.adduser_id += i
+	} else {
+		m.adduser_id = &i
+	}
+}
+
+// AddedUserID returns the value that was added to the "user_id" field in this mutation.
+func (m *DailyBalanceGrantMutation) AddedUserID() (r int64, exists bool) {
+	v := m.adduser_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *DailyBalanceGrantMutation) ResetUserID() {
+	m.user_id = nil
+	m.adduser_id = nil
+}
+
+// SetGroupID sets the "group_id" field.
+func (m *DailyBalanceGrantMutation) SetGroupID(i int64) {
+	m.group_id = &i
+	m.addgroup_id = nil
+}
+
+// GroupID returns the value of the "group_id" field in the mutation.
+func (m *DailyBalanceGrantMutation) GroupID() (r int64, exists bool) {
+	v := m.group_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGroupID returns the old "group_id" field's value of the DailyBalanceGrant entity.
+// If the DailyBalanceGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyBalanceGrantMutation) OldGroupID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGroupID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGroupID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGroupID: %w", err)
+	}
+	return oldValue.GroupID, nil
+}
+
+// AddGroupID adds i to the "group_id" field.
+func (m *DailyBalanceGrantMutation) AddGroupID(i int64) {
+	if m.addgroup_id != nil {
+		*m.addgroup_id += i
+	} else {
+		m.addgroup_id = &i
+	}
+}
+
+// AddedGroupID returns the value that was added to the "group_id" field in this mutation.
+func (m *DailyBalanceGrantMutation) AddedGroupID() (r int64, exists bool) {
+	v := m.addgroup_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetGroupID resets all changes to the "group_id" field.
+func (m *DailyBalanceGrantMutation) ResetGroupID() {
+	m.group_id = nil
+	m.addgroup_id = nil
+}
+
+// SetAmount sets the "amount" field.
+func (m *DailyBalanceGrantMutation) SetAmount(f float64) {
+	m.amount = &f
+	m.addamount = nil
+}
+
+// Amount returns the value of the "amount" field in the mutation.
+func (m *DailyBalanceGrantMutation) Amount() (r float64, exists bool) {
+	v := m.amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAmount returns the old "amount" field's value of the DailyBalanceGrant entity.
+// If the DailyBalanceGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyBalanceGrantMutation) OldAmount(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAmount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAmount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAmount: %w", err)
+	}
+	return oldValue.Amount, nil
+}
+
+// AddAmount adds f to the "amount" field.
+func (m *DailyBalanceGrantMutation) AddAmount(f float64) {
+	if m.addamount != nil {
+		*m.addamount += f
+	} else {
+		m.addamount = &f
+	}
+}
+
+// AddedAmount returns the value that was added to the "amount" field in this mutation.
+func (m *DailyBalanceGrantMutation) AddedAmount() (r float64, exists bool) {
+	v := m.addamount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAmount resets all changes to the "amount" field.
+func (m *DailyBalanceGrantMutation) ResetAmount() {
+	m.amount = nil
+	m.addamount = nil
+}
+
+// SetRemaining sets the "remaining" field.
+func (m *DailyBalanceGrantMutation) SetRemaining(f float64) {
+	m.remaining = &f
+	m.addremaining = nil
+}
+
+// Remaining returns the value of the "remaining" field in the mutation.
+func (m *DailyBalanceGrantMutation) Remaining() (r float64, exists bool) {
+	v := m.remaining
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRemaining returns the old "remaining" field's value of the DailyBalanceGrant entity.
+// If the DailyBalanceGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyBalanceGrantMutation) OldRemaining(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRemaining is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRemaining requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRemaining: %w", err)
+	}
+	return oldValue.Remaining, nil
+}
+
+// AddRemaining adds f to the "remaining" field.
+func (m *DailyBalanceGrantMutation) AddRemaining(f float64) {
+	if m.addremaining != nil {
+		*m.addremaining += f
+	} else {
+		m.addremaining = &f
+	}
+}
+
+// AddedRemaining returns the value that was added to the "remaining" field in this mutation.
+func (m *DailyBalanceGrantMutation) AddedRemaining() (r float64, exists bool) {
+	v := m.addremaining
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRemaining resets all changes to the "remaining" field.
+func (m *DailyBalanceGrantMutation) ResetRemaining() {
+	m.remaining = nil
+	m.addremaining = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *DailyBalanceGrantMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *DailyBalanceGrantMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the DailyBalanceGrant entity.
+// If the DailyBalanceGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyBalanceGrantMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *DailyBalanceGrantMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetSource sets the "source" field.
+func (m *DailyBalanceGrantMutation) SetSource(s string) {
+	m.source = &s
+}
+
+// Source returns the value of the "source" field in the mutation.
+func (m *DailyBalanceGrantMutation) Source() (r string, exists bool) {
+	v := m.source
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSource returns the old "source" field's value of the DailyBalanceGrant entity.
+// If the DailyBalanceGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyBalanceGrantMutation) OldSource(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSource is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSource requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSource: %w", err)
+	}
+	return oldValue.Source, nil
+}
+
+// ResetSource resets all changes to the "source" field.
+func (m *DailyBalanceGrantMutation) ResetSource() {
+	m.source = nil
+}
+
+// SetSourceRef sets the "source_ref" field.
+func (m *DailyBalanceGrantMutation) SetSourceRef(s string) {
+	m.source_ref = &s
+}
+
+// SourceRef returns the value of the "source_ref" field in the mutation.
+func (m *DailyBalanceGrantMutation) SourceRef() (r string, exists bool) {
+	v := m.source_ref
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSourceRef returns the old "source_ref" field's value of the DailyBalanceGrant entity.
+// If the DailyBalanceGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyBalanceGrantMutation) OldSourceRef(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSourceRef is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSourceRef requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSourceRef: %w", err)
+	}
+	return oldValue.SourceRef, nil
+}
+
+// ClearSourceRef clears the value of the "source_ref" field.
+func (m *DailyBalanceGrantMutation) ClearSourceRef() {
+	m.source_ref = nil
+	m.clearedFields[dailybalancegrant.FieldSourceRef] = struct{}{}
+}
+
+// SourceRefCleared returns if the "source_ref" field was cleared in this mutation.
+func (m *DailyBalanceGrantMutation) SourceRefCleared() bool {
+	_, ok := m.clearedFields[dailybalancegrant.FieldSourceRef]
+	return ok
+}
+
+// ResetSourceRef resets all changes to the "source_ref" field.
+func (m *DailyBalanceGrantMutation) ResetSourceRef() {
+	m.source_ref = nil
+	delete(m.clearedFields, dailybalancegrant.FieldSourceRef)
+}
+
+// SetGrantedAt sets the "granted_at" field.
+func (m *DailyBalanceGrantMutation) SetGrantedAt(t time.Time) {
+	m.granted_at = &t
+}
+
+// GrantedAt returns the value of the "granted_at" field in the mutation.
+func (m *DailyBalanceGrantMutation) GrantedAt() (r time.Time, exists bool) {
+	v := m.granted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGrantedAt returns the old "granted_at" field's value of the DailyBalanceGrant entity.
+// If the DailyBalanceGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyBalanceGrantMutation) OldGrantedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGrantedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGrantedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGrantedAt: %w", err)
+	}
+	return oldValue.GrantedAt, nil
+}
+
+// ResetGrantedAt resets all changes to the "granted_at" field.
+func (m *DailyBalanceGrantMutation) ResetGrantedAt() {
+	m.granted_at = nil
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (m *DailyBalanceGrantMutation) SetExpiresAt(t time.Time) {
+	m.expires_at = &t
+}
+
+// ExpiresAt returns the value of the "expires_at" field in the mutation.
+func (m *DailyBalanceGrantMutation) ExpiresAt() (r time.Time, exists bool) {
+	v := m.expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiresAt returns the old "expires_at" field's value of the DailyBalanceGrant entity.
+// If the DailyBalanceGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyBalanceGrantMutation) OldExpiresAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiresAt: %w", err)
+	}
+	return oldValue.ExpiresAt, nil
+}
+
+// ResetExpiresAt resets all changes to the "expires_at" field.
+func (m *DailyBalanceGrantMutation) ResetExpiresAt() {
+	m.expires_at = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *DailyBalanceGrantMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *DailyBalanceGrantMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the DailyBalanceGrant entity.
+// If the DailyBalanceGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyBalanceGrantMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *DailyBalanceGrantMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// Where appends a list predicates to the DailyBalanceGrantMutation builder.
+func (m *DailyBalanceGrantMutation) Where(ps ...predicate.DailyBalanceGrant) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DailyBalanceGrantMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DailyBalanceGrantMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DailyBalanceGrant, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DailyBalanceGrantMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DailyBalanceGrantMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DailyBalanceGrant).
+func (m *DailyBalanceGrantMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DailyBalanceGrantMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.user_id != nil {
+		fields = append(fields, dailybalancegrant.FieldUserID)
+	}
+	if m.group_id != nil {
+		fields = append(fields, dailybalancegrant.FieldGroupID)
+	}
+	if m.amount != nil {
+		fields = append(fields, dailybalancegrant.FieldAmount)
+	}
+	if m.remaining != nil {
+		fields = append(fields, dailybalancegrant.FieldRemaining)
+	}
+	if m.status != nil {
+		fields = append(fields, dailybalancegrant.FieldStatus)
+	}
+	if m.source != nil {
+		fields = append(fields, dailybalancegrant.FieldSource)
+	}
+	if m.source_ref != nil {
+		fields = append(fields, dailybalancegrant.FieldSourceRef)
+	}
+	if m.granted_at != nil {
+		fields = append(fields, dailybalancegrant.FieldGrantedAt)
+	}
+	if m.expires_at != nil {
+		fields = append(fields, dailybalancegrant.FieldExpiresAt)
+	}
+	if m.created_at != nil {
+		fields = append(fields, dailybalancegrant.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DailyBalanceGrantMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case dailybalancegrant.FieldUserID:
+		return m.UserID()
+	case dailybalancegrant.FieldGroupID:
+		return m.GroupID()
+	case dailybalancegrant.FieldAmount:
+		return m.Amount()
+	case dailybalancegrant.FieldRemaining:
+		return m.Remaining()
+	case dailybalancegrant.FieldStatus:
+		return m.Status()
+	case dailybalancegrant.FieldSource:
+		return m.Source()
+	case dailybalancegrant.FieldSourceRef:
+		return m.SourceRef()
+	case dailybalancegrant.FieldGrantedAt:
+		return m.GrantedAt()
+	case dailybalancegrant.FieldExpiresAt:
+		return m.ExpiresAt()
+	case dailybalancegrant.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DailyBalanceGrantMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case dailybalancegrant.FieldUserID:
+		return m.OldUserID(ctx)
+	case dailybalancegrant.FieldGroupID:
+		return m.OldGroupID(ctx)
+	case dailybalancegrant.FieldAmount:
+		return m.OldAmount(ctx)
+	case dailybalancegrant.FieldRemaining:
+		return m.OldRemaining(ctx)
+	case dailybalancegrant.FieldStatus:
+		return m.OldStatus(ctx)
+	case dailybalancegrant.FieldSource:
+		return m.OldSource(ctx)
+	case dailybalancegrant.FieldSourceRef:
+		return m.OldSourceRef(ctx)
+	case dailybalancegrant.FieldGrantedAt:
+		return m.OldGrantedAt(ctx)
+	case dailybalancegrant.FieldExpiresAt:
+		return m.OldExpiresAt(ctx)
+	case dailybalancegrant.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown DailyBalanceGrant field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DailyBalanceGrantMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case dailybalancegrant.FieldUserID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case dailybalancegrant.FieldGroupID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupID(v)
+		return nil
+	case dailybalancegrant.FieldAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAmount(v)
+		return nil
+	case dailybalancegrant.FieldRemaining:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRemaining(v)
+		return nil
+	case dailybalancegrant.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case dailybalancegrant.FieldSource:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSource(v)
+		return nil
+	case dailybalancegrant.FieldSourceRef:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSourceRef(v)
+		return nil
+	case dailybalancegrant.FieldGrantedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGrantedAt(v)
+		return nil
+	case dailybalancegrant.FieldExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiresAt(v)
+		return nil
+	case dailybalancegrant.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DailyBalanceGrant field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DailyBalanceGrantMutation) AddedFields() []string {
+	var fields []string
+	if m.adduser_id != nil {
+		fields = append(fields, dailybalancegrant.FieldUserID)
+	}
+	if m.addgroup_id != nil {
+		fields = append(fields, dailybalancegrant.FieldGroupID)
+	}
+	if m.addamount != nil {
+		fields = append(fields, dailybalancegrant.FieldAmount)
+	}
+	if m.addremaining != nil {
+		fields = append(fields, dailybalancegrant.FieldRemaining)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DailyBalanceGrantMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case dailybalancegrant.FieldUserID:
+		return m.AddedUserID()
+	case dailybalancegrant.FieldGroupID:
+		return m.AddedGroupID()
+	case dailybalancegrant.FieldAmount:
+		return m.AddedAmount()
+	case dailybalancegrant.FieldRemaining:
+		return m.AddedRemaining()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DailyBalanceGrantMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case dailybalancegrant.FieldUserID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUserID(v)
+		return nil
+	case dailybalancegrant.FieldGroupID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddGroupID(v)
+		return nil
+	case dailybalancegrant.FieldAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAmount(v)
+		return nil
+	case dailybalancegrant.FieldRemaining:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRemaining(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DailyBalanceGrant numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DailyBalanceGrantMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(dailybalancegrant.FieldSourceRef) {
+		fields = append(fields, dailybalancegrant.FieldSourceRef)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DailyBalanceGrantMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DailyBalanceGrantMutation) ClearField(name string) error {
+	switch name {
+	case dailybalancegrant.FieldSourceRef:
+		m.ClearSourceRef()
+		return nil
+	}
+	return fmt.Errorf("unknown DailyBalanceGrant nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DailyBalanceGrantMutation) ResetField(name string) error {
+	switch name {
+	case dailybalancegrant.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case dailybalancegrant.FieldGroupID:
+		m.ResetGroupID()
+		return nil
+	case dailybalancegrant.FieldAmount:
+		m.ResetAmount()
+		return nil
+	case dailybalancegrant.FieldRemaining:
+		m.ResetRemaining()
+		return nil
+	case dailybalancegrant.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case dailybalancegrant.FieldSource:
+		m.ResetSource()
+		return nil
+	case dailybalancegrant.FieldSourceRef:
+		m.ResetSourceRef()
+		return nil
+	case dailybalancegrant.FieldGrantedAt:
+		m.ResetGrantedAt()
+		return nil
+	case dailybalancegrant.FieldExpiresAt:
+		m.ResetExpiresAt()
+		return nil
+	case dailybalancegrant.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DailyBalanceGrant field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DailyBalanceGrantMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DailyBalanceGrantMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DailyBalanceGrantMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DailyBalanceGrantMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DailyBalanceGrantMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DailyBalanceGrantMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DailyBalanceGrantMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown DailyBalanceGrant unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DailyBalanceGrantMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown DailyBalanceGrant edge %s", name)
+}
+
 // ErrorPassthroughRuleMutation represents an operation that mutates the ErrorPassthroughRule nodes in the graph.
 type ErrorPassthroughRuleMutation struct {
 	config
@@ -15011,6 +15982,9 @@ type GroupMutation struct {
 	models_list_config                      *domain.GroupModelsListConfig
 	rpm_limit                               *int
 	addrpm_limit                            *int
+	daily_balance_enabled                   *bool
+	daily_fallback_multiplier               *float64
+	adddaily_fallback_multiplier            *float64
 	clearedFields                           map[string]struct{}
 	api_keys                                map[int64]struct{}
 	removedapi_keys                         map[int64]struct{}
@@ -16819,6 +17793,98 @@ func (m *GroupMutation) ResetRpmLimit() {
 	m.addrpm_limit = nil
 }
 
+// SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
+func (m *GroupMutation) SetDailyBalanceEnabled(b bool) {
+	m.daily_balance_enabled = &b
+}
+
+// DailyBalanceEnabled returns the value of the "daily_balance_enabled" field in the mutation.
+func (m *GroupMutation) DailyBalanceEnabled() (r bool, exists bool) {
+	v := m.daily_balance_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDailyBalanceEnabled returns the old "daily_balance_enabled" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldDailyBalanceEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDailyBalanceEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDailyBalanceEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDailyBalanceEnabled: %w", err)
+	}
+	return oldValue.DailyBalanceEnabled, nil
+}
+
+// ResetDailyBalanceEnabled resets all changes to the "daily_balance_enabled" field.
+func (m *GroupMutation) ResetDailyBalanceEnabled() {
+	m.daily_balance_enabled = nil
+}
+
+// SetDailyFallbackMultiplier sets the "daily_fallback_multiplier" field.
+func (m *GroupMutation) SetDailyFallbackMultiplier(f float64) {
+	m.daily_fallback_multiplier = &f
+	m.adddaily_fallback_multiplier = nil
+}
+
+// DailyFallbackMultiplier returns the value of the "daily_fallback_multiplier" field in the mutation.
+func (m *GroupMutation) DailyFallbackMultiplier() (r float64, exists bool) {
+	v := m.daily_fallback_multiplier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDailyFallbackMultiplier returns the old "daily_fallback_multiplier" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldDailyFallbackMultiplier(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDailyFallbackMultiplier is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDailyFallbackMultiplier requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDailyFallbackMultiplier: %w", err)
+	}
+	return oldValue.DailyFallbackMultiplier, nil
+}
+
+// AddDailyFallbackMultiplier adds f to the "daily_fallback_multiplier" field.
+func (m *GroupMutation) AddDailyFallbackMultiplier(f float64) {
+	if m.adddaily_fallback_multiplier != nil {
+		*m.adddaily_fallback_multiplier += f
+	} else {
+		m.adddaily_fallback_multiplier = &f
+	}
+}
+
+// AddedDailyFallbackMultiplier returns the value that was added to the "daily_fallback_multiplier" field in this mutation.
+func (m *GroupMutation) AddedDailyFallbackMultiplier() (r float64, exists bool) {
+	v := m.adddaily_fallback_multiplier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDailyFallbackMultiplier resets all changes to the "daily_fallback_multiplier" field.
+func (m *GroupMutation) ResetDailyFallbackMultiplier() {
+	m.daily_fallback_multiplier = nil
+	m.adddaily_fallback_multiplier = nil
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by ids.
 func (m *GroupMutation) AddAPIKeyIDs(ids ...int64) {
 	if m.api_keys == nil {
@@ -17177,7 +18243,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 35)
+	fields := make([]string, 0, 37)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -17283,6 +18349,12 @@ func (m *GroupMutation) Fields() []string {
 	if m.rpm_limit != nil {
 		fields = append(fields, group.FieldRpmLimit)
 	}
+	if m.daily_balance_enabled != nil {
+		fields = append(fields, group.FieldDailyBalanceEnabled)
+	}
+	if m.daily_fallback_multiplier != nil {
+		fields = append(fields, group.FieldDailyFallbackMultiplier)
+	}
 	return fields
 }
 
@@ -17361,6 +18433,10 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.ModelsListConfig()
 	case group.FieldRpmLimit:
 		return m.RpmLimit()
+	case group.FieldDailyBalanceEnabled:
+		return m.DailyBalanceEnabled()
+	case group.FieldDailyFallbackMultiplier:
+		return m.DailyFallbackMultiplier()
 	}
 	return nil, false
 }
@@ -17440,6 +18516,10 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldModelsListConfig(ctx)
 	case group.FieldRpmLimit:
 		return m.OldRpmLimit(ctx)
+	case group.FieldDailyBalanceEnabled:
+		return m.OldDailyBalanceEnabled(ctx)
+	case group.FieldDailyFallbackMultiplier:
+		return m.OldDailyFallbackMultiplier(ctx)
 	}
 	return nil, fmt.Errorf("unknown Group field %s", name)
 }
@@ -17694,6 +18774,20 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRpmLimit(v)
 		return nil
+	case group.FieldDailyBalanceEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDailyBalanceEnabled(v)
+		return nil
+	case group.FieldDailyFallbackMultiplier:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDailyFallbackMultiplier(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Group field %s", name)
 }
@@ -17741,6 +18835,9 @@ func (m *GroupMutation) AddedFields() []string {
 	if m.addrpm_limit != nil {
 		fields = append(fields, group.FieldRpmLimit)
 	}
+	if m.adddaily_fallback_multiplier != nil {
+		fields = append(fields, group.FieldDailyFallbackMultiplier)
+	}
 	return fields
 }
 
@@ -17775,6 +18872,8 @@ func (m *GroupMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedSortOrder()
 	case group.FieldRpmLimit:
 		return m.AddedRpmLimit()
+	case group.FieldDailyFallbackMultiplier:
+		return m.AddedDailyFallbackMultiplier()
 	}
 	return nil, false
 }
@@ -17874,6 +18973,13 @@ func (m *GroupMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddRpmLimit(v)
+		return nil
+	case group.FieldDailyFallbackMultiplier:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDailyFallbackMultiplier(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Group numeric field %s", name)
@@ -18075,6 +19181,12 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldRpmLimit:
 		m.ResetRpmLimit()
+		return nil
+	case group.FieldDailyBalanceEnabled:
+		m.ResetDailyBalanceEnabled()
+		return nil
+	case group.FieldDailyFallbackMultiplier:
+		m.ResetDailyFallbackMultiplier()
 		return nil
 	}
 	return fmt.Errorf("unknown Group field %s", name)
@@ -27879,6 +28991,11 @@ type ProxyMutation struct {
 	fallback_mode       *string
 	expiry_warn_days    *int
 	addexpiry_warn_days *int
+	cooldown_until      *time.Time
+	cooldown_reason     *string
+	failure_count       *int
+	addfailure_count    *int
+	last_error_at       *time.Time
 	clearedFields       map[string]struct{}
 	accounts            map[int64]struct{}
 	removedaccounts     map[int64]struct{}
@@ -28597,6 +29714,209 @@ func (m *ProxyMutation) ResetExpiryWarnDays() {
 	m.addexpiry_warn_days = nil
 }
 
+// SetCooldownUntil sets the "cooldown_until" field.
+func (m *ProxyMutation) SetCooldownUntil(t time.Time) {
+	m.cooldown_until = &t
+}
+
+// CooldownUntil returns the value of the "cooldown_until" field in the mutation.
+func (m *ProxyMutation) CooldownUntil() (r time.Time, exists bool) {
+	v := m.cooldown_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCooldownUntil returns the old "cooldown_until" field's value of the Proxy entity.
+// If the Proxy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProxyMutation) OldCooldownUntil(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCooldownUntil is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCooldownUntil requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCooldownUntil: %w", err)
+	}
+	return oldValue.CooldownUntil, nil
+}
+
+// ClearCooldownUntil clears the value of the "cooldown_until" field.
+func (m *ProxyMutation) ClearCooldownUntil() {
+	m.cooldown_until = nil
+	m.clearedFields[proxy.FieldCooldownUntil] = struct{}{}
+}
+
+// CooldownUntilCleared returns if the "cooldown_until" field was cleared in this mutation.
+func (m *ProxyMutation) CooldownUntilCleared() bool {
+	_, ok := m.clearedFields[proxy.FieldCooldownUntil]
+	return ok
+}
+
+// ResetCooldownUntil resets all changes to the "cooldown_until" field.
+func (m *ProxyMutation) ResetCooldownUntil() {
+	m.cooldown_until = nil
+	delete(m.clearedFields, proxy.FieldCooldownUntil)
+}
+
+// SetCooldownReason sets the "cooldown_reason" field.
+func (m *ProxyMutation) SetCooldownReason(s string) {
+	m.cooldown_reason = &s
+}
+
+// CooldownReason returns the value of the "cooldown_reason" field in the mutation.
+func (m *ProxyMutation) CooldownReason() (r string, exists bool) {
+	v := m.cooldown_reason
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCooldownReason returns the old "cooldown_reason" field's value of the Proxy entity.
+// If the Proxy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProxyMutation) OldCooldownReason(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCooldownReason is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCooldownReason requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCooldownReason: %w", err)
+	}
+	return oldValue.CooldownReason, nil
+}
+
+// ClearCooldownReason clears the value of the "cooldown_reason" field.
+func (m *ProxyMutation) ClearCooldownReason() {
+	m.cooldown_reason = nil
+	m.clearedFields[proxy.FieldCooldownReason] = struct{}{}
+}
+
+// CooldownReasonCleared returns if the "cooldown_reason" field was cleared in this mutation.
+func (m *ProxyMutation) CooldownReasonCleared() bool {
+	_, ok := m.clearedFields[proxy.FieldCooldownReason]
+	return ok
+}
+
+// ResetCooldownReason resets all changes to the "cooldown_reason" field.
+func (m *ProxyMutation) ResetCooldownReason() {
+	m.cooldown_reason = nil
+	delete(m.clearedFields, proxy.FieldCooldownReason)
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (m *ProxyMutation) SetFailureCount(i int) {
+	m.failure_count = &i
+	m.addfailure_count = nil
+}
+
+// FailureCount returns the value of the "failure_count" field in the mutation.
+func (m *ProxyMutation) FailureCount() (r int, exists bool) {
+	v := m.failure_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFailureCount returns the old "failure_count" field's value of the Proxy entity.
+// If the Proxy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProxyMutation) OldFailureCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFailureCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFailureCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFailureCount: %w", err)
+	}
+	return oldValue.FailureCount, nil
+}
+
+// AddFailureCount adds i to the "failure_count" field.
+func (m *ProxyMutation) AddFailureCount(i int) {
+	if m.addfailure_count != nil {
+		*m.addfailure_count += i
+	} else {
+		m.addfailure_count = &i
+	}
+}
+
+// AddedFailureCount returns the value that was added to the "failure_count" field in this mutation.
+func (m *ProxyMutation) AddedFailureCount() (r int, exists bool) {
+	v := m.addfailure_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFailureCount resets all changes to the "failure_count" field.
+func (m *ProxyMutation) ResetFailureCount() {
+	m.failure_count = nil
+	m.addfailure_count = nil
+}
+
+// SetLastErrorAt sets the "last_error_at" field.
+func (m *ProxyMutation) SetLastErrorAt(t time.Time) {
+	m.last_error_at = &t
+}
+
+// LastErrorAt returns the value of the "last_error_at" field in the mutation.
+func (m *ProxyMutation) LastErrorAt() (r time.Time, exists bool) {
+	v := m.last_error_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastErrorAt returns the old "last_error_at" field's value of the Proxy entity.
+// If the Proxy object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProxyMutation) OldLastErrorAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastErrorAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastErrorAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastErrorAt: %w", err)
+	}
+	return oldValue.LastErrorAt, nil
+}
+
+// ClearLastErrorAt clears the value of the "last_error_at" field.
+func (m *ProxyMutation) ClearLastErrorAt() {
+	m.last_error_at = nil
+	m.clearedFields[proxy.FieldLastErrorAt] = struct{}{}
+}
+
+// LastErrorAtCleared returns if the "last_error_at" field was cleared in this mutation.
+func (m *ProxyMutation) LastErrorAtCleared() bool {
+	_, ok := m.clearedFields[proxy.FieldLastErrorAt]
+	return ok
+}
+
+// ResetLastErrorAt resets all changes to the "last_error_at" field.
+func (m *ProxyMutation) ResetLastErrorAt() {
+	m.last_error_at = nil
+	delete(m.clearedFields, proxy.FieldLastErrorAt)
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by ids.
 func (m *ProxyMutation) AddAccountIDs(ids ...int64) {
 	if m.accounts == nil {
@@ -28712,7 +30032,7 @@ func (m *ProxyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProxyMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 18)
 	if m.created_at != nil {
 		fields = append(fields, proxy.FieldCreatedAt)
 	}
@@ -28755,6 +30075,18 @@ func (m *ProxyMutation) Fields() []string {
 	if m.expiry_warn_days != nil {
 		fields = append(fields, proxy.FieldExpiryWarnDays)
 	}
+	if m.cooldown_until != nil {
+		fields = append(fields, proxy.FieldCooldownUntil)
+	}
+	if m.cooldown_reason != nil {
+		fields = append(fields, proxy.FieldCooldownReason)
+	}
+	if m.failure_count != nil {
+		fields = append(fields, proxy.FieldFailureCount)
+	}
+	if m.last_error_at != nil {
+		fields = append(fields, proxy.FieldLastErrorAt)
+	}
 	return fields
 }
 
@@ -28791,6 +30123,14 @@ func (m *ProxyMutation) Field(name string) (ent.Value, bool) {
 		return m.BackupProxyID()
 	case proxy.FieldExpiryWarnDays:
 		return m.ExpiryWarnDays()
+	case proxy.FieldCooldownUntil:
+		return m.CooldownUntil()
+	case proxy.FieldCooldownReason:
+		return m.CooldownReason()
+	case proxy.FieldFailureCount:
+		return m.FailureCount()
+	case proxy.FieldLastErrorAt:
+		return m.LastErrorAt()
 	}
 	return nil, false
 }
@@ -28828,6 +30168,14 @@ func (m *ProxyMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldBackupProxyID(ctx)
 	case proxy.FieldExpiryWarnDays:
 		return m.OldExpiryWarnDays(ctx)
+	case proxy.FieldCooldownUntil:
+		return m.OldCooldownUntil(ctx)
+	case proxy.FieldCooldownReason:
+		return m.OldCooldownReason(ctx)
+	case proxy.FieldFailureCount:
+		return m.OldFailureCount(ctx)
+	case proxy.FieldLastErrorAt:
+		return m.OldLastErrorAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Proxy field %s", name)
 }
@@ -28935,6 +30283,34 @@ func (m *ProxyMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetExpiryWarnDays(v)
 		return nil
+	case proxy.FieldCooldownUntil:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCooldownUntil(v)
+		return nil
+	case proxy.FieldCooldownReason:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCooldownReason(v)
+		return nil
+	case proxy.FieldFailureCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFailureCount(v)
+		return nil
+	case proxy.FieldLastErrorAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastErrorAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Proxy field %s", name)
 }
@@ -28949,6 +30325,9 @@ func (m *ProxyMutation) AddedFields() []string {
 	if m.addexpiry_warn_days != nil {
 		fields = append(fields, proxy.FieldExpiryWarnDays)
 	}
+	if m.addfailure_count != nil {
+		fields = append(fields, proxy.FieldFailureCount)
+	}
 	return fields
 }
 
@@ -28961,6 +30340,8 @@ func (m *ProxyMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedPort()
 	case proxy.FieldExpiryWarnDays:
 		return m.AddedExpiryWarnDays()
+	case proxy.FieldFailureCount:
+		return m.AddedFailureCount()
 	}
 	return nil, false
 }
@@ -28984,6 +30365,13 @@ func (m *ProxyMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddExpiryWarnDays(v)
 		return nil
+	case proxy.FieldFailureCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFailureCount(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Proxy numeric field %s", name)
 }
@@ -29006,6 +30394,15 @@ func (m *ProxyMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(proxy.FieldBackupProxyID) {
 		fields = append(fields, proxy.FieldBackupProxyID)
+	}
+	if m.FieldCleared(proxy.FieldCooldownUntil) {
+		fields = append(fields, proxy.FieldCooldownUntil)
+	}
+	if m.FieldCleared(proxy.FieldCooldownReason) {
+		fields = append(fields, proxy.FieldCooldownReason)
+	}
+	if m.FieldCleared(proxy.FieldLastErrorAt) {
+		fields = append(fields, proxy.FieldLastErrorAt)
 	}
 	return fields
 }
@@ -29035,6 +30432,15 @@ func (m *ProxyMutation) ClearField(name string) error {
 		return nil
 	case proxy.FieldBackupProxyID:
 		m.ClearBackupProxyID()
+		return nil
+	case proxy.FieldCooldownUntil:
+		m.ClearCooldownUntil()
+		return nil
+	case proxy.FieldCooldownReason:
+		m.ClearCooldownReason()
+		return nil
+	case proxy.FieldLastErrorAt:
+		m.ClearLastErrorAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Proxy nullable field %s", name)
@@ -29085,6 +30491,18 @@ func (m *ProxyMutation) ResetField(name string) error {
 		return nil
 	case proxy.FieldExpiryWarnDays:
 		m.ResetExpiryWarnDays()
+		return nil
+	case proxy.FieldCooldownUntil:
+		m.ResetCooldownUntil()
+		return nil
+	case proxy.FieldCooldownReason:
+		m.ResetCooldownReason()
+		return nil
+	case proxy.FieldFailureCount:
+		m.ResetFailureCount()
+		return nil
+	case proxy.FieldLastErrorAt:
+		m.ResetLastErrorAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Proxy field %s", name)

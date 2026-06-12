@@ -147,6 +147,20 @@ export interface UserAffiliateDetail {
   invitees: AffiliateInvitee[]
 }
 
+export interface DailyBalanceGrant {
+  id: number
+  user_id: number
+  group_id: number
+  amount: number
+  remaining: number
+  status: 'active' | 'exhausted' | 'expired'
+  source: string
+  source_ref: string | null
+  granted_at: string
+  expires_at: string
+  created_at: string
+}
+
 export interface AffiliateTransferResponse {
   transferred_quota: number
   balance: number
@@ -528,6 +542,9 @@ export interface Group {
   messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   require_oauth_only: boolean
   require_privacy_set: boolean
+  // 每日余额专属分组标志 + 回退倍率
+  daily_balance_enabled: boolean
+  daily_fallback_multiplier: number
   created_at: string
   updated_at: string
 }

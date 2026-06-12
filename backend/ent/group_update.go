@@ -651,6 +651,41 @@ func (_u *GroupUpdate) AddRpmLimit(v int) *GroupUpdate {
 	return _u
 }
 
+// SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
+func (_u *GroupUpdate) SetDailyBalanceEnabled(v bool) *GroupUpdate {
+	_u.mutation.SetDailyBalanceEnabled(v)
+	return _u
+}
+
+// SetNillableDailyBalanceEnabled sets the "daily_balance_enabled" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableDailyBalanceEnabled(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetDailyBalanceEnabled(*v)
+	}
+	return _u
+}
+
+// SetDailyFallbackMultiplier sets the "daily_fallback_multiplier" field.
+func (_u *GroupUpdate) SetDailyFallbackMultiplier(v float64) *GroupUpdate {
+	_u.mutation.ResetDailyFallbackMultiplier()
+	_u.mutation.SetDailyFallbackMultiplier(v)
+	return _u
+}
+
+// SetNillableDailyFallbackMultiplier sets the "daily_fallback_multiplier" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableDailyFallbackMultiplier(v *float64) *GroupUpdate {
+	if v != nil {
+		_u.SetDailyFallbackMultiplier(*v)
+	}
+	return _u
+}
+
+// AddDailyFallbackMultiplier adds value to the "daily_fallback_multiplier" field.
+func (_u *GroupUpdate) AddDailyFallbackMultiplier(v float64) *GroupUpdate {
+	_u.mutation.AddDailyFallbackMultiplier(v)
+	return _u
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *GroupUpdate) AddAPIKeyIDs(ids ...int64) *GroupUpdate {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -1134,6 +1169,15 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedRpmLimit(); ok {
 		_spec.AddField(group.FieldRpmLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.DailyBalanceEnabled(); ok {
+		_spec.SetField(group.FieldDailyBalanceEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.DailyFallbackMultiplier(); ok {
+		_spec.SetField(group.FieldDailyFallbackMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedDailyFallbackMultiplier(); ok {
+		_spec.AddField(group.FieldDailyFallbackMultiplier, field.TypeFloat64, value)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -2064,6 +2108,41 @@ func (_u *GroupUpdateOne) AddRpmLimit(v int) *GroupUpdateOne {
 	return _u
 }
 
+// SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
+func (_u *GroupUpdateOne) SetDailyBalanceEnabled(v bool) *GroupUpdateOne {
+	_u.mutation.SetDailyBalanceEnabled(v)
+	return _u
+}
+
+// SetNillableDailyBalanceEnabled sets the "daily_balance_enabled" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableDailyBalanceEnabled(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetDailyBalanceEnabled(*v)
+	}
+	return _u
+}
+
+// SetDailyFallbackMultiplier sets the "daily_fallback_multiplier" field.
+func (_u *GroupUpdateOne) SetDailyFallbackMultiplier(v float64) *GroupUpdateOne {
+	_u.mutation.ResetDailyFallbackMultiplier()
+	_u.mutation.SetDailyFallbackMultiplier(v)
+	return _u
+}
+
+// SetNillableDailyFallbackMultiplier sets the "daily_fallback_multiplier" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableDailyFallbackMultiplier(v *float64) *GroupUpdateOne {
+	if v != nil {
+		_u.SetDailyFallbackMultiplier(*v)
+	}
+	return _u
+}
+
+// AddDailyFallbackMultiplier adds value to the "daily_fallback_multiplier" field.
+func (_u *GroupUpdateOne) AddDailyFallbackMultiplier(v float64) *GroupUpdateOne {
+	_u.mutation.AddDailyFallbackMultiplier(v)
+	return _u
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *GroupUpdateOne) AddAPIKeyIDs(ids ...int64) *GroupUpdateOne {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -2577,6 +2656,15 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.AddedRpmLimit(); ok {
 		_spec.AddField(group.FieldRpmLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.DailyBalanceEnabled(); ok {
+		_spec.SetField(group.FieldDailyBalanceEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.DailyFallbackMultiplier(); ok {
+		_spec.SetField(group.FieldDailyFallbackMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedDailyFallbackMultiplier(); ok {
+		_spec.AddField(group.FieldDailyFallbackMultiplier, field.TypeFloat64, value)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{

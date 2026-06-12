@@ -141,6 +141,14 @@ func TestAdminService_ListGroups_PassesSortParams(t *testing.T) {
 	}, repo.listWithFiltersParams)
 }
 
+func TestDefaultModelsListCandidateIDs_DeepSeek(t *testing.T) {
+	candidates := defaultModelsListCandidateIDs(PlatformDeepSeek)
+
+	require.Contains(t, candidates, "deepseek-chat")
+	require.Contains(t, candidates, "deepseek-reasoner")
+	require.NotContains(t, candidates, "claude-sonnet-4-5")
+}
+
 // TestAdminService_CreateGroup_WithImagePricing 测试创建分组时 ImagePrice 字段正确传递
 func TestAdminService_CreateGroup_WithImagePricing(t *testing.T) {
 	repo := &groupRepoStubForAdmin{}

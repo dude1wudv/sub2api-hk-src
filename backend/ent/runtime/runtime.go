@@ -16,6 +16,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitordailyrollup"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
+	"github.com/Wei-Shaw/sub2api/ent/dailybalancegrant"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
@@ -690,6 +691,36 @@ func init() {
 	channelmonitorrequesttemplate.DefaultBodyOverrideMode = channelmonitorrequesttemplateDescBodyOverrideMode.Default.(string)
 	// channelmonitorrequesttemplate.BodyOverrideModeValidator is a validator for the "body_override_mode" field. It is called by the builders before save.
 	channelmonitorrequesttemplate.BodyOverrideModeValidator = channelmonitorrequesttemplateDescBodyOverrideMode.Validators[0].(func(string) error)
+	dailybalancegrantFields := schema.DailyBalanceGrant{}.Fields()
+	_ = dailybalancegrantFields
+	// dailybalancegrantDescAmount is the schema descriptor for amount field.
+	dailybalancegrantDescAmount := dailybalancegrantFields[2].Descriptor()
+	// dailybalancegrant.DefaultAmount holds the default value on creation for the amount field.
+	dailybalancegrant.DefaultAmount = dailybalancegrantDescAmount.Default.(float64)
+	// dailybalancegrantDescRemaining is the schema descriptor for remaining field.
+	dailybalancegrantDescRemaining := dailybalancegrantFields[3].Descriptor()
+	// dailybalancegrant.DefaultRemaining holds the default value on creation for the remaining field.
+	dailybalancegrant.DefaultRemaining = dailybalancegrantDescRemaining.Default.(float64)
+	// dailybalancegrantDescStatus is the schema descriptor for status field.
+	dailybalancegrantDescStatus := dailybalancegrantFields[4].Descriptor()
+	// dailybalancegrant.DefaultStatus holds the default value on creation for the status field.
+	dailybalancegrant.DefaultStatus = dailybalancegrantDescStatus.Default.(string)
+	// dailybalancegrant.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	dailybalancegrant.StatusValidator = dailybalancegrantDescStatus.Validators[0].(func(string) error)
+	// dailybalancegrantDescSource is the schema descriptor for source field.
+	dailybalancegrantDescSource := dailybalancegrantFields[5].Descriptor()
+	// dailybalancegrant.DefaultSource holds the default value on creation for the source field.
+	dailybalancegrant.DefaultSource = dailybalancegrantDescSource.Default.(string)
+	// dailybalancegrant.SourceValidator is a validator for the "source" field. It is called by the builders before save.
+	dailybalancegrant.SourceValidator = dailybalancegrantDescSource.Validators[0].(func(string) error)
+	// dailybalancegrantDescGrantedAt is the schema descriptor for granted_at field.
+	dailybalancegrantDescGrantedAt := dailybalancegrantFields[7].Descriptor()
+	// dailybalancegrant.DefaultGrantedAt holds the default value on creation for the granted_at field.
+	dailybalancegrant.DefaultGrantedAt = dailybalancegrantDescGrantedAt.Default.(func() time.Time)
+	// dailybalancegrantDescCreatedAt is the schema descriptor for created_at field.
+	dailybalancegrantDescCreatedAt := dailybalancegrantFields[9].Descriptor()
+	// dailybalancegrant.DefaultCreatedAt holds the default value on creation for the created_at field.
+	dailybalancegrant.DefaultCreatedAt = dailybalancegrantDescCreatedAt.Default.(func() time.Time)
 	errorpassthroughruleMixin := schema.ErrorPassthroughRule{}.Mixin()
 	errorpassthroughruleMixinFields0 := errorpassthroughruleMixin[0].Fields()
 	_ = errorpassthroughruleMixinFields0
@@ -878,6 +909,14 @@ func init() {
 	groupDescRpmLimit := groupFields[31].Descriptor()
 	// group.DefaultRpmLimit holds the default value on creation for the rpm_limit field.
 	group.DefaultRpmLimit = groupDescRpmLimit.Default.(int)
+	// groupDescDailyBalanceEnabled is the schema descriptor for daily_balance_enabled field.
+	groupDescDailyBalanceEnabled := groupFields[32].Descriptor()
+	// group.DefaultDailyBalanceEnabled holds the default value on creation for the daily_balance_enabled field.
+	group.DefaultDailyBalanceEnabled = groupDescDailyBalanceEnabled.Default.(bool)
+	// groupDescDailyFallbackMultiplier is the schema descriptor for daily_fallback_multiplier field.
+	groupDescDailyFallbackMultiplier := groupFields[33].Descriptor()
+	// group.DefaultDailyFallbackMultiplier holds the default value on creation for the daily_fallback_multiplier field.
+	group.DefaultDailyFallbackMultiplier = groupDescDailyFallbackMultiplier.Default.(float64)
 	idempotencyrecordMixin := schema.IdempotencyRecord{}.Mixin()
 	idempotencyrecordMixinFields0 := idempotencyrecordMixin[0].Fields()
 	_ = idempotencyrecordMixinFields0
@@ -1372,6 +1411,10 @@ func init() {
 	proxyDescExpiryWarnDays := proxyFields[10].Descriptor()
 	// proxy.DefaultExpiryWarnDays holds the default value on creation for the expiry_warn_days field.
 	proxy.DefaultExpiryWarnDays = proxyDescExpiryWarnDays.Default.(int)
+	// proxyDescFailureCount is the schema descriptor for failure_count field.
+	proxyDescFailureCount := proxyFields[13].Descriptor()
+	// proxy.DefaultFailureCount holds the default value on creation for the failure_count field.
+	proxy.DefaultFailureCount = proxyDescFailureCount.Default.(int)
 	redeemcodeFields := schema.RedeemCode{}.Fields()
 	_ = redeemcodeFields
 	// redeemcodeDescCode is the schema descriptor for code field.

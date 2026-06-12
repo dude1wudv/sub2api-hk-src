@@ -495,6 +495,34 @@ func (_c *GroupCreate) SetNillableRpmLimit(v *int) *GroupCreate {
 	return _c
 }
 
+// SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
+func (_c *GroupCreate) SetDailyBalanceEnabled(v bool) *GroupCreate {
+	_c.mutation.SetDailyBalanceEnabled(v)
+	return _c
+}
+
+// SetNillableDailyBalanceEnabled sets the "daily_balance_enabled" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableDailyBalanceEnabled(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetDailyBalanceEnabled(*v)
+	}
+	return _c
+}
+
+// SetDailyFallbackMultiplier sets the "daily_fallback_multiplier" field.
+func (_c *GroupCreate) SetDailyFallbackMultiplier(v float64) *GroupCreate {
+	_c.mutation.SetDailyFallbackMultiplier(v)
+	return _c
+}
+
+// SetNillableDailyFallbackMultiplier sets the "daily_fallback_multiplier" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableDailyFallbackMultiplier(v *float64) *GroupCreate {
+	if v != nil {
+		_c.SetDailyFallbackMultiplier(*v)
+	}
+	return _c
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_c *GroupCreate) AddAPIKeyIDs(ids ...int64) *GroupCreate {
 	_c.mutation.AddAPIKeyIDs(ids...)
@@ -720,6 +748,14 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultRpmLimit
 		_c.mutation.SetRpmLimit(v)
 	}
+	if _, ok := _c.mutation.DailyBalanceEnabled(); !ok {
+		v := group.DefaultDailyBalanceEnabled
+		_c.mutation.SetDailyBalanceEnabled(v)
+	}
+	if _, ok := _c.mutation.DailyFallbackMultiplier(); !ok {
+		v := group.DefaultDailyFallbackMultiplier
+		_c.mutation.SetDailyFallbackMultiplier(v)
+	}
 	return nil
 }
 
@@ -821,6 +857,12 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.RpmLimit(); !ok {
 		return &ValidationError{Name: "rpm_limit", err: errors.New(`ent: missing required field "Group.rpm_limit"`)}
+	}
+	if _, ok := _c.mutation.DailyBalanceEnabled(); !ok {
+		return &ValidationError{Name: "daily_balance_enabled", err: errors.New(`ent: missing required field "Group.daily_balance_enabled"`)}
+	}
+	if _, ok := _c.mutation.DailyFallbackMultiplier(); !ok {
+		return &ValidationError{Name: "daily_fallback_multiplier", err: errors.New(`ent: missing required field "Group.daily_fallback_multiplier"`)}
 	}
 	return nil
 }
@@ -988,6 +1030,14 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RpmLimit(); ok {
 		_spec.SetField(group.FieldRpmLimit, field.TypeInt, value)
 		_node.RpmLimit = value
+	}
+	if value, ok := _c.mutation.DailyBalanceEnabled(); ok {
+		_spec.SetField(group.FieldDailyBalanceEnabled, field.TypeBool, value)
+		_node.DailyBalanceEnabled = value
+	}
+	if value, ok := _c.mutation.DailyFallbackMultiplier(); ok {
+		_spec.SetField(group.FieldDailyFallbackMultiplier, field.TypeFloat64, value)
+		_node.DailyFallbackMultiplier = value
 	}
 	if nodes := _c.mutation.APIKeysIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -1697,6 +1747,36 @@ func (u *GroupUpsert) AddRpmLimit(v int) *GroupUpsert {
 	return u
 }
 
+// SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
+func (u *GroupUpsert) SetDailyBalanceEnabled(v bool) *GroupUpsert {
+	u.Set(group.FieldDailyBalanceEnabled, v)
+	return u
+}
+
+// UpdateDailyBalanceEnabled sets the "daily_balance_enabled" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateDailyBalanceEnabled() *GroupUpsert {
+	u.SetExcluded(group.FieldDailyBalanceEnabled)
+	return u
+}
+
+// SetDailyFallbackMultiplier sets the "daily_fallback_multiplier" field.
+func (u *GroupUpsert) SetDailyFallbackMultiplier(v float64) *GroupUpsert {
+	u.Set(group.FieldDailyFallbackMultiplier, v)
+	return u
+}
+
+// UpdateDailyFallbackMultiplier sets the "daily_fallback_multiplier" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateDailyFallbackMultiplier() *GroupUpsert {
+	u.SetExcluded(group.FieldDailyFallbackMultiplier)
+	return u
+}
+
+// AddDailyFallbackMultiplier adds v to the "daily_fallback_multiplier" field.
+func (u *GroupUpsert) AddDailyFallbackMultiplier(v float64) *GroupUpsert {
+	u.Add(group.FieldDailyFallbackMultiplier, v)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -2383,6 +2463,41 @@ func (u *GroupUpsertOne) AddRpmLimit(v int) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateRpmLimit() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateRpmLimit()
+	})
+}
+
+// SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
+func (u *GroupUpsertOne) SetDailyBalanceEnabled(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetDailyBalanceEnabled(v)
+	})
+}
+
+// UpdateDailyBalanceEnabled sets the "daily_balance_enabled" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateDailyBalanceEnabled() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateDailyBalanceEnabled()
+	})
+}
+
+// SetDailyFallbackMultiplier sets the "daily_fallback_multiplier" field.
+func (u *GroupUpsertOne) SetDailyFallbackMultiplier(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetDailyFallbackMultiplier(v)
+	})
+}
+
+// AddDailyFallbackMultiplier adds v to the "daily_fallback_multiplier" field.
+func (u *GroupUpsertOne) AddDailyFallbackMultiplier(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddDailyFallbackMultiplier(v)
+	})
+}
+
+// UpdateDailyFallbackMultiplier sets the "daily_fallback_multiplier" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateDailyFallbackMultiplier() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateDailyFallbackMultiplier()
 	})
 }
 
@@ -3238,6 +3353,41 @@ func (u *GroupUpsertBulk) AddRpmLimit(v int) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateRpmLimit() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateRpmLimit()
+	})
+}
+
+// SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
+func (u *GroupUpsertBulk) SetDailyBalanceEnabled(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetDailyBalanceEnabled(v)
+	})
+}
+
+// UpdateDailyBalanceEnabled sets the "daily_balance_enabled" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateDailyBalanceEnabled() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateDailyBalanceEnabled()
+	})
+}
+
+// SetDailyFallbackMultiplier sets the "daily_fallback_multiplier" field.
+func (u *GroupUpsertBulk) SetDailyFallbackMultiplier(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetDailyFallbackMultiplier(v)
+	})
+}
+
+// AddDailyFallbackMultiplier adds v to the "daily_fallback_multiplier" field.
+func (u *GroupUpsertBulk) AddDailyFallbackMultiplier(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddDailyFallbackMultiplier(v)
+	})
+}
+
+// UpdateDailyFallbackMultiplier sets the "daily_fallback_multiplier" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateDailyFallbackMultiplier() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateDailyFallbackMultiplier()
 	})
 }
 

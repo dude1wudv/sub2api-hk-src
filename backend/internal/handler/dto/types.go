@@ -120,6 +120,12 @@ type Group struct {
 	// RPMLimit 分组级每分钟请求数上限（0 = 不限制），设置后覆盖用户级 rpm_limit。
 	RPMLimit int `json:"rpm_limit"`
 
+	// DailyBalanceEnabled 标记为「每日余额」专属分组：
+	// 仅此类分组消费每日额度，并在额度耗尽/过期后用长期余额按 DailyFallbackMultiplier 倍率回退计费。
+	DailyBalanceEnabled bool `json:"daily_balance_enabled"`
+	// DailyFallbackMultiplier 每日额度耗尽/过期后，用长期余额支付时叠加的回退倍率（默认 1.5）。
+	DailyFallbackMultiplier float64 `json:"daily_fallback_multiplier"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

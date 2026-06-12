@@ -481,8 +481,11 @@ func ProvideBillingCacheService(
 	rateRepo UserGroupRateRepository,
 	cfg *config.Config,
 	userPlatformQuotaRepo UserPlatformQuotaRepository,
+	dailyGrantRepo DailyGrantRepository,
 ) *BillingCacheService {
-	return NewBillingCacheService(cache, userRepo, subRepo, apiKeyRepo, rpmCache, rateRepo, cfg, userPlatformQuotaRepo)
+	svc := NewBillingCacheService(cache, userRepo, subRepo, apiKeyRepo, rpmCache, rateRepo, cfg, userPlatformQuotaRepo)
+	svc.SetDailyGrantRepo(dailyGrantRepo)
+	return svc
 }
 
 // ProvideAPIKeyService wires APIKeyService and connects rate-limit cache invalidation.
@@ -511,7 +514,7 @@ var ProviderSet = wire.NewSet(
 	NewGroupService,
 	NewAccountService,
 	NewProxyService,
-	NewRedeemService,
+	ProvideRedeemService,
 	NewPromoService,
 	NewUsageService,
 	NewDashboardService,
@@ -591,6 +594,8 @@ var ProviderSet = wire.NewSet(
 	ProvidePaymentConfigService,
 	ProvidePaymentService,
 	ProvidePaymentOrderExpiryService,
+	ProvideDailyGrantService,
+	ProvideDailyGrantExpiryService,
 	ProvideBalanceNotifyService,
 	ProvideChannelMonitorService,
 	ProvideChannelMonitorRunner,
@@ -630,6 +635,37 @@ func ProvidePaymentOrderExpiryService(paymentSvc *PaymentService, lockCache Lead
 	svc := NewPaymentOrderExpiryService(paymentSvc, 60*time.Second)
 	svc.SetLeaderLock(lockCache, db)
 	svc.Start()
+	return svc
+}
+
+// ProvideDailyGrantService 创建每日余额发放服务。billingCache 用于发放后失效用户余额缓存。
+func ProvideDailyGrantService(grantRepo DailyGrantRepository, groupRepo GroupRepository, billingCache *BillingCacheService) *DailyGrantService {
+	return NewDailyGrantService(grantRepo, groupRepo, billingCache)
+}
+
+// ProvideDailyGrantExpiryService 创建并启动每日余额过期扫描服务（60s 周期 + leader-lock）。
+func ProvideDailyGrantExpiryService(grantRepo DailyGrantRepository, lockCache LeaderLockCache, db *sql.DB) *DailyGrantExpiryService {
+	svc := NewDailyGrantExpiryService(grantRepo, 60*time.Second)
+	svc.SetLeaderLock(lockCache, db)
+	svc.Start()
+	return svc
+}
+
+// ProvideRedeemService 创建兑换码服务并注入每日余额兑换所需依赖（daily_balance 类型兑换码支持）。
+func ProvideRedeemService(
+	redeemRepo RedeemCodeRepository,
+	userRepo UserRepository,
+	subscriptionService *SubscriptionService,
+	cache RedeemCache,
+	billingCacheService *BillingCacheService,
+	entClient *dbent.Client,
+	authCacheInvalidator APIKeyAuthCacheInvalidator,
+	affiliateService *AffiliateService,
+	dailyGrantRepo DailyGrantRepository,
+	groupRepo GroupRepository,
+) *RedeemService {
+	svc := NewRedeemService(redeemRepo, userRepo, subscriptionService, cache, billingCacheService, entClient, authCacheInvalidator, affiliateService)
+	svc.SetDailyGrantDeps(dailyGrantRepo, groupRepo)
 	return svc
 }
 

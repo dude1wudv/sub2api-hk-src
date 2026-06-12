@@ -164,6 +164,15 @@ func (Group) Fields() []ent.Field {
 		field.Int("rpm_limit").
 			Default(0).
 			Comment("分组 RPM 上限，0 表示不限制；设置后接管该分组用户的限流"),
+
+		// 每日余额（daily-balance）专属分组开关 (added by migration 150)
+		field.Bool("daily_balance_enabled").
+			Default(false).
+			Comment("是否为每日余额专属分组：仅此类分组消费每日额度，并支持长期余额回退倍率"),
+		field.Float("daily_fallback_multiplier").
+			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
+			Default(1.5).
+			Comment("每日额度耗尽/过期后，用长期余额支付时叠加的回退倍率"),
 	}
 }
 

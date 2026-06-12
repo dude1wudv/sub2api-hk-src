@@ -22,6 +22,7 @@ const (
 	PlatformOpenAI      = "openai"
 	PlatformGemini      = "gemini"
 	PlatformAntigravity = "antigravity"
+	PlatformDeepSeek    = "deepseek"
 )
 
 // Account type constants
@@ -40,6 +41,20 @@ const (
 	RedeemTypeConcurrency  = "concurrency"
 	RedeemTypeSubscription = "subscription"
 	RedeemTypeInvitation   = "invitation"
+	RedeemTypeDailyBalance = "daily_balance" // 每日余额赠额（24h 有效，绑定专属分组）
+)
+
+// DailyBalanceGrant status constants
+const (
+	DailyGrantStatusActive    = "active"    // 仍有剩余且未过期
+	DailyGrantStatusExhausted = "exhausted" // remaining 已扣减至 0
+	DailyGrantStatusExpired   = "expired"   // 超过 24h 有效期被回收
+)
+
+// DailyBalanceGrant source constants
+const (
+	DailyGrantSourceAdmin  = "admin"  // 管理员后台手动发放
+	DailyGrantSourceRedeem = "redeem" // 兑换码兑换发放
 )
 
 // PromoCode status constants

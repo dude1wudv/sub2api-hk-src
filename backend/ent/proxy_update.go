@@ -247,6 +247,87 @@ func (_u *ProxyUpdate) AddExpiryWarnDays(v int) *ProxyUpdate {
 	return _u
 }
 
+// SetCooldownUntil sets the "cooldown_until" field.
+func (_u *ProxyUpdate) SetCooldownUntil(v time.Time) *ProxyUpdate {
+	_u.mutation.SetCooldownUntil(v)
+	return _u
+}
+
+// SetNillableCooldownUntil sets the "cooldown_until" field if the given value is not nil.
+func (_u *ProxyUpdate) SetNillableCooldownUntil(v *time.Time) *ProxyUpdate {
+	if v != nil {
+		_u.SetCooldownUntil(*v)
+	}
+	return _u
+}
+
+// ClearCooldownUntil clears the value of the "cooldown_until" field.
+func (_u *ProxyUpdate) ClearCooldownUntil() *ProxyUpdate {
+	_u.mutation.ClearCooldownUntil()
+	return _u
+}
+
+// SetCooldownReason sets the "cooldown_reason" field.
+func (_u *ProxyUpdate) SetCooldownReason(v string) *ProxyUpdate {
+	_u.mutation.SetCooldownReason(v)
+	return _u
+}
+
+// SetNillableCooldownReason sets the "cooldown_reason" field if the given value is not nil.
+func (_u *ProxyUpdate) SetNillableCooldownReason(v *string) *ProxyUpdate {
+	if v != nil {
+		_u.SetCooldownReason(*v)
+	}
+	return _u
+}
+
+// ClearCooldownReason clears the value of the "cooldown_reason" field.
+func (_u *ProxyUpdate) ClearCooldownReason() *ProxyUpdate {
+	_u.mutation.ClearCooldownReason()
+	return _u
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (_u *ProxyUpdate) SetFailureCount(v int) *ProxyUpdate {
+	_u.mutation.ResetFailureCount()
+	_u.mutation.SetFailureCount(v)
+	return _u
+}
+
+// SetNillableFailureCount sets the "failure_count" field if the given value is not nil.
+func (_u *ProxyUpdate) SetNillableFailureCount(v *int) *ProxyUpdate {
+	if v != nil {
+		_u.SetFailureCount(*v)
+	}
+	return _u
+}
+
+// AddFailureCount adds value to the "failure_count" field.
+func (_u *ProxyUpdate) AddFailureCount(v int) *ProxyUpdate {
+	_u.mutation.AddFailureCount(v)
+	return _u
+}
+
+// SetLastErrorAt sets the "last_error_at" field.
+func (_u *ProxyUpdate) SetLastErrorAt(v time.Time) *ProxyUpdate {
+	_u.mutation.SetLastErrorAt(v)
+	return _u
+}
+
+// SetNillableLastErrorAt sets the "last_error_at" field if the given value is not nil.
+func (_u *ProxyUpdate) SetNillableLastErrorAt(v *time.Time) *ProxyUpdate {
+	if v != nil {
+		_u.SetLastErrorAt(*v)
+	}
+	return _u
+}
+
+// ClearLastErrorAt clears the value of the "last_error_at" field.
+func (_u *ProxyUpdate) ClearLastErrorAt() *ProxyUpdate {
+	_u.mutation.ClearLastErrorAt()
+	return _u
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_u *ProxyUpdate) AddAccountIDs(ids ...int64) *ProxyUpdate {
 	_u.mutation.AddAccountIDs(ids...)
@@ -446,6 +527,30 @@ func (_u *ProxyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedExpiryWarnDays(); ok {
 		_spec.AddField(proxy.FieldExpiryWarnDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.CooldownUntil(); ok {
+		_spec.SetField(proxy.FieldCooldownUntil, field.TypeTime, value)
+	}
+	if _u.mutation.CooldownUntilCleared() {
+		_spec.ClearField(proxy.FieldCooldownUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.CooldownReason(); ok {
+		_spec.SetField(proxy.FieldCooldownReason, field.TypeString, value)
+	}
+	if _u.mutation.CooldownReasonCleared() {
+		_spec.ClearField(proxy.FieldCooldownReason, field.TypeString)
+	}
+	if value, ok := _u.mutation.FailureCount(); ok {
+		_spec.SetField(proxy.FieldFailureCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedFailureCount(); ok {
+		_spec.AddField(proxy.FieldFailureCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.LastErrorAt(); ok {
+		_spec.SetField(proxy.FieldLastErrorAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastErrorAtCleared() {
+		_spec.ClearField(proxy.FieldLastErrorAt, field.TypeTime)
 	}
 	if _u.mutation.AccountsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -759,6 +864,87 @@ func (_u *ProxyUpdateOne) AddExpiryWarnDays(v int) *ProxyUpdateOne {
 	return _u
 }
 
+// SetCooldownUntil sets the "cooldown_until" field.
+func (_u *ProxyUpdateOne) SetCooldownUntil(v time.Time) *ProxyUpdateOne {
+	_u.mutation.SetCooldownUntil(v)
+	return _u
+}
+
+// SetNillableCooldownUntil sets the "cooldown_until" field if the given value is not nil.
+func (_u *ProxyUpdateOne) SetNillableCooldownUntil(v *time.Time) *ProxyUpdateOne {
+	if v != nil {
+		_u.SetCooldownUntil(*v)
+	}
+	return _u
+}
+
+// ClearCooldownUntil clears the value of the "cooldown_until" field.
+func (_u *ProxyUpdateOne) ClearCooldownUntil() *ProxyUpdateOne {
+	_u.mutation.ClearCooldownUntil()
+	return _u
+}
+
+// SetCooldownReason sets the "cooldown_reason" field.
+func (_u *ProxyUpdateOne) SetCooldownReason(v string) *ProxyUpdateOne {
+	_u.mutation.SetCooldownReason(v)
+	return _u
+}
+
+// SetNillableCooldownReason sets the "cooldown_reason" field if the given value is not nil.
+func (_u *ProxyUpdateOne) SetNillableCooldownReason(v *string) *ProxyUpdateOne {
+	if v != nil {
+		_u.SetCooldownReason(*v)
+	}
+	return _u
+}
+
+// ClearCooldownReason clears the value of the "cooldown_reason" field.
+func (_u *ProxyUpdateOne) ClearCooldownReason() *ProxyUpdateOne {
+	_u.mutation.ClearCooldownReason()
+	return _u
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (_u *ProxyUpdateOne) SetFailureCount(v int) *ProxyUpdateOne {
+	_u.mutation.ResetFailureCount()
+	_u.mutation.SetFailureCount(v)
+	return _u
+}
+
+// SetNillableFailureCount sets the "failure_count" field if the given value is not nil.
+func (_u *ProxyUpdateOne) SetNillableFailureCount(v *int) *ProxyUpdateOne {
+	if v != nil {
+		_u.SetFailureCount(*v)
+	}
+	return _u
+}
+
+// AddFailureCount adds value to the "failure_count" field.
+func (_u *ProxyUpdateOne) AddFailureCount(v int) *ProxyUpdateOne {
+	_u.mutation.AddFailureCount(v)
+	return _u
+}
+
+// SetLastErrorAt sets the "last_error_at" field.
+func (_u *ProxyUpdateOne) SetLastErrorAt(v time.Time) *ProxyUpdateOne {
+	_u.mutation.SetLastErrorAt(v)
+	return _u
+}
+
+// SetNillableLastErrorAt sets the "last_error_at" field if the given value is not nil.
+func (_u *ProxyUpdateOne) SetNillableLastErrorAt(v *time.Time) *ProxyUpdateOne {
+	if v != nil {
+		_u.SetLastErrorAt(*v)
+	}
+	return _u
+}
+
+// ClearLastErrorAt clears the value of the "last_error_at" field.
+func (_u *ProxyUpdateOne) ClearLastErrorAt() *ProxyUpdateOne {
+	_u.mutation.ClearLastErrorAt()
+	return _u
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_u *ProxyUpdateOne) AddAccountIDs(ids ...int64) *ProxyUpdateOne {
 	_u.mutation.AddAccountIDs(ids...)
@@ -988,6 +1174,30 @@ func (_u *ProxyUpdateOne) sqlSave(ctx context.Context) (_node *Proxy, err error)
 	}
 	if value, ok := _u.mutation.AddedExpiryWarnDays(); ok {
 		_spec.AddField(proxy.FieldExpiryWarnDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.CooldownUntil(); ok {
+		_spec.SetField(proxy.FieldCooldownUntil, field.TypeTime, value)
+	}
+	if _u.mutation.CooldownUntilCleared() {
+		_spec.ClearField(proxy.FieldCooldownUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.CooldownReason(); ok {
+		_spec.SetField(proxy.FieldCooldownReason, field.TypeString, value)
+	}
+	if _u.mutation.CooldownReasonCleared() {
+		_spec.ClearField(proxy.FieldCooldownReason, field.TypeString)
+	}
+	if value, ok := _u.mutation.FailureCount(); ok {
+		_spec.SetField(proxy.FieldFailureCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedFailureCount(); ok {
+		_spec.AddField(proxy.FieldFailureCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.LastErrorAt(); ok {
+		_spec.SetField(proxy.FieldLastErrorAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastErrorAtCleared() {
+		_spec.ClearField(proxy.FieldLastErrorAt, field.TypeTime)
 	}
 	if _u.mutation.AccountsCleared() {
 		edge := &sqlgraph.EdgeSpec{

@@ -210,6 +210,16 @@ func RpmLimit(v int) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldRpmLimit, v))
 }
 
+// DailyBalanceEnabled applies equality check predicate on the "daily_balance_enabled" field. It's identical to DailyBalanceEnabledEQ.
+func DailyBalanceEnabled(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldDailyBalanceEnabled, v))
+}
+
+// DailyFallbackMultiplier applies equality check predicate on the "daily_fallback_multiplier" field. It's identical to DailyFallbackMultiplierEQ.
+func DailyFallbackMultiplier(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldDailyFallbackMultiplier, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldCreatedAt, v))
@@ -1438,6 +1448,56 @@ func RpmLimitLT(v int) predicate.Group {
 // RpmLimitLTE applies the LTE predicate on the "rpm_limit" field.
 func RpmLimitLTE(v int) predicate.Group {
 	return predicate.Group(sql.FieldLTE(FieldRpmLimit, v))
+}
+
+// DailyBalanceEnabledEQ applies the EQ predicate on the "daily_balance_enabled" field.
+func DailyBalanceEnabledEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldDailyBalanceEnabled, v))
+}
+
+// DailyBalanceEnabledNEQ applies the NEQ predicate on the "daily_balance_enabled" field.
+func DailyBalanceEnabledNEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldDailyBalanceEnabled, v))
+}
+
+// DailyFallbackMultiplierEQ applies the EQ predicate on the "daily_fallback_multiplier" field.
+func DailyFallbackMultiplierEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldDailyFallbackMultiplier, v))
+}
+
+// DailyFallbackMultiplierNEQ applies the NEQ predicate on the "daily_fallback_multiplier" field.
+func DailyFallbackMultiplierNEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldDailyFallbackMultiplier, v))
+}
+
+// DailyFallbackMultiplierIn applies the In predicate on the "daily_fallback_multiplier" field.
+func DailyFallbackMultiplierIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldDailyFallbackMultiplier, vs...))
+}
+
+// DailyFallbackMultiplierNotIn applies the NotIn predicate on the "daily_fallback_multiplier" field.
+func DailyFallbackMultiplierNotIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldDailyFallbackMultiplier, vs...))
+}
+
+// DailyFallbackMultiplierGT applies the GT predicate on the "daily_fallback_multiplier" field.
+func DailyFallbackMultiplierGT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldDailyFallbackMultiplier, v))
+}
+
+// DailyFallbackMultiplierGTE applies the GTE predicate on the "daily_fallback_multiplier" field.
+func DailyFallbackMultiplierGTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldDailyFallbackMultiplier, v))
+}
+
+// DailyFallbackMultiplierLT applies the LT predicate on the "daily_fallback_multiplier" field.
+func DailyFallbackMultiplierLT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldDailyFallbackMultiplier, v))
+}
+
+// DailyFallbackMultiplierLTE applies the LTE predicate on the "daily_fallback_multiplier" field.
+func DailyFallbackMultiplierLTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldDailyFallbackMultiplier, v))
 }
 
 // HasAPIKeys applies the HasEdge predicate on the "api_keys" edge.

@@ -45,6 +45,14 @@ type Proxy struct {
 	BackupProxyID *int64 `json:"backup_proxy_id,omitempty"`
 	// Days before expiry to flag as expiring-soon (per proxy).
 	ExpiryWarnDays int `json:"expiry_warn_days,omitempty"`
+	// CooldownUntil holds the value of the "cooldown_until" field.
+	CooldownUntil *time.Time `json:"cooldown_until,omitempty"`
+	// CooldownReason holds the value of the "cooldown_reason" field.
+	CooldownReason *string `json:"cooldown_reason,omitempty"`
+	// FailureCount holds the value of the "failure_count" field.
+	FailureCount int `json:"failure_count,omitempty"`
+	// LastErrorAt holds the value of the "last_error_at" field.
+	LastErrorAt *time.Time `json:"last_error_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ProxyQuery when eager-loading is set.
 	Edges        ProxyEdges `json:"edges"`
@@ -87,11 +95,11 @@ func (*Proxy) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case proxy.FieldID, proxy.FieldPort, proxy.FieldBackupProxyID, proxy.FieldExpiryWarnDays:
+		case proxy.FieldID, proxy.FieldPort, proxy.FieldBackupProxyID, proxy.FieldExpiryWarnDays, proxy.FieldFailureCount:
 			values[i] = new(sql.NullInt64)
-		case proxy.FieldName, proxy.FieldProtocol, proxy.FieldHost, proxy.FieldUsername, proxy.FieldPassword, proxy.FieldStatus, proxy.FieldFallbackMode:
+		case proxy.FieldName, proxy.FieldProtocol, proxy.FieldHost, proxy.FieldUsername, proxy.FieldPassword, proxy.FieldStatus, proxy.FieldFallbackMode, proxy.FieldCooldownReason:
 			values[i] = new(sql.NullString)
-		case proxy.FieldCreatedAt, proxy.FieldUpdatedAt, proxy.FieldDeletedAt, proxy.FieldExpiresAt:
+		case proxy.FieldCreatedAt, proxy.FieldUpdatedAt, proxy.FieldDeletedAt, proxy.FieldExpiresAt, proxy.FieldCooldownUntil, proxy.FieldLastErrorAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -203,6 +211,33 @@ func (_m *Proxy) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ExpiryWarnDays = int(value.Int64)
 			}
+		case proxy.FieldCooldownUntil:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field cooldown_until", values[i])
+			} else if value.Valid {
+				_m.CooldownUntil = new(time.Time)
+				*_m.CooldownUntil = value.Time
+			}
+		case proxy.FieldCooldownReason:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field cooldown_reason", values[i])
+			} else if value.Valid {
+				_m.CooldownReason = new(string)
+				*_m.CooldownReason = value.String
+			}
+		case proxy.FieldFailureCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field failure_count", values[i])
+			} else if value.Valid {
+				_m.FailureCount = int(value.Int64)
+			}
+		case proxy.FieldLastErrorAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field last_error_at", values[i])
+			} else if value.Valid {
+				_m.LastErrorAt = new(time.Time)
+				*_m.LastErrorAt = value.Time
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -300,6 +335,24 @@ func (_m *Proxy) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("expiry_warn_days=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ExpiryWarnDays))
+	builder.WriteString(", ")
+	if v := _m.CooldownUntil; v != nil {
+		builder.WriteString("cooldown_until=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.CooldownReason; v != nil {
+		builder.WriteString("cooldown_reason=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	builder.WriteString("failure_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.FailureCount))
+	builder.WriteString(", ")
+	if v := _m.LastErrorAt; v != nil {
+		builder.WriteString("last_error_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

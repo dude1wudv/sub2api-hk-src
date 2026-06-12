@@ -1,6 +1,6 @@
 <template>
   <!-- Row 1: Core Stats -->
-  <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+  <div class="grid grid-cols-2 gap-4" :class="dailyGrants?.active_remaining ? 'lg:grid-cols-5' : 'lg:grid-cols-4'">
     <!-- Balance -->
     <div v-if="!isSimple" class="card p-4">
       <div class="flex items-center gap-3">
@@ -13,6 +13,22 @@
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('dashboard.balance') }}</p>
           <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400">${{ formatBalance(balance) }}</p>
           <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('common.available') }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Balance (only if active_remaining > 0) -->
+    <div v-if="!isSimple && dailyGrants?.active_remaining" class="card p-4">
+      <div class="flex items-center gap-3">
+        <div class="rounded-lg bg-orange-100 p-2 dark:bg-orange-900/30">
+          <svg class="h-5 w-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('dashboard.dailyBalance') }}</p>
+          <p class="text-xl font-bold text-orange-600 dark:text-orange-400">${{ formatBalance(dailyGrants.active_remaining) }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ nearestExpiryText }}</p>
         </div>
       </div>
     </div>
@@ -227,7 +243,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import type { UserDashboardStats as UserStatsType } from '@/api/usage'
-import type { PlatformQuotaItem } from '@/types'
+import type { PlatformQuotaItem, DailyBalanceGrant } from '@/types'
 
 interface FusedPlatformCard {
   platform: string
@@ -244,8 +260,35 @@ const props = defineProps<{
   balance: number
   isSimple: boolean
   platformQuotas?: PlatformQuotaItem[] | null
+  dailyGrants?: { grants: DailyBalanceGrant[], active_remaining: number } | null
 }>()
 const { t } = useI18n()
+
+// 计算最近过期的 grant 倒计时文本
+const nearestExpiryText = computed(() => {
+  if (!props.dailyGrants?.grants.length) return t('dashboard.noDailyBalance')
+  const now = new Date().getTime()
+  const activeGrants = props.dailyGrants.grants
+    .filter(g => g.status === 'active' && g.remaining > 0)
+    .sort((a, b) => new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime())
+
+  if (!activeGrants.length) return t('dashboard.noDailyBalance')
+
+  const nearest = activeGrants[0]
+  const expiresMs = new Date(nearest.expires_at).getTime()
+  const diffMs = expiresMs - now
+
+  if (diffMs <= 0) return t('dashboard.dailyBalanceExpiring')
+
+  const hours = Math.floor(diffMs / (1000 * 60 * 60))
+  const days = Math.floor(hours / 24)
+
+  if (days > 0) {
+    return t('dashboard.daysRemaining', { days })
+  } else {
+    return t('dashboard.hoursRemaining', { hours })
+  }
+})
 
 const PLATFORM_LABELS: Record<string, string> = {
   anthropic: 'Claude',

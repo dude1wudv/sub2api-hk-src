@@ -22,6 +22,10 @@ type UsageBillingCommand struct {
 	UserID              int64
 	AccountID           int64
 	SubscriptionID      *int64
+	// GroupID 是请求计费所属分组（来自 APIKey.GroupID）。用于每日余额拆分：
+	// repo.Apply 在同一事务内 JOIN groups 判定该分组是否为「每日余额」专属分组，
+	// 若是则先扣每日额度桶、溢出部分按分组回退倍率从长期余额扣。nil 表示无分组（不拆分）。
+	GroupID             *int64
 	AccountType         string
 	Model               string
 	ServiceTier         string
@@ -56,7 +60,7 @@ func buildUsageBillingFingerprint(c *UsageBillingCommand) string {
 		return ""
 	}
 	raw := fmt.Sprintf(
-		"%d|%d|%d|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%d|%0.10f|%0.10f|%0.10f|%0.10f|%0.10f",
+		"%d|%d|%d|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%d|%d|%0.10f|%0.10f|%0.10f|%0.10f|%0.10f",
 		c.UserID,
 		c.AccountID,
 		c.APIKeyID,
@@ -72,6 +76,7 @@ func buildUsageBillingFingerprint(c *UsageBillingCommand) string {
 		c.ImageCount,
 		strings.TrimSpace(c.MediaType),
 		valueOrZero(c.SubscriptionID),
+		valueOrZero(c.GroupID),
 		c.BalanceCost,
 		c.SubscriptionCost,
 		c.APIKeyQuotaCost,
@@ -116,6 +121,8 @@ type UsageBillingApplyResult struct {
 	APIKeyQuotaExhausted bool
 	NewBalance           *float64           // post-deduction balance (nil = no balance deduction)
 	QuotaState           *AccountQuotaState // post-increment quota state (nil = no quota increment)
+	DailyGrantSpent      float64            // 本次从每日额度桶扣减的合计（按基础成本，非倍率后）
+	LongTermSpent        float64            // 本次从长期余额扣减的合计（已含回退倍率）
 }
 
 type UsageBillingRepository interface {

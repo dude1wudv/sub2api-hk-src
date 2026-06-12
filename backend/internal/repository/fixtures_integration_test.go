@@ -88,7 +88,11 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *service.Group) *serv
 		SetStatus(g.Status).
 		SetSubscriptionType(g.SubscriptionType).
 		SetRateMultiplier(g.RateMultiplier).
-		SetIsExclusive(g.IsExclusive)
+		SetIsExclusive(g.IsExclusive).
+		SetDailyBalanceEnabled(g.DailyBalanceEnabled)
+	if g.DailyFallbackMultiplier > 0 {
+		create.SetDailyFallbackMultiplier(g.DailyFallbackMultiplier)
+	}
 	if g.Description != "" {
 		create.SetDescription(g.Description)
 	}

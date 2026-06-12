@@ -597,6 +597,43 @@ var (
 			},
 		},
 	}
+	// DailyBalanceGrantsColumns holds the columns for the "daily_balance_grants" table.
+	DailyBalanceGrantsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "user_id", Type: field.TypeInt64},
+		{Name: "group_id", Type: field.TypeInt64},
+		{Name: "amount", Type: field.TypeFloat64, Default: 0, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
+		{Name: "remaining", Type: field.TypeFloat64, Default: 0, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
+		{Name: "status", Type: field.TypeString, Size: 20, Default: "active"},
+		{Name: "source", Type: field.TypeString, Size: 20, Default: "admin"},
+		{Name: "source_ref", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "granted_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "expires_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+	}
+	// DailyBalanceGrantsTable holds the schema information for the "daily_balance_grants" table.
+	DailyBalanceGrantsTable = &schema.Table{
+		Name:       "daily_balance_grants",
+		Columns:    DailyBalanceGrantsColumns,
+		PrimaryKey: []*schema.Column{DailyBalanceGrantsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "dailybalancegrant_user_id_group_id_status_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{DailyBalanceGrantsColumns[1], DailyBalanceGrantsColumns[2], DailyBalanceGrantsColumns[5], DailyBalanceGrantsColumns[9]},
+			},
+			{
+				Name:    "dailybalancegrant_status_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{DailyBalanceGrantsColumns[5], DailyBalanceGrantsColumns[9]},
+			},
+			{
+				Name:    "dailybalancegrant_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{DailyBalanceGrantsColumns[9]},
+			},
+		},
+	}
 	// ErrorPassthroughRulesColumns holds the columns for the "error_passthrough_rules" table.
 	ErrorPassthroughRulesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -672,6 +709,8 @@ var (
 		{Name: "messages_dispatch_model_config", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
 		{Name: "models_list_config", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
 		{Name: "rpm_limit", Type: field.TypeInt, Default: 0},
+		{Name: "daily_balance_enabled", Type: field.TypeBool, Default: false},
+		{Name: "daily_fallback_multiplier", Type: field.TypeFloat64, Default: 1.5, SchemaType: map[string]string{"postgres": "decimal(10,4)"}},
 	}
 	// GroupsTable holds the schema information for the "groups" table.
 	GroupsTable = &schema.Table{
@@ -1108,6 +1147,10 @@ var (
 		{Name: "expires_at", Type: field.TypeTime, Nullable: true},
 		{Name: "fallback_mode", Type: field.TypeString, Size: 20, Default: "none"},
 		{Name: "expiry_warn_days", Type: field.TypeInt, Default: 7},
+		{Name: "cooldown_until", Type: field.TypeTime, Nullable: true},
+		{Name: "cooldown_reason", Type: field.TypeString, Nullable: true},
+		{Name: "failure_count", Type: field.TypeInt, Default: 0},
+		{Name: "last_error_at", Type: field.TypeTime, Nullable: true},
 		{Name: "backup_proxy_id", Type: field.TypeInt64, Unique: true, Nullable: true},
 	}
 	// ProxiesTable holds the schema information for the "proxies" table.
@@ -1118,7 +1161,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "proxies_proxies_backup_proxy",
-				Columns:    []*schema.Column{ProxiesColumns[14]},
+				Columns:    []*schema.Column{ProxiesColumns[18]},
 				RefColumns: []*schema.Column{ProxiesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -1142,7 +1185,7 @@ var (
 			{
 				Name:    "proxy_backup_proxy_id",
 				Unique:  false,
-				Columns: []*schema.Column{ProxiesColumns[14]},
+				Columns: []*schema.Column{ProxiesColumns[18]},
 			},
 		},
 	}
@@ -1785,6 +1828,7 @@ var (
 		ChannelMonitorDailyRollupsTable,
 		ChannelMonitorHistoriesTable,
 		ChannelMonitorRequestTemplatesTable,
+		DailyBalanceGrantsTable,
 		ErrorPassthroughRulesTable,
 		GroupsTable,
 		IdempotencyRecordsTable,
@@ -1857,6 +1901,9 @@ func init() {
 	}
 	ChannelMonitorRequestTemplatesTable.Annotation = &entsql.Annotation{
 		Table: "channel_monitor_request_templates",
+	}
+	DailyBalanceGrantsTable.Annotation = &entsql.Annotation{
+		Table: "daily_balance_grants",
 	}
 	ErrorPassthroughRulesTable.Annotation = &entsql.Annotation{
 		Table: "error_passthrough_rules",

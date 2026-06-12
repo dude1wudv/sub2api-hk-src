@@ -23,6 +23,15 @@ type sqlExecutor interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
+// resolveDailyFallbackMultiplier 为每日余额回退倍率提供默认值：未设置（<=0）时回退到 1.5，
+// 与 ent schema 的默认值保持一致，避免零值写库导致溢出部分免费。
+func resolveDailyFallbackMultiplier(v float64) float64 {
+	if v <= 0 {
+		return 1.5
+	}
+	return v
+}
+
 type groupRepository struct {
 	client *dbent.Client
 	sql    sqlExecutor
@@ -67,7 +76,9 @@ func (r *groupRepository) Create(ctx context.Context, groupIn *service.Group) er
 		SetDefaultMappedModel(groupIn.DefaultMappedModel).
 		SetMessagesDispatchModelConfig(groupIn.MessagesDispatchModelConfig).
 		SetModelsListConfig(groupIn.ModelsListConfig).
-		SetRpmLimit(groupIn.RPMLimit)
+		SetRpmLimit(groupIn.RPMLimit).
+		SetDailyBalanceEnabled(groupIn.DailyBalanceEnabled).
+		SetDailyFallbackMultiplier(resolveDailyFallbackMultiplier(groupIn.DailyFallbackMultiplier))
 
 	// 设置模型路由配置
 	if groupIn.ModelRouting != nil {
@@ -143,7 +154,9 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		SetDefaultMappedModel(groupIn.DefaultMappedModel).
 		SetMessagesDispatchModelConfig(groupIn.MessagesDispatchModelConfig).
 		SetModelsListConfig(groupIn.ModelsListConfig).
-		SetRpmLimit(groupIn.RPMLimit)
+		SetRpmLimit(groupIn.RPMLimit).
+		SetDailyBalanceEnabled(groupIn.DailyBalanceEnabled).
+		SetDailyFallbackMultiplier(resolveDailyFallbackMultiplier(groupIn.DailyFallbackMultiplier))
 
 	// 显式处理可空字段：nil 需要 clear，非 nil 需要 set。
 	if groupIn.DailyLimitUSD != nil {

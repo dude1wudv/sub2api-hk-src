@@ -187,6 +187,62 @@ func (_c *ProxyCreate) SetNillableExpiryWarnDays(v *int) *ProxyCreate {
 	return _c
 }
 
+// SetCooldownUntil sets the "cooldown_until" field.
+func (_c *ProxyCreate) SetCooldownUntil(v time.Time) *ProxyCreate {
+	_c.mutation.SetCooldownUntil(v)
+	return _c
+}
+
+// SetNillableCooldownUntil sets the "cooldown_until" field if the given value is not nil.
+func (_c *ProxyCreate) SetNillableCooldownUntil(v *time.Time) *ProxyCreate {
+	if v != nil {
+		_c.SetCooldownUntil(*v)
+	}
+	return _c
+}
+
+// SetCooldownReason sets the "cooldown_reason" field.
+func (_c *ProxyCreate) SetCooldownReason(v string) *ProxyCreate {
+	_c.mutation.SetCooldownReason(v)
+	return _c
+}
+
+// SetNillableCooldownReason sets the "cooldown_reason" field if the given value is not nil.
+func (_c *ProxyCreate) SetNillableCooldownReason(v *string) *ProxyCreate {
+	if v != nil {
+		_c.SetCooldownReason(*v)
+	}
+	return _c
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (_c *ProxyCreate) SetFailureCount(v int) *ProxyCreate {
+	_c.mutation.SetFailureCount(v)
+	return _c
+}
+
+// SetNillableFailureCount sets the "failure_count" field if the given value is not nil.
+func (_c *ProxyCreate) SetNillableFailureCount(v *int) *ProxyCreate {
+	if v != nil {
+		_c.SetFailureCount(*v)
+	}
+	return _c
+}
+
+// SetLastErrorAt sets the "last_error_at" field.
+func (_c *ProxyCreate) SetLastErrorAt(v time.Time) *ProxyCreate {
+	_c.mutation.SetLastErrorAt(v)
+	return _c
+}
+
+// SetNillableLastErrorAt sets the "last_error_at" field if the given value is not nil.
+func (_c *ProxyCreate) SetNillableLastErrorAt(v *time.Time) *ProxyCreate {
+	if v != nil {
+		_c.SetLastErrorAt(*v)
+	}
+	return _c
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_c *ProxyCreate) AddAccountIDs(ids ...int64) *ProxyCreate {
 	_c.mutation.AddAccountIDs(ids...)
@@ -270,6 +326,10 @@ func (_c *ProxyCreate) defaults() error {
 		v := proxy.DefaultExpiryWarnDays
 		_c.mutation.SetExpiryWarnDays(v)
 	}
+	if _, ok := _c.mutation.FailureCount(); !ok {
+		v := proxy.DefaultFailureCount
+		_c.mutation.SetFailureCount(v)
+	}
 	return nil
 }
 
@@ -336,6 +396,9 @@ func (_c *ProxyCreate) check() error {
 	}
 	if _, ok := _c.mutation.ExpiryWarnDays(); !ok {
 		return &ValidationError{Name: "expiry_warn_days", err: errors.New(`ent: missing required field "Proxy.expiry_warn_days"`)}
+	}
+	if _, ok := _c.mutation.FailureCount(); !ok {
+		return &ValidationError{Name: "failure_count", err: errors.New(`ent: missing required field "Proxy.failure_count"`)}
 	}
 	return nil
 }
@@ -415,6 +478,22 @@ func (_c *ProxyCreate) createSpec() (*Proxy, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ExpiryWarnDays(); ok {
 		_spec.SetField(proxy.FieldExpiryWarnDays, field.TypeInt, value)
 		_node.ExpiryWarnDays = value
+	}
+	if value, ok := _c.mutation.CooldownUntil(); ok {
+		_spec.SetField(proxy.FieldCooldownUntil, field.TypeTime, value)
+		_node.CooldownUntil = &value
+	}
+	if value, ok := _c.mutation.CooldownReason(); ok {
+		_spec.SetField(proxy.FieldCooldownReason, field.TypeString, value)
+		_node.CooldownReason = &value
+	}
+	if value, ok := _c.mutation.FailureCount(); ok {
+		_spec.SetField(proxy.FieldFailureCount, field.TypeInt, value)
+		_node.FailureCount = value
+	}
+	if value, ok := _c.mutation.LastErrorAt(); ok {
+		_spec.SetField(proxy.FieldLastErrorAt, field.TypeTime, value)
+		_node.LastErrorAt = &value
 	}
 	if nodes := _c.mutation.AccountsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -699,6 +778,78 @@ func (u *ProxyUpsert) AddExpiryWarnDays(v int) *ProxyUpsert {
 	return u
 }
 
+// SetCooldownUntil sets the "cooldown_until" field.
+func (u *ProxyUpsert) SetCooldownUntil(v time.Time) *ProxyUpsert {
+	u.Set(proxy.FieldCooldownUntil, v)
+	return u
+}
+
+// UpdateCooldownUntil sets the "cooldown_until" field to the value that was provided on create.
+func (u *ProxyUpsert) UpdateCooldownUntil() *ProxyUpsert {
+	u.SetExcluded(proxy.FieldCooldownUntil)
+	return u
+}
+
+// ClearCooldownUntil clears the value of the "cooldown_until" field.
+func (u *ProxyUpsert) ClearCooldownUntil() *ProxyUpsert {
+	u.SetNull(proxy.FieldCooldownUntil)
+	return u
+}
+
+// SetCooldownReason sets the "cooldown_reason" field.
+func (u *ProxyUpsert) SetCooldownReason(v string) *ProxyUpsert {
+	u.Set(proxy.FieldCooldownReason, v)
+	return u
+}
+
+// UpdateCooldownReason sets the "cooldown_reason" field to the value that was provided on create.
+func (u *ProxyUpsert) UpdateCooldownReason() *ProxyUpsert {
+	u.SetExcluded(proxy.FieldCooldownReason)
+	return u
+}
+
+// ClearCooldownReason clears the value of the "cooldown_reason" field.
+func (u *ProxyUpsert) ClearCooldownReason() *ProxyUpsert {
+	u.SetNull(proxy.FieldCooldownReason)
+	return u
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (u *ProxyUpsert) SetFailureCount(v int) *ProxyUpsert {
+	u.Set(proxy.FieldFailureCount, v)
+	return u
+}
+
+// UpdateFailureCount sets the "failure_count" field to the value that was provided on create.
+func (u *ProxyUpsert) UpdateFailureCount() *ProxyUpsert {
+	u.SetExcluded(proxy.FieldFailureCount)
+	return u
+}
+
+// AddFailureCount adds v to the "failure_count" field.
+func (u *ProxyUpsert) AddFailureCount(v int) *ProxyUpsert {
+	u.Add(proxy.FieldFailureCount, v)
+	return u
+}
+
+// SetLastErrorAt sets the "last_error_at" field.
+func (u *ProxyUpsert) SetLastErrorAt(v time.Time) *ProxyUpsert {
+	u.Set(proxy.FieldLastErrorAt, v)
+	return u
+}
+
+// UpdateLastErrorAt sets the "last_error_at" field to the value that was provided on create.
+func (u *ProxyUpsert) UpdateLastErrorAt() *ProxyUpsert {
+	u.SetExcluded(proxy.FieldLastErrorAt)
+	return u
+}
+
+// ClearLastErrorAt clears the value of the "last_error_at" field.
+func (u *ProxyUpsert) ClearLastErrorAt() *ProxyUpsert {
+	u.SetNull(proxy.FieldLastErrorAt)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -972,6 +1123,90 @@ func (u *ProxyUpsertOne) AddExpiryWarnDays(v int) *ProxyUpsertOne {
 func (u *ProxyUpsertOne) UpdateExpiryWarnDays() *ProxyUpsertOne {
 	return u.Update(func(s *ProxyUpsert) {
 		s.UpdateExpiryWarnDays()
+	})
+}
+
+// SetCooldownUntil sets the "cooldown_until" field.
+func (u *ProxyUpsertOne) SetCooldownUntil(v time.Time) *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.SetCooldownUntil(v)
+	})
+}
+
+// UpdateCooldownUntil sets the "cooldown_until" field to the value that was provided on create.
+func (u *ProxyUpsertOne) UpdateCooldownUntil() *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.UpdateCooldownUntil()
+	})
+}
+
+// ClearCooldownUntil clears the value of the "cooldown_until" field.
+func (u *ProxyUpsertOne) ClearCooldownUntil() *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.ClearCooldownUntil()
+	})
+}
+
+// SetCooldownReason sets the "cooldown_reason" field.
+func (u *ProxyUpsertOne) SetCooldownReason(v string) *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.SetCooldownReason(v)
+	})
+}
+
+// UpdateCooldownReason sets the "cooldown_reason" field to the value that was provided on create.
+func (u *ProxyUpsertOne) UpdateCooldownReason() *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.UpdateCooldownReason()
+	})
+}
+
+// ClearCooldownReason clears the value of the "cooldown_reason" field.
+func (u *ProxyUpsertOne) ClearCooldownReason() *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.ClearCooldownReason()
+	})
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (u *ProxyUpsertOne) SetFailureCount(v int) *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.SetFailureCount(v)
+	})
+}
+
+// AddFailureCount adds v to the "failure_count" field.
+func (u *ProxyUpsertOne) AddFailureCount(v int) *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.AddFailureCount(v)
+	})
+}
+
+// UpdateFailureCount sets the "failure_count" field to the value that was provided on create.
+func (u *ProxyUpsertOne) UpdateFailureCount() *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.UpdateFailureCount()
+	})
+}
+
+// SetLastErrorAt sets the "last_error_at" field.
+func (u *ProxyUpsertOne) SetLastErrorAt(v time.Time) *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.SetLastErrorAt(v)
+	})
+}
+
+// UpdateLastErrorAt sets the "last_error_at" field to the value that was provided on create.
+func (u *ProxyUpsertOne) UpdateLastErrorAt() *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.UpdateLastErrorAt()
+	})
+}
+
+// ClearLastErrorAt clears the value of the "last_error_at" field.
+func (u *ProxyUpsertOne) ClearLastErrorAt() *ProxyUpsertOne {
+	return u.Update(func(s *ProxyUpsert) {
+		s.ClearLastErrorAt()
 	})
 }
 
@@ -1414,6 +1649,90 @@ func (u *ProxyUpsertBulk) AddExpiryWarnDays(v int) *ProxyUpsertBulk {
 func (u *ProxyUpsertBulk) UpdateExpiryWarnDays() *ProxyUpsertBulk {
 	return u.Update(func(s *ProxyUpsert) {
 		s.UpdateExpiryWarnDays()
+	})
+}
+
+// SetCooldownUntil sets the "cooldown_until" field.
+func (u *ProxyUpsertBulk) SetCooldownUntil(v time.Time) *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.SetCooldownUntil(v)
+	})
+}
+
+// UpdateCooldownUntil sets the "cooldown_until" field to the value that was provided on create.
+func (u *ProxyUpsertBulk) UpdateCooldownUntil() *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.UpdateCooldownUntil()
+	})
+}
+
+// ClearCooldownUntil clears the value of the "cooldown_until" field.
+func (u *ProxyUpsertBulk) ClearCooldownUntil() *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.ClearCooldownUntil()
+	})
+}
+
+// SetCooldownReason sets the "cooldown_reason" field.
+func (u *ProxyUpsertBulk) SetCooldownReason(v string) *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.SetCooldownReason(v)
+	})
+}
+
+// UpdateCooldownReason sets the "cooldown_reason" field to the value that was provided on create.
+func (u *ProxyUpsertBulk) UpdateCooldownReason() *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.UpdateCooldownReason()
+	})
+}
+
+// ClearCooldownReason clears the value of the "cooldown_reason" field.
+func (u *ProxyUpsertBulk) ClearCooldownReason() *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.ClearCooldownReason()
+	})
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (u *ProxyUpsertBulk) SetFailureCount(v int) *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.SetFailureCount(v)
+	})
+}
+
+// AddFailureCount adds v to the "failure_count" field.
+func (u *ProxyUpsertBulk) AddFailureCount(v int) *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.AddFailureCount(v)
+	})
+}
+
+// UpdateFailureCount sets the "failure_count" field to the value that was provided on create.
+func (u *ProxyUpsertBulk) UpdateFailureCount() *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.UpdateFailureCount()
+	})
+}
+
+// SetLastErrorAt sets the "last_error_at" field.
+func (u *ProxyUpsertBulk) SetLastErrorAt(v time.Time) *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.SetLastErrorAt(v)
+	})
+}
+
+// UpdateLastErrorAt sets the "last_error_at" field to the value that was provided on create.
+func (u *ProxyUpsertBulk) UpdateLastErrorAt() *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.UpdateLastErrorAt()
+	})
+}
+
+// ClearLastErrorAt clears the value of the "last_error_at" field.
+func (u *ProxyUpsertBulk) ClearLastErrorAt() *ProxyUpsertBulk {
+	return u.Update(func(s *ProxyUpsert) {
+		s.ClearLastErrorAt()
 	})
 }
 

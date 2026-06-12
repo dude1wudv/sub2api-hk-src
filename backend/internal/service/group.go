@@ -70,6 +70,12 @@ type Group struct {
 	// 一旦设置即接管该分组用户的限流（覆盖用户级 rpm_limit），可被 user-group rpm_override 进一步覆盖。
 	RPMLimit int
 
+	// DailyBalanceEnabled 标记本分组为「每日余额」专属分组：
+	// 仅此类分组消费每日额度，并在额度耗尽/过期后用长期余额按 DailyFallbackMultiplier 倍率回退计费。
+	DailyBalanceEnabled bool
+	// DailyFallbackMultiplier 每日额度耗尽/过期后，用长期余额支付时叠加的回退倍率（默认 1.5）。
+	DailyFallbackMultiplier float64
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 

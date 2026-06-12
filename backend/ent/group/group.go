@@ -86,6 +86,10 @@ const (
 	FieldModelsListConfig = "models_list_config"
 	// FieldRpmLimit holds the string denoting the rpm_limit field in the database.
 	FieldRpmLimit = "rpm_limit"
+	// FieldDailyBalanceEnabled holds the string denoting the daily_balance_enabled field in the database.
+	FieldDailyBalanceEnabled = "daily_balance_enabled"
+	// FieldDailyFallbackMultiplier holds the string denoting the daily_fallback_multiplier field in the database.
+	FieldDailyFallbackMultiplier = "daily_fallback_multiplier"
 	// EdgeAPIKeys holds the string denoting the api_keys edge name in mutations.
 	EdgeAPIKeys = "api_keys"
 	// EdgeRedeemCodes holds the string denoting the redeem_codes edge name in mutations.
@@ -196,6 +200,8 @@ var Columns = []string{
 	FieldMessagesDispatchModelConfig,
 	FieldModelsListConfig,
 	FieldRpmLimit,
+	FieldDailyBalanceEnabled,
+	FieldDailyFallbackMultiplier,
 }
 
 var (
@@ -283,6 +289,10 @@ var (
 	DefaultModelsListConfig domain.GroupModelsListConfig
 	// DefaultRpmLimit holds the default value on creation for the "rpm_limit" field.
 	DefaultRpmLimit int
+	// DefaultDailyBalanceEnabled holds the default value on creation for the "daily_balance_enabled" field.
+	DefaultDailyBalanceEnabled bool
+	// DefaultDailyFallbackMultiplier holds the default value on creation for the "daily_fallback_multiplier" field.
+	DefaultDailyFallbackMultiplier float64
 )
 
 // OrderOption defines the ordering options for the Group queries.
@@ -446,6 +456,16 @@ func ByDefaultMappedModel(opts ...sql.OrderTermOption) OrderOption {
 // ByRpmLimit orders the results by the rpm_limit field.
 func ByRpmLimit(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRpmLimit, opts...).ToFunc()
+}
+
+// ByDailyBalanceEnabled orders the results by the daily_balance_enabled field.
+func ByDailyBalanceEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDailyBalanceEnabled, opts...).ToFunc()
+}
+
+// ByDailyFallbackMultiplier orders the results by the daily_fallback_multiplier field.
+func ByDailyFallbackMultiplier(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDailyFallbackMultiplier, opts...).ToFunc()
 }
 
 // ByAPIKeysCount orders the results by api_keys count.

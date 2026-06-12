@@ -108,6 +108,9 @@ type BillingCacheService struct {
 	cfg                   *config.Config
 	circuitBreaker        *billingCircuitBreaker
 	userPlatformQuotaRepo UserPlatformQuotaRepository
+	// dailyGrantRepo 可选注入：用于「每日余额」专属分组的预检放行判断
+	// （额度桶有有效余额时即便长期余额为 0 也放行）。nil 时退化为纯长期余额判定。
+	dailyGrantRepo DailyGrantRepository
 
 	cacheWriteChan     chan cacheWriteTask
 	cacheWriteWg       sync.WaitGroup
@@ -147,6 +150,12 @@ func NewBillingCacheService(
 	svc.circuitBreaker = newBillingCircuitBreaker(cfg.Billing.CircuitBreaker)
 	svc.startCacheWriteWorkers()
 	return svc
+}
+
+// SetDailyGrantRepo 注入每日余额赠额仓储（可选）。在 wire 装配后调用，
+// 用于专属分组预检：额度桶仍有有效余额时即便长期余额为 0 也放行。
+func (s *BillingCacheService) SetDailyGrantRepo(repo DailyGrantRepository) {
+	s.dailyGrantRepo = repo
 }
 
 // Stop 关闭缓存写入工作池
@@ -722,7 +731,7 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 			return err
 		}
 	} else {
-		if err := s.checkBalanceEligibility(ctx, user.ID); err != nil {
+		if err := s.checkBalanceEligibility(ctx, user.ID, group); err != nil {
 			return err
 		}
 	}
@@ -834,7 +843,11 @@ func (s *BillingCacheService) checkRPM(ctx context.Context, user *User, group *G
 }
 
 // checkBalanceEligibility 检查余额模式资格
-func (s *BillingCacheService) checkBalanceEligibility(ctx context.Context, userID int64) error {
+//
+// 对「每日余额」专属分组：长期余额 > 0 固然放行；即便长期余额 <= 0，只要该用户在该分组下
+// 仍有有效的每日额度（未过期且 remaining > 0）也放行——保证用完长期余额但仍持有当日赠额的
+// 用户不被拦截。非专属分组维持原始的纯长期余额判定，行为逐字节不变。
+func (s *BillingCacheService) checkBalanceEligibility(ctx context.Context, userID int64, group *Group) error {
 	balance, err := s.GetUserBalance(ctx, userID)
 	if err != nil {
 		if s.circuitBreaker != nil {
@@ -847,11 +860,22 @@ func (s *BillingCacheService) checkBalanceEligibility(ctx context.Context, userI
 		s.circuitBreaker.OnSuccess()
 	}
 
-	if balance <= 0 {
-		return ErrInsufficientBalance
+	if balance > 0 {
+		return nil
 	}
 
-	return nil
+	// 长期余额已耗尽：对专属每日余额分组，检查是否仍有有效的每日额度可放行。
+	if group != nil && group.DailyBalanceEnabled && s.dailyGrantRepo != nil {
+		remaining, gErr := s.dailyGrantRepo.SumActiveRemaining(ctx, userID, group.ID, time.Now())
+		if gErr != nil {
+			// 查询失败不应误伤：记录告警并回退到纯余额判定（balance<=0 → 拒绝）。
+			logger.LegacyPrintf("service.billing_cache", "Warning: daily grant remaining check failed for user %d group %d: %v", userID, group.ID, gErr)
+		} else if remaining > 0 {
+			return nil
+		}
+	}
+
+	return ErrInsufficientBalance
 }
 
 // checkSubscriptionEligibility 检查订阅模式资格

@@ -684,6 +684,26 @@
                 {{ t('admin.users.withdraw') }}
               </button>
 
+              <!-- Grant Daily Balance -->
+              <button
+                @click="handleGrantDailyBalance(user); closeActionMenu()"
+                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+              >
+                <Icon name="clock" size="sm" class="text-orange-500" :stroke-width="2" />
+                {{ t('admin.users.grantDailyBalance') }}
+              </button>
+
+              <!-- View Daily Grants -->
+              <button
+                @click="handleViewDailyGrants(user); closeActionMenu()"
+                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+              >
+                <svg class="h-4 w-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                {{ t('admin.users.viewDailyGrants') }}
+              </button>
+
               <!-- Platform Quotas -->
               <button
                 @click="handlePlatformQuota(user); closeActionMenu()"
@@ -732,6 +752,8 @@
     <UserAllowedGroupsModal :show="showAllowedGroupsModal" :user="allowedGroupsUser" @close="closeAllowedGroupsModal" @success="loadUsers" />
     <UserBalanceModal :show="showBalanceModal" :user="balanceUser" :operation="balanceOperation" @close="closeBalanceModal" @success="loadUsers" />
     <UserBalanceHistoryModal :show="showBalanceHistoryModal" :user="balanceHistoryUser" @close="closeBalanceHistoryModal" @deposit="handleDepositFromHistory" @withdraw="handleWithdrawFromHistory" />
+    <UserDailyBalanceModal :show="showDailyBalanceModal" :user="dailyBalanceUser" :all-groups="allGroups" @close="closeDailyBalanceModal" @success="loadUsers" />
+    <UserDailyGrantsModal :show="showDailyGrantsModal" :user="dailyGrantsUser" @close="closeDailyGrantsModal" />
     <GroupReplaceModal :show="showGroupReplaceModal" :user="groupReplaceUser" :old-group="groupReplaceOldGroup" :all-groups="allGroups" @close="closeGroupReplaceModal" @success="loadUsers" />
     <UserAttributesConfigModal :show="showAttributesModal" @close="handleAttributesModalClose" />
   </AppLayout>
@@ -771,6 +793,8 @@ import UserApiKeysModal from '@/components/admin/user/UserApiKeysModal.vue'
 import UserAllowedGroupsModal from '@/components/admin/user/UserAllowedGroupsModal.vue'
 import UserBalanceModal from '@/components/admin/user/UserBalanceModal.vue'
 import UserBalanceHistoryModal from '@/components/admin/user/UserBalanceHistoryModal.vue'
+import UserDailyBalanceModal from '@/components/admin/user/UserDailyBalanceModal.vue'
+import UserDailyGrantsModal from '@/components/admin/user/UserDailyGrantsModal.vue'
 import GroupReplaceModal from '@/components/admin/user/GroupReplaceModal.vue'
 
 const appStore = useAppStore()
@@ -1446,6 +1470,14 @@ const balanceOperation = ref<'add' | 'subtract'>('add')
 const showBalanceHistoryModal = ref(false)
 const balanceHistoryUser = ref<AdminUser | null>(null)
 
+// Daily Balance modal state
+const showDailyBalanceModal = ref(false)
+const dailyBalanceUser = ref<AdminUser | null>(null)
+
+// Daily Grants modal state
+const showDailyGrantsModal = ref(false)
+const dailyGrantsUser = ref<AdminUser | null>(null)
+
 // 计算剩余天数
 const getDaysRemaining = (expiresAt: string): number => {
   const now = new Date()
@@ -1725,6 +1757,26 @@ const handleWithdrawFromHistory = () => {
   if (balanceHistoryUser.value) {
     handleWithdraw(balanceHistoryUser.value)
   }
+}
+
+const handleGrantDailyBalance = (user: AdminUser) => {
+  dailyBalanceUser.value = user
+  showDailyBalanceModal.value = true
+}
+
+const closeDailyBalanceModal = () => {
+  showDailyBalanceModal.value = false
+  dailyBalanceUser.value = null
+}
+
+const handleViewDailyGrants = (user: AdminUser) => {
+  dailyGrantsUser.value = user
+  showDailyGrantsModal.value = true
+}
+
+const closeDailyGrantsModal = () => {
+  showDailyGrantsModal.value = false
+  dailyGrantsUser.value = null
 }
 
 // 滚动时关闭菜单

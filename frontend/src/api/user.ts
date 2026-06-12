@@ -194,6 +194,20 @@ export async function getMyPlatformQuotas(): Promise<PlatformQuotasResponse> {
   return data
 }
 
+/**
+ * 获取当前用户的每日余额赠额列表（含有效余额总额）
+ */
+export async function getMyDailyGrants(): Promise<{
+  grants: import('@/types').DailyBalanceGrant[]
+  active_remaining: number
+}> {
+  const { data } = await apiClient.get<{
+    grants: import('@/types').DailyBalanceGrant[]
+    active_remaining: number
+  }>('/user/daily-balance')
+  return data
+}
+
 export const userAPI = {
   getProfile,
   updateProfile,
@@ -210,6 +224,7 @@ export const userAPI = {
   getAffiliateDetail,
   transferAffiliateQuota,
   getMyPlatformQuotas,
+  getMyDailyGrants,
 }
 
 export default userAPI

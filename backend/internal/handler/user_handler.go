@@ -22,6 +22,13 @@ type UserHandler struct {
 	emailCache            service.EmailCache
 	affiliateService      *service.AffiliateService
 	userPlatformQuotaRepo service.UserPlatformQuotaRepository
+	dailyGrantService     *service.DailyGrantService // T10 用户自助查看每日余额赠额
+}
+
+// SetDailyGrantService injects the daily-balance grant service (setter injection to
+// avoid widening the constructor signature used by many test call sites).
+func (h *UserHandler) SetDailyGrantService(s *service.DailyGrantService) {
+	h.dailyGrantService = s
 }
 
 // NewUserHandler creates a new UserHandler
@@ -67,6 +74,57 @@ func (h *UserHandler) GetMyPlatformQuotas(c *gin.Context) {
 		out = append(out, quotaview.LazyZeroQuotaForResponse(r, now, false))
 	}
 	response.Success(c, map[string]any{"platform_quotas": out})
+}
+
+// userDailyGrantResponse is the user-facing representation of a daily-balance grant.
+type userDailyGrantResponse struct {
+	ID        int64     `json:"id"`
+	GroupID   int64     `json:"group_id"`
+	Amount    float64   `json:"amount"`
+	Remaining float64   `json:"remaining"`
+	Status    string    `json:"status"`
+	Source    string    `json:"source"`
+	GrantedAt time.Time `json:"granted_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// GetMyDailyGrants GET /user/daily-balance
+// 返回当前 JWT 用户的每日余额赠额列表（仅 active 的有效赠额参与剩余总额）。
+func (h *UserHandler) GetMyDailyGrants(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	if h.dailyGrantService == nil {
+		response.Success(c, map[string]any{"grants": []any{}, "active_remaining": 0})
+		return
+	}
+	grants, err := h.dailyGrantService.ListUserGrants(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	now := time.Now()
+	out := make([]userDailyGrantResponse, 0, len(grants))
+	var activeRemaining float64
+	for i := range grants {
+		g := &grants[i]
+		out = append(out, userDailyGrantResponse{
+			ID:        g.ID,
+			GroupID:   g.GroupID,
+			Amount:    g.Amount,
+			Remaining: g.Remaining,
+			Status:    g.Status,
+			Source:    g.Source,
+			GrantedAt: g.GrantedAt,
+			ExpiresAt: g.ExpiresAt,
+		})
+		if g.Status == "active" && g.Remaining > 0 && g.ExpiresAt.After(now) {
+			activeRemaining += g.Remaining
+		}
+	}
+	response.Success(c, map[string]any{"grants": out, "active_remaining": activeRemaining})
 }
 
 // ChangePasswordRequest represents the change password request payload

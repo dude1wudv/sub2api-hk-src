@@ -10,6 +10,7 @@ import (
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -141,6 +142,9 @@ type RedeemService struct {
 	entClient            *dbent.Client
 	authCacheInvalidator APIKeyAuthCacheInvalidator
 	affiliateService     *AffiliateService
+	// 每日余额（daily_balance）兑换码支持：可选注入，nil 时 daily_balance 类型兑换码会被拒绝。
+	dailyGrantRepo DailyGrantRepository
+	groupRepo      GroupRepository
 }
 
 // NewRedeemService 创建兑换码服务实例
@@ -164,6 +168,13 @@ func NewRedeemService(
 		authCacheInvalidator: authCacheInvalidator,
 		affiliateService:     affiliateService,
 	}
+}
+
+// SetDailyGrantDeps 注入每日余额兑换码所需的依赖（grant 仓储 + group 仓储）。
+// 在 wire 装配后调用；未注入时 daily_balance 类型兑换码会被拒绝。
+func (s *RedeemService) SetDailyGrantDeps(grantRepo DailyGrantRepository, groupRepo GroupRepository) {
+	s.dailyGrantRepo = grantRepo
+	s.groupRepo = groupRepo
 }
 
 // GenerateRandomCode 生成随机兑换码
@@ -411,6 +422,14 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 	if redeemCode.Type == RedeemTypeSubscription && redeemCode.GroupID == nil {
 		return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "invalid subscription redeem code: missing group_id")
 	}
+	if redeemCode.Type == RedeemTypeDailyBalance {
+		if redeemCode.GroupID == nil {
+			return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "invalid daily balance redeem code: missing group_id")
+		}
+		if s.dailyGrantRepo == nil || s.groupRepo == nil {
+			return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "daily balance redeem is not enabled")
+		}
+	}
 
 	// 获取用户信息
 	user, err := s.userRepo.GetByID(ctx, userID)
@@ -482,6 +501,34 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 			}
 		}
 
+	case RedeemTypeDailyBalance:
+		// 每日余额：创建一笔绑定专属分组、24h 有效的额度桶，不增加长期余额。
+		if redeemCode.Value <= 0 {
+			return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "daily balance redeem value must be positive")
+		}
+		group, gErr := s.groupRepo.GetByID(txCtx, *redeemCode.GroupID)
+		if gErr != nil {
+			return nil, fmt.Errorf("get daily balance group: %w", gErr)
+		}
+		if !group.DailyBalanceEnabled {
+			return nil, ErrDailyGrantGroupNotExclusive
+		}
+		now := time.Now()
+		ref := redeemCode.Code
+		if _, gErr := s.dailyGrantRepo.CreateGrant(txCtx, &DailyBalanceGrant{
+			UserID:    userID,
+			GroupID:   *redeemCode.GroupID,
+			Amount:    redeemCode.Value,
+			Remaining: redeemCode.Value,
+			Status:    domain.DailyGrantStatusActive,
+			Source:    domain.DailyGrantSourceRedeem,
+			SourceRef: &ref,
+			GrantedAt: now,
+			ExpiresAt: now.Add(DailyGrantValidity),
+		}); gErr != nil {
+			return nil, fmt.Errorf("create daily balance grant: %w", gErr)
+		}
+
 	default:
 		return nil, fmt.Errorf("unsupported redeem type: %s", redeemCode.Type)
 	}
@@ -530,6 +577,19 @@ func (s *RedeemService) invalidateRedeemCaches(ctx context.Context, userID int64
 		if s.billingCacheService == nil {
 			return
 		}
+	case RedeemTypeDailyBalance:
+		// 失效余额缓存，使预检（checkBalanceEligibility）立即看到新发放的每日额度。
+		if s.authCacheInvalidator != nil {
+			s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
+		}
+		if s.billingCacheService == nil {
+			return
+		}
+		go func() {
+			cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = s.billingCacheService.InvalidateUserBalance(cacheCtx, userID)
+		}()
 	case RedeemTypeSubscription:
 		if s.authCacheInvalidator != nil {
 			s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)

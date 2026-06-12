@@ -113,11 +113,13 @@ func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, t
 	}
 
 	if cmd.BalanceCost > 0 {
-		newBalance, err := deductUsageBillingBalance(ctx, tx, cmd.UserID, cmd.BalanceCost)
+		newBalance, grantSpent, longTermSpent, err := applyUsageBillingBalanceWithDailyGrant(ctx, tx, cmd)
 		if err != nil {
 			return err
 		}
 		result.NewBalance = &newBalance
+		result.DailyGrantSpent = grantSpent
+		result.LongTermSpent = longTermSpent
 	}
 
 	if cmd.APIKeyQuotaCost > 0 {
@@ -189,6 +191,137 @@ func deductUsageBillingBalance(ctx context.Context, tx *sql.Tx, userID int64, am
 		return 0, err
 	}
 	return newBalance, nil
+}
+
+// applyUsageBillingBalanceWithDailyGrant 在同一事务内执行「每日余额」拆分扣费。
+//
+// 当 cmd.GroupID 指向一个「每日余额」专属分组（groups.daily_balance_enabled=true）时：
+//   - base = cmd.BalanceCost（专属分组 rate_multiplier 应为 1.0，故 base 即原价基础成本）
+//   - 先按 expires_at 升序、对该用户该分组的有效 Grant 逐笔 FOR UPDATE 锁定并扣减（FIFO），
+//     合计扣减 grantSpent（≤ base）。行锁串行化并发请求，杜绝超卖。
+//   - 溢出 overflow = base - grantSpent，按分组 daily_fallback_multiplier 倍率从长期余额扣减。
+//
+// 非专属分组（或 GroupID 为 nil）：退化为原始的全额长期余额扣减，行为与改造前逐字节一致。
+//
+// 返回：扣减后的长期余额、每日额度合计扣减（基础成本口径）、长期余额合计扣减（含倍率）。
+func applyUsageBillingBalanceWithDailyGrant(ctx context.Context, tx *sql.Tx, cmd *service.UsageBillingCommand) (newBalance float64, grantSpent float64, longTermSpent float64, err error) {
+	base := cmd.BalanceCost
+
+	// 无分组：保持原始全额扣减语义。
+	if cmd.GroupID == nil {
+		newBalance, err = deductUsageBillingBalance(ctx, tx, cmd.UserID, base)
+		return newBalance, 0, base, err
+	}
+
+	// 读取分组的每日余额配置（同事务内，确保与扣减一致）。
+	var dailyEnabled bool
+	var fallbackMultiplier float64
+	err = tx.QueryRowContext(ctx, `
+		SELECT daily_balance_enabled, daily_fallback_multiplier
+		FROM groups
+		WHERE id = $1 AND deleted_at IS NULL
+	`, *cmd.GroupID).Scan(&dailyEnabled, &fallbackMultiplier)
+	if errors.Is(err, sql.ErrNoRows) {
+		// 分组不存在（异常）：退化为全额长期余额扣减，不阻断计费。
+		newBalance, err = deductUsageBillingBalance(ctx, tx, cmd.UserID, base)
+		return newBalance, 0, base, err
+	}
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	// 非每日余额专属分组：原始全额扣减。
+	if !dailyEnabled {
+		newBalance, err = deductUsageBillingBalance(ctx, tx, cmd.UserID, base)
+		return newBalance, 0, base, err
+	}
+
+	if fallbackMultiplier <= 0 {
+		fallbackMultiplier = 1.0
+	}
+
+	// FIFO 扣减有效 Grant：FOR UPDATE 行锁串行化并发请求，避免超卖。
+	remaining := base
+	rows, qErr := tx.QueryContext(ctx, `
+		SELECT id, remaining
+		FROM daily_balance_grants
+		WHERE user_id = $1 AND group_id = $2
+			AND status = 'active'
+			AND remaining > 0
+			AND expires_at > NOW()
+		ORDER BY expires_at ASC
+		FOR UPDATE
+	`, cmd.UserID, *cmd.GroupID)
+	if qErr != nil {
+		return 0, 0, 0, qErr
+	}
+	type grantRow struct {
+		id        int64
+		remaining float64
+	}
+	var grants []grantRow
+	for rows.Next() {
+		var g grantRow
+		if scanErr := rows.Scan(&g.id, &g.remaining); scanErr != nil {
+			_ = rows.Close()
+			return 0, 0, 0, scanErr
+		}
+		grants = append(grants, g)
+	}
+	if rErr := rows.Err(); rErr != nil {
+		_ = rows.Close()
+		return 0, 0, 0, rErr
+	}
+	// 必须在执行后续 UPDATE 前关闭 rows：pq 驱动同一连接不允许未耗尽结果集时启动新查询。
+	if cErr := rows.Close(); cErr != nil {
+		return 0, 0, 0, cErr
+	}
+
+	for _, g := range grants {
+		if remaining <= 1e-12 {
+			break
+		}
+		take := g.remaining
+		if take > remaining {
+			take = remaining
+		}
+		if _, uErr := tx.ExecContext(ctx, `
+			UPDATE daily_balance_grants
+			SET remaining = remaining - $1,
+				status = CASE WHEN remaining - $1 <= 0 THEN 'exhausted' ELSE status END
+			WHERE id = $2
+		`, take, g.id); uErr != nil {
+			return 0, 0, 0, uErr
+		}
+		grantSpent += take
+		remaining -= take
+	}
+
+	// 溢出部分按回退倍率从长期余额扣减。
+	overflow := base - grantSpent
+	if overflow < 0 {
+		overflow = 0
+	}
+	longTermSpent = overflow * fallbackMultiplier
+	if longTermSpent > 0 {
+		newBalance, err = deductUsageBillingBalance(ctx, tx, cmd.UserID, longTermSpent)
+		if err != nil {
+			return 0, 0, 0, err
+		}
+	} else {
+		// 全部由每日额度覆盖：仍读取当前余额以填充 NewBalance（不修改）。
+		err = tx.QueryRowContext(ctx, `
+			SELECT balance FROM users WHERE id = $1 AND deleted_at IS NULL
+		`, cmd.UserID).Scan(&newBalance)
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, 0, 0, service.ErrUserNotFound
+		}
+		if err != nil {
+			return 0, 0, 0, err
+		}
+	}
+
+	return newBalance, grantSpent, longTermSpent, nil
 }
 
 func incrementUsageBillingAPIKeyQuota(ctx context.Context, tx *sql.Tx, apiKeyID int64, amount float64) (bool, error) {

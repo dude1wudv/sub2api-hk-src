@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/handler/quotaview"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
@@ -29,6 +30,7 @@ type UserHandler struct {
 	concurrencyService    *service.ConcurrencyService
 	userPlatformQuotaRepo service.UserPlatformQuotaRepository // T13 admin quota view
 	billingCache          service.BillingCache                // T17/T18 缓存失效（PUT/POST 路径）
+	dailyGrantService     *service.DailyGrantService          // T9 每日余额赠额发放/查询
 }
 
 // NewUserHandler creates a new admin user handler
@@ -37,12 +39,14 @@ func NewUserHandler(
 	concurrencyService *service.ConcurrencyService,
 	userPlatformQuotaRepo service.UserPlatformQuotaRepository,
 	billingCache service.BillingCache,
+	dailyGrantService *service.DailyGrantService,
 ) *UserHandler {
 	return &UserHandler{
 		adminService:          adminService,
 		concurrencyService:    concurrencyService,
 		userPlatformQuotaRepo: userPlatformQuotaRepo,
 		billingCache:          billingCache,
+		dailyGrantService:     dailyGrantService,
 	}
 }
 
@@ -445,6 +449,101 @@ func (h *UserHandler) GetBalanceHistory(c *gin.Context) {
 		"pages":           pages,
 		"total_recharged": totalRecharged,
 	})
+}
+
+// GrantDailyBalanceRequest represents the request to grant a 24h daily-balance grant.
+type GrantDailyBalanceRequest struct {
+	GroupID int64   `json:"group_id" binding:"required"`
+	Amount  float64 `json:"amount" binding:"required,gt=0"`
+}
+
+// dailyGrantResponse is the API representation of a DailyBalanceGrant.
+type dailyGrantResponse struct {
+	ID        int64     `json:"id"`
+	UserID    int64     `json:"user_id"`
+	GroupID   int64     `json:"group_id"`
+	Amount    float64   `json:"amount"`
+	Remaining float64   `json:"remaining"`
+	Status    string    `json:"status"`
+	Source    string    `json:"source"`
+	SourceRef *string   `json:"source_ref,omitempty"`
+	GrantedAt time.Time `json:"granted_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func dailyGrantToResponse(g *service.DailyBalanceGrant) dailyGrantResponse {
+	return dailyGrantResponse{
+		ID:        g.ID,
+		UserID:    g.UserID,
+		GroupID:   g.GroupID,
+		Amount:    g.Amount,
+		Remaining: g.Remaining,
+		Status:    g.Status,
+		Source:    g.Source,
+		SourceRef: g.SourceRef,
+		GrantedAt: g.GrantedAt,
+		ExpiresAt: g.ExpiresAt,
+		CreatedAt: g.CreatedAt,
+	}
+}
+
+// GrantDailyBalance grants a user a 24h daily-balance grant bound to an exclusive group.
+// POST /api/v1/admin/users/:id/daily-balance
+func (h *UserHandler) GrantDailyBalance(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid user ID")
+		return
+	}
+
+	var req GrantDailyBalanceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	idempotencyPayload := struct {
+		UserID int64                    `json:"user_id"`
+		Body   GrantDailyBalanceRequest `json:"body"`
+	}{
+		UserID: userID,
+		Body:   req,
+	}
+	executeAdminIdempotentJSON(c, "admin.users.daily_grant.create", idempotencyPayload, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
+		grant, execErr := h.dailyGrantService.GrantDaily(ctx, service.GrantDailyInput{
+			UserID:  userID,
+			GroupID: req.GroupID,
+			Amount:  req.Amount,
+			Source:  domain.DailyGrantSourceAdmin,
+		})
+		if execErr != nil {
+			return nil, execErr
+		}
+		return dailyGrantToResponse(grant), nil
+	})
+}
+
+// GetUserDailyGrants lists a user's daily-balance grants.
+// GET /api/v1/admin/users/:id/daily-balance
+func (h *UserHandler) GetUserDailyGrants(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid user ID")
+		return
+	}
+
+	grants, err := h.dailyGrantService.ListUserGrants(c.Request.Context(), userID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	out := make([]dailyGrantResponse, 0, len(grants))
+	for i := range grants {
+		out = append(out, dailyGrantToResponse(&grants[i]))
+	}
+	response.Success(c, gin.H{"grants": out})
 }
 
 // ReplaceGroupRequest represents the request to replace a user's exclusive group

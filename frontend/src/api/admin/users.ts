@@ -374,6 +374,33 @@ export async function resetPlatformQuotaWindow(
   return data
 }
 
+/**
+ * Grant a daily-balance grant to a user (24h validity, bound to an exclusive group)
+ */
+export async function grantUserDailyBalance(
+  id: number,
+  groupId: number,
+  amount: number
+): Promise<import('@/types').DailyBalanceGrant> {
+  const { data } = await apiClient.post<import('@/types').DailyBalanceGrant>(
+    `/admin/users/${id}/daily-balance`,
+    { group_id: groupId, amount }
+  )
+  return data
+}
+
+/**
+ * List all daily-balance grants for a user
+ */
+export async function getUserDailyGrants(
+  id: number
+): Promise<{ grants: import('@/types').DailyBalanceGrant[] }> {
+  const { data } = await apiClient.get<{ grants: import('@/types').DailyBalanceGrant[] }>(
+    `/admin/users/${id}/daily-balance`
+  )
+  return data
+}
+
 export const usersAPI = {
   list,
   getById,
@@ -391,6 +418,8 @@ export const usersAPI = {
   getPlatformQuotas,
   updatePlatformQuotas,
   resetPlatformQuotaWindow,
+  grantUserDailyBalance,
+  getUserDailyGrants,
 }
 
 export default usersAPI
