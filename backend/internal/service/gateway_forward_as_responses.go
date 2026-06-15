@@ -373,20 +373,14 @@ func (s *GatewayService) handleResponsesStreamingResponse(
 ) (*ForwardResult, error) {
 	requestID := resp.Header.Get("x-request-id")
 
-	if s.responseHeaderFilter != nil {
-		responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
-	}
-	c.Writer.Header().Set("Content-Type", "text/event-stream")
-	c.Writer.Header().Set("Cache-Control", "no-cache")
-	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Writer.Header().Set("X-Accel-Buffering", "no")
-	c.Writer.WriteHeader(http.StatusOK)
-
 	state := apicompat.NewAnthropicEventToResponsesState()
 	state.Model = originalModel
 	var usage ClaudeUsage
 	var firstTokenMs *int
 	firstChunk := true
+	clientOutputStarted := false
+	var pendingSSE []string
+	streamHeaderWritten := false
 
 	scanner := bufio.NewScanner(resp.Body)
 	maxLineSize := defaultMaxLineSize
@@ -406,6 +400,45 @@ func (s *GatewayService) handleResponsesStreamingResponse(
 			Duration:        time.Since(startTime),
 			FirstTokenMs:    firstTokenMs,
 		}
+	}
+
+	writeStreamHeader := func() {
+		if streamHeaderWritten {
+			return
+		}
+		streamHeaderWritten = true
+		if s.responseHeaderFilter != nil {
+			responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
+		}
+		c.Writer.Header().Set("Content-Type", "text/event-stream")
+		c.Writer.Header().Set("Cache-Control", "no-cache")
+		c.Writer.Header().Set("Connection", "keep-alive")
+		c.Writer.Header().Set("X-Accel-Buffering", "no")
+		c.Writer.WriteHeader(http.StatusOK)
+	}
+
+	writeSSE := func(sse string) bool {
+		writeStreamHeader()
+		out := string(reverseToolNamesIfPresent(c, []byte(sse)))
+		if _, err := fmt.Fprint(c.Writer, out); err != nil {
+			logger.L().Info("forward_as_responses stream: client disconnected",
+				zap.String("request_id", requestID),
+			)
+			return true
+		}
+		clientOutputStarted = true
+		return false
+	}
+
+	writePendingSSE := func() bool {
+		for _, sse := range pendingSSE {
+			if writeSSE(sse) {
+				pendingSSE = nil
+				return true
+			}
+		}
+		pendingSSE = nil
+		return false
 	}
 
 	// processEvent handles a single parsed Anthropic SSE event.
@@ -436,15 +469,18 @@ func (s *GatewayService) handleResponsesStreamingResponse(
 				)
 				continue
 			}
-			out := string(reverseToolNamesIfPresent(c, []byte(sse)))
-			if _, err := fmt.Fprint(c.Writer, out); err != nil {
-				logger.L().Info("forward_as_responses stream: client disconnected",
-					zap.String("request_id", requestID),
-				)
-				return true // client disconnected
+			if !clientOutputStarted && responsesStreamEventIsPreamble(evt.Type) {
+				pendingSSE = append(pendingSSE, sse)
+				continue
+			}
+			if writePendingSSE() {
+				return true
+			}
+			if writeSSE(sse) {
+				return true
 			}
 		}
-		if len(events) > 0 {
+		if len(events) > 0 && clientOutputStarted {
 			c.Writer.Flush()
 		}
 		return false
@@ -457,10 +493,20 @@ func (s *GatewayService) handleResponsesStreamingResponse(
 				if err != nil {
 					continue
 				}
-				out := string(reverseToolNamesIfPresent(c, []byte(sse)))
-				fmt.Fprint(c.Writer, out) //nolint:errcheck
+				if !clientOutputStarted && responsesStreamEventIsPreamble(evt.Type) {
+					pendingSSE = append(pendingSSE, sse)
+					continue
+				}
+				if writePendingSSE() {
+					return resultWithUsage(), nil
+				}
+				if writeSSE(sse) {
+					return resultWithUsage(), nil
+				}
 			}
-			c.Writer.Flush()
+			if clientOutputStarted {
+				c.Writer.Flush()
+			}
 		}
 		return resultWithUsage(), nil
 	}
@@ -482,9 +528,22 @@ func (s *GatewayService) handleResponsesStreamingResponse(
 			continue
 		}
 		payload := dataLine[6:]
+		payloadBytes := []byte(payload)
+
+		if anthropicStreamEventIsError(eventType, payloadBytes) {
+			message := extractAnthropicStreamErrorMessage(payloadBytes)
+			message = sanitizeUpstreamErrorMessage(message)
+			if !clientOutputStarted && anthropicResponsesStreamErrorShouldFailover(payloadBytes, message) {
+				return resultWithUsage(), newResponsesStreamFailoverError(http.StatusBadGateway, payloadBytes, message)
+			}
+			if !clientOutputStarted {
+				return resultWithUsage(), fmt.Errorf("upstream response failed: %s", message)
+			}
+			return resultWithUsage(), fmt.Errorf("upstream response failed: %s", message)
+		}
 
 		var event apicompat.AnthropicStreamEvent
-		if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		if err := json.Unmarshal(payloadBytes, &event); err != nil {
 			logger.L().Warn("forward_as_responses stream: failed to parse event",
 				zap.Error(err),
 				zap.String("request_id", requestID),
@@ -508,6 +567,65 @@ func (s *GatewayService) handleResponsesStreamingResponse(
 	}
 
 	return finalizeStream()
+}
+
+func responsesStreamEventIsPreamble(eventType string) bool {
+	switch strings.TrimSpace(eventType) {
+	case "response.created", "response.in_progress":
+		return true
+	default:
+		return false
+	}
+}
+
+func anthropicStreamEventIsError(eventType string, payload []byte) bool {
+	if strings.TrimSpace(eventType) == "error" {
+		return true
+	}
+	return strings.TrimSpace(gjson.GetBytes(payload, "type").String()) == "error"
+}
+
+func extractAnthropicStreamErrorMessage(payload []byte) string {
+	for _, path := range []string{"error.message", "message", "error"} {
+		msg := strings.TrimSpace(gjson.GetBytes(payload, path).String())
+		if msg != "" {
+			return msg
+		}
+	}
+	return "upstream response failed"
+}
+
+func anthropicResponsesStreamErrorShouldFailover(payload []byte, message string) bool {
+	if isOpenAITransientProcessingError(http.StatusBadRequest, message, payload) {
+		return true
+	}
+	errType := strings.ToLower(strings.TrimSpace(gjson.GetBytes(payload, "error.type").String()))
+	combined := strings.ToLower(strings.TrimSpace(message + " " + errType))
+	return strings.Contains(combined, "overloaded") || strings.Contains(combined, "capacity")
+}
+
+func newResponsesStreamFailoverError(statusCode int, payload []byte, message string) *UpstreamFailoverError {
+	message = sanitizeUpstreamErrorMessage(strings.TrimSpace(message))
+	if message == "" {
+		message = "upstream response failed"
+	}
+	errType := strings.TrimSpace(gjson.GetBytes(payload, "error.type").String())
+	if errType == "" {
+		errType = "upstream_error"
+	}
+	body, _ := json.Marshal(gin.H{
+		"type": "error",
+		"error": gin.H{
+			"type":    errType,
+			"message": message,
+		},
+	})
+	return &UpstreamFailoverError{
+		StatusCode:             statusCode,
+		ResponseBody:           body,
+		Reason:                 message,
+		RetryableOnSameAccount: true,
+	}
 }
 
 // appendRawJSON appends a JSON fragment string to existing raw JSON.

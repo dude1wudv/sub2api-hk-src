@@ -21,3 +21,9 @@ func TestSettingKeyAuthSourcePlatformQuotas(t *testing.T) {
 		t.Fatalf("got %q, want %q", got, "auth_source_default_dingtalk_platform_quotas")
 	}
 }
+
+func TestPlatformDeepSeekConstant(t *testing.T) {
+	if PlatformDeepSeek != "deepseek" {
+		t.Fatalf("PlatformDeepSeek = %q, want %q", PlatformDeepSeek, "deepseek")
+	}
+}

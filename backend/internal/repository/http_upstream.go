@@ -162,6 +162,7 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 	if err := s.validateRequestHost(req); err != nil {
 		return nil, err
 	}
+	ensureUpstreamUserAgent(req)
 	profile := service.HTTPUpstreamProfileDefault
 	if req != nil {
 		profile = service.HTTPUpstreamProfileFromContext(req.Context())
@@ -223,6 +224,7 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 	if err := s.validateRequestHost(req); err != nil {
 		return nil, err
 	}
+	ensureUpstreamUserAgent(req)
 
 	entry, err := s.acquireClientWithTLS(proxyURL, accountID, accountConcurrency, profile, upstreamProfile)
 	if err != nil {
@@ -369,6 +371,16 @@ func (s *httpUpstreamService) validateRequestHost(req *http.Request) error {
 		return err
 	}
 	return nil
+}
+
+func ensureUpstreamUserAgent(req *http.Request) {
+	if req == nil {
+		return
+	}
+	if strings.TrimSpace(req.Header.Get("User-Agent")) != "" {
+		return
+	}
+	req.Header.Set("User-Agent", service.DefaultOpenAICodexUserAgent)
 }
 
 func (s *httpUpstreamService) redirectChecker(req *http.Request, via []*http.Request) error {

@@ -25,10 +25,12 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 
 # Install dependencies first (better caching)
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # Copy frontend source and build
 COPY frontend/ ./
+# Remove pnpm-workspace.yaml if present (confuses pnpm v9 in non-workspace projects)
+RUN rm -f pnpm-workspace.yaml
 RUN pnpm run build
 
 # -----------------------------------------------------------------------------

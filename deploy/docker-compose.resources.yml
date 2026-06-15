@@ -1,0 +1,127 @@
+# =============================================================================
+# docker-compose.resources.yml — resource-limit OVERLAY for the JP server.
+#
+# WHY
+#   The 2026-06 incident was driven by memory pressure on a 1.6GiB box with no
+#   per-container caps: sub2api alone reached ~700MiB+ and there was nothing to
+#   stop any one service from starving the others (and the host) into a swap/IO
+#   storm that locked the whole machine.
+#
+#   This overlay puts a HARD memory ceiling and IO/CPU weighting on every
+#   container so no single service can take the box down. It changes only
+#   `deploy.resources`, `mem_*`, `logging`, `oom_*`, and a couple of safe env
+#   knobs — it does NOT redefine images, volumes, ports, env secrets, or the
+#   network. Merge it on top of the real file:
+#
+#     cd /opt/sub2api
+#     docker compose \
+#       -f docker-compose.local.yml \
+#       -f docker-compose.resources.yml \
+#       up -d
+#
+#   Compose merges the two files; values here win for the keys they set.
+#
+# SIZING (tuned for a 1.6GiB host; total hard caps stay under ~1.4GiB so the
+# kernel + sshd always keep headroom):
+#     postgres  450M    redis  150M    sub2api  600M
+#     kiro-gateway 200M  mihomo 120M
+#   These are CEILINGS, not reservations — services normally use far less.
+#   If you size the instance UP, raise these proportionally (this is the one
+#   file to edit).
+#
+# REVERT
+#   Just stop passing `-f docker-compose.resources.yml`. Nothing here is
+#   persisted into the base compose file.
+#
+# NOTE on the kiro-gateway/mihomo caps: those containers are created by
+#   scripts/ensure-kiro-go.sh with `docker run`, NOT by this compose project,
+#   so the limits below only apply if you choose to bring them up via compose.
+#   The ensure script has been given matching `--memory` flags separately.
+# =============================================================================
+
+services:
+  sub2api:
+    # Hard ceiling. With GOMEMLIMIT set below, the Go runtime GCs aggressively
+    # as it approaches the cap instead of getting OOM-killed at it.
+    mem_limit: 600m
+    mem_reservation: 256m
+    memswap_limit: 750m          # allow a little zram spillover, not unbounded
+    oom_kill_disable: false
+    cpus: "1.5"
+    environment:
+      # Tell the Go runtime to stay under ~540MiB (90% of the cap) so GC kicks
+      # in before Docker OOM-kills the container. This is the single most
+      # effective knob for a memory-bound Go service.
+      - GOMEMLIMIT=540MiB
+      # Bound DB pool so a connection spike can't multiply postgres memory.
+      - DATABASE_MAX_OPEN_CONNS=20
+      - DATABASE_MAX_IDLE_CONNS=5
+      # Smaller Redis pool — plenty for this load, less idle overhead.
+      - REDIS_POOL_SIZE=64
+      - REDIS_MIN_IDLE_CONNS=4
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    mem_limit: 450m
+    mem_reservation: 200m
+    memswap_limit: 550m
+    cpus: "1.0"
+    # Postgres defaults assume a big box. Trim it to fit and to bound its
+    # memory footprint. These flags are appended to the entrypoint; data and
+    # auth env are untouched.
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=96MB"
+      - "-c"
+      - "effective_cache_size=256MB"
+      - "-c"
+      - "work_mem=4MB"
+      - "-c"
+      - "maintenance_work_mem=32MB"
+      - "-c"
+      - "max_connections=40"
+      - "-c"
+      - "max_wal_size=512MB"
+      - "-c"
+      - "min_wal_size=128MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "synchronous_commit=off"   # safe for this workload; smooths fsync IO
+      - "-c"
+      - "wal_compression=on"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    mem_limit: 150m
+    mem_reservation: 64m
+    memswap_limit: 200m
+    cpus: "0.5"
+    # Bound Redis memory and evict instead of growing without limit. The base
+    # file's command (save/appendonly/requirepass) is REPLACED here, so the
+    # persistence + auth flags are repeated to preserve behavior.
+    command:
+      - "sh"
+      - "-c"
+      - >
+        redis-server
+        --maxmemory 110mb
+        --maxmemory-policy allkeys-lru
+        --save 60 1
+        --appendonly yes
+        --appendfsync everysec
+        ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

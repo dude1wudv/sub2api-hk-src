@@ -166,12 +166,22 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/image2',
+    path: '/image',
     name: 'ImageWorkbench',
+    alias: '/image2',
     component: () => import('@/views/user/ImageWorkbenchView.vue'),
     meta: {
       requiresAuth: false,
-      title: 'Image2 Workbench',
+      title: 'Image Generation',
+    }
+  },
+  {
+    path: '/anime',
+    name: 'AnimeHub',
+    component: () => import('@/views/public/AnimeHubView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Anime Weekly',
     }
   },
   {
@@ -709,7 +719,7 @@ let authInitialized = false
 const navigationLoading = useNavigationLoadingState()
 // 延迟初始化预加载，传入 router 实例
 let routePrefetch: ReturnType<typeof useRoutePrefetch> | null = null
-const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/payment/result', '/payment/airwallex', '/legal']
+const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/payment/result', '/payment/airwallex', '/legal', '/anime', '/image']
 const BACKEND_MODE_CALLBACK_PATHS = [
   '/auth/callback',
   '/auth/linuxdo/callback',

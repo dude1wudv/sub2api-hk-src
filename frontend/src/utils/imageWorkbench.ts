@@ -1,10 +1,13 @@
 export type ImageQuality = 'low' | 'medium' | 'high' | 'auto'
+export type ImageOutputFormat = 'png' | 'jpeg' | 'webp'
 
 export interface TextImagePayloadInput {
   model: string
   prompt: string
   size?: string
   quality?: ImageQuality
+  n?: number
+  outputFormat?: ImageOutputFormat | ''
 }
 
 export interface ImageTraceInput {
@@ -63,11 +66,14 @@ export function buildTextImagePayload(input: TextImagePayloadInput): Record<stri
   const payload: Record<string, unknown> = {
     model: input.model,
     prompt: input.prompt,
-    n: 1,
+    n: Math.max(1, Math.min(10, Number(input.n) || 1)),
     quality: input.quality || 'high',
   }
   if (input.size) {
     payload.size = input.size
+  }
+  if (input.outputFormat) {
+    payload.output_format = input.outputFormat
   }
   return payload
 }

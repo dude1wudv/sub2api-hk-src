@@ -250,6 +250,62 @@ func (s *HTTPUpstreamSuite) TestDo_WithoutProxy_GoesDirect() {
 	require.Equal(s.T(), "direct", string(b), "unexpected body")
 }
 
+func (s *HTTPUpstreamSuite) TestDo_DefaultsBlankUserAgentToCodexLinuxUA() {
+	seen := make(chan string, 1)
+	upstream := newLocalTestServer(s.T(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen <- r.Header.Get("User-Agent")
+		_, _ = io.WriteString(w, "ok")
+	}))
+	s.T().Cleanup(upstream.Close)
+
+	up := NewHTTPUpstream(s.cfg)
+	req, err := http.NewRequest(http.MethodGet, upstream.URL+"/ua", nil)
+	require.NoError(s.T(), err, "NewRequest")
+	resp, err := up.Do(req, "", 1, 1)
+	require.NoError(s.T(), err, "Do")
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(s.T(), service.DefaultOpenAICodexUserAgent, <-seen)
+}
+
+func (s *HTTPUpstreamSuite) TestDo_PreservesExplicitUserAgent() {
+	const customUA = "custom-client/1.0"
+	seen := make(chan string, 1)
+	upstream := newLocalTestServer(s.T(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen <- r.Header.Get("User-Agent")
+		_, _ = io.WriteString(w, "ok")
+	}))
+	s.T().Cleanup(upstream.Close)
+
+	up := NewHTTPUpstream(s.cfg)
+	req, err := http.NewRequest(http.MethodGet, upstream.URL+"/ua", nil)
+	require.NoError(s.T(), err, "NewRequest")
+	req.Header.Set("User-Agent", customUA)
+	resp, err := up.Do(req, "", 1, 1)
+	require.NoError(s.T(), err, "Do")
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(s.T(), customUA, <-seen)
+}
+
+func (s *HTTPUpstreamSuite) TestDoWithTLS_DefaultsBlankUserAgentToCodexLinuxUA() {
+	seen := make(chan string, 1)
+	upstream := newLocalTestServer(s.T(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen <- r.Header.Get("User-Agent")
+		_, _ = io.WriteString(w, "ok")
+	}))
+	s.T().Cleanup(upstream.Close)
+
+	up := NewHTTPUpstream(s.cfg)
+	req, err := http.NewRequest(http.MethodGet, upstream.URL+"/ua", nil)
+	require.NoError(s.T(), err, "NewRequest")
+	resp, err := up.DoWithTLS(req, "", 1, 1, &tlsfingerprint.Profile{Name: "test"})
+	require.NoError(s.T(), err, "DoWithTLS")
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(s.T(), service.DefaultOpenAICodexUserAgent, <-seen)
+}
+
 // TestDo_WithHTTPProxy_UsesProxy 测试 HTTP 代理功能
 // 验证请求通过代理服务器转发，使用绝对 URI 格式
 func (s *HTTPUpstreamSuite) TestDo_WithHTTPProxy_UsesProxy() {

@@ -7,6 +7,7 @@ import {
   buildTextImagePayload,
   extractImageResults,
   normalizeImageApiBase,
+  type ImageOutputFormat,
   type ImageQuality,
 } from '@/utils/imageWorkbench'
 
@@ -31,8 +32,11 @@ const mode = ref<WorkbenchMode>('text')
 const prompt = ref('')
 const subject = ref('')
 const style = ref('clean-product')
+const model = ref('gpt-image-2')
 const size = ref('')
 const quality = ref<ImageQuality>('high')
+const outputFormat = ref<ImageOutputFormat | ''>('')
+const isEmbed = ref(false)
 const batchCount = ref(1)
 const referenceFiles = ref<File[]>([])
 const works = ref<GeneratedWork[]>([])
@@ -47,6 +51,11 @@ const styleOptions = [
   { value: 'social-avatar', label: '头像写真', text: '自然光人像摄影，情绪松弛，干净背景，适合头像或社媒分享。' },
   { value: 'poster', label: '海报封面', text: '强视觉焦点，移动端可读，留出标题安全区，避免复杂小字。' },
   { value: 'free', label: '纯提示词', text: '' },
+]
+
+const modelOptions = [
+  { value: 'gpt-image-2', label: 'gpt-image-2' },
+  { value: 'gpt-image-1', label: 'gpt-image-1' },
 ]
 
 const sizeOptions = [
@@ -65,6 +74,13 @@ const qualityOptions: Array<{ value: ImageQuality; label: string }> = [
   { value: 'auto', label: '自动' },
 ]
 
+const outputFormatOptions: Array<{ value: ImageOutputFormat | ''; label: string }> = [
+  { value: '', label: '接口默认' },
+  { value: 'png', label: 'PNG' },
+  { value: 'jpeg', label: 'JPEG' },
+  { value: 'webp', label: 'WebP' },
+]
+
 const selectedWork = computed(() => works.value.find((work) => work.id === selectedWorkId.value) || works.value[0])
 const normalizedBase = computed(() => normalizeImageApiBase(requestUrl.value, window.location.origin))
 const canGenerate = computed(() => Boolean(apiKey.value.trim() && prompt.value.trim() && !isGenerating.value))
@@ -73,11 +89,13 @@ function saveDraft() {
   localStorage.setItem(requestUrlStorageKey, requestUrl.value)
   localStorage.setItem(draftStorageKey, JSON.stringify({
     mode: mode.value,
+    model: model.value,
     prompt: prompt.value,
     subject: subject.value,
     style: style.value,
     size: size.value,
     quality: quality.value,
+    outputFormat: outputFormat.value,
     batchCount: batchCount.value,
   }))
 }
@@ -92,11 +110,13 @@ function restoreDraft() {
   try {
     const draft = JSON.parse(localStorage.getItem(draftStorageKey) || '{}')
     mode.value = draft.mode === 'image' ? 'image' : 'text'
+    model.value = String(draft.model || 'gpt-image-2')
     prompt.value = String(draft.prompt || '')
     subject.value = String(draft.subject || '')
     style.value = String(draft.style || 'clean-product')
     size.value = String(draft.size || '')
     quality.value = ['low', 'medium', 'high', 'auto'].includes(draft.quality) ? draft.quality : 'high'
+    outputFormat.value = ['png', 'jpeg', 'webp'].includes(draft.outputFormat) ? draft.outputFormat : ''
     batchCount.value = Math.max(1, Math.min(10, Number(draft.batchCount) || 1))
   } catch {
     mode.value = 'text'
@@ -107,9 +127,23 @@ function adoptQueryParams() {
   const params = new URLSearchParams(window.location.search)
   const base = params.get('api_base') || params.get('base_url') || params.get('request_url')
   const key = params.get('api_key') || params.get('key')
-  if (base) {
-    requestUrl.value = normalizeImageApiBase(base, window.location.origin)
-  }
+  const nextMode = params.get('mode')
+  const nextModel = params.get('model')
+  const nextSize = params.get('size')
+  const nextQuality = params.get('quality')
+  const nextFormat = params.get('format') || params.get('output_format')
+  const nextPrompt = params.get('prompt')
+  const nextCount = params.get('count') || params.get('n')
+
+  isEmbed.value = params.get('embed') === '1' || params.get('embed') === 'true'
+  if (base) requestUrl.value = normalizeImageApiBase(base, window.location.origin)
+  if (nextMode === 'text' || nextMode === 'image') mode.value = nextMode
+  if (nextModel) model.value = nextModel.slice(0, 80)
+  if (nextSize) size.value = nextSize
+  if (['low', 'medium', 'high', 'auto'].includes(String(nextQuality))) quality.value = nextQuality as ImageQuality
+  if (['png', 'jpeg', 'webp'].includes(String(nextFormat))) outputFormat.value = nextFormat as ImageOutputFormat
+  if (nextPrompt) prompt.value = nextPrompt.slice(0, 4000)
+  if (nextCount) batchCount.value = Math.max(1, Math.min(10, Number(nextCount) || 1))
   if (key) {
     apiKey.value = key
     sessionStorage.setItem(apiKeyStorageKey, key)
@@ -179,11 +213,12 @@ async function generateOne(index: number) {
       throw new Error('图生图需要先上传参考图')
     }
     const form = new FormData()
-    form.append('model', 'gpt-image-2')
+    form.append('model', model.value.trim() || 'gpt-image-2')
     form.append('prompt', finalPrompt)
     form.append('quality', quality.value)
     form.append('n', '1')
     if (size.value) form.append('size', size.value)
+    if (outputFormat.value) form.append('output_format', outputFormat.value)
     const fieldName = referenceFiles.value.length > 1 ? 'image[]' : 'image'
     referenceFiles.value.forEach((file) => form.append(fieldName, file, file.name || 'reference.png'))
 
@@ -201,10 +236,12 @@ async function generateOne(index: number) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(buildTextImagePayload({
-      model: 'gpt-image-2',
+      model: model.value.trim() || 'gpt-image-2',
       prompt: finalPrompt,
       size: size.value,
       quality: quality.value,
+      n: 1,
+      outputFormat: outputFormat.value,
     })),
   })
 }
@@ -275,20 +312,25 @@ onMounted(() => {
 
 <template>
   <main class="min-h-screen bg-gray-50 text-gray-900 dark:bg-dark-900 dark:text-white">
-    <section class="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-      <header class="flex flex-col gap-3 border-b border-gray-200 pb-4 dark:border-dark-700 md:flex-row md:items-center md:justify-between">
+    <section class="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 sm:px-6 lg:px-8" :class="isEmbed ? 'py-3' : 'py-5'">
+      <header v-if="!isEmbed" class="flex flex-col gap-3 border-b border-gray-200 pb-4 dark:border-dark-700 md:flex-row md:items-center md:justify-between">
         <div>
           <p class="text-sm font-semibold text-primary-600 dark:text-primary-400">Sub2API</p>
-          <h1 class="text-2xl font-semibold tracking-normal">Image2 画图工作台</h1>
+          <h1 class="text-2xl font-semibold tracking-normal">图像生成</h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">可直接嵌入网站的 Sub2API 生图工具。</p>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-sm">
-          <span class="rounded-md border border-gray-200 px-3 py-1.5 dark:border-dark-700">模型 gpt-image-2</span>
+          <span class="rounded-md border border-gray-200 px-3 py-1.5 dark:border-dark-700">模型 {{ model || 'gpt-image-2' }}</span>
           <span class="rounded-md border border-gray-200 px-3 py-1.5 dark:border-dark-700">{{ statusText }}</span>
         </div>
       </header>
 
-      <div class="grid gap-5 lg:grid-cols-[420px_minmax(0,1fr)]">
+      <div class="grid gap-5" :class="isEmbed ? 'lg:grid-cols-[380px_minmax(0,1fr)]' : 'lg:grid-cols-[420px_minmax(0,1fr)]'">
         <aside class="space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-dark-700 dark:bg-dark-800">
+          <div v-if="isEmbed" class="space-y-1">
+            <p class="text-sm font-semibold text-primary-600 dark:text-primary-400">图像生成</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">输入 API Key 和提示词，结果仅在浏览器本地展示。</p>
+          </div>
           <div class="space-y-2">
             <label class="text-sm font-medium" for="image2-request-url">请求网址</label>
             <input
@@ -332,6 +374,13 @@ onMounted(() => {
             </button>
           </div>
 
+          <label class="space-y-2 text-sm">
+            <span class="font-medium">模型</span>
+            <select v-model="model" class="w-full rounded-md border border-gray-300 bg-white px-2 py-2 dark:border-dark-600 dark:bg-dark-900" @change="saveDraft">
+              <option v-for="option in modelOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+          </label>
+
           <div class="grid grid-cols-2 gap-2">
             <button
               v-for="option in styleOptions"
@@ -369,7 +418,7 @@ onMounted(() => {
             <p class="text-xs text-gray-500 dark:text-gray-400">最多 8 张参考图，请求字段自动使用 image 或 image[]。</p>
           </div>
 
-          <div class="grid grid-cols-3 gap-2">
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label class="space-y-2 text-sm">
               <span class="font-medium">尺寸</span>
               <select v-model="size" class="w-full rounded-md border border-gray-300 bg-white px-2 py-2 dark:border-dark-600 dark:bg-dark-900" @change="saveDraft">
@@ -380,6 +429,12 @@ onMounted(() => {
               <span class="font-medium">质量</span>
               <select v-model="quality" class="w-full rounded-md border border-gray-300 bg-white px-2 py-2 dark:border-dark-600 dark:bg-dark-900" @change="saveDraft">
                 <option v-for="option in qualityOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select>
+            </label>
+            <label class="space-y-2 text-sm">
+              <span class="font-medium">格式</span>
+              <select v-model="outputFormat" class="w-full rounded-md border border-gray-300 bg-white px-2 py-2 dark:border-dark-600 dark:bg-dark-900" @change="saveDraft">
+                <option v-for="option in outputFormatOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
               </select>
             </label>
             <label class="space-y-2 text-sm">

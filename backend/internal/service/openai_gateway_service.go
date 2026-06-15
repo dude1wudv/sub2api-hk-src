@@ -1308,6 +1308,9 @@ func isOpenAITransientProcessingError(upstreamStatusCode int, upstreamMsg string
 		if strings.Contains(lower, "selected model is at capacity") {
 			return true
 		}
+		if strings.Contains(lower, "currently overloaded") || strings.Contains(lower, "server overloaded") {
+			return true
+		}
 		return strings.Contains(lower, "you can retry your request") &&
 			strings.Contains(lower, "help.openai.com") &&
 			strings.Contains(lower, "request id")
@@ -1397,8 +1400,8 @@ func (s *OpenAIGatewayService) GenerateSessionHash(c *gin.Context, body []byte) 
 
 // GenerateResponsesSessionHash keeps Codex-style /v1/responses traffic on a
 // stable account even when clients omit explicit session metadata. Prompt cache
-// locality is account-scoped, so falling back to the full evolving request body
-// can scatter a single cache chain across accounts.
+// locality is account-scoped, so use a stable conversation seed before the
+// broad API-key/model fallback.
 func (s *OpenAIGatewayService) GenerateResponsesSessionHash(c *gin.Context, body []byte, apiKeyID int64, model string) string {
 	if c == nil {
 		return ""
@@ -1408,6 +1411,19 @@ func (s *OpenAIGatewayService) GenerateResponsesSessionHash(c *gin.Context, body
 		currentHash, legacyHash := deriveScopedOpenAISessionHashes(apiKeyID, sessionID)
 		attachOpenAILegacySessionHashToGin(c, legacyHash)
 		return currentHash
+	}
+
+	if len(body) > 0 {
+		if contentSeed := deriveOpenAIContentSessionSeed(body); contentSeed != "" {
+			normalizedModel := normalizeCodexModel(strings.TrimSpace(model))
+			if normalizedModel == "" {
+				normalizedModel = strings.TrimSpace(model)
+			}
+			seed := fmt.Sprintf("openai-responses-api-key:%d:model:%s:conversation:%s", apiKeyID, normalizedModel, contentSeed)
+			currentHash, legacyHash := deriveScopedOpenAISessionHashes(apiKeyID, seed)
+			attachOpenAILegacySessionHashToGin(c, legacyHash)
+			return currentHash
+		}
 	}
 
 	if apiKeyID > 0 && shouldAutoInjectPromptCacheKeyForCompat(model) {
@@ -2575,6 +2591,13 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		return nil, errors.New("codex_cli_only restriction: only codex official clients are allowed")
 	}
 
+	var normalizedReasoning bool
+	if normalizedBody, changed, normalizeErr := normalizeOpenAIReasoningEffortBody(body); normalizeErr != nil {
+		return nil, normalizeErr
+	} else if changed {
+		body = normalizedBody
+		normalizedReasoning = true
+	}
 	originalBody := body
 	requestView := newOpenAIRequestView(body)
 	reqModel, reqStream, promptCacheKey := requestView.Model, requestView.Stream, requestView.PromptCacheKey
@@ -2624,6 +2647,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	if passthroughEnabled {
 		// 透传分支只需要轻量提取字段，避免热路径全量 Unmarshal。
 		reasoningEffort := extractOpenAIReasoningEffortFromBody(body, reqModel)
+		if normalizedReasoning {
+			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Normalized client reasoning parameter for passthrough request (account: %s)", account.Name)
+		}
 		return s.forwardOpenAIPassthrough(ctx, c, account, originalBody, reqModel, reasoningEffort, reqStream, startTime)
 	}
 
@@ -3246,6 +3272,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 				return nil, &UpstreamFailoverError{
 					StatusCode:             resp.StatusCode,
 					ResponseBody:           respBody,
+					Reason:                 upstreamMsg,
 					RetryableOnSameAccount: account.IsPoolMode() && (account.IsPoolModeRetryableStatus(resp.StatusCode) || isOpenAITransientProcessingError(resp.StatusCode, upstreamMsg, respBody)),
 				}
 			}
@@ -3736,7 +3763,7 @@ func shouldFailoverOpenAIPassthroughResponse(statusCode int) bool {
 	case http.StatusTooManyRequests, 529:
 		return true
 	default:
-		return false
+		return statusCode >= 500
 	}
 }
 
@@ -3779,6 +3806,7 @@ func (s *OpenAIGatewayService) handleFailoverErrorResponsePassthrough(
 		StatusCode:      resp.StatusCode,
 		ResponseBody:    body,
 		ResponseHeaders: resp.Header.Clone(),
+		Reason:          upstreamMsg,
 	}
 }
 
@@ -3920,6 +3948,9 @@ func openAIStreamDataStartsClientOutput(data, eventType string) bool {
 
 func openAIStreamFailedEventShouldFailover(payload []byte, message string) bool {
 	if isOpenAITransientProcessingError(http.StatusBadRequest, message, payload) {
+		return true
+	}
+	if isOpenAITransientProcessingError(http.StatusBadRequest, message, []byte(`{"error":{"message":`+strconv.Quote(message)+`}}`)) {
 		return true
 	}
 	code := strings.ToLower(strings.TrimSpace(gjson.GetBytes(payload, "response.error.code").String()))
@@ -4600,6 +4631,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 		return nil, &UpstreamFailoverError{
 			StatusCode:             resp.StatusCode,
 			ResponseBody:           body,
+			Reason:                 upstreamMsg,
 			RetryableOnSameAccount: account.IsPoolMode() && account.IsPoolModeRetryableStatus(resp.StatusCode),
 		}
 	}
@@ -4739,6 +4771,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 		return nil, &UpstreamFailoverError{
 			StatusCode:             resp.StatusCode,
 			ResponseBody:           body,
+			Reason:                 upstreamMsg,
 			RetryableOnSameAccount: account.IsPoolMode() && account.IsPoolModeRetryableStatus(resp.StatusCode),
 		}
 	}
@@ -6647,6 +6680,150 @@ func getOpenAIReasoningEffortFromReqBody(reqBody map[string]any) (value string, 
 		return normalizeOpenAIReasoningEffort(effort), true
 	}
 
+	if effort, ok := extractOpenAIReasoningEffortFromCursorParameters(reqBody["parameters"]); ok {
+		return normalizeOpenAIReasoningEffort(effort), true
+	}
+
+	return "", false
+}
+
+func extractOpenAIReasoningEffortFromCursorParameters(parameters any) (string, bool) {
+	items, ok := parameters.([]any)
+	if !ok {
+		return "", false
+	}
+	for _, item := range items {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		key, _ := entry["key"].(string)
+		key = strings.ToLower(strings.TrimSpace(key))
+		if key != "reasoning" && key != "reasoning_effort" && key != "reasoning.effort" {
+			continue
+		}
+		switch value := entry["value"].(type) {
+		case string:
+			return value, true
+		case fmt.Stringer:
+			return value.String(), true
+		default:
+			if value != nil {
+				return fmt.Sprint(value), true
+			}
+		}
+	}
+	return "", false
+}
+
+func normalizeOpenAIReasoningEffortBody(body []byte) ([]byte, bool, error) {
+	if len(body) == 0 {
+		return body, false, nil
+	}
+	rawReasoningEffort := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String())
+	if rawReasoningEffort != "" {
+		if normalizeOpenAIReasoningEffort(rawReasoningEffort) != "" {
+			return body, false, nil
+		}
+	} else if !bytes.Contains(body, []byte(`"reasoning_effort"`)) && !bytes.Contains(body, []byte(`"parameters"`)) {
+		return body, false, nil
+	}
+	value, present := getOpenAIReasoningEffortFromRawBody(body)
+	if !present {
+		return body, false, nil
+	}
+	normalized := body
+	var err error
+	if gjson.GetBytes(normalized, "reasoning_effort").Exists() {
+		normalized, err = sjson.DeleteBytes(normalized, "reasoning_effort")
+		if err != nil {
+			return nil, false, fmt.Errorf("delete reasoning_effort after reasoning normalization: %w", err)
+		}
+	}
+	if gjson.GetBytes(normalized, "parameters").Exists() {
+		normalized, err = sjson.DeleteBytes(normalized, "parameters")
+		if err != nil {
+			return nil, false, fmt.Errorf("delete parameters after reasoning normalization: %w", err)
+		}
+	}
+	if value != "" {
+		normalized, err = sjson.SetBytes(normalized, "reasoning.effort", value)
+	} else if raw := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String()); raw != "" {
+		normalized, err = sjson.SetBytes(normalized, "reasoning.effort", "none")
+	} else {
+		normalized, err = sjson.DeleteBytes(normalized, "reasoning.effort")
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("patch request after reasoning normalization: %w", err)
+	}
+	return normalized, true, nil
+}
+
+func normalizeOpenAIChatReasoningEffortBody(body []byte) ([]byte, bool, error) {
+	if len(body) == 0 {
+		return body, false, nil
+	}
+	if strings.TrimSpace(gjson.GetBytes(body, "reasoning_effort").String()) != "" &&
+		!gjson.GetBytes(body, "reasoning").Exists() &&
+		!gjson.GetBytes(body, "parameters").Exists() {
+		return body, false, nil
+	}
+	if !gjson.GetBytes(body, "reasoning").Exists() &&
+		!bytes.Contains(body, []byte(`"reasoning_effort"`)) &&
+		!bytes.Contains(body, []byte(`"parameters"`)) {
+		return body, false, nil
+	}
+
+	value, present := getOpenAIReasoningEffortFromRawBody(body)
+	if !present {
+		return body, false, nil
+	}
+	normalized := body
+	var err error
+	if gjson.GetBytes(normalized, "reasoning").Exists() {
+		normalized, err = sjson.DeleteBytes(normalized, "reasoning")
+		if err != nil {
+			return nil, false, fmt.Errorf("delete chat reasoning after reasoning normalization: %w", err)
+		}
+	}
+	if gjson.GetBytes(normalized, "parameters").Exists() {
+		normalized, err = sjson.DeleteBytes(normalized, "parameters")
+		if err != nil {
+			return nil, false, fmt.Errorf("delete chat parameters after reasoning normalization: %w", err)
+		}
+	}
+	if value != "" {
+		normalized, err = sjson.SetBytes(normalized, "reasoning_effort", value)
+	} else {
+		normalized, err = sjson.DeleteBytes(normalized, "reasoning_effort")
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("patch chat request after reasoning normalization: %w", err)
+	}
+	return normalized, true, nil
+}
+
+func getOpenAIReasoningEffortFromRawBody(body []byte) (value string, present bool) {
+	if len(body) == 0 {
+		return "", false
+	}
+	if raw := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String()); raw != "" {
+		return normalizeOpenAIReasoningEffort(raw), true
+	}
+	if raw := strings.TrimSpace(gjson.GetBytes(body, "reasoning_effort").String()); raw != "" {
+		return normalizeOpenAIReasoningEffort(raw), true
+	}
+	params := gjson.GetBytes(body, "parameters")
+	if !params.IsArray() {
+		return "", false
+	}
+	for _, item := range params.Array() {
+		key := strings.ToLower(strings.TrimSpace(item.Get("key").String()))
+		if key != "reasoning" && key != "reasoning_effort" && key != "reasoning.effort" {
+			continue
+		}
+		return normalizeOpenAIReasoningEffort(item.Get("value").String()), true
+	}
 	return "", false
 }
 
@@ -6698,6 +6875,12 @@ func newOpenAIRequestView(body []byte) openAIRequestView {
 	if len(body) == 0 {
 		return openAIRequestView{}
 	}
+	reasoningEffort := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String())
+	if reasoningEffort == "" {
+		if value, present := getOpenAIReasoningEffortFromRawBody(body); present {
+			reasoningEffort = value
+		}
+	}
 	return openAIRequestView{
 		body:               body,
 		Model:              strings.TrimSpace(gjson.GetBytes(body, "model").String()),
@@ -6705,7 +6888,7 @@ func newOpenAIRequestView(body []byte) openAIRequestView {
 		PromptCacheKey:     strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_key").String()),
 		PreviousResponseID: strings.TrimSpace(gjson.GetBytes(body, "previous_response_id").String()),
 		ServiceTier:        strings.TrimSpace(gjson.GetBytes(body, "service_tier").String()),
-		ReasoningEffort:    strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String()),
+		ReasoningEffort:    reasoningEffort,
 	}
 }
 
@@ -6985,6 +7168,11 @@ func extractOpenAIReasoningEffortFromBody(body []byte, requestedModel string) *s
 	reasoningEffort := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String())
 	if reasoningEffort == "" {
 		reasoningEffort = strings.TrimSpace(gjson.GetBytes(body, "reasoning_effort").String())
+	}
+	if reasoningEffort == "" {
+		if value, present := getOpenAIReasoningEffortFromRawBody(body); present {
+			reasoningEffort = value
+		}
 	}
 	if reasoningEffort != "" {
 		normalized := normalizeOpenAIReasoningEffort(reasoningEffort)

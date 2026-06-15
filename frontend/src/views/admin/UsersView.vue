@@ -1762,6 +1762,10 @@ const handleWithdrawFromHistory = () => {
 const handleGrantDailyBalance = (user: AdminUser) => {
   dailyBalanceUser.value = user
   showDailyBalanceModal.value = true
+  // 确保分组数据已加载（用于每日余额专属分组下拉框）
+  if (allGroups.value.length === 0) {
+    loadAllGroups()
+  }
 }
 
 const closeDailyBalanceModal = () => {

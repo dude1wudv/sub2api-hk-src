@@ -95,6 +95,47 @@ func TestCollectSelectionFailureStats(t *testing.T) {
 	}
 }
 
+func TestUpstreamFailoverErrorErrorIncludesSafeReason(t *testing.T) {
+	err := &UpstreamFailoverError{StatusCode: 429, Reason: "rate limit exceeded"}
+
+	got := err.Error()
+
+	if !strings.Contains(got, "429") {
+		t.Fatalf("expected status code in error, got %q", got)
+	}
+	if !strings.Contains(got, "rate limit exceeded") {
+		t.Fatalf("expected failover reason in error, got %q", got)
+	}
+}
+
+func TestUpstreamFailoverErrorErrorOmitsEmptyReason(t *testing.T) {
+	err := &UpstreamFailoverError{StatusCode: 502}
+
+	got := err.Error()
+
+	if got != "upstream error: 502 (failover)" {
+		t.Fatalf("unexpected error string: %q", got)
+	}
+}
+
+func TestUpstreamFailoverErrorErrorRedactsCredentialLikeReason(t *testing.T) {
+	err := &UpstreamFailoverError{
+		StatusCode: 502,
+		Reason:     `proxy http://user:proxy-pass@example.test failed; Authorization: Bearer sk-secret; api_key=key-secret; password=db-secret; {"api_key":"json-key","access_token":"json-token","password":"json-pass"}`,
+	}
+
+	got := err.Error()
+
+	for _, leaked := range []string{"proxy-pass", "sk-secret", "key-secret", "db-secret", "json-key", "json-token", "json-pass"} {
+		if strings.Contains(got, leaked) {
+			t.Fatalf("expected %q to be redacted from %q", leaked, got)
+		}
+	}
+	if !strings.Contains(got, "[redacted]") {
+		t.Fatalf("expected redaction marker in %q", got)
+	}
+}
+
 func TestDiagnoseSelectionFailure_UnschedulableDetail(t *testing.T) {
 	svc := &GatewayService{}
 	acc := &Account{

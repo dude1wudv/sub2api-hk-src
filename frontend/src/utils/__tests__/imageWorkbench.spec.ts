@@ -36,13 +36,24 @@ describe('imageWorkbench', () => {
       prompt: 'draw a product',
       size: '1024x1024',
       quality: 'high',
+      n: 3,
+      outputFormat: 'webp',
     })).toEqual({
       model: 'gpt-image-2',
       prompt: 'draw a product',
-      n: 1,
+      n: 3,
       quality: 'high',
       size: '1024x1024',
+      output_format: 'webp',
     })
+  })
+
+  it('clamps text image payload count to the supported browser batch range', () => {
+    expect(buildTextImagePayload({
+      model: 'gpt-image-2',
+      prompt: 'draw a product',
+      n: 99,
+    }).n).toBe(10)
   })
 
   it('builds ascii trace headers and drops empty fields', () => {

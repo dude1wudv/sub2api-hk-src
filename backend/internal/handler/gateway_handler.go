@@ -37,15 +37,7 @@ const gatewayCompatibilityMetricsLogInterval = 1024
 var gatewayCompatibilityMetricsLogCounter atomic.Uint64
 
 func isKiroGatewayAnthropicAPIKeyAccount(account *service.Account) bool {
-	if account == nil {
-		return false
-	}
-	if account.Platform != service.PlatformAnthropic || account.Type != service.AccountTypeAPIKey {
-		return false
-	}
-	source := strings.ToLower(strings.TrimSpace(account.GetExtraString("source")))
-	baseURL := strings.ToLower(strings.TrimSpace(account.GetBaseURL()))
-	return source == "kiro-gateway" || strings.Contains(baseURL, "kiro-gateway")
+	return account.IsKiroGatewayAnthropicAPIKey()
 }
 
 // GatewayHandler handles API gateway requests

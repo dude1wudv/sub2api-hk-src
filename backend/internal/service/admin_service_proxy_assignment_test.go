@@ -145,6 +145,9 @@ func (s *createAccountRepoStub) ClearTempUnschedulable(context.Context, int64) e
 	panic("unexpected")
 }
 func (s *createAccountRepoStub) ClearRateLimit(context.Context, int64) error { panic("unexpected") }
+func (s *createAccountRepoStub) RevertProxyFallback(context.Context, int64) error {
+	panic("unexpected")
+}
 func (s *createAccountRepoStub) ClearAntigravityQuotaScopes(context.Context, int64) error {
 	panic("unexpected")
 }
@@ -152,6 +155,9 @@ func (s *createAccountRepoStub) ClearModelRateLimits(context.Context, int64) err
 	panic("unexpected")
 }
 func (s *createAccountRepoStub) UpdateSessionWindow(context.Context, int64, *time.Time, *time.Time, string) error {
+	panic("unexpected")
+}
+func (s *createAccountRepoStub) UpdateSessionWindowEnd(context.Context, int64, time.Time) error {
 	panic("unexpected")
 }
 func (s *createAccountRepoStub) UpdateExtra(_ context.Context, id int64, updates map[string]any) error {

@@ -646,6 +646,56 @@
           </div>
         </div>
 
+        <!-- 每日余额专属分组功能 -->
+        <div class="mt-4 border-t pt-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t("admin.groups.dailyBalance.title") }}
+              </label>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.groups.dailyBalance.hint") }}
+              </p>
+            </div>
+            <button
+              type="button"
+              @click="createForm.daily_balance_enabled = !createForm.daily_balance_enabled"
+              :class="[
+                'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors',
+                createForm.daily_balance_enabled
+                  ? 'bg-primary-500'
+                  : 'bg-gray-300 dark:bg-dark-600',
+              ]"
+            >
+              <span
+                :class="[
+                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                  createForm.daily_balance_enabled ? 'translate-x-6' : 'translate-x-1',
+                ]"
+              />
+            </button>
+          </div>
+          
+          <!-- 回退倍率配置（仅在开启每日余额功能时显示） -->
+          <div v-if="createForm.daily_balance_enabled" class="space-y-3 border-l-2 border-primary-200 pl-4 dark:border-primary-800">
+            <div>
+              <label class="input-label">{{ t("admin.groups.dailyBalance.fallbackMultiplier") }}</label>
+              <input
+                v-model.number="createForm.daily_fallback_multiplier"
+                type="number"
+                step="0.1"
+                min="1"
+                max="10"
+                class="input"
+                placeholder="1.5"
+              />
+              <p class="input-hint">
+                {{ t("admin.groups.dailyBalance.fallbackMultiplierHint") }}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div class="border-t pt-4">
           <div class="mb-3 flex items-center justify-between gap-3">
             <div>
@@ -1958,6 +2008,56 @@
                 class="input"
                 :placeholder="t('admin.groups.subscription.noLimit')"
               />
+            </div>
+          </div>
+        </div>
+
+        <!-- 每日余额专属分组功能 -->
+        <div class="mt-4 border-t pt-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t("admin.groups.dailyBalance.title") }}
+              </label>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.groups.dailyBalance.hint") }}
+              </p>
+            </div>
+            <button
+              type="button"
+              @click="editForm.daily_balance_enabled = !editForm.daily_balance_enabled"
+              :class="[
+                'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors',
+                editForm.daily_balance_enabled
+                  ? 'bg-primary-500'
+                  : 'bg-gray-300 dark:bg-dark-600',
+              ]"
+            >
+              <span
+                :class="[
+                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                  editForm.daily_balance_enabled ? 'translate-x-6' : 'translate-x-1',
+                ]"
+              />
+            </button>
+          </div>
+          
+          <!-- 回退倍率配置（仅在开启每日余额功能时显示） -->
+          <div v-if="editForm.daily_balance_enabled" class="space-y-3 border-l-2 border-primary-200 pl-4 dark:border-primary-800">
+            <div>
+              <label class="input-label">{{ t("admin.groups.dailyBalance.fallbackMultiplier") }}</label>
+              <input
+                v-model.number="editForm.daily_fallback_multiplier"
+                type="number"
+                step="0.1"
+                min="1"
+                max="10"
+                class="input"
+                placeholder="1.5"
+              />
+              <p class="input-hint">
+                {{ t("admin.groups.dailyBalance.fallbackMultiplierHint") }}
+              </p>
             </div>
           </div>
         </div>
@@ -3389,6 +3489,9 @@ const createForm = reactive({
   daily_limit_usd: null as number | null,
   weekly_limit_usd: null as number | null,
   monthly_limit_usd: null as number | null,
+  // 每日余额专属分组功能
+  daily_balance_enabled: false,
+  daily_fallback_multiplier: 1.5,
   // 图片生成计费配置
   allow_image_generation: false,
   image_rate_independent: false,
@@ -3720,6 +3823,9 @@ const editForm = reactive({
   daily_limit_usd: null as number | null,
   weekly_limit_usd: null as number | null,
   monthly_limit_usd: null as number | null,
+  // 每日余额专属分组功能
+  daily_balance_enabled: false,
+  daily_fallback_multiplier: 1.5,
   // 图片生成计费配置
   allow_image_generation: false,
   image_rate_independent: false,
@@ -4098,6 +4204,8 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.daily_limit_usd = group.daily_limit_usd;
   editForm.weekly_limit_usd = group.weekly_limit_usd;
   editForm.monthly_limit_usd = group.monthly_limit_usd;
+  editForm.daily_balance_enabled = group.daily_balance_enabled ?? false;
+  editForm.daily_fallback_multiplier = group.daily_fallback_multiplier ?? 1.5;
   editForm.allow_image_generation = group.allow_image_generation ?? false;
   editForm.image_rate_independent = group.image_rate_independent ?? false;
   editForm.image_rate_multiplier = group.image_rate_multiplier ?? 1;
@@ -4283,6 +4391,16 @@ watch(
     if (newVal === "subscription") {
       createForm.is_exclusive = true;
       createForm.fallback_group_id_on_invalid_request = null;
+    }
+  },
+);
+
+// 监听 daily_balance_enabled 变化，开启每日余额功能时自动设置为专属分组
+watch(
+  () => createForm.daily_balance_enabled,
+  (newVal) => {
+    if (newVal) {
+      createForm.is_exclusive = true;
     }
   },
 );

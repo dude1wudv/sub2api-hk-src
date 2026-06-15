@@ -40,6 +40,12 @@ func newTestFailoverErr(statusCode int, retryable, forceBilling bool) *service.U
 	}
 }
 
+func newTestFailoverErrWithReason(statusCode int, retryable, forceBilling bool, reason string) *service.UpstreamFailoverError {
+	err := newTestFailoverErr(statusCode, retryable, forceBilling)
+	err.Reason = reason
+	return err
+}
+
 // ---------------------------------------------------------------------------
 // NewFailoverState 测试
 // ---------------------------------------------------------------------------
@@ -508,6 +514,19 @@ func TestHandleFailoverError_LastFailoverErr(t *testing.T) {
 		fs.HandleFailoverError(context.Background(), mock, 100, "openai", err)
 		require.Equal(t, err, fs.LastFailoverErr)
 	})
+}
+
+func TestHandleFailoverError_PreservesFailoverReason(t *testing.T) {
+	mock := &mockTempUnscheduler{}
+	fs := NewFailoverState(3, false)
+	err := newTestFailoverErrWithReason(429, true, false, "rate limit exceeded")
+
+	action := fs.HandleFailoverError(context.Background(), mock, 100, "openai", err)
+
+	require.Equal(t, FailoverContinue, action)
+	require.Equal(t, err, fs.LastFailoverErr)
+	require.Equal(t, "rate limit exceeded", fs.LastFailoverErr.Reason)
+	require.Equal(t, 1, fs.SameAccountRetryCount[100])
 }
 
 // ---------------------------------------------------------------------------

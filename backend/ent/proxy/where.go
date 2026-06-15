@@ -125,6 +125,26 @@ func ExpiryWarnDays(v int) predicate.Proxy {
 	return predicate.Proxy(sql.FieldEQ(FieldExpiryWarnDays, v))
 }
 
+// CooldownUntil applies equality check predicate on the "cooldown_until" field. It's identical to CooldownUntilEQ.
+func CooldownUntil(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldEQ(FieldCooldownUntil, v))
+}
+
+// CooldownReason applies equality check predicate on the "cooldown_reason" field. It's identical to CooldownReasonEQ.
+func CooldownReason(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldEQ(FieldCooldownReason, v))
+}
+
+// FailureCount applies equality check predicate on the "failure_count" field. It's identical to FailureCountEQ.
+func FailureCount(v int) predicate.Proxy {
+	return predicate.Proxy(sql.FieldEQ(FieldFailureCount, v))
+}
+
+// LastErrorAt applies equality check predicate on the "last_error_at" field. It's identical to LastErrorAtEQ.
+func LastErrorAt(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldEQ(FieldLastErrorAt, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Proxy {
 	return predicate.Proxy(sql.FieldEQ(FieldCreatedAt, v))
@@ -888,6 +908,221 @@ func ExpiryWarnDaysLT(v int) predicate.Proxy {
 // ExpiryWarnDaysLTE applies the LTE predicate on the "expiry_warn_days" field.
 func ExpiryWarnDaysLTE(v int) predicate.Proxy {
 	return predicate.Proxy(sql.FieldLTE(FieldExpiryWarnDays, v))
+}
+
+// CooldownUntilEQ applies the EQ predicate on the "cooldown_until" field.
+func CooldownUntilEQ(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldEQ(FieldCooldownUntil, v))
+}
+
+// CooldownUntilNEQ applies the NEQ predicate on the "cooldown_until" field.
+func CooldownUntilNEQ(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldNEQ(FieldCooldownUntil, v))
+}
+
+// CooldownUntilIn applies the In predicate on the "cooldown_until" field.
+func CooldownUntilIn(vs ...time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldIn(FieldCooldownUntil, vs...))
+}
+
+// CooldownUntilNotIn applies the NotIn predicate on the "cooldown_until" field.
+func CooldownUntilNotIn(vs ...time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldNotIn(FieldCooldownUntil, vs...))
+}
+
+// CooldownUntilGT applies the GT predicate on the "cooldown_until" field.
+func CooldownUntilGT(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldGT(FieldCooldownUntil, v))
+}
+
+// CooldownUntilGTE applies the GTE predicate on the "cooldown_until" field.
+func CooldownUntilGTE(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldGTE(FieldCooldownUntil, v))
+}
+
+// CooldownUntilLT applies the LT predicate on the "cooldown_until" field.
+func CooldownUntilLT(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldLT(FieldCooldownUntil, v))
+}
+
+// CooldownUntilLTE applies the LTE predicate on the "cooldown_until" field.
+func CooldownUntilLTE(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldLTE(FieldCooldownUntil, v))
+}
+
+// CooldownUntilIsNil applies the IsNil predicate on the "cooldown_until" field.
+func CooldownUntilIsNil() predicate.Proxy {
+	return predicate.Proxy(sql.FieldIsNull(FieldCooldownUntil))
+}
+
+// CooldownUntilNotNil applies the NotNil predicate on the "cooldown_until" field.
+func CooldownUntilNotNil() predicate.Proxy {
+	return predicate.Proxy(sql.FieldNotNull(FieldCooldownUntil))
+}
+
+// CooldownReasonEQ applies the EQ predicate on the "cooldown_reason" field.
+func CooldownReasonEQ(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldEQ(FieldCooldownReason, v))
+}
+
+// CooldownReasonNEQ applies the NEQ predicate on the "cooldown_reason" field.
+func CooldownReasonNEQ(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldNEQ(FieldCooldownReason, v))
+}
+
+// CooldownReasonIn applies the In predicate on the "cooldown_reason" field.
+func CooldownReasonIn(vs ...string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldIn(FieldCooldownReason, vs...))
+}
+
+// CooldownReasonNotIn applies the NotIn predicate on the "cooldown_reason" field.
+func CooldownReasonNotIn(vs ...string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldNotIn(FieldCooldownReason, vs...))
+}
+
+// CooldownReasonGT applies the GT predicate on the "cooldown_reason" field.
+func CooldownReasonGT(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldGT(FieldCooldownReason, v))
+}
+
+// CooldownReasonGTE applies the GTE predicate on the "cooldown_reason" field.
+func CooldownReasonGTE(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldGTE(FieldCooldownReason, v))
+}
+
+// CooldownReasonLT applies the LT predicate on the "cooldown_reason" field.
+func CooldownReasonLT(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldLT(FieldCooldownReason, v))
+}
+
+// CooldownReasonLTE applies the LTE predicate on the "cooldown_reason" field.
+func CooldownReasonLTE(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldLTE(FieldCooldownReason, v))
+}
+
+// CooldownReasonContains applies the Contains predicate on the "cooldown_reason" field.
+func CooldownReasonContains(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldContains(FieldCooldownReason, v))
+}
+
+// CooldownReasonHasPrefix applies the HasPrefix predicate on the "cooldown_reason" field.
+func CooldownReasonHasPrefix(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldHasPrefix(FieldCooldownReason, v))
+}
+
+// CooldownReasonHasSuffix applies the HasSuffix predicate on the "cooldown_reason" field.
+func CooldownReasonHasSuffix(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldHasSuffix(FieldCooldownReason, v))
+}
+
+// CooldownReasonIsNil applies the IsNil predicate on the "cooldown_reason" field.
+func CooldownReasonIsNil() predicate.Proxy {
+	return predicate.Proxy(sql.FieldIsNull(FieldCooldownReason))
+}
+
+// CooldownReasonNotNil applies the NotNil predicate on the "cooldown_reason" field.
+func CooldownReasonNotNil() predicate.Proxy {
+	return predicate.Proxy(sql.FieldNotNull(FieldCooldownReason))
+}
+
+// CooldownReasonEqualFold applies the EqualFold predicate on the "cooldown_reason" field.
+func CooldownReasonEqualFold(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldEqualFold(FieldCooldownReason, v))
+}
+
+// CooldownReasonContainsFold applies the ContainsFold predicate on the "cooldown_reason" field.
+func CooldownReasonContainsFold(v string) predicate.Proxy {
+	return predicate.Proxy(sql.FieldContainsFold(FieldCooldownReason, v))
+}
+
+// FailureCountEQ applies the EQ predicate on the "failure_count" field.
+func FailureCountEQ(v int) predicate.Proxy {
+	return predicate.Proxy(sql.FieldEQ(FieldFailureCount, v))
+}
+
+// FailureCountNEQ applies the NEQ predicate on the "failure_count" field.
+func FailureCountNEQ(v int) predicate.Proxy {
+	return predicate.Proxy(sql.FieldNEQ(FieldFailureCount, v))
+}
+
+// FailureCountIn applies the In predicate on the "failure_count" field.
+func FailureCountIn(vs ...int) predicate.Proxy {
+	return predicate.Proxy(sql.FieldIn(FieldFailureCount, vs...))
+}
+
+// FailureCountNotIn applies the NotIn predicate on the "failure_count" field.
+func FailureCountNotIn(vs ...int) predicate.Proxy {
+	return predicate.Proxy(sql.FieldNotIn(FieldFailureCount, vs...))
+}
+
+// FailureCountGT applies the GT predicate on the "failure_count" field.
+func FailureCountGT(v int) predicate.Proxy {
+	return predicate.Proxy(sql.FieldGT(FieldFailureCount, v))
+}
+
+// FailureCountGTE applies the GTE predicate on the "failure_count" field.
+func FailureCountGTE(v int) predicate.Proxy {
+	return predicate.Proxy(sql.FieldGTE(FieldFailureCount, v))
+}
+
+// FailureCountLT applies the LT predicate on the "failure_count" field.
+func FailureCountLT(v int) predicate.Proxy {
+	return predicate.Proxy(sql.FieldLT(FieldFailureCount, v))
+}
+
+// FailureCountLTE applies the LTE predicate on the "failure_count" field.
+func FailureCountLTE(v int) predicate.Proxy {
+	return predicate.Proxy(sql.FieldLTE(FieldFailureCount, v))
+}
+
+// LastErrorAtEQ applies the EQ predicate on the "last_error_at" field.
+func LastErrorAtEQ(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldEQ(FieldLastErrorAt, v))
+}
+
+// LastErrorAtNEQ applies the NEQ predicate on the "last_error_at" field.
+func LastErrorAtNEQ(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldNEQ(FieldLastErrorAt, v))
+}
+
+// LastErrorAtIn applies the In predicate on the "last_error_at" field.
+func LastErrorAtIn(vs ...time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldIn(FieldLastErrorAt, vs...))
+}
+
+// LastErrorAtNotIn applies the NotIn predicate on the "last_error_at" field.
+func LastErrorAtNotIn(vs ...time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldNotIn(FieldLastErrorAt, vs...))
+}
+
+// LastErrorAtGT applies the GT predicate on the "last_error_at" field.
+func LastErrorAtGT(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldGT(FieldLastErrorAt, v))
+}
+
+// LastErrorAtGTE applies the GTE predicate on the "last_error_at" field.
+func LastErrorAtGTE(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldGTE(FieldLastErrorAt, v))
+}
+
+// LastErrorAtLT applies the LT predicate on the "last_error_at" field.
+func LastErrorAtLT(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldLT(FieldLastErrorAt, v))
+}
+
+// LastErrorAtLTE applies the LTE predicate on the "last_error_at" field.
+func LastErrorAtLTE(v time.Time) predicate.Proxy {
+	return predicate.Proxy(sql.FieldLTE(FieldLastErrorAt, v))
+}
+
+// LastErrorAtIsNil applies the IsNil predicate on the "last_error_at" field.
+func LastErrorAtIsNil() predicate.Proxy {
+	return predicate.Proxy(sql.FieldIsNull(FieldLastErrorAt))
+}
+
+// LastErrorAtNotNil applies the NotNil predicate on the "last_error_at" field.
+func LastErrorAtNotNil() predicate.Proxy {
+	return predicate.Proxy(sql.FieldNotNull(FieldLastErrorAt))
 }
 
 // HasAccounts applies the HasEdge predicate on the "accounts" edge.

@@ -96,6 +96,8 @@ const (
 	openAICodexRecoveredFromSlowPoolExtraKey = "codex_recovered_from_slow_pool_at"
 )
 
+const KiroGatewayMaxAccountConcurrency = 5
+
 func (a *Account) IsActive() bool {
 	return a.Status == StatusActive
 }
@@ -125,6 +127,36 @@ func (a *Account) EffectiveLoadFactor() int {
 		return a.Concurrency
 	}
 	return 1
+}
+
+func (a *Account) IsKiroGatewayAnthropicAPIKey() bool {
+	if a == nil || a.Platform != PlatformAnthropic || a.Type != AccountTypeAPIKey {
+		return false
+	}
+	source := strings.ToLower(strings.TrimSpace(a.GetExtraString("source")))
+	baseURL := strings.ToLower(strings.TrimSpace(a.GetBaseURL()))
+	return source == "kiro-gateway" || strings.Contains(baseURL, "kiro-gateway")
+}
+
+func (a *Account) GatewayMaxConcurrency() int {
+	if a == nil {
+		return 0
+	}
+	if !a.IsKiroGatewayAnthropicAPIKey() {
+		return a.Concurrency
+	}
+	if a.Concurrency > 0 && a.Concurrency < KiroGatewayMaxAccountConcurrency {
+		return a.Concurrency
+	}
+	return KiroGatewayMaxAccountConcurrency
+}
+
+func (a *Account) GatewayLoadConcurrency() int {
+	maxConcurrency := a.EffectiveLoadFactor()
+	if a != nil && a.IsKiroGatewayAnthropicAPIKey() && maxConcurrency > KiroGatewayMaxAccountConcurrency {
+		return KiroGatewayMaxAccountConcurrency
+	}
+	return maxConcurrency
 }
 
 func (a *Account) IsSchedulable() bool {

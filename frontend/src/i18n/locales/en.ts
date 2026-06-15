@@ -2233,6 +2233,12 @@ export default {
         validityHint: 'Number of days the subscription is valid when assigned to a user',
         noLimit: 'No limit'
       },
+      dailyBalance: {
+        title: 'Daily Balance Feature',
+        hint: 'When enabled, this group becomes exclusive and can issue 24-hour valid daily balances. Users consume daily balance first within the exclusive group, then fall back to long-term balance with the configured multiplier.',
+        fallbackMultiplier: 'Long-term Balance Fallback Multiplier',
+        fallbackMultiplierHint: 'The multiplier applied when consuming from long-term balance after daily balance is exhausted. For example, if set to 1.5, every $1 consumed from long-term balance equals $0.67 from daily balance.'
+      },
       imagePricing: {
         title: 'Image Generation Pricing',
         description: 'Configure image generation access and base image prices. Leave empty to use default prices.',

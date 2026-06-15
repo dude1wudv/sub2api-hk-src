@@ -43,6 +43,14 @@ const (
 	FieldBackupProxyID = "backup_proxy_id"
 	// FieldExpiryWarnDays holds the string denoting the expiry_warn_days field in the database.
 	FieldExpiryWarnDays = "expiry_warn_days"
+	// FieldCooldownUntil holds the string denoting the cooldown_until field in the database.
+	FieldCooldownUntil = "cooldown_until"
+	// FieldCooldownReason holds the string denoting the cooldown_reason field in the database.
+	FieldCooldownReason = "cooldown_reason"
+	// FieldFailureCount holds the string denoting the failure_count field in the database.
+	FieldFailureCount = "failure_count"
+	// FieldLastErrorAt holds the string denoting the last_error_at field in the database.
+	FieldLastErrorAt = "last_error_at"
 	// EdgeAccounts holds the string denoting the accounts edge name in mutations.
 	EdgeAccounts = "accounts"
 	// EdgeBackupProxy holds the string denoting the backup_proxy edge name in mutations.
@@ -79,6 +87,10 @@ var Columns = []string{
 	FieldFallbackMode,
 	FieldBackupProxyID,
 	FieldExpiryWarnDays,
+	FieldCooldownUntil,
+	FieldCooldownReason,
+	FieldFailureCount,
+	FieldLastErrorAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -125,6 +137,8 @@ var (
 	FallbackModeValidator func(string) error
 	// DefaultExpiryWarnDays holds the default value on creation for the "expiry_warn_days" field.
 	DefaultExpiryWarnDays int
+	// DefaultFailureCount holds the default value on creation for the "failure_count" field.
+	DefaultFailureCount int
 )
 
 // OrderOption defines the ordering options for the Proxy queries.
@@ -203,6 +217,26 @@ func ByBackupProxyID(opts ...sql.OrderTermOption) OrderOption {
 // ByExpiryWarnDays orders the results by the expiry_warn_days field.
 func ByExpiryWarnDays(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldExpiryWarnDays, opts...).ToFunc()
+}
+
+// ByCooldownUntil orders the results by the cooldown_until field.
+func ByCooldownUntil(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCooldownUntil, opts...).ToFunc()
+}
+
+// ByCooldownReason orders the results by the cooldown_reason field.
+func ByCooldownReason(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCooldownReason, opts...).ToFunc()
+}
+
+// ByFailureCount orders the results by the failure_count field.
+func ByFailureCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFailureCount, opts...).ToFunc()
+}
+
+// ByLastErrorAt orders the results by the last_error_at field.
+func ByLastErrorAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastErrorAt, opts...).ToFunc()
 }
 
 // ByAccountsCount orders the results by accounts count.

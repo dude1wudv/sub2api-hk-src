@@ -402,12 +402,12 @@ func TestOpenAIGatewayService_GenerateSessionHash_ExplicitSignalWinsOverContent(
 	require.NotEqual(t, contentHash, explicitHash, "explicit session_id should override content fallback")
 }
 
-func TestOpenAIGatewayService_GenerateResponsesSessionHash_APIKeyModelFallback(t *testing.T) {
+func TestOpenAIGatewayService_GenerateResponsesSessionHash_ContentScopedFallback(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	svc := &OpenAIGatewayService{}
 
 	body1 := []byte(`{"model":"gpt-5.5","stream":true,"input":[{"type":"message","role":"user","content":"first turn"}]}`)
-	body2 := []byte(`{"model":"gpt-5.5","stream":true,"input":[{"type":"message","role":"user","content":"later turn with much more context"}]}`)
+	body2 := []byte(`{"model":"gpt-5.5","stream":true,"input":[{"type":"message","role":"user","content":"first turn"},{"type":"message","role":"assistant","content":"answer"},{"type":"message","role":"user","content":"later turn with much more context"}]}`)
 
 	rec1 := httptest.NewRecorder()
 	c1, _ := gin.CreateTestContext(rec1)
@@ -420,7 +420,7 @@ func TestOpenAIGatewayService_GenerateResponsesSessionHash_APIKeyModelFallback(t
 	h2 := svc.GenerateResponsesSessionHash(c2, body2, 4, "gpt-5.5")
 
 	require.NotEmpty(t, h1)
-	require.Equal(t, h1, h2, "same API key and model should keep the same account affinity")
+	require.Equal(t, h1, h2, "same API key, model, and conversation seed should keep account affinity across later turns")
 
 	rec3 := httptest.NewRecorder()
 	c3, _ := gin.CreateTestContext(rec3)
@@ -431,8 +431,33 @@ func TestOpenAIGatewayService_GenerateResponsesSessionHash_APIKeyModelFallback(t
 	rec4 := httptest.NewRecorder()
 	c4, _ := gin.CreateTestContext(rec4)
 	c4.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	h4 := svc.GenerateResponsesSessionHash(c4, body2, 4, "gpt-5.4-mini")
+	h4 := svc.GenerateResponsesSessionHash(c4, body2, 4, "codex-auto-review")
 	require.NotEqual(t, h1, h4, "different models should not share account affinity")
+
+	rec5 := httptest.NewRecorder()
+	c5, _ := gin.CreateTestContext(rec5)
+	c5.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	bodyDifferent := []byte(`{"model":"gpt-5.5","stream":true,"input":[{"type":"message","role":"user","content":"different conversation"}]}`)
+	h5 := svc.GenerateResponsesSessionHash(c5, bodyDifferent, 4, "gpt-5.5")
+	require.NotEqual(t, h1, h5, "different conversations should not collide on the same API-key/model affinity")
+}
+
+func TestOpenAIGatewayService_GenerateResponsesSessionHash_APIKeyModelFallbackWhenContentMissing(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	svc := &OpenAIGatewayService{}
+
+	rec1 := httptest.NewRecorder()
+	c1, _ := gin.CreateTestContext(rec1)
+	c1.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	h1 := svc.GenerateResponsesSessionHash(c1, []byte(`{"stream":true}`), 4, "gpt-5.5")
+
+	rec2 := httptest.NewRecorder()
+	c2, _ := gin.CreateTestContext(rec2)
+	c2.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	h2 := svc.GenerateResponsesSessionHash(c2, []byte(`{"metadata":{"trace":"different"}}`), 4, "gpt-5.5")
+
+	require.NotEmpty(t, h1)
+	require.Equal(t, h1, h2, "requests without a stable content seed should keep the API-key/model fallback")
 }
 
 func TestOpenAIGatewayService_GenerateResponsesSessionHash_ExplicitSignalWins(t *testing.T) {
@@ -1404,6 +1429,47 @@ func TestOpenAIStreamingResponseFailedBeforeOutputCapacityErrorReturnsFailover(t
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusBadGateway, failoverErr.StatusCode)
 	require.Contains(t, string(failoverErr.ResponseBody), "Selected model is at capacity")
+	require.False(t, c.Writer.Written())
+	require.Empty(t, rec.Body.String())
+}
+
+func TestOpenAIStreamingResponseFailedBeforeOutputOverloadedReturnsFailover(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	cfg := &config.Config{
+		Gateway: config.GatewayConfig{
+			StreamDataIntervalTimeout: 0,
+			StreamKeepaliveInterval:   0,
+			MaxLineSize:               defaultMaxLineSize,
+		},
+	}
+	svc := &OpenAIGatewayService{cfg: cfg}
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+			"event: response.created",
+			`data: {"type":"response.created","response":{"id":"resp_1"}}`,
+			"",
+			"event: response.in_progress",
+			`data: {"type":"response.in_progress","response":{"id":"resp_1"}}`,
+			"",
+			"event: response.failed",
+			`data: {"type":"response.failed","error":{"message":"Our servers are currently overloaded. Please try again later.","type":"invalid_request_error"}}`,
+			"",
+		}, "\n"))),
+		Header: http.Header{"X-Request-Id": []string{"rid-overloaded-failed"}},
+	}
+
+	_, err := svc.handleStreamingResponse(c.Request.Context(), resp, c, &Account{ID: 1, Platform: PlatformOpenAI, Name: "acc"}, time.Now(), "model", "model")
+	require.Error(t, err)
+	var failoverErr *UpstreamFailoverError
+	require.ErrorAs(t, err, &failoverErr)
+	require.Equal(t, http.StatusBadGateway, failoverErr.StatusCode)
+	require.Contains(t, string(failoverErr.ResponseBody), "Our servers are currently overloaded")
 	require.False(t, c.Writer.Written())
 	require.Empty(t, rec.Body.String())
 }
@@ -2742,6 +2808,11 @@ func TestHandleSSEToJSON_ResponseFailedReturnsProtocolError(t *testing.T) {
 	require.Equal(t, http.StatusBadGateway, rec.Code)
 	require.Contains(t, rec.Body.String(), "upstream rejected request")
 	require.Contains(t, rec.Header().Get("Content-Type"), "application/json")
+}
+
+func TestOpenAIPassthroughFailoverResponseIncludesServerErrors(t *testing.T) {
+	require.True(t, shouldFailoverOpenAIPassthroughResponse(http.StatusServiceUnavailable))
+	require.True(t, shouldFailoverOpenAIPassthroughResponse(http.StatusBadGateway))
 }
 
 func TestOpenAICompatSSEFrameParserResetsEventTypeAtFrameBoundary(t *testing.T) {

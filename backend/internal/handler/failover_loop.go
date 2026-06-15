@@ -81,9 +81,13 @@ func (s *FailoverState) HandleFailoverError(
 		s.SameAccountRetryCount[accountID]++
 		logger.FromContext(ctx).Warn("gateway.failover_same_account_retry",
 			zap.Int64("account_id", accountID),
+			zap.String("platform", platform),
 			zap.Int("upstream_status", failoverErr.StatusCode),
+			zap.String("failover_reason", failoverErr.SafeReason()),
 			zap.Int("same_account_retry_count", s.SameAccountRetryCount[accountID]),
 			zap.Int("same_account_retry_max", maxSameAccountRetries),
+			zap.Int("switch_count", s.SwitchCount),
+			zap.Int("failed_account_count", len(s.FailedAccountIDs)),
 		)
 		if !sleepWithContext(ctx, sameAccountRetryDelay) {
 			return FailoverCanceled
@@ -93,6 +97,14 @@ func (s *FailoverState) HandleFailoverError(
 
 	// 同账号重试用尽，执行临时封禁
 	if failoverErr.RetryableOnSameAccount {
+		logger.FromContext(ctx).Warn("gateway.failover_same_account_retry_exhausted",
+			zap.Int64("account_id", accountID),
+			zap.String("platform", platform),
+			zap.Int("upstream_status", failoverErr.StatusCode),
+			zap.String("failover_reason", failoverErr.SafeReason()),
+			zap.Int("same_account_retry_count", s.SameAccountRetryCount[accountID]),
+			zap.Int("same_account_retry_max", maxSameAccountRetries),
+		)
 		gatewayService.TempUnscheduleRetryableError(ctx, accountID, failoverErr)
 	}
 
@@ -101,6 +113,16 @@ func (s *FailoverState) HandleFailoverError(
 
 	// 检查是否耗尽
 	if s.SwitchCount >= s.MaxSwitches {
+		logger.FromContext(ctx).Warn("gateway.failover_exhausted",
+			zap.Int64("account_id", accountID),
+			zap.String("platform", platform),
+			zap.Int("upstream_status", failoverErr.StatusCode),
+			zap.String("failover_reason", failoverErr.SafeReason()),
+			zap.Int("switch_count", s.SwitchCount),
+			zap.Int("max_switches", s.MaxSwitches),
+			zap.Int("failed_account_count", len(s.FailedAccountIDs)),
+			zap.Bool("retryable_on_same_account", failoverErr.RetryableOnSameAccount),
+		)
 		return FailoverExhausted
 	}
 
@@ -108,9 +130,13 @@ func (s *FailoverState) HandleFailoverError(
 	s.SwitchCount++
 	logger.FromContext(ctx).Warn("gateway.failover_switch_account",
 		zap.Int64("account_id", accountID),
+		zap.String("platform", platform),
 		zap.Int("upstream_status", failoverErr.StatusCode),
+		zap.String("failover_reason", failoverErr.SafeReason()),
 		zap.Int("switch_count", s.SwitchCount),
 		zap.Int("max_switches", s.MaxSwitches),
+		zap.Int("failed_account_count", len(s.FailedAccountIDs)),
+		zap.Bool("retryable_on_same_account", failoverErr.RetryableOnSameAccount),
 	)
 
 	// Antigravity 平台换号线性递增延时

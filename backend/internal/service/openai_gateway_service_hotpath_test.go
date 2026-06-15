@@ -596,6 +596,20 @@ func TestExtractOpenAIReasoningEffortFromBody(t *testing.T) {
 			wantValue: "xhigh",
 		},
 		{
+			name:      "兼容 Cursor 参数数组 reasoning",
+			body:      []byte(`{"parameters":[{"key":"reasoning","value":"high"}]}`),
+			model:     "",
+			wantNil:   false,
+			wantValue: "high",
+		},
+		{
+			name:      "兼容 Cursor 参数数组 reasoning_effort",
+			body:      []byte(`{"parameters":[{"key":"reasoning_effort","value":"extra-high"}]}`),
+			model:     "",
+			wantNil:   false,
+			wantValue: "xhigh",
+		},
+		{
 			name:    "minimal 归一化为空",
 			body:    []byte(`{"reasoning":{"effort":"minimal"}}`),
 			model:   "gpt-5-high",
@@ -627,6 +641,50 @@ func TestExtractOpenAIReasoningEffortFromBody(t *testing.T) {
 			require.Equal(t, tt.wantValue, *got)
 		})
 	}
+}
+
+func TestNormalizeOpenAIReasoningEffortBody_CursorParameters(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.5","input":"hi","parameters":[{"key":"reasoning","value":"high"}]}`)
+
+	got, changed, err := normalizeOpenAIReasoningEffortBody(body)
+
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.Equal(t, "high", gjson.GetBytes(got, "reasoning.effort").String())
+	require.False(t, gjson.GetBytes(got, "parameters").Exists())
+}
+
+func TestNormalizeOpenAIReasoningEffortBody_MinimalToNone(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.5","input":"hi","reasoning":{"effort":"minimal"}}`)
+
+	got, changed, err := normalizeOpenAIReasoningEffortBody(body)
+
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.Equal(t, "none", gjson.GetBytes(got, "reasoning.effort").String())
+}
+
+func TestNormalizeOpenAIChatReasoningEffortBody_CursorParameters(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.5","messages":[{"role":"user","content":"hi"}],"parameters":[{"key":"reasoning","value":"high"}]}`)
+
+	got, changed, err := normalizeOpenAIChatReasoningEffortBody(body)
+
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.Equal(t, "high", gjson.GetBytes(got, "reasoning_effort").String())
+	require.False(t, gjson.GetBytes(got, "reasoning").Exists())
+	require.False(t, gjson.GetBytes(got, "parameters").Exists())
+}
+
+func TestNormalizeOpenAIChatReasoningEffortBody_NestedReasoning(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.5","messages":[{"role":"user","content":"hi"}],"reasoning":{"effort":"extra-high"}}`)
+
+	got, changed, err := normalizeOpenAIChatReasoningEffortBody(body)
+
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.Equal(t, "xhigh", gjson.GetBytes(got, "reasoning_effort").String())
+	require.False(t, gjson.GetBytes(got, "reasoning").Exists())
 }
 
 func TestGetOpenAIRequestBodyMap_ParseError(t *testing.T) {

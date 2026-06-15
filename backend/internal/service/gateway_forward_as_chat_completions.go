@@ -171,6 +171,7 @@ func (s *GatewayService) ForwardAsChatCompletions(
 			return nil, &UpstreamFailoverError{
 				StatusCode:   resp.StatusCode,
 				ResponseBody: respBody,
+				Reason:       upstreamMsg,
 			}
 		}
 

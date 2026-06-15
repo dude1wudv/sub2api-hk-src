@@ -64,6 +64,12 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 	body []byte,
 	defaultMappedModel string,
 ) (*OpenAIForwardResult, error) {
+	if normalizedBody, changed, normalizeErr := normalizeOpenAIChatReasoningEffortBody(body); normalizeErr != nil {
+		return nil, normalizeErr
+	} else if changed {
+		body = normalizedBody
+	}
+
 	startTime := time.Now()
 
 	// 1. Parse minimal fields needed for routing/billing
