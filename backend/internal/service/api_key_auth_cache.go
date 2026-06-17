@@ -93,6 +93,11 @@ type APIKeyAuthGroupSnapshot struct {
 
 	// RPMLimit 分组级每分钟请求数上限（0 = 不限制）；用于 billing_cache_service.checkRPM 级联判断。
 	RPMLimit int `json:"rpm_limit"`
+
+	// Spending limit snapshot is preserved for auth-cache round trips. BillingCacheService
+	// refreshes this from DB when a limit exists to avoid stale post-settlement usage.
+	SpendingLimitUSD *float64 `json:"spending_limit_usd,omitempty"`
+	SpendingUsedUSD  float64  `json:"spending_used_usd"`
 }
 
 // APIKeyAuthCacheEntry 缓存条目，支持负缓存

@@ -119,6 +119,10 @@ type Group struct {
 
 	// RPMLimit 分组级每分钟请求数上限（0 = 不限制），设置后覆盖用户级 rpm_limit。
 	RPMLimit int `json:"rpm_limit"`
+	// SpendingLimitUSD 分组累计消费限额（nil/<=0 = 不限制）。
+	SpendingLimitUSD *float64 `json:"spending_limit_usd"`
+	// SpendingUsedUSD 分组累计已消费额度，按用户实际扣费口径累加。
+	SpendingUsedUSD float64 `json:"spending_used_usd"`
 
 	// DailyBalanceEnabled 标记为「每日余额」专属分组：
 	// 仅此类分组消费每日额度，并在额度耗尽/过期后用长期余额按 DailyFallbackMultiplier 倍率回退计费。

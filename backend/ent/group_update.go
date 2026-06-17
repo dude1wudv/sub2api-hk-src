@@ -651,6 +651,54 @@ func (_u *GroupUpdate) AddRpmLimit(v int) *GroupUpdate {
 	return _u
 }
 
+// SetSpendingLimitUsd sets the "spending_limit_usd" field.
+func (_u *GroupUpdate) SetSpendingLimitUsd(v float64) *GroupUpdate {
+	_u.mutation.ResetSpendingLimitUsd()
+	_u.mutation.SetSpendingLimitUsd(v)
+	return _u
+}
+
+// SetNillableSpendingLimitUsd sets the "spending_limit_usd" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableSpendingLimitUsd(v *float64) *GroupUpdate {
+	if v != nil {
+		_u.SetSpendingLimitUsd(*v)
+	}
+	return _u
+}
+
+// AddSpendingLimitUsd adds value to the "spending_limit_usd" field.
+func (_u *GroupUpdate) AddSpendingLimitUsd(v float64) *GroupUpdate {
+	_u.mutation.AddSpendingLimitUsd(v)
+	return _u
+}
+
+// ClearSpendingLimitUsd clears the value of the "spending_limit_usd" field.
+func (_u *GroupUpdate) ClearSpendingLimitUsd() *GroupUpdate {
+	_u.mutation.ClearSpendingLimitUsd()
+	return _u
+}
+
+// SetSpendingUsedUsd sets the "spending_used_usd" field.
+func (_u *GroupUpdate) SetSpendingUsedUsd(v float64) *GroupUpdate {
+	_u.mutation.ResetSpendingUsedUsd()
+	_u.mutation.SetSpendingUsedUsd(v)
+	return _u
+}
+
+// SetNillableSpendingUsedUsd sets the "spending_used_usd" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableSpendingUsedUsd(v *float64) *GroupUpdate {
+	if v != nil {
+		_u.SetSpendingUsedUsd(*v)
+	}
+	return _u
+}
+
+// AddSpendingUsedUsd adds value to the "spending_used_usd" field.
+func (_u *GroupUpdate) AddSpendingUsedUsd(v float64) *GroupUpdate {
+	_u.mutation.AddSpendingUsedUsd(v)
+	return _u
+}
+
 // SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
 func (_u *GroupUpdate) SetDailyBalanceEnabled(v bool) *GroupUpdate {
 	_u.mutation.SetDailyBalanceEnabled(v)
@@ -1169,6 +1217,21 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedRpmLimit(); ok {
 		_spec.AddField(group.FieldRpmLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.SpendingLimitUsd(); ok {
+		_spec.SetField(group.FieldSpendingLimitUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedSpendingLimitUsd(); ok {
+		_spec.AddField(group.FieldSpendingLimitUsd, field.TypeFloat64, value)
+	}
+	if _u.mutation.SpendingLimitUsdCleared() {
+		_spec.ClearField(group.FieldSpendingLimitUsd, field.TypeFloat64)
+	}
+	if value, ok := _u.mutation.SpendingUsedUsd(); ok {
+		_spec.SetField(group.FieldSpendingUsedUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedSpendingUsedUsd(); ok {
+		_spec.AddField(group.FieldSpendingUsedUsd, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.DailyBalanceEnabled(); ok {
 		_spec.SetField(group.FieldDailyBalanceEnabled, field.TypeBool, value)
@@ -2108,6 +2171,54 @@ func (_u *GroupUpdateOne) AddRpmLimit(v int) *GroupUpdateOne {
 	return _u
 }
 
+// SetSpendingLimitUsd sets the "spending_limit_usd" field.
+func (_u *GroupUpdateOne) SetSpendingLimitUsd(v float64) *GroupUpdateOne {
+	_u.mutation.ResetSpendingLimitUsd()
+	_u.mutation.SetSpendingLimitUsd(v)
+	return _u
+}
+
+// SetNillableSpendingLimitUsd sets the "spending_limit_usd" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableSpendingLimitUsd(v *float64) *GroupUpdateOne {
+	if v != nil {
+		_u.SetSpendingLimitUsd(*v)
+	}
+	return _u
+}
+
+// AddSpendingLimitUsd adds value to the "spending_limit_usd" field.
+func (_u *GroupUpdateOne) AddSpendingLimitUsd(v float64) *GroupUpdateOne {
+	_u.mutation.AddSpendingLimitUsd(v)
+	return _u
+}
+
+// ClearSpendingLimitUsd clears the value of the "spending_limit_usd" field.
+func (_u *GroupUpdateOne) ClearSpendingLimitUsd() *GroupUpdateOne {
+	_u.mutation.ClearSpendingLimitUsd()
+	return _u
+}
+
+// SetSpendingUsedUsd sets the "spending_used_usd" field.
+func (_u *GroupUpdateOne) SetSpendingUsedUsd(v float64) *GroupUpdateOne {
+	_u.mutation.ResetSpendingUsedUsd()
+	_u.mutation.SetSpendingUsedUsd(v)
+	return _u
+}
+
+// SetNillableSpendingUsedUsd sets the "spending_used_usd" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableSpendingUsedUsd(v *float64) *GroupUpdateOne {
+	if v != nil {
+		_u.SetSpendingUsedUsd(*v)
+	}
+	return _u
+}
+
+// AddSpendingUsedUsd adds value to the "spending_used_usd" field.
+func (_u *GroupUpdateOne) AddSpendingUsedUsd(v float64) *GroupUpdateOne {
+	_u.mutation.AddSpendingUsedUsd(v)
+	return _u
+}
+
 // SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
 func (_u *GroupUpdateOne) SetDailyBalanceEnabled(v bool) *GroupUpdateOne {
 	_u.mutation.SetDailyBalanceEnabled(v)
@@ -2656,6 +2767,21 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.AddedRpmLimit(); ok {
 		_spec.AddField(group.FieldRpmLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.SpendingLimitUsd(); ok {
+		_spec.SetField(group.FieldSpendingLimitUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedSpendingLimitUsd(); ok {
+		_spec.AddField(group.FieldSpendingLimitUsd, field.TypeFloat64, value)
+	}
+	if _u.mutation.SpendingLimitUsdCleared() {
+		_spec.ClearField(group.FieldSpendingLimitUsd, field.TypeFloat64)
+	}
+	if value, ok := _u.mutation.SpendingUsedUsd(); ok {
+		_spec.SetField(group.FieldSpendingUsedUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedSpendingUsedUsd(); ok {
+		_spec.AddField(group.FieldSpendingUsedUsd, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.DailyBalanceEnabled(); ok {
 		_spec.SetField(group.FieldDailyBalanceEnabled, field.TypeBool, value)

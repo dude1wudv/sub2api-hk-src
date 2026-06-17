@@ -495,6 +495,34 @@ func (_c *GroupCreate) SetNillableRpmLimit(v *int) *GroupCreate {
 	return _c
 }
 
+// SetSpendingLimitUsd sets the "spending_limit_usd" field.
+func (_c *GroupCreate) SetSpendingLimitUsd(v float64) *GroupCreate {
+	_c.mutation.SetSpendingLimitUsd(v)
+	return _c
+}
+
+// SetNillableSpendingLimitUsd sets the "spending_limit_usd" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableSpendingLimitUsd(v *float64) *GroupCreate {
+	if v != nil {
+		_c.SetSpendingLimitUsd(*v)
+	}
+	return _c
+}
+
+// SetSpendingUsedUsd sets the "spending_used_usd" field.
+func (_c *GroupCreate) SetSpendingUsedUsd(v float64) *GroupCreate {
+	_c.mutation.SetSpendingUsedUsd(v)
+	return _c
+}
+
+// SetNillableSpendingUsedUsd sets the "spending_used_usd" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableSpendingUsedUsd(v *float64) *GroupCreate {
+	if v != nil {
+		_c.SetSpendingUsedUsd(*v)
+	}
+	return _c
+}
+
 // SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
 func (_c *GroupCreate) SetDailyBalanceEnabled(v bool) *GroupCreate {
 	_c.mutation.SetDailyBalanceEnabled(v)
@@ -748,6 +776,10 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultRpmLimit
 		_c.mutation.SetRpmLimit(v)
 	}
+	if _, ok := _c.mutation.SpendingUsedUsd(); !ok {
+		v := group.DefaultSpendingUsedUsd
+		_c.mutation.SetSpendingUsedUsd(v)
+	}
 	if _, ok := _c.mutation.DailyBalanceEnabled(); !ok {
 		v := group.DefaultDailyBalanceEnabled
 		_c.mutation.SetDailyBalanceEnabled(v)
@@ -857,6 +889,9 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.RpmLimit(); !ok {
 		return &ValidationError{Name: "rpm_limit", err: errors.New(`ent: missing required field "Group.rpm_limit"`)}
+	}
+	if _, ok := _c.mutation.SpendingUsedUsd(); !ok {
+		return &ValidationError{Name: "spending_used_usd", err: errors.New(`ent: missing required field "Group.spending_used_usd"`)}
 	}
 	if _, ok := _c.mutation.DailyBalanceEnabled(); !ok {
 		return &ValidationError{Name: "daily_balance_enabled", err: errors.New(`ent: missing required field "Group.daily_balance_enabled"`)}
@@ -1030,6 +1065,14 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RpmLimit(); ok {
 		_spec.SetField(group.FieldRpmLimit, field.TypeInt, value)
 		_node.RpmLimit = value
+	}
+	if value, ok := _c.mutation.SpendingLimitUsd(); ok {
+		_spec.SetField(group.FieldSpendingLimitUsd, field.TypeFloat64, value)
+		_node.SpendingLimitUsd = &value
+	}
+	if value, ok := _c.mutation.SpendingUsedUsd(); ok {
+		_spec.SetField(group.FieldSpendingUsedUsd, field.TypeFloat64, value)
+		_node.SpendingUsedUsd = value
 	}
 	if value, ok := _c.mutation.DailyBalanceEnabled(); ok {
 		_spec.SetField(group.FieldDailyBalanceEnabled, field.TypeBool, value)
@@ -1744,6 +1787,48 @@ func (u *GroupUpsert) UpdateRpmLimit() *GroupUpsert {
 // AddRpmLimit adds v to the "rpm_limit" field.
 func (u *GroupUpsert) AddRpmLimit(v int) *GroupUpsert {
 	u.Add(group.FieldRpmLimit, v)
+	return u
+}
+
+// SetSpendingLimitUsd sets the "spending_limit_usd" field.
+func (u *GroupUpsert) SetSpendingLimitUsd(v float64) *GroupUpsert {
+	u.Set(group.FieldSpendingLimitUsd, v)
+	return u
+}
+
+// UpdateSpendingLimitUsd sets the "spending_limit_usd" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateSpendingLimitUsd() *GroupUpsert {
+	u.SetExcluded(group.FieldSpendingLimitUsd)
+	return u
+}
+
+// AddSpendingLimitUsd adds v to the "spending_limit_usd" field.
+func (u *GroupUpsert) AddSpendingLimitUsd(v float64) *GroupUpsert {
+	u.Add(group.FieldSpendingLimitUsd, v)
+	return u
+}
+
+// ClearSpendingLimitUsd clears the value of the "spending_limit_usd" field.
+func (u *GroupUpsert) ClearSpendingLimitUsd() *GroupUpsert {
+	u.SetNull(group.FieldSpendingLimitUsd)
+	return u
+}
+
+// SetSpendingUsedUsd sets the "spending_used_usd" field.
+func (u *GroupUpsert) SetSpendingUsedUsd(v float64) *GroupUpsert {
+	u.Set(group.FieldSpendingUsedUsd, v)
+	return u
+}
+
+// UpdateSpendingUsedUsd sets the "spending_used_usd" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateSpendingUsedUsd() *GroupUpsert {
+	u.SetExcluded(group.FieldSpendingUsedUsd)
+	return u
+}
+
+// AddSpendingUsedUsd adds v to the "spending_used_usd" field.
+func (u *GroupUpsert) AddSpendingUsedUsd(v float64) *GroupUpsert {
+	u.Add(group.FieldSpendingUsedUsd, v)
 	return u
 }
 
@@ -2463,6 +2548,55 @@ func (u *GroupUpsertOne) AddRpmLimit(v int) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateRpmLimit() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateRpmLimit()
+	})
+}
+
+// SetSpendingLimitUsd sets the "spending_limit_usd" field.
+func (u *GroupUpsertOne) SetSpendingLimitUsd(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSpendingLimitUsd(v)
+	})
+}
+
+// AddSpendingLimitUsd adds v to the "spending_limit_usd" field.
+func (u *GroupUpsertOne) AddSpendingLimitUsd(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddSpendingLimitUsd(v)
+	})
+}
+
+// UpdateSpendingLimitUsd sets the "spending_limit_usd" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateSpendingLimitUsd() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSpendingLimitUsd()
+	})
+}
+
+// ClearSpendingLimitUsd clears the value of the "spending_limit_usd" field.
+func (u *GroupUpsertOne) ClearSpendingLimitUsd() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearSpendingLimitUsd()
+	})
+}
+
+// SetSpendingUsedUsd sets the "spending_used_usd" field.
+func (u *GroupUpsertOne) SetSpendingUsedUsd(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSpendingUsedUsd(v)
+	})
+}
+
+// AddSpendingUsedUsd adds v to the "spending_used_usd" field.
+func (u *GroupUpsertOne) AddSpendingUsedUsd(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddSpendingUsedUsd(v)
+	})
+}
+
+// UpdateSpendingUsedUsd sets the "spending_used_usd" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateSpendingUsedUsd() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSpendingUsedUsd()
 	})
 }
 
@@ -3353,6 +3487,55 @@ func (u *GroupUpsertBulk) AddRpmLimit(v int) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateRpmLimit() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateRpmLimit()
+	})
+}
+
+// SetSpendingLimitUsd sets the "spending_limit_usd" field.
+func (u *GroupUpsertBulk) SetSpendingLimitUsd(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSpendingLimitUsd(v)
+	})
+}
+
+// AddSpendingLimitUsd adds v to the "spending_limit_usd" field.
+func (u *GroupUpsertBulk) AddSpendingLimitUsd(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddSpendingLimitUsd(v)
+	})
+}
+
+// UpdateSpendingLimitUsd sets the "spending_limit_usd" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateSpendingLimitUsd() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSpendingLimitUsd()
+	})
+}
+
+// ClearSpendingLimitUsd clears the value of the "spending_limit_usd" field.
+func (u *GroupUpsertBulk) ClearSpendingLimitUsd() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearSpendingLimitUsd()
+	})
+}
+
+// SetSpendingUsedUsd sets the "spending_used_usd" field.
+func (u *GroupUpsertBulk) SetSpendingUsedUsd(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSpendingUsedUsd(v)
+	})
+}
+
+// AddSpendingUsedUsd adds v to the "spending_used_usd" field.
+func (u *GroupUpsertBulk) AddSpendingUsedUsd(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddSpendingUsedUsd(v)
+	})
+}
+
+// UpdateSpendingUsedUsd sets the "spending_used_usd" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateSpendingUsedUsd() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSpendingUsedUsd()
 	})
 }
 

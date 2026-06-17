@@ -15982,6 +15982,10 @@ type GroupMutation struct {
 	models_list_config                      *domain.GroupModelsListConfig
 	rpm_limit                               *int
 	addrpm_limit                            *int
+	spending_limit_usd                      *float64
+	addspending_limit_usd                   *float64
+	spending_used_usd                       *float64
+	addspending_used_usd                    *float64
 	daily_balance_enabled                   *bool
 	daily_fallback_multiplier               *float64
 	adddaily_fallback_multiplier            *float64
@@ -17793,6 +17797,132 @@ func (m *GroupMutation) ResetRpmLimit() {
 	m.addrpm_limit = nil
 }
 
+// SetSpendingLimitUsd sets the "spending_limit_usd" field.
+func (m *GroupMutation) SetSpendingLimitUsd(f float64) {
+	m.spending_limit_usd = &f
+	m.addspending_limit_usd = nil
+}
+
+// SpendingLimitUsd returns the value of the "spending_limit_usd" field in the mutation.
+func (m *GroupMutation) SpendingLimitUsd() (r float64, exists bool) {
+	v := m.spending_limit_usd
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSpendingLimitUsd returns the old "spending_limit_usd" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldSpendingLimitUsd(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSpendingLimitUsd is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSpendingLimitUsd requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSpendingLimitUsd: %w", err)
+	}
+	return oldValue.SpendingLimitUsd, nil
+}
+
+// AddSpendingLimitUsd adds f to the "spending_limit_usd" field.
+func (m *GroupMutation) AddSpendingLimitUsd(f float64) {
+	if m.addspending_limit_usd != nil {
+		*m.addspending_limit_usd += f
+	} else {
+		m.addspending_limit_usd = &f
+	}
+}
+
+// AddedSpendingLimitUsd returns the value that was added to the "spending_limit_usd" field in this mutation.
+func (m *GroupMutation) AddedSpendingLimitUsd() (r float64, exists bool) {
+	v := m.addspending_limit_usd
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearSpendingLimitUsd clears the value of the "spending_limit_usd" field.
+func (m *GroupMutation) ClearSpendingLimitUsd() {
+	m.spending_limit_usd = nil
+	m.addspending_limit_usd = nil
+	m.clearedFields[group.FieldSpendingLimitUsd] = struct{}{}
+}
+
+// SpendingLimitUsdCleared returns if the "spending_limit_usd" field was cleared in this mutation.
+func (m *GroupMutation) SpendingLimitUsdCleared() bool {
+	_, ok := m.clearedFields[group.FieldSpendingLimitUsd]
+	return ok
+}
+
+// ResetSpendingLimitUsd resets all changes to the "spending_limit_usd" field.
+func (m *GroupMutation) ResetSpendingLimitUsd() {
+	m.spending_limit_usd = nil
+	m.addspending_limit_usd = nil
+	delete(m.clearedFields, group.FieldSpendingLimitUsd)
+}
+
+// SetSpendingUsedUsd sets the "spending_used_usd" field.
+func (m *GroupMutation) SetSpendingUsedUsd(f float64) {
+	m.spending_used_usd = &f
+	m.addspending_used_usd = nil
+}
+
+// SpendingUsedUsd returns the value of the "spending_used_usd" field in the mutation.
+func (m *GroupMutation) SpendingUsedUsd() (r float64, exists bool) {
+	v := m.spending_used_usd
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSpendingUsedUsd returns the old "spending_used_usd" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldSpendingUsedUsd(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSpendingUsedUsd is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSpendingUsedUsd requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSpendingUsedUsd: %w", err)
+	}
+	return oldValue.SpendingUsedUsd, nil
+}
+
+// AddSpendingUsedUsd adds f to the "spending_used_usd" field.
+func (m *GroupMutation) AddSpendingUsedUsd(f float64) {
+	if m.addspending_used_usd != nil {
+		*m.addspending_used_usd += f
+	} else {
+		m.addspending_used_usd = &f
+	}
+}
+
+// AddedSpendingUsedUsd returns the value that was added to the "spending_used_usd" field in this mutation.
+func (m *GroupMutation) AddedSpendingUsedUsd() (r float64, exists bool) {
+	v := m.addspending_used_usd
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSpendingUsedUsd resets all changes to the "spending_used_usd" field.
+func (m *GroupMutation) ResetSpendingUsedUsd() {
+	m.spending_used_usd = nil
+	m.addspending_used_usd = nil
+}
+
 // SetDailyBalanceEnabled sets the "daily_balance_enabled" field.
 func (m *GroupMutation) SetDailyBalanceEnabled(b bool) {
 	m.daily_balance_enabled = &b
@@ -18243,7 +18373,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 37)
+	fields := make([]string, 0, 39)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -18349,6 +18479,12 @@ func (m *GroupMutation) Fields() []string {
 	if m.rpm_limit != nil {
 		fields = append(fields, group.FieldRpmLimit)
 	}
+	if m.spending_limit_usd != nil {
+		fields = append(fields, group.FieldSpendingLimitUsd)
+	}
+	if m.spending_used_usd != nil {
+		fields = append(fields, group.FieldSpendingUsedUsd)
+	}
 	if m.daily_balance_enabled != nil {
 		fields = append(fields, group.FieldDailyBalanceEnabled)
 	}
@@ -18433,6 +18569,10 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.ModelsListConfig()
 	case group.FieldRpmLimit:
 		return m.RpmLimit()
+	case group.FieldSpendingLimitUsd:
+		return m.SpendingLimitUsd()
+	case group.FieldSpendingUsedUsd:
+		return m.SpendingUsedUsd()
 	case group.FieldDailyBalanceEnabled:
 		return m.DailyBalanceEnabled()
 	case group.FieldDailyFallbackMultiplier:
@@ -18516,6 +18656,10 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldModelsListConfig(ctx)
 	case group.FieldRpmLimit:
 		return m.OldRpmLimit(ctx)
+	case group.FieldSpendingLimitUsd:
+		return m.OldSpendingLimitUsd(ctx)
+	case group.FieldSpendingUsedUsd:
+		return m.OldSpendingUsedUsd(ctx)
 	case group.FieldDailyBalanceEnabled:
 		return m.OldDailyBalanceEnabled(ctx)
 	case group.FieldDailyFallbackMultiplier:
@@ -18774,6 +18918,20 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRpmLimit(v)
 		return nil
+	case group.FieldSpendingLimitUsd:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSpendingLimitUsd(v)
+		return nil
+	case group.FieldSpendingUsedUsd:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSpendingUsedUsd(v)
+		return nil
 	case group.FieldDailyBalanceEnabled:
 		v, ok := value.(bool)
 		if !ok {
@@ -18835,6 +18993,12 @@ func (m *GroupMutation) AddedFields() []string {
 	if m.addrpm_limit != nil {
 		fields = append(fields, group.FieldRpmLimit)
 	}
+	if m.addspending_limit_usd != nil {
+		fields = append(fields, group.FieldSpendingLimitUsd)
+	}
+	if m.addspending_used_usd != nil {
+		fields = append(fields, group.FieldSpendingUsedUsd)
+	}
 	if m.adddaily_fallback_multiplier != nil {
 		fields = append(fields, group.FieldDailyFallbackMultiplier)
 	}
@@ -18872,6 +19036,10 @@ func (m *GroupMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedSortOrder()
 	case group.FieldRpmLimit:
 		return m.AddedRpmLimit()
+	case group.FieldSpendingLimitUsd:
+		return m.AddedSpendingLimitUsd()
+	case group.FieldSpendingUsedUsd:
+		return m.AddedSpendingUsedUsd()
 	case group.FieldDailyFallbackMultiplier:
 		return m.AddedDailyFallbackMultiplier()
 	}
@@ -18974,6 +19142,20 @@ func (m *GroupMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddRpmLimit(v)
 		return nil
+	case group.FieldSpendingLimitUsd:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSpendingLimitUsd(v)
+		return nil
+	case group.FieldSpendingUsedUsd:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSpendingUsedUsd(v)
+		return nil
 	case group.FieldDailyFallbackMultiplier:
 		v, ok := value.(float64)
 		if !ok {
@@ -19022,6 +19204,9 @@ func (m *GroupMutation) ClearedFields() []string {
 	if m.FieldCleared(group.FieldModelRouting) {
 		fields = append(fields, group.FieldModelRouting)
 	}
+	if m.FieldCleared(group.FieldSpendingLimitUsd) {
+		fields = append(fields, group.FieldSpendingLimitUsd)
+	}
 	return fields
 }
 
@@ -19068,6 +19253,9 @@ func (m *GroupMutation) ClearField(name string) error {
 		return nil
 	case group.FieldModelRouting:
 		m.ClearModelRouting()
+		return nil
+	case group.FieldSpendingLimitUsd:
+		m.ClearSpendingLimitUsd()
 		return nil
 	}
 	return fmt.Errorf("unknown Group nullable field %s", name)
@@ -19181,6 +19369,12 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldRpmLimit:
 		m.ResetRpmLimit()
+		return nil
+	case group.FieldSpendingLimitUsd:
+		m.ResetSpendingLimitUsd()
+		return nil
+	case group.FieldSpendingUsedUsd:
+		m.ResetSpendingUsedUsd()
 		return nil
 	case group.FieldDailyBalanceEnabled:
 		m.ResetDailyBalanceEnabled()

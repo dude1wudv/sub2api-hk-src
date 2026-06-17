@@ -89,6 +89,10 @@ type Group struct {
 	ModelsListConfig domain.GroupModelsListConfig `json:"models_list_config,omitempty"`
 	// 分组 RPM 上限，0 表示不限制；设置后接管该分组用户的限流
 	RpmLimit int `json:"rpm_limit,omitempty"`
+	// 分组累计消费限额，NULL/<=0 表示不限制
+	SpendingLimitUsd *float64 `json:"spending_limit_usd,omitempty"`
+	// 分组累计已消费额度，按用户实际扣费口径累加
+	SpendingUsedUsd float64 `json:"spending_used_usd,omitempty"`
 	// 是否为每日余额专属分组：仅此类分组消费每日额度，并支持长期余额回退倍率
 	DailyBalanceEnabled bool `json:"daily_balance_enabled,omitempty"`
 	// 每日额度耗尽/过期后，用长期余额支付时叠加的回退倍率
@@ -203,7 +207,7 @@ func (*Group) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case group.FieldIsExclusive, group.FieldAllowImageGeneration, group.FieldImageRateIndependent, group.FieldClaudeCodeOnly, group.FieldModelRoutingEnabled, group.FieldMcpXMLInject, group.FieldAllowMessagesDispatch, group.FieldRequireOauthOnly, group.FieldRequirePrivacySet, group.FieldDailyBalanceEnabled:
 			values[i] = new(sql.NullBool)
-		case group.FieldRateMultiplier, group.FieldDailyLimitUsd, group.FieldWeeklyLimitUsd, group.FieldMonthlyLimitUsd, group.FieldImageRateMultiplier, group.FieldImagePrice1k, group.FieldImagePrice2k, group.FieldImagePrice4k, group.FieldDailyFallbackMultiplier:
+		case group.FieldRateMultiplier, group.FieldDailyLimitUsd, group.FieldWeeklyLimitUsd, group.FieldMonthlyLimitUsd, group.FieldImageRateMultiplier, group.FieldImagePrice1k, group.FieldImagePrice2k, group.FieldImagePrice4k, group.FieldSpendingLimitUsd, group.FieldSpendingUsedUsd, group.FieldDailyFallbackMultiplier:
 			values[i] = new(sql.NullFloat64)
 		case group.FieldID, group.FieldDefaultValidityDays, group.FieldFallbackGroupID, group.FieldFallbackGroupIDOnInvalidRequest, group.FieldSortOrder, group.FieldRpmLimit:
 			values[i] = new(sql.NullInt64)
@@ -460,6 +464,19 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.RpmLimit = int(value.Int64)
 			}
+		case group.FieldSpendingLimitUsd:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field spending_limit_usd", values[i])
+			} else if value.Valid {
+				_m.SpendingLimitUsd = new(float64)
+				*_m.SpendingLimitUsd = value.Float64
+			}
+		case group.FieldSpendingUsedUsd:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field spending_used_usd", values[i])
+			} else if value.Valid {
+				_m.SpendingUsedUsd = value.Float64
+			}
 		case group.FieldDailyBalanceEnabled:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field daily_balance_enabled", values[i])
@@ -672,6 +689,14 @@ func (_m *Group) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("rpm_limit=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RpmLimit))
+	builder.WriteString(", ")
+	if v := _m.SpendingLimitUsd; v != nil {
+		builder.WriteString("spending_limit_usd=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("spending_used_usd=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SpendingUsedUsd))
 	builder.WriteString(", ")
 	builder.WriteString("daily_balance_enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DailyBalanceEnabled))

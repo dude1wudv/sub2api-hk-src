@@ -116,6 +116,8 @@ type CreateGroupRequest struct {
 	ModelsListConfig            service.GroupModelsListConfig             `json:"models_list_config"`
 	// 分组 RPM 上限（0 = 不限制）
 	RPMLimit int `json:"rpm_limit"`
+	// 分组累计消费限额（USD）；null/空/负数 表示不限制
+	SpendingLimitUSD optionalLimitField `json:"spending_limit_usd"`
 	// 每日余额专属分组开关 + 回退倍率
 	DailyBalanceEnabled     bool    `json:"daily_balance_enabled"`
 	DailyFallbackMultiplier float64 `json:"daily_fallback_multiplier"`
@@ -160,6 +162,8 @@ type UpdateGroupRequest struct {
 	ModelsListConfig            *service.GroupModelsListConfig             `json:"models_list_config"`
 	// 分组 RPM 上限（0 = 不限制）；nil 表示未提供不改动
 	RPMLimit *int `json:"rpm_limit"`
+	// 分组累计消费限额（USD）；nil 表示未提供不改动，null/空/负数 表示不限制
+	SpendingLimitUSD optionalLimitField `json:"spending_limit_usd"`
 	// 每日余额专属分组开关 + 回退倍率；nil 表示未提供不改动
 	DailyBalanceEnabled     *bool    `json:"daily_balance_enabled"`
 	DailyFallbackMultiplier *float64 `json:"daily_fallback_multiplier"`
@@ -307,6 +311,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		MessagesDispatchModelConfig:     req.MessagesDispatchModelConfig,
 		ModelsListConfig:                req.ModelsListConfig,
 		RPMLimit:                        req.RPMLimit,
+		SpendingLimitUSD:                req.SpendingLimitUSD.ToServiceInput(),
 		DailyBalanceEnabled:             req.DailyBalanceEnabled,
 		DailyFallbackMultiplier:         req.DailyFallbackMultiplier,
 		CopyAccountsFromGroupIDs:        req.CopyAccountsFromGroupIDs,
@@ -365,6 +370,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		MessagesDispatchModelConfig:     req.MessagesDispatchModelConfig,
 		ModelsListConfig:                req.ModelsListConfig,
 		RPMLimit:                        req.RPMLimit,
+		SpendingLimitUSD:                req.SpendingLimitUSD.ToServiceInput(),
 		DailyBalanceEnabled:             req.DailyBalanceEnabled,
 		DailyFallbackMultiplier:         req.DailyFallbackMultiplier,
 		CopyAccountsFromGroupIDs:        req.CopyAccountsFromGroupIDs,

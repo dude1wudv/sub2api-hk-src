@@ -2152,7 +2152,10 @@ export default {
         exclusive: 'Exclusive Group',
         rpmLimit: 'Requests Per Minute (RPM)',
         rpmLimitPlaceholder: '0 = unlimited',
-        rpmLimitHint: 'Max requests per minute for each user in this group; 0 = unlimited. Once set, it takes over per-user rate limiting in this group (overrides the user-level rpm_limit fallback).'
+        rpmLimitHint: 'Max requests per minute for each user in this group; 0 = unlimited. Once set, it takes over per-user rate limiting in this group (overrides the user-level rpm_limit fallback).',
+        spendingLimit: 'Group Spending Limit (USD)',
+        spendingLimitPlaceholder: 'Empty or 0 = unlimited',
+        spendingLimitHint: 'Counts user-billed spend after group multipliers. When reached, this group is circuit-broken before upstream calls.'
       },
       enterGroupName: 'Enter group name',
       optionalDescription: 'Optional description',
@@ -2232,6 +2235,10 @@ export default {
         defaultValidityDays: 'Default Validity (Days)',
         validityHint: 'Number of days the subscription is valid when assigned to a user',
         noLimit: 'No limit'
+      },
+      spendingLimit: {
+        used: 'Limit',
+        currentUsed: 'Current used'
       },
       dailyBalance: {
         title: 'Daily Balance Feature',

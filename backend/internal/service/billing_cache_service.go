@@ -26,8 +26,9 @@ var (
 	ErrSubscriptionInvalid       = infraerrors.Forbidden("SUBSCRIPTION_INVALID", "subscription is invalid or expired")
 	ErrBillingServiceUnavailable = infraerrors.ServiceUnavailable("BILLING_SERVICE_ERROR", "Billing service temporarily unavailable. Please retry later.")
 	// RPM 超限错误。gateway_handler 负责映射为 HTTP 429。
-	ErrGroupRPMExceeded = infraerrors.TooManyRequests("GROUP_RPM_EXCEEDED", "group requests-per-minute limit exceeded")
-	ErrUserRPMExceeded  = infraerrors.TooManyRequests("USER_RPM_EXCEEDED", "user requests-per-minute limit exceeded")
+	ErrGroupRPMExceeded           = infraerrors.TooManyRequests("GROUP_RPM_EXCEEDED", "group requests-per-minute limit exceeded")
+	ErrUserRPMExceeded            = infraerrors.TooManyRequests("USER_RPM_EXCEEDED", "user requests-per-minute limit exceeded")
+	ErrGroupSpendingLimitExceeded = infraerrors.TooManyRequests("GROUP_SPENDING_LIMIT_EXCEEDED", "group spending limit exceeded")
 
 	// user × platform quota（HTTP 429 Too Many Requests + Retry-After header）。
 	// 选用 429 而非 403：限额耗尽属于"暂时性资源用尽，重试可恢复"的场景（RFC 6585），
@@ -105,6 +106,7 @@ type BillingCacheService struct {
 	apiKeyRateLimitLoader apiKeyRateLimitLoader
 	userRPMCache          UserRPMCache
 	userGroupRateRepo     UserGroupRateRepository
+	groupRepo             GroupRepository
 	cfg                   *config.Config
 	circuitBreaker        *billingCircuitBreaker
 	userPlatformQuotaRepo UserPlatformQuotaRepository
@@ -156,6 +158,12 @@ func NewBillingCacheService(
 // 用于专属分组预检：额度桶仍有有效余额时即便长期余额为 0 也放行。
 func (s *BillingCacheService) SetDailyGrantRepo(repo DailyGrantRepository) {
 	s.dailyGrantRepo = repo
+}
+
+// SetGroupRepository injects a group reader for limit checks that must observe
+// post-settlement values even when API key auth snapshots are still cached.
+func (s *BillingCacheService) SetGroupRepository(repo GroupRepository) {
+	s.groupRepo = repo
 }
 
 // Stop 关闭缓存写入工作池
@@ -726,6 +734,10 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 	// 判断计费模式
 	isSubscriptionMode := group != nil && group.IsSubscriptionType() && subscription != nil
 
+	if err := s.checkGroupSpendingEligibility(ctx, group); err != nil {
+		return err
+	}
+
 	if isSubscriptionMode {
 		if err := s.checkSubscriptionEligibility(ctx, user.ID, group, subscription); err != nil {
 			return err
@@ -755,6 +767,24 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 		return err
 	}
 
+	return nil
+}
+
+func (s *BillingCacheService) checkGroupSpendingEligibility(ctx context.Context, group *Group) error {
+	if group == nil || !group.HasSpendingLimit() {
+		return nil
+	}
+	if s != nil && s.groupRepo != nil && group.ID > 0 {
+		latest, err := s.groupRepo.GetByIDLite(ctx, group.ID)
+		if err != nil {
+			logger.LegacyPrintf("service.billing_cache", "Warning: group spending limit refresh failed for group %d: %v", group.ID, err)
+		} else if latest != nil && latest.HasSpendingLimit() {
+			group = latest
+		}
+	}
+	if group.SpendingUsedUSD >= *group.SpendingLimitUSD {
+		return ErrGroupSpendingLimitExceeded
+	}
 	return nil
 }
 

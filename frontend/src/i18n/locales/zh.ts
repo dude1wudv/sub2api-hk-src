@@ -2236,6 +2236,9 @@ export default {
         rpmLimit: '每分钟请求数 (RPM)',
         rpmLimitPlaceholder: '0 表示不限制',
         rpmLimitHint: '每用户在本分组每分钟最大请求数，0 = 不限制；一旦设置即接管该用户的限流（覆盖用户级 rpm_limit）',
+        spendingLimit: '分组消费限额（USD）',
+        spendingLimitPlaceholder: '留空或 0 表示不限制',
+        spendingLimitHint: '按用户实际扣费额度累计，达到限额后该分组会熔断，不再调用上游。',
         exclusiveLabel: '专属分组',
         exclusiveHint: '专属分组，可以手动指定给用户',
         platformLabel: '平台限制',
@@ -2311,6 +2314,10 @@ export default {
       noRpmOverrides: '暂无用户设置了专属 RPM',
       rpmSaved: '专属 RPM 已保存',
       groupRpmDefault: '分组默认 RPM',
+      spendingLimit: {
+        used: '限额',
+        currentUsed: '当前已用'
+      },
       searchUserPlaceholder: '搜索用户邮箱...',
       noRateMultipliers: '暂无用户设置了专属倍率',
       rateUpdated: '专属倍率已更新',

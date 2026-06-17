@@ -69,6 +69,10 @@ type Group struct {
 	// RPMLimit 分组级每分钟请求数上限（0 = 不限制）。
 	// 一旦设置即接管该分组用户的限流（覆盖用户级 rpm_limit），可被 user-group rpm_override 进一步覆盖。
 	RPMLimit int
+	// SpendingLimitUSD 分组累计消费限额（nil/<=0 = 不限制），按用户实际扣费口径判断。
+	SpendingLimitUSD *float64
+	// SpendingUsedUSD 分组累计已消费额度，按 ActualCost/用户扣费口径累加。
+	SpendingUsedUSD float64
 
 	// DailyBalanceEnabled 标记本分组为「每日余额」专属分组：
 	// 仅此类分组消费每日额度，并在额度耗尽/过期后用长期余额按 DailyFallbackMultiplier 倍率回退计费。
@@ -103,6 +107,10 @@ func (g *Group) HasWeeklyLimit() bool {
 
 func (g *Group) HasMonthlyLimit() bool {
 	return g.MonthlyLimitUSD != nil && *g.MonthlyLimitUSD > 0
+}
+
+func (g *Group) HasSpendingLimit() bool {
+	return g != nil && g.SpendingLimitUSD != nil && *g.SpendingLimitUSD > 0
 }
 
 // GetImagePrice 根据 image_size 返回对应的图片生成价格

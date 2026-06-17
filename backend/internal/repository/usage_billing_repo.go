@@ -122,6 +122,12 @@ func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, t
 		result.LongTermSpent = longTermSpent
 	}
 
+	if groupSpendCost := usageBillingGroupSpendCost(cmd); groupSpendCost > 0 && cmd.GroupID != nil {
+		if err := incrementUsageBillingGroupSpending(ctx, tx, *cmd.GroupID, groupSpendCost); err != nil {
+			return err
+		}
+	}
+
 	if cmd.APIKeyQuotaCost > 0 {
 		exhausted, err := incrementUsageBillingAPIKeyQuota(ctx, tx, cmd.APIKeyID, cmd.APIKeyQuotaCost)
 		if err != nil {
@@ -145,6 +151,39 @@ func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, t
 	}
 
 	return nil
+}
+
+func usageBillingGroupSpendCost(cmd *service.UsageBillingCommand) float64 {
+	if cmd == nil {
+		return 0
+	}
+	if cmd.SubscriptionCost > 0 {
+		return cmd.SubscriptionCost
+	}
+	if cmd.BalanceCost > 0 {
+		return cmd.BalanceCost
+	}
+	return 0
+}
+
+func incrementUsageBillingGroupSpending(ctx context.Context, tx *sql.Tx, groupID int64, costUSD float64) error {
+	res, err := tx.ExecContext(ctx, `
+		UPDATE groups
+		SET spending_used_usd = spending_used_usd + $1,
+			updated_at = NOW()
+		WHERE id = $2 AND deleted_at IS NULL
+	`, costUSD, groupID)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected > 0 {
+		return nil
+	}
+	return service.ErrGroupNotFound
 }
 
 func incrementUsageBillingSubscription(ctx context.Context, tx *sql.Tx, subscriptionID int64, costUSD float64) error {

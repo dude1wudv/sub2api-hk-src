@@ -909,12 +909,16 @@ func init() {
 	groupDescRpmLimit := groupFields[31].Descriptor()
 	// group.DefaultRpmLimit holds the default value on creation for the rpm_limit field.
 	group.DefaultRpmLimit = groupDescRpmLimit.Default.(int)
+	// groupDescSpendingUsedUsd is the schema descriptor for spending_used_usd field.
+	groupDescSpendingUsedUsd := groupFields[33].Descriptor()
+	// group.DefaultSpendingUsedUsd holds the default value on creation for the spending_used_usd field.
+	group.DefaultSpendingUsedUsd = groupDescSpendingUsedUsd.Default.(float64)
 	// groupDescDailyBalanceEnabled is the schema descriptor for daily_balance_enabled field.
-	groupDescDailyBalanceEnabled := groupFields[32].Descriptor()
+	groupDescDailyBalanceEnabled := groupFields[34].Descriptor()
 	// group.DefaultDailyBalanceEnabled holds the default value on creation for the daily_balance_enabled field.
 	group.DefaultDailyBalanceEnabled = groupDescDailyBalanceEnabled.Default.(bool)
 	// groupDescDailyFallbackMultiplier is the schema descriptor for daily_fallback_multiplier field.
-	groupDescDailyFallbackMultiplier := groupFields[33].Descriptor()
+	groupDescDailyFallbackMultiplier := groupFields[35].Descriptor()
 	// group.DefaultDailyFallbackMultiplier holds the default value on creation for the daily_fallback_multiplier field.
 	group.DefaultDailyFallbackMultiplier = groupDescDailyFallbackMultiplier.Default.(float64)
 	idempotencyrecordMixin := schema.IdempotencyRecord{}.Mixin()

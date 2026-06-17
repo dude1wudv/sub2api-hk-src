@@ -273,6 +273,22 @@
                   }}</span
                 >
               </div>
+              <div v-if="row.spending_limit_usd" class="text-gray-500 dark:text-gray-400">
+                <span class="text-gray-400 dark:text-gray-500">{{
+                  t("admin.groups.spendingLimit.used")
+                }}</span>
+                <span
+                  :class="[
+                    'ml-1 font-medium',
+                    row.spending_used_usd >= row.spending_limit_usd
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-gray-700 dark:text-gray-300',
+                  ]"
+                  >${{ formatCost(row.spending_used_usd || 0) }}/${{
+                    formatCost(row.spending_limit_usd)
+                  }}</span
+                >
+              </div>
             </div>
           </template>
 
@@ -508,6 +524,18 @@
             :placeholder="t('admin.groups.form.rpmLimitPlaceholder')"
           />
           <p class="input-hint">{{ t("admin.groups.form.rpmLimitHint") }}</p>
+        </div>
+        <div>
+          <label class="input-label">{{ t("admin.groups.form.spendingLimit") }}</label>
+          <input
+            v-model.number="createForm.spending_limit_usd"
+            type="number"
+            min="0"
+            step="0.01"
+            class="input"
+            :placeholder="t('admin.groups.form.spendingLimitPlaceholder')"
+          />
+          <p class="input-hint">{{ t("admin.groups.form.spendingLimitHint") }}</p>
         </div>
         <div
           v-if="createForm.subscription_type !== 'subscription'"
@@ -1872,6 +1900,24 @@
             :placeholder="t('admin.groups.form.rpmLimitPlaceholder')"
           />
           <p class="input-hint">{{ t("admin.groups.form.rpmLimitHint") }}</p>
+        </div>
+        <div>
+          <label class="input-label">{{ t("admin.groups.form.spendingLimit") }}</label>
+          <input
+            v-model.number="editForm.spending_limit_usd"
+            type="number"
+            min="0"
+            step="0.01"
+            class="input"
+            :placeholder="t('admin.groups.form.spendingLimitPlaceholder')"
+          />
+          <p class="input-hint">
+            {{ t("admin.groups.form.spendingLimitHint") }}
+            <span v-if="editingGroup" class="block">
+              {{ t("admin.groups.spendingLimit.currentUsed") }}:
+              ${{ formatCost(editingGroup.spending_used_usd || 0) }}
+            </span>
+          </p>
         </div>
         <div v-if="editForm.subscription_type !== 'subscription'">
           <div class="mb-1.5 flex items-center gap-1">
@@ -3489,6 +3535,7 @@ const createForm = reactive({
   daily_limit_usd: null as number | null,
   weekly_limit_usd: null as number | null,
   monthly_limit_usd: null as number | null,
+  spending_limit_usd: null as number | null,
   // 每日余额专属分组功能
   daily_balance_enabled: false,
   daily_fallback_multiplier: 1.5,
@@ -3823,6 +3870,7 @@ const editForm = reactive({
   daily_limit_usd: null as number | null,
   weekly_limit_usd: null as number | null,
   monthly_limit_usd: null as number | null,
+  spending_limit_usd: null as number | null,
   // 每日余额专属分组功能
   daily_balance_enabled: false,
   daily_fallback_multiplier: 1.5,
@@ -4078,6 +4126,7 @@ const closeCreateModal = () => {
   createForm.daily_limit_usd = null;
   createForm.weekly_limit_usd = null;
   createForm.monthly_limit_usd = null;
+  createForm.spending_limit_usd = null;
   createForm.allow_image_generation = false;
   createForm.image_rate_independent = false;
   createForm.image_rate_multiplier = 1;
@@ -4146,6 +4195,9 @@ const handleCreateGroup = async () => {
       monthly_limit_usd: normalizeOptionalLimit(
         createForm.monthly_limit_usd as number | string | null,
       ),
+      spending_limit_usd: normalizeOptionalLimit(
+        createForm.spending_limit_usd as number | string | null,
+      ),
       model_routing: convertRoutingRulesToApiFormat(
         createModelRoutingRules.value,
       ),
@@ -4170,6 +4222,7 @@ const handleCreateGroup = async () => {
     requestData.daily_limit_usd = emptyToNull(requestData.daily_limit_usd);
     requestData.weekly_limit_usd = emptyToNull(requestData.weekly_limit_usd);
     requestData.monthly_limit_usd = emptyToNull(requestData.monthly_limit_usd);
+    requestData.spending_limit_usd = emptyToNull(requestData.spending_limit_usd);
     requestData.image_rate_multiplier = normalizeImageRateMultiplier(
       requestData.image_rate_multiplier,
     );
@@ -4204,6 +4257,7 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.daily_limit_usd = group.daily_limit_usd;
   editForm.weekly_limit_usd = group.weekly_limit_usd;
   editForm.monthly_limit_usd = group.monthly_limit_usd;
+  editForm.spending_limit_usd = group.spending_limit_usd ?? null;
   editForm.daily_balance_enabled = group.daily_balance_enabled ?? false;
   editForm.daily_fallback_multiplier = group.daily_fallback_multiplier ?? 1.5;
   editForm.allow_image_generation = group.allow_image_generation ?? false;
@@ -4281,6 +4335,9 @@ const handleUpdateGroup = async () => {
       monthly_limit_usd: normalizeOptionalLimit(
         editForm.monthly_limit_usd as number | string | null,
       ),
+      spending_limit_usd: normalizeOptionalLimit(
+        editForm.spending_limit_usd as number | string | null,
+      ),
       fallback_group_id:
         editForm.fallback_group_id === null ? 0 : editForm.fallback_group_id,
       fallback_group_id_on_invalid_request:
@@ -4311,6 +4368,7 @@ const handleUpdateGroup = async () => {
     payload.daily_limit_usd = emptyToNull(payload.daily_limit_usd);
     payload.weekly_limit_usd = emptyToNull(payload.weekly_limit_usd);
     payload.monthly_limit_usd = emptyToNull(payload.monthly_limit_usd);
+    payload.spending_limit_usd = emptyToNull(payload.spending_limit_usd);
     payload.image_rate_multiplier = normalizeImageRateMultiplier(
       payload.image_rate_multiplier,
     );

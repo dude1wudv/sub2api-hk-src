@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/stretchr/testify/require"
 )
 
@@ -96,6 +97,51 @@ func (b *billingCacheWorkerStub) BatchGetUserPlatformQuotaCache(ctx context.Cont
 	return nil, nil
 }
 
+type billingGroupRepoStub struct {
+	group *Group
+}
+
+func (s *billingGroupRepoStub) Create(context.Context, *Group) error { return nil }
+func (s *billingGroupRepoStub) GetByID(context.Context, int64) (*Group, error) {
+	return s.group, nil
+}
+func (s *billingGroupRepoStub) GetByIDLite(context.Context, int64) (*Group, error) {
+	return s.group, nil
+}
+func (s *billingGroupRepoStub) Update(context.Context, *Group) error { return nil }
+func (s *billingGroupRepoStub) Delete(context.Context, int64) error  { return nil }
+func (s *billingGroupRepoStub) DeleteCascade(context.Context, int64) ([]int64, error) {
+	return nil, nil
+}
+func (s *billingGroupRepoStub) List(context.Context, pagination.PaginationParams) ([]Group, *pagination.PaginationResult, error) {
+	return nil, nil, nil
+}
+func (s *billingGroupRepoStub) ListWithFilters(context.Context, pagination.PaginationParams, string, string, string, *bool) ([]Group, *pagination.PaginationResult, error) {
+	return nil, nil, nil
+}
+func (s *billingGroupRepoStub) ListActive(context.Context) ([]Group, error) { return nil, nil }
+func (s *billingGroupRepoStub) ListActiveByPlatform(context.Context, string) ([]Group, error) {
+	return nil, nil
+}
+func (s *billingGroupRepoStub) ExistsByName(context.Context, string) (bool, error) {
+	return false, nil
+}
+func (s *billingGroupRepoStub) GetAccountCount(context.Context, int64) (int64, int64, error) {
+	return 0, 0, nil
+}
+func (s *billingGroupRepoStub) DeleteAccountGroupsByGroupID(context.Context, int64) (int64, error) {
+	return 0, nil
+}
+func (s *billingGroupRepoStub) GetAccountIDsByGroupIDs(context.Context, []int64) ([]int64, error) {
+	return nil, nil
+}
+func (s *billingGroupRepoStub) BindAccountsToGroup(context.Context, int64, []int64) error {
+	return nil
+}
+func (s *billingGroupRepoStub) UpdateSortOrders(context.Context, []GroupSortOrderUpdate) error {
+	return nil
+}
+
 func TestBillingCacheServiceQueueHighLoad(t *testing.T) {
 	cache := &billingCacheWorkerStub{}
 	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{}, nil)
@@ -129,4 +175,64 @@ func TestBillingCacheServiceEnqueueAfterStopReturnsFalse(t *testing.T) {
 		amount: 1,
 	})
 	require.False(t, enqueued)
+}
+
+func TestBillingCacheServiceCheckBillingEligibility_GroupSpendingLimitReached(t *testing.T) {
+	cache := &billingCacheWorkerStub{}
+	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{}, nil)
+	t.Cleanup(svc.Stop)
+
+	limit := 10.0
+	err := svc.CheckBillingEligibility(
+		context.Background(),
+		&User{ID: 1, RPMLimit: 0},
+		nil,
+		&Group{
+			ID:               7,
+			Status:           StatusActive,
+			SubscriptionType: SubscriptionTypeStandard,
+			SpendingLimitUSD: &limit,
+			SpendingUsedUSD:  10.0,
+		},
+		nil,
+		PlatformAnthropic,
+	)
+
+	require.ErrorIs(t, err, ErrGroupSpendingLimitExceeded)
+	require.Equal(t, int64(0), atomic.LoadInt64(&cache.balanceUpdates), "blocked request must not touch balance cache")
+}
+
+func TestBillingCacheServiceCheckBillingEligibility_GroupSpendingLimitUsesLatestGroup(t *testing.T) {
+	cache := &billingCacheWorkerStub{}
+	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{}, nil)
+	t.Cleanup(svc.Stop)
+
+	limit := 10.0
+	svc.SetGroupRepository(&billingGroupRepoStub{
+		group: &Group{
+			ID:               7,
+			Status:           StatusActive,
+			SubscriptionType: SubscriptionTypeStandard,
+			SpendingLimitUSD: &limit,
+			SpendingUsedUSD:  10.0,
+		},
+	})
+
+	err := svc.CheckBillingEligibility(
+		context.Background(),
+		&User{ID: 1, RPMLimit: 0},
+		nil,
+		&Group{
+			ID:               7,
+			Status:           StatusActive,
+			SubscriptionType: SubscriptionTypeStandard,
+			SpendingLimitUSD: &limit,
+			SpendingUsedUSD:  9.0,
+		},
+		nil,
+		PlatformAnthropic,
+	)
+
+	require.ErrorIs(t, err, ErrGroupSpendingLimitExceeded)
+	require.Equal(t, int64(0), atomic.LoadInt64(&cache.balanceUpdates), "blocked request must not touch balance cache")
 }

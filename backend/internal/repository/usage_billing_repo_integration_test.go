@@ -128,6 +128,50 @@ func TestUsageBillingRepositoryApply_DeduplicatesSubscriptionBilling(t *testing.
 	require.InDelta(t, 2.5, dailyUsage, 0.000001)
 }
 
+func TestUsageBillingRepositoryApply_IncrementsGroupSpendingUsedByActualCost(t *testing.T) {
+	ctx := context.Background()
+	client := testEntClient(t)
+	repo := NewUsageBillingRepository(client, integrationDB)
+
+	user := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("usage-billing-group-spend-user-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Balance:      100,
+	})
+	limit := 10.0
+	group := mustCreateGroup(t, client, &service.Group{
+		Name:             "usage-billing-group-spend-" + uuid.NewString(),
+		Platform:         service.PlatformAnthropic,
+		SubscriptionType: service.SubscriptionTypeStandard,
+		SpendingLimitUSD: &limit,
+	})
+	apiKey := mustCreateApiKey(t, client, &service.APIKey{
+		UserID:  user.ID,
+		GroupID: &group.ID,
+		Key:     "sk-usage-billing-group-spend-" + uuid.NewString(),
+		Name:    "billing-group-spend",
+	})
+
+	cmd := &service.UsageBillingCommand{
+		RequestID:   uuid.NewString(),
+		APIKeyID:    apiKey.ID,
+		UserID:      user.ID,
+		GroupID:     &group.ID,
+		BalanceCost: 2.75,
+	}
+	result1, err := repo.Apply(ctx, cmd)
+	require.NoError(t, err)
+	require.True(t, result1.Applied)
+
+	result2, err := repo.Apply(ctx, cmd)
+	require.NoError(t, err)
+	require.False(t, result2.Applied)
+
+	var used float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT spending_used_usd FROM groups WHERE id = $1", group.ID).Scan(&used))
+	require.InDelta(t, 2.75, used, 0.000001)
+}
+
 func TestUsageBillingRepositoryApply_RequestFingerprintConflict(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)

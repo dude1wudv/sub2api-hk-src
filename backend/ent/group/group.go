@@ -86,6 +86,10 @@ const (
 	FieldModelsListConfig = "models_list_config"
 	// FieldRpmLimit holds the string denoting the rpm_limit field in the database.
 	FieldRpmLimit = "rpm_limit"
+	// FieldSpendingLimitUsd holds the string denoting the spending_limit_usd field in the database.
+	FieldSpendingLimitUsd = "spending_limit_usd"
+	// FieldSpendingUsedUsd holds the string denoting the spending_used_usd field in the database.
+	FieldSpendingUsedUsd = "spending_used_usd"
 	// FieldDailyBalanceEnabled holds the string denoting the daily_balance_enabled field in the database.
 	FieldDailyBalanceEnabled = "daily_balance_enabled"
 	// FieldDailyFallbackMultiplier holds the string denoting the daily_fallback_multiplier field in the database.
@@ -200,6 +204,8 @@ var Columns = []string{
 	FieldMessagesDispatchModelConfig,
 	FieldModelsListConfig,
 	FieldRpmLimit,
+	FieldSpendingLimitUsd,
+	FieldSpendingUsedUsd,
 	FieldDailyBalanceEnabled,
 	FieldDailyFallbackMultiplier,
 }
@@ -289,6 +295,8 @@ var (
 	DefaultModelsListConfig domain.GroupModelsListConfig
 	// DefaultRpmLimit holds the default value on creation for the "rpm_limit" field.
 	DefaultRpmLimit int
+	// DefaultSpendingUsedUsd holds the default value on creation for the "spending_used_usd" field.
+	DefaultSpendingUsedUsd float64
 	// DefaultDailyBalanceEnabled holds the default value on creation for the "daily_balance_enabled" field.
 	DefaultDailyBalanceEnabled bool
 	// DefaultDailyFallbackMultiplier holds the default value on creation for the "daily_fallback_multiplier" field.
@@ -456,6 +464,16 @@ func ByDefaultMappedModel(opts ...sql.OrderTermOption) OrderOption {
 // ByRpmLimit orders the results by the rpm_limit field.
 func ByRpmLimit(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRpmLimit, opts...).ToFunc()
+}
+
+// BySpendingLimitUsd orders the results by the spending_limit_usd field.
+func BySpendingLimitUsd(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSpendingLimitUsd, opts...).ToFunc()
+}
+
+// BySpendingUsedUsd orders the results by the spending_used_usd field.
+func BySpendingUsedUsd(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSpendingUsedUsd, opts...).ToFunc()
 }
 
 // ByDailyBalanceEnabled orders the results by the daily_balance_enabled field.

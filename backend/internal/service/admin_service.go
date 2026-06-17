@@ -233,6 +233,8 @@ type CreateGroupInput struct {
 	ModelsListConfig            GroupModelsListConfig
 	// RPMLimit 分组 RPM 上限（0 = 不限制）
 	RPMLimit int
+	// SpendingLimitUSD 分组累计消费限额（USD），nil/负数 表示不限制
+	SpendingLimitUSD *float64
 	// DailyBalanceEnabled 标记为「每日余额」专属分组
 	DailyBalanceEnabled bool
 	// DailyFallbackMultiplier 每日额度耗尽/过期后用长期余额支付的回退倍率（默认 1.5，<=0 时仓储回退到 1.5）
@@ -278,6 +280,8 @@ type UpdateGroupInput struct {
 	ModelsListConfig            *GroupModelsListConfig
 	// RPMLimit 分组 RPM 上限（0 = 不限制），nil 表示未提供不改动。
 	RPMLimit *int
+	// SpendingLimitUSD 分组累计消费限额（USD），nil 表示未提供不改动，负数表示不限制。
+	SpendingLimitUSD *float64
 	// DailyBalanceEnabled 每日余额专属分组开关；nil 表示未提供不改动。
 	DailyBalanceEnabled *bool
 	// DailyFallbackMultiplier 回退倍率；nil 表示未提供不改动。
@@ -1909,6 +1913,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	dailyLimit := normalizeLimit(input.DailyLimitUSD)
 	weeklyLimit := normalizeLimit(input.WeeklyLimitUSD)
 	monthlyLimit := normalizeLimit(input.MonthlyLimitUSD)
+	spendingLimit := normalizeLimit(input.SpendingLimitUSD)
 
 	// 图片价格：负数表示清除（使用默认价格），0 保留（表示免费）
 	imagePrice1K := normalizePrice(input.ImagePrice1K)
@@ -2007,6 +2012,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		MessagesDispatchModelConfig:     normalizeOpenAIMessagesDispatchModelConfig(input.MessagesDispatchModelConfig),
 		ModelsListConfig:                normalizeGroupModelsListConfig(input.ModelsListConfig),
 		RPMLimit:                        input.RPMLimit,
+		SpendingLimitUSD:                spendingLimit,
 		DailyBalanceEnabled:             input.DailyBalanceEnabled,
 		DailyFallbackMultiplier:         input.DailyFallbackMultiplier,
 	}
@@ -2260,6 +2266,9 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.RPMLimit != nil {
 		group.RPMLimit = *input.RPMLimit
+	}
+	if input.SpendingLimitUSD != nil {
+		group.SpendingLimitUSD = normalizeLimit(input.SpendingLimitUSD)
 	}
 	if input.DailyBalanceEnabled != nil {
 		group.DailyBalanceEnabled = *input.DailyBalanceEnabled

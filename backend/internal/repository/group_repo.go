@@ -77,6 +77,8 @@ func (r *groupRepository) Create(ctx context.Context, groupIn *service.Group) er
 		SetMessagesDispatchModelConfig(groupIn.MessagesDispatchModelConfig).
 		SetModelsListConfig(groupIn.ModelsListConfig).
 		SetRpmLimit(groupIn.RPMLimit).
+		SetNillableSpendingLimitUsd(groupIn.SpendingLimitUSD).
+		SetSpendingUsedUsd(groupIn.SpendingUsedUSD).
 		SetDailyBalanceEnabled(groupIn.DailyBalanceEnabled).
 		SetDailyFallbackMultiplier(resolveDailyFallbackMultiplier(groupIn.DailyFallbackMultiplier))
 
@@ -173,6 +175,11 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		builder = builder.SetMonthlyLimitUsd(*groupIn.MonthlyLimitUSD)
 	} else {
 		builder = builder.ClearMonthlyLimitUsd()
+	}
+	if groupIn.SpendingLimitUSD != nil {
+		builder = builder.SetSpendingLimitUsd(*groupIn.SpendingLimitUSD)
+	} else {
+		builder = builder.ClearSpendingLimitUsd()
 	}
 	if groupIn.ImagePrice1K != nil {
 		builder = builder.SetImagePrice1k(*groupIn.ImagePrice1K)

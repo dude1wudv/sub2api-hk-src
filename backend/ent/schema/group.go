@@ -164,6 +164,15 @@ func (Group) Fields() []ent.Field {
 		field.Int("rpm_limit").
 			Default(0).
 			Comment("分组 RPM 上限，0 表示不限制；设置后接管该分组用户的限流"),
+		field.Float("spending_limit_usd").
+			Optional().
+			Nillable().
+			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
+			Comment("分组累计消费限额，NULL/<=0 表示不限制"),
+		field.Float("spending_used_usd").
+			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
+			Default(0).
+			Comment("分组累计已消费额度，按用户实际扣费口径累加"),
 
 		// 每日余额（daily-balance）专属分组开关 (added by migration 150)
 		field.Bool("daily_balance_enabled").

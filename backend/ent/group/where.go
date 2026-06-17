@@ -210,6 +210,16 @@ func RpmLimit(v int) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldRpmLimit, v))
 }
 
+// SpendingLimitUsd applies equality check predicate on the "spending_limit_usd" field. It's identical to SpendingLimitUsdEQ.
+func SpendingLimitUsd(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSpendingLimitUsd, v))
+}
+
+// SpendingUsedUsd applies equality check predicate on the "spending_used_usd" field. It's identical to SpendingUsedUsdEQ.
+func SpendingUsedUsd(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSpendingUsedUsd, v))
+}
+
 // DailyBalanceEnabled applies equality check predicate on the "daily_balance_enabled" field. It's identical to DailyBalanceEnabledEQ.
 func DailyBalanceEnabled(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldDailyBalanceEnabled, v))
@@ -1448,6 +1458,96 @@ func RpmLimitLT(v int) predicate.Group {
 // RpmLimitLTE applies the LTE predicate on the "rpm_limit" field.
 func RpmLimitLTE(v int) predicate.Group {
 	return predicate.Group(sql.FieldLTE(FieldRpmLimit, v))
+}
+
+// SpendingLimitUsdEQ applies the EQ predicate on the "spending_limit_usd" field.
+func SpendingLimitUsdEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSpendingLimitUsd, v))
+}
+
+// SpendingLimitUsdNEQ applies the NEQ predicate on the "spending_limit_usd" field.
+func SpendingLimitUsdNEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldSpendingLimitUsd, v))
+}
+
+// SpendingLimitUsdIn applies the In predicate on the "spending_limit_usd" field.
+func SpendingLimitUsdIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldSpendingLimitUsd, vs...))
+}
+
+// SpendingLimitUsdNotIn applies the NotIn predicate on the "spending_limit_usd" field.
+func SpendingLimitUsdNotIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldSpendingLimitUsd, vs...))
+}
+
+// SpendingLimitUsdGT applies the GT predicate on the "spending_limit_usd" field.
+func SpendingLimitUsdGT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldSpendingLimitUsd, v))
+}
+
+// SpendingLimitUsdGTE applies the GTE predicate on the "spending_limit_usd" field.
+func SpendingLimitUsdGTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldSpendingLimitUsd, v))
+}
+
+// SpendingLimitUsdLT applies the LT predicate on the "spending_limit_usd" field.
+func SpendingLimitUsdLT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldSpendingLimitUsd, v))
+}
+
+// SpendingLimitUsdLTE applies the LTE predicate on the "spending_limit_usd" field.
+func SpendingLimitUsdLTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldSpendingLimitUsd, v))
+}
+
+// SpendingLimitUsdIsNil applies the IsNil predicate on the "spending_limit_usd" field.
+func SpendingLimitUsdIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldSpendingLimitUsd))
+}
+
+// SpendingLimitUsdNotNil applies the NotNil predicate on the "spending_limit_usd" field.
+func SpendingLimitUsdNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldSpendingLimitUsd))
+}
+
+// SpendingUsedUsdEQ applies the EQ predicate on the "spending_used_usd" field.
+func SpendingUsedUsdEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSpendingUsedUsd, v))
+}
+
+// SpendingUsedUsdNEQ applies the NEQ predicate on the "spending_used_usd" field.
+func SpendingUsedUsdNEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldSpendingUsedUsd, v))
+}
+
+// SpendingUsedUsdIn applies the In predicate on the "spending_used_usd" field.
+func SpendingUsedUsdIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldSpendingUsedUsd, vs...))
+}
+
+// SpendingUsedUsdNotIn applies the NotIn predicate on the "spending_used_usd" field.
+func SpendingUsedUsdNotIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldSpendingUsedUsd, vs...))
+}
+
+// SpendingUsedUsdGT applies the GT predicate on the "spending_used_usd" field.
+func SpendingUsedUsdGT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldSpendingUsedUsd, v))
+}
+
+// SpendingUsedUsdGTE applies the GTE predicate on the "spending_used_usd" field.
+func SpendingUsedUsdGTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldSpendingUsedUsd, v))
+}
+
+// SpendingUsedUsdLT applies the LT predicate on the "spending_used_usd" field.
+func SpendingUsedUsdLT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldSpendingUsedUsd, v))
+}
+
+// SpendingUsedUsdLTE applies the LTE predicate on the "spending_used_usd" field.
+func SpendingUsedUsdLTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldSpendingUsedUsd, v))
 }
 
 // DailyBalanceEnabledEQ applies the EQ predicate on the "daily_balance_enabled" field.

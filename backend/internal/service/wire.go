@@ -482,9 +482,11 @@ func ProvideBillingCacheService(
 	cfg *config.Config,
 	userPlatformQuotaRepo UserPlatformQuotaRepository,
 	dailyGrantRepo DailyGrantRepository,
+	groupRepo GroupRepository,
 ) *BillingCacheService {
 	svc := NewBillingCacheService(cache, userRepo, subRepo, apiKeyRepo, rpmCache, rateRepo, cfg, userPlatformQuotaRepo)
 	svc.SetDailyGrantRepo(dailyGrantRepo)
+	svc.SetGroupRepository(groupRepo)
 	return svc
 }
 

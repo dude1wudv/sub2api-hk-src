@@ -191,6 +191,8 @@ func groupFromServiceBase(g *service.Group) Group {
 		RequireOAuthOnly:                g.RequireOAuthOnly,
 		RequirePrivacySet:               g.RequirePrivacySet,
 		RPMLimit:                        g.RPMLimit,
+		SpendingLimitUSD:                g.SpendingLimitUSD,
+		SpendingUsedUSD:                 g.SpendingUsedUSD,
 		DailyBalanceEnabled:             g.DailyBalanceEnabled,
 		DailyFallbackMultiplier:         g.DailyFallbackMultiplier,
 		CreatedAt:                       g.CreatedAt,
