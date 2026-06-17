@@ -4027,8 +4027,10 @@ func (s *OpenAIGatewayService) newOpenAIStreamFailoverError(
 		},
 	})
 	return &UpstreamFailoverError{
-		StatusCode:   http.StatusBadGateway,
-		ResponseBody: body,
+		StatusCode:             http.StatusBadGateway,
+		ResponseBody:           body,
+		Reason:                 message,
+		RetryableOnSameAccount: isOpenAITransientProcessingError(http.StatusBadRequest, message, payload),
 	}
 }
 
