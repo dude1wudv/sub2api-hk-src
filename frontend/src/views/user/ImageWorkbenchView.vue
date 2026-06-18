@@ -190,7 +190,9 @@ function buildTrace(index: number) {
   }
 }
 
-async function requestJson(url: string, init: RequestInit) {
+type FetchRequestInit = Parameters<typeof fetch>[1]
+
+async function requestJson(url: string, init: FetchRequestInit) {
   const response = await fetch(url, init)
   const text = await response.text()
   const data = text ? JSON.parse(text) : {}

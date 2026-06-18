@@ -50,6 +50,7 @@ func TestForwardResponses_ForceChatCompletionsRoutesNonStreamingToChatCompletion
 	require.Equal(t, 3, result.Usage.InputTokens)
 	require.Equal(t, 2, result.Usage.OutputTokens)
 	require.Equal(t, 1, result.Usage.CacheReadInputTokens)
+	require.Equal(t, "/v1/chat/completions", result.UpstreamEndpoint)
 	require.False(t, result.Stream)
 }
 
@@ -128,6 +129,7 @@ func TestForwardResponses_ForceChatCompletionsRoutesStreamingToChatCompletions(t
 	require.Contains(t, rec.Body.String(), "data: [DONE]")
 	require.Equal(t, 4, result.Usage.InputTokens)
 	require.Equal(t, 3, result.Usage.OutputTokens)
+	require.Equal(t, "/v1/chat/completions", result.UpstreamEndpoint)
 	require.True(t, result.Stream)
 	require.NotNil(t, result.FirstTokenMs)
 }
@@ -204,6 +206,7 @@ func TestForwardResponses_AutoSupportedAccountStillUsesResponsesEndpoint(t *test
 	require.True(t, gjson.GetBytes(upstream.lastBody, "input").Exists())
 	require.False(t, gjson.GetBytes(upstream.lastBody, "messages").Exists())
 	require.Equal(t, "ok", gjson.Get(rec.Body.String(), "output.0.content.0.text").String())
+	require.Empty(t, result.UpstreamEndpoint)
 }
 
 func forceChatResponsesFallbackAccount() *Account {
