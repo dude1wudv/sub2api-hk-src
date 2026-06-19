@@ -1,5 +1,12 @@
 # Sub2API
 
+> Workspace note: this checkout is the application source for
+> `E:\AI-Platform-Projects`. The live HK deployment is managed from the parent
+> repository runbook (`../AGENTS.md` / `../README.md`) on
+> `154.88.65.45:/opt/sub2api`. The generic Docker Compose steps in this README
+> are upstream/self-hosting guidance; do not use them as the shared-server
+> production deploy path.
+
 <div align="center">
 
 [![Go](https://img.shields.io/badge/Go-1.25.7-00ADD8.svg)](https://golang.org/)
