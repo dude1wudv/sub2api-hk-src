@@ -20,8 +20,9 @@ describe('AppSidebar custom SVG styles', () => {
 })
 
 describe('AppSidebar image entry', () => {
-  it('includes a regular-user link to /image2', () => {
-    expect(componentSource).toContain("{ path: '/image2', label: 'image2'")
+  it('uses a real anchor for /image2', () => {
+    expect(componentSource).toContain("v-if=\"item.path === '/image2'\"")
+    expect(componentSource).toContain(':href="item.path"')
   })
 })
 
