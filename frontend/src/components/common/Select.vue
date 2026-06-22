@@ -457,17 +457,31 @@ onUnmounted(() => {
 .select-trigger {
   @apply flex w-full items-center justify-between gap-2;
   @apply rounded-xl px-4 py-2.5 text-sm;
-  @apply bg-white dark:bg-dark-800;
-  @apply border border-gray-200 dark:border-dark-600;
-  @apply text-gray-900 dark:text-gray-100;
   @apply transition-all duration-200;
-  @apply focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30;
-  @apply hover:border-gray-300 dark:hover:border-dark-500;
+  @apply focus:outline-none;
   @apply cursor-pointer;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(203, 213, 225, 0.78);
+  border-radius: 0.75rem;
+  color: #0f172a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(15, 23, 42, 0.025);
+}
+
+.dark .select-trigger {
+  background: rgba(2, 14, 12, 0.72);
+  border-color: rgba(0, 255, 159, 0.16);
+  color: #ecfff8;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
 .select-trigger-open {
-  @apply border-primary-500 ring-2 ring-primary-500/30;
+  border-color: rgba(20, 184, 166, 0.65);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.dark .select-trigger-open {
+  border-color: rgba(0, 255, 159, 0.55);
+  box-shadow: 0 0 0 3px rgba(0, 255, 159, 0.12), 0 0 20px rgba(0, 255, 159, 0.08);
 }
 
 .select-trigger-error {

@@ -1,12 +1,12 @@
 <template>
   <AuthLayout>
-    <div class="space-y-6">
+    <div class="space-y-6 cyber-login-form">
       <!-- Title -->
       <div class="text-left">
-        <h2 class="text-2xl font-bold" :class="isDarkMode ? 'text-cyber-green-400' : 'text-gray-900'">
+        <h2 class="text-2xl font-semibold text-white">
           {{ t('auth.welcomeBack') }}
         </h2>
-        <p class="mt-2 text-sm" :class="isDarkMode ? 'text-cyber-muted' : 'text-gray-500'">
+        <p class="mt-2 text-sm text-zinc-500">
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
@@ -19,7 +19,7 @@
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="mail" size="md" class="text-zinc-500" />
             </div>
             <input
               id="email"
@@ -29,11 +29,8 @@
               autofocus
               autocomplete="email"
               :disabled="authActionDisabled"
-              class="input pl-11"
-              :class="[
-                { 'input-error': errors.email },
-                isDarkMode ? 'bg-cyber-dark-bg border-cyber-border focus:border-cyber-green-500' : ''
-              ]"
+              class="cyber-input pl-11"
+              :class="{ 'cyber-input-error': errors.email }"
               :placeholder="t('auth.emailPlaceholder')"
             />
           </div>
@@ -46,7 +43,7 @@
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="lock" size="md" class="text-zinc-500" />
             </div>
             <input
               id="password"
@@ -55,18 +52,16 @@
               required
               autocomplete="current-password"
               :disabled="authActionDisabled"
-              class="input pl-11 pr-11"
-              :class="[
-                { 'input-error': errors.password },
-                isDarkMode ? 'bg-cyber-dark-bg border-cyber-border focus:border-cyber-green-500' : ''
-              ]"
+              class="cyber-input pl-11 pr-11"
+              :class="{ 'cyber-input-error': errors.password }"
               :placeholder="t('auth.passwordPlaceholder')"
             />
             <button
               type="button"
               @click="showPassword = !showPassword"
               :disabled="authActionDisabled"
-              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#2cff43] transition-colors hover:text-white disabled:opacity-50"
+              :aria-label="showPassword ? t('common.hide') : t('common.show')"
             >
               <Icon v-if="showPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
@@ -77,7 +72,7 @@
             <router-link
               v-if="passwordResetEnabled && !backendModeEnabled"
               to="/forgot-password"
-              class="text-sm font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+              class="text-sm font-medium text-[#2cff43] transition-colors hover:text-white"
             >
               {{ t('auth.forgotPassword') }}
             </router-link>
@@ -99,12 +94,11 @@
         <button
           type="submit"
           :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
-          :class="isDarkMode ? 'bg-cyber-green-500 text-cyber-black hover:shadow-neon-glow' : 'btn btn-primary'"
-          class="w-full"
+          class="cyber-primary-button"
         >
           <svg
             v-if="isLoading"
-            class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
+            class="-ml-1 mr-2 h-4 w-4 animate-spin text-black"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -140,11 +134,11 @@
 
         <div v-if="showOAuthLogin" class="space-y-3 pt-1">
           <div class="flex items-center gap-3">
-            <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
-            <span class="text-xs text-gray-500 dark:text-dark-400">
+            <div class="h-px flex-1 bg-[#2cff43]/20"></div>
+            <span class="text-xs text-zinc-600">
               {{ t('auth.oauthOrContinue') }}
             </span>
-            <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+            <div class="h-px flex-1 bg-[#2cff43]/20"></div>
           </div>
 
           <EmailOAuthButtons
@@ -181,15 +175,19 @@
 
     <!-- Footer -->
     <template v-if="!backendModeEnabled" #footer>
-      <p class="text-gray-500 dark:text-dark-400">
-        {{ t('auth.dontHaveAccount') }}
+      <div class="flex items-center gap-4">
+        <div class="h-px flex-1 bg-[#2cff43]/20"></div>
+        <span class="text-sm text-zinc-600">or</span>
+        <div class="h-px flex-1 bg-[#2cff43]/20"></div>
+      </div>
+      <div class="mt-7">
         <router-link
           to="/register"
-          class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+          class="cyber-secondary-button"
         >
           {{ t('auth.signUp') }}
         </router-link>
-      </p>
+      </div>
     </template>
   </AuthLayout>
 
@@ -239,11 +237,6 @@ const isLoading = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const showPassword = ref<boolean>(false)
 const publicSettingsLoaded = ref<boolean>(false)
-
-// Dark mode detection
-const isDarkMode = computed(() => {
-  return document.documentElement.classList.contains('dark')
-})
 
 // Public settings
 const turnstileEnabled = ref<boolean>(false)
@@ -565,6 +558,112 @@ function handle2FACancel(): void {
 </script>
 
 <style scoped>
+.cyber-login-form :deep(.input-label) {
+  margin-bottom: 0.75rem;
+  color: #f4f4f5;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.cyber-input {
+  width: 100%;
+  height: 68px;
+  border: 1px solid rgba(113, 113, 122, 0.55);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.26);
+  color: #f4f4f5;
+  font-size: 1rem;
+  outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.cyber-input::placeholder {
+  color: #71717a;
+}
+
+.cyber-input:focus {
+  border-color: rgba(44, 255, 67, 0.82);
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: 0 0 0 3px rgba(44, 255, 67, 0.12);
+}
+
+.cyber-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.cyber-input-error {
+  border-color: rgba(248, 113, 113, 0.85);
+}
+
+.cyber-primary-button {
+  display: inline-flex;
+  width: 100%;
+  height: 68px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 6px;
+  background: #2cff43;
+  color: #020403;
+  font-size: 1.08rem;
+  font-weight: 800;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+  box-shadow: 0 0 24px rgba(44, 255, 67, 0.35);
+}
+
+.cyber-primary-button:hover:not(:disabled) {
+  background: #47ff58;
+  box-shadow: 0 0 34px rgba(44, 255, 67, 0.5);
+  transform: translateY(-1px);
+}
+
+.cyber-primary-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.cyber-primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.cyber-secondary-button {
+  display: inline-flex;
+  width: 100%;
+  height: 68px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #2cff43;
+  border-radius: 6px;
+  color: #2cff43;
+  font-size: 1rem;
+  font-weight: 800;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.cyber-secondary-button:hover {
+  background: rgba(44, 255, 67, 0.08);
+  color: #f4f4f5;
+  box-shadow: 0 0 22px rgba(44, 255, 67, 0.18);
+}
+
+.cyber-login-form :deep(.btn),
+.cyber-login-form :deep(.btn-secondary),
+.cyber-login-form :deep(.btn-primary) {
+  border-radius: 6px;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.3s ease;

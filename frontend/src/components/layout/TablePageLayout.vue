@@ -77,7 +77,22 @@ onUnmounted(() => {
 
 /* 表格滚动容器 - 增强版表体滚动方案 */
 .table-scroll-container {
-  @apply flex flex-col overflow-hidden h-full bg-white dark:bg-dark-800 rounded-2xl border border-gray-200 dark:border-dark-700 shadow-sm;
+  @apply flex flex-col overflow-hidden h-full;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 18px 48px rgba(15, 23, 42, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.dark .table-scroll-container {
+  border-color: rgba(0, 255, 159, 0.22);
+  background: linear-gradient(180deg, rgba(2, 15, 13, 0.88), rgba(2, 8, 7, 0.86));
+  box-shadow:
+    0 0 0 1px rgba(0, 255, 159, 0.06),
+    0 24px 70px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(128, 255, 196, 0.08);
 }
 
 .table-page-layout.page-scroll-mode .layout-section-scrollable {
@@ -105,7 +120,12 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(thead) {
-  @apply bg-gray-50/80 dark:bg-dark-800/80 backdrop-blur-sm;
+  background: rgba(248, 250, 252, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.dark .table-scroll-container :deep(thead) {
+  background: rgba(2, 20, 16, 0.92);
 }
 
 .table-scroll-container :deep(tbody) {
@@ -113,11 +133,25 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  @apply px-5 py-4 text-left text-sm font-medium text-gray-600 dark:text-dark-300 border-b border-gray-200 dark:border-dark-700;
+  @apply px-5 py-4 text-left text-sm font-medium;
+  color: #475569;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+.dark .table-scroll-container :deep(th) {
+  color: #42f6a3;
+  border-bottom-color: rgba(0, 255, 159, 0.14);
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-5 py-4 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-dark-800;
+  @apply px-5 py-4 text-sm;
+  color: #334155;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.74);
+}
+
+.dark .table-scroll-container :deep(td) {
+  color: #d8eee6;
+  border-bottom-color: rgba(0, 255, 159, 0.1);
 }
 
 /* 移动端：恢复正常滚动 */

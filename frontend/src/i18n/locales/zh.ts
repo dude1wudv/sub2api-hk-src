@@ -1068,19 +1068,27 @@ export default {
   // Model Square (user-facing pricing view)
   modelSquare: {
     title: '模型广场',
-    description: '查看主流模型的价格，已应用您的分组倍率',
-    searchPlaceholder: '搜索模型或供应商...',
+    description: '查看所有可用模型的实时价格，支持按供应商和分组筛选',
+    searchPlaceholder: '搜索模型名称...',
     empty: '暂无模型数据',
     noResults: '没有匹配的模型',
-    lowestRate: '最低倍率（推荐）',
+    totalModels: '共计模型',
+    provider: '供应商',
+    allProviders: '全部供应商',
+    groups: '可用分组',
+    lowestRateLabel: '最低倍率',
+    inputPrice: '输入价格',
+    outputPrice: '输出价格',
+    cacheWritePrice: '缓存创建',
+    cacheReadPrice: '缓存读取',
+    perCallPrice: '按次计费',
+    perImagePrice: '按张计费',
     columns: {
       model: '模型名称',
       provider: '供应商',
       inputPrice: '输入价格（¥ / 1M tokens）',
       outputPrice: '输出价格（¥ / 1M tokens）'
-    },
-    groupRate: '{group} - {rate}x',
-    lowestRateApplied: '最低倍率 {rate}x'
+    }
   },
 
   // Channel Status (user-facing read-only view)

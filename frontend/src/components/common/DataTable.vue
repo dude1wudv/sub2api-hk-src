@@ -748,17 +748,30 @@ defineExpose({
   position: sticky;
   top: 0;
   z-index: 200;
-  background-color: rgb(249 250 251);
+  background: rgba(248, 250, 252, 0.94);
 }
 
 .dark .table-wrapper .table-header {
-  background-color: rgb(31 41 55);
+  background: rgba(2, 20, 16, 0.94);
 }
 
 /* 表体保持在表头下方 */
 .table-body {
   position: relative;
   z-index: 0;
+  background: #ffffff;
+}
+
+.dark .table-body {
+  background: #020c0a;
+}
+
+tbody tr {
+  background: #ffffff;
+}
+
+.dark tbody tr {
+  background: #020c0a;
 }
 
 /* 所有表头单元格固定在顶部 */
@@ -766,11 +779,13 @@ defineExpose({
   position: sticky;
   top: 0;
   z-index: 210; /* 必须高于所有表体内容 */
-  background-color: rgb(249 250 251);
+  background: rgba(248, 250, 252, 0.94);
+  color: #475569;
 }
 
 .dark .sticky-header-cell {
-  background-color: rgb(31 41 55);
+  background: rgba(2, 20, 16, 0.94);
+  color: #42f6a3;
 }
 
 /* Sticky 列基础样式 */
@@ -806,20 +821,28 @@ defineExpose({
 
 /* 表体 sticky 列背景 */
 tbody .sticky-col {
-  background-color: white;
+  background: #ffffff;
 }
 
 .dark tbody .sticky-col {
-  background-color: rgb(17 24 39);
+  background: #020c0a;
 }
 
 /* hover 状态保持 */
 tbody tr:hover .sticky-col {
-  background-color: rgb(249 250 251);
+  background: #f0fdfa;
 }
 
 .dark tbody tr:hover .sticky-col {
-  background-color: rgb(31 41 55);
+  background: #05251c;
+}
+
+tbody tr:hover {
+  background: #f0fdfa;
+}
+
+.dark tbody tr:hover {
+  background: #05251c;
 }
 
 /* 阴影只在可滚动时显示 */
@@ -832,7 +855,7 @@ tbody tr:hover .sticky-col {
   bottom: 0;
   width: 10px;
   transform: translateX(100%);
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent);
+  background: linear-gradient(to right, rgba(15, 23, 42, 0.08), transparent);
   pointer-events: none;
 }
 
@@ -845,7 +868,7 @@ tbody tr:hover .sticky-col {
   bottom: 0;
   width: 10px;
   transform: translateX(100%);
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent);
+  background: linear-gradient(to right, rgba(15, 23, 42, 0.08), transparent);
   pointer-events: none;
 }
 
@@ -858,18 +881,18 @@ tbody tr:hover .sticky-col {
   bottom: 0;
   width: 10px;
   transform: translateX(-100%);
-  background: linear-gradient(to left, rgba(0, 0, 0, 0.08), transparent);
+  background: linear-gradient(to left, rgba(15, 23, 42, 0.08), transparent);
   pointer-events: none;
 }
 
 /* 暗色模式阴影 */
 .dark .is-scrollable .sticky-col-left::after,
 .dark .is-scrollable .sticky-col-left-second::after {
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.2), transparent);
+  background: linear-gradient(to right, rgba(0, 255, 159, 0.1), transparent);
 }
 
 .dark .is-scrollable .sticky-col-right::before {
-  background: linear-gradient(to left, rgba(0, 0, 0, 0.2), transparent);
+  background: linear-gradient(to left, rgba(0, 255, 159, 0.1), transparent);
 }
 </style>
 

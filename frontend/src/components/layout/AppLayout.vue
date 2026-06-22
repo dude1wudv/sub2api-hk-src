@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen bg-white dark:bg-dark-950">
+  <div class="app-shell min-h-screen">
     <!-- Background Decoration -->
-    <div class="pointer-events-none fixed inset-0 bg-gradient-to-br from-gray-50/50 via-white to-gray-50/30 dark:from-dark-950 dark:via-dark-950 dark:to-dark-900"></div>
+    <div class="app-shell-bg pointer-events-none fixed inset-0"></div>
 
     <!-- Sidebar -->
     <AppSidebar />
@@ -15,7 +15,7 @@
       <AppHeader />
 
       <!-- Main Content -->
-      <main class="p-4 md:p-6 lg:p-8">
+      <main class="app-main p-4 md:p-6 lg:p-8">
         <slot />
       </main>
     </div>
