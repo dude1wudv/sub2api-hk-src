@@ -54,11 +54,10 @@ describe('router image generation route', () => {
     expect(route?.meta.title).toBe('Image Generation')
   })
 
-  it('keeps /image2 as a public compatibility alias', async () => {
+  it('does not keep /image2 as a router alias anymore', async () => {
     const { default: router } = await import('@/router')
     const alias = router.getRoutes().find((record) => record.path === '/image2')
 
-    expect(alias?.aliasOf?.path).toBe('/image')
-    expect(alias?.meta.requiresAuth).toBe(false)
+    expect(alias).toBeUndefined()
   })
 })

@@ -19,6 +19,12 @@ describe('AppSidebar custom SVG styles', () => {
   })
 })
 
+describe('AppSidebar image entry', () => {
+  it('includes a regular-user link to /image2', () => {
+    expect(componentSource).toContain("{ path: '/image2', label: 'image2'")
+  })
+})
+
 describe('AppSidebar header styles', () => {
   it('does not clip the version badge dropdown', () => {
     const sidebarHeaderBlockMatch = styleSource.match(/\.sidebar-header\s*\{[\s\S]*?\n {2}\}/)

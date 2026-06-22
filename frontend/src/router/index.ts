@@ -169,7 +169,6 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/image',
     name: 'ImageWorkbench',
-    alias: '/image2',
     component: () => import('@/views/user/ImageWorkbenchView.vue'),
     meta: {
       requiresAuth: false,
