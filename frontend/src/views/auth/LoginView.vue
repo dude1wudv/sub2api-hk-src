@@ -2,11 +2,11 @@
   <AuthLayout>
     <div class="space-y-6">
       <!-- Title -->
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div class="text-left">
+        <h2 class="text-2xl font-bold" :class="isDarkMode ? 'text-cyber-green-400' : 'text-gray-900'">
           {{ t('auth.welcomeBack') }}
         </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        <p class="mt-2 text-sm" :class="isDarkMode ? 'text-cyber-muted' : 'text-gray-500'">
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
@@ -30,7 +30,10 @@
               autocomplete="email"
               :disabled="authActionDisabled"
               class="input pl-11"
-              :class="{ 'input-error': errors.email }"
+              :class="[
+                { 'input-error': errors.email },
+                isDarkMode ? 'bg-cyber-dark-bg border-cyber-border focus:border-cyber-green-500' : ''
+              ]"
               :placeholder="t('auth.emailPlaceholder')"
             />
           </div>
@@ -53,7 +56,10 @@
               autocomplete="current-password"
               :disabled="authActionDisabled"
               class="input pl-11 pr-11"
-              :class="{ 'input-error': errors.password }"
+              :class="[
+                { 'input-error': errors.password },
+                isDarkMode ? 'bg-cyber-dark-bg border-cyber-border focus:border-cyber-green-500' : ''
+              ]"
               :placeholder="t('auth.passwordPlaceholder')"
             />
             <button
@@ -93,7 +99,8 @@
         <button
           type="submit"
           :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
-          class="btn btn-primary w-full"
+          :class="isDarkMode ? 'bg-cyber-green-500 text-cyber-black hover:shadow-neon-glow' : 'btn btn-primary'"
+          class="w-full"
         >
           <svg
             v-if="isLoading"
@@ -232,6 +239,11 @@ const isLoading = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const showPassword = ref<boolean>(false)
 const publicSettingsLoaded = ref<boolean>(false)
+
+// Dark mode detection
+const isDarkMode = computed(() => {
+  return document.documentElement.classList.contains('dark')
+})
 
 // Public settings
 const turnstileEnabled = ref<boolean>(false)
