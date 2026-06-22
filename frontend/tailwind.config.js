@@ -46,6 +46,26 @@ export default {
           800: '#1e293b',
           900: '#0f172a',
           950: '#020617'
+        },
+        // Cyber-punk theme colors
+        cyber: {
+          black: '#0a0e0f',
+          'dark-bg': '#0f1419',
+          'card-bg': '#1a1f26',
+          green: {
+            50: '#e6fff5',
+            100: '#ccffeb',
+            200: '#99ffd6',
+            300: '#66ffc2',
+            400: '#33ffad',
+            500: '#00ff9f',  // primary neon green
+            600: '#00cc7f',
+            700: '#009960',
+            800: '#006640',
+            900: '#003320'
+          },
+          'green-dim': '#00cc7f80',  // 50% opacity for subtle glow
+          'border': '#00ff9f40'  // 25% opacity for borders
         }
       },
       fontFamily: {
@@ -71,7 +91,10 @@ export default {
         'glow-lg': '0 0 40px rgba(20, 184, 166, 0.35)',
         card: '0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06)',
         'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
-        'inner-glow': 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+        'inner-glow': 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        'neon-glow': '0 0 15px rgba(0, 255, 159, 0.4), 0 0 30px rgba(0, 255, 159, 0.2)',
+        'neon-glow-lg': '0 0 25px rgba(0, 255, 159, 0.5), 0 0 50px rgba(0, 255, 159, 0.3)',
+        'neon-glow-sm': '0 0 8px rgba(0, 255, 159, 0.3), 0 0 15px rgba(0, 255, 159, 0.15)'
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
