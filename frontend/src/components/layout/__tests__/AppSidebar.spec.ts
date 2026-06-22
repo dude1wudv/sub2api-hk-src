@@ -20,9 +20,11 @@ describe('AppSidebar custom SVG styles', () => {
 })
 
 describe('AppSidebar image entry', () => {
-  it('uses a real anchor for /image2', () => {
+  it('opens /image2 in a new tab', () => {
     expect(componentSource).toContain("v-if=\"item.path === '/image2'\"")
-    expect(componentSource).toContain(':href="item.path"')
+    expect(componentSource).toContain('href="https://sub.sunmmyapi.xyz/image2"')
+    expect(componentSource).toContain('target="_blank"')
+    expect(componentSource).toContain('rel="noopener noreferrer"')
   })
 })
 

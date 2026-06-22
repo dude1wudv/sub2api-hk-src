@@ -390,6 +390,7 @@ export default {
     groups: 'Groups',
     channels: 'Channels',
     availableChannels: 'Available Channels',
+    modelSquare: 'Model Square',
     subscriptions: 'Subscriptions',
     accounts: 'Accounts',
     proxies: 'Proxies',
@@ -1052,6 +1053,24 @@ export default {
     relativeMinutesAgo: '{n}m ago',
     relativeHoursAgo: '{n}h ago',
     relativeDaysAgo: '{n}d ago'
+  },
+
+  // Model Square (user-facing pricing view)
+  modelSquare: {
+    title: 'Model Square',
+    description: 'View pricing for popular models with your group multiplier applied',
+    searchPlaceholder: 'Search models or providers...',
+    empty: 'No model data available',
+    noResults: 'No matching models',
+    lowestRate: 'Lowest Rate (Recommended)',
+    columns: {
+      model: 'Model Name',
+      provider: 'Provider',
+      inputPrice: 'Input Price (¥ / 1M tokens)',
+      outputPrice: 'Output Price (¥ / 1M tokens)'
+    },
+    groupRate: '{group} - {rate}x',
+    lowestRateApplied: 'Lowest rate {rate}x'
   },
 
   // Channel Status (user-facing read-only view)

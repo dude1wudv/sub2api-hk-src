@@ -124,11 +124,12 @@
           <template v-for="item in userNavItems" :key="item.path">
             <a
               v-if="item.path === '/image2'"
-              :href="item.path"
+              href="https://sub.sunmmyapi.xyz/image2"
+              target="_blank"
+              rel="noopener noreferrer"
               class="sidebar-link mb-1"
               :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
               :title="sidebarCollapsed ? item.label : undefined"
-              @click="handleMenuItemClick(item.path)"
             >
               <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
               <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
@@ -682,6 +683,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '/usage-summary', label: t('nav.usageSummary'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
+    { path: '/model-square', label: t('nav.modelSquare'), icon: ChannelIcon, hideInSimpleMode: true },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
     { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/purchase', label: t('nav.buySubscription'), icon: RechargeSubscriptionIcon, hideInSimpleMode: true },

@@ -390,6 +390,7 @@ export default {
     groups: '分组管理',
     channels: '渠道管理',
     availableChannels: '可用渠道',
+    modelSquare: '模型广场',
     subscriptions: '订阅管理',
     accounts: '账号管理',
     proxies: 'IP管理',
@@ -1062,6 +1063,24 @@ export default {
     relativeMinutesAgo: '{n} 分钟前',
     relativeHoursAgo: '{n} 小时前',
     relativeDaysAgo: '{n} 天前'
+  },
+
+  // Model Square (user-facing pricing view)
+  modelSquare: {
+    title: '模型广场',
+    description: '查看主流模型的价格，已应用您的分组倍率',
+    searchPlaceholder: '搜索模型或供应商...',
+    empty: '暂无模型数据',
+    noResults: '没有匹配的模型',
+    lowestRate: '最低倍率（推荐）',
+    columns: {
+      model: '模型名称',
+      provider: '供应商',
+      inputPrice: '输入价格（¥ / 1M tokens）',
+      outputPrice: '输出价格（¥ / 1M tokens）'
+    },
+    groupRate: '{group} - {rate}x',
+    lowestRateApplied: '最低倍率 {rate}x'
   },
 
   // Channel Status (user-facing read-only view)
