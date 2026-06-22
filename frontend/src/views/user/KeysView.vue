@@ -2,23 +2,23 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3">
-          <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-col gap-2.5">
+          <div class="flex flex-wrap items-center gap-2.5">
             <SearchInput
               v-model="filterSearch"
               :placeholder="t('keys.searchPlaceholder')"
-              class="w-full sm:w-64"
+              class="w-full sm:w-60"
               @search="onFilterChange"
             />
             <Select
               :model-value="filterGroupId"
-              class="w-40"
+              class="w-36"
               :options="groupFilterOptions"
               @update:model-value="onGroupFilterChange"
             />
             <Select
               :model-value="filterStatus"
-              class="w-40"
+              class="w-36"
               :options="statusFilterOptions"
               @update:model-value="onStatusFilterChange"
             />
@@ -32,11 +32,11 @@
       </template>
 
       <template #actions>
-        <div class="flex justify-end gap-3">
+        <div class="flex justify-end gap-2">
         <button
           @click="loadApiKeys"
           :disabled="loading"
-          class="btn btn-secondary"
+          class="btn btn-secondary px-3"
           :title="t('common.refresh')"
         >
           <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
@@ -59,8 +59,8 @@
           @sort="handleSort"
         >
           <template #cell-key="{ value, row }">
-            <div class="flex items-center gap-2">
-              <code class="code text-xs">
+            <div class="flex items-center gap-1.5">
+              <code class="code text-xs px-1.5 py-0.5">
                 {{ maskApiKey(value) }}
               </code>
               <button
@@ -136,21 +136,21 @@
 
           <template #cell-usage="{ row }">
             <div class="text-sm">
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1">
                 <span class="text-gray-500 dark:text-gray-400">{{ t('keys.today') }}:</span>
                 <span class="font-medium text-gray-900 dark:text-white">
                   ${{ (usageStats[row.id]?.today_actual_cost ?? 0).toFixed(4) }}
                 </span>
               </div>
-              <div class="mt-0.5 flex items-center gap-1.5">
+              <div class="mt-0.5 flex items-center gap-1">
                 <span class="text-gray-500 dark:text-gray-400">{{ t('keys.total') }}:</span>
                 <span class="font-medium text-gray-900 dark:text-white">
                   ${{ (usageStats[row.id]?.total_actual_cost ?? 0).toFixed(4) }}
                 </span>
               </div>
               <!-- Quota progress (if quota is set) -->
-              <div v-if="row.quota > 0" class="mt-1.5">
-                <div class="flex items-center gap-1.5">
+              <div v-if="row.quota > 0" class="mt-1">
+                <div class="flex items-center gap-1">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('keys.quota') }}:</span>
                   <span :class="[
                     'font-medium',
@@ -177,7 +177,7 @@
           </template>
 
           <template #cell-rate_limit="{ row }">
-            <div v-if="row.rate_limit_5h > 0 || row.rate_limit_1d > 0 || row.rate_limit_7d > 0" class="space-y-1.5 min-w-[140px]">
+            <div v-if="row.rate_limit_5h > 0 || row.rate_limit_1d > 0 || row.rate_limit_7d > 0" class="space-y-1 min-w-[140px]">
               <!-- 5h window -->
               <div v-if="row.rate_limit_5h > 0">
                 <div class="flex items-center justify-between text-xs">
