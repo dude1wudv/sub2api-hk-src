@@ -44,6 +44,18 @@ func TestAccountsToService_LargeActiveAccountSetDoesNotExceedPostgresParameterLi
 	require.Len(t, got, len(accounts))
 }
 
+func TestApplyGroupPriorityForScheduling(t *testing.T) {
+	accounts := []service.Account{
+		{ID: 1, Priority: 50},
+		{ID: 2, Priority: 50},
+	}
+
+	applyGroupPriorityForScheduling(accounts, map[int64]int{1: 1, 2: 2})
+
+	require.Equal(t, 1, accounts[0].Priority)
+	require.Equal(t, 2, accounts[1].Priority)
+}
+
 func newParameterLimitAccountRepo(t *testing.T) *accountRepository {
 	t.Helper()
 

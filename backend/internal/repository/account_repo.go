@@ -1676,6 +1676,7 @@ func (r *accountRepository) queryAccountsByGroup(ctx context.Context, groupID in
 
 	orderedIDs := make([]int64, 0, len(groups))
 	accountMap := make(map[int64]*dbent.Account, len(groups))
+	groupPriorityByAccountID := make(map[int64]int, len(groups))
 	for _, ag := range groups {
 		if ag.Edges.Account == nil {
 			continue
@@ -1684,6 +1685,7 @@ func (r *accountRepository) queryAccountsByGroup(ctx context.Context, groupID in
 			continue
 		}
 		accountMap[ag.AccountID] = ag.Edges.Account
+		groupPriorityByAccountID[ag.AccountID] = ag.Priority
 		orderedIDs = append(orderedIDs, ag.AccountID)
 	}
 
@@ -1694,7 +1696,20 @@ func (r *accountRepository) queryAccountsByGroup(ctx context.Context, groupID in
 		}
 	}
 
-	return r.accountsToService(ctx, accounts)
+	out, err := r.accountsToService(ctx, accounts)
+	if err != nil {
+		return nil, err
+	}
+	applyGroupPriorityForScheduling(out, groupPriorityByAccountID)
+	return out, nil
+}
+
+func applyGroupPriorityForScheduling(accounts []service.Account, priorityByAccountID map[int64]int) {
+	for i := range accounts {
+		if priority, ok := priorityByAccountID[accounts[i].ID]; ok {
+			accounts[i].Priority = priority
+		}
+	}
 }
 
 func (r *accountRepository) accountsToService(ctx context.Context, accounts []*dbent.Account) ([]service.Account, error) {

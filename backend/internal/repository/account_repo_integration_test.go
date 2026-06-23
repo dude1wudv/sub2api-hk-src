@@ -647,6 +647,23 @@ func (s *AccountRepoSuite) TestListSchedulableByGroupIDAndPlatform() {
 	s.Require().Equal(a1.ID, accounts[0].ID)
 }
 
+func (s *AccountRepoSuite) TestListSchedulableByGroupIDAndPlatformUsesGroupPriorityForScheduling() {
+	group := mustCreateGroup(s.T(), s.client, &service.Group{Name: "g-sp-priority"})
+	accountPriority1 := mustCreateAccount(s.T(), s.client, &service.Account{Name: "group-priority-1", Platform: service.PlatformOpenAI, Priority: 50, Schedulable: true})
+	accountPriority2 := mustCreateAccount(s.T(), s.client, &service.Account{Name: "group-priority-2", Platform: service.PlatformOpenAI, Priority: 50, Schedulable: true})
+	mustBindAccountToGroup(s.T(), s.client, accountPriority2.ID, group.ID, 2)
+	mustBindAccountToGroup(s.T(), s.client, accountPriority1.ID, group.ID, 1)
+
+	accounts, err := s.repo.ListSchedulableByGroupIDAndPlatform(s.ctx, group.ID, service.PlatformOpenAI)
+
+	s.Require().NoError(err)
+	s.Require().Len(accounts, 2)
+	s.Require().Equal(accountPriority1.ID, accounts[0].ID)
+	s.Require().Equal(1, accounts[0].Priority)
+	s.Require().Equal(accountPriority2.ID, accounts[1].ID)
+	s.Require().Equal(2, accounts[1].Priority)
+}
+
 func (s *AccountRepoSuite) TestSetSchedulable() {
 	account := mustCreateAccount(s.T(), s.client, &service.Account{Name: "acc-sched", Schedulable: true})
 	cacheRecorder := &schedulerCacheRecorder{}

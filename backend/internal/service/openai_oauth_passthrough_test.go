@@ -23,6 +23,20 @@ import (
 
 func f64p(v float64) *float64 { return &v }
 
+func TestShouldFailoverOpenAIPassthroughResponse(t *testing.T) {
+	for _, status := range []int{
+		http.StatusUnauthorized,
+		http.StatusPaymentRequired,
+		http.StatusForbidden,
+		http.StatusTooManyRequests,
+		529,
+		http.StatusInternalServerError,
+	} {
+		require.True(t, shouldFailoverOpenAIPassthroughResponse(status), "status %d", status)
+	}
+	require.False(t, shouldFailoverOpenAIPassthroughResponse(http.StatusBadRequest))
+}
+
 type httpUpstreamRecorder struct {
 	lastReq  *http.Request
 	lastBody []byte
