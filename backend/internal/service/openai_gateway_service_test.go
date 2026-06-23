@@ -2617,6 +2617,24 @@ func TestExtractOpenAISSEDataLine(t *testing.T) {
 	}
 }
 
+func TestOpenAIStreamDataStartsClientOutput_IgnoresTerminalEvents(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		data      string
+		eventType string
+		want      bool
+	}{
+		{name: "response_completed", data: `{"type":"response.completed"}`, eventType: "response.completed", want: false},
+		{name: "response_done", data: `{"type":"response.done"}`, eventType: "response.done", want: false},
+		{name: "response_failed", data: `{"type":"response.failed"}`, eventType: "response.failed", want: false},
+		{name: "delta_event", data: `{"type":"response.output_text.delta"}`, eventType: "response.output_text.delta", want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, openAIStreamDataStartsClientOutput(tc.data, tc.eventType))
+		})
+	}
+}
+
 func TestParseSSEUsage_SelectiveParsing(t *testing.T) {
 	svc := &OpenAIGatewayService{}
 	usage := &OpenAIUsage{InputTokens: 9, OutputTokens: 8, CacheReadInputTokens: 7}

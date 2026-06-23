@@ -3964,7 +3964,8 @@ func openAIStreamDataStartsClientOutput(data, eventType string) bool {
 	if trimmed == "" {
 		return false
 	}
-	if strings.TrimSpace(eventType) == "response.failed" {
+	eventType = strings.TrimSpace(eventType)
+	if eventType == "response.failed" || openAIStreamEventIsTerminal(trimmed) {
 		return false
 	}
 	return !openAIStreamEventIsPreamble(eventType)
