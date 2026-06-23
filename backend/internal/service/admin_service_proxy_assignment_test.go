@@ -78,6 +78,9 @@ func (s *createAccountRepoStub) Delete(context.Context, int64) error { panic("un
 func (s *createAccountRepoStub) List(context.Context, pagination.PaginationParams) ([]Account, *pagination.PaginationResult, error) {
 	panic("unexpected")
 }
+func (s *createAccountRepoStub) ListOAuthRefreshCandidates(context.Context) ([]Account, error) {
+	panic("unexpected")
+}
 func (s *createAccountRepoStub) ListWithFilters(context.Context, pagination.PaginationParams, string, string, string, string, int64, string) ([]Account, *pagination.PaginationResult, error) {
 	panic("unexpected")
 }

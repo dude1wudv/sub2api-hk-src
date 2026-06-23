@@ -25,6 +25,7 @@ const (
 const (
 	openAIAdvancedSchedulerSettingCacheTTL  = 5 * time.Second
 	openAIAdvancedSchedulerSettingDBTimeout = 2 * time.Second
+	openAIStickyLoadEscapeThreshold         = 30
 )
 
 type cachedOpenAIAdvancedSchedulerSetting struct {
@@ -400,6 +401,13 @@ func (s *defaultOpenAIAccountScheduler) selectBySessionHash(
 		)
 		return nil, accountID, nil
 	}
+	if reason, shouldEscape := s.shouldEscapeStickyForBetterCandidate(ctx, req, account); shouldEscape {
+		slog.Info("sticky_escape_triggered",
+			"account_id", accountID,
+			"reason", reason,
+		)
+		return nil, accountID, nil
+	}
 	acquired, acquireErr := s.service.tryAcquireAccountSlot(ctx, accountID, account.Concurrency)
 	if acquireErr == nil && acquired != nil && acquired.Acquired {
 		_ = s.service.refreshStickySessionTTL(ctx, req.GroupID, sessionHash, s.service.openAIWSSessionStickyTTL())
@@ -468,6 +476,63 @@ func (s *defaultOpenAIAccountScheduler) shouldEscapeStickyAccount(accountID int6
 		return "error_rate", errorRate, ttft, true
 	}
 	return "", errorRate, ttft, false
+}
+
+func (s *defaultOpenAIAccountScheduler) shouldEscapeStickyForBetterCandidate(ctx context.Context, req OpenAIAccountScheduleRequest, sticky *Account) (string, bool) {
+	if s == nil || s.service == nil || sticky == nil || !s.service.openAIStickyEscapeConfig().enabled {
+		return "", false
+	}
+	accounts, err := s.service.listSchedulableAccounts(ctx, req.GroupID)
+	if err != nil || len(accounts) == 0 {
+		return "", false
+	}
+	loadReq := make([]AccountWithConcurrency, 0, len(accounts))
+	for i := range accounts {
+		account := &accounts[i]
+		loadReq = append(loadReq, AccountWithConcurrency{ID: account.ID, MaxConcurrency: account.EffectiveLoadFactor()})
+	}
+	loadMap := map[int64]*AccountLoadInfo{}
+	if s.service.concurrencyService != nil {
+		if batchLoad, err := s.service.concurrencyService.GetAccountsLoadBatch(ctx, loadReq); err == nil {
+			loadMap = batchLoad
+		}
+	}
+	loadRate := func(accountID int64) int {
+		if loadMap != nil && loadMap[accountID] != nil {
+			return loadMap[accountID].LoadRate
+		}
+		return 0
+	}
+	stickyLoad := loadRate(sticky.ID)
+	bestPeerLoad := 101
+	for i := range accounts {
+		account := &accounts[i]
+		if account.ID == sticky.ID {
+			continue
+		}
+		if req.ExcludedIDs != nil {
+			if _, excluded := req.ExcludedIDs[account.ID]; excluded {
+				continue
+			}
+		}
+		if !account.IsSchedulable() || !account.IsOpenAI() || account.IsOpenAICodexQuotaDraining() ||
+			s.service.isOpenAIAccountRuntimeBlocked(account) || !s.isAccountRequestCompatible(ctx, account, req) ||
+			!s.isAccountTransportCompatible(account, req.RequiredTransport) {
+			continue
+		}
+		if account.Priority < sticky.Priority {
+			return "priority", true
+		}
+		if account.Priority == sticky.Priority {
+			if load := loadRate(account.ID); load < bestPeerLoad {
+				bestPeerLoad = load
+			}
+		}
+	}
+	if stickyLoad-bestPeerLoad >= openAIStickyLoadEscapeThreshold {
+		return "load_skew", true
+	}
+	return "", false
 }
 
 type openAIAccountCandidateScore struct {

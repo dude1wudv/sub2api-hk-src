@@ -3825,7 +3825,6 @@ func (s *OpenAIGatewayService) handleErrorResponsePassthrough(
 	account *Account,
 	requestBody []byte,
 ) error {
-	MarkResponseCommitted(c)
 	body := s.readUpstreamErrorBody(resp)
 
 	// cyber_policy：透传账号本就把原始 body 回给客户端（下方 c.Data），此处仅打标记，
@@ -3855,9 +3854,14 @@ func (s *OpenAIGatewayService) handleErrorResponsePassthrough(
 	logOpenAIInstructionsRequiredDebug(ctx, c, account, resp.StatusCode, upstreamMsg, requestBody, body)
 	// 透传模式保留原始上游错误响应，但运行态账号状态仍需更新，
 	// 避免粘性路由继续复用刚被限流的账号。cyber 例外：不冷却账号。
+	shouldDisable := false
 	if !cyberHit {
 		reqModel, _, _ := extractOpenAIRequestMetaFromBody(requestBody)
-		_ = s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, body, reqModel)
+		shouldDisable = s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, body, reqModel)
+	}
+	kind := "http_error"
+	if shouldDisable {
+		kind = "failover"
 	}
 	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
 		Platform:             account.Platform,
@@ -3866,12 +3870,21 @@ func (s *OpenAIGatewayService) handleErrorResponsePassthrough(
 		UpstreamStatusCode:   resp.StatusCode,
 		UpstreamRequestID:    resp.Header.Get("x-request-id"),
 		Passthrough:          true,
-		Kind:                 "http_error",
+		Kind:                 kind,
 		Message:              upstreamMsg,
 		Detail:               upstreamDetail,
 		UpstreamResponseBody: upstreamDetail,
 	})
+	if shouldDisable {
+		return &UpstreamFailoverError{
+			StatusCode:      resp.StatusCode,
+			ResponseBody:    body,
+			ResponseHeaders: resp.Header.Clone(),
+			Reason:          upstreamMsg,
+		}
+	}
 
+	MarkResponseCommitted(c)
 	writeOpenAIPassthroughResponseHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 	contentType := resp.Header.Get("Content-Type")
 	if contentType == "" {

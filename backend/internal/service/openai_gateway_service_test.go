@@ -2940,6 +2940,51 @@ func TestHandleErrorResponseCyberPolicyPassthrough(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, mark.UpstreamStatus)
 }
 
+func TestHandleErrorResponsePassthroughTempUnschedulableReturnsFailover(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	repo := &rateLimitAccountRepoStub{}
+	svc := &OpenAIGatewayService{
+		cfg:              &config.Config{},
+		rateLimitService: NewRateLimitService(repo, nil, &config.Config{}, nil, nil),
+	}
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
+	requestBody := []byte(`{"model":"gpt-5.5","input":"hello"}`)
+	upstreamBody := `{"detail":{"code":"deactivated_workspace","message":"workspace deactivated"}}`
+	resp := &http.Response{
+		StatusCode: http.StatusBadRequest,
+		Header:     http.Header{"Content-Type": []string{"application/json"}, "X-Request-Id": []string{"rid"}},
+		Body:       io.NopCloser(strings.NewReader(upstreamBody)),
+	}
+	account := &Account{
+		ID:       2,
+		Platform: PlatformOpenAI,
+		Type:     AccountTypeOAuth,
+		Credentials: map[string]any{
+			"temp_unschedulable_enabled": true,
+			"temp_unschedulable_rules": []any{
+				map[string]any{
+					"error_code":       float64(http.StatusBadRequest),
+					"keywords":         []any{"deactivated_workspace"},
+					"duration_minutes": float64(10),
+				},
+			},
+		},
+	}
+
+	err := svc.handleErrorResponsePassthrough(context.Background(), resp, c, account, requestBody)
+
+	var failoverErr *UpstreamFailoverError
+	require.ErrorAs(t, err, &failoverErr)
+	require.Equal(t, http.StatusBadRequest, failoverErr.StatusCode)
+	require.Contains(t, string(failoverErr.ResponseBody), "deactivated_workspace")
+	require.Equal(t, 1, repo.tempCalls)
+	require.True(t, svc.isOpenAIAccountRuntimeBlocked(account))
+	require.False(t, IsResponseCommitted(c))
+	require.Empty(t, rec.Body.String())
+}
+
 func TestHandleCompatErrorResponseCyberPolicyEarlyReturn(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	svc := &OpenAIGatewayService{cfg: &config.Config{}}
