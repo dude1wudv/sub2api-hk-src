@@ -195,6 +195,20 @@ func (_c *AccountCreate) SetNillableRateMultiplier(v *float64) *AccountCreate {
 	return _c
 }
 
+// SetUserRateMultiplier sets the "user_rate_multiplier" field.
+func (_c *AccountCreate) SetUserRateMultiplier(v float64) *AccountCreate {
+	_c.mutation.SetUserRateMultiplier(v)
+	return _c
+}
+
+// SetNillableUserRateMultiplier sets the "user_rate_multiplier" field if the given value is not nil.
+func (_c *AccountCreate) SetNillableUserRateMultiplier(v *float64) *AccountCreate {
+	if v != nil {
+		_c.SetUserRateMultiplier(*v)
+	}
+	return _c
+}
+
 // SetStatus sets the "status" field.
 func (_c *AccountCreate) SetStatus(v string) *AccountCreate {
 	_c.mutation.SetStatus(v)
@@ -503,6 +517,10 @@ func (_c *AccountCreate) defaults() error {
 		v := account.DefaultRateMultiplier
 		_c.mutation.SetRateMultiplier(v)
 	}
+	if _, ok := _c.mutation.UserRateMultiplier(); !ok {
+		v := account.DefaultUserRateMultiplier
+		_c.mutation.SetUserRateMultiplier(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := account.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -564,6 +582,9 @@ func (_c *AccountCreate) check() error {
 	}
 	if _, ok := _c.mutation.RateMultiplier(); !ok {
 		return &ValidationError{Name: "rate_multiplier", err: errors.New(`ent: missing required field "Account.rate_multiplier"`)}
+	}
+	if _, ok := _c.mutation.UserRateMultiplier(); !ok {
+		return &ValidationError{Name: "user_rate_multiplier", err: errors.New(`ent: missing required field "Account.user_rate_multiplier"`)}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Account.status"`)}
@@ -666,6 +687,10 @@ func (_c *AccountCreate) createSpec() (*Account, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RateMultiplier(); ok {
 		_spec.SetField(account.FieldRateMultiplier, field.TypeFloat64, value)
 		_node.RateMultiplier = value
+	}
+	if value, ok := _c.mutation.UserRateMultiplier(); ok {
+		_spec.SetField(account.FieldUserRateMultiplier, field.TypeFloat64, value)
+		_node.UserRateMultiplier = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(account.FieldStatus, field.TypeString, value)
@@ -1053,6 +1078,24 @@ func (u *AccountUpsert) UpdateRateMultiplier() *AccountUpsert {
 // AddRateMultiplier adds v to the "rate_multiplier" field.
 func (u *AccountUpsert) AddRateMultiplier(v float64) *AccountUpsert {
 	u.Add(account.FieldRateMultiplier, v)
+	return u
+}
+
+// SetUserRateMultiplier sets the "user_rate_multiplier" field.
+func (u *AccountUpsert) SetUserRateMultiplier(v float64) *AccountUpsert {
+	u.Set(account.FieldUserRateMultiplier, v)
+	return u
+}
+
+// UpdateUserRateMultiplier sets the "user_rate_multiplier" field to the value that was provided on create.
+func (u *AccountUpsert) UpdateUserRateMultiplier() *AccountUpsert {
+	u.SetExcluded(account.FieldUserRateMultiplier)
+	return u
+}
+
+// AddUserRateMultiplier adds v to the "user_rate_multiplier" field.
+func (u *AccountUpsert) AddUserRateMultiplier(v float64) *AccountUpsert {
+	u.Add(account.FieldUserRateMultiplier, v)
 	return u
 }
 
@@ -1598,6 +1641,27 @@ func (u *AccountUpsertOne) AddRateMultiplier(v float64) *AccountUpsertOne {
 func (u *AccountUpsertOne) UpdateRateMultiplier() *AccountUpsertOne {
 	return u.Update(func(s *AccountUpsert) {
 		s.UpdateRateMultiplier()
+	})
+}
+
+// SetUserRateMultiplier sets the "user_rate_multiplier" field.
+func (u *AccountUpsertOne) SetUserRateMultiplier(v float64) *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.SetUserRateMultiplier(v)
+	})
+}
+
+// AddUserRateMultiplier adds v to the "user_rate_multiplier" field.
+func (u *AccountUpsertOne) AddUserRateMultiplier(v float64) *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.AddUserRateMultiplier(v)
+	})
+}
+
+// UpdateUserRateMultiplier sets the "user_rate_multiplier" field to the value that was provided on create.
+func (u *AccountUpsertOne) UpdateUserRateMultiplier() *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.UpdateUserRateMultiplier()
 	})
 }
 
@@ -2348,6 +2412,27 @@ func (u *AccountUpsertBulk) AddRateMultiplier(v float64) *AccountUpsertBulk {
 func (u *AccountUpsertBulk) UpdateRateMultiplier() *AccountUpsertBulk {
 	return u.Update(func(s *AccountUpsert) {
 		s.UpdateRateMultiplier()
+	})
+}
+
+// SetUserRateMultiplier sets the "user_rate_multiplier" field.
+func (u *AccountUpsertBulk) SetUserRateMultiplier(v float64) *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.SetUserRateMultiplier(v)
+	})
+}
+
+// AddUserRateMultiplier adds v to the "user_rate_multiplier" field.
+func (u *AccountUpsertBulk) AddUserRateMultiplier(v float64) *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.AddUserRateMultiplier(v)
+	})
+}
+
+// UpdateUserRateMultiplier sets the "user_rate_multiplier" field to the value that was provided on create.
+func (u *AccountUpsertBulk) UpdateUserRateMultiplier() *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.UpdateUserRateMultiplier()
 	})
 }
 

@@ -347,9 +347,13 @@ func TestAPIContracts(t *testing.T) {
 						"is_exclusive": false,
 						"status": "active",
 						"subscription_type": "standard",
+						"daily_balance_enabled": false,
+						"daily_fallback_multiplier": 0,
 						"daily_limit_usd": null,
 						"weekly_limit_usd": null,
 						"monthly_limit_usd": null,
+						"spending_limit_usd": null,
+						"spending_used_usd": 0,
 						"image_price_1k": null,
 						"image_price_2k": null,
 						"image_price_4k": null,
@@ -1858,6 +1862,18 @@ func (stubProxyRepo) ListActive(ctx context.Context) ([]service.Proxy, error) {
 
 func (stubProxyRepo) ListActiveWithAccountCount(ctx context.Context) ([]service.ProxyWithAccountCount, error) {
 	return nil, errors.New("not implemented")
+}
+
+func (stubProxyRepo) ListAssignableWithAccountCount(ctx context.Context) ([]service.ProxyWithAccountCount, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (stubProxyRepo) SetCooldown(ctx context.Context, id int64, until time.Time, reason string) error {
+	return errors.New("not implemented")
+}
+
+func (stubProxyRepo) ClearCooldown(ctx context.Context, id int64) error {
+	return errors.New("not implemented")
 }
 
 func (stubProxyRepo) ExistsByHostPortAuth(ctx context.Context, host string, port int, username, password string) (bool, error) {

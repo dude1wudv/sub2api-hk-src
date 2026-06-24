@@ -28,6 +28,7 @@ func TestShouldFailoverOpenAIPassthroughResponse(t *testing.T) {
 		http.StatusUnauthorized,
 		http.StatusPaymentRequired,
 		http.StatusForbidden,
+		http.StatusNotFound,
 		http.StatusTooManyRequests,
 		529,
 		http.StatusInternalServerError,
@@ -1186,6 +1187,100 @@ func TestOpenAIGatewayService_OAuthPassthrough_StreamingSetsFirstTokenMs(t *test
 	require.GreaterOrEqual(t, *result.FirstTokenMs, 0)
 	require.NotNil(t, result.ServiceTier)
 	require.Equal(t, "priority", *result.ServiceTier)
+}
+
+func TestOpenAIGatewayService_OAuthPassthrough_FirstTokenMsUsesFirstUpstreamSSEEvent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(nil))
+	c.Request.Header.Set("User-Agent", "codex_cli_rs/0.1.0")
+
+	bodyReader, bodyWriter := io.Pipe()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer bodyWriter.Close()
+		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.created","response":{"id":"resp_1"}}`)
+		_, _ = fmt.Fprintln(bodyWriter)
+		time.Sleep(200 * time.Millisecond)
+		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.output_text.delta","delta":"h"}`)
+		_, _ = fmt.Fprintln(bodyWriter)
+		_, _ = fmt.Fprintln(bodyWriter, "data: [DONE]")
+		_, _ = fmt.Fprintln(bodyWriter)
+	}()
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}, "x-request-id": []string{"rid"}},
+		Body:       bodyReader,
+	}
+	upstream := &httpUpstreamRecorder{resp: resp}
+
+	svc := &OpenAIGatewayService{
+		cfg:          &config.Config{Gateway: config.GatewayConfig{ForceCodexCLI: false}},
+		httpUpstream: upstream,
+	}
+
+	account := &Account{
+		ID:             123,
+		Name:           "acc",
+		Platform:       PlatformOpenAI,
+		Type:           AccountTypeOAuth,
+		Concurrency:    1,
+		Credentials:    map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-acc"},
+		Extra:          map[string]any{"openai_passthrough": true},
+		Status:         StatusActive,
+		Schedulable:    true,
+		RateMultiplier: f64p(1),
+	}
+
+	result, err := svc.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.2","stream":true,"input":[{"type":"text","text":"hi"}]}`))
+	<-done
+	require.NoError(t, err)
+	require.NotNil(t, result.FirstTokenMs)
+	require.Less(t, *result.FirstTokenMs, 100)
+}
+
+func TestOpenAIGatewayService_OAuthPassthrough_FirstTokenMsUsesResponseCreatedAt(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(nil))
+
+	createdAt := time.Now().Add(-1 * time.Second).Unix()
+	upstreamSSE := strings.Join([]string{
+		fmt.Sprintf(`data: {"type":"response.created","response":{"id":"resp_1","created_at":%d}}`, createdAt),
+		"",
+		`data: {"type":"response.output_text.delta","delta":"h"}`,
+		"",
+		"data: [DONE]",
+		"",
+	}, "\n")
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}, "x-request-id": []string{"rid"}},
+		Body:       io.NopCloser(strings.NewReader(upstreamSSE)),
+	}
+	svc := &OpenAIGatewayService{cfg: &config.Config{}}
+	startTime := time.Now().Add(-5 * time.Second)
+
+	result, err := svc.handleStreamingResponsePassthrough(
+		context.Background(),
+		resp,
+		c,
+		&Account{ID: 123, Name: "acc", Platform: PlatformOpenAI},
+		startTime,
+		"gpt-5.2",
+		"gpt-5.2",
+		startTime,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, result.firstTokenMs)
+	require.Less(t, *result.firstTokenMs, 3000)
+	require.GreaterOrEqual(t, *result.firstTokenMs, 500)
 }
 
 func TestOpenAIGatewayService_OAuthPassthrough_StreamClientDisconnectStillCollectsUsage(t *testing.T) {

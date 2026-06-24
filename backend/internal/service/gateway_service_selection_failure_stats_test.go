@@ -136,6 +136,20 @@ func TestUpstreamFailoverErrorErrorRedactsCredentialLikeReason(t *testing.T) {
 	}
 }
 
+func TestGatewayService_FailoverPolicy_ClientCredentialStatusesSwitchAccountWithoutSameAccountRetry(t *testing.T) {
+	svc := &GatewayService{}
+	account := &Account{Platform: PlatformAnthropic, Type: AccountTypeAPIKey}
+
+	for _, status := range []int{402, 404} {
+		if !svc.shouldFailoverUpstreamError(status) {
+			t.Fatalf("%d should trigger account failover", status)
+		}
+		if svc.shouldRetryUpstreamError(account, status) {
+			t.Fatalf("%d should not retry on the same API-key account", status)
+		}
+	}
+}
+
 func TestDiagnoseSelectionFailure_UnschedulableDetail(t *testing.T) {
 	svc := &GatewayService{}
 	acc := &Account{

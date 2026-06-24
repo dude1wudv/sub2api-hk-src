@@ -421,7 +421,7 @@ func (s *defaultOpenAIAccountScheduler) selectBySessionHash(
 	cfg := s.service.schedulingConfig()
 	// WaitPlan.MaxConcurrency 使用 Concurrency（非 EffectiveLoadFactor），因为 WaitPlan 控制的是 Redis 实际并发槽位等待。
 	if s.service.concurrencyService != nil {
-		if escapeCfg.enabled && acquireErr == nil && acquired != nil && !acquired.Acquired {
+		if acquireErr == nil && acquired != nil && !acquired.Acquired && s.hasAlternativeCandidateWithCapacity(ctx, req, accountID) {
 			errorRate, ttft, _ := s.stats.snapshot(accountID)
 			slog.Info("sticky_escape_triggered",
 				"account_id", accountID,
@@ -479,9 +479,10 @@ func (s *defaultOpenAIAccountScheduler) shouldEscapeStickyAccount(accountID int6
 }
 
 func (s *defaultOpenAIAccountScheduler) shouldEscapeStickyForBetterCandidate(ctx context.Context, req OpenAIAccountScheduleRequest, sticky *Account) (string, bool) {
-	if s == nil || s.service == nil || sticky == nil || !s.service.openAIStickyEscapeConfig().enabled {
+	if s == nil || s.service == nil || sticky == nil {
 		return "", false
 	}
+	escapeCfg := s.service.openAIStickyEscapeConfig()
 	accounts, err := s.service.listSchedulableAccounts(ctx, req.GroupID)
 	if err != nil || len(accounts) == 0 {
 		return "", false
@@ -503,7 +504,10 @@ func (s *defaultOpenAIAccountScheduler) shouldEscapeStickyForBetterCandidate(ctx
 		}
 		return 0
 	}
-	stickyLoad := loadRate(sticky.ID)
+	stickyLoad := 0
+	if escapeCfg.enabled {
+		stickyLoad = loadRate(sticky.ID)
+	}
 	bestPeerLoad := 101
 	for i := range accounts {
 		account := &accounts[i]
@@ -521,18 +525,68 @@ func (s *defaultOpenAIAccountScheduler) shouldEscapeStickyForBetterCandidate(ctx
 			continue
 		}
 		if account.Priority < sticky.Priority {
-			return "priority", true
+			if openAIAccountLoadHasCapacity(loadMap[account.ID]) {
+				return "priority", true
+			}
+			continue
 		}
-		if account.Priority == sticky.Priority {
+		if escapeCfg.enabled && account.Priority == sticky.Priority {
 			if load := loadRate(account.ID); load < bestPeerLoad {
 				bestPeerLoad = load
 			}
 		}
 	}
-	if stickyLoad-bestPeerLoad >= openAIStickyLoadEscapeThreshold {
+	if escapeCfg.enabled && stickyLoad-bestPeerLoad >= openAIStickyLoadEscapeThreshold {
 		return "load_skew", true
 	}
 	return "", false
+}
+
+func (s *defaultOpenAIAccountScheduler) hasAlternativeCandidateWithCapacity(ctx context.Context, req OpenAIAccountScheduleRequest, stickyID int64) bool {
+	if s == nil || s.service == nil {
+		return false
+	}
+	accounts, err := s.service.listSchedulableAccounts(ctx, req.GroupID)
+	if err != nil || len(accounts) == 0 {
+		return false
+	}
+	loadReq := make([]AccountWithConcurrency, 0, len(accounts))
+	for i := range accounts {
+		account := &accounts[i]
+		if account.ID == stickyID {
+			continue
+		}
+		if req.ExcludedIDs != nil {
+			if _, excluded := req.ExcludedIDs[account.ID]; excluded {
+				continue
+			}
+		}
+		if !account.IsSchedulable() || !account.IsOpenAI() || account.IsOpenAICodexQuotaDraining() ||
+			s.service.isOpenAIAccountRuntimeBlocked(account) || !s.isAccountRequestCompatible(ctx, account, req) ||
+			!s.isAccountTransportCompatible(account, req.RequiredTransport) {
+			continue
+		}
+		loadReq = append(loadReq, AccountWithConcurrency{ID: account.ID, MaxConcurrency: account.EffectiveLoadFactor()})
+	}
+	if len(loadReq) == 0 {
+		return false
+	}
+	loadMap := map[int64]*AccountLoadInfo{}
+	if s.service.concurrencyService != nil {
+		if batchLoad, err := s.service.concurrencyService.GetAccountsLoadBatch(ctx, loadReq); err == nil {
+			loadMap = batchLoad
+		}
+	}
+	for _, account := range loadReq {
+		if openAIAccountLoadHasCapacity(loadMap[account.ID]) {
+			return true
+		}
+	}
+	return false
+}
+
+func openAIAccountLoadHasCapacity(loadInfo *AccountLoadInfo) bool {
+	return loadInfo == nil || loadInfo.LoadRate < 100
 }
 
 type openAIAccountCandidateScore struct {
@@ -773,12 +827,35 @@ func (s *defaultOpenAIAccountScheduler) buildOpenAISelectionOrder(
 		if len(pool) == 0 || plan.topK <= 0 {
 			return nil
 		}
-		groupTopK := plan.topK
-		if groupTopK > len(pool) {
-			groupTopK = len(pool)
+		available := make([]openAIAccountCandidateScore, 0, len(pool))
+		for _, candidate := range pool {
+			if openAIAccountLoadHasCapacity(candidate.loadInfo) {
+				available = append(available, candidate)
+			}
 		}
-		ranked := selectTopKOpenAICandidates(pool, groupTopK)
-		return buildOpenAIWeightedSelectionOrder(ranked, req)
+		pool = available
+		if len(pool) == 0 {
+			return nil
+		}
+		sort.SliceStable(pool, func(i, j int) bool {
+			return pool[i].account.Priority < pool[j].account.Priority
+		})
+		selectionOrder := make([]openAIAccountCandidateScore, 0, len(pool))
+		for start := 0; start < len(pool); {
+			end := start + 1
+			for end < len(pool) && pool[end].account.Priority == pool[start].account.Priority {
+				end++
+			}
+			group := pool[start:end]
+			groupTopK := plan.topK
+			if groupTopK > len(group) {
+				groupTopK = len(group)
+			}
+			ranked := selectTopKOpenAICandidates(group, groupTopK)
+			selectionOrder = append(selectionOrder, buildOpenAIWeightedSelectionOrder(ranked, req)...)
+			start = end
+		}
+		return selectionOrder
 	}
 
 	if req.RequireCompact {
@@ -802,6 +879,29 @@ func (s *defaultOpenAIAccountScheduler) buildOpenAISelectionOrder(
 	}
 
 	return buildSelectionOrder(plan.candidates)
+}
+
+func (s *defaultOpenAIAccountScheduler) buildOpenAIWaitOrder(req OpenAIAccountScheduleRequest, plan openAIAccountLoadPlan) []openAIAccountCandidateScore {
+	if req.RequireCompact {
+		supported := make([]openAIAccountCandidateScore, 0, len(plan.candidates))
+		unknown := make([]openAIAccountCandidateScore, 0, len(plan.candidates))
+		for _, candidate := range plan.candidates {
+			switch openAICompactSupportTier(candidate.account) {
+			case 2:
+				supported = append(supported, candidate)
+			case 1:
+				unknown = append(unknown, candidate)
+			}
+		}
+		selectionOrder := make([]openAIAccountCandidateScore, 0, len(plan.allCandidates))
+		selectionOrder = append(selectionOrder, sortOpenAICompactRetryCandidates(supported)...)
+		selectionOrder = append(selectionOrder, sortOpenAICompactRetryCandidates(unknown)...)
+		if len(plan.staleSnapshotCompactRetry) > 0 && s != nil && s.service != nil && s.service.schedulerSnapshot != nil {
+			selectionOrder = append(selectionOrder, sortOpenAICompactRetryCandidates(plan.staleSnapshotCompactRetry)...)
+		}
+		return selectionOrder
+	}
+	return buildOpenAIWeightedSelectionOrder(plan.candidates, req)
 }
 
 func sortOpenAICompactRetryCandidates(pool []openAIAccountCandidateScore) []openAIAccountCandidateScore {
@@ -838,8 +938,9 @@ func (s *defaultOpenAIAccountScheduler) tryAcquireOpenAISelectionOrder(
 	ctx context.Context,
 	req OpenAIAccountScheduleRequest,
 	selectionOrder []openAIAccountCandidateScore,
-) (*AccountSelectionResult, bool, error) {
+) (*AccountSelectionResult, bool, *Account, error) {
 	compactBlocked := false
+	var waitCandidate *Account
 	for i := 0; i < len(selectionOrder); i++ {
 		candidate := selectionOrder[i]
 		fresh := s.service.resolveFreshSchedulableOpenAIAccount(ctx, candidate.account, req.RequestedModel, false, req.RequiredCapability)
@@ -859,7 +960,7 @@ func (s *defaultOpenAIAccountScheduler) tryAcquireOpenAISelectionOrder(
 		}
 		result, acquireErr := s.service.tryAcquireAccountSlot(ctx, fresh.ID, fresh.Concurrency)
 		if acquireErr != nil {
-			return nil, compactBlocked, acquireErr
+			return nil, compactBlocked, nil, acquireErr
 		}
 		if result != nil && result.Acquired {
 			if req.SessionHash != "" && !req.PreserveStickyBinding {
@@ -869,10 +970,13 @@ func (s *defaultOpenAIAccountScheduler) tryAcquireOpenAISelectionOrder(
 				Account:     fresh,
 				Acquired:    true,
 				ReleaseFunc: result.ReleaseFunc,
-			}, compactBlocked, nil
+			}, compactBlocked, nil, nil
+		}
+		if waitCandidate == nil {
+			waitCandidate = fresh
 		}
 	}
-	return nil, compactBlocked, nil
+	return nil, compactBlocked, waitCandidate, nil
 }
 
 func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
@@ -949,26 +1053,32 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 	if req.RequireCompact && len(plan.candidates) == 0 && len(plan.staleSnapshotCompactRetry) == 0 {
 		return nil, 0, 0, 0, ErrNoAvailableCompactAccounts
 	}
-	if req.RequireCompact && len(selectionOrder) == 0 && s.service.schedulerSnapshot == nil {
+	if req.RequireCompact && len(selectionOrder) == 0 && len(plan.candidates) == 0 && s.service.schedulerSnapshot == nil {
 		return nil, candidateCount, topK, loadSkew, ErrNoAvailableCompactAccounts
 	}
-	if len(selectionOrder) == 0 {
+	if len(selectionOrder) == 0 && len(plan.candidates) == 0 {
 		return nil, candidateCount, topK, loadSkew, noAvailableOpenAISelectionError(req.RequestedModel, req.RequireCompact && len(plan.allCandidates) > 0)
 	}
 
-	result, compactBlocked, acquireErr := s.tryAcquireOpenAISelectionOrder(ctx, req, selectionOrder)
-	if acquireErr != nil {
-		return nil, candidateCount, topK, loadSkew, acquireErr
-	}
-	if result != nil {
-		return result, candidateCount, topK, loadSkew, nil
+	compactBlocked := false
+	var waitCandidate *Account
+	if len(selectionOrder) > 0 {
+		result, blocked, candidate, acquireErr := s.tryAcquireOpenAISelectionOrder(ctx, req, selectionOrder)
+		compactBlocked = blocked
+		waitCandidate = candidate
+		if acquireErr != nil {
+			return nil, candidateCount, topK, loadSkew, acquireErr
+		}
+		if result != nil {
+			return result, candidateCount, topK, loadSkew, nil
+		}
 	}
 
 	if s.service.concurrencyService != nil {
 		if freshLoadMap, loadErr := s.service.concurrencyService.GetAccountsLoadBatchFresh(ctx, loadReq); loadErr == nil {
 			freshPlan := s.buildOpenAIAccountLoadPlan(req, filtered, freshLoadMap)
 			if len(freshPlan.selectionOrder) > 0 {
-				freshResult, freshCompactBlocked, freshAcquireErr := s.tryAcquireOpenAISelectionOrder(ctx, req, freshPlan.selectionOrder)
+				freshResult, freshCompactBlocked, freshWaitCandidate, freshAcquireErr := s.tryAcquireOpenAISelectionOrder(ctx, req, freshPlan.selectionOrder)
 				if freshAcquireErr != nil {
 					return nil, candidateCount, topK, loadSkew, freshAcquireErr
 				}
@@ -976,6 +1086,7 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 					return freshResult, freshPlan.candidateCount, freshPlan.topK, freshPlan.loadSkew, nil
 				}
 				compactBlocked = compactBlocked || freshCompactBlocked
+				waitCandidate = freshWaitCandidate
 				selectionOrder = freshPlan.selectionOrder
 				candidateCount = freshPlan.candidateCount
 				topK = freshPlan.topK
@@ -986,7 +1097,22 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 
 	cfg := s.service.schedulingConfig()
 	// WaitPlan.MaxConcurrency 使用 Concurrency（非 EffectiveLoadFactor），因为 WaitPlan 控制的是 Redis 实际并发槽位等待。
-	for _, candidate := range selectionOrder {
+	if waitCandidate != nil {
+		return &AccountSelectionResult{
+			Account: waitCandidate,
+			WaitPlan: &AccountWaitPlan{
+				AccountID:      waitCandidate.ID,
+				MaxConcurrency: waitCandidate.Concurrency,
+				Timeout:        cfg.FallbackWaitTimeout,
+				MaxWaiting:     cfg.FallbackMaxWaiting,
+			},
+		}, candidateCount, topK, loadSkew, nil
+	}
+	waitOrder := selectionOrder
+	if len(waitOrder) == 0 {
+		waitOrder = s.buildOpenAIWaitOrder(req, plan)
+	}
+	for _, candidate := range waitOrder {
 		fresh := s.service.resolveFreshSchedulableOpenAIAccount(ctx, candidate.account, req.RequestedModel, false, req.RequiredCapability)
 		if fresh == nil || !s.isAccountTransportCompatible(fresh, req.RequiredTransport) || !s.isAccountRequestCompatible(ctx, fresh, req) {
 			continue

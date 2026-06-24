@@ -28,14 +28,15 @@ func TestShouldFailoverGeminiUpstreamError(t *testing.T) {
 		expected   bool
 	}{
 		{"401_failover", 401, true},
+		{"402_failover", 402, true},
 		{"403_failover", 403, true},
+		{"404_failover", 404, true},
 		{"429_failover", 429, true},
 		{"529_failover", 529, true},
 		{"500_failover", 500, true},
 		{"502_failover", 502, true},
 		{"503_failover", 503, true},
 		{"400_no_failover", 400, false},
-		{"404_no_failover", 404, false},
 		{"422_no_failover", 422, false},
 	}
 

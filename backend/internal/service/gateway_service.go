@@ -4057,6 +4057,10 @@ const (
 )
 
 func (s *GatewayService) shouldRetryUpstreamError(account *Account, statusCode int) bool {
+	if statusCode == http.StatusPaymentRequired || statusCode == http.StatusNotFound {
+		return false
+	}
+
 	// OAuth/Setup Token 账号：仅 403 重试
 	if account.IsOAuth() {
 		return statusCode == 403
@@ -4069,7 +4073,7 @@ func (s *GatewayService) shouldRetryUpstreamError(account *Account, statusCode i
 // shouldFailoverUpstreamError determines whether an upstream error should trigger account failover.
 func (s *GatewayService) shouldFailoverUpstreamError(statusCode int) bool {
 	switch statusCode {
-	case 401, 403, 429, 529:
+	case 401, 402, 403, 404, 429, 529:
 		return true
 	default:
 		return statusCode >= 500
@@ -9414,15 +9418,15 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	}
 
 	// 获取费率倍数（优先级：用户专属 > 分组默认 > 系统默认）
-	multiplier := 1.0
+	groupMultiplier := 1.0
 	if s.cfg != nil {
-		multiplier = s.cfg.Default.RateMultiplier
+		groupMultiplier = s.cfg.Default.RateMultiplier
 	}
 	if apiKey.GroupID != nil && apiKey.Group != nil {
 		groupDefault := apiKey.Group.RateMultiplier
-		multiplier = s.getUserGroupRateMultiplier(ctx, user.ID, *apiKey.GroupID, groupDefault)
+		groupMultiplier = s.getUserGroupRateMultiplier(ctx, user.ID, *apiKey.GroupID, groupDefault)
 	}
-	imageMultiplier := resolveImageRateMultiplier(apiKey, multiplier)
+	multiplier, imageMultiplier := resolveUserBillingRateMultipliers(apiKey, groupMultiplier, account)
 
 	// 确定计费模型
 	billingModel := forwardResultBillingModel(result.Model, result.UpstreamModel)

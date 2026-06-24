@@ -120,6 +120,11 @@ func RateMultiplier(v float64) predicate.Account {
 	return predicate.Account(sql.FieldEQ(FieldRateMultiplier, v))
 }
 
+// UserRateMultiplier applies equality check predicate on the "user_rate_multiplier" field. It's identical to UserRateMultiplierEQ.
+func UserRateMultiplier(v float64) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldUserRateMultiplier, v))
+}
+
 // Status applies equality check predicate on the "status" field. It's identical to StatusEQ.
 func Status(v string) predicate.Account {
 	return predicate.Account(sql.FieldEQ(FieldStatus, v))
@@ -838,6 +843,46 @@ func RateMultiplierLT(v float64) predicate.Account {
 // RateMultiplierLTE applies the LTE predicate on the "rate_multiplier" field.
 func RateMultiplierLTE(v float64) predicate.Account {
 	return predicate.Account(sql.FieldLTE(FieldRateMultiplier, v))
+}
+
+// UserRateMultiplierEQ applies the EQ predicate on the "user_rate_multiplier" field.
+func UserRateMultiplierEQ(v float64) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldUserRateMultiplier, v))
+}
+
+// UserRateMultiplierNEQ applies the NEQ predicate on the "user_rate_multiplier" field.
+func UserRateMultiplierNEQ(v float64) predicate.Account {
+	return predicate.Account(sql.FieldNEQ(FieldUserRateMultiplier, v))
+}
+
+// UserRateMultiplierIn applies the In predicate on the "user_rate_multiplier" field.
+func UserRateMultiplierIn(vs ...float64) predicate.Account {
+	return predicate.Account(sql.FieldIn(FieldUserRateMultiplier, vs...))
+}
+
+// UserRateMultiplierNotIn applies the NotIn predicate on the "user_rate_multiplier" field.
+func UserRateMultiplierNotIn(vs ...float64) predicate.Account {
+	return predicate.Account(sql.FieldNotIn(FieldUserRateMultiplier, vs...))
+}
+
+// UserRateMultiplierGT applies the GT predicate on the "user_rate_multiplier" field.
+func UserRateMultiplierGT(v float64) predicate.Account {
+	return predicate.Account(sql.FieldGT(FieldUserRateMultiplier, v))
+}
+
+// UserRateMultiplierGTE applies the GTE predicate on the "user_rate_multiplier" field.
+func UserRateMultiplierGTE(v float64) predicate.Account {
+	return predicate.Account(sql.FieldGTE(FieldUserRateMultiplier, v))
+}
+
+// UserRateMultiplierLT applies the LT predicate on the "user_rate_multiplier" field.
+func UserRateMultiplierLT(v float64) predicate.Account {
+	return predicate.Account(sql.FieldLT(FieldUserRateMultiplier, v))
+}
+
+// UserRateMultiplierLTE applies the LTE predicate on the "user_rate_multiplier" field.
+func UserRateMultiplierLTE(v float64) predicate.Account {
+	return predicate.Account(sql.FieldLTE(FieldUserRateMultiplier, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.

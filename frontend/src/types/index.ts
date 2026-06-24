@@ -865,6 +865,7 @@ export interface Account {
   current_concurrency?: number // Real-time concurrency count from Redis
   priority: number
   rate_multiplier?: number // Account billing multiplier (>=0, 0 means free)
+  user_rate_multiplier?: number // User billing multiplier stacked after group multiplier (>=0, 0 means free)
   status: 'active' | 'inactive' | 'error'
   error_message: string | null
   last_used_at: string | null
@@ -1056,6 +1057,7 @@ export interface CreateAccountRequest {
   load_factor?: number | null
   priority?: number
   rate_multiplier?: number // Account billing multiplier (>=0, 0 means free)
+  user_rate_multiplier?: number // User billing multiplier stacked after group multiplier (>=0, 0 means free)
   group_ids?: number[]
   expires_at?: number | null
   auto_pause_on_expired?: boolean
@@ -1073,6 +1075,7 @@ export interface UpdateAccountRequest {
   load_factor?: number | null
   priority?: number
   rate_multiplier?: number // Account billing multiplier (>=0, 0 means free)
+  user_rate_multiplier?: number // User billing multiplier stacked after group multiplier (>=0, 0 means free)
   schedulable?: boolean
   status?: 'active' | 'inactive' | 'error'
   group_ids?: number[]
@@ -1158,6 +1161,7 @@ export interface AdminDataAccount {
   concurrency: number
   priority: number
   rate_multiplier?: number | null
+  user_rate_multiplier?: number | null
   expires_at?: number | null
   auto_pause_on_expired?: boolean
 }
@@ -1188,6 +1192,7 @@ export interface CodexSessionImportRequest {
   concurrency?: number
   priority?: number
   rate_multiplier?: number
+  user_rate_multiplier?: number
   load_factor?: number | null
   expires_at?: number | null
   auto_pause_on_expired?: boolean

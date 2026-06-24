@@ -849,8 +849,8 @@ func TestOpenAISelectAccountWithLoadAwareness_LoadBatchErrorFallback(t *testing.
 	groupID := int64(1)
 	repo := stubOpenAIAccountRepo{
 		accounts: []Account{
-			{ID: 1, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 2},
-			{ID: 2, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 1},
+			{ID: 1, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 2, GroupIDs: []int64{groupID}},
+			{ID: 2, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, GroupIDs: []int64{groupID}},
 		},
 	}
 	cache := &stubGatewayCache{}
@@ -972,6 +972,222 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyWaitPlan(t *testing.T) {
 	}
 	if selection.Account == nil || selection.Account.ID != 1 {
 		t.Fatalf("expected account 1")
+	}
+}
+
+func TestOpenAISelectAccountWithLoadAwareness_StickyDoesNotBypassHigherPriority(t *testing.T) {
+	sessionHash := "sticky-priority"
+	groupID := int64(1)
+	repo := stubOpenAIAccountRepo{
+		accounts: []Account{
+			{ID: 1, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 2, GroupIDs: []int64{groupID}},
+			{ID: 2, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, GroupIDs: []int64{groupID}},
+		},
+	}
+	cache := &stubGatewayCache{
+		sessionBindings: map[string]int64{"openai:" + sessionHash: 1},
+	}
+
+	svc := &OpenAIGatewayService{
+		accountRepo:        repo,
+		cache:              cache,
+		concurrencyService: NewConcurrencyService(stubConcurrencyCache{}),
+	}
+
+	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
+	if err != nil {
+		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+	}
+	if selection == nil || selection.Account == nil || selection.Account.ID != 2 {
+		t.Fatalf("expected account 2, got %+v", selection)
+	}
+	if cache.sessionBindings["openai:"+sessionHash] != 2 {
+		t.Fatalf("expected sticky session to rebind to account 2")
+	}
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
+	}
+}
+
+func TestOpenAISelectAccountWithLoadAwareness_OverflowsToLowerPriorityWhenHigherPriorityFull(t *testing.T) {
+	groupID := int64(1)
+	repo := stubOpenAIAccountRepo{
+		accounts: []Account{
+			{ID: 1, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, GroupIDs: []int64{groupID}},
+			{ID: 2, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 2, GroupIDs: []int64{groupID}},
+		},
+	}
+	concurrencyCache := stubConcurrencyCache{
+		acquireResults: map[int64]bool{1: false, 2: true},
+		loadMap: map[int64]*AccountLoadInfo{
+			1: {AccountID: 1, LoadRate: 100},
+			2: {AccountID: 2, LoadRate: 0},
+		},
+	}
+
+	svc := &OpenAIGatewayService{
+		accountRepo:        repo,
+		cache:              &stubGatewayCache{},
+		concurrencyService: NewConcurrencyService(concurrencyCache),
+	}
+
+	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
+	if err != nil {
+		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+	}
+	if selection == nil || selection.Account == nil || selection.Account.ID != 2 {
+		t.Fatalf("expected account 2, got %+v", selection)
+	}
+	if !selection.Acquired || selection.WaitPlan != nil {
+		t.Fatalf("expected acquired account 2, got %+v", selection)
+	}
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
+	}
+}
+
+func TestOpenAISelectAccountWithLoadAwareness_StickyOverflowsWhenHigherPriorityFull(t *testing.T) {
+	sessionHash := "sticky-overflow"
+	groupID := int64(1)
+	repo := stubOpenAIAccountRepo{
+		accounts: []Account{
+			{ID: 1, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, GroupIDs: []int64{groupID}},
+			{ID: 2, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 2, GroupIDs: []int64{groupID}},
+		},
+	}
+	cache := &stubGatewayCache{
+		sessionBindings: map[string]int64{"openai:" + sessionHash: 2},
+	}
+	concurrencyCache := stubConcurrencyCache{
+		acquireResults: map[int64]bool{1: false, 2: true},
+		loadMap: map[int64]*AccountLoadInfo{
+			1: {AccountID: 1, LoadRate: 100},
+			2: {AccountID: 2, LoadRate: 0},
+		},
+	}
+
+	svc := &OpenAIGatewayService{
+		accountRepo:        repo,
+		cache:              cache,
+		concurrencyService: NewConcurrencyService(concurrencyCache),
+	}
+
+	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, int64(2), selection.Account.ID)
+	require.True(t, selection.Acquired)
+	require.Nil(t, selection.WaitPlan)
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
+	}
+}
+
+func TestOpenAISelectAccountWithLoadAwareness_StickyFullOverflowsToLowerPriority(t *testing.T) {
+	sessionHash := "sticky-full-overflow"
+	groupID := int64(1)
+	repo := stubOpenAIAccountRepo{
+		accounts: []Account{
+			{ID: 1, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, GroupIDs: []int64{groupID}},
+			{ID: 2, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 2, GroupIDs: []int64{groupID}},
+		},
+	}
+	cache := &stubGatewayCache{
+		sessionBindings: map[string]int64{"openai:" + sessionHash: 1},
+	}
+	concurrencyCache := stubConcurrencyCache{
+		acquireResults: map[int64]bool{1: false, 2: true},
+		loadMap: map[int64]*AccountLoadInfo{
+			1: {AccountID: 1, LoadRate: 100},
+			2: {AccountID: 2, LoadRate: 0},
+		},
+	}
+
+	svc := &OpenAIGatewayService{
+		accountRepo:        repo,
+		cache:              cache,
+		concurrencyService: NewConcurrencyService(concurrencyCache),
+	}
+
+	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, int64(2), selection.Account.ID)
+	require.True(t, selection.Acquired)
+	require.Nil(t, selection.WaitPlan)
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
+	}
+}
+
+func TestOpenAISelectAccountWithLoadAwareness_LoadBatchDisabledOverflowsWhenHigherPriorityAcquireFails(t *testing.T) {
+	groupID := int64(1)
+	repo := stubOpenAIAccountRepo{
+		accounts: []Account{
+			{ID: 1, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, GroupIDs: []int64{groupID}},
+			{ID: 2, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 2, GroupIDs: []int64{groupID}},
+		},
+	}
+	cfg := &config.Config{}
+	cfg.Gateway.Scheduling.LoadBatchEnabled = false
+	concurrencyCache := stubConcurrencyCache{
+		acquireResults: map[int64]bool{1: false, 2: true},
+	}
+
+	svc := &OpenAIGatewayService{
+		accountRepo:        repo,
+		cache:              &stubGatewayCache{},
+		cfg:                cfg,
+		concurrencyService: NewConcurrencyService(concurrencyCache),
+	}
+
+	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, int64(2), selection.Account.ID)
+	require.True(t, selection.Acquired)
+	require.Nil(t, selection.WaitPlan)
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
+	}
+}
+
+func TestOpenAISelectAccountWithLoadAwareness_LoadBatchDisabledStickyDefersToHigherPriorityWithCapacity(t *testing.T) {
+	sessionHash := "load-batch-disabled-sticky-priority"
+	groupID := int64(1)
+	repo := stubOpenAIAccountRepo{
+		accounts: []Account{
+			{ID: 1, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, GroupIDs: []int64{groupID}},
+			{ID: 2, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 2, GroupIDs: []int64{groupID}},
+		},
+	}
+	cfg := &config.Config{}
+	cfg.Gateway.Scheduling.LoadBatchEnabled = false
+	concurrencyCache := stubConcurrencyCache{
+		acquireResults: map[int64]bool{1: true, 2: true},
+	}
+
+	svc := &OpenAIGatewayService{
+		accountRepo: repo,
+		cache: &stubGatewayCache{
+			sessionBindings: map[string]int64{"openai:" + sessionHash: 2},
+		},
+		cfg:                cfg,
+		concurrencyService: NewConcurrencyService(concurrencyCache),
+	}
+
+	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, int64(1), selection.Account.ID)
+	require.True(t, selection.Acquired)
+	require.Nil(t, selection.WaitPlan)
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
 	}
 }
 

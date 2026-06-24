@@ -51,6 +51,16 @@ func TestAntigravityUpstreamErrorBodyReadLimit_RespectsDiagnosticLimit(t *testin
 	require.Equal(t, int64(svc.settingService.cfg.Gateway.LogUpstreamErrorBodyMaxBytes), svc.upstreamErrorBodyReadLimit())
 }
 
+func TestAntigravityGatewayService_ShouldFailoverClientCredentialStatuses(t *testing.T) {
+	svc := newAntigravityTestService(nil)
+
+	for _, status := range []int{http.StatusPaymentRequired, http.StatusNotFound} {
+		require.True(t, svc.shouldFailoverUpstreamError(status), "status %d", status)
+	}
+	require.False(t, svc.shouldFailoverUpstreamError(http.StatusBadRequest))
+	require.False(t, svc.shouldFailoverUpstreamError(http.StatusUnprocessableEntity))
+}
+
 func TestStripSignatureSensitiveBlocksFromClaudeRequest(t *testing.T) {
 	req := &antigravity.ClaudeRequest{
 		Model: "claude-sonnet-4-5",

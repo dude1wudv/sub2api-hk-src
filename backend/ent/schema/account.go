@@ -113,6 +113,12 @@ func (Account) Fields() []ent.Field {
 			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
 			Default(1.0),
 
+		// user_rate_multiplier: 用户计费倍率（>=0，允许 0 表示该账号对用户免费）
+		// 叠加在有效分组倍率之后：effective_group_multiplier * user_rate_multiplier
+		field.Float("user_rate_multiplier").
+			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
+			Default(1.0),
+
 		// status: 账户状态，如 "active", "error", "disabled"
 		field.String("status").
 			MaxLen(20).

@@ -304,6 +304,7 @@ type CreateAccountInput struct {
 	Concurrency        int
 	Priority           int
 	RateMultiplier     *float64 // 账号计费倍率（>=0，允许 0）
+	UserRateMultiplier *float64 // 账号用户计费倍率（>=0，允许 0）
 	LoadFactor         *int
 	GroupIDs           []int64
 	ExpiresAt          *int64
@@ -325,6 +326,7 @@ type UpdateAccountInput struct {
 	Concurrency           *int     // 使用指针区分"未提供"和"设置为0"
 	Priority              *int     // 使用指针区分"未提供"和"设置为0"
 	RateMultiplier        *float64 // 账号计费倍率（>=0，允许 0）
+	UserRateMultiplier    *float64 // 账号用户计费倍率（>=0，允许 0）
 	LoadFactor            *int
 	Status                string
 	GroupIDs              *[]int64
@@ -335,19 +337,20 @@ type UpdateAccountInput struct {
 
 // BulkUpdateAccountsInput describes the payload for bulk updating accounts.
 type BulkUpdateAccountsInput struct {
-	AccountIDs     []int64
-	Filters        *BulkUpdateAccountFilters
-	Name           string
-	ProxyID        *int64
-	Concurrency    *int
-	Priority       *int
-	RateMultiplier *float64 // 账号计费倍率（>=0，允许 0）
-	LoadFactor     *int
-	Status         string
-	Schedulable    *bool
-	GroupIDs       *[]int64
-	Credentials    map[string]any
-	Extra          map[string]any
+	AccountIDs         []int64
+	Filters            *BulkUpdateAccountFilters
+	Name               string
+	ProxyID            *int64
+	Concurrency        *int
+	Priority           *int
+	RateMultiplier     *float64 // 账号计费倍率（>=0，允许 0）
+	UserRateMultiplier *float64 // 账号用户计费倍率（>=0，允许 0）
+	LoadFactor         *int
+	Status             string
+	Schedulable        *bool
+	GroupIDs           *[]int64
+	Credentials        map[string]any
+	Extra              map[string]any
 	// SkipMixedChannelCheck skips the mixed channel risk check when binding groups.
 	// This should only be set when the caller has explicitly confirmed the risk.
 	SkipMixedChannelCheck bool
@@ -3266,6 +3269,12 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 		}
 		account.RateMultiplier = input.RateMultiplier
 	}
+	if input.UserRateMultiplier != nil {
+		if *input.UserRateMultiplier < 0 {
+			return nil, errors.New("user_rate_multiplier must be >= 0")
+		}
+		account.UserRateMultiplier = input.UserRateMultiplier
+	}
 	if input.LoadFactor != nil && *input.LoadFactor > 0 {
 		if *input.LoadFactor > 10000 {
 			return nil, errors.New("load_factor must be <= 10000")
@@ -3444,6 +3453,12 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 		}
 		account.RateMultiplier = input.RateMultiplier
 	}
+	if input.UserRateMultiplier != nil {
+		if *input.UserRateMultiplier < 0 {
+			return nil, errors.New("user_rate_multiplier must be >= 0")
+		}
+		account.UserRateMultiplier = input.UserRateMultiplier
+	}
 	if input.LoadFactor != nil {
 		if *input.LoadFactor <= 0 {
 			account.LoadFactor = nil // 0 或负数表示清除
@@ -3570,6 +3585,11 @@ func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUp
 			return nil, errors.New("rate_multiplier must be >= 0")
 		}
 	}
+	if input.UserRateMultiplier != nil {
+		if *input.UserRateMultiplier < 0 {
+			return nil, errors.New("user_rate_multiplier must be >= 0")
+		}
+	}
 
 	// Prepare bulk updates for columns and JSONB fields.
 	repoUpdates := AccountBulkUpdate{
@@ -3594,6 +3614,9 @@ func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUp
 	}
 	if input.RateMultiplier != nil {
 		repoUpdates.RateMultiplier = input.RateMultiplier
+	}
+	if input.UserRateMultiplier != nil {
+		repoUpdates.UserRateMultiplier = input.UserRateMultiplier
 	}
 	if input.LoadFactor != nil {
 		if *input.LoadFactor <= 0 {

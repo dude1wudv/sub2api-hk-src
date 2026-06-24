@@ -134,6 +134,7 @@ function buildAccount() {
     concurrency: 1,
     priority: 1,
     rate_multiplier: 1,
+    user_rate_multiplier: 1,
     status: 'active',
     group_ids: [],
     expires_at: null,
@@ -160,6 +161,7 @@ function buildVertexAccount() {
     concurrency: 1,
     priority: 1,
     rate_multiplier: 1,
+    user_rate_multiplier: 1,
     status: 'active',
     group_ids: [],
     expires_at: null,
@@ -266,6 +268,22 @@ describe('EditAccountModal', () => {
     expect(updateAccountMock.mock.calls[0]?.[1]?.credentials?.compact_model_mapping).toEqual({
       'gpt-5.4': 'gpt-5.4-openai-compact'
     })
+  })
+
+  it('submits the account user billing multiplier', async () => {
+    const account = buildAccount()
+    account.user_rate_multiplier = 1.5
+    updateAccountMock.mockReset()
+    checkMixedChannelRiskMock.mockReset()
+    checkMixedChannelRiskMock.mockResolvedValue({ has_risk: false })
+    updateAccountMock.mockResolvedValue(account)
+
+    const wrapper = mountModal(account)
+
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+
+    expect(updateAccountMock).toHaveBeenCalledTimes(1)
+    expect(updateAccountMock.mock.calls[0]?.[1]?.user_rate_multiplier).toBe(1.5)
   })
 
   it('submits OpenAI APIKey Responses support override mode', async () => {

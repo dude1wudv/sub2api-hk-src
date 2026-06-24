@@ -221,6 +221,7 @@ func AccountFromServiceShallow(a *service.Account) *Account {
 		LoadFactor:              a.LoadFactor,
 		Priority:                a.Priority,
 		RateMultiplier:          a.BillingRateMultiplier(),
+		UserRateMultiplier:      a.UserBillingRateMultiplier(),
 		Status:                  a.Status,
 		ErrorMessage:            a.ErrorMessage,
 		LastUsedAt:              a.LastUsedAt,

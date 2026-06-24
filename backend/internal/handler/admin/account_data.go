@@ -61,6 +61,7 @@ type DataAccount struct {
 	Concurrency        int            `json:"concurrency"`
 	Priority           int            `json:"priority"`
 	RateMultiplier     *float64       `json:"rate_multiplier,omitempty"`
+	UserRateMultiplier *float64       `json:"user_rate_multiplier,omitempty"`
 	ExpiresAt          *int64         `json:"expires_at,omitempty"`
 	AutoPauseOnExpired *bool          `json:"auto_pause_on_expired,omitempty"`
 }
@@ -185,6 +186,7 @@ func (h *AccountHandler) ExportData(c *gin.Context) {
 			Concurrency:        acc.Concurrency,
 			Priority:           acc.Priority,
 			RateMultiplier:     acc.RateMultiplier,
+			UserRateMultiplier: acc.UserRateMultiplier,
 			ExpiresAt:          expiresAt,
 			AutoPauseOnExpired: &acc.AutoPauseOnExpired,
 		})
@@ -414,6 +416,7 @@ func (h *AccountHandler) importData(ctx context.Context, req DataImportRequest) 
 			Concurrency:          item.Concurrency,
 			Priority:             item.Priority,
 			RateMultiplier:       item.RateMultiplier,
+			UserRateMultiplier:   item.UserRateMultiplier,
 			GroupIDs:             nil,
 			ExpiresAt:            item.ExpiresAt,
 			AutoPauseOnExpired:   item.AutoPauseOnExpired,
@@ -668,6 +671,9 @@ func validateDataAccount(item DataAccount) error {
 	}
 	if item.RateMultiplier != nil && *item.RateMultiplier < 0 {
 		return errors.New("rate_multiplier must be >= 0")
+	}
+	if item.UserRateMultiplier != nil && *item.UserRateMultiplier < 0 {
+		return errors.New("user_rate_multiplier must be >= 0")
 	}
 	if item.Concurrency < 0 {
 		return errors.New("concurrency must be >= 0")
