@@ -120,6 +120,7 @@ type UsageBillingApplyResult struct {
 	Applied              bool
 	APIKeyQuotaExhausted bool
 	NewBalance           *float64           // post-deduction balance (nil = no balance deduction)
+	BalanceOverdrafted   bool               // true when the sufficient-balance guard missed and debt was still recorded
 	QuotaState           *AccountQuotaState // post-increment quota state (nil = no quota increment)
 	DailyGrantSpent      float64            // 本次从每日额度桶扣减的合计（按基础成本，非倍率后）
 	LongTermSpent        float64            // 本次从长期余额扣减的合计（已含回退倍率）

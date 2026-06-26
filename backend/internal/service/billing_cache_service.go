@@ -872,6 +872,21 @@ func (s *BillingCacheService) checkRPM(ctx context.Context, user *User, group *G
 	return nil
 }
 
+func (s *BillingCacheService) minimumBalanceReserve() float64 {
+	if s == nil || s.cfg == nil || s.cfg.Billing.MinimumBalanceReserve <= 0 {
+		return 0
+	}
+	return s.cfg.Billing.MinimumBalanceReserve
+}
+
+func (s *BillingCacheService) balanceBelowEligibilityThreshold(balance float64) bool {
+	if balance <= 0 {
+		return true
+	}
+	minimumReserve := s.minimumBalanceReserve()
+	return minimumReserve > 0 && balance < minimumReserve
+}
+
 // checkBalanceEligibility 检查余额模式资格
 //
 // 对「每日余额」专属分组：长期余额 > 0 固然放行；即便长期余额 <= 0，只要该用户在该分组下
@@ -890,7 +905,7 @@ func (s *BillingCacheService) checkBalanceEligibility(ctx context.Context, userI
 		s.circuitBreaker.OnSuccess()
 	}
 
-	if balance > 0 {
+	if !s.balanceBelowEligibilityThreshold(balance) {
 		return nil
 	}
 
