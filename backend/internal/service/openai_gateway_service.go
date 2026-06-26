@@ -2020,10 +2020,6 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 		_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 		return nil
 	}
-	if s.hasHigherPriorityOpenAIAccount(ctx, groupID, platform, account, requestedModel, excludedIDs, requireCompact, requiredCapability, "", OpenAIUpstreamTransportAny) {
-		return nil
-	}
-
 	// 刷新会话 TTL 并返回账号
 	// Refresh session TTL and return account
 	_ = s.refreshStickySessionTTL(ctx, groupID, sessionHash, s.openAIWSSessionStickyTTL())
@@ -2308,7 +2304,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 					} else if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, account, requestedModel, requireCompact) {
 						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
-					} else if !s.hasHigherPriorityOpenAIAccount(ctx, groupID, platform, account, requestedModel, excludedIDs, requireCompact, requiredCapability, "", OpenAIUpstreamTransportAny) {
+					} else {
 						result, err := s.tryAcquireAccountSlot(ctx, accountID, account.Concurrency)
 						if err == nil && result != nil && result.Acquired {
 							selection, selectErr := s.newAcquiredSelectionResult(ctx, account, result.ReleaseFunc)

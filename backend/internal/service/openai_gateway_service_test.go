@@ -975,7 +975,7 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyWaitPlan(t *testing.T) {
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_StickyDoesNotBypassHigherPriority(t *testing.T) {
+func TestOpenAISelectAccountWithLoadAwareness_StickyWinsOverHigherPriority(t *testing.T) {
 	sessionHash := "sticky-priority"
 	groupID := int64(1)
 	repo := stubOpenAIAccountRepo{
@@ -998,11 +998,11 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyDoesNotBypassHigherPriority(
 	if err != nil {
 		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
 	}
-	if selection == nil || selection.Account == nil || selection.Account.ID != 2 {
-		t.Fatalf("expected account 2, got %+v", selection)
+	if selection == nil || selection.Account == nil || selection.Account.ID != 1 {
+		t.Fatalf("expected account 1, got %+v", selection)
 	}
-	if cache.sessionBindings["openai:"+sessionHash] != 2 {
-		t.Fatalf("expected sticky session to rebind to account 2")
+	if cache.sessionBindings["openai:"+sessionHash] != 1 {
+		t.Fatalf("expected sticky session to stay bound to account 1")
 	}
 	if selection.ReleaseFunc != nil {
 		selection.ReleaseFunc()

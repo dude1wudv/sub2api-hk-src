@@ -981,7 +981,7 @@ func TestGatewayService_SelectAccountForModelWithPlatform_StickyInGroup(t *testi
 	}
 
 	cache := &mockGatewayCacheForPlatform{
-		sessionBindings: map[string]int64{"session-group": 1},
+		sessionBindings: map[string]int64{"session-group": 2},
 	}
 
 	svc := &GatewayService{
@@ -993,7 +993,7 @@ func TestGatewayService_SelectAccountForModelWithPlatform_StickyInGroup(t *testi
 	acc, err := svc.selectAccountForModelWithPlatform(ctx, &groupID, "session-group", "", nil, PlatformAnthropic)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
-	require.Equal(t, int64(1), acc.ID)
+	require.Equal(t, int64(2), acc.ID)
 }
 
 func TestGatewayService_SelectAccountForModelWithPlatform_StickyModelMismatchFallback(t *testing.T) {
