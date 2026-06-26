@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 )
 
 // swapMonitorHTTPClient 临时替换 monitorHTTPClient 为不带 SSRF 校验的普通 client，
@@ -159,6 +161,12 @@ func TestRunCheckForModel_OffMode_PreservesDefaultBody(t *testing.T) {
 	if h.lastHeaders.Get("x-api-key") != "sk-fake" {
 		t.Errorf("expected adapter's x-api-key header, got %q", h.lastHeaders.Get("x-api-key"))
 	}
+	if h.lastHeaders.Get("User-Agent") != claude.DefaultHeaders["User-Agent"] {
+		t.Errorf("expected Claude CLI User-Agent, got %q", h.lastHeaders.Get("User-Agent"))
+	}
+	if h.lastHeaders.Get("X-Stainless-Lang") != claude.DefaultHeaders["X-Stainless-Lang"] {
+		t.Errorf("expected Claude CLI stainless headers, got %q", h.lastHeaders.Get("X-Stainless-Lang"))
+	}
 }
 
 func TestRunCheckForModel_OpenAI_DefaultChatRequest(t *testing.T) {
@@ -187,6 +195,15 @@ func TestRunCheckForModel_OpenAI_DefaultChatRequest(t *testing.T) {
 	}
 	if h.lastHeaders.Get("Authorization") != "Bearer sk-openai" {
 		t.Errorf("expected bearer auth header, got %q", h.lastHeaders.Get("Authorization"))
+	}
+	if h.lastHeaders.Get("User-Agent") != codexCLIUserAgent {
+		t.Errorf("expected Codex CLI User-Agent, got %q", h.lastHeaders.Get("User-Agent"))
+	}
+	if h.lastHeaders.Get("Originator") != "codex_cli_rs" {
+		t.Errorf("expected Codex originator, got %q", h.lastHeaders.Get("Originator"))
+	}
+	if h.lastHeaders.Get("Version") != codexCLIVersion {
+		t.Errorf("expected Codex version, got %q", h.lastHeaders.Get("Version"))
 	}
 }
 
@@ -223,6 +240,15 @@ func TestRunCheckForModel_OpenAIResponses_DefaultRequest(t *testing.T) {
 	}
 	if h.lastHeaders.Get("Authorization") != "Bearer sk-openai" {
 		t.Errorf("expected bearer auth header, got %q", h.lastHeaders.Get("Authorization"))
+	}
+	if h.lastHeaders.Get("User-Agent") != codexCLIUserAgent {
+		t.Errorf("expected Codex CLI User-Agent, got %q", h.lastHeaders.Get("User-Agent"))
+	}
+	if h.lastHeaders.Get("Originator") != "codex_cli_rs" {
+		t.Errorf("expected Codex originator, got %q", h.lastHeaders.Get("Originator"))
+	}
+	if h.lastHeaders.Get("Version") != codexCLIVersion {
+		t.Errorf("expected Codex version, got %q", h.lastHeaders.Get("Version"))
 	}
 }
 

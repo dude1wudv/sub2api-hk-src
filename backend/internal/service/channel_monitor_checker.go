@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	"github.com/tidwall/gjson"
 )
 
@@ -332,12 +333,16 @@ func extractOpenAIResponsesText(respBytes []byte) string {
 // mergeHeaders 把用户自定义 headers 合并到 adapter 默认 headers 上。
 // 用户值覆盖默认；命中黑名单（hop-by-hop / 由 http.Client 自管的）的 key 静默丢弃。
 func mergeHeaders(base map[string]string, opts *CheckOptions) map[string]string {
-	if opts == nil || len(opts.ExtraHeaders) == 0 {
-		return base
+	defaults := defaultMonitorClientHeaders(base)
+	out := make(map[string]string, len(base)+len(defaults))
+	for k, v := range defaults {
+		out[k] = v
 	}
-	out := make(map[string]string, len(base)+len(opts.ExtraHeaders))
 	for k, v := range base {
 		out[k] = v
+	}
+	if opts == nil || len(opts.ExtraHeaders) == 0 {
+		return out
 	}
 	for k, v := range opts.ExtraHeaders {
 		if IsForbiddenHeaderName(k) {
@@ -346,6 +351,20 @@ func mergeHeaders(base map[string]string, opts *CheckOptions) map[string]string 
 		out[k] = v
 	}
 	return out
+}
+
+func defaultMonitorClientHeaders(base map[string]string) map[string]string {
+	if _, ok := base["x-api-key"]; ok {
+		return claude.DefaultHeaders
+	}
+	if _, ok := base["Authorization"]; ok {
+		return map[string]string{
+			"User-Agent": codexCLIUserAgent,
+			"Originator": "codex_cli_rs",
+			"Version":    codexCLIVersion,
+		}
+	}
+	return nil
 }
 
 // buildRequestBody 根据 body_override_mode 构造请求 body。
