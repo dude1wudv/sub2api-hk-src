@@ -2557,7 +2557,7 @@ func TestOpenAIGatewayService_SchedulerWrappersAndDefaults(t *testing.T) {
 	snapshot := svc.SnapshotOpenAIAccountSchedulerMetrics()
 	require.Equal(t, OpenAIAccountSchedulerMetricsSnapshot{}, snapshot)
 	require.Equal(t, 7, svc.openAIWSLBTopK())
-	require.Equal(t, openaiStickySessionTTL, svc.openAIWSSessionStickyTTL())
+	require.Equal(t, 10*time.Minute, svc.openAIWSSessionStickyTTL())
 
 	defaultWeights := svc.openAIWSSchedulerWeights()
 	require.Equal(t, 1.0, defaultWeights.Priority)
