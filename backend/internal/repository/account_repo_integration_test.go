@@ -647,12 +647,12 @@ func (s *AccountRepoSuite) TestListSchedulableByGroupIDAndPlatform() {
 	s.Require().Equal(a1.ID, accounts[0].ID)
 }
 
-func (s *AccountRepoSuite) TestListSchedulableByGroupIDAndPlatformUsesGroupPriorityForScheduling() {
+func (s *AccountRepoSuite) TestListSchedulableByGroupIDAndPlatformUsesAccountPriority() {
 	group := mustCreateGroup(s.T(), s.client, &service.Group{Name: "g-sp-priority"})
-	accountPriority1 := mustCreateAccount(s.T(), s.client, &service.Account{Name: "group-priority-1", Platform: service.PlatformOpenAI, Priority: 50, Schedulable: true})
-	accountPriority2 := mustCreateAccount(s.T(), s.client, &service.Account{Name: "group-priority-2", Platform: service.PlatformOpenAI, Priority: 50, Schedulable: true})
-	mustBindAccountToGroup(s.T(), s.client, accountPriority2.ID, group.ID, 2)
-	mustBindAccountToGroup(s.T(), s.client, accountPriority1.ID, group.ID, 1)
+	accountPriority1 := mustCreateAccount(s.T(), s.client, &service.Account{Name: "account-priority-1", Platform: service.PlatformOpenAI, Priority: 1, Schedulable: true})
+	accountPriority2 := mustCreateAccount(s.T(), s.client, &service.Account{Name: "account-priority-2", Platform: service.PlatformOpenAI, Priority: 2, Schedulable: true})
+	mustBindAccountToGroup(s.T(), s.client, accountPriority2.ID, group.ID, 1)
+	mustBindAccountToGroup(s.T(), s.client, accountPriority1.ID, group.ID, 2)
 
 	accounts, err := s.repo.ListSchedulableByGroupIDAndPlatform(s.ctx, group.ID, service.PlatformOpenAI)
 
