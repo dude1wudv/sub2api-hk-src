@@ -964,7 +964,8 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 				if lastFailoverErr != nil {
 					h.handleAnthropicFailoverExhausted(c, lastFailoverErr, streamStarted)
 				} else {
-					h.anthropicStreamingAwareError(c, http.StatusBadGateway, "api_error", "Upstream request failed", streamStarted)
+					safe := service.SafeUpstreamClientError(http.StatusBadGateway)
+					h.anthropicStreamingAwareError(c, safe.Status, safe.ErrType, safe.MessageWithCode(), streamStarted)
 				}
 				return
 			}
@@ -1178,6 +1179,7 @@ func resolveOpenAIMessagesMetadataSession(sessionHash, promptCacheKey, reqModel 
 
 // anthropicErrorResponse writes an error in Anthropic Messages API format.
 func (h *OpenAIGatewayHandler) anthropicErrorResponse(c *gin.Context, status int, errType, message string) {
+	status, errType, message = service.RedactUpstreamClientError(status, errType, message)
 	c.JSON(status, gin.H{
 		"type": "error",
 		"error": gin.H{
@@ -1190,6 +1192,7 @@ func (h *OpenAIGatewayHandler) anthropicErrorResponse(c *gin.Context, status int
 // anthropicStreamingAwareError handles errors that may occur during streaming,
 // using Anthropic SSE error format.
 func (h *OpenAIGatewayHandler) anthropicStreamingAwareError(c *gin.Context, status int, errType, message string, streamStarted bool) {
+	status, errType, message = service.RedactUpstreamClientError(status, errType, message)
 	if streamStarted {
 		flusher, ok := c.Writer.(http.Flusher)
 		if ok {
@@ -1219,7 +1222,8 @@ func (h *OpenAIGatewayHandler) ensureAnthropicErrorResponse(c *gin.Context, stre
 	if c == nil || c.Writer == nil || c.Writer.Written() {
 		return false
 	}
-	h.anthropicStreamingAwareError(c, http.StatusBadGateway, "api_error", "Upstream request failed", streamStarted)
+	safe := service.SafeUpstreamClientError(http.StatusBadGateway)
+	h.anthropicStreamingAwareError(c, safe.Status, safe.ErrType, safe.MessageWithCode(), streamStarted)
 	return true
 }
 
@@ -2060,7 +2064,7 @@ func (h *OpenAIGatewayHandler) handleFailoverExhausted(c *gin.Context, failoverE
 			}
 
 			// 确定响应消息
-			msg := service.ExtractUpstreamErrorMessage(responseBody)
+			msg := service.SafeUpstreamClientError(statusCode).MessageWithCode()
 			if !rule.PassthroughBody && rule.CustomMessage != nil {
 				msg = *rule.CustomMessage
 			}
@@ -2091,24 +2095,13 @@ func (h *OpenAIGatewayHandler) handleFailoverExhaustedSimple(c *gin.Context, sta
 }
 
 func (h *OpenAIGatewayHandler) mapUpstreamError(statusCode int) (int, string, string) {
-	switch statusCode {
-	case 401:
-		return http.StatusBadGateway, "upstream_error", "Upstream authentication failed, please contact administrator"
-	case 403:
-		return http.StatusBadGateway, "upstream_error", "Upstream access forbidden, please contact administrator"
-	case 429:
-		return http.StatusTooManyRequests, "rate_limit_error", "Upstream rate limit exceeded, please retry later"
-	case 529:
-		return http.StatusServiceUnavailable, "upstream_error", "Upstream service overloaded, please retry later"
-	case 500, 502, 503, 504:
-		return http.StatusBadGateway, "upstream_error", "Upstream service temporarily unavailable"
-	default:
-		return http.StatusBadGateway, "upstream_error", "Upstream request failed"
-	}
+	safe := service.SafeUpstreamClientError(statusCode)
+	return safe.Status, safe.ErrType, safe.MessageWithCode()
 }
 
 // handleStreamingAwareError handles errors that may occur after streaming has started
 func (h *OpenAIGatewayHandler) handleStreamingAwareError(c *gin.Context, status int, errType, message string, streamStarted bool) {
+	status, errType, message = service.RedactUpstreamClientError(status, errType, message)
 	if streamStarted {
 		// /v1/responses 的严格 SDK（Codex CLI）要求终止事件必须属于
 		// response.completed/failed/incomplete/cancelled 集合。
@@ -2147,7 +2140,8 @@ func (h *OpenAIGatewayHandler) ensureForwardErrorResponse(c *gin.Context, stream
 	if c.Writer.Written() {
 		streamStarted = true
 	}
-	h.handleStreamingAwareError(c, http.StatusBadGateway, "upstream_error", "Upstream request failed", streamStarted)
+	safe := service.SafeUpstreamClientError(http.StatusBadGateway)
+	h.handleStreamingAwareError(c, safe.Status, safe.ErrType, safe.MessageWithCode(), streamStarted)
 	return true
 }
 
@@ -2202,6 +2196,7 @@ func openAIForwardErrorAlreadyCommunicated(c *gin.Context, writerSizeBeforeForwa
 
 // errorResponse returns OpenAI API format error response
 func (h *OpenAIGatewayHandler) errorResponse(c *gin.Context, status int, errType, message string) {
+	status, errType, message = service.RedactUpstreamClientError(status, errType, message)
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"type":    errType,

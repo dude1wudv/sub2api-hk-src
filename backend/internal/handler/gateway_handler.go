@@ -1686,7 +1686,7 @@ func (h *GatewayHandler) handleFailoverExhausted(c *gin.Context, failoverErr *se
 			}
 
 			// 确定响应消息
-			msg := service.ExtractUpstreamErrorMessage(responseBody)
+			msg := service.SafeUpstreamClientError(statusCode).MessageWithCode()
 			if !rule.PassthroughBody && rule.CustomMessage != nil {
 				msg = *rule.CustomMessage
 			}
@@ -1717,24 +1717,13 @@ func (h *GatewayHandler) handleFailoverExhaustedSimple(c *gin.Context, statusCod
 }
 
 func (h *GatewayHandler) mapUpstreamError(statusCode int) (int, string, string) {
-	switch statusCode {
-	case 401:
-		return http.StatusBadGateway, "upstream_error", "Upstream authentication failed, please contact administrator"
-	case 403:
-		return http.StatusBadGateway, "upstream_error", "Upstream access forbidden, please contact administrator"
-	case 429:
-		return http.StatusTooManyRequests, "rate_limit_error", "Upstream rate limit exceeded, please retry later"
-	case 529:
-		return http.StatusServiceUnavailable, "overloaded_error", "Upstream service overloaded, please retry later"
-	case 500, 502, 503, 504:
-		return http.StatusBadGateway, "upstream_error", "Upstream service temporarily unavailable"
-	default:
-		return http.StatusBadGateway, "upstream_error", "Upstream request failed"
-	}
+	safe := service.SafeUpstreamClientError(statusCode)
+	return safe.Status, safe.ErrType, safe.MessageWithCode()
 }
 
 // handleStreamingAwareError handles errors that may occur after streaming has started
 func (h *GatewayHandler) handleStreamingAwareError(c *gin.Context, status int, errType, message string, streamStarted bool) {
+	status, errType, message = service.RedactUpstreamClientError(status, errType, message)
 	if streamStarted {
 		// /v1/responses 的严格 SDK（Codex CLI）要求终止事件必须属于
 		// response.completed/failed/incomplete/cancelled 集合。
@@ -1775,7 +1764,8 @@ func (h *GatewayHandler) ensureForwardErrorResponse(c *gin.Context, streamStarte
 	if c.Writer.Written() {
 		streamStarted = true
 	}
-	h.handleStreamingAwareError(c, http.StatusBadGateway, "upstream_error", "Upstream request failed", streamStarted)
+	safe := service.SafeUpstreamClientError(http.StatusBadGateway)
+	h.handleStreamingAwareError(c, safe.Status, safe.ErrType, safe.MessageWithCode(), streamStarted)
 	return true
 }
 
@@ -1850,6 +1840,7 @@ func (h *GatewayHandler) checkClaudeCodeVersion(c *gin.Context) bool {
 
 // errorResponse 返回Claude API格式的错误响应
 func (h *GatewayHandler) errorResponse(c *gin.Context, status int, errType, message string) {
+	status, errType, message = service.RedactUpstreamClientError(status, errType, message)
 	c.JSON(status, gin.H{
 		"type": "error",
 		"error": gin.H{

@@ -1487,7 +1487,8 @@ func (s *AntigravityGatewayService) Forward(ctx context.Context, c *gin.Context,
 		if c.Request.Context().Err() != nil {
 			return nil, s.writeClaudeError(c, http.StatusBadGateway, "client_disconnected", "Client disconnected before upstream response")
 		}
-		return nil, s.writeClaudeError(c, http.StatusBadGateway, "upstream_error", "Upstream request failed after retries")
+		safe := SafeUpstreamClientError(http.StatusBadGateway)
+		return nil, s.writeClaudeError(c, safe.Status, safe.ErrType, safe.MessageWithCode())
 	}
 	resp := result.resp
 	defer func() { _ = resp.Body.Close() }()
@@ -2267,7 +2268,8 @@ func (s *AntigravityGatewayService) ForwardGemini(ctx context.Context, c *gin.Co
 		if c.Request.Context().Err() != nil {
 			return nil, s.writeGoogleError(c, http.StatusBadGateway, "Client disconnected before upstream response")
 		}
-		return nil, s.writeGoogleError(c, http.StatusBadGateway, "Upstream request failed after retries")
+		safe := SafeUpstreamClientError(http.StatusBadGateway)
+		return nil, s.writeGoogleError(c, safe.Status, safe.MessageWithCode())
 	}
 	resp := result.resp
 	defer func() {
@@ -3677,6 +3679,7 @@ func mergeTextPartsToResponse(response map[string]any, textParts []string) map[s
 }
 
 func (s *AntigravityGatewayService) writeClaudeError(c *gin.Context, status int, errType, message string) error {
+	status, errType, message = RedactUpstreamClientError(status, errType, message)
 	MarkResponseCommitted(c)
 	c.JSON(status, gin.H{
 		"type":  "error",
@@ -3728,39 +3731,11 @@ func (s *AntigravityGatewayService) writeMappedClaudeError(c *gin.Context, accou
 		return fmt.Errorf("upstream error: %d message=%s", upstreamStatus, upstreamMsg)
 	}
 
-	var statusCode int
-	var errType, errMsg string
+	safe := SafeUpstreamClientError(upstreamStatus)
 
-	switch upstreamStatus {
-	case 400:
-		statusCode = http.StatusBadRequest
-		errType = "invalid_request_error"
-		errMsg = getPassthroughOrDefault(upstreamMsg, "Invalid request")
-	case 401:
-		statusCode = http.StatusBadGateway
-		errType = "authentication_error"
-		errMsg = "Upstream authentication failed"
-	case 403:
-		statusCode = http.StatusBadGateway
-		errType = "permission_error"
-		errMsg = "Upstream access forbidden"
-	case 429:
-		statusCode = http.StatusTooManyRequests
-		errType = "rate_limit_error"
-		errMsg = "Upstream rate limit exceeded"
-	case 529:
-		statusCode = http.StatusServiceUnavailable
-		errType = "overloaded_error"
-		errMsg = "Upstream service overloaded"
-	default:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream request failed"
-	}
-
-	c.JSON(statusCode, gin.H{
+	c.JSON(safe.Status, gin.H{
 		"type":  "error",
-		"error": gin.H{"type": errType, "message": errMsg},
+		"error": gin.H{"type": safe.ErrType, "message": safe.MessageWithCode()},
 	})
 	if upstreamMsg == "" {
 		return fmt.Errorf("upstream error: %d", upstreamStatus)
@@ -3769,6 +3744,7 @@ func (s *AntigravityGatewayService) writeMappedClaudeError(c *gin.Context, accou
 }
 
 func (s *AntigravityGatewayService) writeGoogleError(c *gin.Context, status int, message string) error {
+	status, message = RedactUpstreamClientMessage(status, message)
 	MarkResponseCommitted(c)
 	statusStr := "UNKNOWN"
 	switch status {

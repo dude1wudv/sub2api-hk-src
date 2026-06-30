@@ -159,7 +159,7 @@ func (e *OpenAIImagesUpstreamError) clientErrorType() string {
 
 func (e *OpenAIImagesUpstreamError) clientMessage() string {
 	if e == nil {
-		return "Upstream request failed"
+		return SafeUpstreamClientError(http.StatusBadGateway).MessageWithCode()
 	}
 	if trimmed := strings.TrimSpace(e.Message); trimmed != "" {
 		return trimmed
@@ -167,7 +167,7 @@ func (e *OpenAIImagesUpstreamError) clientMessage() string {
 	if trimmed := strings.TrimSpace(e.Code); trimmed != "" {
 		return trimmed
 	}
-	return "Upstream request failed"
+	return SafeUpstreamClientError(e.StatusCode).MessageWithCode()
 }
 
 // IsOpenAIImagesRetryableUpstreamError reports whether an Images error is an
@@ -800,15 +800,12 @@ func openAIImagesIncompleteUpstreamError(response gjson.Result) *OpenAIImagesUps
 		statusCode = http.StatusBadRequest // 内容过滤，重试无意义
 		errType = "image_generation_user_error"
 	}
-	message := "Upstream did not complete image generation"
-	if reason != "" {
-		message = fmt.Sprintf("Upstream image generation incomplete: %s", reason)
-	}
+	safe := SafeUpstreamClientError(statusCode)
 	return &OpenAIImagesUpstreamError{
 		StatusCode:        statusCode,
 		ErrorType:         errType,
-		Code:              "response_incomplete",
-		Message:           sanitizeUpstreamErrorMessage(message),
+		Code:              safe.Code,
+		Message:           safe.MessageWithCode(),
 		UpstreamRequestID: strings.TrimSpace(response.Get("id").String()),
 	}
 }
@@ -817,20 +814,13 @@ func openAIImagesUpstreamErrorFromGJSON(errorObj gjson.Result, upstreamRequestID
 	if !errorObj.Exists() {
 		return nil
 	}
-	code := strings.TrimSpace(errorObj.Get("code").String())
-	errType := strings.TrimSpace(errorObj.Get("type").String())
-	message := strings.TrimSpace(errorObj.Get("message").String())
-	param := strings.TrimSpace(errorObj.Get("param").String())
-	statusCode := openAIImagesSSEErrorStatus(errType, code)
-	if message == "" {
-		message = "Upstream request failed"
-	}
+	statusCode := openAIImagesSSEErrorStatus(strings.TrimSpace(errorObj.Get("type").String()), strings.TrimSpace(errorObj.Get("code").String()))
+	safe := SafeUpstreamClientError(statusCode)
 	return &OpenAIImagesUpstreamError{
 		StatusCode:        statusCode,
-		ErrorType:         errType,
-		Code:              code,
-		Message:           sanitizeUpstreamErrorMessage(message),
-		Param:             param,
+		ErrorType:         safe.ErrType,
+		Code:              safe.Code,
+		Message:           safe.MessageWithCode(),
 		UpstreamRequestID: strings.TrimSpace(upstreamRequestID),
 	}
 }
@@ -856,31 +846,19 @@ func openAIImagesErrorTypeForStatus(status int) string {
 	}
 }
 
-// openAIImagesUpstreamErrorFromHTTP builds an OpenAIImagesUpstreamError from a
-// non-2xx upstream HTTP response, preserving the real status code, type, code,
-// message and param so the client sees the actual upstream error instead of a
-// generic 502.
+// openAIImagesUpstreamErrorFromHTTP builds a client-safe error from a non-2xx
+// upstream HTTP response. Raw upstream details stay in ops logs only.
 func openAIImagesUpstreamErrorFromHTTP(statusCode int, header http.Header, body []byte) *OpenAIImagesUpstreamError {
-	errType := strings.TrimSpace(gjson.GetBytes(body, "error.type").String())
-	code := strings.TrimSpace(extractUpstreamErrorCode(body))
-	param := strings.TrimSpace(gjson.GetBytes(body, "error.param").String())
-	message := sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(body)))
-	if message == "" {
-		message = fmt.Sprintf("Upstream request failed (status %d)", statusCode)
-	}
-	if errType == "" {
-		errType = openAIImagesErrorTypeForStatus(statusCode)
-	}
+	safe := SafeUpstreamClientError(statusCode)
 	requestID := ""
 	if header != nil {
 		requestID = strings.TrimSpace(header.Get("x-request-id"))
 	}
 	return &OpenAIImagesUpstreamError{
 		StatusCode:        statusCode,
-		ErrorType:         errType,
-		Code:              code,
-		Message:           message,
-		Param:             param,
+		ErrorType:         safe.ErrType,
+		Code:              safe.Code,
+		Message:           safe.MessageWithCode(),
 		UpstreamRequestID: requestID,
 	}
 }
@@ -963,8 +941,9 @@ func (s *OpenAIGatewayService) handleOpenAIImagesErrorResponse(
 		})
 		upErr := &OpenAIImagesUpstreamError{
 			StatusCode:        http.StatusInternalServerError,
-			ErrorType:         "upstream_error",
-			Message:           "Upstream gateway error",
+			ErrorType:         SafeUpstreamClientError(resp.StatusCode).ErrType,
+			Code:              SafeUpstreamClientError(resp.StatusCode).Code,
+			Message:           SafeUpstreamClientError(resp.StatusCode).MessageWithCode(),
 			UpstreamRequestID: strings.TrimSpace(resp.Header.Get("x-request-id")),
 		}
 		writeOpenAIImagesUpstreamErrorResponse(c, upErr)
@@ -999,7 +978,6 @@ func (s *OpenAIGatewayService) handleOpenAIImagesErrorResponse(
 		}
 	}
 
-	// Surface the real upstream error to the client.
 	upErr := openAIImagesUpstreamErrorFromHTTP(resp.StatusCode, resp.Header, body)
 	writeOpenAIImagesUpstreamErrorResponse(c, upErr)
 	return nil, upErr

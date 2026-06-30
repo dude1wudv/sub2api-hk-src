@@ -119,24 +119,20 @@ func (c *openAIWSToolCallReplayCollector) addItem(item gjson.Result) {
 }
 
 func buildOpenAIWSHTTPBridgeErrorEvent(statusCode int, message string) []byte {
-	message = strings.TrimSpace(message)
-	if message == "" {
-		message = http.StatusText(statusCode)
-	}
-	if message == "" {
-		message = "upstream request failed"
-	}
+	safe := SafeUpstreamClientError(statusCode)
+	statusCode = safe.Status
+	message = safe.MessageWithCode()
 	event := map[string]any{
 		"type":   "error",
 		"status": statusCode,
 		"error": map[string]any{
-			"type":    "upstream_error",
+			"type":    safe.ErrType,
 			"message": message,
 		},
 	}
 	body, err := json.Marshal(event)
 	if err != nil {
-		return []byte(`{"type":"error","error":{"type":"upstream_error","message":"upstream request failed"}}`)
+		return []byte(`{"type":"error","error":{"type":"server_error","message":"SUNM_REQUEST_FAILED: Request failed"}}`)
 	}
 	return body
 }

@@ -194,7 +194,8 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 				if fs.LastFailoverErr != nil {
 					h.handleCCFailoverExhausted(c, fs.LastFailoverErr, streamStarted)
 				} else {
-					h.chatCompletionsErrorResponse(c, http.StatusBadGateway, "server_error", "All available accounts exhausted")
+					safe := service.SafeUpstreamClientError(http.StatusBadGateway)
+					h.chatCompletionsErrorResponse(c, safe.Status, safe.ErrType, safe.MessageWithCode())
 				}
 				return
 			}
@@ -326,6 +327,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 
 // chatCompletionsErrorResponse writes an error in OpenAI Chat Completions format.
 func (h *GatewayHandler) chatCompletionsErrorResponse(c *gin.Context, status int, errType, message string) {
+	status, errType, message = service.RedactUpstreamClientError(status, errType, message)
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"type":    errType,
@@ -348,5 +350,6 @@ func (h *GatewayHandler) handleCCFailoverExhausted(c *gin.Context, lastErr *serv
 		h.chatCompletionsErrorResponse(c, http.StatusBadGateway, "upstream_error", service.OpenAISilentRefusalClientMessage())
 		return
 	}
-	h.chatCompletionsErrorResponse(c, statusCode, "server_error", "All available accounts exhausted")
+	safe := service.SafeUpstreamClientError(statusCode)
+	h.chatCompletionsErrorResponse(c, safe.Status, safe.ErrType, safe.MessageWithCode())
 }

@@ -214,7 +214,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			} else {
 				// 非订阅模式 或 订阅模式但 subscriptionService 未注入：回退到余额检查
 				if apiKey.User.Balance <= 0 {
-					AbortWithError(c, 403, "INSUFFICIENT_BALANCE", "Insufficient account balance")
+					AbortWithError(c, 403, "SUNM_BALANCE_REQUIRED", "SUNM_BALANCE_REQUIRED: Account balance is insufficient")
 					return
 				}
 			}
@@ -304,7 +304,7 @@ func abortIfAPIKeyGroupNotAllowed(c *gin.Context, apiKey *service.APIKey) bool {
 		return false
 	}
 	service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnavailable)
-	AbortWithError(c, 403, "GROUP_NOT_ALLOWED", "API Key 所属专属分组不再允许当前用户使用")
+	AbortWithError(c, 403, "SUNM_GROUP_UNAVAILABLE", "SUNM_GROUP_UNAVAILABLE: Service group is unavailable")
 	return true
 }
 
@@ -325,10 +325,10 @@ func validateAPIKeyGroupAvailable(apiKey *service.APIKey) (string, string, bool)
 	}
 	group := apiKey.Group
 	if group == nil || strings.EqualFold(group.Status, "deleted") {
-		return "GROUP_DELETED", "API Key 所属分组已删除", false
+		return "SUNM_GROUP_UNAVAILABLE", "SUNM_GROUP_UNAVAILABLE: Service group is unavailable", false
 	}
 	if !group.IsActive() {
-		return "GROUP_DISABLED", "API Key 所属分组已停用", false
+		return "SUNM_GROUP_UNAVAILABLE", "SUNM_GROUP_UNAVAILABLE: Service group is unavailable", false
 	}
 	return "", "", true
 }

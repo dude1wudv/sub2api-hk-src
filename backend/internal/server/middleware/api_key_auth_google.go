@@ -110,7 +110,7 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			}
 		} else {
 			if apiKey.User.Balance <= 0 {
-				abortWithGoogleError(c, 403, "Insufficient account balance")
+				abortWithGoogleError(c, 403, "SUNM_BALANCE_REQUIRED: Account balance is insufficient")
 				return
 			}
 		}
@@ -167,6 +167,7 @@ func allowGoogleQueryKey(path string) bool {
 }
 
 func abortWithGoogleError(c *gin.Context, status int, message string) {
+	status, message = service.RedactUpstreamClientMessage(status, message)
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"code":    status,

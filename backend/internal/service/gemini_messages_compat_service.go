@@ -1857,6 +1857,11 @@ func (s *GeminiMessagesCompatService) writeGeminiMappedError(c *gin.Context, acc
 		}
 	}
 
+	safe := SafeUpstreamClientError(upstreamStatus)
+	statusCode = safe.Status
+	errType = safe.ErrType
+	errMsg = safe.MessageWithCode()
+
 	c.JSON(statusCode, gin.H{
 		"type":  "error",
 		"error": gin.H{"type": errType, "message": errMsg},
@@ -2249,6 +2254,7 @@ func randomHex(nBytes int) string {
 }
 
 func (s *GeminiMessagesCompatService) writeClaudeError(c *gin.Context, status int, errType, message string) error {
+	status, errType, message = RedactUpstreamClientError(status, errType, message)
 	MarkResponseCommitted(c)
 	c.JSON(status, gin.H{
 		"type":  "error",
@@ -2258,6 +2264,7 @@ func (s *GeminiMessagesCompatService) writeClaudeError(c *gin.Context, status in
 }
 
 func (s *GeminiMessagesCompatService) writeGoogleError(c *gin.Context, status int, message string) error {
+	status, message = RedactUpstreamClientMessage(status, message)
 	MarkResponseCommitted(c)
 	c.JSON(status, gin.H{
 		"error": gin.H{

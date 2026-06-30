@@ -503,6 +503,7 @@ func (s *GatewayService) handleCCStreamingFromAnthropic(
 // writeGatewayCCError writes an error in OpenAI Chat Completions format for
 // the Anthropic-upstream CC forwarding path.
 func writeGatewayCCError(c *gin.Context, statusCode int, errType, message string) {
+	statusCode, errType, message = RedactUpstreamClientError(statusCode, errType, message)
 	MarkResponseCommitted(c)
 	c.JSON(statusCode, gin.H{
 		"error": gin.H{

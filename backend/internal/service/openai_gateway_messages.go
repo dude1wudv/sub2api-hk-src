@@ -1073,6 +1073,7 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 
 // writeAnthropicError writes an error response in Anthropic Messages API format.
 func writeAnthropicError(c *gin.Context, statusCode int, errType, message string) {
+	statusCode, errType, message = RedactUpstreamClientError(statusCode, errType, message)
 	c.JSON(statusCode, gin.H{
 		"type": "error",
 		"error": gin.H{
@@ -1087,6 +1088,7 @@ func writeAnthropicError(c *gin.Context, statusCode int, errType, message string
 // cyber_policy) and programmatic clients stop retrying.
 // Marshal 失败的兜底仅保留固定提示。
 func buildAnthropicStreamErrorSSE(errType, message string) string {
+	_, errType, message = RedactUpstreamClientError(http.StatusBadGateway, errType, message)
 	payload, err := json.Marshal(gin.H{
 		"type": "error",
 		"error": gin.H{

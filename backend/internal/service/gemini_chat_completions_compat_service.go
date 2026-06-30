@@ -820,62 +820,8 @@ func (s *GeminiMessagesCompatService) writeGeminiChatCompletionsMappedError(
 		return s.writeChatCompletionsError(c, status, errType, errMsg)
 	}
 
-	statusCode := http.StatusBadGateway
-	errType := "upstream_error"
-	errMsg := "Upstream request failed"
-	if mapped := mapGeminiErrorBodyToClaudeError(body); mapped != nil {
-		if mapped.Type != "" {
-			errType = mapped.Type
-		}
-		if mapped.Message != "" {
-			errMsg = mapped.Message
-		}
-		if mapped.StatusCode > 0 {
-			statusCode = mapped.StatusCode
-		}
-	}
-
-	switch upstreamStatus {
-	case http.StatusBadRequest:
-		if statusCode == http.StatusBadGateway {
-			statusCode = http.StatusBadRequest
-		}
-		if errType == "upstream_error" {
-			errType = "invalid_request_error"
-		}
-		if errMsg == "Upstream request failed" {
-			errMsg = "Invalid request"
-		}
-	case http.StatusNotFound:
-		statusCode = http.StatusNotFound
-		if errType == "upstream_error" {
-			errType = "not_found_error"
-		}
-		if errMsg == "Upstream request failed" {
-			errMsg = "Resource not found"
-		}
-	case http.StatusTooManyRequests:
-		statusCode = http.StatusTooManyRequests
-		if errType == "upstream_error" {
-			errType = "rate_limit_error"
-		}
-		if errMsg == "Upstream request failed" {
-			errMsg = "Upstream rate limit exceeded, please retry later"
-		}
-	case 529:
-		statusCode = http.StatusServiceUnavailable
-		if errType == "upstream_error" {
-			errType = "overloaded_error"
-		}
-		if errMsg == "Upstream request failed" {
-			errMsg = "Upstream service overloaded, please retry later"
-		}
-	}
-
-	if upstreamMsg != "" && errMsg == "Upstream request failed" {
-		errMsg = upstreamMsg
-	}
-	return s.writeChatCompletionsError(c, statusCode, errType, errMsg)
+	safe := SafeUpstreamClientError(upstreamStatus)
+	return s.writeChatCompletionsError(c, safe.Status, safe.ErrType, safe.MessageWithCode())
 }
 
 func (s *GeminiMessagesCompatService) writeChatCompletionsError(c *gin.Context, status int, errType, message string) error {

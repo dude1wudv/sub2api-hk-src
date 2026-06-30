@@ -907,12 +907,10 @@ func (s *OpenAIGatewayService) writeOpenAIWSFallbackErrorResponse(c *gin.Context
 	if !ok {
 		return false
 	}
-	if strings.TrimSpace(clientMessage) == "" {
-		clientMessage = "Upstream request failed"
-	}
 	if strings.TrimSpace(upstreamMessage) == "" {
 		upstreamMessage = clientMessage
 	}
+	statusCode, errType, clientMessage = RedactUpstreamClientError(statusCode, errType, clientMessage)
 
 	setOpsUpstreamError(c, statusCode, upstreamMessage, "")
 	if account != nil {
@@ -4134,13 +4132,15 @@ func (s *OpenAIGatewayService) handleErrorResponsePassthrough(
 		}
 	}
 
+	safe := SafeUpstreamClientError(resp.StatusCode)
 	MarkResponseCommitted(c)
-	writeOpenAIPassthroughResponseHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
-	contentType := resp.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/json"
-	}
-	c.Data(resp.StatusCode, contentType, body)
+	c.JSON(safe.Status, gin.H{
+		"error": gin.H{
+			"type":    safe.ErrType,
+			"code":    safe.Code,
+			"message": safe.MessageWithCode(),
+		},
+	})
 
 	if upstreamMsg == "" {
 		return fmt.Errorf("upstream error: %d", resp.StatusCode)
@@ -5000,10 +5000,12 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 			Detail:             upstreamDetail,
 		})
 		MarkResponseCommitted(c)
-		c.JSON(http.StatusInternalServerError, gin.H{
+		safe := SafeUpstreamClientError(resp.StatusCode)
+		c.JSON(safe.Status, gin.H{
 			"error": gin.H{
-				"type":    "upstream_error",
-				"message": "Upstream gateway error",
+				"type":    safe.ErrType,
+				"code":    safe.Code,
+				"message": safe.MessageWithCode(),
 			},
 		})
 		if upstreamMsg == "" {
@@ -5046,37 +5048,12 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 
 	MarkResponseCommitted(c)
 
-	// Return appropriate error response
-	var errType, errMsg string
-	var statusCode int
-
-	switch resp.StatusCode {
-	case 401:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream authentication failed, please contact administrator"
-	case 402:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream payment required: insufficient balance or billing issue"
-	case 403:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream access forbidden, please contact administrator"
-	case 429:
-		statusCode = http.StatusTooManyRequests
-		errType = "rate_limit_error"
-		errMsg = "Upstream rate limit exceeded, please retry later"
-	default:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream request failed"
-	}
-
-	c.JSON(statusCode, gin.H{
+	safe := SafeUpstreamClientError(resp.StatusCode)
+	c.JSON(safe.Status, gin.H{
 		"error": gin.H{
-			"type":    errType,
-			"message": errMsg,
+			"type":    safe.ErrType,
+			"code":    safe.Code,
+			"message": safe.MessageWithCode(),
 		},
 	})
 
@@ -5116,11 +5093,8 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 			UpstreamStatus: resp.StatusCode,
 		})
 		setOpsUpstreamError(c, resp.StatusCode, cyberMsg, truncateString(string(body), 2048))
-		clientMsg := cyberMsg
-		if clientMsg == "" {
-			clientMsg = "Request blocked by upstream cyber-security policy"
-		}
-		writeError(c, resp.StatusCode, "invalid_request_error", clientMsg)
+		safe := SafeUpstreamClientError(resp.StatusCode)
+		writeError(c, safe.Status, safe.ErrType, safe.MessageWithCode())
 		if cyberMsg == "" {
 			return nil, fmt.Errorf("openai cyber_policy: %d", resp.StatusCode)
 		}
@@ -5173,7 +5147,8 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 			Detail:             upstreamDetail,
 		})
 		MarkResponseCommitted(c)
-		writeError(c, http.StatusInternalServerError, "api_error", "Upstream gateway error")
+		safe := SafeUpstreamClientError(resp.StatusCode)
+		writeError(c, safe.Status, safe.ErrType, safe.MessageWithCode())
 		if upstreamMsg == "" {
 			return nil, fmt.Errorf("upstream error: %d (not in custom error codes)", resp.StatusCode)
 		}
@@ -5213,20 +5188,8 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 
 	MarkResponseCommitted(c)
 
-	// Map status code to error type and write response
-	errType := "api_error"
-	switch {
-	case resp.StatusCode == 400:
-		errType = "invalid_request_error"
-	case resp.StatusCode == 404:
-		errType = "not_found_error"
-	case resp.StatusCode == 429:
-		errType = "rate_limit_error"
-	case resp.StatusCode >= 500:
-		errType = "api_error"
-	}
-
-	writeError(c, resp.StatusCode, errType, upstreamMsg)
+	safe := SafeUpstreamClientError(resp.StatusCode)
+	writeError(c, safe.Status, safe.ErrType, safe.MessageWithCode())
 	return nil, fmt.Errorf("upstream error: %d %s", resp.StatusCode, upstreamMsg)
 }
 

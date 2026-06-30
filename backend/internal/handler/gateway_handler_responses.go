@@ -192,7 +192,8 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 				if fs.LastFailoverErr != nil {
 					h.handleResponsesFailoverExhausted(c, fs.LastFailoverErr, streamStarted)
 				} else {
-					h.responsesErrorResponse(c, http.StatusBadGateway, "server_error", "All available accounts exhausted")
+					safe := service.SafeUpstreamClientError(http.StatusBadGateway)
+					h.responsesErrorResponse(c, safe.Status, safe.Code, safe.MessageWithCode())
 				}
 				return
 			}
@@ -305,6 +306,7 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 
 // responsesErrorResponse writes an error in OpenAI Responses API format.
 func (h *GatewayHandler) responsesErrorResponse(c *gin.Context, status int, code, message string) {
+	status, code, message = service.RedactUpstreamClientCode(status, code, message)
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"code":    code,
@@ -327,5 +329,6 @@ func (h *GatewayHandler) handleResponsesFailoverExhausted(c *gin.Context, lastEr
 		h.responsesErrorResponse(c, http.StatusBadGateway, "upstream_error", service.OpenAISilentRefusalClientMessage())
 		return
 	}
-	h.responsesErrorResponse(c, statusCode, "server_error", "All available accounts exhausted")
+	safe := service.SafeUpstreamClientError(statusCode)
+	h.responsesErrorResponse(c, safe.Status, safe.Code, safe.MessageWithCode())
 }

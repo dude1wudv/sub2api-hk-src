@@ -582,7 +582,8 @@ func parseGeminiModelAction(rest string) (model string, action string, err error
 
 func (h *GatewayHandler) handleGeminiFailoverExhausted(c *gin.Context, failoverErr *service.UpstreamFailoverError) {
 	if failoverErr == nil {
-		googleError(c, http.StatusBadGateway, "Upstream request failed")
+		safe := service.SafeUpstreamClientError(http.StatusBadGateway)
+		googleError(c, safe.Status, safe.MessageWithCode())
 		return
 	}
 
@@ -599,7 +600,7 @@ func (h *GatewayHandler) handleGeminiFailoverExhausted(c *gin.Context, failoverE
 			}
 
 			// 确定响应消息
-			msg := service.ExtractUpstreamErrorMessage(responseBody)
+			msg := service.SafeUpstreamClientError(statusCode).MessageWithCode()
 			if !rule.PassthroughBody && rule.CustomMessage != nil {
 				msg = *rule.CustomMessage
 			}
@@ -623,20 +624,8 @@ func (h *GatewayHandler) handleGeminiFailoverExhausted(c *gin.Context, failoverE
 }
 
 func mapGeminiUpstreamError(statusCode int) (int, string) {
-	switch statusCode {
-	case 401:
-		return http.StatusBadGateway, "Upstream authentication failed, please contact administrator"
-	case 403:
-		return http.StatusBadGateway, "Upstream access forbidden, please contact administrator"
-	case 429:
-		return http.StatusTooManyRequests, "Upstream rate limit exceeded, please retry later"
-	case 529:
-		return http.StatusServiceUnavailable, "Upstream service overloaded, please retry later"
-	case 500, 502, 503, 504:
-		return http.StatusBadGateway, "Upstream service temporarily unavailable"
-	default:
-		return http.StatusBadGateway, "Upstream request failed"
-	}
+	safe := service.SafeUpstreamClientError(statusCode)
+	return safe.Status, safe.MessageWithCode()
 }
 
 type pathParseError struct{ msg string }
@@ -644,6 +633,7 @@ type pathParseError struct{ msg string }
 func (e *pathParseError) Error() string { return e.msg }
 
 func googleError(c *gin.Context, status int, message string) {
+	status, message = service.RedactUpstreamClientMessage(status, message)
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"code":    status,

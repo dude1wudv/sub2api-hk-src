@@ -63,21 +63,23 @@ func ReadUpstreamResponseBody(reader io.Reader, cfg *config.Config, c *gin.Conte
 
 // anthropicTooLargeError 以 Anthropic Messages API 格式写入超限错误。
 func anthropicTooLargeError(c *gin.Context) {
-	c.JSON(http.StatusBadGateway, gin.H{
+	safe := SafeUpstreamClientError(http.StatusBadGateway)
+	c.JSON(safe.Status, gin.H{
 		"type": "error",
 		"error": gin.H{
-			"type":    "upstream_error",
-			"message": "Upstream response too large",
+			"type":    safe.ErrType,
+			"message": safe.MessageWithCode(),
 		},
 	})
 }
 
 // openAITooLargeError 以 OpenAI / Gemini 格式写入超限错误。
 func openAITooLargeError(c *gin.Context) {
-	c.JSON(http.StatusBadGateway, gin.H{
+	safe := SafeUpstreamClientError(http.StatusBadGateway)
+	c.JSON(safe.Status, gin.H{
 		"error": gin.H{
-			"type":    "upstream_error",
-			"message": "Upstream response too large",
+			"type":    safe.ErrType,
+			"message": safe.MessageWithCode(),
 		},
 	})
 }

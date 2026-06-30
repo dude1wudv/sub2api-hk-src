@@ -181,6 +181,7 @@ func writeOpenAIEmbeddingsUpstreamResponse(c *gin.Context, resp *http.Response, 
 }
 
 func writeOpenAIEmbeddingsError(c *gin.Context, statusCode int, errType, message string) {
+	statusCode, errType, message = RedactUpstreamClientError(statusCode, errType, message)
 	c.JSON(statusCode, gin.H{
 		"error": gin.H{
 			"type":    errType,

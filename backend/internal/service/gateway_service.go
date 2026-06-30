@@ -5114,11 +5114,12 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
-			c.JSON(http.StatusBadGateway, gin.H{
+			safe := SafeUpstreamClientError(http.StatusBadGateway)
+			c.JSON(safe.Status, gin.H{
 				"type": "error",
 				"error": gin.H{
-					"type":    "upstream_error",
-					"message": "Upstream request failed",
+					"type":    safe.ErrType,
+					"message": safe.MessageWithCode(),
 				},
 			})
 			return nil, fmt.Errorf("upstream request failed: %s", safeErr)
@@ -5693,11 +5694,12 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
-			c.JSON(http.StatusBadGateway, gin.H{
+			safe := SafeUpstreamClientError(http.StatusBadGateway)
+			c.JSON(safe.Status, gin.H{
 				"type": "error",
 				"error": gin.H{
-					"type":    "upstream_error",
-					"message": "Upstream request failed",
+					"type":    safe.ErrType,
+					"message": safe.MessageWithCode(),
 				},
 			})
 			return nil, fmt.Errorf("upstream request failed: %s", safeErr)
@@ -6556,11 +6558,12 @@ func (s *GatewayService) executeBedrockUpstream(
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
-			c.JSON(http.StatusBadGateway, gin.H{
+			safe := SafeUpstreamClientError(http.StatusBadGateway)
+			c.JSON(safe.Status, gin.H{
 				"type": "error",
 				"error": gin.H{
-					"type":    "upstream_error",
-					"message": "Upstream request failed",
+					"type":    safe.ErrType,
+					"message": safe.MessageWithCode(),
 				},
 			})
 			return nil, fmt.Errorf("upstream request failed: %s", safeErr)
@@ -7995,53 +7998,14 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 		return nil, fmt.Errorf("upstream error: %d (passthrough rule matched) message=%s", resp.StatusCode, summary)
 	}
 
-	// 根据状态码返回适当的自定义错误响应（不透传上游详细信息）
-	var errType, errMsg string
-	var statusCode int
-
-	switch resp.StatusCode {
-	case 400:
-		c.Data(http.StatusBadRequest, "application/json", body)
-		summary := upstreamMsg
-		if summary == "" {
-			summary = truncateForLog(body, 512)
-		}
-		if summary == "" {
-			return nil, fmt.Errorf("upstream error: %d", resp.StatusCode)
-		}
-		return nil, fmt.Errorf("upstream error: %d message=%s", resp.StatusCode, summary)
-	case 401:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream authentication failed, please contact administrator"
-	case 403:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream access forbidden, please contact administrator"
-	case 429:
-		statusCode = http.StatusTooManyRequests
-		errType = "rate_limit_error"
-		errMsg = "Upstream rate limit exceeded, please retry later"
-	case 529:
-		statusCode = http.StatusServiceUnavailable
-		errType = "overloaded_error"
-		errMsg = "Upstream service overloaded, please retry later"
-	case 500, 502, 503, 504:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream service temporarily unavailable"
-	default:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream request failed"
-	}
+	safe := SafeUpstreamClientError(resp.StatusCode)
 
 	// 返回自定义错误响应
-	c.JSON(statusCode, gin.H{
+	c.JSON(safe.Status, gin.H{
 		"type": "error",
 		"error": gin.H{
-			"type":    errType,
-			"message": errMsg,
+			"type":    safe.ErrType,
+			"message": safe.MessageWithCode(),
 		},
 	})
 
@@ -8162,8 +8126,8 @@ func (s *GatewayService) handleRetryExhaustedError(ctx context.Context, resp *ht
 	c.JSON(http.StatusBadGateway, gin.H{
 		"type": "error",
 		"error": gin.H{
-			"type":    "upstream_error",
-			"message": "Upstream request failed after retries",
+			"type":    SafeUpstreamClientError(resp.StatusCode).ErrType,
+			"message": SafeUpstreamClientError(resp.StatusCode).MessageWithCode(),
 		},
 	})
 
@@ -10553,6 +10517,7 @@ func sanitizeCountTokensRequestBody(body []byte) []byte {
 
 // countTokensError 返回 count_tokens 错误响应
 func (s *GatewayService) countTokensError(c *gin.Context, status int, errType, message string) {
+	status, errType, message = RedactUpstreamClientError(status, errType, message)
 	c.JSON(status, gin.H{
 		"type": "error",
 		"error": gin.H{
