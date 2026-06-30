@@ -329,7 +329,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
@@ -398,6 +398,7 @@ let chartLoadSeq = 0
 let usersTrendLoadSeq = 0
 let rankingLoadSeq = 0
 let upstreamBalanceLoadSeq = 0
+let upstreamBalanceRefreshTimer: ReturnType<typeof setInterval> | null = null
 const rankingLimit = 12
 
 // Helper function to format date in local timezone
@@ -759,6 +760,11 @@ const loadChartData = async () => {
 
 onMounted(() => {
   loadDashboardStats()
+  upstreamBalanceRefreshTimer = setInterval(loadUpstreamBalances, 5 * 60 * 1000)
+})
+
+onUnmounted(() => {
+  if (upstreamBalanceRefreshTimer) clearInterval(upstreamBalanceRefreshTimer)
 })
 </script>
 
