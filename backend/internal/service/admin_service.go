@@ -243,6 +243,11 @@ type CreateGroupInput struct {
 	DailyBalanceEnabled bool
 	// DailyFallbackMultiplier 每日额度耗尽/过期后用长期余额支付的回退倍率（默认 1.5，<=0 时仓储回退到 1.5）
 	DailyFallbackMultiplier float64
+	// TimedDiscountEnabled 限时特价窗口开关。
+	TimedDiscountEnabled bool
+	// TimedDiscountStartMinute/EndMinute 是 Asia/Shanghai 当天分钟数，开始包含，结束不包含。
+	TimedDiscountStartMinute int
+	TimedDiscountEndMinute   int
 	// 从指定分组复制账号（创建分组后在同一事务内绑定）
 	CopyAccountsFromGroupIDs []int64
 }
@@ -290,6 +295,11 @@ type UpdateGroupInput struct {
 	DailyBalanceEnabled *bool
 	// DailyFallbackMultiplier 回退倍率；nil 表示未提供不改动。
 	DailyFallbackMultiplier *float64
+	// TimedDiscountEnabled 限时特价窗口开关；nil 表示未提供不改动。
+	TimedDiscountEnabled *bool
+	// TimedDiscountStartMinute/EndMinute 是 Asia/Shanghai 当天分钟数；nil 表示未提供不改动。
+	TimedDiscountStartMinute *int
+	TimedDiscountEndMinute   *int
 	// 从指定分组复制账号（同步操作：先清空当前分组的账号绑定，再绑定源分组的账号）
 	CopyAccountsFromGroupIDs []int64
 }
@@ -1930,6 +1940,10 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	weeklyLimit := normalizeLimit(input.WeeklyLimitUSD)
 	monthlyLimit := normalizeLimit(input.MonthlyLimitUSD)
 	spendingLimit := normalizeLimit(input.SpendingLimitUSD)
+	timedDiscountStart, timedDiscountEnd := NormalizeTimedDiscountWindow(input.TimedDiscountStartMinute, input.TimedDiscountEndMinute)
+	if err := ValidateTimedDiscountWindow(timedDiscountStart, timedDiscountEnd); err != nil {
+		return nil, err
+	}
 
 	// 图片价格：负数表示清除（使用默认价格），0 保留（表示免费）
 	imagePrice1K := normalizePrice(input.ImagePrice1K)
@@ -2031,6 +2045,9 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		SpendingLimitUSD:                spendingLimit,
 		DailyBalanceEnabled:             input.DailyBalanceEnabled,
 		DailyFallbackMultiplier:         input.DailyFallbackMultiplier,
+		TimedDiscountEnabled:            input.TimedDiscountEnabled,
+		TimedDiscountStartMinute:        timedDiscountStart,
+		TimedDiscountEndMinute:          timedDiscountEnd,
 	}
 	sanitizeGroupMessagesDispatchFields(group)
 	if err := s.groupRepo.Create(ctx, group); err != nil {
@@ -2291,6 +2308,19 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.DailyFallbackMultiplier != nil {
 		group.DailyFallbackMultiplier = *input.DailyFallbackMultiplier
+	}
+	if input.TimedDiscountEnabled != nil {
+		group.TimedDiscountEnabled = *input.TimedDiscountEnabled
+	}
+	if input.TimedDiscountStartMinute != nil {
+		group.TimedDiscountStartMinute = *input.TimedDiscountStartMinute
+	}
+	if input.TimedDiscountEndMinute != nil {
+		group.TimedDiscountEndMinute = *input.TimedDiscountEndMinute
+	}
+	group.TimedDiscountStartMinute, group.TimedDiscountEndMinute = NormalizeTimedDiscountWindow(group.TimedDiscountStartMinute, group.TimedDiscountEndMinute)
+	if err := ValidateTimedDiscountWindow(group.TimedDiscountStartMinute, group.TimedDiscountEndMinute); err != nil {
+		return nil, err
 	}
 	sanitizeGroupMessagesDispatchFields(group)
 

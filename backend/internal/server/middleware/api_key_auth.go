@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
@@ -329,6 +330,9 @@ func validateAPIKeyGroupAvailable(apiKey *service.APIKey) (string, string, bool)
 	}
 	if !group.IsActive() {
 		return "SUNM_GROUP_UNAVAILABLE", "SUNM_GROUP_UNAVAILABLE: Service group is unavailable", false
+	}
+	if !group.TimedDiscountOpenAt(time.Now()) {
+		return "SUNM_GROUP_TIMED_DISCOUNT_CLOSED", "SUNM_GROUP_TIMED_DISCOUNT_CLOSED: Service group is outside its timed discount window", false
 	}
 	return "", "", true
 }

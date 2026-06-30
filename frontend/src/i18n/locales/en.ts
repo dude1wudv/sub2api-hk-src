@@ -2309,6 +2309,13 @@ export default {
         fallbackMultiplier: 'Long-term Balance Fallback Multiplier',
         fallbackMultiplierHint: 'The multiplier applied when consuming from long-term balance after daily balance is exhausted. For example, if set to 1.5, every $1 consumed from long-term balance equals $0.67 from daily balance.'
       },
+      timedDiscount: {
+        title: 'Timed Discount',
+        hint: 'When enabled, this group accepts new requests only during the configured daily window.',
+        startTime: 'Start time',
+        endTime: 'End time',
+        windowHint: 'Evaluated in Asia/Shanghai. Start is inclusive and end is exclusive; new requests outside the window are rejected.'
+      },
       imagePricing: {
         title: 'Image Generation Pricing',
         description: 'Configure image generation access and base image prices. Leave empty to use default prices.',

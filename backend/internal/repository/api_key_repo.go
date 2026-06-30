@@ -194,6 +194,9 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 				group.FieldMessagesDispatchModelConfig,
 				group.FieldModelsListConfig,
 				group.FieldRpmLimit,
+				group.FieldTimedDiscountEnabled,
+				group.FieldTimedDiscountStartMinute,
+				group.FieldTimedDiscountEndMinute,
 			)
 		}).
 		Only(ctx)
@@ -818,6 +821,9 @@ func groupEntityToService(g *dbent.Group) *service.Group {
 		SpendingUsedUSD:                 g.SpendingUsedUsd,
 		DailyBalanceEnabled:             g.DailyBalanceEnabled,
 		DailyFallbackMultiplier:         g.DailyFallbackMultiplier,
+		TimedDiscountEnabled:            g.TimedDiscountEnabled,
+		TimedDiscountStartMinute:        g.TimedDiscountStartMinute,
+		TimedDiscountEndMinute:          g.TimedDiscountEndMinute,
 		CreatedAt:                       g.CreatedAt,
 		UpdatedAt:                       g.UpdatedAt,
 	}

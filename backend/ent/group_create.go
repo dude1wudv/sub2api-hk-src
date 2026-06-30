@@ -551,6 +551,48 @@ func (_c *GroupCreate) SetNillableDailyFallbackMultiplier(v *float64) *GroupCrea
 	return _c
 }
 
+// SetTimedDiscountEnabled sets the "timed_discount_enabled" field.
+func (_c *GroupCreate) SetTimedDiscountEnabled(v bool) *GroupCreate {
+	_c.mutation.SetTimedDiscountEnabled(v)
+	return _c
+}
+
+// SetNillableTimedDiscountEnabled sets the "timed_discount_enabled" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableTimedDiscountEnabled(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetTimedDiscountEnabled(*v)
+	}
+	return _c
+}
+
+// SetTimedDiscountStartMinute sets the "timed_discount_start_minute" field.
+func (_c *GroupCreate) SetTimedDiscountStartMinute(v int) *GroupCreate {
+	_c.mutation.SetTimedDiscountStartMinute(v)
+	return _c
+}
+
+// SetNillableTimedDiscountStartMinute sets the "timed_discount_start_minute" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableTimedDiscountStartMinute(v *int) *GroupCreate {
+	if v != nil {
+		_c.SetTimedDiscountStartMinute(*v)
+	}
+	return _c
+}
+
+// SetTimedDiscountEndMinute sets the "timed_discount_end_minute" field.
+func (_c *GroupCreate) SetTimedDiscountEndMinute(v int) *GroupCreate {
+	_c.mutation.SetTimedDiscountEndMinute(v)
+	return _c
+}
+
+// SetNillableTimedDiscountEndMinute sets the "timed_discount_end_minute" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableTimedDiscountEndMinute(v *int) *GroupCreate {
+	if v != nil {
+		_c.SetTimedDiscountEndMinute(*v)
+	}
+	return _c
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_c *GroupCreate) AddAPIKeyIDs(ids ...int64) *GroupCreate {
 	_c.mutation.AddAPIKeyIDs(ids...)
@@ -788,6 +830,18 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultDailyFallbackMultiplier
 		_c.mutation.SetDailyFallbackMultiplier(v)
 	}
+	if _, ok := _c.mutation.TimedDiscountEnabled(); !ok {
+		v := group.DefaultTimedDiscountEnabled
+		_c.mutation.SetTimedDiscountEnabled(v)
+	}
+	if _, ok := _c.mutation.TimedDiscountStartMinute(); !ok {
+		v := group.DefaultTimedDiscountStartMinute
+		_c.mutation.SetTimedDiscountStartMinute(v)
+	}
+	if _, ok := _c.mutation.TimedDiscountEndMinute(); !ok {
+		v := group.DefaultTimedDiscountEndMinute
+		_c.mutation.SetTimedDiscountEndMinute(v)
+	}
 	return nil
 }
 
@@ -898,6 +952,15 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.DailyFallbackMultiplier(); !ok {
 		return &ValidationError{Name: "daily_fallback_multiplier", err: errors.New(`ent: missing required field "Group.daily_fallback_multiplier"`)}
+	}
+	if _, ok := _c.mutation.TimedDiscountEnabled(); !ok {
+		return &ValidationError{Name: "timed_discount_enabled", err: errors.New(`ent: missing required field "Group.timed_discount_enabled"`)}
+	}
+	if _, ok := _c.mutation.TimedDiscountStartMinute(); !ok {
+		return &ValidationError{Name: "timed_discount_start_minute", err: errors.New(`ent: missing required field "Group.timed_discount_start_minute"`)}
+	}
+	if _, ok := _c.mutation.TimedDiscountEndMinute(); !ok {
+		return &ValidationError{Name: "timed_discount_end_minute", err: errors.New(`ent: missing required field "Group.timed_discount_end_minute"`)}
 	}
 	return nil
 }
@@ -1081,6 +1144,18 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DailyFallbackMultiplier(); ok {
 		_spec.SetField(group.FieldDailyFallbackMultiplier, field.TypeFloat64, value)
 		_node.DailyFallbackMultiplier = value
+	}
+	if value, ok := _c.mutation.TimedDiscountEnabled(); ok {
+		_spec.SetField(group.FieldTimedDiscountEnabled, field.TypeBool, value)
+		_node.TimedDiscountEnabled = value
+	}
+	if value, ok := _c.mutation.TimedDiscountStartMinute(); ok {
+		_spec.SetField(group.FieldTimedDiscountStartMinute, field.TypeInt, value)
+		_node.TimedDiscountStartMinute = value
+	}
+	if value, ok := _c.mutation.TimedDiscountEndMinute(); ok {
+		_spec.SetField(group.FieldTimedDiscountEndMinute, field.TypeInt, value)
+		_node.TimedDiscountEndMinute = value
 	}
 	if nodes := _c.mutation.APIKeysIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -1862,6 +1937,54 @@ func (u *GroupUpsert) AddDailyFallbackMultiplier(v float64) *GroupUpsert {
 	return u
 }
 
+// SetTimedDiscountEnabled sets the "timed_discount_enabled" field.
+func (u *GroupUpsert) SetTimedDiscountEnabled(v bool) *GroupUpsert {
+	u.Set(group.FieldTimedDiscountEnabled, v)
+	return u
+}
+
+// UpdateTimedDiscountEnabled sets the "timed_discount_enabled" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateTimedDiscountEnabled() *GroupUpsert {
+	u.SetExcluded(group.FieldTimedDiscountEnabled)
+	return u
+}
+
+// SetTimedDiscountStartMinute sets the "timed_discount_start_minute" field.
+func (u *GroupUpsert) SetTimedDiscountStartMinute(v int) *GroupUpsert {
+	u.Set(group.FieldTimedDiscountStartMinute, v)
+	return u
+}
+
+// UpdateTimedDiscountStartMinute sets the "timed_discount_start_minute" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateTimedDiscountStartMinute() *GroupUpsert {
+	u.SetExcluded(group.FieldTimedDiscountStartMinute)
+	return u
+}
+
+// AddTimedDiscountStartMinute adds v to the "timed_discount_start_minute" field.
+func (u *GroupUpsert) AddTimedDiscountStartMinute(v int) *GroupUpsert {
+	u.Add(group.FieldTimedDiscountStartMinute, v)
+	return u
+}
+
+// SetTimedDiscountEndMinute sets the "timed_discount_end_minute" field.
+func (u *GroupUpsert) SetTimedDiscountEndMinute(v int) *GroupUpsert {
+	u.Set(group.FieldTimedDiscountEndMinute, v)
+	return u
+}
+
+// UpdateTimedDiscountEndMinute sets the "timed_discount_end_minute" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateTimedDiscountEndMinute() *GroupUpsert {
+	u.SetExcluded(group.FieldTimedDiscountEndMinute)
+	return u
+}
+
+// AddTimedDiscountEndMinute adds v to the "timed_discount_end_minute" field.
+func (u *GroupUpsert) AddTimedDiscountEndMinute(v int) *GroupUpsert {
+	u.Add(group.FieldTimedDiscountEndMinute, v)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -2632,6 +2755,62 @@ func (u *GroupUpsertOne) AddDailyFallbackMultiplier(v float64) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateDailyFallbackMultiplier() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateDailyFallbackMultiplier()
+	})
+}
+
+// SetTimedDiscountEnabled sets the "timed_discount_enabled" field.
+func (u *GroupUpsertOne) SetTimedDiscountEnabled(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetTimedDiscountEnabled(v)
+	})
+}
+
+// UpdateTimedDiscountEnabled sets the "timed_discount_enabled" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateTimedDiscountEnabled() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateTimedDiscountEnabled()
+	})
+}
+
+// SetTimedDiscountStartMinute sets the "timed_discount_start_minute" field.
+func (u *GroupUpsertOne) SetTimedDiscountStartMinute(v int) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetTimedDiscountStartMinute(v)
+	})
+}
+
+// AddTimedDiscountStartMinute adds v to the "timed_discount_start_minute" field.
+func (u *GroupUpsertOne) AddTimedDiscountStartMinute(v int) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddTimedDiscountStartMinute(v)
+	})
+}
+
+// UpdateTimedDiscountStartMinute sets the "timed_discount_start_minute" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateTimedDiscountStartMinute() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateTimedDiscountStartMinute()
+	})
+}
+
+// SetTimedDiscountEndMinute sets the "timed_discount_end_minute" field.
+func (u *GroupUpsertOne) SetTimedDiscountEndMinute(v int) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetTimedDiscountEndMinute(v)
+	})
+}
+
+// AddTimedDiscountEndMinute adds v to the "timed_discount_end_minute" field.
+func (u *GroupUpsertOne) AddTimedDiscountEndMinute(v int) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddTimedDiscountEndMinute(v)
+	})
+}
+
+// UpdateTimedDiscountEndMinute sets the "timed_discount_end_minute" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateTimedDiscountEndMinute() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateTimedDiscountEndMinute()
 	})
 }
 
@@ -3571,6 +3750,62 @@ func (u *GroupUpsertBulk) AddDailyFallbackMultiplier(v float64) *GroupUpsertBulk
 func (u *GroupUpsertBulk) UpdateDailyFallbackMultiplier() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateDailyFallbackMultiplier()
+	})
+}
+
+// SetTimedDiscountEnabled sets the "timed_discount_enabled" field.
+func (u *GroupUpsertBulk) SetTimedDiscountEnabled(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetTimedDiscountEnabled(v)
+	})
+}
+
+// UpdateTimedDiscountEnabled sets the "timed_discount_enabled" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateTimedDiscountEnabled() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateTimedDiscountEnabled()
+	})
+}
+
+// SetTimedDiscountStartMinute sets the "timed_discount_start_minute" field.
+func (u *GroupUpsertBulk) SetTimedDiscountStartMinute(v int) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetTimedDiscountStartMinute(v)
+	})
+}
+
+// AddTimedDiscountStartMinute adds v to the "timed_discount_start_minute" field.
+func (u *GroupUpsertBulk) AddTimedDiscountStartMinute(v int) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddTimedDiscountStartMinute(v)
+	})
+}
+
+// UpdateTimedDiscountStartMinute sets the "timed_discount_start_minute" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateTimedDiscountStartMinute() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateTimedDiscountStartMinute()
+	})
+}
+
+// SetTimedDiscountEndMinute sets the "timed_discount_end_minute" field.
+func (u *GroupUpsertBulk) SetTimedDiscountEndMinute(v int) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetTimedDiscountEndMinute(v)
+	})
+}
+
+// AddTimedDiscountEndMinute adds v to the "timed_discount_end_minute" field.
+func (u *GroupUpsertBulk) AddTimedDiscountEndMinute(v int) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddTimedDiscountEndMinute(v)
+	})
+}
+
+// UpdateTimedDiscountEndMinute sets the "timed_discount_end_minute" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateTimedDiscountEndMinute() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateTimedDiscountEndMinute()
 	})
 }
 

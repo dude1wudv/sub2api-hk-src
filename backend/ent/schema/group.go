@@ -182,6 +182,17 @@ func (Group) Fields() []ent.Field {
 			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
 			Default(1.5).
 			Comment("每日额度耗尽/过期后，用长期余额支付时叠加的回退倍率"),
+
+		// 限时特价分组开关 (added by migration 155)
+		field.Bool("timed_discount_enabled").
+			Default(false).
+			Comment("是否启用限时特价窗口；窗口外拒绝该分组的新请求"),
+		field.Int("timed_discount_start_minute").
+			Default(30).
+			Comment("限时特价每日开始分钟（Asia/Shanghai，含）"),
+		field.Int("timed_discount_end_minute").
+			Default(450).
+			Comment("限时特价每日结束分钟（Asia/Shanghai，不含）"),
 	}
 }
 

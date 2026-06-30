@@ -130,6 +130,12 @@ type Group struct {
 	// DailyFallbackMultiplier 每日额度耗尽/过期后，用长期余额支付时叠加的回退倍率（默认 1.5）。
 	DailyFallbackMultiplier float64 `json:"daily_fallback_multiplier"`
 
+	// TimedDiscountEnabled 标记本分组只在每日固定时间窗口内开放。
+	TimedDiscountEnabled bool `json:"timed_discount_enabled"`
+	// TimedDiscountStartMinute/EndMinute 是 Asia/Shanghai 当天分钟数，开始包含，结束不包含。
+	TimedDiscountStartMinute int `json:"timed_discount_start_minute"`
+	TimedDiscountEndMinute   int `json:"timed_discount_end_minute"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

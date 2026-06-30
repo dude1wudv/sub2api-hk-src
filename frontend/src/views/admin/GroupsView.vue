@@ -724,6 +724,54 @@
           </div>
         </div>
 
+        <!-- 限时特价分组 -->
+        <div class="mt-4 border-t pt-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t("admin.groups.timedDiscount.title") }}
+              </label>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.groups.timedDiscount.hint") }}
+              </p>
+            </div>
+            <button
+              type="button"
+              @click="createForm.timed_discount_enabled = !createForm.timed_discount_enabled"
+              :class="[
+                'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors',
+                createForm.timed_discount_enabled
+                  ? 'bg-primary-500'
+                  : 'bg-gray-300 dark:bg-dark-600',
+              ]"
+            >
+              <span
+                :class="[
+                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                  createForm.timed_discount_enabled ? 'translate-x-6' : 'translate-x-1',
+                ]"
+              />
+            </button>
+          </div>
+
+          <div v-if="createForm.timed_discount_enabled" class="space-y-3 border-l-2 border-primary-200 pl-4 dark:border-primary-800">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label class="input-label">{{ t("admin.groups.timedDiscount.startTime") }}</label>
+                <input v-model="createForm.timed_discount_start_time" type="time" class="input" />
+              </div>
+              <div>
+                <label class="input-label">{{ t("admin.groups.timedDiscount.endTime") }}</label>
+                <input v-model="createForm.timed_discount_end_time" type="time" class="input" />
+              </div>
+            </div>
+            <p class="input-hint">
+              {{ t("admin.groups.timedDiscount.windowHint") }}
+            </p>
+          </div>
+        </div>
+
+
         <div class="border-t pt-4">
           <div class="mb-3 flex items-center justify-between gap-3">
             <div>
@@ -2105,6 +2153,53 @@
                 {{ t("admin.groups.dailyBalance.fallbackMultiplierHint") }}
               </p>
             </div>
+          </div>
+        </div>
+
+        <!-- 限时特价分组 -->
+        <div class="mt-4 border-t pt-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t("admin.groups.timedDiscount.title") }}
+              </label>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.groups.timedDiscount.hint") }}
+              </p>
+            </div>
+            <button
+              type="button"
+              @click="editForm.timed_discount_enabled = !editForm.timed_discount_enabled"
+              :class="[
+                'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors',
+                editForm.timed_discount_enabled
+                  ? 'bg-primary-500'
+                  : 'bg-gray-300 dark:bg-dark-600',
+              ]"
+            >
+              <span
+                :class="[
+                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                  editForm.timed_discount_enabled ? 'translate-x-6' : 'translate-x-1',
+                ]"
+              />
+            </button>
+          </div>
+
+          <div v-if="editForm.timed_discount_enabled" class="space-y-3 border-l-2 border-primary-200 pl-4 dark:border-primary-800">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label class="input-label">{{ t("admin.groups.timedDiscount.startTime") }}</label>
+                <input v-model="editForm.timed_discount_start_time" type="time" class="input" />
+              </div>
+              <div>
+                <label class="input-label">{{ t("admin.groups.timedDiscount.endTime") }}</label>
+                <input v-model="editForm.timed_discount_end_time" type="time" class="input" />
+              </div>
+            </div>
+            <p class="input-hint">
+              {{ t("admin.groups.timedDiscount.windowHint") }}
+            </p>
           </div>
         </div>
 
@@ -3527,6 +3622,27 @@ const editModelsListSelectedCount = computed(
   () => editModelsListState.items.filter((item) => item.selected).length,
 );
 
+const TIMED_DISCOUNT_DEFAULT_START_MINUTE = 30;
+const TIMED_DISCOUNT_DEFAULT_END_MINUTE = 7 * 60 + 30;
+
+const minuteToTime = (minute: number | null | undefined, fallback: number): string => {
+  const parsed = typeof minute === "number" ? Math.trunc(minute) : fallback;
+  const value = Number.isFinite(parsed) && parsed >= 0 && parsed < 24 * 60 ? parsed : fallback;
+  const hour = Math.floor(value / 60).toString().padStart(2, "0");
+  const min = (value % 60).toString().padStart(2, "0");
+  return `${hour}:${min}`;
+};
+
+const timeToMinute = (value: string, fallback: number): number => {
+  const match = /^(\d{2}):(\d{2})$/.exec(value || "");
+  if (!match) return fallback;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  return hour >= 0 && hour < 24 && minute >= 0 && minute < 60
+    ? hour * 60 + minute
+    : fallback;
+};
+
 const createForm = reactive({
   name: "",
   description: "",
@@ -3541,6 +3657,9 @@ const createForm = reactive({
   // 每日余额专属分组功能
   daily_balance_enabled: false,
   daily_fallback_multiplier: 1.5,
+  timed_discount_enabled: false,
+  timed_discount_start_time: minuteToTime(TIMED_DISCOUNT_DEFAULT_START_MINUTE, TIMED_DISCOUNT_DEFAULT_START_MINUTE),
+  timed_discount_end_time: minuteToTime(TIMED_DISCOUNT_DEFAULT_END_MINUTE, TIMED_DISCOUNT_DEFAULT_END_MINUTE),
   // 图片生成计费配置
   allow_image_generation: false,
   image_rate_independent: false,
@@ -3876,6 +3995,9 @@ const editForm = reactive({
   // 每日余额专属分组功能
   daily_balance_enabled: false,
   daily_fallback_multiplier: 1.5,
+  timed_discount_enabled: false,
+  timed_discount_start_time: minuteToTime(TIMED_DISCOUNT_DEFAULT_START_MINUTE, TIMED_DISCOUNT_DEFAULT_START_MINUTE),
+  timed_discount_end_time: minuteToTime(TIMED_DISCOUNT_DEFAULT_END_MINUTE, TIMED_DISCOUNT_DEFAULT_END_MINUTE),
   // 图片生成计费配置
   allow_image_generation: false,
   image_rate_independent: false,
@@ -4129,6 +4251,9 @@ const closeCreateModal = () => {
   createForm.weekly_limit_usd = null;
   createForm.monthly_limit_usd = null;
   createForm.spending_limit_usd = null;
+  createForm.timed_discount_enabled = false;
+  createForm.timed_discount_start_time = minuteToTime(TIMED_DISCOUNT_DEFAULT_START_MINUTE, TIMED_DISCOUNT_DEFAULT_START_MINUTE);
+  createForm.timed_discount_end_time = minuteToTime(TIMED_DISCOUNT_DEFAULT_END_MINUTE, TIMED_DISCOUNT_DEFAULT_END_MINUTE);
   createForm.allow_image_generation = false;
   createForm.image_rate_independent = false;
   createForm.image_rate_multiplier = 1;
@@ -4200,6 +4325,14 @@ const handleCreateGroup = async () => {
       spending_limit_usd: normalizeOptionalLimit(
         createForm.spending_limit_usd as number | string | null,
       ),
+      timed_discount_start_minute: timeToMinute(
+        createForm.timed_discount_start_time,
+        TIMED_DISCOUNT_DEFAULT_START_MINUTE,
+      ),
+      timed_discount_end_minute: timeToMinute(
+        createForm.timed_discount_end_time,
+        TIMED_DISCOUNT_DEFAULT_END_MINUTE,
+      ),
       model_routing: convertRoutingRulesToApiFormat(
         createModelRoutingRules.value,
       ),
@@ -4262,6 +4395,9 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.spending_limit_usd = group.spending_limit_usd ?? null;
   editForm.daily_balance_enabled = group.daily_balance_enabled ?? false;
   editForm.daily_fallback_multiplier = group.daily_fallback_multiplier ?? 1.5;
+  editForm.timed_discount_enabled = group.timed_discount_enabled ?? false;
+  editForm.timed_discount_start_time = minuteToTime(group.timed_discount_start_minute, TIMED_DISCOUNT_DEFAULT_START_MINUTE);
+  editForm.timed_discount_end_time = minuteToTime(group.timed_discount_end_minute, TIMED_DISCOUNT_DEFAULT_END_MINUTE);
   editForm.allow_image_generation = group.allow_image_generation ?? false;
   editForm.image_rate_independent = group.image_rate_independent ?? false;
   editForm.image_rate_multiplier = group.image_rate_multiplier ?? 1;
@@ -4339,6 +4475,14 @@ const handleUpdateGroup = async () => {
       ),
       spending_limit_usd: normalizeOptionalLimit(
         editForm.spending_limit_usd as number | string | null,
+      ),
+      timed_discount_start_minute: timeToMinute(
+        editForm.timed_discount_start_time,
+        TIMED_DISCOUNT_DEFAULT_START_MINUTE,
+      ),
+      timed_discount_end_minute: timeToMinute(
+        editForm.timed_discount_end_time,
+        TIMED_DISCOUNT_DEFAULT_END_MINUTE,
       ),
       fallback_group_id:
         editForm.fallback_group_id === null ? 0 : editForm.fallback_group_id,

@@ -715,6 +715,9 @@ var (
 		{Name: "spending_used_usd", Type: field.TypeFloat64, Default: 0, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
 		{Name: "daily_balance_enabled", Type: field.TypeBool, Default: false},
 		{Name: "daily_fallback_multiplier", Type: field.TypeFloat64, Default: 1.5, SchemaType: map[string]string{"postgres": "decimal(10,4)"}},
+		{Name: "timed_discount_enabled", Type: field.TypeBool, Default: false},
+		{Name: "timed_discount_start_minute", Type: field.TypeInt, Default: 30},
+		{Name: "timed_discount_end_minute", Type: field.TypeInt, Default: 450},
 	}
 	// GroupsTable holds the schema information for the "groups" table.
 	GroupsTable = &schema.Table{

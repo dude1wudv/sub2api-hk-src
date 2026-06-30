@@ -97,6 +97,12 @@ type Group struct {
 	DailyBalanceEnabled bool `json:"daily_balance_enabled,omitempty"`
 	// 每日额度耗尽/过期后，用长期余额支付时叠加的回退倍率
 	DailyFallbackMultiplier float64 `json:"daily_fallback_multiplier,omitempty"`
+	// 是否启用限时特价窗口；窗口外拒绝该分组的新请求
+	TimedDiscountEnabled bool `json:"timed_discount_enabled,omitempty"`
+	// 限时特价每日开始分钟（Asia/Shanghai，含）
+	TimedDiscountStartMinute int `json:"timed_discount_start_minute,omitempty"`
+	// 限时特价每日结束分钟（Asia/Shanghai，不含）
+	TimedDiscountEndMinute int `json:"timed_discount_end_minute,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the GroupQuery when eager-loading is set.
 	Edges        GroupEdges `json:"edges"`
@@ -205,11 +211,11 @@ func (*Group) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case group.FieldModelRouting, group.FieldSupportedModelScopes, group.FieldMessagesDispatchModelConfig, group.FieldModelsListConfig:
 			values[i] = new([]byte)
-		case group.FieldIsExclusive, group.FieldAllowImageGeneration, group.FieldImageRateIndependent, group.FieldClaudeCodeOnly, group.FieldModelRoutingEnabled, group.FieldMcpXMLInject, group.FieldAllowMessagesDispatch, group.FieldRequireOauthOnly, group.FieldRequirePrivacySet, group.FieldDailyBalanceEnabled:
+		case group.FieldIsExclusive, group.FieldAllowImageGeneration, group.FieldImageRateIndependent, group.FieldClaudeCodeOnly, group.FieldModelRoutingEnabled, group.FieldMcpXMLInject, group.FieldAllowMessagesDispatch, group.FieldRequireOauthOnly, group.FieldRequirePrivacySet, group.FieldDailyBalanceEnabled, group.FieldTimedDiscountEnabled:
 			values[i] = new(sql.NullBool)
 		case group.FieldRateMultiplier, group.FieldDailyLimitUsd, group.FieldWeeklyLimitUsd, group.FieldMonthlyLimitUsd, group.FieldImageRateMultiplier, group.FieldImagePrice1k, group.FieldImagePrice2k, group.FieldImagePrice4k, group.FieldSpendingLimitUsd, group.FieldSpendingUsedUsd, group.FieldDailyFallbackMultiplier:
 			values[i] = new(sql.NullFloat64)
-		case group.FieldID, group.FieldDefaultValidityDays, group.FieldFallbackGroupID, group.FieldFallbackGroupIDOnInvalidRequest, group.FieldSortOrder, group.FieldRpmLimit:
+		case group.FieldID, group.FieldDefaultValidityDays, group.FieldFallbackGroupID, group.FieldFallbackGroupIDOnInvalidRequest, group.FieldSortOrder, group.FieldRpmLimit, group.FieldTimedDiscountStartMinute, group.FieldTimedDiscountEndMinute:
 			values[i] = new(sql.NullInt64)
 		case group.FieldName, group.FieldDescription, group.FieldStatus, group.FieldPlatform, group.FieldSubscriptionType, group.FieldDefaultMappedModel:
 			values[i] = new(sql.NullString)
@@ -489,6 +495,24 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DailyFallbackMultiplier = value.Float64
 			}
+		case group.FieldTimedDiscountEnabled:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field timed_discount_enabled", values[i])
+			} else if value.Valid {
+				_m.TimedDiscountEnabled = value.Bool
+			}
+		case group.FieldTimedDiscountStartMinute:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field timed_discount_start_minute", values[i])
+			} else if value.Valid {
+				_m.TimedDiscountStartMinute = int(value.Int64)
+			}
+		case group.FieldTimedDiscountEndMinute:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field timed_discount_end_minute", values[i])
+			} else if value.Valid {
+				_m.TimedDiscountEndMinute = int(value.Int64)
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -703,6 +727,15 @@ func (_m *Group) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("daily_fallback_multiplier=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DailyFallbackMultiplier))
+	builder.WriteString(", ")
+	builder.WriteString("timed_discount_enabled=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TimedDiscountEnabled))
+	builder.WriteString(", ")
+	builder.WriteString("timed_discount_start_minute=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TimedDiscountStartMinute))
+	builder.WriteString(", ")
+	builder.WriteString("timed_discount_end_minute=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TimedDiscountEndMinute))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,6 +12,14 @@ import (
 
 type OpenAIMessagesDispatchModelConfig = domain.OpenAIMessagesDispatchModelConfig
 type GroupModelsListConfig = domain.GroupModelsListConfig
+
+const (
+	TimedDiscountTimezone           = "Asia/Shanghai"
+	TimedDiscountDefaultStartMinute = 30
+	TimedDiscountDefaultEndMinute   = 7*60 + 30
+)
+
+var timedDiscountLocation = time.FixedZone(TimedDiscountTimezone, 8*60*60)
 
 type Group struct {
 	ID             int64
@@ -80,6 +89,12 @@ type Group struct {
 	// DailyFallbackMultiplier 每日额度耗尽/过期后，用长期余额支付时叠加的回退倍率（默认 1.5）。
 	DailyFallbackMultiplier float64
 
+	// TimedDiscountEnabled 标记本分组只在每日固定时间窗口内开放。
+	TimedDiscountEnabled bool
+	// TimedDiscountStartMinute/EndMinute 是 Asia/Shanghai 当天分钟数，开始包含，结束不包含。
+	TimedDiscountStartMinute int
+	TimedDiscountEndMinute   int
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
@@ -111,6 +126,42 @@ func (g *Group) HasMonthlyLimit() bool {
 
 func (g *Group) HasSpendingLimit() bool {
 	return g != nil && g.SpendingLimitUSD != nil && *g.SpendingLimitUSD > 0
+}
+
+func NormalizeTimedDiscountWindow(startMinute, endMinute int) (int, int) {
+	if startMinute == 0 && endMinute == 0 {
+		return TimedDiscountDefaultStartMinute, TimedDiscountDefaultEndMinute
+	}
+	return startMinute, endMinute
+}
+
+func ValidateTimedDiscountWindow(startMinute, endMinute int) error {
+	if startMinute < 0 || startMinute >= 24*60 {
+		return fmt.Errorf("timed_discount_start_minute must be between 0 and 1439")
+	}
+	if endMinute < 0 || endMinute >= 24*60 {
+		return fmt.Errorf("timed_discount_end_minute must be between 0 and 1439")
+	}
+	if startMinute == endMinute {
+		return fmt.Errorf("timed_discount_start_minute and timed_discount_end_minute must be different")
+	}
+	return nil
+}
+
+func (g *Group) TimedDiscountOpenAt(now time.Time) bool {
+	if g == nil || !g.TimedDiscountEnabled {
+		return true
+	}
+	startMinute, endMinute := NormalizeTimedDiscountWindow(g.TimedDiscountStartMinute, g.TimedDiscountEndMinute)
+	if err := ValidateTimedDiscountWindow(startMinute, endMinute); err != nil {
+		return false
+	}
+	local := now.In(timedDiscountLocation)
+	minute := local.Hour()*60 + local.Minute()
+	if startMinute < endMinute {
+		return minute >= startMinute && minute < endMinute
+	}
+	return minute >= startMinute || minute < endMinute
 }
 
 // GetImagePrice 根据 image_size 返回对应的图片生成价格

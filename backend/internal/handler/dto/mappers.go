@@ -195,6 +195,9 @@ func groupFromServiceBase(g *service.Group) Group {
 		SpendingUsedUSD:                 g.SpendingUsedUSD,
 		DailyBalanceEnabled:             g.DailyBalanceEnabled,
 		DailyFallbackMultiplier:         g.DailyFallbackMultiplier,
+		TimedDiscountEnabled:            g.TimedDiscountEnabled,
+		TimedDiscountStartMinute:        g.TimedDiscountStartMinute,
+		TimedDiscountEndMinute:          g.TimedDiscountEndMinute,
 		CreatedAt:                       g.CreatedAt,
 		UpdatedAt:                       g.UpdatedAt,
 	}

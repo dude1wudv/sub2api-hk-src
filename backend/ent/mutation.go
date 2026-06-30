@@ -16163,6 +16163,11 @@ type GroupMutation struct {
 	daily_balance_enabled                   *bool
 	daily_fallback_multiplier               *float64
 	adddaily_fallback_multiplier            *float64
+	timed_discount_enabled                  *bool
+	timed_discount_start_minute             *int
+	addtimed_discount_start_minute          *int
+	timed_discount_end_minute               *int
+	addtimed_discount_end_minute            *int
 	clearedFields                           map[string]struct{}
 	api_keys                                map[int64]struct{}
 	removedapi_keys                         map[int64]struct{}
@@ -18189,6 +18194,154 @@ func (m *GroupMutation) ResetDailyFallbackMultiplier() {
 	m.adddaily_fallback_multiplier = nil
 }
 
+// SetTimedDiscountEnabled sets the "timed_discount_enabled" field.
+func (m *GroupMutation) SetTimedDiscountEnabled(b bool) {
+	m.timed_discount_enabled = &b
+}
+
+// TimedDiscountEnabled returns the value of the "timed_discount_enabled" field in the mutation.
+func (m *GroupMutation) TimedDiscountEnabled() (r bool, exists bool) {
+	v := m.timed_discount_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimedDiscountEnabled returns the old "timed_discount_enabled" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldTimedDiscountEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimedDiscountEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimedDiscountEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimedDiscountEnabled: %w", err)
+	}
+	return oldValue.TimedDiscountEnabled, nil
+}
+
+// ResetTimedDiscountEnabled resets all changes to the "timed_discount_enabled" field.
+func (m *GroupMutation) ResetTimedDiscountEnabled() {
+	m.timed_discount_enabled = nil
+}
+
+// SetTimedDiscountStartMinute sets the "timed_discount_start_minute" field.
+func (m *GroupMutation) SetTimedDiscountStartMinute(i int) {
+	m.timed_discount_start_minute = &i
+	m.addtimed_discount_start_minute = nil
+}
+
+// TimedDiscountStartMinute returns the value of the "timed_discount_start_minute" field in the mutation.
+func (m *GroupMutation) TimedDiscountStartMinute() (r int, exists bool) {
+	v := m.timed_discount_start_minute
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimedDiscountStartMinute returns the old "timed_discount_start_minute" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldTimedDiscountStartMinute(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimedDiscountStartMinute is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimedDiscountStartMinute requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimedDiscountStartMinute: %w", err)
+	}
+	return oldValue.TimedDiscountStartMinute, nil
+}
+
+// AddTimedDiscountStartMinute adds i to the "timed_discount_start_minute" field.
+func (m *GroupMutation) AddTimedDiscountStartMinute(i int) {
+	if m.addtimed_discount_start_minute != nil {
+		*m.addtimed_discount_start_minute += i
+	} else {
+		m.addtimed_discount_start_minute = &i
+	}
+}
+
+// AddedTimedDiscountStartMinute returns the value that was added to the "timed_discount_start_minute" field in this mutation.
+func (m *GroupMutation) AddedTimedDiscountStartMinute() (r int, exists bool) {
+	v := m.addtimed_discount_start_minute
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTimedDiscountStartMinute resets all changes to the "timed_discount_start_minute" field.
+func (m *GroupMutation) ResetTimedDiscountStartMinute() {
+	m.timed_discount_start_minute = nil
+	m.addtimed_discount_start_minute = nil
+}
+
+// SetTimedDiscountEndMinute sets the "timed_discount_end_minute" field.
+func (m *GroupMutation) SetTimedDiscountEndMinute(i int) {
+	m.timed_discount_end_minute = &i
+	m.addtimed_discount_end_minute = nil
+}
+
+// TimedDiscountEndMinute returns the value of the "timed_discount_end_minute" field in the mutation.
+func (m *GroupMutation) TimedDiscountEndMinute() (r int, exists bool) {
+	v := m.timed_discount_end_minute
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimedDiscountEndMinute returns the old "timed_discount_end_minute" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldTimedDiscountEndMinute(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimedDiscountEndMinute is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimedDiscountEndMinute requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimedDiscountEndMinute: %w", err)
+	}
+	return oldValue.TimedDiscountEndMinute, nil
+}
+
+// AddTimedDiscountEndMinute adds i to the "timed_discount_end_minute" field.
+func (m *GroupMutation) AddTimedDiscountEndMinute(i int) {
+	if m.addtimed_discount_end_minute != nil {
+		*m.addtimed_discount_end_minute += i
+	} else {
+		m.addtimed_discount_end_minute = &i
+	}
+}
+
+// AddedTimedDiscountEndMinute returns the value that was added to the "timed_discount_end_minute" field in this mutation.
+func (m *GroupMutation) AddedTimedDiscountEndMinute() (r int, exists bool) {
+	v := m.addtimed_discount_end_minute
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTimedDiscountEndMinute resets all changes to the "timed_discount_end_minute" field.
+func (m *GroupMutation) ResetTimedDiscountEndMinute() {
+	m.timed_discount_end_minute = nil
+	m.addtimed_discount_end_minute = nil
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by ids.
 func (m *GroupMutation) AddAPIKeyIDs(ids ...int64) {
 	if m.api_keys == nil {
@@ -18547,7 +18700,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 39)
+	fields := make([]string, 0, 42)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -18665,6 +18818,15 @@ func (m *GroupMutation) Fields() []string {
 	if m.daily_fallback_multiplier != nil {
 		fields = append(fields, group.FieldDailyFallbackMultiplier)
 	}
+	if m.timed_discount_enabled != nil {
+		fields = append(fields, group.FieldTimedDiscountEnabled)
+	}
+	if m.timed_discount_start_minute != nil {
+		fields = append(fields, group.FieldTimedDiscountStartMinute)
+	}
+	if m.timed_discount_end_minute != nil {
+		fields = append(fields, group.FieldTimedDiscountEndMinute)
+	}
 	return fields
 }
 
@@ -18751,6 +18913,12 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.DailyBalanceEnabled()
 	case group.FieldDailyFallbackMultiplier:
 		return m.DailyFallbackMultiplier()
+	case group.FieldTimedDiscountEnabled:
+		return m.TimedDiscountEnabled()
+	case group.FieldTimedDiscountStartMinute:
+		return m.TimedDiscountStartMinute()
+	case group.FieldTimedDiscountEndMinute:
+		return m.TimedDiscountEndMinute()
 	}
 	return nil, false
 }
@@ -18838,6 +19006,12 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldDailyBalanceEnabled(ctx)
 	case group.FieldDailyFallbackMultiplier:
 		return m.OldDailyFallbackMultiplier(ctx)
+	case group.FieldTimedDiscountEnabled:
+		return m.OldTimedDiscountEnabled(ctx)
+	case group.FieldTimedDiscountStartMinute:
+		return m.OldTimedDiscountStartMinute(ctx)
+	case group.FieldTimedDiscountEndMinute:
+		return m.OldTimedDiscountEndMinute(ctx)
 	}
 	return nil, fmt.Errorf("unknown Group field %s", name)
 }
@@ -19120,6 +19294,27 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDailyFallbackMultiplier(v)
 		return nil
+	case group.FieldTimedDiscountEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimedDiscountEnabled(v)
+		return nil
+	case group.FieldTimedDiscountStartMinute:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimedDiscountStartMinute(v)
+		return nil
+	case group.FieldTimedDiscountEndMinute:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimedDiscountEndMinute(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Group field %s", name)
 }
@@ -19176,6 +19371,12 @@ func (m *GroupMutation) AddedFields() []string {
 	if m.adddaily_fallback_multiplier != nil {
 		fields = append(fields, group.FieldDailyFallbackMultiplier)
 	}
+	if m.addtimed_discount_start_minute != nil {
+		fields = append(fields, group.FieldTimedDiscountStartMinute)
+	}
+	if m.addtimed_discount_end_minute != nil {
+		fields = append(fields, group.FieldTimedDiscountEndMinute)
+	}
 	return fields
 }
 
@@ -19216,6 +19417,10 @@ func (m *GroupMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedSpendingUsedUsd()
 	case group.FieldDailyFallbackMultiplier:
 		return m.AddedDailyFallbackMultiplier()
+	case group.FieldTimedDiscountStartMinute:
+		return m.AddedTimedDiscountStartMinute()
+	case group.FieldTimedDiscountEndMinute:
+		return m.AddedTimedDiscountEndMinute()
 	}
 	return nil, false
 }
@@ -19336,6 +19541,20 @@ func (m *GroupMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddDailyFallbackMultiplier(v)
+		return nil
+	case group.FieldTimedDiscountStartMinute:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTimedDiscountStartMinute(v)
+		return nil
+	case group.FieldTimedDiscountEndMinute:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTimedDiscountEndMinute(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Group numeric field %s", name)
@@ -19555,6 +19774,15 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldDailyFallbackMultiplier:
 		m.ResetDailyFallbackMultiplier()
+		return nil
+	case group.FieldTimedDiscountEnabled:
+		m.ResetTimedDiscountEnabled()
+		return nil
+	case group.FieldTimedDiscountStartMinute:
+		m.ResetTimedDiscountStartMinute()
+		return nil
+	case group.FieldTimedDiscountEndMinute:
+		m.ResetTimedDiscountEndMinute()
 		return nil
 	}
 	return fmt.Errorf("unknown Group field %s", name)

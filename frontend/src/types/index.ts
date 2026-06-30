@@ -547,6 +547,9 @@ export interface Group {
   // 每日余额专属分组标志 + 回退倍率
   daily_balance_enabled: boolean
   daily_fallback_multiplier: number
+  timed_discount_enabled: boolean
+  timed_discount_start_minute: number
+  timed_discount_end_minute: number
   created_at: string
   updated_at: string
 }
@@ -672,6 +675,9 @@ export interface CreateGroupRequest {
   rpm_limit?: number
   require_oauth_only?: boolean
   require_privacy_set?: boolean
+  timed_discount_enabled?: boolean
+  timed_discount_start_minute?: number
+  timed_discount_end_minute?: number
   // 从指定分组复制账号
   copy_accounts_from_group_ids?: number[]
 }
@@ -708,6 +714,9 @@ export interface UpdateGroupRequest {
   rpm_limit?: number
   require_oauth_only?: boolean
   require_privacy_set?: boolean
+  timed_discount_enabled?: boolean
+  timed_discount_start_minute?: number
+  timed_discount_end_minute?: number
   copy_accounts_from_group_ids?: number[]
 }
 

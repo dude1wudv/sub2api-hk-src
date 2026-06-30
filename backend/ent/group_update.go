@@ -734,6 +734,62 @@ func (_u *GroupUpdate) AddDailyFallbackMultiplier(v float64) *GroupUpdate {
 	return _u
 }
 
+// SetTimedDiscountEnabled sets the "timed_discount_enabled" field.
+func (_u *GroupUpdate) SetTimedDiscountEnabled(v bool) *GroupUpdate {
+	_u.mutation.SetTimedDiscountEnabled(v)
+	return _u
+}
+
+// SetNillableTimedDiscountEnabled sets the "timed_discount_enabled" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableTimedDiscountEnabled(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetTimedDiscountEnabled(*v)
+	}
+	return _u
+}
+
+// SetTimedDiscountStartMinute sets the "timed_discount_start_minute" field.
+func (_u *GroupUpdate) SetTimedDiscountStartMinute(v int) *GroupUpdate {
+	_u.mutation.ResetTimedDiscountStartMinute()
+	_u.mutation.SetTimedDiscountStartMinute(v)
+	return _u
+}
+
+// SetNillableTimedDiscountStartMinute sets the "timed_discount_start_minute" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableTimedDiscountStartMinute(v *int) *GroupUpdate {
+	if v != nil {
+		_u.SetTimedDiscountStartMinute(*v)
+	}
+	return _u
+}
+
+// AddTimedDiscountStartMinute adds value to the "timed_discount_start_minute" field.
+func (_u *GroupUpdate) AddTimedDiscountStartMinute(v int) *GroupUpdate {
+	_u.mutation.AddTimedDiscountStartMinute(v)
+	return _u
+}
+
+// SetTimedDiscountEndMinute sets the "timed_discount_end_minute" field.
+func (_u *GroupUpdate) SetTimedDiscountEndMinute(v int) *GroupUpdate {
+	_u.mutation.ResetTimedDiscountEndMinute()
+	_u.mutation.SetTimedDiscountEndMinute(v)
+	return _u
+}
+
+// SetNillableTimedDiscountEndMinute sets the "timed_discount_end_minute" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableTimedDiscountEndMinute(v *int) *GroupUpdate {
+	if v != nil {
+		_u.SetTimedDiscountEndMinute(*v)
+	}
+	return _u
+}
+
+// AddTimedDiscountEndMinute adds value to the "timed_discount_end_minute" field.
+func (_u *GroupUpdate) AddTimedDiscountEndMinute(v int) *GroupUpdate {
+	_u.mutation.AddTimedDiscountEndMinute(v)
+	return _u
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *GroupUpdate) AddAPIKeyIDs(ids ...int64) *GroupUpdate {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -1241,6 +1297,21 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedDailyFallbackMultiplier(); ok {
 		_spec.AddField(group.FieldDailyFallbackMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.TimedDiscountEnabled(); ok {
+		_spec.SetField(group.FieldTimedDiscountEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.TimedDiscountStartMinute(); ok {
+		_spec.SetField(group.FieldTimedDiscountStartMinute, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedTimedDiscountStartMinute(); ok {
+		_spec.AddField(group.FieldTimedDiscountStartMinute, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.TimedDiscountEndMinute(); ok {
+		_spec.SetField(group.FieldTimedDiscountEndMinute, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedTimedDiscountEndMinute(); ok {
+		_spec.AddField(group.FieldTimedDiscountEndMinute, field.TypeInt, value)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -2254,6 +2325,62 @@ func (_u *GroupUpdateOne) AddDailyFallbackMultiplier(v float64) *GroupUpdateOne 
 	return _u
 }
 
+// SetTimedDiscountEnabled sets the "timed_discount_enabled" field.
+func (_u *GroupUpdateOne) SetTimedDiscountEnabled(v bool) *GroupUpdateOne {
+	_u.mutation.SetTimedDiscountEnabled(v)
+	return _u
+}
+
+// SetNillableTimedDiscountEnabled sets the "timed_discount_enabled" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableTimedDiscountEnabled(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetTimedDiscountEnabled(*v)
+	}
+	return _u
+}
+
+// SetTimedDiscountStartMinute sets the "timed_discount_start_minute" field.
+func (_u *GroupUpdateOne) SetTimedDiscountStartMinute(v int) *GroupUpdateOne {
+	_u.mutation.ResetTimedDiscountStartMinute()
+	_u.mutation.SetTimedDiscountStartMinute(v)
+	return _u
+}
+
+// SetNillableTimedDiscountStartMinute sets the "timed_discount_start_minute" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableTimedDiscountStartMinute(v *int) *GroupUpdateOne {
+	if v != nil {
+		_u.SetTimedDiscountStartMinute(*v)
+	}
+	return _u
+}
+
+// AddTimedDiscountStartMinute adds value to the "timed_discount_start_minute" field.
+func (_u *GroupUpdateOne) AddTimedDiscountStartMinute(v int) *GroupUpdateOne {
+	_u.mutation.AddTimedDiscountStartMinute(v)
+	return _u
+}
+
+// SetTimedDiscountEndMinute sets the "timed_discount_end_minute" field.
+func (_u *GroupUpdateOne) SetTimedDiscountEndMinute(v int) *GroupUpdateOne {
+	_u.mutation.ResetTimedDiscountEndMinute()
+	_u.mutation.SetTimedDiscountEndMinute(v)
+	return _u
+}
+
+// SetNillableTimedDiscountEndMinute sets the "timed_discount_end_minute" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableTimedDiscountEndMinute(v *int) *GroupUpdateOne {
+	if v != nil {
+		_u.SetTimedDiscountEndMinute(*v)
+	}
+	return _u
+}
+
+// AddTimedDiscountEndMinute adds value to the "timed_discount_end_minute" field.
+func (_u *GroupUpdateOne) AddTimedDiscountEndMinute(v int) *GroupUpdateOne {
+	_u.mutation.AddTimedDiscountEndMinute(v)
+	return _u
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *GroupUpdateOne) AddAPIKeyIDs(ids ...int64) *GroupUpdateOne {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -2791,6 +2918,21 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.AddedDailyFallbackMultiplier(); ok {
 		_spec.AddField(group.FieldDailyFallbackMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.TimedDiscountEnabled(); ok {
+		_spec.SetField(group.FieldTimedDiscountEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.TimedDiscountStartMinute(); ok {
+		_spec.SetField(group.FieldTimedDiscountStartMinute, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedTimedDiscountStartMinute(); ok {
+		_spec.AddField(group.FieldTimedDiscountStartMinute, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.TimedDiscountEndMinute(); ok {
+		_spec.SetField(group.FieldTimedDiscountEndMinute, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedTimedDiscountEndMinute(); ok {
+		_spec.AddField(group.FieldTimedDiscountEndMinute, field.TypeInt, value)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{

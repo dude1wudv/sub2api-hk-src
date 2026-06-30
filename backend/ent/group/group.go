@@ -94,6 +94,12 @@ const (
 	FieldDailyBalanceEnabled = "daily_balance_enabled"
 	// FieldDailyFallbackMultiplier holds the string denoting the daily_fallback_multiplier field in the database.
 	FieldDailyFallbackMultiplier = "daily_fallback_multiplier"
+	// FieldTimedDiscountEnabled holds the string denoting the timed_discount_enabled field in the database.
+	FieldTimedDiscountEnabled = "timed_discount_enabled"
+	// FieldTimedDiscountStartMinute holds the string denoting the timed_discount_start_minute field in the database.
+	FieldTimedDiscountStartMinute = "timed_discount_start_minute"
+	// FieldTimedDiscountEndMinute holds the string denoting the timed_discount_end_minute field in the database.
+	FieldTimedDiscountEndMinute = "timed_discount_end_minute"
 	// EdgeAPIKeys holds the string denoting the api_keys edge name in mutations.
 	EdgeAPIKeys = "api_keys"
 	// EdgeRedeemCodes holds the string denoting the redeem_codes edge name in mutations.
@@ -208,6 +214,9 @@ var Columns = []string{
 	FieldSpendingUsedUsd,
 	FieldDailyBalanceEnabled,
 	FieldDailyFallbackMultiplier,
+	FieldTimedDiscountEnabled,
+	FieldTimedDiscountStartMinute,
+	FieldTimedDiscountEndMinute,
 }
 
 var (
@@ -301,6 +310,12 @@ var (
 	DefaultDailyBalanceEnabled bool
 	// DefaultDailyFallbackMultiplier holds the default value on creation for the "daily_fallback_multiplier" field.
 	DefaultDailyFallbackMultiplier float64
+	// DefaultTimedDiscountEnabled holds the default value on creation for the "timed_discount_enabled" field.
+	DefaultTimedDiscountEnabled bool
+	// DefaultTimedDiscountStartMinute holds the default value on creation for the "timed_discount_start_minute" field.
+	DefaultTimedDiscountStartMinute int
+	// DefaultTimedDiscountEndMinute holds the default value on creation for the "timed_discount_end_minute" field.
+	DefaultTimedDiscountEndMinute int
 )
 
 // OrderOption defines the ordering options for the Group queries.
@@ -484,6 +499,21 @@ func ByDailyBalanceEnabled(opts ...sql.OrderTermOption) OrderOption {
 // ByDailyFallbackMultiplier orders the results by the daily_fallback_multiplier field.
 func ByDailyFallbackMultiplier(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDailyFallbackMultiplier, opts...).ToFunc()
+}
+
+// ByTimedDiscountEnabled orders the results by the timed_discount_enabled field.
+func ByTimedDiscountEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTimedDiscountEnabled, opts...).ToFunc()
+}
+
+// ByTimedDiscountStartMinute orders the results by the timed_discount_start_minute field.
+func ByTimedDiscountStartMinute(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTimedDiscountStartMinute, opts...).ToFunc()
+}
+
+// ByTimedDiscountEndMinute orders the results by the timed_discount_end_minute field.
+func ByTimedDiscountEndMinute(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTimedDiscountEndMinute, opts...).ToFunc()
 }
 
 // ByAPIKeysCount orders the results by api_keys count.

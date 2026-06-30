@@ -931,6 +931,18 @@ func init() {
 	groupDescDailyFallbackMultiplier := groupFields[35].Descriptor()
 	// group.DefaultDailyFallbackMultiplier holds the default value on creation for the daily_fallback_multiplier field.
 	group.DefaultDailyFallbackMultiplier = groupDescDailyFallbackMultiplier.Default.(float64)
+	// groupDescTimedDiscountEnabled is the schema descriptor for timed_discount_enabled field.
+	groupDescTimedDiscountEnabled := groupFields[36].Descriptor()
+	// group.DefaultTimedDiscountEnabled holds the default value on creation for the timed_discount_enabled field.
+	group.DefaultTimedDiscountEnabled = groupDescTimedDiscountEnabled.Default.(bool)
+	// groupDescTimedDiscountStartMinute is the schema descriptor for timed_discount_start_minute field.
+	groupDescTimedDiscountStartMinute := groupFields[37].Descriptor()
+	// group.DefaultTimedDiscountStartMinute holds the default value on creation for the timed_discount_start_minute field.
+	group.DefaultTimedDiscountStartMinute = groupDescTimedDiscountStartMinute.Default.(int)
+	// groupDescTimedDiscountEndMinute is the schema descriptor for timed_discount_end_minute field.
+	groupDescTimedDiscountEndMinute := groupFields[38].Descriptor()
+	// group.DefaultTimedDiscountEndMinute holds the default value on creation for the timed_discount_end_minute field.
+	group.DefaultTimedDiscountEndMinute = groupDescTimedDiscountEndMinute.Default.(int)
 	idempotencyrecordMixin := schema.IdempotencyRecord{}.Mixin()
 	idempotencyrecordMixinFields0 := idempotencyrecordMixin[0].Fields()
 	_ = idempotencyrecordMixinFields0

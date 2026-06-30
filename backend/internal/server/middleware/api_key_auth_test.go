@@ -471,6 +471,31 @@ func TestAPIKeyAuthRejectsUnavailableGroup(t *testing.T) {
 	}
 }
 
+func TestValidateAPIKeyGroupAvailableRejectsClosedTimedDiscountGroup(t *testing.T) {
+	groupID := int64(101)
+	shanghaiNow := time.Now().In(time.FixedZone(service.TimedDiscountTimezone, 8*60*60))
+	currentMinute := shanghaiNow.Hour()*60 + shanghaiNow.Minute()
+	closedStartMinute := (currentMinute + 2) % (24 * 60)
+
+	code, message, ok := validateAPIKeyGroupAvailable(&service.APIKey{
+		GroupID: &groupID,
+		Group: &service.Group{
+			ID:                       groupID,
+			Name:                     "timed",
+			Status:                   service.StatusActive,
+			Platform:                 service.PlatformAnthropic,
+			Hydrated:                 true,
+			TimedDiscountEnabled:     true,
+			TimedDiscountStartMinute: closedStartMinute,
+			TimedDiscountEndMinute:   (closedStartMinute + 1) % (24 * 60),
+		},
+	})
+
+	require.False(t, ok)
+	require.Equal(t, "SUNM_GROUP_TIMED_DISCOUNT_CLOSED", code)
+	require.Contains(t, message, "outside its timed discount window")
+}
+
 func TestAPIKeyAuthSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

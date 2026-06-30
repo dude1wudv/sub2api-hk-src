@@ -2425,6 +2425,13 @@ export default {
         fallbackMultiplier: '长期余额回退倍率',
         fallbackMultiplierHint: '当每日余额耗尽时，从长期余额扣除的倍率。例如设置为 1.5，则每消耗 $1 长期余额相当于 $0.67 每日余额。'
       },
+      timedDiscount: {
+        title: '限时特价',
+        hint: '开启后，仅在指定每日时间段内接受此分组的新请求。',
+        startTime: '开始时间',
+        endTime: '结束时间',
+        windowHint: '按 Asia/Shanghai 判断，开始时间包含，结束时间不包含；窗口外新请求会被直接拒绝。'
+      },
       imagePricing: {
         title: '图片生成计费',
         description: '配置图片生成能力和图片基础单价，留空则使用默认价格',

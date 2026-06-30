@@ -46,6 +46,7 @@ func newGroupRepositoryWithSQL(client *dbent.Client, sqlq sqlExecutor) *groupRep
 }
 
 func (r *groupRepository) Create(ctx context.Context, groupIn *service.Group) error {
+	timedDiscountStart, timedDiscountEnd := service.NormalizeTimedDiscountWindow(groupIn.TimedDiscountStartMinute, groupIn.TimedDiscountEndMinute)
 	builder := r.client.Group.Create().
 		SetName(groupIn.Name).
 		SetDescription(groupIn.Description).
@@ -80,7 +81,10 @@ func (r *groupRepository) Create(ctx context.Context, groupIn *service.Group) er
 		SetNillableSpendingLimitUsd(groupIn.SpendingLimitUSD).
 		SetSpendingUsedUsd(groupIn.SpendingUsedUSD).
 		SetDailyBalanceEnabled(groupIn.DailyBalanceEnabled).
-		SetDailyFallbackMultiplier(resolveDailyFallbackMultiplier(groupIn.DailyFallbackMultiplier))
+		SetDailyFallbackMultiplier(resolveDailyFallbackMultiplier(groupIn.DailyFallbackMultiplier)).
+		SetTimedDiscountEnabled(groupIn.TimedDiscountEnabled).
+		SetTimedDiscountStartMinute(timedDiscountStart).
+		SetTimedDiscountEndMinute(timedDiscountEnd)
 
 	// 设置模型路由配置
 	if groupIn.ModelRouting != nil {
@@ -129,6 +133,7 @@ func (r *groupRepository) GetByIDLite(ctx context.Context, id int64) (*service.G
 }
 
 func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) error {
+	timedDiscountStart, timedDiscountEnd := service.NormalizeTimedDiscountWindow(groupIn.TimedDiscountStartMinute, groupIn.TimedDiscountEndMinute)
 	builder := r.client.Group.UpdateOneID(groupIn.ID).
 		SetName(groupIn.Name).
 		SetDescription(groupIn.Description).
@@ -158,7 +163,10 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		SetModelsListConfig(groupIn.ModelsListConfig).
 		SetRpmLimit(groupIn.RPMLimit).
 		SetDailyBalanceEnabled(groupIn.DailyBalanceEnabled).
-		SetDailyFallbackMultiplier(resolveDailyFallbackMultiplier(groupIn.DailyFallbackMultiplier))
+		SetDailyFallbackMultiplier(resolveDailyFallbackMultiplier(groupIn.DailyFallbackMultiplier)).
+		SetTimedDiscountEnabled(groupIn.TimedDiscountEnabled).
+		SetTimedDiscountStartMinute(timedDiscountStart).
+		SetTimedDiscountEndMinute(timedDiscountEnd)
 
 	// 显式处理可空字段：nil 需要 clear，非 nil 需要 set。
 	if groupIn.DailyLimitUSD != nil {

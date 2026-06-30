@@ -230,6 +230,21 @@ func DailyFallbackMultiplier(v float64) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldDailyFallbackMultiplier, v))
 }
 
+// TimedDiscountEnabled applies equality check predicate on the "timed_discount_enabled" field. It's identical to TimedDiscountEnabledEQ.
+func TimedDiscountEnabled(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldTimedDiscountEnabled, v))
+}
+
+// TimedDiscountStartMinute applies equality check predicate on the "timed_discount_start_minute" field. It's identical to TimedDiscountStartMinuteEQ.
+func TimedDiscountStartMinute(v int) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldTimedDiscountStartMinute, v))
+}
+
+// TimedDiscountEndMinute applies equality check predicate on the "timed_discount_end_minute" field. It's identical to TimedDiscountEndMinuteEQ.
+func TimedDiscountEndMinute(v int) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldTimedDiscountEndMinute, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldCreatedAt, v))
@@ -1598,6 +1613,96 @@ func DailyFallbackMultiplierLT(v float64) predicate.Group {
 // DailyFallbackMultiplierLTE applies the LTE predicate on the "daily_fallback_multiplier" field.
 func DailyFallbackMultiplierLTE(v float64) predicate.Group {
 	return predicate.Group(sql.FieldLTE(FieldDailyFallbackMultiplier, v))
+}
+
+// TimedDiscountEnabledEQ applies the EQ predicate on the "timed_discount_enabled" field.
+func TimedDiscountEnabledEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldTimedDiscountEnabled, v))
+}
+
+// TimedDiscountEnabledNEQ applies the NEQ predicate on the "timed_discount_enabled" field.
+func TimedDiscountEnabledNEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldTimedDiscountEnabled, v))
+}
+
+// TimedDiscountStartMinuteEQ applies the EQ predicate on the "timed_discount_start_minute" field.
+func TimedDiscountStartMinuteEQ(v int) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldTimedDiscountStartMinute, v))
+}
+
+// TimedDiscountStartMinuteNEQ applies the NEQ predicate on the "timed_discount_start_minute" field.
+func TimedDiscountStartMinuteNEQ(v int) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldTimedDiscountStartMinute, v))
+}
+
+// TimedDiscountStartMinuteIn applies the In predicate on the "timed_discount_start_minute" field.
+func TimedDiscountStartMinuteIn(vs ...int) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldTimedDiscountStartMinute, vs...))
+}
+
+// TimedDiscountStartMinuteNotIn applies the NotIn predicate on the "timed_discount_start_minute" field.
+func TimedDiscountStartMinuteNotIn(vs ...int) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldTimedDiscountStartMinute, vs...))
+}
+
+// TimedDiscountStartMinuteGT applies the GT predicate on the "timed_discount_start_minute" field.
+func TimedDiscountStartMinuteGT(v int) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldTimedDiscountStartMinute, v))
+}
+
+// TimedDiscountStartMinuteGTE applies the GTE predicate on the "timed_discount_start_minute" field.
+func TimedDiscountStartMinuteGTE(v int) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldTimedDiscountStartMinute, v))
+}
+
+// TimedDiscountStartMinuteLT applies the LT predicate on the "timed_discount_start_minute" field.
+func TimedDiscountStartMinuteLT(v int) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldTimedDiscountStartMinute, v))
+}
+
+// TimedDiscountStartMinuteLTE applies the LTE predicate on the "timed_discount_start_minute" field.
+func TimedDiscountStartMinuteLTE(v int) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldTimedDiscountStartMinute, v))
+}
+
+// TimedDiscountEndMinuteEQ applies the EQ predicate on the "timed_discount_end_minute" field.
+func TimedDiscountEndMinuteEQ(v int) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldTimedDiscountEndMinute, v))
+}
+
+// TimedDiscountEndMinuteNEQ applies the NEQ predicate on the "timed_discount_end_minute" field.
+func TimedDiscountEndMinuteNEQ(v int) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldTimedDiscountEndMinute, v))
+}
+
+// TimedDiscountEndMinuteIn applies the In predicate on the "timed_discount_end_minute" field.
+func TimedDiscountEndMinuteIn(vs ...int) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldTimedDiscountEndMinute, vs...))
+}
+
+// TimedDiscountEndMinuteNotIn applies the NotIn predicate on the "timed_discount_end_minute" field.
+func TimedDiscountEndMinuteNotIn(vs ...int) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldTimedDiscountEndMinute, vs...))
+}
+
+// TimedDiscountEndMinuteGT applies the GT predicate on the "timed_discount_end_minute" field.
+func TimedDiscountEndMinuteGT(v int) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldTimedDiscountEndMinute, v))
+}
+
+// TimedDiscountEndMinuteGTE applies the GTE predicate on the "timed_discount_end_minute" field.
+func TimedDiscountEndMinuteGTE(v int) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldTimedDiscountEndMinute, v))
+}
+
+// TimedDiscountEndMinuteLT applies the LT predicate on the "timed_discount_end_minute" field.
+func TimedDiscountEndMinuteLT(v int) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldTimedDiscountEndMinute, v))
+}
+
+// TimedDiscountEndMinuteLTE applies the LTE predicate on the "timed_discount_end_minute" field.
+func TimedDiscountEndMinuteLTE(v int) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldTimedDiscountEndMinute, v))
 }
 
 // HasAPIKeys applies the HasEdge predicate on the "api_keys" edge.
