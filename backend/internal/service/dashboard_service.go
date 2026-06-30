@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -42,7 +46,9 @@ type dashboardStatsCacheEntry struct {
 type DashboardService struct {
 	usageRepo      UsageLogRepository
 	aggRepo        DashboardAggregationRepository
+	accountRepo    AccountRepository
 	cache          DashboardStatsCache
+	httpUpstream   HTTPUpstream
 	cacheFreshTTL  time.Duration
 	cacheTTL       time.Duration
 	refreshTimeout time.Duration
@@ -100,6 +106,195 @@ func NewDashboardService(usageRepo UsageLogRepository, aggRepo DashboardAggregat
 		aggLookback:    aggLookback,
 		aggUsageDays:   aggUsageDays,
 	}
+}
+
+func ProvideDashboardService(usageRepo UsageLogRepository, aggRepo DashboardAggregationRepository, cache DashboardStatsCache, cfg *config.Config, accountRepo AccountRepository, httpUpstream HTTPUpstream) *DashboardService {
+	svc := NewDashboardService(usageRepo, aggRepo, cache, cfg)
+	svc.SetUpstreamBalanceDeps(accountRepo, httpUpstream)
+	return svc
+}
+
+func (s *DashboardService) SetUpstreamBalanceDeps(accountRepo AccountRepository, httpUpstream HTTPUpstream) {
+	s.accountRepo = accountRepo
+	s.httpUpstream = httpUpstream
+}
+
+type UpstreamBalanceAccount struct {
+	ID        int64   `json:"id"`
+	Name      string  `json:"name"`
+	GroupID   int64   `json:"group_id"`
+	GroupName string  `json:"group_name"`
+	Balance   float64 `json:"balance"`
+	Unit      string  `json:"unit"`
+	Error     string  `json:"error,omitempty"`
+}
+
+type UpstreamBalanceSummary struct {
+	Total float64                  `json:"total"`
+	Unit  string                   `json:"unit"`
+	Items []UpstreamBalanceAccount `json:"items"`
+}
+
+func (s *DashboardService) GetUpstreamBalances(ctx context.Context) (*UpstreamBalanceSummary, error) {
+	if s.accountRepo == nil || s.httpUpstream == nil {
+		return &UpstreamBalanceSummary{Unit: "USD", Items: []UpstreamBalanceAccount{}}, nil
+	}
+	accounts, err := s.accountRepo.ListActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := &UpstreamBalanceSummary{Unit: "USD", Items: []UpstreamBalanceAccount{}}
+	for i := range accounts {
+		account := &accounts[i]
+		groupID, groupName, ok := balanceMonitorGroup(account)
+		if !ok {
+			continue
+		}
+		item := UpstreamBalanceAccount{ID: account.ID, Name: account.Name, GroupID: groupID, GroupName: groupName, Unit: "USD"}
+		balance, unit, fetchErr := s.fetchUpstreamBalance(ctx, account)
+		if fetchErr != nil {
+			item.Error = fetchErr.Error()
+		} else {
+			item.Balance = balance
+			if unit != "" {
+				item.Unit = unit
+			}
+			out.Total += balance
+		}
+		out.Items = append(out.Items, item)
+	}
+	return out, nil
+}
+
+func balanceMonitorGroup(account *Account) (int64, string, bool) {
+	if account == nil {
+		return 0, "", false
+	}
+	for _, group := range account.Groups {
+		if group != nil && strings.Contains(strings.ToLower(group.Name), "余额") {
+			return group.ID, group.Name, true
+		}
+	}
+	if strings.Contains(strings.ToLower(account.Name), "余额") {
+		return 0, "", true
+	}
+	return 0, "", false
+}
+
+func (s *DashboardService) fetchUpstreamBalance(ctx context.Context, account *Account) (float64, string, error) {
+	baseURL := strings.TrimRight(strings.TrimSpace(account.GetCredential("base_url")), "/")
+	apiKey := account.GetCredential("api_key")
+	if baseURL == "" || apiKey == "" {
+		return 0, "", errors.New("missing base_url or api_key")
+	}
+	callCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
+	defer cancel()
+	for _, path := range []string{"/dashboard/billing/credit_grants", "/billing/credit_grants"} {
+		req, err := http.NewRequestWithContext(callCtx, http.MethodGet, baseURL+path, nil)
+		if err != nil {
+			return 0, "", err
+		}
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", "sub2api-admin-balance-monitor/1.0")
+		resp, err := s.httpUpstream.Do(req.WithContext(WithHTTPUpstreamProfile(req.Context(), HTTPUpstreamProfileOpenAI)), dashboardAccountProxyURL(account), account.ID, maxInt(account.Concurrency, 1))
+		if err != nil {
+			return 0, "", err
+		}
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+		_ = resp.Body.Close()
+		if readErr != nil {
+			return 0, "", readErr
+		}
+		if resp.StatusCode >= 400 {
+			continue
+		}
+		balance, unit, ok := parseBalancePayload(body)
+		if ok {
+			return balance, unit, nil
+		}
+	}
+	return 0, "", errors.New("balance unavailable")
+}
+
+func dashboardAccountProxyURL(account *Account) string {
+	if account != nil && account.ProxyID != nil && account.Proxy != nil {
+		return account.Proxy.URL()
+	}
+	return ""
+}
+
+func parseBalancePayload(body []byte) (float64, string, bool) {
+	var payload any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return 0, "", false
+	}
+	unit := findString(payload, "unit")
+	for _, key := range []string{"total_available", "current_balance", "balance", "remaining", "available"} {
+		if v, ok := findNumber(payload, key); ok {
+			return v, unit, true
+		}
+	}
+	return 0, unit, false
+}
+
+func findNumber(v any, key string) (float64, bool) {
+	switch x := v.(type) {
+	case map[string]any:
+		if raw, ok := x[key]; ok {
+			if n, ok := numberValue(raw); ok {
+				return n, true
+			}
+		}
+		for _, raw := range x {
+			if n, ok := findNumber(raw, key); ok {
+				return n, true
+			}
+		}
+	case []any:
+		for _, raw := range x {
+			if n, ok := findNumber(raw, key); ok {
+				return n, true
+			}
+		}
+	}
+	return 0, false
+}
+
+func numberValue(v any) (float64, bool) {
+	switch x := v.(type) {
+	case float64:
+		return x, true
+	case json.Number:
+		n, err := x.Float64()
+		return n, err == nil
+	case string:
+		n, err := strconv.ParseFloat(strings.TrimSpace(x), 64)
+		return n, err == nil
+	default:
+		return 0, false
+	}
+}
+
+func findString(v any, key string) string {
+	switch x := v.(type) {
+	case map[string]any:
+		if raw, ok := x[key].(string); ok {
+			return raw
+		}
+		for _, raw := range x {
+			if s := findString(raw, key); s != "" {
+				return s
+			}
+		}
+	case []any:
+		for _, raw := range x {
+			if s := findString(raw, key); s != "" {
+				return s
+			}
+		}
+	}
+	return ""
 }
 
 func (s *DashboardService) GetDashboardStats(ctx context.Context) (*usagestats.DashboardStats, error) {

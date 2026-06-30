@@ -216,6 +216,42 @@
           </div>
         </div>
 
+        <div class="card p-4">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">上游总余额</p>
+              <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                ${{ formatCost(upstreamBalances?.total || 0) }}
+              </p>
+            </div>
+            <div class="rounded-lg bg-cyan-100 p-2 dark:bg-cyan-900/30">
+              <Icon name="dollar" size="md" class="text-cyan-600 dark:text-cyan-400" :stroke-width="2" />
+            </div>
+          </div>
+          <div v-if="upstreamBalancesLoading" class="py-4"><LoadingSpinner size="sm" /></div>
+          <div v-else-if="upstreamBalances?.items?.length" class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div
+              v-for="item in upstreamBalances.items"
+              :key="item.id"
+              class="rounded-lg border border-gray-200 p-3 dark:border-gray-700"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ item.group_name || item.name }}</p>
+                  <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ item.name }}</p>
+                </div>
+                <span v-if="item.error" class="text-xs text-red-500">异常</span>
+              </div>
+              <p class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                <template v-if="item.error">--</template>
+                <template v-else>${{ formatCost(item.balance) }}</template>
+              </p>
+              <p v-if="item.error" class="truncate text-xs text-red-500" :title="item.error">{{ item.error }}</p>
+            </div>
+          </div>
+          <p v-else class="text-sm text-gray-500 dark:text-gray-400">未发现名称含“余额”的上游分组或账号</p>
+        </div>
+
         <!-- Charts Section -->
         <div class="space-y-6">
           <!-- Date Range Filter -->
@@ -307,6 +343,7 @@ import type {
   UserUsageTrendPoint,
   UserSpendingRankingItem
 } from '@/types'
+import type { UpstreamBalanceSummary } from '@/api/admin/dashboard'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -355,9 +392,12 @@ const rankingItems = ref<UserSpendingRankingItem[]>([])
 const rankingTotalActualCost = ref(0)
 const rankingTotalRequests = ref(0)
 const rankingTotalTokens = ref(0)
+const upstreamBalances = ref<UpstreamBalanceSummary | null>(null)
+const upstreamBalancesLoading = ref(false)
 let chartLoadSeq = 0
 let usersTrendLoadSeq = 0
 let rankingLoadSeq = 0
+let upstreamBalanceLoadSeq = 0
 const rankingLimit = 12
 
 // Helper function to format date in local timezone
@@ -682,11 +722,30 @@ const loadUserSpendingRanking = async () => {
   }
 }
 
+const loadUpstreamBalances = async () => {
+  const currentSeq = ++upstreamBalanceLoadSeq
+  upstreamBalancesLoading.value = true
+  try {
+    const response = await adminAPI.dashboard.getUpstreamBalances()
+    if (currentSeq !== upstreamBalanceLoadSeq) return
+    upstreamBalances.value = response
+  } catch (error) {
+    if (currentSeq !== upstreamBalanceLoadSeq) return
+    upstreamBalances.value = null
+    console.error('Error loading upstream balances:', error)
+  } finally {
+    if (currentSeq === upstreamBalanceLoadSeq) {
+      upstreamBalancesLoading.value = false
+    }
+  }
+}
+
 const loadDashboardStats = async () => {
   await Promise.all([
     loadDashboardSnapshot(true),
     loadUsersTrend(),
-    loadUserSpendingRanking()
+    loadUserSpendingRanking(),
+    loadUpstreamBalances()
   ])
 }
 
