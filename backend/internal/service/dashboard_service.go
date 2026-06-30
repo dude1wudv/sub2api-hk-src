@@ -155,6 +155,7 @@ func (s *DashboardService) GetUpstreamBalances(ctx context.Context) (*UpstreamBa
 		if fetchErr != nil {
 			item.Error = fetchErr.Error()
 		} else {
+			balance = normalizeUpstreamBalance(balance, account, groupName)
 			item.Balance = balance
 			if unit != "" {
 				item.Unit = unit
@@ -179,6 +180,17 @@ func balanceMonitorGroup(account *Account) (int64, string, bool) {
 		return 0, "", true
 	}
 	return 0, "", false
+}
+
+func normalizeUpstreamBalance(balance float64, account *Account, groupName string) float64 {
+	if account == nil {
+		return balance
+	}
+	name := strings.ReplaceAll(strings.ToLower(groupName+" "+account.Name), " ", "")
+	if strings.Contains(name, "king2余额") {
+		return balance * 0.08
+	}
+	return balance
 }
 
 func (s *DashboardService) fetchUpstreamBalance(ctx context.Context, account *Account) (float64, string, error) {
