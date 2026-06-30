@@ -196,8 +196,9 @@ func normalizeUpstreamBalance(balance float64, account *Account, groupName strin
 	if account == nil {
 		return balance
 	}
-	name := strings.ReplaceAll(strings.ToLower(groupName+" "+account.Name), " ", "")
-	if strings.Contains(name, "king2余额") {
+	name := strings.Join(strings.Fields(strings.ToLower(groupName+" "+account.Name)), "")
+	if strings.Contains(name, "king1余额") || strings.Contains(name, "king2余额") ||
+		(strings.Contains(name, "king") && (strings.Contains(name, "1余额") || strings.Contains(name, "2余额"))) {
 		return balance * 0.08
 	}
 	return balance
@@ -248,7 +249,7 @@ type UpstreamBalanceAlertService struct {
 func NewUpstreamBalanceAlertService(dashboard *DashboardService, notifyURL string, interval time.Duration) *UpstreamBalanceAlertService {
 	ctx, cancel := context.WithCancel(context.Background())
 	if interval <= 0 {
-		interval = 10 * time.Minute
+		interval = 5 * time.Minute
 	}
 	return &UpstreamBalanceAlertService{
 		dashboard:  dashboard,
@@ -266,7 +267,7 @@ func ProvideUpstreamBalanceAlertService(dashboard *DashboardService) *UpstreamBa
 	if url == "" {
 		url = strings.TrimSpace(os.Getenv("FEISHU_ALERT_BRIDGE_URL"))
 	}
-	svc := NewUpstreamBalanceAlertService(dashboard, url, 10*time.Minute)
+	svc := NewUpstreamBalanceAlertService(dashboard, url, 5*time.Minute)
 	svc.Start()
 	return svc
 }

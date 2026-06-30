@@ -19,6 +19,13 @@ func TestNormalizeUpstreamBalanceKing2(t *testing.T) {
 	}
 }
 
+func TestNormalizeUpstreamBalanceKing1(t *testing.T) {
+	balance := normalizeUpstreamBalance(100, &Account{Name: "king 余额"}, "king 1 余额")
+	if balance != 8 {
+		t.Fatalf("unexpected normalized balance: %v", balance)
+	}
+}
+
 func TestEvaluateUpstreamBalanceAlerts(t *testing.T) {
 	state := map[string]bool{}
 	item := UpstreamBalanceAccount{ID: 42, Name: "otok余额", Balance: 4.9}
