@@ -189,7 +189,7 @@ func (s *DashboardService) fetchUpstreamBalance(ctx context.Context, account *Ac
 	}
 	callCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
-	for _, path := range []string{"/dashboard/billing/credit_grants", "/billing/credit_grants"} {
+	for _, path := range []string{"/v1/usage", "/dashboard/billing/credit_grants", "/billing/credit_grants"} {
 		req, err := http.NewRequestWithContext(callCtx, http.MethodGet, baseURL+path, nil)
 		if err != nil {
 			return 0, "", err
