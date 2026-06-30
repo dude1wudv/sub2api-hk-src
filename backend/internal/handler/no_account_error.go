@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -66,7 +65,7 @@ func classifyNoAccountError(
 	fallback := noAccountErrorClassification{
 		Status:  http.StatusServiceUnavailable,
 		ErrType: "api_error",
-		Message: "Service temporarily unavailable",
+		Message: service.SafeUpstreamClientError(http.StatusServiceUnavailable).MessageWithCode(),
 	}
 
 	routingModel = strings.TrimSpace(routingModel)
@@ -83,7 +82,7 @@ func classifyNoAccountError(
 		return noAccountErrorClassification{
 			Status:        http.StatusNotFound,
 			ErrType:       "model_not_found",
-			Message:       fmt.Sprintf("Model %q is not supported by any configured account in this group", displayModel),
+			Message:       service.SafeUpstreamClientError(http.StatusNotFound).MessageWithCode(),
 			ModelNotFound: true,
 		}
 	}

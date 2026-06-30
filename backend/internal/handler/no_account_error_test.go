@@ -105,7 +105,8 @@ func TestClassifyNoAccountError_ModelNotSupported_Returns404(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, cls.Status)
 	require.Equal(t, "model_not_found", cls.ErrType)
 	require.True(t, cls.ModelNotFound)
-	require.Contains(t, cls.Message, "gpt-5.1-codex-mini", "message must surface the requested model")
+	require.Contains(t, cls.Message, "SUNM_BAD_REQUEST")
+	require.NotContains(t, cls.Message, "gpt-5.1-codex-mini", "client message must not expose upstream/model routing details")
 
 	require.Len(t, fd.calls, 1)
 	require.Equal(t, "gpt-5.1-codex-mini", fd.calls[0].Model)
@@ -145,7 +146,8 @@ func TestClassifyNoAccountError_DisplayModelOverridesRoutingForMessage(t *testin
 	cls := classifyNoAccountErrorFromGin(c, fd, apiKey, "gpt-5", "claude-3-fancy", service.PlatformOpenAI)
 
 	require.True(t, cls.ModelNotFound)
-	require.Contains(t, cls.Message, "claude-3-fancy", "user-facing message must reference the model the user asked for, not the post-mapping routing model")
+	require.Contains(t, cls.Message, "SUNM_BAD_REQUEST")
+	require.NotContains(t, cls.Message, "claude-3-fancy", "client message must not expose upstream/model routing details")
 	require.Len(t, fd.calls, 1)
 	require.Equal(t, "gpt-5", fd.calls[0].Model, "diagnosis must run against the routing model (post group dispatch mapping)")
 }
