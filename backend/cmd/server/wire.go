@@ -102,6 +102,7 @@ func provideCleanup(
 	dailyGrantExpiry *service.DailyGrantExpiryService,
 	channelMonitorRunner *service.ChannelMonitorRunner,
 	quotaFlusher *service.UserPlatformQuotaUsageFlusher,
+	upstreamBalanceAlert *service.UpstreamBalanceAlertService,
 ) func() {
 	return func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -275,6 +276,12 @@ func provideCleanup(
 			{"UserPlatformQuotaUsageFlusher", func() error {
 				if quotaFlusher != nil {
 					quotaFlusher.Stop()
+				}
+				return nil
+			}},
+			{"UpstreamBalanceAlertService", func() error {
+				if upstreamBalanceAlert != nil {
+					upstreamBalanceAlert.Stop()
 				}
 				return nil
 			}},

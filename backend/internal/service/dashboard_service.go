@@ -1,14 +1,18 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -135,6 +139,12 @@ type UpstreamBalanceSummary struct {
 	Items []UpstreamBalanceAccount `json:"items"`
 }
 
+type upstreamBalanceAlert struct {
+	Account   UpstreamBalanceAccount
+	Threshold float64
+	Key       string
+}
+
 func (s *DashboardService) GetUpstreamBalances(ctx context.Context) (*UpstreamBalanceSummary, error) {
 	if s.accountRepo == nil || s.httpUpstream == nil {
 		return &UpstreamBalanceSummary{Unit: "USD", Items: []UpstreamBalanceAccount{}}, nil
@@ -191,6 +201,169 @@ func normalizeUpstreamBalance(balance float64, account *Account, groupName strin
 		return balance * 0.08
 	}
 	return balance
+}
+
+func evaluateUpstreamBalanceAlerts(items []UpstreamBalanceAccount, sent map[string]bool) []upstreamBalanceAlert {
+	thresholds := []float64{5, 2}
+	alerts := make([]upstreamBalanceAlert, 0)
+	seen := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		if item.Error != "" {
+			continue
+		}
+		for _, threshold := range thresholds {
+			key := fmt.Sprintf("%d:%g", item.ID, threshold)
+			seen[key] = struct{}{}
+			if item.Balance < threshold {
+				if !sent[key] {
+					alerts = append(alerts, upstreamBalanceAlert{Account: item, Threshold: threshold, Key: key})
+					sent[key] = true
+				}
+			} else {
+				delete(sent, key)
+			}
+		}
+	}
+	for key := range sent {
+		if _, ok := seen[key]; !ok {
+			delete(sent, key)
+		}
+	}
+	return alerts
+}
+
+type UpstreamBalanceAlertService struct {
+	dashboard  *DashboardService
+	notifyURL  string
+	interval   time.Duration
+	httpClient *http.Client
+
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+	mu     sync.Mutex
+	sent   map[string]bool
+}
+
+func NewUpstreamBalanceAlertService(dashboard *DashboardService, notifyURL string, interval time.Duration) *UpstreamBalanceAlertService {
+	ctx, cancel := context.WithCancel(context.Background())
+	if interval <= 0 {
+		interval = 10 * time.Minute
+	}
+	return &UpstreamBalanceAlertService{
+		dashboard:  dashboard,
+		notifyURL:  strings.TrimSpace(notifyURL),
+		interval:   interval,
+		httpClient: &http.Client{Timeout: 10 * time.Second},
+		ctx:        ctx,
+		cancel:     cancel,
+		sent:       map[string]bool{},
+	}
+}
+
+func ProvideUpstreamBalanceAlertService(dashboard *DashboardService) *UpstreamBalanceAlertService {
+	url := strings.TrimSpace(os.Getenv("UPSTREAM_BALANCE_ALERT_URL"))
+	if url == "" {
+		url = strings.TrimSpace(os.Getenv("FEISHU_ALERT_BRIDGE_URL"))
+	}
+	svc := NewUpstreamBalanceAlertService(dashboard, url, 10*time.Minute)
+	svc.Start()
+	return svc
+}
+
+func (s *UpstreamBalanceAlertService) Start() {
+	if s == nil || s.dashboard == nil || s.notifyURL == "" {
+		return
+	}
+	s.wg.Add(1)
+	go s.loop()
+}
+
+func (s *UpstreamBalanceAlertService) Stop() {
+	if s == nil {
+		return
+	}
+	s.cancel()
+	s.wg.Wait()
+}
+
+func (s *UpstreamBalanceAlertService) loop() {
+	defer s.wg.Done()
+	s.checkOnce()
+	ticker := time.NewTicker(s.interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-ticker.C:
+			s.checkOnce()
+		}
+	}
+}
+
+func (s *UpstreamBalanceAlertService) checkOnce() {
+	ctx, cancel := context.WithTimeout(s.ctx, 45*time.Second)
+	defer cancel()
+	summary, err := s.dashboard.GetUpstreamBalances(ctx)
+	if err != nil {
+		slog.Warn("upstream_balance_alert: fetch balances failed", "error", err)
+		return
+	}
+	s.mu.Lock()
+	alerts := evaluateUpstreamBalanceAlerts(summary.Items, s.sent)
+	s.mu.Unlock()
+	for _, alert := range alerts {
+		if err := s.sendAlert(ctx, alert); err != nil {
+			s.mu.Lock()
+			delete(s.sent, alert.Key)
+			s.mu.Unlock()
+			slog.Warn("upstream_balance_alert: send alert failed", "account_id", alert.Account.ID, "threshold", alert.Threshold, "error", err)
+		}
+	}
+}
+
+func (s *UpstreamBalanceAlertService) sendAlert(ctx context.Context, alert upstreamBalanceAlert) error {
+	payload := map[string]any{
+		"msg": fmt.Sprintf("🚨 上游余额低于 %.0f：%s 当前 %.4f %s", alert.Threshold, upstreamBalanceAlertName(alert.Account), alert.Account.Balance, alert.Account.Unit),
+		"monitor": map[string]any{
+			"name": "Sub2API 上游余额 " + upstreamBalanceAlertName(alert.Account),
+			"url":  "https://sub.sunmmyapi.xyz/admin",
+		},
+		"heartbeat": map[string]any{
+			"status":        0,
+			"msg":           fmt.Sprintf("账号ID: %d\n分组: %s\n阈值: %.0f\n当前余额: %.4f %s", alert.Account.ID, alert.Account.GroupName, alert.Threshold, alert.Account.Balance, alert.Account.Unit),
+			"localDateTime": time.Now().Format("2006-01-02 15:04:05"),
+		},
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.notifyURL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("notify bridge status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func upstreamBalanceAlertName(item UpstreamBalanceAccount) string {
+	if item.GroupName == "" {
+		return item.Name
+	}
+	if item.Name == "" {
+		return item.GroupName
+	}
+	return item.GroupName + " / " + item.Name
 }
 
 func (s *DashboardService) fetchUpstreamBalance(ctx context.Context, account *Account) (float64, string, error) {
