@@ -2484,17 +2484,11 @@ export default {
         finalPricePreview: '最终单张价格预览',
         notConfigured: '未配置'
       },
-        multiplierHint: '作用于 token 计费倍率；token 计费的图片 token 同样适用，0 表示高峰 token 请求按 0 倍计费'
-      },
       modelsList: {
         title: '自定义 /v1/models 模型列表',
         hint: '仅影响 /v1/models 展示结果，不影响白名单模型调用和账号调度。',
         loading: '正在加载模型列表...',
         empty: '暂无可展示模型',
-        allowFastMode: '允许 Fast 模式',
-        allowFastModeHint: '允许当前分组透传 OpenAI service_tier=priority / fast。',
-        allowContext1M: '允许 1M 上下文',
-        allowContext1MHint: '允许当前分组透传 context-1m-2025-08-07 beta。'
       },
       claudeCode: {
         title: 'Claude Code 客户端限制',
@@ -2579,7 +2573,7 @@ export default {
     },
 
     // Available Channels (aggregated read-only view)
-    [String('availableChannels')]: {
+    availableChannels: {
       title: '可用渠道',
       description: '按渠道聚合查看关联分组与支持模型（已展开通配符）',
       searchPlaceholder: '搜索渠道或模型...',
@@ -4821,7 +4815,7 @@ export default {
     },
 
     // Redeem Codes Management
-    [String('redeem')]: {
+    redeem: {
       title: '兑换码管理',
       description: '生成和管理兑换码',
       generateCodes: '生成兑换码',
@@ -5086,7 +5080,7 @@ export default {
     },
 
     // Usage Records
-    [String('usage')]: {
+    usage: {
       title: '使用记录',
       description: '查看和管理所有用户的使用记录',
       userFilter: '用户',
@@ -5993,7 +5987,7 @@ export default {
           defaultInterval: '默认检测间隔（秒）',
           defaultIntervalHint: '新建渠道监控时表单的默认值，可被单个渠道覆盖。范围 15 – 3600 秒。',
         },
-        [String('availableChannels')]: {
+        availableChannels: {
           title: '可用渠道',
           description: '向已登录用户展示他们能访问的渠道、模型和定价聚合视图。默认关闭。',
           configureLink: '前往 渠道管理 > 渠道定价 配置模型价格',
@@ -7193,7 +7187,8 @@ export default {
       loadFailed: '加载模板失败',
       saveFailed: '保存模板失败',
       deleteFailed: '删除模板失败'
-    },
+    }
+  },
 
   // Subscription Progress (Header component)
   subscriptionProgress: {
@@ -7262,7 +7257,7 @@ export default {
   },
 
   // Announcements Page
-  [String('announcements')]: {
+  announcements: {
     title: '公告',
     description: '查看系统公告',
     unreadOnly: '仅显示未读',

@@ -2367,17 +2367,11 @@ export default {
         finalPricePreview: 'Final per-image price preview',
         notConfigured: 'Not configured'
       },
-        multiplierHint: 'Applies to token billing multiplier; image tokens in token billing are also affected. 0 means peak token requests are billed at 0x.'
-      },
       modelsList: {
         title: 'Custom /v1/models Model List',
         hint: 'Only changes the /v1/models response. Whitelist model calls and account routing are unchanged.',
         loading: 'Loading model list...',
         empty: 'No displayable models',
-        allowFastMode: 'Allow Fast mode',
-        allowFastModeHint: 'Allow this group to pass OpenAI service_tier=priority / fast.',
-        allowContext1M: 'Allow 1M context',
-        allowContext1MHint: 'Allow this group to pass the context-1m-2025-08-07 beta.'
       },
       claudeCode: {
         title: 'Claude Code Client Restriction',
@@ -2468,7 +2462,7 @@ export default {
     },
 
     // Available Channels (aggregated read-only view)
-    [String('availableChannels')]: {
+    availableChannels: {
       title: 'Available Channels',
       description: 'Aggregated view: each channel with its linked groups and supported models (wildcards expanded)',
       searchPlaceholder: 'Search channels or models...',
@@ -4667,7 +4661,7 @@ export default {
     },
 
     // Redeem Codes
-    [String('redeem')]: {
+    redeem: {
       title: 'Redeem Code Management',
       description: 'Generate and manage redeem codes',
       generateCodes: 'Generate Codes',
@@ -4900,7 +4894,7 @@ export default {
     },
 
     // Usage Records
-    [String('usage')]: {
+    usage: {
       title: 'Usage Records',
       description: 'View and manage all user usage records',
       userFilter: 'User',
@@ -5800,7 +5794,7 @@ export default {
           defaultInterval: 'Default check interval (seconds)',
           defaultIntervalHint: 'Pre-fills the interval when creating a new monitor; each monitor can override it. Range 15 – 3600.',
         },
-        [String('availableChannels')]: {
+        availableChannels: {
           title: 'Available Channels',
           description: 'Show logged-in users an aggregate view of the channels, models and pricing they can access. Disabled by default.',
           configureLink: 'Configure model pricing in Channel Management > Channel Pricing',
@@ -7005,7 +6999,8 @@ export default {
       loadFailed: 'Failed to load profiles',
       saveFailed: 'Failed to save profile',
       deleteFailed: 'Failed to delete profile'
-    },
+    }
+  },
 
   // Subscription Progress (Header component)
   subscriptionProgress: {
@@ -7075,7 +7070,7 @@ export default {
   },
 
   // Announcements Page
-  [String('announcements')]: {
+  announcements: {
     title: 'Announcements',
     description: 'View system announcements',
     unreadOnly: 'Show unread only',
