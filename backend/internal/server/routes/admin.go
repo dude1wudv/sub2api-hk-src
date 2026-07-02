@@ -299,10 +299,8 @@ func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		accounts.GET("", h.Admin.Account.List)
 		accounts.GET("/summary", h.Admin.Account.Summary)
-		accounts.GET("/plus-usage-summary", h.Admin.Account.PlusUsageSummary)
+		accounts.GET("/oauth-usage-summary", h.Admin.Account.OAuthUsageSummary)
 		accounts.POST("/openai-maintenance/scan", h.Admin.Account.RunOpenAIMaintenanceScan)
-		accounts.GET("/openai-maintenance/risk", h.Admin.Account.GetOpenAIRiskOverview)
-		accounts.POST("/openai-maintenance/risk/partition", h.Admin.Account.ApplyOpenAIRiskPartition)
 		accounts.GET("/:id", h.Admin.Account.GetByID)
 		accounts.POST("", h.Admin.Account.Create)
 		accounts.POST("/check-mixed-channel", h.Admin.Account.CheckMixedChannel)
@@ -342,6 +340,9 @@ func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 
 		// Antigravity 默认模型映射
 		accounts.GET("/antigravity/default-model-mapping", h.Admin.Account.GetAntigravityDefaultModelMapping)
+
+		// Spark 影子账号
+		accounts.POST("/:id/shadow", h.Admin.OpenAIOAuth.CreateShadow)
 
 		// Claude OAuth routes
 		accounts.POST("/generate-auth-url", h.Admin.OAuth.GenerateAuthURL)
@@ -566,6 +567,8 @@ func registerSubscriptionRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		subscriptions.POST("/bulk-assign", h.Admin.Subscription.BulkAssign)
 		subscriptions.POST("/:id/extend", h.Admin.Subscription.Extend)
 		subscriptions.POST("/:id/reset-quota", h.Admin.Subscription.ResetQuota)
+		subscriptions.POST("/:id/revoke", h.Admin.Subscription.Revoke)
+		subscriptions.POST("/:id/restore", h.Admin.Subscription.Restore)
 		subscriptions.DELETE("/:id", h.Admin.Subscription.Revoke)
 	}
 

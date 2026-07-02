@@ -295,7 +295,7 @@ func TestFrontendServer_ServeIndexHTML(t *testing.T) {
 		assert.True(t, strings.HasSuffix(etag, `"`))
 	})
 
-	t.Run("returns_304_for_matching_etag", func(t *testing.T) {
+	t.Run("returns_200_for_index_html_even_with_matching_etag", func(t *testing.T) {
 		provider := &mockSettingsProvider{
 			settings: map[string]string{"test": "value"},
 		}
@@ -324,8 +324,8 @@ func TestFrontendServer_ServeIndexHTML(t *testing.T) {
 		req2.Header.Set("If-None-Match", etag)
 		router.ServeHTTP(w2, req2)
 
-		assert.Equal(t, http.StatusNotModified, w2.Code)
-		assert.Empty(t, w2.Body.String())
+		assert.Equal(t, http.StatusOK, w2.Code)
+		assert.NotEmpty(t, w2.Body.String())
 	})
 
 	t.Run("sets_cache_control_header", func(t *testing.T) {
@@ -343,7 +343,9 @@ func TestFrontendServer_ServeIndexHTML(t *testing.T) {
 
 		server.serveIndexHTML(c)
 
-		assert.Equal(t, "no-cache", w.Header().Get("Cache-Control"))
+		assert.Equal(t, "no-store, must-revalidate", w.Header().Get("Cache-Control"))
+		assert.Equal(t, "no-cache", w.Header().Get("Pragma"))
+		assert.Equal(t, "0", w.Header().Get("Expires"))
 	})
 
 	t.Run("fallback_on_settings_error", func(t *testing.T) {

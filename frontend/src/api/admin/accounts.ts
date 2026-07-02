@@ -116,21 +116,21 @@ export interface AccountSummary {
   openai: number
   codex_5h: AccountUsageWindowSummary
   codex_7d: AccountUsageWindowSummary
-  plus_pool: AccountQuotaPoolSummary
+  oauth_pool: AccountQuotaPoolSummary
   free_pool: AccountQuotaPoolSummary
   recently_used: number
   never_used: number
   proxy_distribution: AccountProxySummary[]
 }
 
-export interface PlusAccountUsageSummary {
+export interface OAuthAccountUsageSummary {
   total_standard_cost: number
-  average_standard_cost_per_plus_account: number
-  plus_account_count: number
-  plus_accounts_with_usage: number
+  average_standard_cost_per_oauth_account: number
+  oauth_account_count: number
+  oauth_accounts_with_usage: number
   usage_log_count: number
-  deleted_plus_account_count: number
-  expired_plus_account_count: number
+  deleted_oauth_account_count: number
+  expired_oauth_account_count: number
   first_usage_at?: string
   last_usage_at?: string
 }
@@ -149,38 +149,6 @@ export interface OpenAIAccountMaintenanceResult {
   skipped: number
   slowest_proxy?: OpenAIAccountMaintenanceProxyTarget
   normal_proxy_count: number
-}
-
-export interface OpenAIAccountRiskCandidate {
-  account_id: number
-  name: string
-  risk: 'challenge' | 'banned' | 'high_failure' | string
-  reasons: string[]
-  error_message?: string
-  current_proxy_id?: number
-  current_proxy_name?: string
-  target_proxy_id: number
-  target_proxy_name: string
-  requires_move: boolean
-  max_usage_percent: number
-}
-
-export interface OpenAIAccountRiskOverview {
-  drain_95: number
-  exhausted_99: number
-  challenge: number
-  banned: number
-  high_failure: number
-  partition_candidates: number
-  move_candidates: number
-  slowest_proxy?: OpenAIAccountMaintenanceProxyTarget
-  candidates: OpenAIAccountRiskCandidate[]
-}
-
-export interface OpenAIAccountRiskPartitionResult {
-  preview: OpenAIAccountRiskOverview
-  moved: number
-  already_partitioned: number
 }
 
 export async function listWithEtag(
@@ -248,8 +216,8 @@ export async function getSummary(filters?: {
   return data
 }
 
-export async function getPlusUsageSummary(options?: { refreshKey?: number }): Promise<PlusAccountUsageSummary> {
-  const { data } = await apiClient.get<PlusAccountUsageSummary>('/admin/accounts/plus-usage-summary', {
+export async function getOAuthUsageSummary(options?: { refreshKey?: number }): Promise<OAuthAccountUsageSummary> {
+  const { data } = await apiClient.get<OAuthAccountUsageSummary>('/admin/accounts/oauth-usage-summary', {
     params: options?.refreshKey ? { _: options.refreshKey } : undefined
   })
   return data
@@ -260,15 +228,6 @@ export async function runOpenAIMaintenanceScan(): Promise<OpenAIAccountMaintenan
   return data
 }
 
-export async function getOpenAIRiskOverview(): Promise<OpenAIAccountRiskOverview> {
-  const { data } = await apiClient.get<OpenAIAccountRiskOverview>('/admin/accounts/openai-maintenance/risk')
-  return data
-}
-
-export async function applyOpenAIRiskPartition(): Promise<OpenAIAccountRiskPartitionResult> {
-  const { data } = await apiClient.post<OpenAIAccountRiskPartitionResult>('/admin/accounts/openai-maintenance/risk/partition')
-  return data
-}
 
 /**
  * Get account by ID
@@ -888,8 +847,13 @@ export interface OpenAIAdditionalRateLimit {
   rate_limit?: OpenAIRateLimit | null
 }
 
+export interface OpenAIRateLimitResetCreditDetail {
+  expires_at?: string
+}
+
 export interface OpenAIRateLimitResetCredits {
   available_count: number
+  credits?: OpenAIRateLimitResetCreditDetail[]
 }
 
 export interface OpenAIQuotaUsage {
@@ -935,14 +899,24 @@ export async function resetOpenAIQuota(id: number): Promise<OpenAIQuotaResetResu
   return data
 }
 
+export interface SparkShadowCreatePayload {
+  name?: string
+  priority?: number
+  concurrency?: number
+  group_ids?: number[]
+}
+
+export async function createSparkShadow(parentId: number, payload: SparkShadowCreatePayload): Promise<Account> {
+  const { data } = await apiClient.post<Account>(`/admin/accounts/${parentId}/shadow`, payload)
+  return data
+}
+
 export const accountsAPI = {
   list,
   listWithEtag,
   getSummary,
-  getPlusUsageSummary,
+  getOAuthUsageSummary,
   runOpenAIMaintenanceScan,
-  getOpenAIRiskOverview,
-  applyOpenAIRiskPartition,
   getById,
   create,
   update,
@@ -984,7 +958,8 @@ export const accountsAPI = {
   setPrivacy,
   revertProxyFallback,
   queryOpenAIQuota,
-  resetOpenAIQuota
+  resetOpenAIQuota,
+  createSparkShadow
 }
 
 export default accountsAPI

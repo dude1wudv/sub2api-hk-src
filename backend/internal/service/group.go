@@ -208,20 +208,6 @@ func groupFromRequestContext(ctx context.Context) *Group {
 	return group
 }
 
-func groupAllowsFastModeOverride(group *Group) *bool {
-	if group == nil {
-		return nil
-	}
-	return group.ModelsListConfig.AllowFastMode
-}
-
-func groupAllowsContext1MOverride(group *Group) *bool {
-	if group == nil {
-		return nil
-	}
-	return group.ModelsListConfig.AllowContext1M
-}
-
 // GetRoutingAccountIDs 根据请求模型获取路由账号 ID 列表
 // 返回匹配的优先账号 ID 列表，如果没有匹配规则则返回 nil
 func (g *Group) GetRoutingAccountIDs(requestedModel string) []int64 {

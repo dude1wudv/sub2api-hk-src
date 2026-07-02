@@ -140,6 +140,8 @@ const rateDisplay = computed(() => {
   return `×${Number(rate.toPrecision(10))}`
 })
 
+
+
 const MODEL_SCOPE_LABELS: Record<string, string> = {
   claude: 'Claude',
   gemini_text: 'Gemini',

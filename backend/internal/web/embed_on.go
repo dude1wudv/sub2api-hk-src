@@ -37,12 +37,12 @@ type PublicSettingsProvider interface {
 
 // FrontendServer serves the embedded frontend with settings injection
 type FrontendServer struct {
-	distFS          fs.FS
-	fileServer      http.Handler
-	baseHTML        []byte
-	cache           *HTMLCache
-	settings        PublicSettingsProvider
-	overrideDir     string // local file override directory
+	distFS           fs.FS
+	fileServer       http.Handler
+	baseHTML         []byte
+	cache            *HTMLCache
+	settings         PublicSettingsProvider
+	overrideDir      string // local file override directory
 	image2FileServer http.Handler
 	image2BaseHTML   []byte
 	image2DistFS     fs.FS
@@ -206,15 +206,9 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 
 	cached := s.cache.Get()
 	if cached != nil {
-		if match := c.GetHeader("If-None-Match"); match == cached.ETag {
-			c.Status(http.StatusNotModified)
-			c.Abort()
-			return
-		}
-
 		content := replaceNoncePlaceholder(cached.Content, nonce)
 		c.Header("ETag", cached.ETag)
-		c.Header("Cache-Control", "no-cache")
+		setIndexHTMLNoStoreHeaders(c)
 		c.Data(http.StatusOK, "text/html; charset=utf-8", content)
 		c.Abort()
 		return
@@ -225,6 +219,7 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 
 	settings, err := s.settings.GetPublicSettingsForInjection(ctx)
 	if err != nil {
+		setIndexHTMLNoStoreHeaders(c)
 		c.Data(http.StatusOK, "text/html; charset=utf-8", s.baseHTML)
 		c.Abort()
 		return
@@ -232,6 +227,7 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 
 	settingsJSON, err := json.Marshal(settings)
 	if err != nil {
+		setIndexHTMLNoStoreHeaders(c)
 		c.Data(http.StatusOK, "text/html; charset=utf-8", s.baseHTML)
 		c.Abort()
 		return
@@ -245,7 +241,7 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 	if cached != nil {
 		c.Header("ETag", cached.ETag)
 	}
-	c.Header("Cache-Control", "no-cache")
+	setIndexHTMLNoStoreHeaders(c)
 	c.Data(http.StatusOK, "text/html; charset=utf-8", content)
 	c.Abort()
 }
@@ -265,6 +261,7 @@ func (s *FrontendServer) serveImage2IndexHTML(c *gin.Context) {
 		c.Abort()
 		return
 	}
+	setIndexHTMLNoStoreHeaders(c)
 	c.Data(http.StatusOK, "text/html; charset=utf-8", content)
 	c.Abort()
 }
@@ -386,8 +383,15 @@ func serveIndexHTML(c *gin.Context, fsys fs.FS) {
 		return
 	}
 
+	setIndexHTMLNoStoreHeaders(c)
 	c.Data(http.StatusOK, "text/html; charset=utf-8", content)
 	c.Abort()
+}
+
+func setIndexHTMLNoStoreHeaders(c *gin.Context) {
+	c.Header("Cache-Control", "no-store, must-revalidate")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
 }
 
 func HasEmbeddedFrontend() bool {

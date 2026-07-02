@@ -11,6 +11,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -25,6 +26,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -222,6 +224,8 @@ func (h *AccountHandler) buildAccountResponseWithRuntime(ctx context.Context, ac
 		}
 	}
 
+	h.enrichShadowParents(ctx, []AccountWithConcurrency{item})
+
 	return item
 }
 
@@ -365,6 +369,8 @@ func (h *AccountHandler) List(c *gin.Context) {
 		result[i] = item
 	}
 
+	h.enrichShadowParents(c.Request.Context(), result)
+
 	etag := buildAccountsListETag(result, total, page, pageSize, platform, accountType, status, search, lite)
 	if etag != "" {
 		c.Header("ETag", etag)
@@ -399,12 +405,12 @@ func (h *AccountHandler) Summary(c *gin.Context) {
 	response.Success(c, summary)
 }
 
-// PlusUsageSummary handles Plus account standard-pricing usage summary.
-// GET /api/v1/admin/accounts/plus-usage-summary
-func (h *AccountHandler) PlusUsageSummary(c *gin.Context) {
+// OAuthUsageSummary handles OpenAI OAuth account standard-pricing usage summary.
+// GET /api/v1/admin/accounts/oauth-usage-summary
+func (h *AccountHandler) OAuthUsageSummary(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
 	c.Header("Pragma", "no-cache")
-	summary, err := h.adminService.GetPlusAccountUsageSummary(c.Request.Context())
+	summary, err := h.adminService.GetOAuthAccountUsageSummary(c.Request.Context())
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -416,28 +422,6 @@ func (h *AccountHandler) PlusUsageSummary(c *gin.Context) {
 // POST /api/v1/admin/accounts/openai-maintenance/scan
 func (h *AccountHandler) RunOpenAIMaintenanceScan(c *gin.Context) {
 	result, err := h.adminService.RunOpenAIAccountMaintenanceScan(c.Request.Context())
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	response.Success(c, result)
-}
-
-// GetOpenAIRiskOverview reports quota and operational account risks without moving accounts.
-// GET /api/v1/admin/accounts/openai-maintenance/risk
-func (h *AccountHandler) GetOpenAIRiskOverview(c *gin.Context) {
-	overview, err := h.adminService.GetOpenAIAccountRiskOverview(c.Request.Context())
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	response.Success(c, overview)
-}
-
-// ApplyOpenAIRiskPartition moves challenged/banned/high-failure accounts to the slow pool after admin confirmation.
-// POST /api/v1/admin/accounts/openai-maintenance/risk/partition
-func (h *AccountHandler) ApplyOpenAIRiskPartition(c *gin.Context) {
-	result, err := h.adminService.ApplyOpenAIAccountRiskPartition(c.Request.Context())
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -917,6 +901,12 @@ func (h *AccountHandler) PreviewFromCRS(c *gin.Context) {
 func (h *AccountHandler) refreshSingleAccount(ctx context.Context, account *service.Account) (*service.Account, string, error) {
 	if !account.IsOAuth() {
 		return nil, "", infraerrors.BadRequest("NOT_OAUTH", "cannot refresh non-OAuth account")
+	}
+	// spark 影子凭据由母账号管理、自身恒空,刷新无意义且会先打上游;在调用上游前早拒
+	// (覆盖单账号与批量两入口;批量侧将其计为 failed 并附说明)(外审第6轮)。
+	if account.IsCredentialShadow() {
+		return nil, "", infraerrors.BadRequest("SPARK_SHADOW_NO_REFRESH",
+			"cannot refresh spark shadow account; its credentials are managed by the parent account")
 	}
 
 	var newCredentials map[string]any
@@ -1914,7 +1904,7 @@ func (h *AccountHandler) ResetQuota(c *gin.Context) {
 	}
 
 	if err := h.adminService.ResetAccountQuota(c.Request.Context(), accountID); err != nil {
-		response.InternalError(c, "Failed to reset account quota: "+err.Error())
+		response.ErrorFrom(c, err)
 		return
 	}
 
@@ -2163,6 +2153,56 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 	if account.Platform == service.PlatformAntigravity {
 		// 直接复用 antigravity.DefaultModels()，与 /v1/models 端点保持同步
 		response.Success(c, antigravity.DefaultModels())
+		return
+	}
+
+	// Handle Grok accounts
+	if account.Platform == service.PlatformGrok {
+		defaultModels := xai.DefaultModels()
+
+		hasExplicitMapping := false
+		switch rawMapping := account.Credentials["model_mapping"].(type) {
+		case map[string]any:
+			hasExplicitMapping = len(rawMapping) > 0
+		case map[string]string:
+			hasExplicitMapping = len(rawMapping) > 0
+		}
+		if !hasExplicitMapping {
+			response.Success(c, defaultModels)
+			return
+		}
+
+		mapping := account.GetModelMapping()
+		if len(mapping) == 0 {
+			response.Success(c, defaultModels)
+			return
+		}
+
+		defaultByID := make(map[string]xai.Model, len(defaultModels))
+		for _, model := range defaultModels {
+			defaultByID[model.ID] = model
+		}
+
+		requestedModels := make([]string, 0, len(mapping))
+		for requestedModel := range mapping {
+			requestedModels = append(requestedModels, requestedModel)
+		}
+		sort.Strings(requestedModels)
+
+		var models []xai.Model
+		for _, requestedModel := range requestedModels {
+			if defaultModel, found := defaultByID[requestedModel]; found {
+				models = append(models, defaultModel)
+				continue
+			}
+			models = append(models, xai.Model{
+				ID:          requestedModel,
+				Object:      "model",
+				OwnedBy:     "xai",
+				DisplayName: requestedModel,
+			})
+		}
+		response.Success(c, models)
 		return
 	}
 

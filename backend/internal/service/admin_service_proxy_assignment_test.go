@@ -91,6 +91,9 @@ func (s *createAccountRepoStub) ListActive(context.Context) ([]Account, error) {
 func (s *createAccountRepoStub) ListByPlatform(context.Context, string) ([]Account, error) {
 	return append([]Account(nil), s.accountsByPlatform...), nil
 }
+func (s *createAccountRepoStub) ListShadowsByParent(context.Context, int64) ([]*Account, error) {
+	return nil, nil
+}
 func (s *createAccountRepoStub) UpdateLastUsed(context.Context, int64) error { panic("unexpected") }
 func (s *createAccountRepoStub) BatchUpdateLastUsed(context.Context, map[int64]time.Time) error {
 	panic("unexpected")

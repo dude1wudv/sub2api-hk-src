@@ -26,6 +26,7 @@ type stubAdminService struct {
 	testedProxyIDs       []int64
 	getUserErr           error
 	createAccountErr     error
+	createSparkShadowErr error
 	updateAccountErr     error
 	bulkUpdateAccountErr error
 	checkMixedErr        error
@@ -339,8 +340,8 @@ func (s *stubAdminService) GetAccountSummary(ctx context.Context, platform, acco
 	}, nil
 }
 
-func (s *stubAdminService) GetPlusAccountUsageSummary(ctx context.Context) (*service.PlusAccountUsageSummary, error) {
-	return &service.PlusAccountUsageSummary{}, nil
+func (s *stubAdminService) GetOAuthAccountUsageSummary(ctx context.Context) (*service.OAuthAccountUsageSummary, error) {
+	return &service.OAuthAccountUsageSummary{}, nil
 }
 
 func (s *stubAdminService) GetAccount(ctx context.Context, id int64) (*service.Account, error) {
@@ -419,14 +420,6 @@ func (s *stubAdminService) CheckMixedChannelRisk(ctx context.Context, currentAcc
 
 func (s *stubAdminService) RunOpenAIAccountMaintenanceScan(ctx context.Context) (*service.OpenAIAccountMaintenanceResult, error) {
 	return &service.OpenAIAccountMaintenanceResult{}, nil
-}
-
-func (s *stubAdminService) GetOpenAIAccountRiskOverview(ctx context.Context) (*service.OpenAIAccountRiskOverview, error) {
-	return &service.OpenAIAccountRiskOverview{}, nil
-}
-
-func (s *stubAdminService) ApplyOpenAIAccountRiskPartition(ctx context.Context) (*service.OpenAIAccountRiskPartitionResult, error) {
-	return &service.OpenAIAccountRiskPartitionResult{}, nil
 }
 
 func (s *stubAdminService) ListProxies(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]service.Proxy, int64, error) {
@@ -658,6 +651,26 @@ func (s *stubAdminService) ReplaceUserGroup(ctx context.Context, userID, oldGrou
 
 func (s *stubAdminService) RevertAccountProxyFallback(ctx context.Context, id int64) error {
 	return nil
+}
+
+func (s *stubAdminService) CreateShadow(ctx context.Context, parentID int64, opts service.ShadowOptions) (*service.Account, error) {
+	if s.createSparkShadowErr != nil {
+		return nil, s.createSparkShadowErr
+	}
+	pid := parentID
+	return &service.Account{
+		ID:              9001,
+		Name:            opts.Name,
+		Platform:        service.PlatformOpenAI,
+		Type:            service.AccountTypeOAuth,
+		Priority:        opts.Priority,
+		Concurrency:     opts.Concurrency,
+		GroupIDs:        opts.GroupIDs,
+		ParentAccountID: &pid,
+		QuotaDimension:  service.QuotaDimensionSpark,
+		Credentials:     map[string]any{},
+		Extra:           map[string]any{},
+	}, nil
 }
 
 // Ensure stub implements interface.

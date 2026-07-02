@@ -142,23 +142,6 @@
                       </span>
                       <span class="flex-1 text-left">{{ t('admin.accounts.maintenance.scanNow') }}</span>
                     </button>
-                    <button
-                      class="account-tools-menu-item"
-                      :disabled="riskPartitionBusy || !accountRiskOverview?.move_candidates"
-                      :class="{ 'opacity-50': riskPartitionBusy || !accountRiskOverview?.move_candidates }"
-                      @click="handleApplyOpenAIRiskPartition"
-                    >
-                      <span class="account-tools-menu-icon bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300">
-                        <Icon name="shield" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.accounts.maintenance.partitionRiskPool') }}</span>
-                      <span
-                        v-if="accountRiskOverview?.move_candidates"
-                        class="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
-                      >
-                        {{ accountRiskOverview.move_candidates }}
-                      </span>
-                    </button>
 
                     <div class="my-2 border-t border-gray-100 dark:border-gray-700"></div>
                     <div class="px-2 py-2">
@@ -197,51 +180,6 @@
           >
             {{ t('admin.accounts.listPendingSyncAction') }}
           </button>
-        </div>
-        <div
-          v-if="accountRiskOverview"
-          :class="[
-            'mt-3 rounded-lg border px-3 py-3 text-sm',
-            accountRiskHasWarnings
-              ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-100'
-              : 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:text-emerald-100'
-          ]"
-        >
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="font-medium">{{ t('admin.accounts.maintenance.riskAlerts') }}</div>
-              <div class="mt-2 flex flex-wrap gap-2 text-xs">
-                <span class="account-risk-chip">{{ t('admin.accounts.maintenance.drain95', { count: accountRiskOverview.drain_95 }) }}</span>
-                <span class="account-risk-chip">{{ t('admin.accounts.maintenance.exhausted99', { count: accountRiskOverview.exhausted_99 }) }}</span>
-                <span class="account-risk-chip">{{ t('admin.accounts.maintenance.challenge', { count: accountRiskOverview.challenge }) }}</span>
-                <span class="account-risk-chip">{{ t('admin.accounts.maintenance.banned', { count: accountRiskOverview.banned }) }}</span>
-                <span class="account-risk-chip">{{ t('admin.accounts.maintenance.highFailure', { count: accountRiskOverview.high_failure }) }}</span>
-              </div>
-              <div
-                v-if="accountRiskCandidatePreview.length"
-                class="mt-2 truncate text-xs opacity-80"
-                :title="accountRiskCandidatePreview.join(' / ')"
-              >
-                {{ accountRiskCandidatePreview.join(' / ') }}
-              </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button
-                class="btn btn-secondary px-2 py-1 text-xs"
-                :disabled="accountMaintenanceBusy"
-                @click="handleRunOpenAIMaintenanceScan"
-              >
-                {{ t('admin.accounts.maintenance.scanNowShort') }}
-              </button>
-              <button
-                class="btn btn-secondary px-2 py-1 text-xs"
-                :disabled="riskPartitionBusy || !accountRiskOverview.move_candidates"
-                @click="handleApplyOpenAIRiskPartition"
-              >
-                {{ t('admin.accounts.maintenance.partitionRiskPoolShort', { count: accountRiskOverview.move_candidates }) }}
-              </button>
-            </div>
-          </div>
         </div>
         <div class="mt-3 grid gap-3 lg:grid-cols-4">
           <div class="account-summary-panel">
@@ -309,39 +247,39 @@
           <div class="account-summary-panel">
             <div class="flex items-start justify-between gap-3">
               <div>
-                <p class="account-summary-label">{{ t('admin.accounts.plusUsage.title') }}</p>
-                <p class="account-summary-value">{{ formatStandardCost(plusUsageSummary?.total_standard_cost) }}</p>
+                <p class="account-summary-label">{{ t('admin.accounts.oauthUsage.title') }}</p>
+                <p class="account-summary-value">{{ formatStandardCost(oauthUsageSummary?.total_standard_cost) }}</p>
               </div>
               <span class="account-summary-pill text-emerald-700 dark:text-emerald-300">
-                {{ t('admin.accounts.plusUsage.standardPricing') }}
+                {{ t('admin.accounts.oauthUsage.standardPricing') }}
               </span>
             </div>
             <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
               <div>
                 <span class="account-summary-subvalue text-emerald-600 dark:text-emerald-300">
-                  {{ formatStandardCost(plusUsageSummary?.average_standard_cost_per_plus_account) }}
+                  {{ formatStandardCost(oauthUsageSummary?.average_standard_cost_per_oauth_account) }}
                 </span>
-                <span class="account-summary-sublabel">{{ t('admin.accounts.plusUsage.average') }}</span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.oauthUsage.average') }}</span>
               </div>
               <div>
                 <span class="account-summary-subvalue text-gray-900 dark:text-gray-100">
-                  {{ plusUsageSummary?.plus_account_count ?? '-' }}
+                  {{ oauthUsageSummary?.oauth_account_count ?? '-' }}
                 </span>
-                <span class="account-summary-sublabel">{{ t('admin.accounts.plusUsage.plusAccounts') }}</span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.oauthUsage.plusAccounts') }}</span>
               </div>
               <div>
                 <span class="account-summary-subvalue text-amber-600 dark:text-amber-300">
-                  {{ plusUsageSummary?.deleted_plus_account_count ?? 0 }} / {{ plusUsageSummary?.expired_plus_account_count ?? 0 }}
+                  {{ oauthUsageSummary?.deleted_oauth_account_count ?? 0 }} / {{ oauthUsageSummary?.expired_oauth_account_count ?? 0 }}
                 </span>
-                <span class="account-summary-sublabel">{{ t('admin.accounts.plusUsage.deletedExpired') }}</span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.oauthUsage.deletedExpired') }}</span>
               </div>
             </div>
             <div class="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
-              <span>{{ t('admin.accounts.plusUsage.withUsage', { count: plusUsageSummary?.plus_accounts_with_usage ?? 0 }) }}</span>
-              <span>{{ t('admin.accounts.plusUsage.logs', { count: plusUsageSummary?.usage_log_count ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.oauthUsage.withUsage', { count: oauthUsageSummary?.oauth_accounts_with_usage ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.oauthUsage.logs', { count: oauthUsageSummary?.usage_log_count ?? 0 }) }}</span>
             </div>
             <div class="mt-1 text-right text-[11px] text-gray-400 dark:text-gray-500">
-              {{ t('admin.accounts.plusUsage.refreshedAt', { time: plusUsageSummaryRefreshedAt || '-' }) }}
+              {{ t('admin.accounts.oauthUsage.refreshedAt', { time: oauthUsageSummaryRefreshedAt || '-' }) }}
             </div>
           </div>
 
@@ -396,31 +334,31 @@
           <div
             role="button"
             tabindex="0"
-            :class="['quota-pool-card quota-pool-card-plus', { 'quota-pool-card-active': activeQuotaPool === 'plus' }]"
-            @click="openQuotaPool('plus')"
-            @keydown.enter.prevent="openQuotaPool('plus')"
-            @keydown.space.prevent="openQuotaPool('plus')"
+            :class="['quota-pool-card quota-pool-card-oauth', { 'quota-pool-card-active': activeQuotaPool === 'oauth' }]"
+            @click="openQuotaPool('oauth')"
+            @keydown.enter.prevent="openQuotaPool('oauth')"
+            @keydown.space.prevent="openQuotaPool('oauth')"
           >
             <div class="flex items-start justify-between gap-3">
               <div>
-                <p class="quota-pool-label">{{ t('admin.accounts.quotaPools.plusTitle') }}</p>
-                <p class="quota-pool-value">{{ formatSummaryPercent(quotaPoolSummaryView?.plus_pool?.remaining_percent) }}</p>
+                <p class="quota-pool-label">{{ t('admin.accounts.quotaPools.oauthTitle') }}</p>
+                <p class="quota-pool-value">{{ formatSummaryPercent(quotaPoolSummaryView?.oauth_pool?.remaining_percent) }}</p>
               </div>
-              <div class="quota-pool-enter" :title="t('admin.accounts.quotaPools.openPlus')">
+              <div class="quota-pool-enter" :title="t('admin.accounts.quotaPools.openOAuth')">
                 <div class="quota-pool-enter-metrics">
-                  <span>5h {{ formatSummaryPercent(quotaPoolSummaryView?.plus_pool?.remaining_5h_percent) }}</span>
-                  <span>7d {{ formatSummaryPercent(quotaPoolSummaryView?.plus_pool?.remaining_7d_percent) }}</span>
+                  <span>5h {{ formatSummaryPercent(quotaPoolSummaryView?.oauth_pool?.remaining_5h_percent) }}</span>
+                  <span>7d {{ formatSummaryPercent(quotaPoolSummaryView?.oauth_pool?.remaining_7d_percent) }}</span>
                 </div>
                 <Icon name="arrowRight" size="sm" />
               </div>
             </div>
             <div class="quota-pool-meter">
-              <div class="quota-pool-meter-fill bg-emerald-500" :style="{ width: summaryMeterWidth(quotaPoolSummaryView?.plus_pool?.remaining_percent) }"></div>
+              <div class="quota-pool-meter-fill bg-emerald-500" :style="{ width: summaryMeterWidth(quotaPoolSummaryView?.oauth_pool?.remaining_percent) }"></div>
             </div>
             <div class="quota-pool-stats">
-              <span>{{ t('admin.accounts.quotaPools.accounts', { total: quotaPoolSummaryView?.plus_pool?.total ?? 0, available: quotaPoolSummaryView?.plus_pool?.available ?? 0 }) }}</span>
-              <span>{{ t('admin.accounts.summary.sampled', { count: quotaPoolSummaryView?.plus_pool?.sampled ?? 0 }) }}</span>
-              <span>{{ t('admin.accounts.summary.exhausted', { count: quotaPoolSummaryView?.plus_pool?.exhausted ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.quotaPools.accounts', { total: quotaPoolSummaryView?.oauth_pool?.total ?? 0, available: quotaPoolSummaryView?.oauth_pool?.available ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.summary.sampled', { count: quotaPoolSummaryView?.oauth_pool?.sampled ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.summary.exhausted', { count: quotaPoolSummaryView?.oauth_pool?.exhausted ?? 0 }) }}</span>
             </div>
           </div>
         </div>
@@ -471,11 +409,11 @@
             <div class="flex flex-col">
               <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
               <span
-                v-if="row.extra?.email_address || row.extra?.email || row.credentials?.email"
+                v-if="accountDisplayEmail(row)"
                 class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]"
-                :title="String(row.extra?.email_address || row.extra?.email || row.credentials?.email)"
+                :title="accountDisplayEmail(row) + (row.parent_chatgpt_account_id ? ' · ' + row.parent_chatgpt_account_id : '')"
               >
-                {{ row.extra?.email_address || row.extra?.email || row.credentials?.email }}
+                {{ accountDisplayEmail(row) }}
               </span>
             </div>
           </template>
@@ -486,7 +424,10 @@
           <template #cell-platform_type="{ row }">
             <div class="flex min-w-0 flex-col gap-1">
               <div class="flex flex-wrap items-center gap-1">
-                <PlatformTypeBadge :platform="row.platform" :type="row.type" :plan-type="row.credentials?.plan_type" :privacy-mode="row.extra?.privacy_mode" :subscription-expires-at="row.credentials?.subscription_expires_at" />
+                <PlatformTypeBadge :platform="row.platform" :type="row.type"
+                  :plan-type="row.credentials?.plan_type || row.parent_plan_type"
+                  :privacy-mode="row.extra?.privacy_mode || row.parent_privacy_mode"
+                  :subscription-expires-at="row.credentials?.subscription_expires_at || row.parent_subscription_expires_at" />
                 <span
                   v-if="getAntigravityTierLabel(row)"
                   :class="['inline-block rounded px-1.5 py-0.5 text-[10px] font-medium', getAntigravityTierClass(row)]"
@@ -661,7 +602,7 @@
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
     <AccountStatsModal :show="showStats" :account="statsAcc" @close="closeStatsModal" />
     <ScheduledTestsPanel :show="showSchedulePanel" :account-id="scheduleAcc?.id ?? null" :model-options="scheduleModelOptions" @close="closeSchedulePanel" />
-    <AccountActionMenu :show="menu.show" :account="menu.acc" :position="menu.pos" @close="menu.show = false" @test="handleTest" @stats="handleViewStats" @schedule="handleSchedule" @reauth="handleReAuth" @refresh-token="handleRefresh" @recover-state="handleRecoverState" @reset-quota="handleResetQuota" @set-privacy="handleSetPrivacy" />
+    <AccountActionMenu :show="menu.show" :account="menu.acc" :position="menu.pos" @close="menu.show = false" @test="handleTest" @stats="handleViewStats" @schedule="handleSchedule" @reauth="handleReAuth" @refresh-token="handleRefresh" @recover-state="handleRecoverState" @reset-quota="handleResetQuota" @set-privacy="handleSetPrivacy" @create-spark-shadow="handleCreateSparkShadow" />
     <SyncFromCrsModal :show="showSync" @close="showSync = false" @synced="reload" />
     <ImportDataModal :show="showImportData" @close="showImportData = false" @imported="handleDataImported" />
     <BulkEditAccountModal
@@ -677,6 +618,7 @@
     />
     <TempUnschedStatusModal :show="showTempUnsched" :account="tempUnschedAcc" @close="showTempUnsched = false" @reset="handleTempUnschedReset" />
     <ConfirmDialog :show="showDeleteDialog" :title="t('admin.accounts.deleteAccount')" :message="t('admin.accounts.deleteConfirm', { name: deletingAcc?.name })" :confirm-text="t('common.delete')" :cancel-text="t('common.cancel')" :danger="true" @confirm="confirmDelete" @cancel="showDeleteDialog = false" />
+    <ConfirmDialog :show="showCreateShadowDialog" :title="t('admin.accounts.createSparkShadow')" :message="t('admin.accounts.createSparkShadowConfirm', { name: creatingShadowAcc?.name })" @confirm="confirmCreateSparkShadow" @cancel="showCreateShadowDialog = false" />
     <ConfirmDialog :show="showExportDataDialog" :title="t('admin.accounts.dataExport')" :message="t('admin.accounts.dataExportConfirmMessage')" :confirm-text="t('admin.accounts.dataExportConfirm')" :cancel-text="t('common.cancel')" @confirm="handleExportData" @cancel="showExportDataDialog = false">
       <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
         <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" v-model="includeProxyOnExport" />
@@ -728,7 +670,7 @@ import { buildOpenAIUsageRefreshKey } from '@/utils/accountUsageRefresh'
 import { formatCurrency, formatDateTime, formatRelativeTime } from '@/utils/format'
 import { proxyExpiryBadgeClass, proxyExpiryLabelKey } from '@/utils/proxyExpiry'
 import type { Account, AccountPlatform, AccountType, Proxy as AccountProxy, AdminGroup, WindowStats, ClaudeModel } from '@/types'
-import type { AccountSummary, AccountProxySummary, OpenAIAccountRiskOverview, PlusAccountUsageSummary } from '@/api/admin/accounts'
+import type { AccountSummary, AccountProxySummary, OAuthAccountUsageSummary } from '@/api/admin/accounts'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -787,6 +729,7 @@ const showBulkEdit = ref(false)
 const bulkEditTarget = ref<AccountBulkEditTarget | null>(null)
 const showTempUnsched = ref(false)
 const showDeleteDialog = ref(false)
+const showCreateShadowDialog = ref(false)
 const showReAuth = ref(false)
 const showTest = ref(false)
 const showStats = ref(false)
@@ -795,6 +738,7 @@ const showTLSFingerprintProfiles = ref(false)
 const edAcc = ref<Account | null>(null)
 const tempUnschedAcc = ref<Account | null>(null)
 const deletingAcc = ref<Account | null>(null)
+const creatingShadowAcc = ref<Account | null>(null)
 const reAuthAcc = ref<Account | null>(null)
 const testingAcc = ref<Account | null>(null)
 const statsAcc = ref<Account | null>(null)
@@ -871,19 +815,16 @@ const pendingTodayStatsRefresh = ref(false)
 const usageManualRefreshToken = ref(0)
 const accountSummary = ref<AccountSummary | null>(null)
 const quotaPoolSummary = ref<AccountSummary | null>(null)
-const plusUsageSummary = ref<PlusAccountUsageSummary | null>(null)
-const plusUsageSummaryRefreshedAt = ref('')
+const oauthUsageSummary = ref<OAuthAccountUsageSummary | null>(null)
+const oauthUsageSummaryRefreshedAt = ref('')
 const accountSummaryReqSeq = ref(0)
 const quotaPoolSummaryReqSeq = ref(0)
-const plusUsageSummaryReqSeq = ref(0)
-const plusUsageSummaryRefreshKey = ref(0)
-const plusUsageSummaryTimer = ref<number | null>(null)
-const accountRiskOverview = ref<OpenAIAccountRiskOverview | null>(null)
-const accountRiskReqSeq = ref(0)
+const oauthUsageSummaryReqSeq = ref(0)
+const oauthUsageSummaryRefreshKey = ref(0)
+const oauthUsageSummaryTimer = ref<number | null>(null)
 const accountMaintenanceBusy = ref(false)
-const riskPartitionBusy = ref(false)
 
-type QuotaPoolKind = 'plus'
+type QuotaPoolKind = 'oauth'
 
 const tokyoProxyHealth = computed<AccountProxySummary[]>(() => {
   const proxies = accountSummary.value?.proxy_distribution ?? []
@@ -891,37 +832,21 @@ const tokyoProxyHealth = computed<AccountProxySummary[]>(() => {
   return (tokyo.length > 0 ? tokyo : proxies).slice(0, 4)
 })
 
-const findQuotaPoolGroup = (kind: QuotaPoolKind): AdminGroup | null => {
-  return groups.value.find((group) => {
-    if (group.platform !== 'openai') return false
-    const name = String(group.name ?? '').toLowerCase()
-    return name.includes(kind)
-  }) ?? null
-}
-
 const activeQuotaPool = computed<QuotaPoolKind | null>(() => {
-  const groupID = String((params as any).group ?? '')
-  if (!groupID) return null
-  const plusGroup = findQuotaPoolGroup('plus')
-  if (plusGroup && String(plusGroup.id) === groupID) return 'plus'
-  return null
+  const requestParams = params as any
+  return requestParams.platform === 'openai' && requestParams.type === 'oauth' ? 'oauth' : null
 })
 
 const quotaPoolSummaryView = computed(() => quotaPoolSummary.value ?? accountSummary.value)
 
-const openQuotaPool = (kind: QuotaPoolKind) => {
-  const group = findQuotaPoolGroup(kind)
+const openQuotaPool = (_kind: QuotaPoolKind) => {
   const requestParams = params as any
   requestParams.platform = 'openai'
-  requestParams.type = ''
+  requestParams.type = 'oauth'
   requestParams.status = ''
   requestParams.privacy_mode = ''
   requestParams.search = ''
-  if (group) {
-    requestParams.group = String(group.id)
-  } else {
-    requestParams.group = ''
-  }
+  requestParams.group = ''
   pagination.page = 1
   clearSelection()
   resetAutoRefreshCache()
@@ -929,22 +854,7 @@ const openQuotaPool = (kind: QuotaPoolKind) => {
   load()
 }
 
-const accountRiskHasWarnings = computed(() => {
-  const risk = accountRiskOverview.value
-  if (!risk) return false
-  return risk.drain_95 > 0 ||
-    risk.exhausted_99 > 0 ||
-    risk.challenge > 0 ||
-    risk.banned > 0 ||
-    risk.high_failure > 0
-})
 
-const accountRiskCandidatePreview = computed(() => {
-  const candidates = accountRiskOverview.value?.candidates ?? []
-  return candidates.slice(0, 4).map((candidate) => (
-    `${candidate.name}: ${riskLabel(candidate.risk)} -> ${candidate.target_proxy_name}`
-  ))
-})
 
 const buildAccountSummaryFilters = () => {
   const rawParams = toRaw(params) as Record<string, unknown>
@@ -982,29 +892,17 @@ const refreshQuotaPoolSummary = async () => {
   }
 }
 
-const refreshPlusUsageSummary = async () => {
-  const reqSeq = ++plusUsageSummaryReqSeq.value
-  const refreshKey = ++plusUsageSummaryRefreshKey.value
+const refreshOAuthUsageSummary = async () => {
+  const reqSeq = ++oauthUsageSummaryReqSeq.value
+  const refreshKey = ++oauthUsageSummaryRefreshKey.value
   try {
-    const summary = await adminAPI.accounts.getPlusUsageSummary({ refreshKey })
-    if (reqSeq !== plusUsageSummaryReqSeq.value) return
-    plusUsageSummary.value = summary
-    plusUsageSummaryRefreshedAt.value = formatClockTime(new Date())
+    const summary = await adminAPI.accounts.getOAuthUsageSummary({ refreshKey })
+    if (reqSeq !== oauthUsageSummaryReqSeq.value) return
+    oauthUsageSummary.value = summary
+    oauthUsageSummaryRefreshedAt.value = formatClockTime(new Date())
   } catch (error) {
-    if (reqSeq !== plusUsageSummaryReqSeq.value) return
-    console.error('Failed to load Plus usage summary:', error)
-  }
-}
-
-const refreshAccountRiskOverview = async () => {
-  const reqSeq = ++accountRiskReqSeq.value
-  try {
-    const overview = await adminAPI.accounts.getOpenAIRiskOverview()
-    if (reqSeq !== accountRiskReqSeq.value) return
-    accountRiskOverview.value = overview
-  } catch (error) {
-    if (reqSeq !== accountRiskReqSeq.value) return
-    console.error('Failed to load OpenAI account risk overview:', error)
+    if (reqSeq !== oauthUsageSummaryReqSeq.value) return
+    console.error('Failed to load OAuth usage summary:', error)
   }
 }
 
@@ -1069,13 +967,6 @@ const proxyHealthMessage = (proxy: AccountProxySummary) => {
   if (proxy.latency_message) return proxy.latency_message
   if (proxy.last_error_at) return t('admin.accounts.summary.lastErrorAt', { time: formatRelativeTime(proxy.last_error_at) })
   return t('admin.accounts.summary.noRecentError')
-}
-
-const riskLabel = (risk: string) => {
-  if (risk === 'challenge') return t('admin.accounts.maintenance.riskChallenge')
-  if (risk === 'banned') return t('admin.accounts.maintenance.riskBanned')
-  if (risk === 'high_failure') return t('admin.accounts.maintenance.riskHighFailure')
-  return risk
 }
 
 const buildDefaultTodayStats = (): WindowStats => ({
@@ -1316,8 +1207,7 @@ const load = async () => {
     refreshTodayStatsBatch(),
     refreshAccountSummary(),
     refreshQuotaPoolSummary(),
-    refreshPlusUsageSummary(),
-    refreshAccountRiskOverview()
+    refreshOAuthUsageSummary()
   ])
 }
 
@@ -1330,8 +1220,7 @@ const reload = async () => {
     refreshTodayStatsBatch(),
     refreshAccountSummary(),
     refreshQuotaPoolSummary(),
-    refreshPlusUsageSummary(),
-    refreshAccountRiskOverview()
+    refreshOAuthUsageSummary()
   ])
 }
 
@@ -1341,9 +1230,6 @@ const debouncedReload = () => {
   pendingTodayStatsRefresh.value = true
   refreshAccountSummary().catch((error) => {
     console.error('Failed to refresh account summary after filter change:', error)
-  })
-  refreshAccountRiskOverview().catch((error) => {
-    console.error('Failed to refresh account risk overview after filter change:', error)
   })
   baseDebouncedReload()
 }
@@ -1500,8 +1386,7 @@ const refreshAccountsIncrementally = async () => {
       refreshTodayStatsBatch(),
       refreshAccountSummary(),
       refreshQuotaPoolSummary(),
-      refreshPlusUsageSummary(),
-      refreshAccountRiskOverview()
+      refreshOAuthUsageSummary()
     ])
   } catch (error) {
     console.error('Auto refresh failed:', error)
@@ -1511,7 +1396,7 @@ const refreshAccountsIncrementally = async () => {
 }
 
 const handleManualRefresh = async () => {
-  await refreshPlusUsageSummary()
+  await refreshOAuthUsageSummary()
   await load()
   // Force usage cells to refetch /usage on explicit user refresh.
   usageManualRefreshToken.value += 1
@@ -1556,44 +1441,13 @@ const handleRunOpenAIMaintenanceScan = async () => {
       slow: result.moved_to_slow_pool,
       normal: result.moved_to_normal_pool
     }))
-    await Promise.all([
-      load(),
-      refreshAccountRiskOverview()
-    ])
+    await load()
     usageManualRefreshToken.value += 1
   } catch (error: any) {
     console.error('Failed to run OpenAI account maintenance scan:', error)
     appStore.showError(error?.message || t('admin.accounts.maintenance.scanFailed'))
   } finally {
     accountMaintenanceBusy.value = false
-  }
-}
-
-const handleApplyOpenAIRiskPartition = async () => {
-  if (riskPartitionBusy.value) return
-  const candidates = accountRiskOverview.value?.move_candidates ?? 0
-  if (candidates <= 0) return
-  closeAccountToolsDropdown()
-  if (!confirm(t('admin.accounts.maintenance.partitionConfirm', { count: candidates }))) {
-    return
-  }
-  riskPartitionBusy.value = true
-  try {
-    const result = await adminAPI.accounts.applyOpenAIRiskPartition()
-    appStore.showSuccess(t('admin.accounts.maintenance.partitionResult', {
-      moved: result.moved,
-      already: result.already_partitioned
-    }))
-    await Promise.all([
-      load(),
-      refreshAccountRiskOverview()
-    ])
-    usageManualRefreshToken.value += 1
-  } catch (error: any) {
-    console.error('Failed to apply OpenAI risk partition:', error)
-    appStore.showError(error?.message || t('admin.accounts.maintenance.partitionFailed'))
-  } finally {
-    riskPartitionBusy.value = false
   }
 }
 
@@ -1653,6 +1507,12 @@ function getAntigravityTierLabel(row: any): string | null {
     case 'g1-ultra-tier': return t('admin.accounts.tier.ultra')
     default: return null
   }
+}
+
+// 账号显示邮箱:优先账号自身(extra/credentials),影子账号回退母账号 parent_email。
+// 供名称单元格 v-if/标题/文本三处共用,避免同一回退链在模板里重复三次。
+function accountDisplayEmail(row: any): string {
+  return row.extra?.email_address || row.extra?.email || row.credentials?.email || row.parent_email || ''
 }
 
 type OpenAICompactBadgeState = 'active' | 'blocked' | 'auto'
@@ -1717,26 +1577,14 @@ function formatCodexPercent(value: unknown): string {
   return `${Math.round(pct)}%`
 }
 
-function accountHasGroupToken(row: Account, tokens: string[]): boolean {
-  const groups = row.groups ?? []
-  return groups.some((group) => {
-    const name = String(group.name ?? '').toLowerCase()
-    return tokens.some((token) => name.includes(token))
-  })
-}
-
 function getQuotaRemainingMeta(row: Account): { label: string; display: string; width: string; barClass: string } | null {
   if (row.platform !== 'openai') return null
   const extra = row.extra as Record<string, unknown> | undefined
-  const planType = String(row.credentials?.plan_type ?? '').toLowerCase()
-  const isPlus = ['plus', 'pro', 'chatgptpro', 'team', 'enterprise', 'business'].includes(planType) ||
-    accountHasGroupToken(row, ['plus', 'pro'])
-  const isFree = planType === 'free' || planType === 'free-tier' || accountHasGroupToken(row, ['free'])
-  if (isFree) return null
+  const isOAuth = row.type === 'oauth'
   const used5h = codexPercent(extra?.codex_5h_used_percent)
   const used7d = codexPercent(extra?.codex_7d_used_percent)
   let used: number | null = null
-  if (isPlus) {
+  if (isOAuth) {
     used = used5h
   } else if (used5h !== null || used7d !== null) {
     used = Math.min(used5h ?? 100, used7d ?? 100)
@@ -1744,8 +1592,8 @@ function getQuotaRemainingMeta(row: Account): { label: string; display: string; 
 
   if (used === null || !Number.isFinite(used)) return null
   const remaining = Math.max(0, Math.min(100, 100 - used))
-  const label = isPlus
-    ? t('admin.accounts.quotaPools.plusMetric')
+  const label = isOAuth
+    ? t('admin.accounts.quotaPools.oauthMetric')
     : t('admin.accounts.quotaPools.bestMetric')
   const barClass = remaining >= 50
     ? 'bg-emerald-500'
@@ -2180,11 +2028,8 @@ const handleAccountUpdated = (updatedAccount: Account) => {
   refreshQuotaPoolSummary().catch((error) => {
     console.error('Failed to refresh quota pool summary after account update:', error)
   })
-  refreshPlusUsageSummary().catch((error) => {
-    console.error('Failed to refresh Plus usage summary after account update:', error)
-  })
-  refreshAccountRiskOverview().catch((error) => {
-    console.error('Failed to refresh account risk overview after account update:', error)
+  refreshOAuthUsageSummary().catch((error) => {
+    console.error('Failed to refresh OAuth usage summary after account update:', error)
   })
 }
 const formatExportTimestamp = () => {
@@ -2217,7 +2062,13 @@ const handleExportData = async () => {
     link.download = filename
     link.click()
     URL.revokeObjectURL(url)
-    appStore.showSuccess(t('admin.accounts.dataExported'))
+    // spark 影子账号被后端排除出备份(其凭据透传母账号、调度配置不可经凭据型导入重建);
+    // 跳过非零时明确提示用户,避免「下载成功但少了账号」的静默丢失。
+    if (dataPayload.skipped_shadows && dataPayload.skipped_shadows > 0) {
+      appStore.showWarning(t('admin.accounts.dataExportedSkippedShadows', { count: dataPayload.skipped_shadows }))
+    } else {
+      appStore.showSuccess(t('admin.accounts.dataExported'))
+    }
   } catch (error: any) {
     appStore.showError(error?.message || t('admin.accounts.dataExportFailed'))
   } finally {
@@ -2273,12 +2124,39 @@ const handleResetQuota = async (a: Account) => {
     console.error('Failed to reset quota:', error)
   }
 }
+
+const privacyResultMessageKey = (account: Account): { type: 'success' | 'error'; key: string } => {
+  const mode = typeof account.extra?.privacy_mode === 'string' ? account.extra.privacy_mode : ''
+  if (account.platform === 'openai') {
+    switch (mode) {
+      case 'training_off':
+        return { type: 'success', key: 'admin.accounts.privacyTrainingOff' }
+      case 'training_set_cf_blocked':
+        return { type: 'error', key: 'admin.accounts.privacyCfBlocked' }
+      default:
+        return { type: 'error', key: 'admin.accounts.privacyFailed' }
+    }
+  }
+  if (account.platform === 'antigravity') {
+    if (mode === 'privacy_set') {
+      return { type: 'success', key: 'admin.accounts.privacyAntigravitySet' }
+    }
+    return { type: 'error', key: 'admin.accounts.privacyAntigravityFailed' }
+  }
+  return { type: 'error', key: 'admin.accounts.privacyFailed' }
+}
+
 const handleSetPrivacy = async (a: Account) => {
   try {
     const updated = await adminAPI.accounts.setPrivacy(a.id)
     patchAccountInList(updated)
     enterAutoRefreshSilentWindow()
-    appStore.showSuccess(t('common.success'))
+    const result = privacyResultMessageKey(updated)
+    if (result.type === 'success') {
+      appStore.showSuccess(t(result.key))
+    } else {
+      appStore.showError(t(result.key))
+    }
   } catch (error: any) {
     console.error('Failed to set privacy:', error)
     appStore.showError(error?.response?.data?.message || t('admin.accounts.privacyFailed'))
@@ -2292,6 +2170,24 @@ const onRevertFallback = async (a: Account) => {
   } catch (error: any) {
     console.error('Failed to revert proxy fallback:', error)
     appStore.showError(error?.response?.data?.message || t('admin.accounts.revertProxyFailed'))
+  }
+}
+const handleCreateSparkShadow = (a: Account) => {
+  creatingShadowAcc.value = a
+  showCreateShadowDialog.value = true
+}
+const confirmCreateSparkShadow = async () => {
+  const a = creatingShadowAcc.value
+  if (!a) return
+  try {
+    await adminAPI.accounts.createSparkShadow(a.id, { name: `${a.name} (Spark)` })
+    showCreateShadowDialog.value = false
+    creatingShadowAcc.value = null
+    appStore.showSuccess(t('admin.accounts.createSparkShadowSuccess'))
+    reload()
+  } catch (error: any) {
+    console.error('Failed to create spark shadow:', error)
+    appStore.showError(error?.response?.data?.message || t('admin.accounts.createSparkShadowFailed'))
   }
 }
 const handleDelete = (a: Account) => { deletingAcc.value = a; showDeleteDialog.value = true }
@@ -2367,10 +2263,10 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(async () => {
   load()
-  plusUsageSummaryTimer.value = window.setInterval(() => {
+  oauthUsageSummaryTimer.value = window.setInterval(() => {
     if (document.hidden) return
-    refreshPlusUsageSummary().catch((error) => {
-      console.error('Failed to refresh standard usage summary on interval:', error)
+    refreshOAuthUsageSummary().catch((error) => {
+      console.error('Failed to refresh OAuth usage summary on interval:', error)
     })
   }, 10000)
   try {
@@ -2394,9 +2290,9 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll, true)
   document.removeEventListener('click', handleClickOutside)
-  if (plusUsageSummaryTimer.value !== null) {
-    window.clearInterval(plusUsageSummaryTimer.value)
-    plusUsageSummaryTimer.value = null
+  if (oauthUsageSummaryTimer.value !== null) {
+    window.clearInterval(oauthUsageSummaryTimer.value)
+    oauthUsageSummaryTimer.value = null
   }
 })
 </script>
@@ -2470,7 +2366,7 @@ onUnmounted(() => {
   @apply cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-primary-200 hover:bg-primary-50/40 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-primary-700 dark:hover:bg-primary-900/10 dark:focus:ring-offset-gray-900;
 }
 
-.quota-pool-card-plus {
+.quota-pool-card-oauth {
   @apply border-emerald-100 dark:border-emerald-900/40;
 }
 

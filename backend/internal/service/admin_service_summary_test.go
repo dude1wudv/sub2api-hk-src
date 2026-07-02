@@ -2,7 +2,7 @@ package service
 
 import "testing"
 
-func TestBuildAccountSummaryCodex5hSkipsFreeAccounts(t *testing.T) {
+func TestBuildAccountSummaryCodexWindowsCountAllOpenAIOAuthAccounts(t *testing.T) {
 	accounts := []Account{
 		{
 			Platform:    PlatformOpenAI,
@@ -26,29 +26,32 @@ func TestBuildAccountSummaryCodex5hSkipsFreeAccounts(t *testing.T) {
 
 	summary := buildAccountSummary(accounts)
 
-	if summary.Codex5h.Sampled != 0 {
-		t.Fatalf("Codex5h.Sampled = %d, want 0", summary.Codex5h.Sampled)
+	if summary.Codex5h.Sampled != 2 {
+		t.Fatalf("Codex5h.Sampled = %d, want 2", summary.Codex5h.Sampled)
 	}
-	if summary.Codex5h.UsedPercent != nil {
-		t.Fatalf("Codex5h.UsedPercent = %v, want nil", *summary.Codex5h.UsedPercent)
+	if summary.Codex5h.UsedPercent == nil || *summary.Codex5h.UsedPercent != 17.5 {
+		t.Fatalf("Codex5h.UsedPercent = %v, want 17.5", summary.Codex5h.UsedPercent)
 	}
-	if summary.Codex5h.RemainingPercent != nil {
-		t.Fatalf("Codex5h.RemainingPercent = %v, want nil", *summary.Codex5h.RemainingPercent)
+	if summary.Codex5h.RemainingPercent == nil || *summary.Codex5h.RemainingPercent != 82.5 {
+		t.Fatalf("Codex5h.RemainingPercent = %v, want 82.5", summary.Codex5h.RemainingPercent)
 	}
-	if summary.Codex7d.Sampled != 0 {
-		t.Fatalf("Codex7d.Sampled = %d, want 0", summary.Codex7d.Sampled)
+	if summary.Codex7d.Sampled != 2 {
+		t.Fatalf("Codex7d.Sampled = %d, want 2", summary.Codex7d.Sampled)
 	}
 }
 
-func TestBuildAccountSummaryCodexWindowsCountPaidOpenAIAuthAccountsOnly(t *testing.T) {
+func TestBuildAccountSummaryCodexWindowsCountOpenAIOAuthAccountsOnly(t *testing.T) {
 	proxyID := int64(12)
 	accounts := []Account{
 		{
 			Platform:    PlatformOpenAI,
 			Type:        AccountTypeOAuth,
 			Credentials: map[string]any{"plan_type": "free"},
-			Extra:       map[string]any{"codex_5h_used_percent": 10.0},
-			ProxyID:     &proxyID,
+			Extra: map[string]any{
+				"codex_5h_used_percent": 10.0,
+				"codex_7d_used_percent": 80.0,
+			},
+			ProxyID: &proxyID,
 		},
 		{
 			Platform:    PlatformOpenAI,
@@ -84,33 +87,33 @@ func TestBuildAccountSummaryCodexWindowsCountPaidOpenAIAuthAccountsOnly(t *testi
 
 	summary := buildAccountSummary(accounts)
 
-	if summary.Codex5h.Sampled != 1 {
-		t.Fatalf("Codex5h.Sampled = %d, want 1", summary.Codex5h.Sampled)
+	if summary.Codex5h.Sampled != 3 {
+		t.Fatalf("Codex5h.Sampled = %d, want 3", summary.Codex5h.Sampled)
 	}
-	if summary.Codex5h.UsedPercent == nil || *summary.Codex5h.UsedPercent != 40.0 {
-		t.Fatalf("Codex5h.UsedPercent = %v, want 40", summary.Codex5h.UsedPercent)
+	if summary.Codex5h.UsedPercent == nil || *summary.Codex5h.UsedPercent != 46.7 {
+		t.Fatalf("Codex5h.UsedPercent = %v, want 46.7", summary.Codex5h.UsedPercent)
 	}
-	if summary.Codex5h.RemainingPercent == nil || *summary.Codex5h.RemainingPercent != 60.0 {
-		t.Fatalf("Codex5h.RemainingPercent = %v, want 60", summary.Codex5h.RemainingPercent)
+	if summary.Codex5h.RemainingPercent == nil || *summary.Codex5h.RemainingPercent != 53.3 {
+		t.Fatalf("Codex5h.RemainingPercent = %v, want 53.3", summary.Codex5h.RemainingPercent)
 	}
-	if summary.Codex7d.Sampled != 1 {
-		t.Fatalf("Codex7d.Sampled = %d, want 1", summary.Codex7d.Sampled)
+	if summary.Codex7d.Sampled != 3 {
+		t.Fatalf("Codex7d.Sampled = %d, want 3", summary.Codex7d.Sampled)
 	}
-	if summary.Codex7d.UsedPercent == nil || *summary.Codex7d.UsedPercent != 20.0 {
-		t.Fatalf("Codex7d.UsedPercent = %v, want 20", summary.Codex7d.UsedPercent)
+	if summary.Codex7d.UsedPercent == nil || *summary.Codex7d.UsedPercent != 63.3 {
+		t.Fatalf("Codex7d.UsedPercent = %v, want 63.3", summary.Codex7d.UsedPercent)
 	}
 	if len(summary.ProxyDistribution) != 1 {
 		t.Fatalf("ProxyDistribution len = %d, want 1", len(summary.ProxyDistribution))
 	}
-	if got := summary.ProxyDistribution[0].Remaining5hPercent; got == nil || *got != 60.0 {
-		t.Fatalf("proxy Remaining5hPercent = %v, want 60", got)
+	if got := summary.ProxyDistribution[0].Remaining5hPercent; got == nil || *got != 53.3 {
+		t.Fatalf("proxy Remaining5hPercent = %v, want 53.3", got)
 	}
-	if got := summary.ProxyDistribution[0].Remaining7dPercent; got == nil || *got != 80.0 {
-		t.Fatalf("proxy Remaining7dPercent = %v, want 80", got)
+	if got := summary.ProxyDistribution[0].Remaining7dPercent; got == nil || *got != 36.7 {
+		t.Fatalf("proxy Remaining7dPercent = %v, want 36.7", got)
 	}
 }
 
-func TestBuildAccountSummaryQuotaPoolsUsePaidAuthAndIgnoreFree(t *testing.T) {
+func TestBuildAccountSummaryQuotaPoolsUseAllOpenAIOAuthAndIgnoreAPIKeys(t *testing.T) {
 	accounts := []Account{
 		{
 			Platform:    PlatformOpenAI,
@@ -173,17 +176,17 @@ func TestBuildAccountSummaryQuotaPoolsUsePaidAuthAndIgnoreFree(t *testing.T) {
 
 	summary := buildAccountSummary(accounts)
 
-	if summary.PlusPool.Total != 3 || summary.PlusPool.Sampled != 3 {
-		t.Fatalf("PlusPool totals = (%d,%d), want (3,3)", summary.PlusPool.Total, summary.PlusPool.Sampled)
+	if summary.OAuthPool.Total != 4 || summary.OAuthPool.Sampled != 4 {
+		t.Fatalf("OAuthPool totals = (%d,%d), want (4,4)", summary.OAuthPool.Total, summary.OAuthPool.Sampled)
 	}
-	if summary.PlusPool.RemainingPercent == nil || *summary.PlusPool.RemainingPercent != 75.0 {
-		t.Fatalf("PlusPool.RemainingPercent = %v, want 75", summary.PlusPool.RemainingPercent)
+	if summary.OAuthPool.RemainingPercent == nil || *summary.OAuthPool.RemainingPercent != 71.2 {
+		t.Fatalf("OAuthPool.RemainingPercent = %v, want 71.2", summary.OAuthPool.RemainingPercent)
 	}
-	if summary.PlusPool.Remaining5hPercent == nil || *summary.PlusPool.Remaining5hPercent != 75.0 {
-		t.Fatalf("PlusPool.Remaining5hPercent = %v, want 75", summary.PlusPool.Remaining5hPercent)
+	if summary.OAuthPool.Remaining5hPercent == nil || *summary.OAuthPool.Remaining5hPercent != 71.2 {
+		t.Fatalf("OAuthPool.Remaining5hPercent = %v, want 71.2", summary.OAuthPool.Remaining5hPercent)
 	}
-	if summary.PlusPool.Remaining7dPercent == nil || *summary.PlusPool.Remaining7dPercent != 58.3 {
-		t.Fatalf("PlusPool.Remaining7dPercent = %v, want 58.3", summary.PlusPool.Remaining7dPercent)
+	if summary.OAuthPool.Remaining7dPercent == nil || *summary.OAuthPool.Remaining7dPercent != 41.2 {
+		t.Fatalf("OAuthPool.Remaining7dPercent = %v, want 41.2", summary.OAuthPool.Remaining7dPercent)
 	}
 	if summary.FreePool.Total != 0 || summary.FreePool.Sampled != 0 {
 		t.Fatalf("FreePool totals = (%d,%d), want (0,0)", summary.FreePool.Total, summary.FreePool.Sampled)
