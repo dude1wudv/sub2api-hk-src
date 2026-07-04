@@ -697,7 +697,6 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '/usage-summary', label: t('nav.usageSummary'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
-    { path: '/model-square', label: t('nav.modelSquare'), icon: ChannelIcon, hideInSimpleMode: true },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
     { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/purchase', label: t('nav.buySubscription'), icon: RechargeSubscriptionIcon, hideInSimpleMode: true },
