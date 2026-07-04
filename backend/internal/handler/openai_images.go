@@ -351,6 +351,7 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 		}
 
 		userAgent := c.GetHeader("User-Agent")
+		requestHeaders := c.Request.Header.Clone()
 		clientIP := ip.GetClientIP(c)
 		requestPayloadHash := service.HashUsageRequestPayload(body)
 		if parsed.Multipart {
@@ -376,6 +377,8 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 				UserAgent:          userAgent,
 				IPAddress:          clientIP,
 				RequestPayloadHash: requestPayloadHash,
+				RequestBody:        body,
+				RequestHeaders:     requestHeaders,
 				APIKeyService:      h.apiKeyService,
 				QuotaPlatform:      quotaPlatform,
 				ChannelUsageFields: channelMapping.ToUsageFields(requestModel, upstreamModel),
@@ -605,6 +608,7 @@ func (h *OpenAIGatewayHandler) recordOpenAIImagesFanoutUsage(
 	parts []openAIImagesFanoutPart,
 ) {
 	userAgent := c.GetHeader("User-Agent")
+	requestHeaders := c.Request.Header.Clone()
 	clientIP := ip.GetClientIP(c)
 	basePayloadHash := service.HashUsageRequestPayload(body)
 	if parsed.Multipart {
@@ -633,6 +637,8 @@ func (h *OpenAIGatewayHandler) recordOpenAIImagesFanoutUsage(
 				UserAgent:          userAgent,
 				IPAddress:          clientIP,
 				RequestPayloadHash: requestPayloadHash,
+				RequestBody:        body,
+				RequestHeaders:     requestHeaders,
 				APIKeyService:      h.apiKeyService,
 				ChannelUsageFields: channelMapping.ToUsageFields(parsed.Model, upstreamModel),
 			}); err != nil {

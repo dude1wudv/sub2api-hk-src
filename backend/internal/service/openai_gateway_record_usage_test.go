@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -311,6 +312,32 @@ func TestOpenAIGatewayServiceRecordUsage_ZeroUsageStillWritesUsageLog(t *testing
 	require.Zero(t, billingRepo.lastCmd.APIKeyQuotaCost)
 	require.Zero(t, billingRepo.lastCmd.APIKeyRateLimitCost)
 	require.Zero(t, billingRepo.lastCmd.AccountQuotaCost)
+}
+
+func TestOpenAIGatewayServiceRecordUsage_SetsUsageSessionKeyFromPayload(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	billingRepo := &openAIRecordUsageBillingRepoStub{result: &UsageBillingApplyResult{Applied: true}}
+	svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+
+	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
+		Result: &OpenAIForwardResult{
+			RequestID:  "req-session",
+			ResponseID: "resp_session_alias",
+			Usage:      OpenAIUsage{},
+			Model:      "gpt-5.5",
+			Duration:   time.Second,
+		},
+		APIKey:         &APIKey{ID: 1001, Group: &Group{RateMultiplier: 1}},
+		User:           &User{ID: 2001},
+		Account:        &Account{ID: 3001, Type: AccountTypeAPIKey},
+		RequestBody:    []byte(`{"prompt_cache_key":"cache-session-1"}`),
+		RequestHeaders: http.Header{},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.Equal(t, HashUsageSessionKey("prompt_cache_key", "cache-session-1"), usageRepo.lastLog.SessionKeyHash)
+	require.Contains(t, usageRepo.lastLog.SessionAliasHashes, HashUsageSessionKey("response_id", "resp_session_alias"))
 }
 
 func TestOpenAIGatewayServiceRecordUsage_MissingPricingRecordsZeroCostUsageLog(t *testing.T) {

@@ -3,6 +3,7 @@ package dto
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,23 @@ func TestUsageLogFromService_IncludesOpenAIWSMode(t *testing.T) {
 	require.False(t, UsageLogFromService(httpLog).OpenAIWSMode)
 	require.True(t, UsageLogFromServiceAdmin(wsLog).OpenAIWSMode)
 	require.False(t, UsageLogFromServiceAdmin(httpLog).OpenAIWSMode)
+}
+
+func TestUsageLogFromServiceMapsSessionDisplayIndex(t *testing.T) {
+	t.Parallel()
+
+	sessionID := int64(10)
+	sessionIndex := 1000
+	got := UsageLogFromService(&service.UsageLog{
+		ID: 1, UserID: 2, APIKeyID: 3, AccountID: 4,
+		RequestID: "req", Model: "gpt-5.5", SessionID: &sessionID, SessionIndex: &sessionIndex,
+		CreatedAt: time.Now(),
+	})
+	require.NotNil(t, got)
+	require.NotNil(t, got.SessionIndex)
+	require.Equal(t, 1000, *got.SessionIndex)
+	require.NotNil(t, got.SessionDisplayIndex)
+	require.Equal(t, 1, *got.SessionDisplayIndex)
 }
 
 func TestUsageLogFromService_PrefersRequestTypeForLegacyFields(t *testing.T) {

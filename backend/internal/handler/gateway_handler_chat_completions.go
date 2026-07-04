@@ -293,6 +293,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 
 		// 6. Record usage
 		userAgent := c.GetHeader("User-Agent")
+		requestHeaders := c.Request.Header.Clone()
 		clientIP := ip.GetClientIP(c)
 		requestPayloadHash := service.HashUsageRequestPayload(body)
 		inboundEndpoint := GetInboundEndpoint(c)
@@ -312,6 +313,8 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 				UserAgent:          userAgent,
 				IPAddress:          clientIP,
 				RequestPayloadHash: requestPayloadHash,
+				RequestBody:        body,
+				RequestHeaders:     requestHeaders,
 				APIKeyService:      h.apiKeyService,
 				ChannelUsageFields: channelMapping.ToUsageFields(reqModel, result.UpstreamModel),
 			}); err != nil {

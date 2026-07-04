@@ -1299,6 +1299,8 @@ export interface UsageLog {
   api_key_id: number
   account_id: number | null
   request_id: string
+  session_index?: number | null
+  session_display_index?: number | null
   model: string
   service_tier?: string | null
   reasoning_effort?: string | null

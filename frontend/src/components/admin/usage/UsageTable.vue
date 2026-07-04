@@ -48,6 +48,18 @@
           <span class="text-sm text-gray-900 dark:text-white">{{ row.api_key?.name || '-' }}</span>
         </template>
 
+        <template #cell-session="{ row }">
+          <span
+            v-if="row.session_display_index"
+            data-testid="usage-session-badge"
+            class="inline-flex min-w-6 justify-center rounded px-2 py-0.5 text-xs font-semibold"
+            :class="sessionBadgeClass(row.session_display_index)"
+          >
+            {{ row.session_display_index }}
+          </span>
+          <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
+        </template>
+
         <template #cell-account="{ row }">
           <span class="text-sm text-gray-900 dark:text-white">{{ row.account?.name || '-' }}</span>
         </template>
@@ -546,7 +558,17 @@ const getRequestTypeBadgeClass = (row: AdminUsageLog): string => {
   return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
 }
 
-
+const sessionBadgeClass = (index?: number | null): string => {
+  const palette = [
+    'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200',
+    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200',
+    'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200',
+    'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200',
+    'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200',
+  ]
+  if (!index || index <= 0) return ''
+  return palette[(index - 1) % palette.length]
+}
 
 const formatUserAgent = (ua: string): string => {
   return ua

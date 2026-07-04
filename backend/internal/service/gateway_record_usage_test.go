@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -191,6 +192,30 @@ func TestGatewayServiceRecordUsage_PreservesRequestedAndUpstreamModels(t *testin
 	require.Equal(t, "claude-sonnet-4", usageRepo.lastLog.RequestedModel)
 	require.NotNil(t, usageRepo.lastLog.UpstreamModel)
 	require.Equal(t, mappedModel, *usageRepo.lastLog.UpstreamModel)
+}
+
+func TestGatewayServiceRecordUsage_SetsUsageSessionKeyFromHeaders(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	svc := newGatewayRecordUsageServiceForTest(usageRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{})
+
+	err := svc.RecordUsage(context.Background(), &RecordUsageInput{
+		Result: &ForwardResult{
+			RequestID: "gateway_session",
+			Usage:     ClaudeUsage{InputTokens: 10, OutputTokens: 6},
+			Model:     "claude-sonnet-4",
+			Duration:  time.Second,
+		},
+		APIKey:         &APIKey{ID: 501, Quota: 100},
+		User:           &User{ID: 601},
+		Account:        &Account{ID: 701},
+		RequestBody:    []byte(`{"metadata":{"user_id":"meta-session"}}`),
+		RequestHeaders: http.Header{"X-Claude-Code-Session-Id": []string{"header-session"}},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.Equal(t, HashUsageSessionKey("X-Claude-Code-Session-Id", "header-session"), usageRepo.lastLog.SessionKeyHash)
+	require.Contains(t, usageRepo.lastLog.SessionAliasHashes, HashUsageSessionKey("response_id", "gateway_session"))
 }
 
 func TestGatewayServiceRecordUsage_EmptyImageSizeDefaultsBeforeBillingAndPersistence(t *testing.T) {

@@ -30,7 +30,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const usageLogSelectColumns = "id, user_id, api_key_id, account_id, request_id, model, requested_model, upstream_model, group_id, subscription_id, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cache_creation_5m_tokens, cache_creation_1h_tokens, image_output_tokens, image_output_cost, input_cost, output_cost, cache_creation_cost, cache_read_cost, total_cost, actual_cost, rate_multiplier, account_rate_multiplier, billing_type, request_type, stream, openai_ws_mode, duration_ms, first_token_ms, user_agent, ip_address, image_count, image_size, image_input_size, image_output_size, image_size_source, image_size_breakdown, service_tier, reasoning_effort, inbound_endpoint, upstream_endpoint, cache_ttl_overridden, channel_id, model_mapping_chain, billing_tier, billing_mode, account_stats_cost, created_at"
+const usageLogSelectColumns = "id, user_id, api_key_id, account_id, request_id, model, requested_model, upstream_model, group_id, subscription_id, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cache_creation_5m_tokens, cache_creation_1h_tokens, image_output_tokens, image_output_cost, input_cost, output_cost, cache_creation_cost, cache_read_cost, total_cost, actual_cost, rate_multiplier, account_rate_multiplier, billing_type, request_type, stream, openai_ws_mode, duration_ms, first_token_ms, user_agent, ip_address, image_count, image_size, image_input_size, image_output_size, image_size_source, image_size_breakdown, service_tier, reasoning_effort, inbound_endpoint, upstream_endpoint, cache_ttl_overridden, channel_id, model_mapping_chain, billing_tier, billing_mode, account_stats_cost, session_id, (SELECT us.session_index FROM usage_sessions us WHERE us.id = usage_logs.session_id) AS session_index, created_at"
 
 // usageLogInsertArgTypes must stay in the same order as:
 //  1. prepareUsageLogInsert().args
@@ -89,6 +89,7 @@ var usageLogInsertArgTypes = [...]string{
 	"text",        // billing_tier
 	"text",        // billing_mode
 	"numeric",     // account_stats_cost
+	"bigint",      // session_id
 	"timestamptz", // created_at
 }
 
@@ -360,6 +361,9 @@ func (r *usageLogRepository) CreateBestEffort(ctx context.Context, log *service.
 		_, err := r.createSingle(ctx, r.sql, log)
 		return err
 	}
+	if err := r.resolveUsageSession(ctx, r.sql, log); err != nil {
+		return err
+	}
 
 	req := usageLogBestEffortRequest{
 		prepared: prepareUsageLogInsert(log),
@@ -388,14 +392,95 @@ func (r *usageLogRepository) CreateBestEffort(ctx context.Context, log *service.
 	}
 }
 
+func (r *usageLogRepository) resolveUsageSession(ctx context.Context, sqlq sqlExecutor, log *service.UsageLog) error {
+	if log == nil || log.UserID <= 0 || strings.TrimSpace(log.SessionKeyHash) == "" {
+		return nil
+	}
+	if sqlq == nil {
+		sqlq = r.sql
+	}
+
+	if err := r.lookupUsageSession(ctx, sqlq, log.UserID, log.SessionKeyHash, log); err == nil {
+		return nil
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	for attempt := 0; attempt < 3; attempt++ {
+		var sessionID int64
+		var sessionIndex int
+		create := `WITH next_index AS (
+			SELECT COALESCE(MAX(session_index), 0) + 1 AS value FROM usage_sessions WHERE user_id = $1
+		), inserted AS (
+			INSERT INTO usage_sessions (user_id, session_index)
+			SELECT $1, value FROM next_index
+			RETURNING id, session_index
+		)
+		SELECT id, session_index FROM inserted`
+		err := scanSingleRow(ctx, sqlq, create, []any{log.UserID}, &sessionID, &sessionIndex)
+		if err != nil {
+			if isUniqueViolation(err) {
+				continue
+			}
+			return err
+		}
+
+		bind := `INSERT INTO usage_session_keys (user_id, session_key_hash, session_id)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (user_id, session_key_hash) DO NOTHING`
+		result, err := sqlq.ExecContext(ctx, bind, log.UserID, log.SessionKeyHash, sessionID)
+		if err != nil {
+			return err
+		}
+		if rows, _ := result.RowsAffected(); rows == 0 {
+			if err := r.lookupUsageSession(ctx, sqlq, log.UserID, log.SessionKeyHash, log); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		log.SessionID = &sessionID
+		log.SessionIndex = &sessionIndex
+		for _, alias := range log.SessionAliasHashes {
+			alias = strings.TrimSpace(alias)
+			if alias == "" || alias == log.SessionKeyHash {
+				continue
+			}
+			if _, err := sqlq.ExecContext(ctx, bind, log.UserID, alias, sessionID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return errors.New("usage session allocation conflicted")
+}
+
+func (r *usageLogRepository) lookupUsageSession(ctx context.Context, sqlq sqlExecutor, userID int64, keyHash string, log *service.UsageLog) error {
+	var sessionID int64
+	var sessionIndex int
+	lookup := `SELECT s.id, s.session_index
+		FROM usage_session_keys k
+		JOIN usage_sessions s ON s.id = k.session_id
+		WHERE k.user_id = $1 AND k.session_key_hash = $2`
+	if err := scanSingleRow(ctx, sqlq, lookup, []any{userID, keyHash}, &sessionID, &sessionIndex); err != nil {
+		return err
+	}
+	log.SessionID = &sessionID
+	log.SessionIndex = &sessionIndex
+	return nil
+}
+
 func (r *usageLogRepository) createSingle(ctx context.Context, sqlq sqlExecutor, log *service.UsageLog) (bool, error) {
-	prepared := prepareUsageLogInsert(log)
 	if sqlq == nil {
 		sqlq = r.sql
 	}
 	if ctx != nil && ctx.Err() != nil {
 		return false, service.MarkUsageLogCreateNotPersisted(ctx.Err())
 	}
+	if err := r.resolveUsageSession(ctx, sqlq, log); err != nil {
+		return false, err
+	}
+	prepared := prepareUsageLogInsert(log)
 
 	query := `
 		INSERT INTO usage_logs (
@@ -448,6 +533,7 @@ func (r *usageLogRepository) createSingle(ctx context.Context, sqlq sqlExecutor,
 			billing_tier,
 			billing_mode,
 			account_stats_cost,
+			session_id,
 			created_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7,
@@ -455,7 +541,7 @@ func (r *usageLogRepository) createSingle(ctx context.Context, sqlq sqlExecutor,
 			$10, $11, $12, $13,
 			$14, $15, $16, $17,
 			$18, $19, $20, $21, $22, $23,
-			$24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50
+			$24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51
 		)
 		ON CONFLICT (request_id, api_key_id) DO NOTHING
 		RETURNING id, created_at
@@ -484,6 +570,9 @@ func (r *usageLogRepository) createBatched(ctx context.Context, log *service.Usa
 	r.ensureCreateBatcher()
 	if r.createBatchCh == nil {
 		return r.createSingle(ctx, r.sql, log)
+	}
+	if err := r.resolveUsageSession(ctx, r.sql, log); err != nil {
+		return false, err
 	}
 
 	req := usageLogCreateRequest{
@@ -890,10 +979,11 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 			billing_tier,
 			billing_mode,
 			account_stats_cost,
+			session_id,
 			created_at
 		) AS (VALUES `)
 
-	args := make([]any, 0, len(keys)*50)
+	args := make([]any, 0, len(keys)*len(usageLogInsertArgTypes))
 	argPos := 1
 	for idx, key := range keys {
 		if idx > 0 {
@@ -971,6 +1061,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				billing_tier,
 				billing_mode,
 				account_stats_cost,
+				session_id,
 				created_at
 			)
 			SELECT
@@ -1023,6 +1114,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				billing_tier,
 				billing_mode,
 				account_stats_cost,
+				session_id,
 				created_at
 			FROM input
 			ON CONFLICT (request_id, api_key_id) DO NOTHING
@@ -1115,10 +1207,11 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			billing_tier,
 			billing_mode,
 			account_stats_cost,
+			session_id,
 			created_at
 		) AS (VALUES `)
 
-	args := make([]any, 0, len(preparedList)*50)
+	args := make([]any, 0, len(preparedList)*len(usageLogInsertArgTypes))
 	argPos := 1
 	for idx, prepared := range preparedList {
 		if idx > 0 {
@@ -1193,6 +1286,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			billing_tier,
 			billing_mode,
 			account_stats_cost,
+			session_id,
 			created_at
 		)
 		SELECT
@@ -1245,6 +1339,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			billing_tier,
 			billing_mode,
 			account_stats_cost,
+			session_id,
 			created_at
 		FROM input
 		ON CONFLICT (request_id, api_key_id) DO NOTHING
@@ -1305,6 +1400,7 @@ func execUsageLogInsertNoResult(ctx context.Context, sqlq sqlExecutor, prepared 
 			billing_tier,
 			billing_mode,
 			account_stats_cost,
+			session_id,
 			created_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7,
@@ -1312,7 +1408,7 @@ func execUsageLogInsertNoResult(ctx context.Context, sqlq sqlExecutor, prepared 
 			$10, $11, $12, $13,
 			$14, $15, $16, $17,
 			$18, $19, $20, $21, $22, $23,
-			$24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50
+			$24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51
 		)
 		ON CONFLICT (request_id, api_key_id) DO NOTHING
 	`, prepared.args...)
@@ -1351,6 +1447,7 @@ func prepareUsageLogInsert(log *service.UsageLog) usageLogInsertPrepared {
 	modelMappingChain := nullString(log.ModelMappingChain)
 	billingTier := nullString(log.BillingTier)
 	billingMode := nullString(log.BillingMode)
+	sessionID := nullInt64(log.SessionID)
 	requestedModel := strings.TrimSpace(log.RequestedModel)
 	if requestedModel == "" {
 		requestedModel = strings.TrimSpace(log.Model)
@@ -1417,6 +1514,7 @@ func prepareUsageLogInsert(log *service.UsageLog) usageLogInsertPrepared {
 			billingTier,
 			billingMode,
 			log.AccountStatsCost, // account_stats_cost
+			sessionID,
 			createdAt,
 		},
 	}
@@ -4355,6 +4453,8 @@ func scanUsageLog(scanner interface{ Scan(...any) error }) (*service.UsageLog, e
 		billingTier           sql.NullString
 		billingMode           sql.NullString
 		accountStatsCost      sql.NullFloat64
+		sessionID             sql.NullInt64
+		sessionIndex          sql.NullInt64
 		createdAt             time.Time
 	)
 
@@ -4409,6 +4509,8 @@ func scanUsageLog(scanner interface{ Scan(...any) error }) (*service.UsageLog, e
 		&billingTier,
 		&billingMode,
 		&accountStatsCost,
+		&sessionID,
+		&sessionIndex,
 		&createdAt,
 	); err != nil {
 		return nil, err
@@ -4517,6 +4619,14 @@ func scanUsageLog(scanner interface{ Scan(...any) error }) (*service.UsageLog, e
 	}
 	if accountStatsCost.Valid {
 		log.AccountStatsCost = &accountStatsCost.Float64
+	}
+	if sessionID.Valid {
+		value := sessionID.Int64
+		log.SessionID = &value
+	}
+	if sessionIndex.Valid {
+		value := int(sessionIndex.Int64)
+		log.SessionIndex = &value
 	}
 
 	return log, nil

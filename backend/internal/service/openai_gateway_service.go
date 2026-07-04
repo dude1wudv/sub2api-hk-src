@@ -6693,6 +6693,8 @@ type OpenAIRecordUsageInput struct {
 	UserAgent          string // 请求的 User-Agent
 	IPAddress          string // 请求的客户端 IP 地址
 	RequestPayloadHash string
+	RequestBody        []byte
+	RequestHeaders     http.Header
 	APIKeyService      APIKeyQuotaUpdater
 	QuotaPlatform      string // user×platform quota platform resolved by the handler before async billing.
 	// CyberBlocked 为 true 时把该用量行标记为 cyber（request_type=cyber），计费逻辑不变。
@@ -6719,6 +6721,8 @@ type CyberPolicyUsageInput struct {
 	UserAgent          string
 	IPAddress          string
 	RequestPayloadHash string
+	RequestBody        []byte
+	RequestHeaders     http.Header
 	APIKeyService      APIKeyQuotaUpdater
 	ChannelUsageFields
 }
@@ -6753,6 +6757,8 @@ func (s *OpenAIGatewayService) RecordCyberPolicyUsageLog(ctx context.Context, in
 		UserAgent:          in.UserAgent,
 		IPAddress:          in.IPAddress,
 		RequestPayloadHash: in.RequestPayloadHash,
+		RequestBody:        in.RequestBody,
+		RequestHeaders:     in.RequestHeaders,
 		APIKeyService:      in.APIKeyService,
 		ChannelUsageFields: in.ChannelUsageFields,
 		CyberBlocked:       true,
@@ -6874,12 +6880,15 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	if input.OriginalModel != "" {
 		requestedModel = input.OriginalModel
 	}
+	sessionKeyHash, sessionAliasHashes := UsageSessionHashes(input.RequestBody, input.RequestHeaders, result.ResponseID)
 
 	usageLog := &UsageLog{
 		UserID:              user.ID,
 		APIKeyID:            apiKey.ID,
 		AccountID:           account.ID,
 		RequestID:           requestID,
+		SessionKeyHash:      sessionKeyHash,
+		SessionAliasHashes:  sessionAliasHashes,
 		Model:               result.Model,
 		RequestedModel:      requestedModel,
 		UpstreamModel:       optionalNonEqualStringPtr(result.UpstreamModel, result.Model),

@@ -69,6 +69,7 @@ const DataTableStub = {
     <div>
       <div v-for="row in data" :key="row.request_id">
         <slot name="cell-model" :row="row" :value="row.model" />
+        <slot name="cell-session" :row="row" />
         <slot name="cell-billing_mode" :row="row" />
         <slot name="cell-tokens" :row="row" />
         <slot name="cell-cost" :row="row" />
@@ -206,6 +207,57 @@ describe('admin UsageTable tooltip', () => {
     const text = wrapper.text()
     expect(text).toContain('claude-sonnet-4')
     expect(text).toContain('claude-sonnet-4-20250514')
+  })
+
+  it('renders usage session display badges', () => {
+    const rows = [
+      {
+        request_id: 'req-session-1',
+        model: 'gpt-5.5',
+        session_index: 1,
+        session_display_index: 1,
+        actual_cost: 0,
+        total_cost: 0,
+        input_cost: 0,
+        output_cost: 0,
+        rate_multiplier: 1,
+        input_tokens: 1,
+        output_tokens: 1,
+      },
+      {
+        request_id: 'req-session-1000',
+        model: 'gpt-5.5',
+        session_index: 1000,
+        session_display_index: 1,
+        actual_cost: 0,
+        total_cost: 0,
+        input_cost: 0,
+        output_cost: 0,
+        rate_multiplier: 1,
+        input_tokens: 1,
+        output_tokens: 1,
+      },
+    ]
+
+    const wrapper = mount(UsageTable, {
+      props: {
+        data: rows,
+        loading: false,
+        columns: [{ key: 'session', label: '会话' }],
+      },
+      global: {
+        stubs: {
+          DataTable: DataTableStub,
+          EmptyState: true,
+          Icon: true,
+          Teleport: true,
+        },
+      },
+    })
+
+    const badges = wrapper.findAll('[data-testid="usage-session-badge"]')
+    expect(badges).toHaveLength(2)
+    expect(badges.every((badge) => badge.text() === '1')).toBe(true)
   })
 
   it.each([

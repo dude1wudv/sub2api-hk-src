@@ -501,6 +501,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 
 			// 捕获请求信息（用于异步记录，避免在 goroutine 中访问 gin.Context）
 			userAgent := c.GetHeader("User-Agent")
+			requestHeaders := c.Request.Header.Clone()
 			clientIP := ip.GetClientIP(c)
 			requestPayloadHash := service.HashUsageRequestPayload(body)
 			inboundEndpoint := GetInboundEndpoint(c)
@@ -544,6 +545,8 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					UserAgent:          userAgent,
 					IPAddress:          clientIP,
 					RequestPayloadHash: requestPayloadHash,
+					RequestBody:        body,
+					RequestHeaders:     requestHeaders,
 					ForceCacheBilling:  forceCacheBilling,
 					APIKeyService:      h.apiKeyService,
 					ChannelUsageFields: channelMapping.ToUsageFields(reqModel, result.UpstreamModel),
@@ -939,6 +942,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 
 			// 捕获请求信息（用于异步记录，避免在 goroutine 中访问 gin.Context）
 			userAgent := c.GetHeader("User-Agent")
+			requestHeaders := c.Request.Header.Clone()
 			clientIP := ip.GetClientIP(c)
 			// Forward 内部可能继续改写 body，usage 去重指纹必须使用最终上游接受的当前 body。
 			requestPayloadHash := service.HashUsageRequestPayload(attemptParsedReq.Body.Bytes())
@@ -981,6 +985,8 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					UserAgent:          userAgent,
 					IPAddress:          clientIP,
 					RequestPayloadHash: requestPayloadHash,
+					RequestBody:        body,
+					RequestHeaders:     requestHeaders,
 					ForceCacheBilling:  forceCacheBilling,
 					APIKeyService:      h.apiKeyService,
 					ChannelUsageFields: channelMapping.ToUsageFields(reqModel, result.UpstreamModel),

@@ -590,12 +590,21 @@ func usageLogFromServiceUser(l *service.UsageLog) UsageLog {
 	if requestedModel == "" {
 		requestedModel = l.Model
 	}
+	var sessionDisplayIndex *int
+	if l.SessionIndex != nil {
+		v := service.UsageSessionDisplayIndex(*l.SessionIndex)
+		if v > 0 {
+			sessionDisplayIndex = &v
+		}
+	}
 	return UsageLog{
 		ID:                    l.ID,
 		UserID:                l.UserID,
 		APIKeyID:              l.APIKeyID,
 		AccountID:             l.AccountID,
 		RequestID:             l.RequestID,
+		SessionIndex:          l.SessionIndex,
+		SessionDisplayIndex:   sessionDisplayIndex,
 		Model:                 requestedModel,
 		ServiceTier:           l.ServiceTier,
 		ReasoningEffort:       l.ReasoningEffort,
