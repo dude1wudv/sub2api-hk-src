@@ -6031,8 +6031,7 @@ func (s *GatewayService) shouldCompressAnthropicAPIKeyToolNames(account *Account
 	if strings.EqualFold(strings.TrimSpace(account.GetExtraString("source")), "kiro-gateway") {
 		return true
 	}
-	baseURL := strings.ToLower(strings.TrimSpace(account.GetBaseURL()))
-	return strings.Contains(baseURL, "kiro-gateway")
+	return isKiroGatewayBaseURL(account.GetBaseURL())
 }
 
 func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(

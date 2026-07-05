@@ -6,6 +6,7 @@ import (
 	"errors"
 	"hash/fnv"
 	"log/slog"
+	"net/url"
 	"reflect"
 	"sort"
 	"strconv"
@@ -168,8 +169,15 @@ func (a *Account) IsKiroGatewayAnthropicAPIKey() bool {
 		return false
 	}
 	source := strings.ToLower(strings.TrimSpace(a.GetExtraString("source")))
-	baseURL := strings.ToLower(strings.TrimSpace(a.GetBaseURL()))
-	return source == "kiro-gateway" || strings.Contains(baseURL, "kiro-gateway")
+	return source == "kiro-gateway" || isKiroGatewayBaseURL(a.GetBaseURL())
+}
+
+func isKiroGatewayBaseURL(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(parsed.Hostname(), "kiro-gateway")
 }
 
 func (a *Account) GatewayMaxConcurrency() int {

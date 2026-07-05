@@ -24,6 +24,12 @@ func TestAccountIsKiroGatewayAnthropicAPIKey(t *testing.T) {
 	account.Credentials = map[string]any{"base_url": "http://kiro-gateway:8000"}
 	require.True(t, account.IsKiroGatewayAnthropicAPIKey())
 
+	account.Credentials = map[string]any{"base_url": "https://not-kiro-gateway.example.com"}
+	require.False(t, account.IsKiroGatewayAnthropicAPIKey())
+
+	account.Credentials = map[string]any{"base_url": "https://api.anthropic.com/proxy/kiro-gateway"}
+	require.False(t, account.IsKiroGatewayAnthropicAPIKey())
+
 	account.Credentials = map[string]any{"base_url": "https://api.anthropic.com"}
 	require.False(t, account.IsKiroGatewayAnthropicAPIKey())
 
@@ -33,6 +39,23 @@ func TestAccountIsKiroGatewayAnthropicAPIKey(t *testing.T) {
 
 	var nilAccount *Account
 	require.False(t, nilAccount.IsKiroGatewayAnthropicAPIKey())
+}
+
+func TestGatewayServiceKiroGatewayToolCompressionUsesHostBoundary(t *testing.T) {
+	svc := &GatewayService{}
+	account := &Account{
+		Platform: PlatformAnthropic,
+		Type:     AccountTypeAPIKey,
+	}
+
+	account.Credentials = map[string]any{"base_url": "http://kiro-gateway:8080"}
+	require.True(t, svc.shouldCompressAnthropicAPIKeyToolNames(account))
+
+	account.Credentials = map[string]any{"base_url": "https://not-kiro-gateway.example.com"}
+	require.False(t, svc.shouldCompressAnthropicAPIKeyToolNames(account))
+
+	account.Credentials = map[string]any{"base_url": "https://api.anthropic.com/kiro-gateway"}
+	require.False(t, svc.shouldCompressAnthropicAPIKeyToolNames(account))
 }
 
 func TestKiroGatewayAccountMaxConcurrency(t *testing.T) {

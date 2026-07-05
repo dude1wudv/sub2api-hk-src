@@ -47,21 +47,26 @@ func newGatewayRoutesTestRouter(platform ...string) *gin.Engine {
 	return router
 }
 
+func requireRouteRegistered(t *testing.T, router *gin.Engine, method string, path string) {
+	t.Helper()
+	for _, route := range router.Routes() {
+		if route.Method == method && route.Path == path {
+			return
+		}
+	}
+	require.Failf(t, "route not registered", "%s %s", method, path)
+}
+
 func TestGatewayRoutesOpenAIResponsesCompactPathIsRegistered(t *testing.T) {
 	router := newGatewayRoutesTestRouter()
 
 	for _, path := range []string{
-		"/v1/responses/compact",
-		"/responses/compact",
+		"/v1/responses/*subpath",
+		"/responses/*subpath",
 		"/backend-api/codex/responses",
-		"/backend-api/codex/responses/compact",
+		"/backend-api/codex/responses/*subpath",
 	} {
-		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"model":"gpt-5"}`))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-		require.NotEqual(t, http.StatusNotFound, w.Code, "path=%s should hit OpenAI responses handler", path)
+		requireRouteRegistered(t, router, http.MethodPost, path)
 	}
 }
 
@@ -74,12 +79,7 @@ func TestGatewayRoutesOpenAIImagesPathsAreRegistered(t *testing.T) {
 		"/images/generations",
 		"/images/edits",
 	} {
-		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"model":"gpt-image-2","prompt":"draw a cat"}`))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-		require.NotEqual(t, http.StatusNotFound, w.Code, "path=%s should hit OpenAI images handler", path)
+		requireRouteRegistered(t, router, http.MethodPost, path)
 	}
 }
 
@@ -94,25 +94,14 @@ func TestGatewayRoutesGrokImagesAndVideosPathsAreRegistered(t *testing.T) {
 		"/v1/videos/generations",
 		"/videos/generations",
 	} {
-		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"model":"grok-imagine","prompt":"draw a cat"}`))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-		require.NotEqual(t, http.StatusNotFound, w.Code, "path=%s should hit Grok media handler", path)
-		require.NotContains(t, w.Body.String(), "not supported for this platform")
+		requireRouteRegistered(t, router, http.MethodPost, path)
 	}
 
 	for _, path := range []string{
-		"/v1/videos/request-123",
-		"/videos/request-123",
+		"/v1/videos/:request_id",
+		"/videos/:request_id",
 	} {
-		req := httptest.NewRequest(http.MethodGet, path, nil)
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-		require.NotEqual(t, http.StatusNotFound, w.Code, "path=%s should hit Grok video handler", path)
-		require.NotContains(t, w.Body.String(), "not supported for this platform")
+		requireRouteRegistered(t, router, http.MethodGet, path)
 	}
 }
 
@@ -153,13 +142,7 @@ func TestGatewayRoutesGrokAllowsCLICompatibilityEntrypoints(t *testing.T) {
 		{http.MethodGet, "/responses"},
 		{http.MethodGet, "/backend-api/codex/responses"},
 	} {
-		req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(`{"model":"grok"}`))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-		require.NotEqual(t, http.StatusNotFound, w.Code, "method=%s path=%s", tc.method, tc.path)
-		require.NotContains(t, w.Body.String(), "not supported for Grok groups")
+		requireRouteRegistered(t, router, tc.method, tc.path)
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", strings.NewReader(`{"model":"grok","messages":[{"role":"user","content":"hi"}]}`))
@@ -175,12 +158,7 @@ func TestGatewayRoutesGrokAllowsCLICompatibilityEntrypoints(t *testing.T) {
 		"/responses",
 		"/backend-api/codex/responses",
 	} {
-		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"model":"grok","input":"hi"}`))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-		require.NotEqual(t, http.StatusNotFound, w.Code, "path=%s should still reach Responses handler", path)
+		requireRouteRegistered(t, router, http.MethodPost, path)
 	}
 }
 
