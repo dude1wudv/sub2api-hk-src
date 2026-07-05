@@ -3301,9 +3301,9 @@ export default {
       },
       oauthUsage: {
         title: 'OAuth Standard Usage',
-        standardPricing: 'Standard pricing',
-        average: 'OAuth average',
-        oauthAccounts: 'OAuth accounts',
+        standardPricing: 'Reset baseline',
+        average: 'Average quota',
+        oauthAccounts: 'Imported total',
         deletedExpired: 'Deleted / expired',
         withUsage: 'With usage {count}',
         logs: 'Logs {count}',

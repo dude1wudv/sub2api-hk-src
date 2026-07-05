@@ -265,7 +265,7 @@
                 <span class="account-summary-subvalue text-gray-900 dark:text-gray-100">
                   {{ oauthUsageSummary?.oauth_account_count ?? '-' }}
                 </span>
-                <span class="account-summary-sublabel">{{ t('admin.accounts.oauthUsage.plusAccounts') }}</span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.oauthUsage.oauthAccounts') }}</span>
               </div>
               <div>
                 <span class="account-summary-subvalue text-amber-600 dark:text-amber-300">

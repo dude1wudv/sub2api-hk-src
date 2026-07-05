@@ -3411,9 +3411,9 @@ export default {
       },
       oauthUsage: {
         title: 'OAuth 标准用量',
-        standardPricing: '标准定价',
-        average: 'OAuth 平均',
-        oauthAccounts: 'OAuth 账号',
+        standardPricing: '重置基线',
+        average: '平均额度',
+        oauthAccounts: '导入总数',
         deletedExpired: '删除 / 过期',
         withUsage: '有用量 {count}',
         logs: '记录 {count}',

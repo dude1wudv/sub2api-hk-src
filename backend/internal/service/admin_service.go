@@ -670,6 +670,9 @@ const (
 	proxyQualityClientUserAgent       = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
 	primaryProxyAccountLimit          = int64(20)
 	secondaryProxyAccountLimit        = int64(10)
+
+	settingKeyOpenAIOAuthUsageBaselineAccountIDs = "openai_oauth_usage_summary_baseline_account_ids"
+	settingKeyOpenAIOAuthUsageCountAfter         = "openai_oauth_usage_summary_count_after"
 )
 
 var ErrRPMStatusUnavailable = infraerrors.New(http.StatusNotImplemented, "RPM_STATUS_UNAVAILABLE", "RPM cache not available")
@@ -2787,60 +2790,7 @@ func (s *adminServiceImpl) getOpenAIOAuthUsageSummary(ctx context.Context) (*ope
 		return &openAIPlanUsageSummary{}, nil
 	}
 
-	rows, err := s.entClient.QueryContext(ctx, `
-WITH target_account_rows AS (
-	SELECT
-		a.id,
-		a.deleted_at,
-		a.auto_pause_on_expired,
-		a.expires_at,
-		COALESCE(NULLIF(lower(trim(COALESCE(a.name, ''))), ''), 'account:' || a.id::text) AS account_key
-	FROM accounts a
-	WHERE a.platform = 'openai'
-	  AND a.type = 'oauth'
-	  AND lower(trim(COALESCE(a.name, ''))) NOT IN ('1day', 'opentoken')
-),
-target_account_identities AS (
-	SELECT
-		account_key,
-		bool_or(deleted_at IS NOT NULL) AS deleted,
-		bool_or(auto_pause_on_expired AND expires_at IS NOT NULL AND expires_at <= NOW()) AS expired
-	FROM target_account_rows
-	GROUP BY account_key
-),
-target_usage AS (
-	SELECT tar.account_key, ul.account_id, ul.total_cost, ul.created_at
-	FROM usage_logs ul
-	JOIN target_account_rows tar ON tar.id = ul.account_id
-),
-target_counts AS (
-	SELECT COUNT(*)::bigint AS account_count
-	FROM target_account_identities
-)
-SELECT
-	COALESCE(SUM(tu.total_cost), 0)::double precision AS total_standard_cost,
-	CASE
-		WHEN tc.account_count > 0 THEN (COALESCE(SUM(tu.total_cost), 0) / tc.account_count)::double precision
-		ELSE 0::double precision
-	END AS average_standard_cost,
-	tc.account_count,
-	COUNT(DISTINCT tu.account_key)::bigint AS accounts_with_usage,
-	COUNT(tu.account_id)::bigint AS usage_log_count,
-	(
-		SELECT COUNT(*)::bigint
-		FROM target_account_identities tai
-		WHERE tai.deleted
-	) AS deleted_account_count,
-	(
-		SELECT COUNT(*)::bigint
-		FROM target_account_identities tai
-		WHERE tai.expired
-	) AS expired_account_count,
-	MIN(tu.created_at) AS first_usage_at,
-	MAX(tu.created_at) AS last_usage_at
-FROM target_counts tc
-LEFT JOIN target_usage tu ON TRUE
-GROUP BY tc.account_count`)
+	rows, err := s.entClient.QueryContext(ctx, openAIOAuthUsageSummaryQuery())
 	if err != nil {
 		return nil, err
 	}
@@ -2876,6 +2826,79 @@ GROUP BY tc.account_count`)
 		summary.LastUsageAt = &lastUsageAt.Time
 	}
 	return summary, nil
+}
+
+func openAIOAuthUsageSummaryQuery() string {
+	return `
+WITH raw_oauth_usage_baseline AS (
+	SELECT
+		COALESCE((SELECT value FROM settings WHERE key = '` + settingKeyOpenAIOAuthUsageBaselineAccountIDs + `'), '') AS baseline_account_ids,
+		NULLIF(trim(COALESCE((SELECT value FROM settings WHERE key = '` + settingKeyOpenAIOAuthUsageCountAfter + `'), '')), '')::timestamptz AS count_after
+),
+baseline_account_ids AS (
+	SELECT DISTINCT trim(value)::bigint AS id
+	FROM raw_oauth_usage_baseline,
+		regexp_split_to_table(baseline_account_ids, ',') AS value
+	WHERE trim(value) ~ '^[0-9]+$'
+),
+oauth_usage_baseline AS (
+	SELECT count_after FROM raw_oauth_usage_baseline
+),
+target_account_rows AS (
+	SELECT
+		a.id,
+		a.deleted_at,
+		a.auto_pause_on_expired,
+		a.expires_at
+	FROM accounts a
+	WHERE a.platform = 'openai'
+	  AND a.type = 'oauth'
+	  AND lower(trim(COALESCE(a.name, ''))) NOT IN ('1day', 'opentoken')
+	  AND (
+		(
+			NOT EXISTS (SELECT 1 FROM baseline_account_ids)
+			AND (SELECT count_after FROM oauth_usage_baseline) IS NULL
+		)
+		OR a.id IN (SELECT id FROM baseline_account_ids)
+		OR (
+			(SELECT count_after FROM oauth_usage_baseline) IS NOT NULL
+			AND a.created_at >= (SELECT count_after FROM oauth_usage_baseline)
+		)
+	  )
+),
+target_usage AS (
+	SELECT tar.id AS account_id, ul.total_cost, ul.created_at
+	FROM usage_logs ul
+	JOIN target_account_rows tar ON tar.id = ul.account_id
+),
+target_counts AS (
+	SELECT COUNT(*)::bigint AS account_count
+	FROM target_account_rows
+)
+SELECT
+	COALESCE(SUM(tu.total_cost), 0)::double precision AS total_standard_cost,
+	CASE
+		WHEN tc.account_count > 0 THEN (COALESCE(SUM(tu.total_cost), 0) / tc.account_count)::double precision
+		ELSE 0::double precision
+	END AS average_standard_cost,
+	tc.account_count,
+	COUNT(DISTINCT tu.account_id)::bigint AS accounts_with_usage,
+	COUNT(tu.account_id)::bigint AS usage_log_count,
+	(
+		SELECT COUNT(*)::bigint
+		FROM target_account_rows tar
+		WHERE tar.deleted_at IS NOT NULL
+	) AS deleted_account_count,
+	(
+		SELECT COUNT(*)::bigint
+		FROM target_account_rows tar
+		WHERE tar.auto_pause_on_expired AND tar.expires_at IS NOT NULL AND tar.expires_at <= NOW()
+	) AS expired_account_count,
+	MIN(tu.created_at) AS first_usage_at,
+	MAX(tu.created_at) AS last_usage_at
+FROM target_counts tc
+LEFT JOIN target_usage tu ON TRUE
+GROUP BY tc.account_count`
 }
 
 func (s *adminServiceImpl) GetAccount(ctx context.Context, id int64) (*Account, error) {
