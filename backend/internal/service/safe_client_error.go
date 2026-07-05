@@ -36,6 +36,9 @@ func SafeUpstreamClientError(upstreamStatus int) ClientSafeError {
 }
 
 func RedactUpstreamClientError(status int, errType, message string) (int, string, string) {
+	if isOpenAIContextWindowError(message, nil) {
+		return status, errType, message
+	}
 	lower := strings.ToLower(errType + " " + message)
 	if strings.Contains(lower, "upstream") || strings.Contains(lower, "all available accounts exhausted") {
 		safe := SafeUpstreamClientError(status)

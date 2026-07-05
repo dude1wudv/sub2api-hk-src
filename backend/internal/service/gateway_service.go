@@ -7498,6 +7498,25 @@ func (s *GatewayService) evaluateBetaPolicy(ctx context.Context, betaHeader stri
 }
 
 func applyGroupBetaPolicyOverrides(result betaPolicyResult, group *Group) betaPolicyResult {
+	result = applyGroupBetaTokenOverride(result, claude.BetaFastMode, groupAllowsFastModeOverride(group))
+	result = applyGroupBetaTokenOverride(result, claude.BetaContext1M, groupAllowsContext1MOverride(group))
+	return result
+}
+
+func applyGroupBetaTokenOverride(result betaPolicyResult, token string, allowed *bool) betaPolicyResult {
+	if allowed == nil || strings.TrimSpace(token) == "" {
+		return result
+	}
+	if *allowed {
+		if result.filterSet != nil {
+			delete(result.filterSet, token)
+		}
+		return result
+	}
+	if result.filterSet == nil {
+		result.filterSet = make(map[string]struct{})
+	}
+	result.filterSet[token] = struct{}{}
 	return result
 }
 
@@ -9516,10 +9535,17 @@ func writeUsageLogBestEffort(ctx context.Context, repo UsageLogRepository, usage
 	if writer, ok := repo.(usageLogBestEffortWriter); ok {
 		if err := writer.CreateBestEffort(usageCtx, usageLog); err != nil {
 			logger.LegacyPrintf(logKey, "Create usage log failed: %v", err)
-			if IsUsageLogCreateDropped(err) {
-				return
+			// 计费已在此前完成，日志必须落库：dropped（批处理队列超时）同样走同步兜底，
+			// 否则会出现“已扣费但无 usage_log”的对账缺口（issue #3656）。
+			// 重复写入由 usage_logs 的 ON CONFLICT (request_id, api_key_id) DO NOTHING 防护。
+			fallbackCtx := usageCtx
+			if usageCtx.Err() != nil {
+				// usageCtx 已耗尽（best-effort 入队阻塞到期限）：换新的 detached 窗口，避免兜底必然失败。
+				var fallbackCancel context.CancelFunc
+				fallbackCtx, fallbackCancel = detachedBillingContext(context.Background())
+				defer fallbackCancel()
 			}
-			if _, syncErr := repo.Create(usageCtx, usageLog); syncErr != nil {
+			if _, syncErr := repo.Create(fallbackCtx, usageLog); syncErr != nil {
 				logger.LegacyPrintf(logKey, "Create usage log sync fallback failed: %v", syncErr)
 			}
 		}
@@ -10404,7 +10430,7 @@ func (s *GatewayService) forwardCountTokensAnthropicAPIKeyPassthrough(ctx contex
 			logger.LegacyPrintf("service.gateway",
 				"[count_tokens] Upstream does not support count_tokens (404), returning 404: account=%d name=%s msg=%s",
 				account.ID, account.Name, truncateString(upstreamMsg, 512))
-			s.countTokensError(c, http.StatusNotFound, "not_found_error", "count_tokens endpoint is not supported by upstream")
+			s.countTokensError(c, http.StatusNotFound, "not_found_error", "count_tokens endpoint is not supported")
 			return nil
 		}
 

@@ -911,7 +911,9 @@ func (s *OpenAIGatewayService) writeOpenAIWSFallbackErrorResponse(c *gin.Context
 	if strings.TrimSpace(upstreamMessage) == "" {
 		upstreamMessage = clientMessage
 	}
-	statusCode, errType, clientMessage = RedactUpstreamClientError(statusCode, errType, clientMessage)
+	if statusCode != http.StatusUpgradeRequired {
+		statusCode, errType, clientMessage = RedactUpstreamClientError(statusCode, errType, clientMessage)
+	}
 
 	setOpsUpstreamError(c, statusCode, upstreamMessage, "")
 	if account != nil {
@@ -3046,8 +3048,25 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	if apiKey != nil {
 		imageGenerationAllowed = GroupAllowsImageGeneration(apiKey.Group)
 	}
-	codexImageGenerationBridgeEnabled := isCodexCLI && imageGenerationAllowed && s.isCodexImageGenerationBridgeEnabled(ctx, account, apiKey)
-	imageIntent := IsImageGenerationIntent(openAIResponsesEndpoint, reqModel, body)
+	codexImageGenerationExplicitToolPolicy := codexImageGenerationExplicitToolPolicyAllow
+	if isCodexCLI {
+		codexImageGenerationExplicitToolPolicy = account.CodexImageGenerationExplicitToolPolicy()
+	}
+	codexImageGenerationBridgeEnabled := isCodexCLI && imageGenerationAllowed && codexImageGenerationExplicitToolPolicy != codexImageGenerationExplicitToolPolicyStrip && s.isCodexImageGenerationBridgeEnabled(ctx, account, apiKey)
+	var imageIntent bool
+	if isCodexCLI && codexImageGenerationExplicitToolPolicy == codexImageGenerationExplicitToolPolicyStrip {
+		decoded, decodeErr := ensureReqBody()
+		if decodeErr != nil {
+			return nil, decodeErr
+		}
+		if stripOpenAIImageGenerationTools(decoded) {
+			markDecodedModified()
+			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Stripped /responses image_generation tool for Codex client by account policy")
+		}
+		imageIntent = IsImageGenerationIntentMap(openAIResponsesEndpoint, reqModel, decoded)
+	} else {
+		imageIntent = IsImageGenerationIntent(openAIResponsesEndpoint, reqModel, body)
+	}
 	if imageIntent && !imageGenerationAllowed {
 		MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalFeatureGate)
 		c.JSON(http.StatusForbidden, gin.H{"error": gin.H{"type": "permission_error", "message": ImageGenerationPermissionMessage()}})
@@ -3541,6 +3560,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 				wsAttempts,
 			)
 			wsResult.UpstreamModel = upstreamModel
+			if wsResult.BillingModel == "" {
+				wsResult.BillingModel = billingModel
+			}
 			if wsResult.ImageCount > 0 {
 				wsResult.ImageSize = imageSizeTier
 				wsResult.ImageInputSize = imageInputSize
@@ -3695,6 +3717,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			ResponseID:      responseID,
 			Usage:           *usage,
 			Model:           originalModel,
+			BillingModel:    billingModel,
 			UpstreamModel:   upstreamModel,
 			ServiceTier:     serviceTier,
 			ReasoningEffort: reasoningEffort,
@@ -5189,6 +5212,16 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 
 	MarkResponseCommitted(c)
 
+	if isOpenAIContextWindowError(upstreamMsg, body) && upstreamMsg != "" {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"error": gin.H{
+				"type":    "upstream_error",
+				"message": upstreamMsg,
+			},
+		})
+		return nil, fmt.Errorf("upstream error: %d message=%s", resp.StatusCode, upstreamMsg)
+	}
+
 	safe := SafeUpstreamClientError(resp.StatusCode)
 	c.JSON(safe.Status, gin.H{
 		"error": gin.H{
@@ -5234,8 +5267,11 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 			UpstreamStatus: resp.StatusCode,
 		})
 		setOpsUpstreamError(c, resp.StatusCode, cyberMsg, truncateString(string(body), 2048))
-		safe := SafeUpstreamClientError(resp.StatusCode)
-		writeError(c, safe.Status, safe.ErrType, safe.MessageWithCode())
+		clientMsg := cyberMsg
+		if clientMsg == "" {
+			clientMsg = "Request blocked by upstream cyber-security policy"
+		}
+		writeError(c, resp.StatusCode, "invalid_request_error", clientMsg)
 		if cyberMsg == "" {
 			return nil, fmt.Errorf("openai cyber_policy: %d", resp.StatusCode)
 		}
@@ -5328,6 +5364,11 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 	}
 
 	MarkResponseCommitted(c)
+
+	if isOpenAIContextWindowError(upstreamMsg, body) && upstreamMsg != "" {
+		writeError(c, http.StatusBadGateway, "upstream_error", upstreamMsg)
+		return nil, fmt.Errorf("upstream error: %d %s", resp.StatusCode, upstreamMsg)
+	}
 
 	safe := SafeUpstreamClientError(resp.StatusCode)
 	writeError(c, safe.Status, safe.ErrType, safe.MessageWithCode())
@@ -8041,18 +8082,33 @@ func (s *OpenAIGatewayService) evaluateOpenAIFastPolicy(ctx context.Context, acc
 	if tier == "" {
 		return BetaPolicyActionPass, ""
 	}
+	groupFastOverride := groupAllowsFastModeOverride(groupFromRequestContext(ctx))
 	if s == nil || s.settingService == nil {
+		if groupFastOverride != nil && !*groupFastOverride && tier == OpenAIFastTierPriority {
+			return BetaPolicyActionFilter, ""
+		}
 		return BetaPolicyActionPass, ""
 	}
 	settings := openAIFastPolicySettingsFromContext(ctx)
 	if settings == nil {
 		fetched, err := s.settingService.GetOpenAIFastPolicySettings(ctx)
 		if err != nil || fetched == nil {
+			if groupFastOverride != nil && !*groupFastOverride && tier == OpenAIFastTierPriority {
+				return BetaPolicyActionFilter, ""
+			}
 			return BetaPolicyActionPass, ""
 		}
 		settings = fetched
 	}
 	action, errMsg = evaluateOpenAIFastPolicyWithSettings(settings, account, model, tier)
+	if groupFastOverride != nil && tier == OpenAIFastTierPriority {
+		if !*groupFastOverride && action != BetaPolicyActionBlock {
+			return BetaPolicyActionFilter, ""
+		}
+		if *groupFastOverride && action == BetaPolicyActionFilter {
+			return BetaPolicyActionPass, ""
+		}
+	}
 	return action, errMsg
 }
 

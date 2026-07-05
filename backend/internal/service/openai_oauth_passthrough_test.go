@@ -101,12 +101,11 @@ func TestOpenAIGatewayService_ResponsesFastGroupDoesNotInjectPriorityForPassthro
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(originalBody))
 	c.Request.Header.Set("Content-Type", "application/json")
 	ctx := groupPolicyContext(&Group{
-		ID:       52,
-		Platform: PlatformOpenAI,
-		Status:   StatusActive,
-		Hydrated: true,
-		ModelsListConfig: GroupModelsListConfig{
-		},
+		ID:               52,
+		Platform:         PlatformOpenAI,
+		Status:           StatusActive,
+		Hydrated:         true,
+		ModelsListConfig: GroupModelsListConfig{},
 	})
 	c.Request = c.Request.WithContext(ctx)
 
@@ -947,7 +946,7 @@ func TestOpenAIGatewayService_OpenAIPassthrough_RetryableStatusesTriggerFailover
 			accountType:    AccountTypeOAuth,
 			statusCode:     http.StatusBadGateway,
 			body:           `{"error":{"message":"bad gateway","type":"server_error"}}`,
-			expectFailover: false,
+			expectFailover: true,
 			assertRepo: func(t *testing.T, repo *openAIPassthroughFailoverRepo, _ time.Time) {
 				require.Empty(t, repo.rateLimitCalls)
 				require.Empty(t, repo.overloadCalls)
@@ -958,7 +957,7 @@ func TestOpenAIGatewayService_OpenAIPassthrough_RetryableStatusesTriggerFailover
 			accountType:    AccountTypeOAuth,
 			statusCode:     http.StatusServiceUnavailable,
 			body:           `{"error":{"message":"service unavailable","type":"server_error"}}`,
-			expectFailover: false,
+			expectFailover: true,
 			assertRepo: func(t *testing.T, repo *openAIPassthroughFailoverRepo, _ time.Time) {
 				require.Empty(t, repo.rateLimitCalls)
 				require.Empty(t, repo.overloadCalls)
@@ -969,7 +968,7 @@ func TestOpenAIGatewayService_OpenAIPassthrough_RetryableStatusesTriggerFailover
 			accountType:    AccountTypeOAuth,
 			statusCode:     http.StatusGatewayTimeout,
 			body:           `{"error":{"message":"gateway timeout","type":"server_error"}}`,
-			expectFailover: false,
+			expectFailover: true,
 			assertRepo: func(t *testing.T, repo *openAIPassthroughFailoverRepo, _ time.Time) {
 				require.Empty(t, repo.rateLimitCalls)
 				require.Empty(t, repo.overloadCalls)

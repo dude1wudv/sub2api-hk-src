@@ -65,6 +65,7 @@ func TestEvaluateOpenAIFastPolicy_GroupSwitchOverridesFilter(t *testing.T) {
 		Status:   StatusActive,
 		Hydrated: true,
 		ModelsListConfig: GroupModelsListConfig{
+			AllowFastMode: testBoolPtr(true),
 		},
 	})
 
@@ -82,6 +83,7 @@ func TestEvaluateOpenAIFastPolicy_GroupSwitchOffFiltersPriority(t *testing.T) {
 		Status:   StatusActive,
 		Hydrated: true,
 		ModelsListConfig: GroupModelsListConfig{
+			AllowFastMode: testBoolPtr(false),
 		},
 	})
 
@@ -99,6 +101,7 @@ func TestApplyOpenAIFastPolicyToBody_GroupSwitchOnDoesNotInjectPriority(t *testi
 		Status:   StatusActive,
 		Hydrated: true,
 		ModelsListConfig: GroupModelsListConfig{
+			AllowFastMode: testBoolPtr(true),
 		},
 	})
 
@@ -117,6 +120,7 @@ func TestApplyOpenAIFastPolicyToWSResponseCreate_GroupSwitchOnDoesNotInjectPrior
 		Status:   StatusActive,
 		Hydrated: true,
 		ModelsListConfig: GroupModelsListConfig{
+			AllowFastMode: testBoolPtr(true),
 		},
 	})
 
@@ -148,6 +152,7 @@ func TestEvaluateBetaPolicy_GroupContext1MSwitchOverridesFilter(t *testing.T) {
 		Status:   StatusActive,
 		Hydrated: true,
 		ModelsListConfig: GroupModelsListConfig{
+			AllowContext1M: testBoolPtr(true),
 		},
 	})
 
@@ -167,6 +172,8 @@ func TestEvaluateBetaPolicy_GroupFastAndContextSwitchOffFilters(t *testing.T) {
 		Status:   StatusActive,
 		Hydrated: true,
 		ModelsListConfig: GroupModelsListConfig{
+			AllowFastMode:  testBoolPtr(false),
+			AllowContext1M: testBoolPtr(false),
 		},
 	})
 

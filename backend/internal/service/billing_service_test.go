@@ -255,8 +255,8 @@ func TestCalculateCost_OpenAIGPT54LongContextAppliesWholeSessionMultipliers(t *t
 	cost, err := svc.CalculateCost("gpt-5.4-2026-03-05", tokens, 1.0)
 	require.NoError(t, err)
 
-	expectedInput := float64(tokens.InputTokens) * 5e-6 * 2.0
-	expectedOutput := float64(tokens.OutputTokens) * 30e-6 * 1.5
+	expectedInput := float64(tokens.InputTokens) * 2.5e-6 * 2.0
+	expectedOutput := float64(tokens.OutputTokens) * 15e-6 * 1.5
 	require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
 	require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
 	require.InDelta(t, expectedInput+expectedOutput, cost.TotalCost, 1e-10)
@@ -298,8 +298,8 @@ func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheRead(t *tes
 	cost, err := svc.CalculateCost("gpt-5.4-2026-03-05", tokens, 1.0)
 	require.NoError(t, err)
 
-	expectedInput := float64(tokens.InputTokens) * 5e-6 * 2.0
-	expectedOutput := float64(tokens.OutputTokens) * 30e-6 * 1.5
+	expectedInput := float64(tokens.InputTokens) * 2.5e-6 * 2.0
+	expectedOutput := float64(tokens.OutputTokens) * 15e-6 * 1.5
 	expectedCacheRead := float64(tokens.CacheReadTokens) * 0.25e-6 * 2.0
 
 	require.InDelta(t, expectedInput, cost.InputCost, 1e-10)

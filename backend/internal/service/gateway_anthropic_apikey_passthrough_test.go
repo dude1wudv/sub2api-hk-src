@@ -733,7 +733,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_CountTokens404PassthroughNotE
 				require.Equal(t, "not_found_error", errObj["type"])
 			} else {
 				require.Error(t, err)
-				require.Equal(t, tt.statusCode, rec.Code)
+				require.Equal(t, SafeUpstreamClientError(tt.statusCode).Status, rec.Code)
 			}
 		})
 	}

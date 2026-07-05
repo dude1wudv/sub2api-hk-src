@@ -110,6 +110,9 @@ func (c *kiroConcurrencyCache) GetUsersLoadBatch(_ context.Context, users []User
 func (c *kiroConcurrencyCache) CleanupExpiredAccountSlots(context.Context, int64) error {
 	return nil
 }
+func (c *kiroConcurrencyCache) CleanupExpiredAccountSlotKeys(context.Context) error {
+	return nil
+}
 func (c *kiroConcurrencyCache) CleanupStaleProcessSlots(context.Context, string) error {
 	return nil
 }

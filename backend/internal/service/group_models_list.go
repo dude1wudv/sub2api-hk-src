@@ -4,7 +4,9 @@ import "strings"
 
 func normalizeGroupModelsListConfig(cfg GroupModelsListConfig) GroupModelsListConfig {
 	out := GroupModelsListConfig{
-		Enabled: cfg.Enabled,
+		Enabled:        cfg.Enabled,
+		AllowFastMode:  cfg.AllowFastMode,
+		AllowContext1M: cfg.AllowContext1M,
 	}
 	if len(cfg.Models) == 0 {
 		return out
