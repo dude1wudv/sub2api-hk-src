@@ -80,6 +80,25 @@ func (r schedulerGroupAwareOpenAIAccountRepo) ListSchedulableUngroupedByPlatform
 	return result, nil
 }
 
+type schedulerSetErrorTrackingRepo struct {
+	schedulerTestOpenAIAccountRepo
+	setErrorCalls int
+}
+
+func (r *schedulerSetErrorTrackingRepo) SetError(context.Context, int64, string) error {
+	r.setErrorCalls++
+	return nil
+}
+
+type schedulerGroupRepoStub struct {
+	GroupRepository
+	group *Group
+}
+
+func (r schedulerGroupRepoStub) GetByID(context.Context, int64) (*Group, error) {
+	return r.group, nil
+}
+
 type schedulerTestConcurrencyCache struct {
 	ConcurrencyCache
 	loadBatchErr    error
@@ -756,6 +775,34 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyRateLimite
 	require.NotNil(t, selection.Account)
 	require.Equal(t, int64(31002), selection.Account.ID)
 	require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
+}
+
+func TestOpenAIGatewayService_SelectAccountWithScheduler_RequirePrivacySetSkipsWithoutSetError(t *testing.T) {
+	ctx := context.Background()
+	groupID := int64(10111)
+	missingPrivacy := &Account{ID: 31101, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 0}
+	withPrivacy := &Account{ID: 31102, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Status: StatusActive, Schedulable: true, Concurrency: 1, Priority: 5, Extra: map[string]any{"privacy_mode": PrivacyModeTrainingOff}}
+	repo := &schedulerSetErrorTrackingRepo{
+		schedulerTestOpenAIAccountRepo: schedulerTestOpenAIAccountRepo{accounts: []Account{*missingPrivacy, *withPrivacy}},
+	}
+	snapshotService := &SchedulerSnapshotService{
+		cache:     &openAISnapshotCacheStub{snapshotAccounts: []*Account{missingPrivacy, withPrivacy}, accountsByID: map[int64]*Account{31101: missingPrivacy, 31102: withPrivacy}},
+		groupRepo: schedulerGroupRepoStub{group: &Group{ID: groupID, Name: "privacy", Platform: PlatformOpenAI, RequirePrivacySet: true}},
+	}
+	svc := &OpenAIGatewayService{
+		accountRepo:        repo,
+		cfg:                &config.Config{},
+		rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService("true"),
+		schedulerSnapshot:  snapshotService,
+		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
+	}
+
+	selection, _, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "", "gpt-5.5", nil, OpenAIUpstreamTransportAny, false)
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, int64(31102), selection.Account.ID)
+	require.Zero(t, repo.setErrorCalls)
 }
 
 func TestOpenAIGatewayService_SelectAccountForModelWithExclusions_AutoPauseBy5hThreshold(t *testing.T) {

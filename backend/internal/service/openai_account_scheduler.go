@@ -1068,11 +1068,9 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 		if s.service.isOpenAIAccountRuntimeBlocked(account) {
 			continue
 		}
-		// require_privacy_set: 跳过 privacy 未设置的账号并标记异常
+		// require_privacy_set 是分组级约束：只跳过当前候选，不把账号全局置错。
 		if schedGroup != nil && schedGroup.RequirePrivacySet && !account.IsPrivacySet() {
 			s.service.BlockAccountScheduling(account, time.Time{}, "privacy_not_set")
-			_ = s.service.accountRepo.SetError(ctx, account.ID,
-				fmt.Sprintf("Privacy not set, required by group [%s]", schedGroup.Name))
 			continue
 		}
 		if !s.isAccountRequestCompatible(ctx, account, req) {

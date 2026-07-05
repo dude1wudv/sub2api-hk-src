@@ -1520,7 +1520,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     }
   }
 
-  if (enableOpenAIPassthrough.value) {
+  if (enableOpenAIPassthrough.value && allOpenAIPassthroughCapable.value) {
     const extra = ensureExtra()
     extra.openai_passthrough = openaiPassthroughEnabled.value
     if (!openaiPassthroughEnabled.value) {
@@ -1558,7 +1558,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     credentialsChanged = true
   }
 
-  if (enableOpenAIWSMode.value) {
+  if (enableOpenAIWSMode.value && allOpenAIOAuth.value) {
     const extra = ensureExtra()
     extra.openai_oauth_responses_websockets_v2_mode = openaiOAuthResponsesWebSocketV2Mode.value
     extra.openai_oauth_responses_websockets_v2_enabled = isOpenAIWSModeEnabled(
@@ -1566,7 +1566,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     )
   }
 
-  if (enableOpenAIAPIKeyWSMode.value) {
+  if (enableOpenAIAPIKeyWSMode.value && allOpenAIAPIKey.value) {
     const extra = ensureExtra()
     extra.openai_apikey_responses_websockets_v2_mode = openaiAPIKeyResponsesWebSocketV2Mode.value
     extra.openai_apikey_responses_websockets_v2_enabled = isOpenAIWSModeEnabled(
@@ -1574,7 +1574,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     )
   }
 
-  if (enableCodexCLIOnly.value) {
+  if (enableCodexCLIOnly.value && allOpenAIOAuth.value) {
     const extra = ensureExtra()
     extra.codex_cli_only = codexCLIOnlyEnabled.value
   }
@@ -1584,18 +1584,19 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
   if (
     enableCodexCLIOnlyAppServer.value &&
     enableCodexCLIOnly.value &&
+    allOpenAIOAuth.value &&
     codexCLIOnlyEnabled.value
   ) {
     const extra = ensureExtra()
     extra.codex_cli_only_allow_app_server = codexCLIOnlyAppServerEnabled.value
   }
 
-  if (enableOpenAICompactMode.value) {
+  if (enableOpenAICompactMode.value && allOpenAIPassthroughCapable.value) {
     const extra = ensureExtra()
     extra.openai_compact_mode = openAICompactMode.value
   }
 
-  if (enableOpenAICompactModelMapping.value) {
+  if (enableOpenAICompactModelMapping.value && allOpenAIPassthroughCapable.value) {
     credentials.compact_model_mapping = buildOpenAICompactModelMapping() ?? {}
     credentialsChanged = true
   }

@@ -1887,18 +1887,23 @@ const buildBulkEditFilterSnapshot = () => {
   }
 }
 
-const collectSelectionMetadata = (rows: Account[]) => {
+const collectSelectionMetadata = (rows: Account[], expectedCount = rows.length) => {
+  if (rows.length !== expectedCount) {
+    return { selectedPlatforms: [] as AccountPlatform[], selectedTypes: [] as AccountType[] }
+  }
   const selectedPlatforms = Array.from(new Set(rows.map(account => account.platform)))
   const selectedTypes = Array.from(new Set(rows.map(account => account.type)))
   return { selectedPlatforms, selectedTypes }
 }
 
 const openBulkEditSelected = () => {
+  const selectedRows = accounts.value.filter(a => isSelected(a.id))
+  const { selectedPlatforms, selectedTypes } = collectSelectionMetadata(selectedRows, selIds.value.length)
   bulkEditTarget.value = {
     mode: 'selected',
     accountIds: [...selIds.value],
-    selectedPlatforms: [...selPlatforms.value],
-    selectedTypes: [...selTypes.value]
+    selectedPlatforms,
+    selectedTypes
   }
   showBulkEdit.value = true
 }
@@ -1906,13 +1911,12 @@ const openBulkEditSelected = () => {
 const openBulkEditFiltered = async () => {
   const filters = buildBulkEditFilterSnapshot()
   const preview = await adminAPI.accounts.list(1, 100, filters)
-  const { selectedPlatforms, selectedTypes } = collectSelectionMetadata(preview.items)
   bulkEditTarget.value = {
     mode: 'filtered',
     filters,
     previewCount: preview.total,
-    selectedPlatforms,
-    selectedTypes
+    selectedPlatforms: filters.platform ? [filters.platform as AccountPlatform] : [],
+    selectedTypes: filters.type ? [filters.type as AccountType] : []
   }
   showBulkEdit.value = true
 }

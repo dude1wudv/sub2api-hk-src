@@ -38,7 +38,7 @@ SERVICE_USER="sub2api"
 CONFIG_DIR="/etc/sub2api"
 
 # Server configuration (will be set by user)
-SERVER_HOST="0.0.0.0"
+SERVER_HOST="127.0.0.1"
 SERVER_PORT="8080"
 
 # Language (default: zh = Chinese)
@@ -157,7 +157,7 @@ declare -A MSG_ZH=(
     ["server_config_title"]="服务器配置"
     ["server_config_desc"]="配置 Sub2API 服务监听地址"
     ["server_host_prompt"]="服务器监听地址"
-    ["server_host_hint"]="0.0.0.0 表示监听所有网卡，127.0.0.1 仅本地访问"
+    ["server_host_hint"]="默认 127.0.0.1 仅本地访问；公开监听需显式输入 0.0.0.0"
     ["server_port_prompt"]="服务器端口"
     ["server_port_hint"]="建议使用 1024-65535 之间的端口"
     ["server_config_summary"]="服务器配置"
@@ -282,7 +282,7 @@ declare -A MSG_EN=(
     ["server_config_title"]="Server Configuration"
     ["server_config_desc"]="Configure Sub2API server listen address"
     ["server_host_prompt"]="Server listen address"
-    ["server_host_hint"]="0.0.0.0 listens on all interfaces, 127.0.0.1 for local only"
+    ["server_host_hint"]="Default 127.0.0.1 is local only; enter 0.0.0.0 explicitly for public listen"
     ["server_port_prompt"]="Server port"
     ["server_port_hint"]="Recommended range: 1024-65535"
     ["server_config_summary"]="Server configuration"
