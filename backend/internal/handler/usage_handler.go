@@ -412,6 +412,47 @@ func (h *UsageHandler) Stats(c *gin.Context) {
 	response.Success(c, stats)
 }
 
+// TokenIncentive returns the current user's 5-day token reward progress.
+// GET /api/v1/usage/token-incentive
+func (h *UsageHandler) TokenIncentive(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	status, err := h.usageService.GetTokenIncentiveStatus(c.Request.Context(), subject.UserID, time.Now())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, status)
+}
+
+type tokenIncentiveClaimRequest struct {
+	ThresholdTokens int64 `json:"threshold_tokens" binding:"required,gt=0"`
+}
+
+// ClaimTokenIncentive grants one reached token reward tier to the current user.
+// POST /api/v1/usage/token-incentive/claim
+func (h *UsageHandler) ClaimTokenIncentive(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	var req tokenIncentiveClaimRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	result, err := h.usageService.ClaimTokenIncentive(c.Request.Context(), subject.UserID, req.ThresholdTokens, time.Now())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
 const (
 	defaultAPIKeyDailyUsageDays = 30
 	maxAPIKeyDailyUsageDays     = 90

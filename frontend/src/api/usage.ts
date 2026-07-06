@@ -117,6 +117,35 @@ export interface UsageDashboardSnapshotV2Response {
   groups?: GroupStat[]
 }
 
+export type TokenIncentiveTierStatus = 'locked' | 'claimable' | 'claimed' | 'expired'
+
+export interface TokenIncentiveTier {
+  threshold_tokens: number
+  reward_balance: number
+  status: TokenIncentiveTierStatus
+  remaining_tokens?: number
+}
+
+export interface TokenIncentiveStatus {
+  enabled: boolean
+  period_start: string
+  period_end: string
+  total_tokens: number
+  next_threshold_tokens: number
+  remaining_tokens: number
+  claimable_balance: number
+  claimed_balance: number
+  max_balance: number
+  tiers: TokenIncentiveTier[]
+}
+
+export interface TokenIncentiveClaimResponse {
+  claimed: boolean
+  reward_balance: number
+  balance: number
+  tier: TokenIncentiveTier
+}
+
 /**
  * List usage logs with optional filters
  * @param page - Page number (default: 1)
@@ -320,6 +349,18 @@ export async function getDashboardSnapshotV2(
   return data
 }
 
+export async function getTokenIncentive(): Promise<TokenIncentiveStatus> {
+  const { data } = await apiClient.get<TokenIncentiveStatus>('/usage/token-incentive')
+  return data
+}
+
+export async function claimTokenIncentive(thresholdTokens: number): Promise<TokenIncentiveClaimResponse> {
+  const { data } = await apiClient.post<TokenIncentiveClaimResponse>('/usage/token-incentive/claim', {
+    threshold_tokens: thresholdTokens,
+  })
+  return data
+}
+
 export interface BatchApiKeyUsageStats {
   api_key_id: number
   today_actual_cost: number
@@ -382,6 +423,8 @@ export const usageAPI = {
   getMyApiKeyDailyUsage,
   getDashboardSnapshotV2,
   getDashboardApiKeysUsage,
+  getTokenIncentive,
+  claimTokenIncentive,
   // Error requests
   listMyErrorRequests,
   getMyErrorDetail

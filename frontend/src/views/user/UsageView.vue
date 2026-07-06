@@ -2,6 +2,13 @@
   <AppLayout>
     <div class="space-y-6">
       <UsageStatsCards :stats="usageStats" :show-account-cost="false" :strike-standard-cost="true" />
+      <TokenIncentiveCard
+        :status="tokenIncentiveStatus"
+        :loading="tokenIncentiveLoading"
+        :claiming-threshold="tokenIncentiveClaimingThreshold"
+        @refresh="loadTokenIncentive"
+        @claim="claimTokenIncentive"
+      />
 
       <div class="space-y-4">
         <div class="card p-4">
@@ -229,6 +236,7 @@ import EndpointDistributionChart from '@/components/charts/EndpointDistributionC
 import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
 import Icon from '@/components/icons/Icon.vue'
 import UserErrorRequestsTable from '@/components/user/UserErrorRequestsTable.vue'
+import TokenIncentiveCard from '@/components/usage/TokenIncentiveCard.vue'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { formatReasoningEffort } from '@/utils/format'
 import { BILLING_MODE_IMAGE, getBillingModeLabel } from '@/utils/billingMode'
@@ -245,6 +253,7 @@ import type {
   UsageStatsResponse,
   UserErrorRequest,
 } from '@/types'
+import type { TokenIncentiveStatus } from '@/api/usage'
 import type { Column } from '@/components/common/types'
 import { COMMON_ERROR_STATUS_CODES } from '@/utils/errorBadges'
 
@@ -262,11 +271,14 @@ const groupStats = ref<GroupStat[]>([])
 const inboundEndpointStats = ref<EndpointStat[]>([])
 const upstreamEndpointStats = ref<EndpointStat[]>([])
 const endpointPathStats = ref<EndpointStat[]>([])
+const tokenIncentiveStatus = ref<TokenIncentiveStatus | null>(null)
 
 const loading = ref(false)
 const chartsLoading = ref(false)
 const modelStatsLoading = ref(false)
 const endpointStatsLoading = ref(false)
+const tokenIncentiveLoading = ref(false)
+const tokenIncentiveClaimingThreshold = ref<number | null>(null)
 const exporting = ref(false)
 const errorRows = ref<UserErrorRequest[]>([])
 const errorLoading = ref(false)
@@ -524,6 +536,32 @@ const refreshModelOptions = (models: ModelStat[]) => {
   modelOptionValues.value = Array.from(set).sort()
 }
 
+const loadTokenIncentive = async () => {
+  tokenIncentiveLoading.value = true
+  try {
+    tokenIncentiveStatus.value = await usageAPI.getTokenIncentive()
+  } catch (error: any) {
+    if (error?.response?.status !== 404) console.error('Failed to load token incentive:', error)
+    tokenIncentiveStatus.value = null
+  } finally {
+    tokenIncentiveLoading.value = false
+  }
+}
+
+const claimTokenIncentive = async (thresholdTokens: number) => {
+  tokenIncentiveClaimingThreshold.value = thresholdTokens
+  try {
+    const result = await usageAPI.claimTokenIncentive(thresholdTokens)
+    appStore.showSuccess(`已领取 ¥${result.reward_balance.toFixed(2)} 余额`)
+    await loadTokenIncentive()
+  } catch (error) {
+    console.error('Failed to claim token incentive:', error)
+    appStore.showError('领取失败，请刷新后重试')
+  } finally {
+    tokenIncentiveClaimingThreshold.value = null
+  }
+}
+
 const applyFilters = () => {
   pagination.page = 1
   void loadLogs()
@@ -538,6 +576,7 @@ const refreshData = () => {
   void loadStats()
   void loadModelStats()
   void loadChartData()
+  void loadTokenIncentive()
   if (activeTab.value === 'errors') void loadErrors()
 }
 

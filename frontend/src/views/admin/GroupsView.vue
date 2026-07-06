@@ -834,28 +834,6 @@
               />
             </button>
           </div>
-          <div class="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <label class="flex items-start gap-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-dark-600 dark:bg-dark-800/40 dark:text-gray-300">
-              <input
-                type="checkbox"
-                class="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400">
-                </span>
-              </span>
-            </label>
-            <label class="flex items-start gap-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-dark-600 dark:bg-dark-800/40 dark:text-gray-300">
-              <input
-                type="checkbox"
-                class="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400">
-                </span>
-              </span>
-            </label>
-          </div>
           <div
             v-if="createModelsListState.enabled"
             class="overflow-hidden rounded-lg border border-gray-200 bg-gray-50/50 dark:border-dark-600 dark:bg-dark-800/40"
@@ -2309,28 +2287,6 @@
                 ]"
               />
             </button>
-          </div>
-          <div class="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <label class="flex items-start gap-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-dark-600 dark:bg-dark-800/40 dark:text-gray-300">
-              <input
-                type="checkbox"
-                class="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400">
-                </span>
-              </span>
-            </label>
-            <label class="flex items-start gap-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-dark-600 dark:bg-dark-800/40 dark:text-gray-300">
-              <input
-                type="checkbox"
-                class="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400">
-                </span>
-              </span>
-            </label>
           </div>
           <div
             v-if="editModelsListState.enabled"

@@ -16,4 +16,13 @@ describe("groups models list layout", () => {
     expect(groupsViewSource).toContain("max-h-64 space-y-2 overflow-y-auto p-2");
     expect(groupsViewSource).not.toContain("sticky top-0");
   });
+
+  it("does not render retired fast/1m placeholder checkboxes", () => {
+    expect(groupsViewSource).not.toContain(
+      "mb-3 grid grid-cols-1 gap-3 md:grid-cols-2",
+    );
+    expect(groupsViewSource).not.toContain(
+      "flex items-start gap-2 rounded border border-gray-200 bg-gray-50",
+    );
+  });
 });

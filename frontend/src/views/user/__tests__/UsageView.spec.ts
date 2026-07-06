@@ -8,6 +8,8 @@ const {
   getStats,
   getDashboardModels,
   getDashboardSnapshotV2,
+  getTokenIncentive,
+  claimTokenIncentive,
   list,
   getAvailable,
   showError,
@@ -19,6 +21,8 @@ const {
   getStats: vi.fn(),
   getDashboardModels: vi.fn(),
   getDashboardSnapshotV2: vi.fn(),
+  getTokenIncentive: vi.fn(),
+  claimTokenIncentive: vi.fn(),
   list: vi.fn(),
   getAvailable: vi.fn(),
   showError: vi.fn(),
@@ -70,6 +74,8 @@ vi.mock('@/api', () => ({
     getStats,
     getDashboardModels,
     getDashboardSnapshotV2,
+    getTokenIncentive,
+    claimTokenIncentive,
   },
   keysAPI: {
     list,
@@ -142,6 +148,7 @@ function mountUsageView() {
         GroupDistributionChart: chartStub,
         EndpointDistributionChart: chartStub,
         TokenUsageTrend: chartStub,
+        TokenIncentiveCard: chartStub,
       },
     },
   })
@@ -153,6 +160,8 @@ describe('user UsageView', () => {
     getStats.mockReset()
     getDashboardModels.mockReset()
     getDashboardSnapshotV2.mockReset()
+    getTokenIncentive.mockReset()
+    claimTokenIncentive.mockReset()
     list.mockReset()
     getAvailable.mockReset()
     showError.mockReset()
@@ -187,6 +196,24 @@ describe('user UsageView', () => {
       trend: [],
       groups: [],
     })
+    getTokenIncentive.mockResolvedValue({
+      enabled: true,
+      period_start: '2026-07-06T00:00:00Z',
+      period_end: '2026-07-11T00:00:00Z',
+      total_tokens: 497300000,
+      next_threshold_tokens: 500000000,
+      remaining_tokens: 2700000,
+      claimable_balance: 0,
+      claimed_balance: 4,
+      max_balance: 10,
+      tiers: [],
+    })
+    claimTokenIncentive.mockResolvedValue({
+      claimed: true,
+      reward_balance: 1,
+      balance: 2,
+      tier: { threshold_tokens: 500000000, reward_balance: 1, status: 'claimed' },
+    })
     list.mockResolvedValue({ items: [{ id: 1, name: 'demo-key' }] })
     getAvailable.mockResolvedValue([{ id: 1, name: 'default' }])
   })
@@ -203,6 +230,7 @@ describe('user UsageView', () => {
       include_model_stats: false,
       include_group_stats: true,
     }))
+    expect(getTokenIncentive).toHaveBeenCalled()
     expect(list).toHaveBeenCalledWith(1, 100)
     expect(getAvailable).toHaveBeenCalled()
   })
