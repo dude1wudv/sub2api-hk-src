@@ -1,57 +1,57 @@
 <template>
-  <div v-if="loading || status?.enabled" class="overflow-hidden rounded-2xl border border-amber-500/25 bg-slate-950 text-slate-100 shadow-lg shadow-amber-900/10">
-    <div class="border-b border-amber-500/20 p-5">
+  <div v-if="loading || status?.enabled" class="overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-white via-amber-50/50 to-white text-slate-900 shadow-lg shadow-amber-200/30 dark:border-amber-500/25 dark:bg-slate-950 dark:bg-none dark:text-slate-100 dark:shadow-amber-900/10">
+    <div class="border-b border-amber-200 p-5 dark:border-amber-500/20">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div class="flex items-center gap-2">
-            <span class="rounded-lg bg-amber-400/10 px-2 py-1 text-amber-300">🎁</span>
+            <span class="rounded-lg bg-amber-100 px-2 py-1 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">🎁</span>
             <h2 class="text-lg font-semibold">Token 激励计划</h2>
-            <span v-if="claimableBalance > 0" class="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">可领取</span>
+            <span v-if="claimableBalance > 0" class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">可领取</span>
           </div>
-          <p class="mt-2 text-sm text-slate-300">
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
             本周期累计消耗 Token 达到档位后，可领取对应奖励余额。奖励需在本周期内领取，过期不可补领。
           </p>
         </div>
-        <button type="button" class="rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800" @click="$emit('refresh')">
+        <button type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-white dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800" @click="$emit('refresh')">
           刷新
         </button>
       </div>
     </div>
 
-    <div v-if="loading" class="p-5 text-sm text-slate-400">加载激励进度中...</div>
+    <div v-if="loading" class="p-5 text-sm text-slate-500 dark:text-slate-400">加载激励进度中...</div>
 
     <div v-else-if="status" class="space-y-5 p-5">
       <div class="grid gap-4 md:grid-cols-3">
         <div>
-          <p class="text-xs text-slate-400">本周期已消耗</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">本周期已消耗</p>
           <p class="mt-1 text-2xl font-bold">{{ formatTokens(status.total_tokens) }}</p>
         </div>
         <div>
-          <p class="text-xs text-slate-400">当前目标</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">当前目标</p>
           <p class="mt-1 text-2xl font-bold">{{ formatTokens(status.next_threshold_tokens) }}</p>
         </div>
         <div>
-          <p class="text-xs text-slate-400">可领余额</p>
-          <p class="mt-1 text-2xl font-bold text-amber-300">¥{{ claimableBalance.toFixed(2) }}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">可领余额</p>
+          <p class="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-300">¥{{ claimableBalance.toFixed(2) }}</p>
         </div>
       </div>
 
       <div>
-        <div class="mb-2 flex items-center justify-between text-sm text-slate-300">
+        <div class="mb-2 flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
           <span>本期进度</span>
           <span v-if="status.remaining_tokens > 0">还差 {{ formatTokens(status.remaining_tokens) }}</span>
           <span v-else>已达成全部目标</span>
         </div>
-        <div class="h-3 overflow-hidden rounded-full bg-slate-800">
+        <div class="h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
           <div class="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-400" :style="{ width: progressPercent + '%' }"></div>
         </div>
-        <p class="mt-2 text-xs text-slate-500">周期结束：{{ formatDateTime(status.period_end) }}</p>
+        <p class="mt-2 text-xs text-slate-500 dark:text-slate-500">周期结束：{{ formatDateTime(status.period_end) }}</p>
       </div>
 
       <div class="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         <div v-for="tier in status.tiers" :key="tier.threshold_tokens" class="rounded-xl border p-3" :class="tierClass(tier.status)">
           <div class="flex items-center justify-between gap-2">
-            <span class="text-sm text-slate-300">{{ formatTokens(tier.threshold_tokens) }}</span>
+            <span class="text-sm text-slate-600 dark:text-slate-300">{{ formatTokens(tier.threshold_tokens) }}</span>
             <span class="text-xs" :class="statusClass(tier.status)">{{ statusText(tier.status) }}</span>
           </div>
           <p class="mt-3 text-xl font-semibold">¥{{ tier.reward_balance.toFixed(2) }}</p>
@@ -64,7 +64,7 @@
           >
             {{ claimingThreshold === tier.threshold_tokens ? '领取中...' : '领取' }}
           </button>
-          <p v-else-if="tier.status === 'locked'" class="mt-3 text-xs text-slate-500">还差 {{ formatTokens(tier.remaining_tokens || 0) }}</p>
+          <p v-else-if="tier.status === 'locked'" class="mt-3 text-xs text-slate-500 dark:text-slate-500">还差 {{ formatTokens(tier.remaining_tokens || 0) }}</p>
         </div>
       </div>
     </div>
@@ -111,15 +111,15 @@ const statusText = (status: TokenIncentiveTierStatus) => ({
 
 const statusClass = (status: TokenIncentiveTierStatus) => ({
   locked: 'text-slate-500',
-  claimable: 'text-amber-300',
-  claimed: 'text-emerald-300',
-  expired: 'text-rose-300',
+  claimable: 'text-amber-600 dark:text-amber-300',
+  claimed: 'text-emerald-600 dark:text-emerald-300',
+  expired: 'text-rose-600 dark:text-rose-300',
 }[status])
 
 const tierClass = (status: TokenIncentiveTierStatus) => ({
-  locked: 'border-slate-700 bg-slate-900/60',
-  claimable: 'border-amber-400/60 bg-amber-500/10',
-  claimed: 'border-emerald-400/40 bg-emerald-500/10',
-  expired: 'border-rose-400/40 bg-rose-500/10',
+  locked: 'border-slate-200 bg-white/70 dark:border-slate-700 dark:bg-slate-900/60',
+  claimable: 'border-amber-300 bg-amber-100/70 dark:border-amber-400/60 dark:bg-amber-500/10',
+  claimed: 'border-emerald-200 bg-emerald-100/60 dark:border-emerald-400/40 dark:bg-emerald-500/10',
+  expired: 'border-rose-200 bg-rose-100/60 dark:border-rose-400/40 dark:bg-rose-500/10',
 }[status])
 </script>
