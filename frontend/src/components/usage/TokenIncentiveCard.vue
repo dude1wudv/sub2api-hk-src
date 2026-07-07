@@ -48,7 +48,7 @@
         <p class="mt-2 text-xs text-slate-500 dark:text-slate-500">周期结束：{{ formatDateTime(status.period_end) }}</p>
       </div>
 
-      <div class="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div class="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
         <div v-for="tier in status.tiers" :key="tier.threshold_tokens" class="rounded-xl border p-3" :class="tierClass(tier.status)">
           <div class="flex items-center justify-between gap-2">
             <span class="text-sm text-slate-600 dark:text-slate-300">{{ formatTokens(tier.threshold_tokens) }}</span>

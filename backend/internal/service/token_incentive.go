@@ -48,6 +48,7 @@ type TokenIncentiveClaimResult struct {
 
 func defaultTokenIncentiveTiers() []TokenIncentiveTier {
 	return []TokenIncentiveTier{
+		{ThresholdTokens: 50_000_000, RewardBalance: 0.5},
 		{ThresholdTokens: 100_000_000, RewardBalance: 1},
 		{ThresholdTokens: 200_000_000, RewardBalance: 1},
 		{ThresholdTokens: 300_000_000, RewardBalance: 1},
