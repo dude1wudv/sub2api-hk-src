@@ -133,10 +133,24 @@ type UpstreamBalanceAccount struct {
 	Error     string  `json:"error,omitempty"`
 }
 
+type UpstreamBalanceConsumptionSummary struct {
+	Last24h   float64 `json:"last_24h"`
+	Yesterday float64 `json:"yesterday"`
+	Today     float64 `json:"today"`
+	Total     float64 `json:"total"`
+	Unit      string  `json:"unit"`
+}
+
 type UpstreamBalanceSummary struct {
-	Total float64                  `json:"total"`
-	Unit  string                   `json:"unit"`
-	Items []UpstreamBalanceAccount `json:"items"`
+	Total       float64                           `json:"total"`
+	Unit        string                            `json:"unit"`
+	Consumption UpstreamBalanceConsumptionSummary `json:"consumption"`
+	Items       []UpstreamBalanceAccount          `json:"items"`
+}
+
+type upstreamBalanceConsumptionRepository interface {
+	RecordUpstreamBalance(ctx context.Context, item UpstreamBalanceAccount, observedAt time.Time) error
+	GetUpstreamBalanceConsumptionSummary(ctx context.Context, now time.Time) (UpstreamBalanceConsumptionSummary, error)
 }
 
 type upstreamBalanceAlert struct {
@@ -146,14 +160,20 @@ type upstreamBalanceAlert struct {
 }
 
 func (s *DashboardService) GetUpstreamBalances(ctx context.Context) (*UpstreamBalanceSummary, error) {
+	out := &UpstreamBalanceSummary{
+		Unit:        "USD",
+		Consumption: UpstreamBalanceConsumptionSummary{Unit: "USD"},
+		Items:       []UpstreamBalanceAccount{},
+	}
 	if s.accountRepo == nil || s.httpUpstream == nil {
-		return &UpstreamBalanceSummary{Unit: "USD", Items: []UpstreamBalanceAccount{}}, nil
+		return out, nil
 	}
 	accounts, err := s.accountRepo.ListActive(ctx)
 	if err != nil {
 		return nil, err
 	}
-	out := &UpstreamBalanceSummary{Unit: "USD", Items: []UpstreamBalanceAccount{}}
+	consumptionRepo, _ := s.aggRepo.(upstreamBalanceConsumptionRepository)
+	observedAt := time.Now()
 	for i := range accounts {
 		account := &accounts[i]
 		groupID, groupName, ok := balanceMonitorGroup(account)
@@ -171,8 +191,21 @@ func (s *DashboardService) GetUpstreamBalances(ctx context.Context) (*UpstreamBa
 				item.Unit = unit
 			}
 			out.Total += balance
+			if consumptionRepo != nil {
+				if err := consumptionRepo.RecordUpstreamBalance(ctx, item, observedAt); err != nil {
+					slog.Warn("record upstream balance consumption failed", "account_id", item.ID, "error", err)
+				}
+			}
 		}
 		out.Items = append(out.Items, item)
+	}
+	if consumptionRepo != nil {
+		consumption, err := consumptionRepo.GetUpstreamBalanceConsumptionSummary(ctx, observedAt)
+		if err != nil {
+			slog.Warn("query upstream balance consumption failed", "error", err)
+		} else {
+			out.Consumption = consumption
+		}
 	}
 	return out, nil
 }

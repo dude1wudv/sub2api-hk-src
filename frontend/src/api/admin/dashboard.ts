@@ -38,6 +38,13 @@ export interface UpstreamBalanceAccount {
 export interface UpstreamBalanceSummary {
   total: number
   unit: string
+  consumption: {
+    last_24h: number
+    yesterday: number
+    today: number
+    total: number
+    unit: string
+  }
   items: UpstreamBalanceAccount[]
 }
 

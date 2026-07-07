@@ -116,6 +116,13 @@ describe('admin DashboardView', () => {
     getUpstreamBalances.mockResolvedValue({
       total: 0,
       unit: 'USD',
+      consumption: {
+        last_24h: 0,
+        yesterday: 0,
+        today: 0,
+        total: 0,
+        unit: 'USD'
+      },
       items: []
     })
   })
