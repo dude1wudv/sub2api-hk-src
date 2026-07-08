@@ -96,7 +96,7 @@ func TestGetPoolModeRetryCount(t *testing.T) {
 			expected: maxPoolModeRetryCount,
 		},
 		{
-			name: "protected_fallback_580_uses_extended_retry_budget",
+			name: "fallback_580_disables_same_account_retry",
 			account: &Account{
 				ID:       580,
 				Type:     AccountTypeAPIKey,
@@ -106,7 +106,7 @@ func TestGetPoolModeRetryCount(t *testing.T) {
 					"pool_mode_retry_count": 1,
 				},
 			},
-			expected: 1_000_000,
+			expected: 0,
 		},
 		{
 			name: "invalid_value_falls_back_to_default",

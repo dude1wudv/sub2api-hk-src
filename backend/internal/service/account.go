@@ -1046,22 +1046,21 @@ func (a *Account) IsPoolMode() bool {
 }
 
 const (
-	defaultPoolModeRetryCount = 3
-	maxPoolModeRetryCount     = 10
-	// ponytail: production fallback account 580 must keep retrying through transient upstream failures.
-	protectedFallbackPoolModeRetryCount = 1_000_000
-	OpenAIProtectedFallbackAccountID    = int64(580)
+	defaultPoolModeRetryCount      = 3
+	maxPoolModeRetryCount          = 10
+	OpenAINoRetryFallbackAccountID = int64(580)
+	openAINoRetryFallbackRPM       = 10
 )
 
-func IsOpenAIProtectedFallbackAccountID(accountID int64) bool {
-	return accountID == OpenAIProtectedFallbackAccountID
+func IsOpenAINoRetryFallbackAccountID(accountID int64) bool {
+	return accountID == OpenAINoRetryFallbackAccountID
 }
 
 // GetPoolModeRetryCount 返回池模式同账号重试次数。
 // 未配置或配置非法时回退为默认值 3；小于 0 按 0 处理；过大则截断到 10。
 func (a *Account) GetPoolModeRetryCount() int {
-	if a != nil && IsOpenAIProtectedFallbackAccountID(a.ID) && a.IsPoolMode() {
-		return protectedFallbackPoolModeRetryCount
+	if a != nil && IsOpenAINoRetryFallbackAccountID(a.ID) {
+		return 0
 	}
 	if a == nil || !a.IsPoolMode() || a.Credentials == nil {
 		return defaultPoolModeRetryCount
@@ -2556,7 +2555,10 @@ func (a *Account) GetSessionIdleTimeoutMinutes() int {
 // GetBaseRPM 获取基础 RPM 限制
 // 返回 0 表示未启用（负数视为无效配置，按 0 处理）
 func (a *Account) GetBaseRPM() int {
-	if a.Extra == nil {
+	if a != nil && IsOpenAINoRetryFallbackAccountID(a.ID) {
+		return openAINoRetryFallbackRPM
+	}
+	if a == nil || a.Extra == nil {
 		return 0
 	}
 	if v, ok := a.Extra["base_rpm"]; ok {
@@ -2571,7 +2573,7 @@ func (a *Account) GetBaseRPM() int {
 // GetRPMStrategy 获取 RPM 策略
 // "tiered" = 三区模型（默认）, "sticky_exempt" = 粘性豁免
 func (a *Account) GetRPMStrategy() string {
-	if a.Extra == nil {
+	if a == nil || IsOpenAINoRetryFallbackAccountID(a.ID) || a.Extra == nil {
 		return "tiered"
 	}
 	if v, ok := a.Extra["rpm_strategy"]; ok {

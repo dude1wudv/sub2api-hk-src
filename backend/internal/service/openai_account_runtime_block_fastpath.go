@@ -38,15 +38,12 @@ func isOpenAIAccount(account *Account) bool {
 	return account != nil && (account.Platform == PlatformOpenAI || account.Platform == PlatformGrok)
 }
 
-func isOpenAIProtectedFallbackAccount(account *Account) bool {
+func isOpenAIRuntimeBlockExemptAccount(account *Account) bool {
 	if account == nil {
 		return false
 	}
-	if IsOpenAIProtectedFallbackAccountID(account.ID) {
-		return true
-	}
 	switch strings.ToLower(strings.TrimSpace(account.Name)) {
-	case "oto", "oto2", "oto订阅":
+	case "oto", "oto2":
 		return true
 	default:
 		return false
@@ -114,7 +111,7 @@ func (s *OpenAIGatewayService) markOpenAIOAuth429RateLimited(ctx context.Context
 }
 
 func (s *OpenAIGatewayService) markOpenAI502RuntimeBlocked(ctx context.Context, account *Account) {
-	if s == nil || !isOpenAIAccount(account) || isOpenAIProtectedFallbackAccount(account) {
+	if s == nil || !isOpenAIAccount(account) || isOpenAIRuntimeBlockExemptAccount(account) {
 		return
 	}
 	cooldownUntil := time.Now().Add(openAIUpstream502RuntimeCooldown)
@@ -128,7 +125,7 @@ func (s *OpenAIGatewayService) markOpenAI502RuntimeBlocked(ctx context.Context, 
 }
 
 func (s *OpenAIGatewayService) BlockAccountScheduling(account *Account, until time.Time, reason string) {
-	if s == nil || !isOpenAIAccount(account) || isOpenAIProtectedFallbackAccount(account) {
+	if s == nil || !isOpenAIAccount(account) || isOpenAIRuntimeBlockExemptAccount(account) {
 		return
 	}
 	now := time.Now()

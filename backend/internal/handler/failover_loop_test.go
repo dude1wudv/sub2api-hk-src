@@ -369,19 +369,17 @@ func TestHandleFailoverError_SameAccountRetry(t *testing.T) {
 		require.Len(t, mock.calls, 2, "第二次耗尽也应调用 TempUnschedule")
 	})
 
-	t.Run("保护账号580超过普通上限后仍留在同账号重试", func(t *testing.T) {
+	t.Run("账号580遇到可重试错误也直接切换", func(t *testing.T) {
 		mock := &mockTempUnscheduler{}
 		fs := NewFailoverState(1, false)
 		err := newTestFailoverErr(502, true, false)
 
-		for i := 1; i <= maxSameAccountRetries+2; i++ {
-			action := fs.HandleFailoverError(context.Background(), mock, 580, "openai", err)
-			require.Equal(t, FailoverContinue, action)
-			require.Equal(t, i, fs.SameAccountRetryCount[580])
-			require.Zero(t, fs.SwitchCount)
-			require.NotContains(t, fs.FailedAccountIDs, int64(580))
-			require.Empty(t, mock.calls)
-		}
+		action := fs.HandleFailoverError(context.Background(), mock, 580, "openai", err)
+		require.Equal(t, FailoverContinue, action)
+		require.Zero(t, fs.SameAccountRetryCount[580])
+		require.Equal(t, 1, fs.SwitchCount)
+		require.Contains(t, fs.FailedAccountIDs, int64(580))
+		require.Len(t, mock.calls, 1)
 	})
 }
 
