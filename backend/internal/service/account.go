@@ -1049,7 +1049,7 @@ const (
 	defaultPoolModeRetryCount      = 3
 	maxPoolModeRetryCount          = 10
 	OpenAINoRetryFallbackAccountID = int64(580)
-	openAINoRetryFallbackRPM       = 10
+	openAINoRetryFallbackRPM       = 40
 )
 
 func IsOpenAINoRetryFallbackAccountID(accountID int64) bool {

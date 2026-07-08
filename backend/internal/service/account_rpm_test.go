@@ -20,13 +20,13 @@ func TestGetBaseRPM(t *testing.T) {
 		{"negative value", map[string]any{"base_rpm": -5}, 0},
 		{"int64 value", map[string]any{"base_rpm": int64(20)}, 20},
 		{"json.Number value", map[string]any{"base_rpm": json.Number("25")}, 25},
-		{"fallback 580 defaults to 10", map[string]any{}, 10},
-		{"fallback 580 overrides higher config", map[string]any{"base_rpm": 99}, 10},
+		{"fallback 580 defaults to 40", map[string]any{}, 40},
+		{"fallback 580 overrides higher config", map[string]any{"base_rpm": 99}, 40},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &Account{Extra: tt.extra}
-			if tt.name == "fallback 580 defaults to 10" || tt.name == "fallback 580 overrides higher config" {
+			if tt.name == "fallback 580 defaults to 40" || tt.name == "fallback 580 overrides higher config" {
 				a.ID = 580
 			}
 			if got := a.GetBaseRPM(); got != tt.expected {
