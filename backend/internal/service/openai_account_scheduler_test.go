@@ -155,6 +155,26 @@ func (c schedulerTestConcurrencyCache) GetAccountWaitingCount(ctx context.Contex
 	return 0, nil
 }
 
+type schedulerTestRPMCache struct {
+	RPMCache
+	counts map[int64]int
+}
+
+func (c schedulerTestRPMCache) GetRPM(ctx context.Context, accountID int64) (int, error) {
+	if c.counts == nil {
+		return 0, nil
+	}
+	return c.counts[accountID], nil
+}
+
+func (c schedulerTestRPMCache) GetRPMBatch(ctx context.Context, accountIDs []int64) (map[int64]int, error) {
+	out := make(map[int64]int, len(accountIDs))
+	for _, id := range accountIDs {
+		out[id] = c.counts[id]
+	}
+	return out, nil
+}
+
 type schedulerTestGatewayCache struct {
 	sessionBindings map[string]int64
 	deletedSessions map[string]int
@@ -485,6 +505,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_DefaultDisabled_Embeddi
 		OpenAIUpstreamTransportHTTPSSE,
 		OpenAIEndpointCapabilityEmbeddings,
 		false,
+		false,
 	)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
@@ -527,6 +548,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_DefaultDisabled_AllowsG
 		nil,
 		OpenAIUpstreamTransportAny,
 		OpenAIEndpointCapabilityChatCompletions,
+		false,
 		false,
 		PlatformGrok,
 	)
@@ -653,6 +675,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_Enabled_EmbeddingsSkips
 		OpenAIUpstreamTransportHTTPSSE,
 		OpenAIEndpointCapabilityEmbeddings,
 		false,
+		false,
 	)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
@@ -725,6 +748,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_Enabled_EmbeddingsSkips
 		nil,
 		OpenAIUpstreamTransportHTTPSSE,
 		OpenAIEndpointCapabilityEmbeddings,
+		false,
 		false,
 	)
 	require.NoError(t, err)
@@ -1419,6 +1443,49 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_OverflowsToLowerPriorit
 	require.True(t, selection.Acquired)
 	require.Nil(t, selection.WaitPlan)
 	require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
+	}
+}
+
+func TestOpenAIGatewayService_SelectAccountWithScheduler_OpenAIBaseRPMOverflowsToLowerPriority(t *testing.T) {
+	ctx := context.Background()
+	groupID := int64(10114)
+	accounts := []Account{
+		{
+			ID:          21801,
+			Platform:    PlatformOpenAI,
+			Type:        AccountTypeAPIKey,
+			Status:      StatusActive,
+			Schedulable: true,
+			Concurrency: 10,
+			Priority:    1,
+			GroupIDs:    []int64{groupID},
+			Extra: map[string]any{
+				"base_rpm":          15,
+				"rpm_strategy":      "tiered",
+				"rpm_sticky_buffer": 0,
+			},
+		},
+		{ID: 21802, Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Status: StatusActive, Schedulable: true, Concurrency: 10, Priority: 2, GroupIDs: []int64{groupID}},
+	}
+	cfg := &config.Config{}
+	cfg.Gateway.OpenAIWS.LBTopK = 2
+	svc := &OpenAIGatewayService{
+		accountRepo:        schedulerTestOpenAIAccountRepo{accounts: accounts},
+		cache:              &schedulerTestGatewayCache{},
+		cfg:                cfg,
+		rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService("true"),
+		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
+		rpmCache:           schedulerTestRPMCache{counts: map[int64]int{21801: 15}},
+	}
+
+	selection, _, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, int64(21802), selection.Account.ID)
 	if selection.ReleaseFunc != nil {
 		selection.ReleaseFunc()
 	}

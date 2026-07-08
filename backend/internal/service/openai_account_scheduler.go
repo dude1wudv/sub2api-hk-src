@@ -297,6 +297,12 @@ func (s *defaultOpenAIAccountScheduler) Select(
 				selection = nil
 			}
 		}
+		if selection != nil && selection.Account != nil && !s.service.isOpenAIAccountSchedulableForRPM(ctx, selection.Account) {
+			if selection.ReleaseFunc != nil {
+				selection.ReleaseFunc()
+			}
+			selection = nil
+		}
 		if selection != nil && selection.Account != nil {
 			decision.Layer = openAIAccountScheduleLayerPreviousResponse
 			decision.StickyPreviousHit = true
@@ -397,6 +403,9 @@ func (s *defaultOpenAIAccountScheduler) selectBySessionHash(
 	if account == nil || !openAIStickyAccountMatchesGroup(account, req.GroupID) || !s.isAccountTransportCompatible(account, req.RequiredTransport) {
 		_ = s.service.deleteStickySessionAccountID(ctx, req.GroupID, sessionHash)
 		return nil, 0, nil
+	}
+	if !s.service.isOpenAIAccountSchedulableForRPM(ctx, account) {
+		return nil, accountID, nil
 	}
 	escapeCfg := s.service.openAIStickyEscapeConfig()
 	if reason, errorRate, ttft, shouldEscape := s.shouldEscapeStickyAccount(accountID, escapeCfg); shouldEscape {
@@ -531,6 +540,9 @@ func (s *defaultOpenAIAccountScheduler) shouldEscapeStickyForBetterCandidate(ctx
 			!s.isAccountTransportCompatible(account, req.RequiredTransport) {
 			continue
 		}
+		if !s.service.isOpenAIAccountSchedulableForRPM(ctx, account) {
+			continue
+		}
 		if account.Priority < sticky.Priority {
 			if openAIAccountLoadHasCapacity(loadMap[account.ID]) {
 				return "priority", true
@@ -571,6 +583,9 @@ func (s *defaultOpenAIAccountScheduler) hasAlternativeCandidateWithCapacity(ctx 
 		if !account.IsSchedulable() || !account.IsOpenAI() || account.IsOpenAICodexQuotaDraining() ||
 			s.service.isOpenAIAccountRuntimeBlocked(account) || !s.isAccountRequestCompatible(ctx, account, req) ||
 			!s.isAccountTransportCompatible(account, req.RequiredTransport) {
+			continue
+		}
+		if !s.service.isOpenAIAccountSchedulableForRPM(ctx, account) {
 			continue
 		}
 		loadReq = append(loadReq, AccountWithConcurrency{ID: account.ID, MaxConcurrency: account.EffectiveLoadFactor()})
@@ -1079,6 +1094,9 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 		if !s.isAccountTransportCompatible(account, req.RequiredTransport) {
 			continue
 		}
+		if !s.service.isOpenAIAccountSchedulableForRPM(ctx, account) {
+			continue
+		}
 		filtered = append(filtered, account)
 		loadReq = append(loadReq, AccountWithConcurrency{
 			ID:             account.ID,
@@ -1173,6 +1191,9 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 			continue
 		}
 		if fresh.IsOpenAICodexQuotaDraining() {
+			continue
+		}
+		if !s.service.isOpenAIAccountSchedulableForRPM(ctx, fresh) {
 			continue
 		}
 		if req.RequireCompact && openAICompactSupportTier(fresh) == 0 {
@@ -1375,6 +1396,9 @@ func (s *OpenAIGatewayService) SelectAccountWithScheduler(
 	return s.selectAccountWithScheduler(ctx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, "", "", requireCompact, PlatformOpenAI)
 }
 
+// SelectAccountWithSchedulerForCapability 按能力要求调度账号。
+// previousResponseCanMove 表示首包 input 可自行重建工具续链，previous_response_id 允许跨账号迁移
+// （粘性加权模式下改为加权偏好而非硬粘连）。
 func (s *OpenAIGatewayService) SelectAccountWithSchedulerForCapability(
 	ctx context.Context,
 	groupID *int64,
@@ -1385,6 +1409,7 @@ func (s *OpenAIGatewayService) SelectAccountWithSchedulerForCapability(
 	requiredTransport OpenAIUpstreamTransport,
 	requiredCapability OpenAIEndpointCapability,
 	requireCompact bool,
+	previousResponseCanMove bool,
 	platformOverride ...string,
 ) (*AccountSelectionResult, OpenAIAccountScheduleDecision, error) {
 	platform := PlatformOpenAI

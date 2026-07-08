@@ -44,12 +44,15 @@ func TestOpenAI502FastPath_PreservesOtoFallbackAccounts(t *testing.T) {
 	svc := &OpenAIGatewayService{}
 	oto := &Account{ID: 144, Name: "oto", Platform: PlatformOpenAI, Type: AccountTypeAPIKey}
 	oto2 := &Account{ID: 145, Name: "oto2", Platform: PlatformOpenAI, Type: AccountTypeAPIKey}
+	otoSubscription := &Account{ID: 580, Name: "oto订阅", Platform: PlatformOpenAI, Type: AccountTypeAPIKey}
 
 	svc.handleOpenAIAccountUpstreamError(context.Background(), oto, http.StatusBadGateway, http.Header{}, nil)
 	svc.handleOpenAIAccountUpstreamError(context.Background(), oto2, http.StatusBadGateway, http.Header{}, nil)
+	svc.handleOpenAIAccountUpstreamError(context.Background(), otoSubscription, http.StatusBadGateway, http.Header{}, nil)
 
 	require.False(t, svc.isOpenAIAccountRuntimeBlocked(oto))
 	require.False(t, svc.isOpenAIAccountRuntimeBlocked(oto2))
+	require.False(t, svc.isOpenAIAccountRuntimeBlocked(otoSubscription))
 }
 
 func TestOpenAIRuntimeBlock_AppliesToOpenAIAPIKeyWhenRateLimitServiceStopsScheduling(t *testing.T) {
@@ -59,6 +62,15 @@ func TestOpenAIRuntimeBlock_AppliesToOpenAIAPIKeyWhenRateLimitServiceStopsSchedu
 	svc.BlockAccountScheduling(account, time.Time{}, "custom_error_code")
 
 	require.True(t, svc.isOpenAIAccountRuntimeBlocked(account))
+}
+
+func TestOpenAIRuntimeBlock_DoesNotApplyToProtectedFallbackAccount580(t *testing.T) {
+	svc := &OpenAIGatewayService{}
+	account := &Account{ID: 580, Name: "oto订阅", Platform: PlatformOpenAI, Type: AccountTypeAPIKey}
+
+	svc.BlockAccountScheduling(account, time.Time{}, "custom_error_code")
+
+	require.False(t, svc.isOpenAIAccountRuntimeBlocked(account))
 }
 
 func TestOpenAIRuntimeBlock_DoesNotApplyToOtherPlatforms(t *testing.T) {

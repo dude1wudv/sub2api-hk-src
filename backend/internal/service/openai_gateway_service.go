@@ -385,6 +385,7 @@ type OpenAIGatewayService struct {
 	codexDetector         CodexClientRestrictionDetector
 	schedulerSnapshot     *SchedulerSnapshotService
 	concurrencyService    *ConcurrencyService
+	rpmCache              RPMCache
 	billingService        *BillingService
 	rateLimitService      *RateLimitService
 	billingCacheService   *BillingCacheService
@@ -438,6 +439,7 @@ func NewOpenAIGatewayService(
 	cfg *config.Config,
 	schedulerSnapshot *SchedulerSnapshotService,
 	concurrencyService *ConcurrencyService,
+	rpmCache RPMCache,
 	billingService *BillingService,
 	rateLimitService *RateLimitService,
 	billingCacheService *BillingCacheService,
@@ -462,6 +464,7 @@ func NewOpenAIGatewayService(
 		codexDetector:       NewOpenAICodexClientRestrictionDetector(cfg),
 		schedulerSnapshot:   schedulerSnapshot,
 		concurrencyService:  concurrencyService,
+		rpmCache:            rpmCache,
 		billingService:      billingService,
 		rateLimitService:    rateLimitService,
 		billingCacheService: billingCacheService,
@@ -2075,6 +2078,9 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 		_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 		return nil
 	}
+	if !s.isOpenAIAccountSchedulableForRPM(ctx, account) {
+		return nil
+	}
 	// 刷新会话 TTL 并返回账号
 	// Refresh session TTL and return account
 	_ = s.refreshStickySessionTTL(ctx, groupID, sessionHash, s.openAIWSSessionStickyTTL())
@@ -2118,6 +2124,9 @@ func (s *OpenAIGatewayService) hasHigherPriorityOpenAIAccount(
 		}
 		fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, platform, requestedModel, requireCompact, requiredCapability)
 		if fresh == nil || fresh.IsOpenAICodexQuotaDraining() || !accountSupportsOpenAICapabilities(fresh, requiredCapability, requiredImageCapability) {
+			continue
+		}
+		if !s.isOpenAIAccountSchedulableForRPM(ctx, fresh) {
 			continue
 		}
 		if requiredTransport != OpenAIUpstreamTransportAny && requiredTransport != OpenAIUpstreamTransportHTTPSSE &&
@@ -2178,6 +2187,9 @@ func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, groupID *i
 			continue
 		}
 		if fresh.IsOpenAICodexQuotaDraining() {
+			continue
+		}
+		if !s.isOpenAIAccountSchedulableForRPM(ctx, fresh) {
 			continue
 		}
 		if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel, requireCompact) {
@@ -2361,6 +2373,8 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 					} else if !parentHealthyForShadow(account, s.parentAccountLookup(ctx)) {
 						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
+					} else if !s.isOpenAIAccountSchedulableForRPM(ctx, account) {
+						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 					} else {
 						result, err := s.tryAcquireAccountSlot(ctx, accountID, account.Concurrency)
 						if err == nil && result != nil && result.Acquired {
@@ -2412,6 +2426,9 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 			continue
 		}
 		if s.isOpenAIAccountRuntimeBlocked(acc) {
+			continue
+		}
+		if !s.isOpenAIAccountSchedulableForRPM(ctx, acc) {
 			continue
 		}
 		if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, acc, requestedModel, requireCompact) {
@@ -2502,6 +2519,9 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 			if fresh.IsOpenAICodexQuotaDraining() {
 				continue
 			}
+			if !s.isOpenAIAccountSchedulableForRPM(ctx, fresh) {
+				continue
+			}
 			if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel, requireCompact) {
 				continue
 			}
@@ -2547,6 +2567,9 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 				continue
 			}
 			if fresh.IsOpenAICodexQuotaDraining() {
+				continue
+			}
+			if !s.isOpenAIAccountSchedulableForRPM(ctx, fresh) {
 				continue
 			}
 			if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel, requireCompact) {
@@ -2610,6 +2633,9 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		if fresh.IsOpenAICodexQuotaDraining() {
 			continue
 		}
+		if !s.isOpenAIAccountSchedulableForRPM(ctx, fresh) {
+			continue
+		}
 		if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel, requireCompact) {
 			continue
 		}
@@ -2641,6 +2667,29 @@ func (s *OpenAIGatewayService) listSchedulableAccounts(ctx context.Context, grou
 		return nil, fmt.Errorf("query accounts failed: %w", err)
 	}
 	return accounts, nil
+}
+
+func (s *OpenAIGatewayService) isOpenAIAccountSchedulableForRPM(ctx context.Context, account *Account) bool {
+	if s == nil || s.rpmCache == nil || account == nil || !account.IsOpenAI() {
+		return true
+	}
+	baseRPM := account.GetBaseRPM()
+	if baseRPM <= 0 {
+		return true
+	}
+	currentRPM, err := s.rpmCache.GetRPM(ctx, account.ID)
+	if err != nil {
+		return true
+	}
+	return account.CheckRPMSchedulability(currentRPM) == WindowCostSchedulable
+}
+
+func (s *OpenAIGatewayService) IncrementOpenAIAccountRPM(ctx context.Context, account *Account) error {
+	if s == nil || s.rpmCache == nil || account == nil || !account.IsOpenAI() || account.GetBaseRPM() <= 0 {
+		return nil
+	}
+	_, err := s.rpmCache.IncrementRPM(ctx, account.ID)
+	return err
 }
 
 func (s *OpenAIGatewayService) tryAcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int) (*AcquireResult, error) {
@@ -2929,6 +2978,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	} else if changed {
 		body = normalizedBody
 		normalizedReasoning = true
+	}
+	if err := s.IncrementOpenAIAccountRPM(ctx, account); err != nil {
+		logger.LegacyPrintf("service.openai_gateway", "IncrementOpenAIAccountRPM failed for account %d: %v", account.ID, err)
 	}
 	originalBody := body
 	requestView := newOpenAIRequestView(body)
@@ -6139,7 +6191,13 @@ func (s *OpenAIGatewayService) handleNonStreamingResponse(ctx context.Context, r
 	if isEventStreamResponse(resp.Header) {
 		return s.handleSSEToJSON(resp, c, body, originalModel, mappedModel)
 	}
-	bodyLooksLikeSSE := bytes.Contains(body, []byte("data:")) || bytes.Contains(body, []byte("event:"))
+	// bodyLooksLikeSSE is a line-level heuristic: real SSE framing requires
+	// "data:"/"event:" field names at the very start of a physical line. A
+	// plain bytes.Contains scan would also match ordinary JSON responses
+	// whose string content merely echoes the literal text "data:" or
+	// "event:" (e.g. compact tool output), causing those JSON bodies to be
+	// misrouted into handleSSEToJSON and lose their usage accounting.
+	bodyLooksLikeSSE := bodyHasSSEFraming(body)
 
 	// For OAuth accounts, also fall back to a body-content heuristic because
 	// the upstream may omit the Content-Type header while still sending SSE.
@@ -6187,6 +6245,22 @@ func (s *OpenAIGatewayService) handleNonStreamingResponse(ctx context.Context, r
 func isEventStreamResponse(header http.Header) bool {
 	contentType := strings.ToLower(header.Get("Content-Type"))
 	return strings.Contains(contentType, "text/event-stream")
+}
+
+// bodyHasSSEFraming reports whether body contains genuine SSE framing by
+// scanning for physical lines that begin with the "data:" or "event:"
+// field names, per the SSE spec. Unlike a raw substring scan, this does not
+// match when those strings only appear embedded inside JSON string values
+// (e.g. "data: foo" quoted as part of an assistant text field), since such
+// occurrences never start a physical line in a valid JSON encoding.
+func bodyHasSSEFraming(body []byte) bool {
+	for _, line := range bytes.Split(body, []byte("\n")) {
+		line = bytes.TrimRight(line, "\r")
+		if bytes.HasPrefix(line, []byte("data:")) || bytes.HasPrefix(line, []byte("event:")) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *OpenAIGatewayService) handleSSEToJSON(resp *http.Response, c *gin.Context, body []byte, originalModel, mappedModel string) (*openaiNonStreamingResult, error) {

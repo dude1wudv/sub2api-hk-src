@@ -93,6 +93,9 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	}
 	originalModel := chatReq.Model
 	clientStream := chatReq.Stream
+	if err := s.IncrementOpenAIAccountRPM(ctx, account); err != nil {
+		logger.LegacyPrintf("service.openai_gateway", "IncrementOpenAIAccountRPM failed for account %d: %v", account.ID, err)
+	}
 
 	// 2. Resolve model mapping early so compat prompt_cache_key injection can
 	// derive a stable seed from the final upstream model family.

@@ -588,6 +588,9 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesAPIKey(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.IncrementOpenAIAccountRPM(ctx, account); err != nil {
+		logger.LegacyPrintf("service.openai_gateway", "IncrementOpenAIAccountRPM failed for account %d: %v", account.ID, err)
+	}
 	upstreamCtx, releaseUpstreamCtx := detachStreamUpstreamContext(ctx, parsed.Stream)
 	defer releaseUpstreamCtx()
 

@@ -5147,7 +5147,10 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 				account.ID, account.Name, len(rw.Forward))
 		}
 	}
-
+	// Pre-filter: strip web-search history blocks the upstream cannot accept.
+	if err := replaceBody(FilterWebSearchHistoryBlocks(body, reqModel)); err != nil {
+		return nil, err
+	}
 	// Pre-filter: remove thinking blocks with missing/invalid signatures before forwarding.
 	// Clients (e.g. Claude Code) sometimes send multi-turn conversations where a historical
 	// assistant message contains a thinking block that is missing the required "signature" field,
@@ -5743,7 +5746,8 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 		} else {
 			input.Body = applyToolsLastCacheBreakpoint(input.Body)
 		}
-	}
+	} // Pre-filter: strip web-search history blocks the upstream cannot accept.
+	input.Body = FilterWebSearchHistoryBlocks(input.Body, input.RequestModel)
 	if input.Parsed != nil {
 		// 透传分支也会改写实际 wire body，成功 usage hash 依赖这里同步当前 body。
 		if err := input.Parsed.ReplaceBody(input.Body); err != nil {

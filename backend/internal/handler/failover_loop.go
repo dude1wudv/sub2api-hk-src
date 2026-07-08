@@ -76,8 +76,10 @@ func (s *FailoverState) HandleFailoverError(
 		s.ForceCacheBilling = true
 	}
 
+	isProtectedFallbackAccount := service.IsOpenAIProtectedFallbackAccountID(accountID)
+
 	// 同账号重试：对 RetryableOnSameAccount 的临时性错误，先在同一账号上重试
-	if failoverErr.RetryableOnSameAccount && s.SameAccountRetryCount[accountID] < maxSameAccountRetries {
+	if failoverErr.RetryableOnSameAccount && (isProtectedFallbackAccount || s.SameAccountRetryCount[accountID] < maxSameAccountRetries) {
 		s.SameAccountRetryCount[accountID]++
 		logger.FromContext(ctx).Warn("gateway.failover_same_account_retry",
 			zap.Int64("account_id", accountID),
@@ -86,6 +88,7 @@ func (s *FailoverState) HandleFailoverError(
 			zap.String("failover_reason", failoverErr.SafeReason()),
 			zap.Int("same_account_retry_count", s.SameAccountRetryCount[accountID]),
 			zap.Int("same_account_retry_max", maxSameAccountRetries),
+			zap.Bool("protected_fallback_account", isProtectedFallbackAccount),
 			zap.Int("switch_count", s.SwitchCount),
 			zap.Int("failed_account_count", len(s.FailedAccountIDs)),
 		)

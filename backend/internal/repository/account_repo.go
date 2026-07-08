@@ -610,6 +610,20 @@ func (r *accountRepository) ListWithFilters(ctx context.Context, params paginati
 	return outAccounts, paginationResultFromTotal(int64(total), params), nil
 }
 
+func (r *accountRepository) ListAllWithFilters(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) ([]service.Account, error) {
+	var all []service.Account
+	for page := 1; ; page++ {
+		items, result, err := r.ListWithFilters(ctx, pagination.PaginationParams{Page: page, PageSize: 1000}, platform, accountType, status, search, groupID, privacyMode)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, items...)
+		if result == nil || len(items) == 0 || page >= result.Pages {
+			break
+		}
+	}
+	return all, nil
+}
 func (r *accountRepository) ListOpsAccountsForStats(ctx context.Context, platformFilter string, groupIDFilter *int64) ([]service.Account, error) {
 	if r == nil || r.client == nil {
 		return []service.Account{}, nil

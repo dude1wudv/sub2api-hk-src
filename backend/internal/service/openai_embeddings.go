@@ -38,6 +38,9 @@ func (s *OpenAIGatewayService) ForwardEmbeddings(
 	if upstreamModel != originalModel {
 		upstreamBody = ReplaceModelInBody(body, upstreamModel)
 	}
+	if err := s.IncrementOpenAIAccountRPM(ctx, account); err != nil {
+		logger.LegacyPrintf("service.openai_gateway", "IncrementOpenAIAccountRPM failed for account %d: %v", account.ID, err)
+	}
 
 	logger.L().Debug("openai embeddings: forwarding",
 		zap.Int64("account_id", account.ID),

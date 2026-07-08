@@ -96,6 +96,19 @@ func TestGetPoolModeRetryCount(t *testing.T) {
 			expected: maxPoolModeRetryCount,
 		},
 		{
+			name: "protected_fallback_580_uses_extended_retry_budget",
+			account: &Account{
+				ID:       580,
+				Type:     AccountTypeAPIKey,
+				Platform: PlatformOpenAI,
+				Credentials: map[string]any{
+					"pool_mode":             true,
+					"pool_mode_retry_count": 1,
+				},
+			},
+			expected: 1_000_000,
+		},
+		{
 			name: "invalid_value_falls_back_to_default",
 			account: &Account{
 				Type:     AccountTypeAPIKey,

@@ -615,6 +615,7 @@ func (h *OpenAIGatewayHandler) recordOpenAIImagesFanoutUsage(
 		basePayloadHash = service.HashUsageRequestPayload([]byte(parsed.StickySessionSeed()))
 	}
 	inboundEndpoint := GetInboundEndpoint(c)
+	quotaPlatform := service.QuotaPlatform(c.Request.Context(), apiKey)
 
 	for index, part := range parts {
 		if part.account == nil || part.result == nil || part.err != nil {
@@ -640,6 +641,7 @@ func (h *OpenAIGatewayHandler) recordOpenAIImagesFanoutUsage(
 				RequestBody:        body,
 				RequestHeaders:     requestHeaders,
 				APIKeyService:      h.apiKeyService,
+				QuotaPlatform:      quotaPlatform,
 				ChannelUsageFields: channelMapping.ToUsageFields(parsed.Model, upstreamModel),
 			}); err != nil {
 				reqLog.Error("openai.images.fanout_record_usage_failed",

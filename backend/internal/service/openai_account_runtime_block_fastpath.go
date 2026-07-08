@@ -42,8 +42,11 @@ func isOpenAIProtectedFallbackAccount(account *Account) bool {
 	if account == nil {
 		return false
 	}
+	if IsOpenAIProtectedFallbackAccountID(account.ID) {
+		return true
+	}
 	switch strings.ToLower(strings.TrimSpace(account.Name)) {
-	case "oto", "oto2":
+	case "oto", "oto2", "oto订阅":
 		return true
 	default:
 		return false
@@ -125,7 +128,7 @@ func (s *OpenAIGatewayService) markOpenAI502RuntimeBlocked(ctx context.Context, 
 }
 
 func (s *OpenAIGatewayService) BlockAccountScheduling(account *Account, until time.Time, reason string) {
-	if s == nil || !isOpenAIAccount(account) {
+	if s == nil || !isOpenAIAccount(account) || isOpenAIProtectedFallbackAccount(account) {
 		return
 	}
 	now := time.Now()
