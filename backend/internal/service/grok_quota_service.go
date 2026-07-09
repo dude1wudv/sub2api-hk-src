@@ -72,10 +72,19 @@ func (s *GrokQuotaService) ProbeUsage(ctx context.Context, accountID int64) (*Gr
 	}
 
 	billing := s.probeBilling(ctx, account, token, proxyURL)
-	_ = s.accountRepo.UpdateExtra(ctx, account.ID, map[string]any{
-		grokQuotaSnapshotExtraKey: headerResult.Snapshot,
-		grokBillingSnapshotKey:    billing,
-	})
+
+	// Persist billing always. Only overwrite the short-window header snapshot when
+	// the probe actually observed headers (or 429). A 400 model/body failure must
+	// not clobber a good passive snapshot from live traffic.
+	extraUpdates := map[string]any{
+		grokBillingSnapshotKey: billing,
+	}
+	keepHeaderSnapshot := headerResult != nil && headerResult.Snapshot != nil &&
+		(headerResult.HeadersObserved || headerResult.StatusCode == http.StatusTooManyRequests || headerResult.StatusCode < 400)
+	if keepHeaderSnapshot {
+		extraUpdates[grokQuotaSnapshotExtraKey] = headerResult.Snapshot
+	}
+	_ = s.accountRepo.UpdateExtra(ctx, account.ID, extraUpdates)
 
 	result := &GrokQuotaProbeResult{
 		Source:          "active_probe",
@@ -85,6 +94,13 @@ func (s *GrokQuotaService) ProbeUsage(ctx context.Context, accountID int64) (*Gr
 		HeadersObserved: headerResult.HeadersObserved,
 		ResetSupported:  false,
 		FetchedAt:       time.Now().Unix(),
+	}
+	if !keepHeaderSnapshot {
+		// Prefer previously stored headers for the API response when probe body failed.
+		if existing, _ := grokQuotaSnapshotFromExtra(account.Extra); existing != nil {
+			result.Snapshot = existing
+			result.HeadersObserved = existing.HasObservedHeaders()
+		}
 	}
 	if headerResult.StatusCode == http.StatusTooManyRequests {
 		return result, nil

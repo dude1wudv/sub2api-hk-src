@@ -335,6 +335,8 @@ func TestGrokQuotaServiceProbeUsageSoftFailsHeader400ButKeepsBilling(t *testing.
 	require.InDelta(t, 25.0, result.Billing.Utilization, 0.01)
 	require.Contains(t, string(upstream.bodies[0]), `"model":"grok-4.5"`)
 	require.NotNil(t, repo.updates[47][grokBillingSnapshotKey])
+	_, wroteHeaders := repo.updates[47][grokQuotaSnapshotExtraKey]
+	require.False(t, wroteHeaders, "400 header probe must not clobber passive header snapshot")
 }
 
 func TestGrokQuotaServiceResetQuotaUnsupported(t *testing.T) {

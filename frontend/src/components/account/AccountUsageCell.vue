@@ -1134,7 +1134,9 @@ const grokRetryAfterLabel = computed(() => {
 })
 
 const handleGrokProbed = () => {
-  loadUsage({ source: 'passive', bypassCache: true }).catch(() => {})
+  // Grok usage is local snapshot + billing; GetPassiveUsage is Anthropic-only and
+  // would paint the cell with t('common.error') after a successful probe.
+  loadUsage({ bypassCache: true }).catch(() => {})
 }
 
 const formatWindowRequests = (stats: WindowStats) => formatCompactNumber(stats.requests, { allowBillions: false })
