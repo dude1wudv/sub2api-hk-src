@@ -376,14 +376,17 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 // OpenAI/Grok account, used by every OpenAI usage-recording site. APIKey
 // accounts whose upstream is forced or probed to not support the Responses API
 // are served directly via /v1/chat/completions (the raw chat path) regardless of
-// the inbound endpoint. Grok OAuth chat/completions also goes raw CC (no
-// CC→Responses conversion). Everything else goes through the Responses API.
+// the inbound endpoint. Grok OAuth plain chat/completions also goes raw CC; when
+// the forward result already set UpstreamEndpoint (agent/thinking Responses
+// path), handlers prefer that value over this fallback. Everything else goes
+// through the Responses API.
 func resolveOpenAIUpstreamEndpoint(c *gin.Context, account *service.Account) string {
 	if account != nil && account.Type == service.AccountTypeAPIKey &&
 		!openai_compat.ShouldUseResponsesAPI(account.Extra) {
 		return EndpointChatCompletions
 	}
-	// Grok OAuth /v1/chat/completions is always raw-forwarded to upstream CC.
+	// Grok OAuth /v1/chat/completions fallback: plain chat is raw CC. Agent /
+	// thinking / search paths set result.UpstreamEndpoint=/v1/responses.
 	if account != nil && account.Platform == service.PlatformGrok &&
 		GetInboundEndpoint(c) == EndpointChatCompletions {
 		return EndpointChatCompletions

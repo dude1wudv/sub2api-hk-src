@@ -16,6 +16,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/apicompat"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai_compat"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"github.com/Wei-Shaw/sub2api/internal/util/responseheaders"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -75,10 +76,10 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	}
 
 	if account.Platform == PlatformGrok {
-		// Cursor/compat clients sometimes POST Responses-shaped bodies
-		// (`input` without `messages`) to /v1/chat/completions. Route those
-		// to xAI /responses instead of the raw CC path so `input` is preserved
-		// and Live Search can be upgraded to Agent Tools.
+		// Inbound stays OpenAI-compatible. Outbound:
+		// - Responses-shaped body on /v1/chat/completions → xAI /responses
+		// - agent/thinking/search intent → CC→Responses conversion + xAI /responses
+		// - plain chat → raw xAI /v1/chat/completions
 		if !gjson.GetBytes(body, "messages").Exists() && gjson.GetBytes(body, "input").Exists() {
 			originalModel := strings.TrimSpace(gjson.GetBytes(body, "model").String())
 			if originalModel == "" {
@@ -91,7 +92,11 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 			}
 			return s.forwardGrokResponses(ctx, c, account, body, originalModel, reqStream, time.Now())
 		}
-		return s.forwardAsRawChatCompletions(ctx, c, account, body, defaultMappedModel)
+		if !grokChatCompletionsNeedsResponsesUpstream(body) {
+			return s.forwardAsRawChatCompletions(ctx, c, account, body, defaultMappedModel)
+		}
+		// Fall through to the shared CC→Responses conversion path below; Grok
+		// branches skip Codex transforms and use buildGrokResponsesRequest.
 	}
 
 	// 入口分流：APIKey 账号 + 强制或已探测确认上游不支持 Responses，走 CC 直转。
@@ -203,7 +208,7 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	}
 	logger.L().Debug("openai chat_completions: model mapping applied", logFields...)
 
-	if account.Type == AccountTypeOAuth {
+	if account.Type == AccountTypeOAuth && account.Platform != PlatformGrok {
 		var reqBody map[string]any
 		if err := json.Unmarshal(responsesBody, &reqBody); err != nil {
 			return nil, fmt.Errorf("unmarshal for codex transform: %w", err)
@@ -226,6 +231,19 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 		if err != nil {
 			return nil, fmt.Errorf("remarshal after codex transform: %w", err)
 		}
+	}
+	if account.Platform == PlatformGrok {
+		patchedBody, patchErr := patchGrokResponsesBody(responsesBody, upstreamModel)
+		if patchErr != nil {
+			return nil, patchErr
+		}
+		// ChatCompletionsToResponses drops unknown live-search fields; re-apply
+		// Agent Tools upgrade from the original inbound body intent.
+		patchedBody, patchErr = ensureGrokAgentToolsFromLiveSearchIntent(patchedBody, body)
+		if patchErr != nil {
+			return nil, patchErr
+		}
+		responsesBody = patchedBody
 	}
 
 	if account.Type == AccountTypeAPIKey {
@@ -269,7 +287,12 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 
 	// 6. Build upstream request
 	upstreamCtx, releaseUpstreamCtx := detachUpstreamContext(ctx)
-	upstreamReq, err := s.buildUpstreamRequest(upstreamCtx, c, account, responsesBody, token, true, promptCacheKey, false)
+	var upstreamReq *http.Request
+	if account.Platform == PlatformGrok {
+		upstreamReq, err = buildGrokResponsesRequest(upstreamCtx, c, account, responsesBody, token)
+	} else {
+		upstreamReq, err = s.buildUpstreamRequest(upstreamCtx, c, account, responsesBody, token, true, promptCacheKey, false)
+	}
 	releaseUpstreamCtx()
 	if err != nil {
 		return nil, fmt.Errorf("build upstream request: %w", err)
@@ -296,6 +319,10 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 		respBody := s.readUpstreamErrorBody(resp)
 		_ = resp.Body.Close()
 		resp.Body = io.NopCloser(bytes.NewReader(respBody))
+		if account.Platform == PlatformGrok {
+			s.updateGrokUsageSnapshot(ctx, account.ID, xai.ParseQuotaHeaders(resp.Header, resp.StatusCode))
+			s.handleGrokAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, respBody)
+		}
 
 		upstreamMsg := strings.TrimSpace(extractUpstreamErrorMessage(respBody))
 		upstreamMsg = sanitizeUpstreamErrorMessage(upstreamMsg)
@@ -323,12 +350,14 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 				AccountID:          account.ID,
 				AccountName:        account.Name,
 				UpstreamStatusCode: resp.StatusCode,
-				UpstreamRequestID:  resp.Header.Get("x-request-id"),
-				Kind:               "failover",
+				UpstreamRequestID:  firstNonEmpty(resp.Header.Get("x-request-id"), resp.Header.Get("xai-request-id")),
+				Kind:               grokUpstreamErrorKind(resp.StatusCode, upstreamMsg),
 				Message:            upstreamMsg,
 				Detail:             upstreamDetail,
 			})
-			s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, respBody, upstreamModel)
+			if account.Platform != PlatformGrok {
+				s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, respBody, upstreamModel)
+			}
 			return nil, &UpstreamFailoverError{
 				StatusCode:             resp.StatusCode,
 				ResponseBody:           respBody,
@@ -366,17 +395,74 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 			re := responsesReq.Reasoning.Effort
 			result.ReasoningEffort = &re
 		}
+		if account.Platform == PlatformGrok {
+			result.UpstreamEndpoint = "/v1/responses"
+		}
 	}
 
 	// Extract and save Codex usage snapshot from response headers (for OAuth accounts).
 	// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
 	if handleErr == nil && account.Type == AccountTypeOAuth && !account.IsShadow() {
-		if snapshot := ParseCodexRateLimitHeaders(resp.Header); snapshot != nil {
+		if account.Platform == PlatformGrok {
+			s.updateGrokUsageSnapshot(ctx, account.ID, xai.ParseQuotaHeaders(resp.Header, resp.StatusCode))
+		} else if snapshot := ParseCodexRateLimitHeaders(resp.Header); snapshot != nil {
 			s.updateCodexUsageSnapshot(ctx, account.ID, snapshot)
 		}
 	}
 
 	return result, handleErr
+}
+
+// grokChatCompletionsNeedsResponsesUpstream reports whether a Chat Completions
+// body for Grok must leave via xAI /responses (agent tools / thinking / search)
+// instead of raw /v1/chat/completions.
+func grokChatCompletionsNeedsResponsesUpstream(body []byte) bool {
+	if len(body) == 0 {
+		return false
+	}
+	if gjson.GetBytes(body, "tools").Exists() || gjson.GetBytes(body, "tool_choice").Exists() {
+		return true
+	}
+	if gjson.GetBytes(body, "functions").Exists() || gjson.GetBytes(body, "function_call").Exists() {
+		return true
+	}
+	if gjson.GetBytes(body, "reasoning").Exists() || gjson.GetBytes(body, "reasoning_effort").Exists() {
+		return true
+	}
+	if bytes.Contains(body, []byte(`"search_parameters"`)) || bytes.Contains(body, []byte(`"live_search"`)) {
+		return true
+	}
+	return false
+}
+
+// ensureGrokAgentToolsFromLiveSearchIntent upgrades a converted Responses body
+// when the original Chat Completions request had active live-search intent but
+// ChatCompletionsToResponses already dropped those unknown fields.
+func ensureGrokAgentToolsFromLiveSearchIntent(responsesBody, originalBody []byte) ([]byte, error) {
+	if !grokLiveSearchIntentActive(originalBody) || grokBodyHasSearchAgentTool(responsesBody) {
+		return responsesBody, nil
+	}
+	var payload any
+	if err := json.Unmarshal(responsesBody, &payload); err != nil {
+		return nil, err
+	}
+	root, ok := payload.(map[string]any)
+	if !ok {
+		return responsesBody, nil
+	}
+	tools, _ := root["tools"].([]any)
+	if tools == nil {
+		tools = make([]any, 0, 2)
+	}
+	if grokToolsSliceHasSearchAgentTool(tools) {
+		return responsesBody, nil
+	}
+	tools = append(tools,
+		map[string]any{"type": "web_search"},
+		map[string]any{"type": "x_search"},
+	)
+	root["tools"] = tools
+	return json.Marshal(payload)
 }
 
 func normalizeResponsesRequestServiceTier(req *apicompat.ResponsesRequest) {

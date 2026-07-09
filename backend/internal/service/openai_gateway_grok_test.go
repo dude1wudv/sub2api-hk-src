@@ -648,7 +648,7 @@ func TestForwardAsChatCompletionsForGrokUsesXAIChatCompletionsAndSnapshots(t *te
 	require.Equal(t, http.StatusOK, recorder.Code)
 }
 
-func TestForwardAsChatCompletionsForGrokStripsSearchParameters(t *testing.T) {
+func TestForwardAsChatCompletionsForGrokSearchParametersRoutesToResponses(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	recorder := httptest.NewRecorder()
@@ -679,26 +679,65 @@ func TestForwardAsChatCompletionsForGrokStripsSearchParameters(t *testing.T) {
 			accountsByID: map[int64]*Account{54: account},
 		},
 	}
-	upstream := &httpUpstreamRecorder{resp: &http.Response{
-		StatusCode: http.StatusOK,
-		Header: http.Header{
-			"Content-Type": []string{"application/json"},
-		},
-		Body: io.NopCloser(strings.NewReader(`{"id":"chatcmpl","object":"chat.completion","model":"grok-4.3","choices":[],"usage":{"prompt_tokens":1,"completion_tokens":1}}`)),
-	}}
+	upstream := &httpUpstreamRecorder{resp: openAICompatSSECompletedResponse("resp_grok_search", "grok-4.3")}
 	svc := &OpenAIGatewayService{
 		httpUpstream:      upstream,
 		grokTokenProvider: NewGrokTokenProvider(repo, nil),
 		accountRepo:       repo,
 	}
 
-	_, err := svc.ForwardAsChatCompletions(context.Background(), c, account, body, "", "")
+	result, err := svc.ForwardAsChatCompletions(context.Background(), c, account, body, "", "")
 	require.NoError(t, err)
-	require.Equal(t, xai.DefaultCLIBaseURL+"/chat/completions", upstream.lastReq.URL.String())
+	require.Equal(t, xai.DefaultCLIBaseURL+"/responses", upstream.lastReq.URL.String())
 	require.False(t, gjson.GetBytes(upstream.lastBody, "search_parameters").Exists())
 	require.False(t, gjson.GetBytes(upstream.lastBody, "live_search").Exists())
-	require.False(t, gjson.GetBytes(upstream.lastBody, "tools").Exists())
-	require.Equal(t, "hi", gjson.GetBytes(upstream.lastBody, "messages.0.content").String())
+	require.True(t, gjson.GetBytes(upstream.lastBody, `tools.#(type=="web_search")`).Exists())
+	require.True(t, gjson.GetBytes(upstream.lastBody, `tools.#(type=="x_search")`).Exists())
+	require.Equal(t, "/v1/responses", result.UpstreamEndpoint)
+}
+
+func TestForwardAsChatCompletionsForGrokToolsRoutesToResponses(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	body := []byte(`{
+		"model":"grok",
+		"messages":[{"role":"user","content":"hi"}],
+		"stream":false,
+		"tools":[{"type":"function","function":{"name":"lookup","parameters":{"type":"object"}}}]
+	}`)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
+
+	account := &Account{
+		ID:          56,
+		Name:        "grok",
+		Platform:    PlatformGrok,
+		Type:        AccountTypeOAuth,
+		Concurrency: 1,
+		Credentials: map[string]any{
+			"access_token": "access-token",
+			"expires_at":   time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+			"base_url":     xai.DefaultCLIBaseURL,
+		},
+	}
+	repo := &grokQuotaAccountRepo{
+		mockAccountRepoForPlatform: &mockAccountRepoForPlatform{
+			accountsByID: map[int64]*Account{56: account},
+		},
+	}
+	upstream := &httpUpstreamRecorder{resp: openAICompatSSECompletedResponse("resp_grok_tools", "grok-4.3")}
+	svc := &OpenAIGatewayService{
+		httpUpstream:      upstream,
+		grokTokenProvider: NewGrokTokenProvider(repo, nil),
+		accountRepo:       repo,
+	}
+
+	result, err := svc.ForwardAsChatCompletions(context.Background(), c, account, body, "", "")
+	require.NoError(t, err)
+	require.Equal(t, xai.DefaultCLIBaseURL+"/responses", upstream.lastReq.URL.String())
+	require.True(t, gjson.GetBytes(upstream.lastBody, "tools").Exists())
+	require.Equal(t, "/v1/responses", result.UpstreamEndpoint)
 }
 
 func TestForwardAsChatCompletionsForGrokResponsesShapeRoutesToResponses(t *testing.T) {
