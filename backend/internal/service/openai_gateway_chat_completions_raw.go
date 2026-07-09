@@ -373,8 +373,8 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 					usage = *u
 				}
 				if firstTokenMs == nil && !usageOnlyChunk {
-					elapsed := int(time.Since(startTime).Milliseconds())
-					firstTokenMs = &elapsed
+					ms := openAIFirstTokenElapsedMs(startTime, time.Now(), []byte(payload))
+					firstTokenMs = &ms
 				}
 			}
 		}

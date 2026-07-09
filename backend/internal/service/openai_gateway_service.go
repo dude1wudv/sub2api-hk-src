@@ -4436,6 +4436,10 @@ func openAIResponseCreatedAt(data []byte, observedAt time.Time) (time.Time, bool
 	if !value.Exists() {
 		value = gjson.GetBytes(data, "created_at")
 	}
+	// Chat Completions chunks use top-level "created" (unix seconds).
+	if !value.Exists() {
+		value = gjson.GetBytes(data, "created")
+	}
 	if !value.Exists() {
 		return time.Time{}, false
 	}
@@ -4451,6 +4455,24 @@ func openAIResponseCreatedAt(data []byte, observedAt time.Time) (time.Time, bool
 		return time.Time{}, false
 	}
 	return createdAt, true
+}
+
+// openAIFirstTokenElapsedMs records the fastest available first-token latency for
+// Sub2API usage/ops display: prefer upstream response created timestamp when
+// present, otherwise fall back to wall-clock since firstTokenStart.
+func openAIFirstTokenElapsedMs(firstTokenStart, observedAt time.Time, data []byte) int {
+	elapsed := observedAt.Sub(firstTokenStart)
+	if createdAt, ok := openAIResponseCreatedAt(data, observedAt); ok {
+		if upstreamElapsed, ok := openAIElapsedSince(createdAt, observedAt); ok {
+			if upstreamElapsed < elapsed {
+				elapsed = upstreamElapsed
+			}
+		}
+	}
+	if elapsed < 0 {
+		return 0
+	}
+	return int(elapsed.Milliseconds())
 }
 
 func openAIElapsedSince(start, observedAt time.Time) (time.Duration, bool) {
@@ -4697,13 +4719,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 					zap.String("upstream_request_id", upstreamRequestID),
 				}
 				if firstTokenMs == nil && trimmedData != "[DONE]" {
-					elapsed := observedAt.Sub(firstTokenStart)
-					if upstreamCreatedAt != nil {
-						if upstreamElapsed, ok := openAIElapsedSince(*upstreamCreatedAt, observedAt); ok {
-							elapsed = upstreamElapsed
-						}
-					}
-					ms := int(elapsed.Milliseconds())
+					ms := openAIFirstTokenElapsedMs(firstTokenStart, observedAt, dataBytes)
 					firstTokenMs = &ms
 					logFields = append(logFields, zap.Int("first_token_ms", ms))
 				}
@@ -5658,13 +5674,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 				if createdAt, ok := openAIResponseCreatedAt(dataBytes, observedAt); ok {
 					upstreamCreatedAt = &createdAt
 				}
-				elapsed := observedAt.Sub(firstTokenStart)
-				if upstreamCreatedAt != nil {
-					if upstreamElapsed, ok := openAIElapsedSince(*upstreamCreatedAt, observedAt); ok {
-						elapsed = upstreamElapsed
-					}
-				}
-				ms := int(elapsed.Milliseconds())
+				ms := openAIFirstTokenElapsedMs(firstTokenStart, observedAt, dataBytes)
 				firstTokenMs = &ms
 			}
 			if openAIStreamEventIsTerminal(data) {

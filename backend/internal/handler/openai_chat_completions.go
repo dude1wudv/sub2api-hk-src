@@ -330,6 +330,9 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 		clientIP := ip.GetClientIP(c)
 		inboundEndpoint := GetInboundEndpoint(c)
 		upstreamEndpoint := resolveOpenAIUpstreamEndpoint(c, account)
+		if result != nil && strings.TrimSpace(result.UpstreamEndpoint) != "" {
+			upstreamEndpoint = strings.TrimSpace(result.UpstreamEndpoint)
+		}
 		quotaPlatform := service.QuotaPlatform(c.Request.Context(), apiKey)
 
 		cyberBlocked := service.GetOpsCyberPolicy(c) != nil
@@ -370,14 +373,20 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 }
 
 // resolveOpenAIUpstreamEndpoint returns the actual upstream endpoint for an
-// OpenAI account, used by every OpenAI usage-recording site. APIKey accounts
-// whose upstream is forced or probed to not support the Responses API are
-// served directly via /v1/chat/completions (the raw chat path) regardless of
-// the inbound endpoint; everything else goes through the Responses API.
+// OpenAI/Grok account, used by every OpenAI usage-recording site. APIKey
+// accounts whose upstream is forced or probed to not support the Responses API
+// are served directly via /v1/chat/completions (the raw chat path) regardless of
+// the inbound endpoint. Grok OAuth chat/completions also goes raw CC (no
+// CC→Responses conversion). Everything else goes through the Responses API.
 func resolveOpenAIUpstreamEndpoint(c *gin.Context, account *service.Account) string {
 	if account != nil && account.Type == service.AccountTypeAPIKey &&
 		!openai_compat.ShouldUseResponsesAPI(account.Extra) {
-		return "/v1/chat/completions"
+		return EndpointChatCompletions
+	}
+	// Grok OAuth /v1/chat/completions is always raw-forwarded to upstream CC.
+	if account != nil && account.Platform == service.PlatformGrok &&
+		GetInboundEndpoint(c) == EndpointChatCompletions {
+		return EndpointChatCompletions
 	}
 	return GetUpstreamEndpoint(c, account.Platform)
 }
