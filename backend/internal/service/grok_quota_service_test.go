@@ -123,6 +123,7 @@ func TestGrokQuotaServiceProbeUsageStoresHeaders(t *testing.T) {
 	require.Equal(t, "Bearer access-token", upstream.requests[0].Header.Get("Authorization"))
 	require.Contains(t, string(upstream.bodies[0]), `"max_output_tokens":1`)
 	require.Contains(t, string(upstream.bodies[0]), `"store":false`)
+	require.Contains(t, string(upstream.bodies[0]), `"model":"grok-4.5"`)
 	require.NotNil(t, repo.updates[42][grokQuotaSnapshotExtraKey])
 	require.NotNil(t, repo.updates[42][grokBillingSnapshotKey])
 }
@@ -270,6 +271,70 @@ func TestGrokQuotaServiceProbeUsageReturnsRateLimitedSnapshot(t *testing.T) {
 	require.NotNil(t, result.Snapshot)
 	require.NotNil(t, result.Snapshot.RetryAfterSeconds)
 	require.Equal(t, 45, *result.Snapshot.RetryAfterSeconds)
+}
+
+func TestBuildGrokQuotaProbeBodyUsesFixedGrok45(t *testing.T) {
+	t.Parallel()
+
+	account := &Account{
+		Platform: PlatformGrok,
+		Type:     AccountTypeOAuth,
+		Credentials: map[string]any{
+			"model_mapping": map[string]any{"grok": "grok"},
+		},
+	}
+	body, err := buildGrokQuotaProbeBody(account)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"model":"grok-4.5"`)
+	require.NotContains(t, string(body), `"model":"grok"`)
+}
+
+func TestGrokQuotaServiceProbeUsageSoftFailsHeader400ButKeepsBilling(t *testing.T) {
+	t.Parallel()
+
+	account := &Account{
+		ID:          47,
+		Platform:    PlatformGrok,
+		Type:        AccountTypeOAuth,
+		Concurrency: 1,
+		Credentials: map[string]any{
+			"access_token": "access-token",
+			"expires_at":   time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+		},
+	}
+	repo := &grokQuotaAccountRepo{
+		mockAccountRepoForPlatform: &mockAccountRepoForPlatform{
+			accountsByID: map[int64]*Account{47: account},
+		},
+	}
+	upstream := &httpUpstreamRecorder{
+		responses: []*http.Response{
+			{
+				StatusCode: http.StatusBadRequest,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader(`{"code":"invalid-argument","error":"Model not found: grok"}`)),
+			},
+			{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body: io.NopCloser(strings.NewReader(`{
+					"billingCycle":{"billingPeriodStart":"2026-07-01T00:00:00Z","billingPeriodEnd":"2026-07-08T00:00:00Z"},
+					"monthlyLimit":{"val":10000},
+					"usage":{"totalUsed":{"val":2500}}
+				}`)),
+			},
+		},
+	}
+	svc := NewGrokQuotaService(repo, nil, NewGrokTokenProvider(repo, nil), upstream)
+
+	result, err := svc.ProbeUsage(context.Background(), 47)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadRequest, result.StatusCode)
+	require.NotNil(t, result.Billing)
+	require.Equal(t, xai.BillingStateObserved, result.Billing.State)
+	require.InDelta(t, 25.0, result.Billing.Utilization, 0.01)
+	require.Contains(t, string(upstream.bodies[0]), `"model":"grok-4.5"`)
+	require.NotNil(t, repo.updates[47][grokBillingSnapshotKey])
 }
 
 func TestGrokQuotaServiceResetQuotaUnsupported(t *testing.T) {

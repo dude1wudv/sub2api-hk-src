@@ -17,8 +17,10 @@ import (
 const (
 	grokQuotaUpstreamTimeout = 20 * time.Second
 	grokQuotaProbeInput      = "."
-	grokQuotaDefaultModel    = "grok-4.3"
-	grokBillingSnapshotKey   = "grok_billing_snapshot"
+	// Known-working upstream model for rate-limit header probes.
+	// Do not use GetMappedModel("grok"): unmapped aliases return "grok" and xAI 400s.
+	grokQuotaDefaultModel  = "grok-4.5"
+	grokBillingSnapshotKey = "grok_billing_snapshot"
 )
 
 type GrokQuotaProbeResult struct {
@@ -87,7 +89,12 @@ func (s *GrokQuotaService) ProbeUsage(ctx context.Context, accountID int64) (*Gr
 	if headerResult.StatusCode == http.StatusTooManyRequests {
 		return result, nil
 	}
+	// Soft-fail short-window header probe: still return/persist billing so weekly
+	// quota is visible even when /responses rejects the probe model/body.
 	if headerResult.StatusCode >= 400 {
+		if billing != nil {
+			return result, nil
+		}
 		return nil, headerResult.err
 	}
 	return result, nil
@@ -270,14 +277,9 @@ func (s *GrokQuotaService) loadGrokOAuthAccount(ctx context.Context, accountID i
 }
 
 func buildGrokQuotaProbeBody(account *Account) ([]byte, error) {
-	model := grokQuotaDefaultModel
-	if account != nil {
-		if mapped := strings.TrimSpace(account.GetMappedModel("grok")); mapped != "" {
-			model = mapped
-		}
-	}
+	_ = account // probe model is fixed; account only used for auth/proxy upstream.
 	return json.Marshal(map[string]any{
-		"model":             model,
+		"model":             grokQuotaDefaultModel,
 		"input":             grokQuotaProbeInput,
 		"max_output_tokens": 1,
 		"store":             false,
