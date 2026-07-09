@@ -1383,6 +1383,64 @@ func TestOpenAIGatewayService_OAuthPassthrough_FirstTokenMsUsesFirstUpstreamSSEE
 	require.Less(t, *result.FirstTokenMs, 100)
 }
 
+func TestNormalizeOpenAIPassthroughOAuthBody_InjectsReasoningSummaryAuto(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.5","stream":true,"reasoning":{"effort":"medium"},"instructions":"You are helpful.","input":[{"type":"text","text":"hi"}]}`)
+	out, changed, err := normalizeOpenAIPassthroughOAuthBody(body, false)
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.Equal(t, "auto", gjson.GetBytes(out, "reasoning.summary").String())
+	require.Equal(t, "medium", gjson.GetBytes(out, "reasoning.effort").String())
+	require.Contains(t, gjson.GetBytes(out, "include").Raw, "reasoning.encrypted_content")
+	require.False(t, gjson.GetBytes(out, "store").Bool())
+	require.True(t, gjson.GetBytes(out, "stream").Bool())
+
+	// compact 路径不注入 summary=auto（与 transform 一致）
+	compactOut, _, err := normalizeOpenAIPassthroughOAuthBody(body, true)
+	require.NoError(t, err)
+	require.False(t, gjson.GetBytes(compactOut, "reasoning.summary").Exists())
+}
+
+func TestOpenAIGatewayService_OAuthPassthrough_StreamRebuildsReasoningTextTerminalOutput(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(nil))
+
+	upstreamSSE := strings.Join([]string{
+		`data: {"type":"response.reasoning_text.delta","output_index":0,"delta":"visible thinking"}`,
+		"",
+		`data: {"type":"response.completed","response":{"id":"resp_empty","status":"completed","output":[]}}`,
+		"",
+		"data: [DONE]",
+		"",
+	}, "\n")
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}, "x-request-id": []string{"rid"}},
+		Body:       io.NopCloser(strings.NewReader(upstreamSSE)),
+	}
+	svc := &OpenAIGatewayService{cfg: &config.Config{}}
+
+	result, err := svc.handleStreamingResponsePassthrough(
+		context.Background(),
+		resp,
+		c,
+		&Account{ID: 123, Name: "acc", Platform: PlatformOpenAI},
+		time.Now(),
+		"gpt-5.5",
+		"gpt-5.5",
+	)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	body := rec.Body.String()
+	require.Contains(t, body, `"type":"response.completed"`)
+	require.Contains(t, body, `"type":"reasoning"`)
+	require.Contains(t, body, "visible thinking")
+	require.NotContains(t, body, `"output":[]`)
+}
+
 func TestOpenAIGatewayService_OAuthPassthrough_FirstTokenMsUsesResponseCreatedAt(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

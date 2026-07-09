@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 // ensureCodexReasoningInclude：带 reasoning 时补齐 summary=auto + include，幂等且保留既有项。
@@ -42,6 +43,25 @@ func TestEnsureCodexReasoningInclude(t *testing.T) {
 	require.Equal(t, "auto", body4["reasoning"].(map[string]any)["summary"])
 	require.Equal(t, []any{"reasoning.encrypted_content"}, body4["include"])
 	require.False(t, ensureCodexReasoningInclude(body4))
+}
+
+func TestEnsureCodexReasoningIncludeBytes(t *testing.T) {
+	raw := []byte(`{"model":"gpt-5.5","reasoning":{"effort":"medium"},"input":[{"type":"text","text":"hi"}]}`)
+	out, changed, err := ensureCodexReasoningIncludeBytes(raw)
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.Equal(t, "auto", gjson.GetBytes(out, "reasoning.summary").String())
+	require.Contains(t, gjson.GetBytes(out, "include").Raw, "reasoning.encrypted_content")
+
+	out2, changed2, err := ensureCodexReasoningIncludeBytes(out)
+	require.NoError(t, err)
+	require.False(t, changed2)
+	require.Equal(t, string(out), string(out2))
+
+	noop, changed3, err := ensureCodexReasoningIncludeBytes([]byte(`{"model":"gpt-5.5"}`))
+	require.NoError(t, err)
+	require.False(t, changed3)
+	require.Equal(t, `{"model":"gpt-5.5"}`, string(noop))
 }
 
 // applyCodexClientMetadata：用账号真实 device_id 注入 installation 标识，幂等、不覆盖既有项、不伪造。

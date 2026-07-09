@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
+	"github.com/tidwall/gjson"
 )
 
 var codexModelMap = map[string]string{
@@ -1126,6 +1127,34 @@ func ensureCodexReasoningInclude(reqBody map[string]any) bool {
 		// include 为非预期类型时保持原样，避免破坏调用方意图。
 		return modified
 	}
+}
+
+// ensureCodexReasoningIncludeBytes 是 ensureCodexReasoningInclude 的 JSON 字节版，
+// 供透传 OAuth normalize / WS ingress 等已持有 raw body 的路径复用，避免两套逻辑。
+func ensureCodexReasoningIncludeBytes(body []byte) ([]byte, bool, error) {
+	if len(body) == 0 {
+		return body, false, nil
+	}
+	reasoning := gjson.GetBytes(body, "reasoning")
+	if !reasoning.Exists() || !reasoning.IsObject() {
+		return body, false, nil
+	}
+	if len(reasoning.Map()) == 0 {
+		return body, false, nil
+	}
+
+	var reqBody map[string]any
+	if err := json.Unmarshal(body, &reqBody); err != nil {
+		return body, false, err
+	}
+	if !ensureCodexReasoningInclude(reqBody) {
+		return body, false, nil
+	}
+	out, err := json.Marshal(reqBody)
+	if err != nil {
+		return body, false, err
+	}
+	return out, true, nil
 }
 
 // applyCodexClientMetadata 在请求体补齐 client_metadata["x-codex-installation-id"]，

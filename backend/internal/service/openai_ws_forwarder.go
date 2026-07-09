@@ -1204,6 +1204,9 @@ func (s *OpenAIGatewayService) buildOpenAIWSCreatePayload(reqBody map[string]any
 	if account != nil && account.Type == AccountTypeOAuth && !s.isOpenAIWSStoreRecoveryAllowed(account) {
 		payload["store"] = false
 	}
+	// 与 HTTP Codex OAuth transform / 透传 normalize 对齐：带 reasoning 时补
+	// summary=auto + encrypted_content，避免上游只吐空思考壳。
+	_ = ensureCodexReasoningInclude(payload)
 	return payload
 }
 
@@ -2671,6 +2674,12 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			if setErr != nil {
 				return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket request payload", setErr)
 			}
+			normalized = next
+		}
+		// Ingress WS response.create：补齐 reasoning.summary=auto，与 HTTP 路径一致。
+		if next, reasoningChanged, reasoningErr := ensureCodexReasoningIncludeBytes(normalized); reasoningErr != nil {
+			return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket request payload", reasoningErr)
+		} else if reasoningChanged {
 			normalized = next
 		}
 		apiKey := getAPIKeyFromContext(c)

@@ -694,6 +694,27 @@ func TestShouldKeepIngressPreviousResponseID(t *testing.T) {
 	})
 }
 
+func TestBuildOpenAIWSCreatePayload_InjectsReasoningSummaryAuto(t *testing.T) {
+	t.Parallel()
+
+	svc := &OpenAIGatewayService{cfg: &config.Config{}}
+	account := &Account{Platform: PlatformOpenAI, Type: AccountTypeOAuth}
+	payload := svc.buildOpenAIWSCreatePayload(map[string]any{
+		"model":     "gpt-5.5",
+		"reasoning": map[string]any{"effort": "medium"},
+		"input":     []any{map[string]any{"type": "text", "text": "hi"}},
+	}, account)
+
+	require.Equal(t, "response.create", payload["type"])
+	reasoning, ok := payload["reasoning"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "auto", reasoning["summary"])
+	require.Equal(t, "medium", reasoning["effort"])
+	include, ok := payload["include"].([]any)
+	require.True(t, ok)
+	require.Contains(t, include, "reasoning.encrypted_content")
+}
+
 func TestBuildOpenAIWSReplayInputSequence(t *testing.T) {
 	t.Parallel()
 
