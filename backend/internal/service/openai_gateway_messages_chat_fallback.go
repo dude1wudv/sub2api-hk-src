@@ -195,14 +195,15 @@ func (s *OpenAIGatewayService) forwardAnthropicViaRawChatCompletions(
 
 	// 5. Convert response
 	if clientStream {
-		return s.streamChatCompletionsAsAnthropic(c, resp, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime)
+		return s.streamChatCompletionsAsAnthropic(c, resp, account, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime)
 	}
-	return s.bufferChatCompletionsAsAnthropic(c, resp, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime)
+	return s.bufferChatCompletionsAsAnthropic(c, resp, account, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime)
 }
 
 func (s *OpenAIGatewayService) bufferChatCompletionsAsAnthropic(
 	c *gin.Context,
 	resp *http.Response,
+	account *Account,
 	originalModel string,
 	billingModel string,
 	upstreamModel string,
@@ -226,7 +227,11 @@ func (s *OpenAIGatewayService) bufferChatCompletionsAsAnthropic(
 	}
 	responsesResp := apicompat.ChatCompletionsResponseToResponses(&ccResp, originalModel)
 
-	anthropicResp := apicompat.ResponsesToAnthropic(responsesResp, originalModel)
+	anthropicOpts := apicompat.ResponsesAnthropicCompatOptions{}
+	if account != nil && account.Platform == PlatformGrok {
+		anthropicOpts = apicompat.ClaudeCodeAnthropicCompat()
+	}
+	anthropicResp := apicompat.ResponsesToAnthropicWithOptions(responsesResp, originalModel, anthropicOpts)
 
 	usage := OpenAIUsage{}
 	if parsed, ok := extractOpenAIUsageFromJSONBytes(respBody); ok {
@@ -254,6 +259,7 @@ func (s *OpenAIGatewayService) bufferChatCompletionsAsAnthropic(
 func (s *OpenAIGatewayService) streamChatCompletionsAsAnthropic(
 	c *gin.Context,
 	resp *http.Response,
+	account *Account,
 	originalModel string,
 	billingModel string,
 	upstreamModel string,
@@ -280,6 +286,9 @@ func (s *OpenAIGatewayService) streamChatCompletionsAsAnthropic(
 
 	ccState := apicompat.NewChatCompletionsToResponsesStreamState(originalModel)
 	anthropicState := apicompat.NewResponsesEventToAnthropicState()
+	if account != nil && account.Platform == PlatformGrok {
+		anthropicState = apicompat.NewResponsesEventToAnthropicStateWithOptions(apicompat.ClaudeCodeAnthropicCompat())
+	}
 	anthropicState.Model = originalModel
 	var usage OpenAIUsage
 	var firstTokenMs *int

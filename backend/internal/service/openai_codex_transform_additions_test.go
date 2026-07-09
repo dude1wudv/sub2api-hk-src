@@ -7,12 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ensureCodexReasoningInclude：带 reasoning 时补齐 include，幂等且保留既有项。
+// ensureCodexReasoningInclude：带 reasoning 时补齐 summary=auto + include，幂等且保留既有项。
 func TestEnsureCodexReasoningInclude(t *testing.T) {
-	// reasoning 存在、include 缺失 → 注入
+	// reasoning 存在、summary/include 缺失 → 注入
 	body := map[string]any{"reasoning": map[string]any{"effort": "medium"}}
 	require.True(t, ensureCodexReasoningInclude(body))
 	require.Equal(t, []any{"reasoning.encrypted_content"}, body["include"])
+	require.Equal(t, "auto", body["reasoning"].(map[string]any)["summary"])
 	// 幂等：再次调用不重复
 	require.False(t, ensureCodexReasoningInclude(body))
 
@@ -22,13 +23,25 @@ func TestEnsureCodexReasoningInclude(t *testing.T) {
 	_, ok := body2["include"]
 	require.False(t, ok)
 
-	// 既有 include 保留并追加
+	// 既有 include 保留并追加；已有 summary 不覆盖
 	body3 := map[string]any{
-		"reasoning": map[string]any{"effort": "high"},
+		"reasoning": map[string]any{"effort": "high", "summary": "detailed"},
 		"include":   []any{"foo"},
 	}
 	require.True(t, ensureCodexReasoningInclude(body3))
 	require.Equal(t, []any{"foo", "reasoning.encrypted_content"}, body3["include"])
+	require.Equal(t, "detailed", body3["reasoning"].(map[string]any)["summary"])
+
+	// gpt-5.5 形态：仅 effort、无 summary → 补 auto，且 include 已有 encrypted 时仍可因 summary 返回 true
+	body4 := map[string]any{
+		"model":     "gpt-5.5",
+		"reasoning": map[string]any{"effort": "medium"},
+		"include":   []any{"reasoning.encrypted_content"},
+	}
+	require.True(t, ensureCodexReasoningInclude(body4))
+	require.Equal(t, "auto", body4["reasoning"].(map[string]any)["summary"])
+	require.Equal(t, []any{"reasoning.encrypted_content"}, body4["include"])
+	require.False(t, ensureCodexReasoningInclude(body4))
 }
 
 // applyCodexClientMetadata：用账号真实 device_id 注入 installation 标识，幂等、不覆盖既有项、不伪造。

@@ -399,7 +399,7 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 		result, handleErr = s.handleAnthropicStreamingResponse(resp, c, account, originalModel, billingModel, upstreamModel, startTime, upstreamStart)
 	} else {
 		// Client wants JSON: buffer the streaming response and assemble a JSON reply.
-		result, handleErr = s.handleAnthropicBufferedStreamingResponse(resp, c, originalModel, billingModel, upstreamModel, startTime)
+		result, handleErr = s.handleAnthropicBufferedStreamingResponse(resp, c, account, originalModel, billingModel, upstreamModel, startTime)
 	}
 
 	// cyber_policy：标记已设、error 已按 Anthropic 格式发给客户端。丢弃 result、返回哨兵，
@@ -477,6 +477,7 @@ func (s *OpenAIGatewayService) handleAnthropicErrorResponse(
 func (s *OpenAIGatewayService) handleAnthropicBufferedStreamingResponse(
 	resp *http.Response,
 	c *gin.Context,
+	account *Account,
 	originalModel string,
 	billingModel string,
 	upstreamModel string,
@@ -520,7 +521,11 @@ func (s *OpenAIGatewayService) handleAnthropicBufferedStreamingResponse(
 	// accumulated delta events so the client receives the full content.
 	acc.SupplementResponseOutput(finalResponse)
 
-	anthropicResp := apicompat.ResponsesToAnthropic(finalResponse, originalModel)
+	anthropicOpts := apicompat.ResponsesAnthropicCompatOptions{}
+	if account != nil && account.Platform == PlatformGrok {
+		anthropicOpts = apicompat.ClaudeCodeAnthropicCompat()
+	}
+	anthropicResp := apicompat.ResponsesToAnthropicWithOptions(finalResponse, originalModel, anthropicOpts)
 
 	if s.responseHeaderFilter != nil {
 		responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
@@ -771,6 +776,9 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 	}
 
 	state := apicompat.NewResponsesEventToAnthropicState()
+	if account != nil && account.Platform == PlatformGrok {
+		state = apicompat.NewResponsesEventToAnthropicStateWithOptions(apicompat.ClaudeCodeAnthropicCompat())
+	}
 	state.Model = originalModel
 	var usage OpenAIUsage
 	responseID := ""

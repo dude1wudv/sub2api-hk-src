@@ -10,10 +10,34 @@ import (
 // Non-streaming: ResponsesResponse → AnthropicResponse
 // ---------------------------------------------------------------------------
 
+// ResponsesAnthropicCompatOptions gates Claude Code–specific Behaviors that
+// must not run on the shared converter by default (Codex/OpenAI paths stay
+// neutral). Enable on Grok → Claude Code /v1/messages only.
+type ResponsesAnthropicCompatOptions struct {
+	EmitThinkingSignature bool
+	EmitPlaceholderText   bool
+}
+
+// ClaudeCodeAnthropicCompat enables signature + empty-stream placeholder text
+// expected by Claude Code when bridging xAI/OpenAI Responses.
+func ClaudeCodeAnthropicCompat() ResponsesAnthropicCompatOptions {
+	return ResponsesAnthropicCompatOptions{
+		EmitThinkingSignature: true,
+		EmitPlaceholderText:   true,
+	}
+}
+
 // ResponsesToAnthropic converts a Responses API response directly into an
 // Anthropic Messages response. Reasoning output items are mapped to thinking
 // blocks; function_call items become tool_use blocks.
+// Claude-specific thinking signatures are off by default; use
+// ResponsesToAnthropicWithOptions with ClaudeCodeAnthropicCompat() for Grok.
 func ResponsesToAnthropic(resp *ResponsesResponse, model string) *AnthropicResponse {
+	return ResponsesToAnthropicWithOptions(resp, model, ResponsesAnthropicCompatOptions{})
+}
+
+// ResponsesToAnthropicWithOptions is ResponsesToAnthropic with explicit compat flags.
+func ResponsesToAnthropicWithOptions(resp *ResponsesResponse, model string, opts ResponsesAnthropicCompatOptions) *AnthropicResponse {
 	out := &AnthropicResponse{
 		ID:    resp.ID,
 		Type:  "message",
@@ -33,11 +57,14 @@ func ResponsesToAnthropic(resp *ResponsesResponse, model string) *AnthropicRespo
 				}
 			}
 			if summaryText != "" {
-				blocks = append(blocks, AnthropicContentBlock{
-					Type:      "thinking",
-					Thinking:  summaryText,
-					Signature: thinkingSignatureOrSynthetic(item.EncryptedContent),
-				})
+				block := AnthropicContentBlock{
+					Type:     "thinking",
+					Thinking: summaryText,
+				}
+				if opts.EmitThinkingSignature {
+					block.Signature = thinkingSignatureOrSynthetic(item.EncryptedContent)
+				}
+				blocks = append(blocks, block)
 			}
 		case "message":
 			for _, part := range item.Content {
@@ -181,6 +208,10 @@ type ResponsesEventToAnthropicState struct {
 	AnyContentBlock     bool // true once any content_block_start was emitted
 	ThinkingSignature   string
 
+	// Compat gates Claude Code–only behaviors (signature / empty placeholder).
+	// Default (zero value) keeps the shared converter neutral for Codex/OpenAI.
+	Compat ResponsesAnthropicCompatOptions
+
 	// OutputIndexToBlockIdx maps Responses output_index → Anthropic content block index.
 	OutputIndexToBlockIdx map[int]int
 
@@ -193,9 +224,16 @@ type ResponsesEventToAnthropicState struct {
 	Created    int64
 }
 
-// NewResponsesEventToAnthropicState returns an initialised stream state.
+// NewResponsesEventToAnthropicState returns an initialised stream state with
+// Claude-specific compat flags off (shared/neutral defaults).
 func NewResponsesEventToAnthropicState() *ResponsesEventToAnthropicState {
+	return NewResponsesEventToAnthropicStateWithOptions(ResponsesAnthropicCompatOptions{})
+}
+
+// NewResponsesEventToAnthropicStateWithOptions returns stream state with explicit compat flags.
+func NewResponsesEventToAnthropicStateWithOptions(opts ResponsesAnthropicCompatOptions) *ResponsesEventToAnthropicState {
 	return &ResponsesEventToAnthropicState{
+		Compat:                opts,
 		OutputIndexToBlockIdx: make(map[int]int),
 		Created:               time.Now().Unix(),
 	}
@@ -705,6 +743,9 @@ func flushOpenToolArgs(state *ResponsesEventToAnthropicState, itemArguments stri
 }
 
 func ensurePlaceholderTextBlock(state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {
+	if !state.Compat.EmitPlaceholderText {
+		return nil
+	}
 	if state.AnyContentBlock || state.ContentBlockOpen {
 		return nil
 	}
@@ -753,7 +794,7 @@ func closeCurrentBlock(state *ResponsesEventToAnthropicState) []AnthropicStreamE
 	state.ThinkingSignature = ""
 
 	var events []AnthropicStreamEvent
-	if blockType == "thinking" {
+	if blockType == "thinking" && state.Compat.EmitThinkingSignature {
 		events = append(events, AnthropicStreamEvent{
 			Type:  "content_block_delta",
 			Index: &idx,

@@ -390,9 +390,12 @@ func TestResponsesToAnthropic_Reasoning(t *testing.T) {
 	require.Len(t, anth.Content, 2)
 	assert.Equal(t, "thinking", anth.Content[0].Type)
 	assert.Equal(t, "Thinking about the answer...", anth.Content[0].Thinking)
-	assert.Equal(t, "sub2api_synthetic_thinking_signature", anth.Content[0].Signature)
+	assert.Empty(t, anth.Content[0].Signature)
 	assert.Equal(t, "text", anth.Content[1].Type)
 	assert.Equal(t, "42", anth.Content[1].Text)
+
+	anthClaude := ResponsesToAnthropicWithOptions(resp, "claude-opus-4-6", ClaudeCodeAnthropicCompat())
+	assert.Equal(t, "sub2api_synthetic_thinking_signature", anthClaude.Content[0].Signature)
 }
 
 func TestResponsesToAnthropic_Incomplete(t *testing.T) {
@@ -499,7 +502,7 @@ func TestStreamingTextOnly(t *testing.T) {
 }
 
 func TestResponsesEventToAnthropicEvents_ResponseDone(t *testing.T) {
-	state := NewResponsesEventToAnthropicState()
+	state := NewResponsesEventToAnthropicStateWithOptions(ClaudeCodeAnthropicCompat())
 	state.Model = "gpt-4o"
 
 	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
@@ -520,7 +523,7 @@ func TestResponsesEventToAnthropicEvents_ResponseDone(t *testing.T) {
 }
 
 func TestResponsesEventToAnthropicEvents_TopLevelTerminalUsage(t *testing.T) {
-	state := NewResponsesEventToAnthropicState()
+	state := NewResponsesEventToAnthropicStateWithOptions(ClaudeCodeAnthropicCompat())
 	state.Model = "gpt-4o"
 
 	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
@@ -548,7 +551,7 @@ func TestResponsesEventToAnthropicEvents_TopLevelTerminalUsage(t *testing.T) {
 }
 
 func TestResponsesEventToAnthropicEvents_ResponseDoneIncomplete(t *testing.T) {
-	state := NewResponsesEventToAnthropicState()
+	state := NewResponsesEventToAnthropicStateWithOptions(ClaudeCodeAnthropicCompat())
 	state.Model = "gpt-4o"
 
 	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
@@ -589,13 +592,12 @@ func TestStreamingCachedTokensUseAnthropicInputSemantics(t *testing.T) {
 		},
 	}, state)
 
-	require.Len(t, events, 4)
-	assert.Equal(t, "content_block_start", events[0].Type)
-	assert.Equal(t, "message_delta", events[2].Type)
-	assert.Equal(t, 3318, events[2].Usage.InputTokens)
-	assert.Equal(t, 50688, events[2].Usage.CacheReadInputTokens)
-	assert.Equal(t, 123, events[2].Usage.OutputTokens)
-	assert.Equal(t, "message_stop", events[3].Type)
+	require.Len(t, events, 2) // default: no empty placeholder
+	assert.Equal(t, "message_delta", events[0].Type)
+	assert.Equal(t, 3318, events[0].Usage.InputTokens)
+	assert.Equal(t, 50688, events[0].Usage.CacheReadInputTokens)
+	assert.Equal(t, 123, events[0].Usage.OutputTokens)
+	assert.Equal(t, "message_stop", events[1].Type)
 }
 
 func TestStreamingToolCall(t *testing.T) {
@@ -889,7 +891,7 @@ func TestStreamingReadToolDropsEmptyPages(t *testing.T) {
 }
 
 func TestStreamingReasoning(t *testing.T) {
-	state := NewResponsesEventToAnthropicState()
+	state := NewResponsesEventToAnthropicStateWithOptions(ClaudeCodeAnthropicCompat())
 
 	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
 		Type:     "response.created",
@@ -921,7 +923,7 @@ func TestStreamingReasoning(t *testing.T) {
 	assert.Equal(t, "thinking_delta", events[0].Delta.Type)
 	assert.Equal(t, "Let me think...", events[0].Delta.Thinking)
 
-	// reasoning done → signature_delta then content_block_stop
+	// reasoning done → signature_delta then content_block_stop (Claude compat on)
 	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
 		Type: "response.reasoning_summary_text.done",
 	}, state)
@@ -930,6 +932,29 @@ func TestStreamingReasoning(t *testing.T) {
 	assert.Equal(t, "signature_delta", events[0].Delta.Type)
 	assert.NotEmpty(t, events[0].Delta.Signature)
 	assert.Equal(t, "content_block_stop", events[1].Type)
+}
+
+func TestStreamingReasoning_DefaultNoSignature(t *testing.T) {
+	state := NewResponsesEventToAnthropicState()
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:     "response.created",
+		Response: &ResponsesResponse{ID: "resp_3b", Model: "gpt-5.2"},
+	}, state)
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.output_item.added",
+		OutputIndex: 0,
+		Item:        &ResponsesOutput{Type: "reasoning"},
+	}, state)
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.reasoning_summary_text.delta",
+		OutputIndex: 0,
+		Delta:       "Let me think...",
+	}, state)
+	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type: "response.reasoning_summary_text.done",
+	}, state)
+	require.Len(t, events, 1)
+	assert.Equal(t, "content_block_stop", events[0].Type)
 }
 
 func TestStreamingIncomplete(t *testing.T) {
@@ -1036,6 +1061,29 @@ func TestStreamingEmptyResponse(t *testing.T) {
 		},
 	}, state)
 
+	// Default: no placeholder text block
+	require.Len(t, events, 2)
+	assert.Equal(t, "message_delta", events[0].Type)
+	assert.Equal(t, "end_turn", events[0].Delta.StopReason)
+	assert.Equal(t, "message_stop", events[1].Type)
+}
+
+func TestStreamingEmptyResponse_ClaudeCompatPlaceholder(t *testing.T) {
+	state := NewResponsesEventToAnthropicStateWithOptions(ClaudeCodeAnthropicCompat())
+
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:     "response.created",
+		Response: &ResponsesResponse{ID: "resp_6b", Model: "gpt-5.2"},
+	}, state)
+
+	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type: "response.completed",
+		Response: &ResponsesResponse{
+			Status: "completed",
+			Usage:  &ResponsesUsage{InputTokens: 5, OutputTokens: 0},
+		},
+	}, state)
+
 	require.Len(t, events, 4) // placeholder text start/stop + message_delta + message_stop
 	assert.Equal(t, "content_block_start", events[0].Type)
 	assert.Equal(t, "text", events[0].ContentBlock.Type)
@@ -1046,7 +1094,7 @@ func TestStreamingEmptyResponse(t *testing.T) {
 }
 
 func TestStreamingReasoningAutoOpensWithoutItemAdded(t *testing.T) {
-	state := NewResponsesEventToAnthropicState()
+	state := NewResponsesEventToAnthropicStateWithOptions(ClaudeCodeAnthropicCompat())
 	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
 		Type:     "response.created",
 		Response: &ResponsesResponse{ID: "resp_reason_auto", Model: "gpt-5.5"},
@@ -1209,6 +1257,30 @@ func TestStreamingFailedNoOutput(t *testing.T) {
 	}, state)
 
 	// 2. response.failed with no prior output
+	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type: "response.failed",
+		Response: &ResponsesResponse{
+			Status: "failed",
+			Error:  &ResponsesError{Code: "rate_limit_error", Message: "Too many requests"},
+			Usage:  &ResponsesUsage{InputTokens: 20, OutputTokens: 0},
+		},
+	}, state)
+
+	// Default: no placeholder — only message_delta + message_stop
+	require.Len(t, events, 2)
+	assert.Equal(t, "message_delta", events[0].Type)
+	assert.Equal(t, "end_turn", events[0].Delta.StopReason)
+	assert.Equal(t, "message_stop", events[1].Type)
+}
+
+func TestStreamingFailedNoOutput_ClaudeCompatPlaceholder(t *testing.T) {
+	state := NewResponsesEventToAnthropicStateWithOptions(ClaudeCodeAnthropicCompat())
+
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:     "response.created",
+		Response: &ResponsesResponse{ID: "resp_fail_2b", Model: "gpt-5.2"},
+	}, state)
+
 	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
 		Type: "response.failed",
 		Response: &ResponsesResponse{

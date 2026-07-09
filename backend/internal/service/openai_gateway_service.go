@@ -6488,7 +6488,11 @@ func responsesStreamEventMayContributeToOutput(eventType string) bool {
 	case "response.output_text.delta",
 		"response.output_item.added",
 		"response.function_call_arguments.delta",
-		"response.reasoning_summary_text.delta":
+		"response.custom_tool_call_input.delta",
+		"response.reasoning_summary_text.delta",
+		// Codex/gpt-5.x often streams raw reasoning_text instead of (or before)
+		// summary_text; omit this and terminal output reconstruction drops thinking.
+		"response.reasoning_text.delta":
 		return true
 	default:
 		return false

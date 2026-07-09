@@ -1092,14 +1092,22 @@ func defaultCodexSynthInstructions(model string) string {
 	return "You are a helpful coding assistant."
 }
 
-// ensureCodexReasoningInclude 在请求带 reasoning 时补齐 include:["reasoning.encrypted_content"]。
+// ensureCodexReasoningInclude 在请求带 reasoning 时补齐：
+//  1. reasoning.summary="auto"（缺省时），让上游吐 reasoning_summary_* / 可读思考正文；
+//  2. include:["reasoning.encrypted_content"]，与真实 Codex 对齐（store=false 多轮回放）。
 //
-// 真实 Codex 在 reasoning 存在时总会请求加密推理内容（ChatGPT/store=false 场景下用于上下文回放）。
-// 该函数为加法式、幂等：仅在 include 缺失或未包含该项时追加；对非数组的异常 include 不做破坏性改写。
+// 加法式、幂等：不覆盖已有非空 summary；include 仅在缺失或未包含该项时追加；
+// 对非数组的异常 include 不做破坏性改写。
 func ensureCodexReasoningInclude(reqBody map[string]any) bool {
 	reasoning, ok := reqBody["reasoning"].(map[string]any)
 	if !ok || len(reasoning) == 0 {
 		return false
+	}
+	modified := false
+	if summary, _ := reasoning["summary"].(string); strings.TrimSpace(summary) == "" {
+		reasoning["summary"] = "auto"
+		reqBody["reasoning"] = reasoning
+		modified = true
 	}
 	const encrypted = "reasoning.encrypted_content"
 	switch existing := reqBody["include"].(type) {
@@ -1109,14 +1117,14 @@ func ensureCodexReasoningInclude(reqBody map[string]any) bool {
 	case []any:
 		for _, v := range existing {
 			if s, ok := v.(string); ok && s == encrypted {
-				return false
+				return modified
 			}
 		}
 		reqBody["include"] = append(existing, encrypted)
 		return true
 	default:
 		// include 为非预期类型时保持原样，避免破坏调用方意图。
-		return false
+		return modified
 	}
 }
 
