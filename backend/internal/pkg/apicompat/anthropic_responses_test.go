@@ -390,6 +390,7 @@ func TestResponsesToAnthropic_Reasoning(t *testing.T) {
 	require.Len(t, anth.Content, 2)
 	assert.Equal(t, "thinking", anth.Content[0].Type)
 	assert.Equal(t, "Thinking about the answer...", anth.Content[0].Thinking)
+	assert.Equal(t, "sub2api_synthetic_thinking_signature", anth.Content[0].Signature)
 	assert.Equal(t, "text", anth.Content[1].Type)
 	assert.Equal(t, "42", anth.Content[1].Text)
 }
@@ -508,12 +509,13 @@ func TestResponsesEventToAnthropicEvents_ResponseDone(t *testing.T) {
 			Usage:  &ResponsesUsage{InputTokens: 12, OutputTokens: 4},
 		},
 	}, state)
-	require.Len(t, events, 2)
-	assert.Equal(t, "message_delta", events[0].Type)
-	assert.Equal(t, "end_turn", events[0].Delta.StopReason)
-	assert.Equal(t, 12, events[0].Usage.InputTokens)
-	assert.Equal(t, 4, events[0].Usage.OutputTokens)
-	assert.Equal(t, "message_stop", events[1].Type)
+	require.Len(t, events, 4)
+	assert.Equal(t, "content_block_start", events[0].Type)
+	assert.Equal(t, "message_delta", events[2].Type)
+	assert.Equal(t, "end_turn", events[2].Delta.StopReason)
+	assert.Equal(t, 12, events[2].Usage.InputTokens)
+	assert.Equal(t, 4, events[2].Usage.OutputTokens)
+	assert.Equal(t, "message_stop", events[3].Type)
 	assert.Nil(t, FinalizeResponsesAnthropicStream(state))
 }
 
@@ -535,13 +537,14 @@ func TestResponsesEventToAnthropicEvents_TopLevelTerminalUsage(t *testing.T) {
 		},
 	}, state)
 
-	require.Len(t, events, 2)
-	assert.Equal(t, "message_delta", events[0].Type)
-	require.NotNil(t, events[0].Usage)
-	assert.Equal(t, 15, events[0].Usage.InputTokens)
-	assert.Equal(t, 5, events[0].Usage.CacheReadInputTokens)
-	assert.Equal(t, 6, events[0].Usage.OutputTokens)
-	assert.Equal(t, "message_stop", events[1].Type)
+	require.Len(t, events, 4)
+	assert.Equal(t, "content_block_start", events[0].Type)
+	assert.Equal(t, "message_delta", events[2].Type)
+	require.NotNil(t, events[2].Usage)
+	assert.Equal(t, 15, events[2].Usage.InputTokens)
+	assert.Equal(t, 5, events[2].Usage.CacheReadInputTokens)
+	assert.Equal(t, 6, events[2].Usage.OutputTokens)
+	assert.Equal(t, "message_stop", events[3].Type)
 }
 
 func TestResponsesEventToAnthropicEvents_ResponseDoneIncomplete(t *testing.T) {
@@ -556,10 +559,11 @@ func TestResponsesEventToAnthropicEvents_ResponseDoneIncomplete(t *testing.T) {
 			Usage:             &ResponsesUsage{InputTokens: 12, OutputTokens: 4},
 		},
 	}, state)
-	require.Len(t, events, 2)
-	assert.Equal(t, "message_delta", events[0].Type)
-	assert.Equal(t, "max_tokens", events[0].Delta.StopReason)
-	assert.Equal(t, "message_stop", events[1].Type)
+	require.Len(t, events, 4)
+	assert.Equal(t, "content_block_start", events[0].Type)
+	assert.Equal(t, "message_delta", events[2].Type)
+	assert.Equal(t, "max_tokens", events[2].Delta.StopReason)
+	assert.Equal(t, "message_stop", events[3].Type)
 	assert.Nil(t, FinalizeResponsesAnthropicStream(state))
 }
 
@@ -585,12 +589,13 @@ func TestStreamingCachedTokensUseAnthropicInputSemantics(t *testing.T) {
 		},
 	}, state)
 
-	require.Len(t, events, 2)
-	assert.Equal(t, "message_delta", events[0].Type)
-	assert.Equal(t, 3318, events[0].Usage.InputTokens)
-	assert.Equal(t, 50688, events[0].Usage.CacheReadInputTokens)
-	assert.Equal(t, 123, events[0].Usage.OutputTokens)
-	assert.Equal(t, "message_stop", events[1].Type)
+	require.Len(t, events, 4)
+	assert.Equal(t, "content_block_start", events[0].Type)
+	assert.Equal(t, "message_delta", events[2].Type)
+	assert.Equal(t, 3318, events[2].Usage.InputTokens)
+	assert.Equal(t, 50688, events[2].Usage.CacheReadInputTokens)
+	assert.Equal(t, 123, events[2].Usage.OutputTokens)
+	assert.Equal(t, "message_stop", events[3].Type)
 }
 
 func TestStreamingToolCall(t *testing.T) {
@@ -809,12 +814,21 @@ func TestStreamingMultiToolLateArgsDoneAfterItemDone(t *testing.T) {
 	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
 		Type:        "response.output_item.done",
 		OutputIndex: 3,
-		Item:        &ResponsesOutput{Type: "function_call", CallID: "call_bash", Name: "Bash"},
+		Item: &ResponsesOutput{
+			Type:      "function_call",
+			CallID:    "call_bash",
+			Name:      "Bash",
+			Arguments: `{"command":"ls -la"}`,
+		},
 	}, state)
 	assertDeltaHasStart(t, events)
-	require.Len(t, events, 1)
-	assert.Equal(t, "content_block_stop", events[0].Type)
+	require.Len(t, events, 2)
+	assert.Equal(t, "content_block_delta", events[0].Type)
+	assert.Equal(t, "input_json_delta", events[0].Delta.Type)
+	assert.JSONEq(t, `{"command":"ls -la"}`, events[0].Delta.PartialJSON)
 	assert.Equal(t, bashBlockIdx, *events[0].Index)
+	assert.Equal(t, "content_block_stop", events[1].Type)
+	assert.Equal(t, bashBlockIdx, *events[1].Index)
 
 	// Late arguments.done must be a no-op (no orphan delta on index 4).
 	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
@@ -907,12 +921,15 @@ func TestStreamingReasoning(t *testing.T) {
 	assert.Equal(t, "thinking_delta", events[0].Delta.Type)
 	assert.Equal(t, "Let me think...", events[0].Delta.Thinking)
 
-	// reasoning done
+	// reasoning done → signature_delta then content_block_stop
 	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
 		Type: "response.reasoning_summary_text.done",
 	}, state)
-	require.Len(t, events, 1)
-	assert.Equal(t, "content_block_stop", events[0].Type)
+	require.Len(t, events, 2)
+	assert.Equal(t, "content_block_delta", events[0].Type)
+	assert.Equal(t, "signature_delta", events[0].Delta.Type)
+	assert.NotEmpty(t, events[0].Delta.Signature)
+	assert.Equal(t, "content_block_stop", events[1].Type)
 }
 
 func TestStreamingIncomplete(t *testing.T) {
@@ -1019,9 +1036,112 @@ func TestStreamingEmptyResponse(t *testing.T) {
 		},
 	}, state)
 
-	require.Len(t, events, 2) // message_delta + message_stop
-	assert.Equal(t, "message_delta", events[0].Type)
-	assert.Equal(t, "end_turn", events[0].Delta.StopReason)
+	require.Len(t, events, 4) // placeholder text start/stop + message_delta + message_stop
+	assert.Equal(t, "content_block_start", events[0].Type)
+	assert.Equal(t, "text", events[0].ContentBlock.Type)
+	assert.Equal(t, "content_block_stop", events[1].Type)
+	assert.Equal(t, "message_delta", events[2].Type)
+	assert.Equal(t, "end_turn", events[2].Delta.StopReason)
+	assert.Equal(t, "message_stop", events[3].Type)
+}
+
+func TestStreamingReasoningAutoOpensWithoutItemAdded(t *testing.T) {
+	state := NewResponsesEventToAnthropicState()
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:     "response.created",
+		Response: &ResponsesResponse{ID: "resp_reason_auto", Model: "gpt-5.5"},
+	}, state)
+
+	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.reasoning_text.delta",
+		OutputIndex: 0,
+		Delta:       "auto open",
+	}, state)
+	require.Len(t, events, 2)
+	assert.Equal(t, "content_block_start", events[0].Type)
+	assert.Equal(t, "thinking", events[0].ContentBlock.Type)
+	assert.Equal(t, "thinking_delta", events[1].Delta.Type)
+
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type: "response.reasoning_text.done",
+	}, state)
+	require.Len(t, events, 2)
+	assert.Equal(t, "signature_delta", events[0].Delta.Type)
+	assert.Equal(t, "content_block_stop", events[1].Type)
+}
+
+func TestStreamingCustomToolCallInputDone(t *testing.T) {
+	state := NewResponsesEventToAnthropicState()
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:     "response.created",
+		Response: &ResponsesResponse{ID: "resp_custom_tool", Model: "gpt-5.5"},
+	}, state)
+
+	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.output_item.added",
+		OutputIndex: 0,
+		Item:        &ResponsesOutput{Type: "custom_tool_call", CallID: "call_patch", Name: "apply_patch"},
+	}, state)
+	require.Len(t, events, 1)
+	assert.Equal(t, "tool_use", events[0].ContentBlock.Type)
+
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.custom_tool_call_input.done",
+		OutputIndex: 0,
+		Arguments:   `{"patch":"*** Begin Patch"}`,
+	}, state)
+	require.Len(t, events, 2)
+	assert.Equal(t, "input_json_delta", events[0].Delta.Type)
+	assert.Equal(t, "content_block_stop", events[1].Type)
+}
+
+func TestStreamingFuncArgsDoneDoesNotCloseTextBlock(t *testing.T) {
+	state := NewResponsesEventToAnthropicState()
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:     "response.created",
+		Response: &ResponsesResponse{ID: "resp_args_text", Model: "gpt-5.5"},
+	}, state)
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:  "response.output_text.delta",
+		Delta: "hello",
+	}, state)
+
+	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.function_call_arguments.done",
+		OutputIndex: 9,
+		Arguments:   `{"x":1}`,
+	}, state)
+	assert.Empty(t, events)
+	assert.True(t, state.ContentBlockOpen)
+	assert.Equal(t, "text", state.CurrentBlockType)
+}
+
+func TestStreamingReadToolFlushesOnOutputItemDone(t *testing.T) {
+	state := NewResponsesEventToAnthropicState()
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:     "response.created",
+		Response: &ResponsesResponse{ID: "resp_read_flush", Model: "gpt-5.5"},
+	}, state)
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.output_item.added",
+		OutputIndex: 0,
+		Item:        &ResponsesOutput{Type: "function_call", CallID: "call_read", Name: "Read"},
+	}, state)
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.function_call_arguments.delta",
+		OutputIndex: 0,
+		Delta:       `{"file_path":"/tmp/a.go","pages":""}`,
+	}, state)
+
+	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.output_item.done",
+		OutputIndex: 0,
+		Item:        &ResponsesOutput{Type: "function_call", CallID: "call_read", Name: "Read"},
+	}, state)
+	require.Len(t, events, 2)
+	assert.Equal(t, "input_json_delta", events[0].Delta.Type)
+	assert.JSONEq(t, `{"file_path":"/tmp/a.go"}`, events[0].Delta.PartialJSON)
+	assert.Equal(t, "content_block_stop", events[1].Type)
 }
 
 func TestResponsesAnthropicEventToSSE(t *testing.T) {
@@ -1098,11 +1218,12 @@ func TestStreamingFailedNoOutput(t *testing.T) {
 		},
 	}, state)
 
-	// Should emit message_delta + message_stop (no block to close)
-	require.Len(t, events, 2)
-	assert.Equal(t, "message_delta", events[0].Type)
-	assert.Equal(t, "end_turn", events[0].Delta.StopReason)
-	assert.Equal(t, "message_stop", events[1].Type)
+	// Should emit placeholder text + message_delta + message_stop
+	require.Len(t, events, 4)
+	assert.Equal(t, "content_block_start", events[0].Type)
+	assert.Equal(t, "message_delta", events[2].Type)
+	assert.Equal(t, "end_turn", events[2].Delta.StopReason)
+	assert.Equal(t, "message_stop", events[3].Type)
 }
 
 func TestResponsesToAnthropic_Failed(t *testing.T) {

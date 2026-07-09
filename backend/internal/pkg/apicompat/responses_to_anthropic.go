@@ -34,8 +34,9 @@ func ResponsesToAnthropic(resp *ResponsesResponse, model string) *AnthropicRespo
 			}
 			if summaryText != "" {
 				blocks = append(blocks, AnthropicContentBlock{
-					Type:     "thinking",
-					Thinking: summaryText,
+					Type:      "thinking",
+					Thinking:  summaryText,
+					Signature: thinkingSignatureOrSynthetic(item.EncryptedContent),
 				})
 			}
 		case "message":
@@ -177,6 +178,8 @@ type ResponsesEventToAnthropicState struct {
 	CurrentToolArgs     string
 	CurrentToolHadDelta bool
 	HasToolCall         bool
+	AnyContentBlock     bool // true once any content_block_start was emitted
+	ThinkingSignature   string
 
 	// OutputIndexToBlockIdx maps Responses output_index → Anthropic content block index.
 	OutputIndexToBlockIdx map[int]int
@@ -217,7 +220,8 @@ func ResponsesEventToAnthropicEvents(
 		// custom/freeform 工具的输入增量与 function_call 参数增量同形。
 		"response.custom_tool_call_input.delta":
 		return resToAnthHandleFuncArgsDelta(evt, state)
-	case "response.function_call_arguments.done":
+	case "response.function_call_arguments.done",
+		"response.custom_tool_call_input.done":
 		return resToAnthHandleFuncArgsDone(evt, state)
 	case "response.output_item.done":
 		return resToAnthHandleOutputItemDone(evt, state)
@@ -225,8 +229,9 @@ func ResponsesEventToAnthropicEvents(
 		// 原始推理文本增量，与 reasoning summary 一样映射为 thinking。
 		"response.reasoning_text.delta":
 		return resToAnthHandleReasoningDelta(evt, state)
-	case "response.reasoning_summary_text.done":
-		return resToAnthHandleBlockDone(state)
+	case "response.reasoning_summary_text.done",
+		"response.reasoning_text.done":
+		return resToAnthHandleReasoningDone(evt, state)
 	// response.done 是 Realtime/WS 与项目透传路径使用的终止别名；
 	// 普通 Responses HTTP SSE 的公开终止事件仍以 response.completed 为主。
 	case "response.completed", "response.done", "response.incomplete", "response.failed":
@@ -245,6 +250,7 @@ func FinalizeResponsesAnthropicStream(state *ResponsesEventToAnthropicState) []A
 
 	var events []AnthropicStreamEvent
 	events = append(events, closeCurrentBlock(state)...)
+	events = append(events, ensurePlaceholderTextBlock(state)...)
 
 	stopReason := "end_turn"
 	if state.HasToolCall {
@@ -330,6 +336,7 @@ func resToAnthHandleOutputItemAdded(evt *ResponsesStreamEvent, state *ResponsesE
 		state.CurrentToolArgs = ""
 		state.CurrentToolHadDelta = false
 		state.HasToolCall = true
+		state.AnyContentBlock = true
 
 		events = append(events, AnthropicStreamEvent{
 			Type:  "content_block_start",
@@ -351,6 +358,8 @@ func resToAnthHandleOutputItemAdded(evt *ResponsesStreamEvent, state *ResponsesE
 		state.OutputIndexToBlockIdx[evt.OutputIndex] = idx
 		state.ContentBlockOpen = true
 		state.CurrentBlockType = "thinking"
+		state.ThinkingSignature = thinkingSignatureOrSynthetic(evt.Item.EncryptedContent)
+		state.AnyContentBlock = true
 
 		events = append(events, AnthropicStreamEvent{
 			Type:  "content_block_start",
@@ -382,6 +391,7 @@ func resToAnthHandleTextDelta(evt *ResponsesStreamEvent, state *ResponsesEventTo
 		idx := state.ContentBlockIndex
 		state.ContentBlockOpen = true
 		state.CurrentBlockType = "text"
+		state.AnyContentBlock = true
 
 		events = append(events, AnthropicStreamEvent{
 			Type:  "content_block_start",
@@ -439,8 +449,9 @@ func resToAnthHandleFuncArgsDone(evt *ResponsesStreamEvent, state *ResponsesEven
 	if !state.ContentBlockOpen {
 		return nil
 	}
+	// Do not close an unrelated open text/thinking block on a stray args.done.
 	if state.CurrentBlockType != "tool_use" {
-		return resToAnthHandleBlockDone(state)
+		return nil
 	}
 
 	raw := evt.Arguments
@@ -476,19 +487,44 @@ func resToAnthHandleReasoningDelta(evt *ResponsesStreamEvent, state *ResponsesEv
 		return nil
 	}
 
+	var events []AnthropicStreamEvent
 	blockIdx, ok := state.OutputIndexToBlockIdx[evt.OutputIndex]
-	if !ok {
-		return nil
+	if !ok || !state.ContentBlockOpen || state.CurrentBlockType != "thinking" {
+		events = append(events, closeCurrentBlock(state)...)
+		blockIdx = state.ContentBlockIndex
+		state.OutputIndexToBlockIdx[evt.OutputIndex] = blockIdx
+		state.ContentBlockOpen = true
+		state.CurrentBlockType = "thinking"
+		if state.ThinkingSignature == "" {
+			state.ThinkingSignature = thinkingSignatureOrSynthetic("")
+		}
+		state.AnyContentBlock = true
+		events = append(events, AnthropicStreamEvent{
+			Type:  "content_block_start",
+			Index: &blockIdx,
+			ContentBlock: &AnthropicContentBlock{
+				Type:     "thinking",
+				Thinking: "",
+			},
+		})
 	}
 
-	return []AnthropicStreamEvent{{
+	events = append(events, AnthropicStreamEvent{
 		Type:  "content_block_delta",
 		Index: &blockIdx,
 		Delta: &AnthropicDelta{
 			Type:     "thinking_delta",
 			Thinking: evt.Delta,
 		},
-	}}
+	})
+	return events
+}
+
+func resToAnthHandleReasoningDone(evt *ResponsesStreamEvent, state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {
+	if !state.ContentBlockOpen || state.CurrentBlockType != "thinking" {
+		return nil
+	}
+	return closeCurrentBlock(state)
 }
 
 func resToAnthHandleBlockDone(state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {
@@ -508,10 +544,23 @@ func resToAnthHandleOutputItemDone(evt *ResponsesStreamEvent, state *ResponsesEv
 		return resToAnthHandleWebSearchDone(evt, state)
 	}
 
-	if state.ContentBlockOpen {
-		return closeCurrentBlock(state)
+	if !state.ContentBlockOpen {
+		return nil
 	}
-	return nil
+
+	var events []AnthropicStreamEvent
+	switch evt.Item.Type {
+	case "function_call", "custom_tool_call":
+		if state.CurrentBlockType == "tool_use" {
+			events = append(events, flushOpenToolArgs(state, evt.Item.Arguments)...)
+		}
+	case "reasoning":
+		if state.CurrentBlockType == "thinking" && evt.Item.EncryptedContent != "" {
+			state.ThinkingSignature = thinkingSignatureOrSynthetic(evt.Item.EncryptedContent)
+		}
+	}
+	events = append(events, closeCurrentBlock(state)...)
+	return events
 }
 
 // resToAnthHandleWebSearchDone converts an OpenAI web_search_call output item
@@ -530,6 +579,7 @@ func resToAnthHandleWebSearchDone(evt *ResponsesStreamEvent, state *ResponsesEve
 
 	// Emit server_tool_use block (start + stop).
 	idx1 := state.ContentBlockIndex
+	state.AnyContentBlock = true
 	events = append(events, AnthropicStreamEvent{
 		Type:  "content_block_start",
 		Index: &idx1,
@@ -576,6 +626,7 @@ func resToAnthHandleCompleted(evt *ResponsesStreamEvent, state *ResponsesEventTo
 
 	var events []AnthropicStreamEvent
 	events = append(events, closeCurrentBlock(state)...)
+	events = append(events, ensurePlaceholderTextBlock(state)...)
 
 	stopReason := "end_turn"
 	if evt.Usage != nil {
@@ -621,19 +672,100 @@ func resToAnthHandleCompleted(evt *ResponsesStreamEvent, state *ResponsesEventTo
 	return events
 }
 
+// flushOpenToolArgs emits a single input_json_delta for the currently open
+// tool_use block when arguments were never streamed as deltas. Prefer
+// item.arguments from output_item.done, then the Read buffer.
+func flushOpenToolArgs(state *ResponsesEventToAnthropicState, itemArguments string) []AnthropicStreamEvent {
+	if !state.ContentBlockOpen || state.CurrentBlockType != "tool_use" || state.CurrentToolHadDelta {
+		return nil
+	}
+	raw := itemArguments
+	if raw == "" {
+		raw = state.CurrentToolArgs
+	}
+	if raw == "" {
+		return nil
+	}
+	if state.CurrentToolName == "Read" {
+		sanitized := sanitizeAnthropicToolUseInput(state.CurrentToolName, raw)
+		if len(sanitized) == 0 {
+			return nil
+		}
+		raw = string(sanitized)
+	}
+	idx := state.ContentBlockIndex
+	return []AnthropicStreamEvent{{
+		Type:  "content_block_delta",
+		Index: &idx,
+		Delta: &AnthropicDelta{
+			Type:        "input_json_delta",
+			PartialJSON: raw,
+		},
+	}}
+}
+
+func ensurePlaceholderTextBlock(state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {
+	if state.AnyContentBlock || state.ContentBlockOpen {
+		return nil
+	}
+	idx := state.ContentBlockIndex
+	state.AnyContentBlock = true
+	state.ContentBlockIndex++
+	return []AnthropicStreamEvent{
+		{
+			Type:  "content_block_start",
+			Index: &idx,
+			ContentBlock: &AnthropicContentBlock{
+				Type: "text",
+				Text: "",
+			},
+		},
+		{
+			Type:  "content_block_stop",
+			Index: &idx,
+		},
+	}
+}
+
+func thinkingSignatureOrSynthetic(encrypted string) string {
+	if encrypted != "" {
+		return encrypted
+	}
+	// Claude Code expects a signature on thinking blocks; xAI/OpenAI may omit
+	// Anthropic-style signatures. A stable synthetic value keeps the stream valid.
+	return "sub2api_synthetic_thinking_signature"
+}
+
 func closeCurrentBlock(state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {
 	if !state.ContentBlockOpen {
 		return nil
 	}
 	idx := state.ContentBlockIndex
+	blockType := state.CurrentBlockType
+	sig := state.ThinkingSignature
+
 	state.ContentBlockOpen = false
 	state.ContentBlockIndex++
 	state.CurrentBlockType = ""
 	state.CurrentToolName = ""
 	state.CurrentToolArgs = ""
 	state.CurrentToolHadDelta = false
-	return []AnthropicStreamEvent{{
+	state.ThinkingSignature = ""
+
+	var events []AnthropicStreamEvent
+	if blockType == "thinking" {
+		events = append(events, AnthropicStreamEvent{
+			Type:  "content_block_delta",
+			Index: &idx,
+			Delta: &AnthropicDelta{
+				Type:      "signature_delta",
+				Signature: thinkingSignatureOrSynthetic(sig),
+			},
+		})
+	}
+	events = append(events, AnthropicStreamEvent{
 		Type:  "content_block_stop",
 		Index: &idx,
-	}}
+	})
+	return events
 }

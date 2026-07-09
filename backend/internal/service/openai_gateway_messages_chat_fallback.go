@@ -396,6 +396,21 @@ func (s *OpenAIGatewayService) streamChatCompletionsAsAnthropic(
 			}
 		}
 	}
+	// Mirror Path A: close any open Anthropic block / emit placeholder text if
+	// the CC→Responses finalize did not produce a terminal Anthropic stop.
+	if !clientDisconnected {
+		for _, aEvt := range apicompat.FinalizeResponsesAnthropicStream(anthropicState) {
+			sse, err := apicompat.ResponsesAnthropicEventToSSE(aEvt)
+			if err != nil {
+				continue
+			}
+			writeStreamHeaders()
+			if _, err := fmt.Fprint(c.Writer, sse); err != nil {
+				clientDisconnected = true
+				break
+			}
+		}
+	}
 	if !clientDisconnected {
 		c.Writer.Flush()
 	}
