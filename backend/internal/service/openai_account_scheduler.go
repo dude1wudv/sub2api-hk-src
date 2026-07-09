@@ -276,7 +276,8 @@ func (s *defaultOpenAIAccountScheduler) Select(
 	}()
 
 	previousResponseID := strings.TrimSpace(req.PreviousResponseID)
-	if previousResponseID != "" && normalizeOpenAICompatiblePlatform(req.Platform) == PlatformOpenAI {
+	platform := normalizeOpenAICompatiblePlatform(req.Platform)
+	if previousResponseID != "" && (platform == PlatformOpenAI || platform == PlatformGrok) {
 		selection, err := s.service.selectAccountByPreviousResponseIDForCapability(
 			ctx,
 			req.GroupID,
@@ -285,6 +286,7 @@ func (s *defaultOpenAIAccountScheduler) Select(
 			req.ExcludedIDs,
 			req.RequiredCapability,
 			req.RequireCompact,
+			platform,
 		)
 		if err != nil {
 			return nil, decision, err

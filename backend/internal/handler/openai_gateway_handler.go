@@ -321,6 +321,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		)
 	}
 	previousResponseID := strings.TrimSpace(gjson.GetBytes(body, "previous_response_id").String())
+	requestPlatform := openAICompatibleRequestPlatform(apiKey)
 	if previousResponseID != "" {
 		previousResponseIDKind := service.ClassifyOpenAIPreviousResponseIDKind(previousResponseID)
 		reqLog = reqLog.With(
@@ -335,11 +336,13 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 			h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "previous_response_id must be a response.id (resp_*), not a message id")
 			return
 		}
-		reqLog.Warn("openai.request_validation_failed",
-			zap.String("reason", "previous_response_id_requires_wsv2"),
-		)
-		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "previous_response_id is only supported on Responses WebSocket v2")
-		return
+		if requestPlatform != service.PlatformGrok {
+			reqLog.Warn("openai.request_validation_failed",
+				zap.String("reason", "previous_response_id_requires_wsv2"),
+			)
+			h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "previous_response_id is only supported on Responses WebSocket v2")
+			return
+		}
 	}
 
 	setOpsRequestContext(c, reqModel, reqStream)
@@ -388,7 +391,6 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 
 	// Get subscription info (may be nil)
 	subscription, _ := middleware2.GetSubscriptionFromContext(c)
-	requestPlatform := openAICompatibleRequestPlatform(apiKey)
 
 	service.SetOpsLatencyMs(c, service.OpsAuthLatencyMsKey, time.Since(requestStart).Milliseconds())
 	routingStart := time.Now()
@@ -478,6 +480,13 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		}
 		if previousResponseID != "" && selection != nil && selection.Account != nil {
 			reqLog.Debug("openai.account_selected_with_previous_response_id", zap.Int64("account_id", selection.Account.ID))
+		}
+		if previousResponseID != "" && requestPlatform == service.PlatformGrok && !scheduleDecision.StickyPreviousHit {
+			forwardBody = service.RemovePreviousResponseIDFromBody(forwardBody)
+			reqLog.Debug("openai.grok_previous_response_id_soft_fallback",
+				zap.String("schedule_layer", scheduleDecision.Layer),
+				zap.Int64("selected_account_id", selection.Account.ID),
+			)
 		}
 		reqLog.Debug("openai.account_schedule_decision",
 			zap.String("layer", scheduleDecision.Layer),
@@ -968,6 +977,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 	sessionHash := h.gatewayService.GenerateSessionHash(c, body)
 	promptCacheKey := h.gatewayService.ExtractSessionID(c, body)
 	sessionHash, promptCacheKey = resolveOpenAIMessagesMetadataSession(sessionHash, promptCacheKey, reqModel, body)
+	previousResponseID := strings.TrimSpace(gjson.GetBytes(body, "previous_response_id").String())
 	if h.rejectIfCyberSessionBlocked(c, apiKey, body, reqModel, cyberBlockFormatAnthropic) {
 		return
 	}
@@ -988,7 +998,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithSchedulerForCapability(
 			c.Request.Context(),
 			apiKey.GroupID,
-			"", // no previous_response_id
+			previousResponseID,
 			sessionHash,
 			currentRoutingModel,
 			failedAccountIDs,
@@ -1058,6 +1068,13 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		defaultMappedModel := strings.TrimSpace(effectiveMappedModel)
 		// 应用渠道模型映射到请求体
 		forwardBody := mappedBodyForMessages(channelMappingMsg.Mapped, channelMappingMsg.MappedModel)
+		if previousResponseID != "" && requestPlatform == service.PlatformGrok && !scheduleDecision.StickyPreviousHit {
+			forwardBody = service.RemovePreviousResponseIDFromBody(forwardBody)
+			reqLog.Debug("openai_messages.grok_previous_response_id_soft_fallback",
+				zap.String("schedule_layer", scheduleDecision.Layer),
+				zap.Int64("selected_account_id", account.ID),
+			)
+		}
 		writerSizeBeforeForward := c.Writer.Size()
 		result, err := func() (*service.OpenAIForwardResult, error) {
 			defer func() {
@@ -1664,15 +1681,23 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 			return
 		}
 		if strings.TrimSpace(previousResponseID) != "" && !scheduleDecision.StickyPreviousHit {
-			if selection.ReleaseFunc != nil {
-				selection.ReleaseFunc()
+			if requestPlatform == service.PlatformGrok {
+				reqLog.Debug("openai.websocket_grok_previous_response_id_soft_fallback",
+					zap.String("previous_response_id_kind", previousResponseIDKind),
+					zap.Int64("selected_account_id", selection.Account.ID),
+					zap.String("schedule_layer", scheduleDecision.Layer),
+				)
+			} else {
+				if selection.ReleaseFunc != nil {
+					selection.ReleaseFunc()
+				}
+				reqLog.Warn("openai.websocket_previous_response_unbound",
+					zap.String("previous_response_id_kind", previousResponseIDKind),
+					zap.Int64("selected_account_id", selection.Account.ID),
+				)
+				closeOpenAIClientWS(wsConn, coderws.StatusPolicyViolation, "previous_response_id is not bound to an available account")
+				return
 			}
-			reqLog.Warn("openai.websocket_previous_response_unbound",
-				zap.String("previous_response_id_kind", previousResponseIDKind),
-				zap.Int64("selected_account_id", selection.Account.ID),
-			)
-			closeOpenAIClientWS(wsConn, coderws.StatusPolicyViolation, "previous_response_id is not bound to an available account")
-			return
 		}
 
 		account := selection.Account
@@ -1853,14 +1878,18 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 		// 切组/会话失配防护：previous_response_id 未在当前分组命中粘连账号（StickyPreviousHit=false），
 		// 说明该会话链不属于本次调度到的账号，原样转发会触发上游会话链鉴权失败（“鉴权失败，请检查 API Key”）。
 		// 故剥离首包里的 previous_response_id，改用首包内 input 重建上下文；带 function_call_output 的
-		// 工具续链无法重建，保持原样。仅作用于首轮首包，后续 turn 的续链由 WS 转发层既有逻辑处理。
-		if previousResponseID != "" && !scheduleDecision.StickyPreviousHit &&
-			!service.ValidateFunctionCallOutputContextBytes(wsFirstMessage).HasFunctionCallOutput {
-			wsFirstMessage = service.RemovePreviousResponseIDFromBody(wsFirstMessage)
-			reqLog.Debug("openai.websocket_previous_response_id_stripped_cross_group",
-				zap.Int64("account_id", account.ID),
-				zap.String("schedule_layer", scheduleDecision.Layer),
-			)
+		// 工具续链无法重建，OpenAI 保持原样。Grok 按软降级策略一律剥离。
+		if previousResponseID != "" && !scheduleDecision.StickyPreviousHit {
+			shouldStripPrevious := requestPlatform == service.PlatformGrok ||
+				!service.ValidateFunctionCallOutputContextBytes(wsFirstMessage).HasFunctionCallOutput
+			if shouldStripPrevious {
+				wsFirstMessage = service.RemovePreviousResponseIDFromBody(wsFirstMessage)
+				reqLog.Debug("openai.websocket_previous_response_id_stripped_cross_group",
+					zap.Int64("account_id", account.ID),
+					zap.String("schedule_layer", scheduleDecision.Layer),
+					zap.String("request_platform", requestPlatform),
+				)
+			}
 		}
 
 		// WebSocket 首包可能很大，hash 必须在 hooks 外算成字符串，避免 AfterTurn 闭包保活请求体。

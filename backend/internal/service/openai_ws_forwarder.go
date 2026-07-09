@@ -4310,7 +4310,7 @@ func (s *OpenAIGatewayService) SelectAccountByPreviousResponseID(
 	excludedIDs map[int64]struct{},
 	requireCompact bool,
 ) (*AccountSelectionResult, error) {
-	return s.selectAccountByPreviousResponseIDForCapability(ctx, groupID, previousResponseID, requestedModel, excludedIDs, "", requireCompact)
+	return s.selectAccountByPreviousResponseIDForCapability(ctx, groupID, previousResponseID, requestedModel, excludedIDs, "", requireCompact, PlatformOpenAI)
 }
 
 func (s *OpenAIGatewayService) selectAccountByPreviousResponseIDForCapability(
@@ -4321,6 +4321,7 @@ func (s *OpenAIGatewayService) selectAccountByPreviousResponseIDForCapability(
 	excludedIDs map[int64]struct{},
 	requiredCapability OpenAIEndpointCapability,
 	requireCompact bool,
+	expectedPlatform string,
 ) (*AccountSelectionResult, error) {
 	if s == nil {
 		return nil, nil
@@ -4349,12 +4350,19 @@ func (s *OpenAIGatewayService) selectAccountByPreviousResponseIDForCapability(
 		_ = store.DeleteResponseAccount(ctx, derefGroupID(groupID), responseID)
 		return nil, nil
 	}
-	// 非 WSv2 场景（如 force_http/全局关闭）不应使用 previous_response_id 粘连，
-	// 以保持“回滚到 HTTP”后的历史行为一致性。
-	if s.getOpenAIWSProtocolResolver().Resolve(account).Transport != OpenAIUpstreamTransportResponsesWebsocketV2 {
+	expectedPlatform = normalizeOpenAICompatiblePlatform(expectedPlatform)
+	if !previousResponseStickyAccountMatches(account, expectedPlatform) {
+		// 平台不一致：不删绑定，避免 OpenAI/Grok 误清对方续链。
 		return nil, nil
 	}
-	if shouldClearStickySession(account, requestedModel) || !account.IsOpenAI() || !account.IsSchedulable() {
+	if account.IsOpenAI() {
+		// 非 WSv2 场景（如 force_http/全局关闭）不应使用 previous_response_id 粘连，
+		// 以保持“回滚到 HTTP”后的历史行为一致性。
+		if s.getOpenAIWSProtocolResolver().Resolve(account).Transport != OpenAIUpstreamTransportResponsesWebsocketV2 {
+			return nil, nil
+		}
+	}
+	if shouldClearStickySession(account, requestedModel) || !account.IsSchedulable() {
 		_ = store.DeleteResponseAccount(ctx, derefGroupID(groupID), responseID)
 		return nil, nil
 	}
@@ -4372,8 +4380,14 @@ func (s *OpenAIGatewayService) selectAccountByPreviousResponseIDForCapability(
 	// account over its 5h/7d threshold keeps serving the same response chain even though
 	// normal scheduling skips it. Pause is transient, so fall through to normal scheduling
 	// without deleting the binding (the window may reset before the next turn).
-	if paused, _ := shouldAutoPauseOpenAIAccountByQuota(ctx, account); paused {
-		return nil, nil
+	if account.IsOpenAI() {
+		if paused, _ := shouldAutoPauseOpenAIAccountByQuota(ctx, account); paused {
+			return nil, nil
+		}
+	} else if account.IsGrok() {
+		if paused, _ := shouldAutoPauseGrokAccountByQuota(account); paused {
+			return nil, nil
+		}
 	}
 	if s.schedulerSnapshot != nil && s.accountRepo != nil {
 		latest, latestErr := s.accountRepo.GetByID(ctx, account.ID)
@@ -4381,7 +4395,13 @@ func (s *OpenAIGatewayService) selectAccountByPreviousResponseIDForCapability(
 			_ = store.DeleteResponseAccount(ctx, derefGroupID(groupID), responseID)
 			return nil, nil
 		}
-		if shouldClearStickySession(latest, requestedModel) || !latest.IsOpenAI() || !latest.IsSchedulable() {
+		if !previousResponseStickyAccountMatches(latest, expectedPlatform) {
+			return nil, nil
+		}
+		if latest.IsOpenAI() && s.getOpenAIWSProtocolResolver().Resolve(latest).Transport != OpenAIUpstreamTransportResponsesWebsocketV2 {
+			return nil, nil
+		}
+		if shouldClearStickySession(latest, requestedModel) || !latest.IsSchedulable() {
 			_ = store.DeleteResponseAccount(ctx, derefGroupID(groupID), responseID)
 			return nil, nil
 		}
@@ -4395,8 +4415,14 @@ func (s *OpenAIGatewayService) selectAccountByPreviousResponseIDForCapability(
 		if !latest.SupportsOpenAIEndpointCapability(requiredCapability) {
 			return nil, nil
 		}
-		if paused, _ := shouldAutoPauseOpenAIAccountByQuota(ctx, latest); paused {
-			return nil, nil
+		if latest.IsOpenAI() {
+			if paused, _ := shouldAutoPauseOpenAIAccountByQuota(ctx, latest); paused {
+				return nil, nil
+			}
+		} else if latest.IsGrok() {
+			if paused, _ := shouldAutoPauseGrokAccountByQuota(latest); paused {
+				return nil, nil
+			}
 		}
 		if s.isOpenAIAccountRuntimeBlocked(latest) {
 			_ = store.DeleteResponseAccount(ctx, derefGroupID(groupID), responseID)
@@ -4437,6 +4463,19 @@ func (s *OpenAIGatewayService) selectAccountByPreviousResponseIDForCapability(
 		}, nil
 	}
 	return nil, nil
+}
+
+func previousResponseStickyAccountMatches(account *Account, expectedPlatform string) bool {
+	if account == nil {
+		return false
+	}
+	expectedPlatform = normalizeOpenAICompatiblePlatform(expectedPlatform)
+	switch expectedPlatform {
+	case PlatformGrok:
+		return account.IsGrok()
+	default:
+		return account.IsOpenAI()
+	}
 }
 
 func classifyOpenAIWSAcquireError(err error) string {

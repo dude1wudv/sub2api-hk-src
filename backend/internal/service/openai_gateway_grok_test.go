@@ -624,6 +624,9 @@ func TestForwardGrokResponsesStreamingUsesXAIResponsesAndSnapshots(t *testing.T)
 	require.Contains(t, recorder.Header().Get("Content-Type"), "text/event-stream")
 	require.Contains(t, recorder.Body.String(), "response.output_text.delta")
 	require.NotNil(t, repo.updates[52][grokQuotaSnapshotExtraKey])
+	boundAccountID, bindErr := svc.getOpenAIWSStateStore().GetResponseAccount(context.Background(), 0, "resp_grok")
+	require.NoError(t, bindErr)
+	require.Equal(t, account.ID, boundAccountID)
 }
 
 func TestForwardAsChatCompletionsForGrokStreamingUsesRawXAIChatCompletions(t *testing.T) {
