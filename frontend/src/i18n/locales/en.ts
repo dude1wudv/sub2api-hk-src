@@ -945,6 +945,9 @@ export default {
     cost: 'Cost',
     firstToken: 'First Token',
     duration: 'Duration',
+    latency: 'Latency',
+    latencyFirstToken: 'First',
+    latencyDuration: 'Total',
     time: 'Time',
     ws: 'WS',
     stream: 'Stream',
@@ -4971,9 +4974,8 @@ export default {
       failedToLoadUser: 'Failed to load user info',
       userDeletedBadge: 'Deleted',
       tokenRanking: {
-        title: 'User Token Ranking',
-        subtitle: 'Per-user token usage for the current filters and time range; click a row to drill down',
-        searchPlaceholder: 'Search user email...',
+        subtitle: 'Per-user token usage for the current filters and time range',
+        rowHint: "Click to view this user's usage details",
         userCount: '{count} users',
         columns: {
           user: 'User',
