@@ -91,13 +91,15 @@ func (s *OpenAIGatewayService) forwardGrokResponses(
 		return s.handleErrorResponse(ctx, resp, c, account, patchedBody, upstreamModel)
 	}
 
-	s.updateGrokUsageSnapshot(ctx, account.ID, xai.ParseQuotaHeaders(resp.Header, resp.StatusCode))
+	quotaSnapshot := xai.ParseQuotaHeaders(resp.Header, resp.StatusCode)
+	s.updateGrokUsageSnapshot(ctx, account.ID, quotaSnapshot)
+	s.maybeClearGrokTempUnschedulable(ctx, account, quotaSnapshot)
 
 	var usage *OpenAIUsage
 	var firstTokenMs *int
 	responseID := ""
 	if reqStream {
-		streamResult, err := s.handleStreamingResponse(ctx, resp, c, account, startTime, originalModel, upstreamModel)
+		streamResult, err := s.handleStreamingResponse(ctx, resp, c, account, startTime, originalModel, upstreamModel, upstreamStart)
 		if err != nil {
 			return nil, err
 		}
@@ -485,37 +487,134 @@ func (s *OpenAIGatewayService) handleGrokAccountUpstreamError(ctx context.Contex
 	// shouldFailoverUpstreamError also excludes 410.
 	switch statusCode {
 	case http.StatusUnauthorized:
-		s.tempUnscheduleGrok(ctx, account, 10*time.Minute, "grok oauth token unauthorized")
+		s.tempUnscheduleGrok(ctx, account, 10*time.Minute, statusCode, "grok oauth token unauthorized", nil)
 	case http.StatusForbidden:
-		s.tempUnscheduleGrok(ctx, account, 30*time.Minute, "grok entitlement or subscription tier denied")
+		s.tempUnscheduleGrok(ctx, account, 30*time.Minute, statusCode, "grok entitlement or subscription tier denied", nil)
 	case http.StatusTooManyRequests:
-		cooldown := 2 * time.Minute
-		if snapshot := xai.ParseQuotaHeaders(headers, statusCode); snapshot != nil && snapshot.RetryAfterSeconds != nil && *snapshot.RetryAfterSeconds > 0 {
-			cooldown = time.Duration(*snapshot.RetryAfterSeconds) * time.Second
-		}
-		s.tempUnscheduleGrok(ctx, account, cooldown, "grok rate limited")
+		snapshot := xai.ParseQuotaHeaders(headers, statusCode)
+		cooldown := grokRateLimitCooldown(snapshot)
+		s.tempUnscheduleGrok(ctx, account, cooldown, statusCode, "grok rate limited", snapshot)
 	default:
 		if statusCode >= 500 {
-			s.tempUnscheduleGrok(ctx, account, 2*time.Minute, "grok upstream temporary error")
+			s.tempUnscheduleGrok(ctx, account, 2*time.Minute, statusCode, "grok upstream temporary error", nil)
 		}
 	}
 	_ = responseBody
 }
 
-func (s *OpenAIGatewayService) tempUnscheduleGrok(ctx context.Context, account *Account, cooldown time.Duration, reason string) {
+const grokTempUnschedMaxCooldown = 30 * time.Minute
+
+func grokRateLimitCooldown(snapshot *xai.QuotaSnapshot) time.Duration {
+	cooldown := 2 * time.Minute
+	now := time.Now()
+	if snapshot != nil && snapshot.RetryAfterSeconds != nil && *snapshot.RetryAfterSeconds > 0 {
+		cooldown = time.Duration(*snapshot.RetryAfterSeconds) * time.Second
+	} else if snapshot != nil {
+		var earliest *time.Time
+		for _, window := range []*xai.QuotaWindow{snapshot.Requests, snapshot.Tokens} {
+			if window == nil || window.ResetUnix == nil || *window.ResetUnix <= 0 {
+				continue
+			}
+			resetAt := time.Unix(*window.ResetUnix, 0)
+			if resetAt.After(now) && (earliest == nil || resetAt.Before(*earliest)) {
+				earliest = &resetAt
+			}
+		}
+		if earliest != nil {
+			cooldown = earliest.Sub(now)
+		}
+	}
+	if cooldown < time.Second {
+		cooldown = time.Second
+	}
+	if cooldown > grokTempUnschedMaxCooldown {
+		cooldown = grokTempUnschedMaxCooldown
+	}
+	return cooldown
+}
+
+func (s *OpenAIGatewayService) tempUnscheduleGrok(ctx context.Context, account *Account, cooldown time.Duration, statusCode int, reason string, snapshot *xai.QuotaSnapshot) {
 	if s == nil || account == nil {
 		return
 	}
-	until := time.Now().Add(cooldown)
+	now := time.Now()
+	until := now.Add(cooldown)
 	if account.TempUnschedulableUntil != nil && account.TempUnschedulableUntil.After(until) {
 		until = *account.TempUnschedulableUntil
 	}
+
+	state := &TempUnschedState{
+		UntilUnix:       until.Unix(),
+		TriggeredAtUnix: now.Unix(),
+		StatusCode:      statusCode,
+		MatchedKeyword:  reason,
+		ErrorMessage:    reason,
+	}
+	if snapshot != nil && snapshot.RetryAfterSeconds != nil {
+		state.ErrorMessage = fmt.Sprintf("%s (retry-after=%ds)", reason, *snapshot.RetryAfterSeconds)
+	}
+	reasonPayload := reason
+	if raw, err := json.Marshal(state); err == nil {
+		reasonPayload = string(raw)
+	}
+
 	s.BlockAccountScheduling(account, until, reason)
 	if s.accountRepo != nil {
 		stateCtx, cancel := openAIAccountStateContext(ctx)
 		defer cancel()
-		_ = s.accountRepo.SetTempUnschedulable(stateCtx, account.ID, until, reason)
+		_ = s.accountRepo.SetTempUnschedulable(stateCtx, account.ID, until, reasonPayload)
 	}
+	if s.rateLimitService != nil && s.rateLimitService.tempUnschedCache != nil {
+		stateCtx, cancel := openAIAccountStateContext(ctx)
+		defer cancel()
+		_ = s.rateLimitService.tempUnschedCache.SetTempUnsched(stateCtx, account.ID, state)
+	}
+	account.TempUnschedulableUntil = &until
+	account.TempUnschedulableReason = reasonPayload
+}
+
+func (s *OpenAIGatewayService) maybeClearGrokTempUnschedulable(ctx context.Context, account *Account, snapshot *xai.QuotaSnapshot) {
+	if s == nil || account == nil || account.ID <= 0 {
+		return
+	}
+	now := time.Now()
+	hasActiveTemp := account.TempUnschedulableUntil != nil && account.TempUnschedulableUntil.After(now)
+	runtimeBlocked := s.isOpenAIAccountRuntimeBlocked(account)
+	if !hasActiveTemp && !runtimeBlocked {
+		return
+	}
+
+	// Clear when cooldown already expired, or upstream headers show recovery.
+	expired := account.TempUnschedulableUntil != nil && !account.TempUnschedulableUntil.After(now)
+	recoveredByHeaders := false
+	if snapshot != nil {
+		retryActive := grokQuotaRetryAfterActive(snapshot, now)
+		hasRemaining := false
+		for _, window := range []*xai.QuotaWindow{snapshot.Requests, snapshot.Tokens} {
+			if window != nil && window.Remaining != nil && *window.Remaining > 0 {
+				hasRemaining = true
+				break
+			}
+		}
+		recoveredByHeaders = !retryActive && (hasRemaining || snapshot.StatusCode > 0 && snapshot.StatusCode < 400)
+	}
+	if !expired && !recoveredByHeaders {
+		return
+	}
+
+	s.ClearAccountSchedulingBlock(account.ID)
+	if s.accountRepo != nil {
+		stateCtx, cancel := openAIAccountStateContext(ctx)
+		defer cancel()
+		_ = s.accountRepo.ClearTempUnschedulable(stateCtx, account.ID)
+	}
+	if s.rateLimitService != nil && s.rateLimitService.tempUnschedCache != nil {
+		stateCtx, cancel := openAIAccountStateContext(ctx)
+		defer cancel()
+		_ = s.rateLimitService.tempUnschedCache.DeleteTempUnsched(stateCtx, account.ID)
+	}
+	account.TempUnschedulableUntil = nil
+	account.TempUnschedulableReason = ""
 }
 
 func ptrStringOrNil(value string) *string {

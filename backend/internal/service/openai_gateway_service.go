@@ -495,6 +495,9 @@ func NewOpenAIGatewayService(
 	if openAITokenProvider != nil {
 		openAITokenProvider.SetAccountRuntimeBlocker(svc)
 	}
+	if grokTokenProvider != nil {
+		grokTokenProvider.SetAccountRuntimeBlocker(svc)
+	}
 	svc.logOpenAIWSModeBootstrap()
 	return svc
 }
@@ -1658,11 +1661,18 @@ func shouldAutoPauseGrokAccountByQuota(account *Account) (bool, openAIQuotaAutoP
 	if account == nil || !account.IsGrok() || account.Type != AccountTypeOAuth {
 		return false, openAIQuotaAutoPauseDecision{}
 	}
+	now := time.Now()
+	if billing, _ := grokBillingSnapshotFromExtra(account.Extra); billing != nil &&
+		billing.State == xai.BillingStateObserved &&
+		billing.Utilization >= 100 {
+		if !grokBillingSnapshotStaleForPause(billing, now) {
+			return true, openAIQuotaAutoPauseDecision{window: "weekly", threshold: 1, utilization: billing.Utilization / 100}
+		}
+	}
 	snapshot, err := grokQuotaSnapshotFromExtra(account.Extra)
 	if err != nil || snapshot == nil {
 		return false, openAIQuotaAutoPauseDecision{}
 	}
-	now := time.Now()
 	if grokQuotaSnapshotStaleForPause(snapshot, now) {
 		return false, openAIQuotaAutoPauseDecision{}
 	}
@@ -1676,6 +1686,17 @@ func shouldAutoPauseGrokAccountByQuota(account *Account) (bool, openAIQuotaAutoP
 		return true, decision
 	}
 	return false, openAIQuotaAutoPauseDecision{}
+}
+
+func grokBillingSnapshotStaleForPause(snapshot *xai.BillingSnapshot, now time.Time) bool {
+	if snapshot == nil || strings.TrimSpace(snapshot.UpdatedAt) == "" {
+		return false
+	}
+	updatedAt, err := parseTime(snapshot.UpdatedAt)
+	if err != nil {
+		return false
+	}
+	return now.Sub(updatedAt) >= openAICodexAutoPauseStaleAfter
 }
 
 func grokQuotaRetryAfterActive(snapshot *xai.QuotaSnapshot, now time.Time) bool {

@@ -343,7 +343,9 @@ func (s *OpenAIGatewayService) ForwardGrokMedia(
 		return s.handleGrokMediaErrorResponse(ctx, resp, c, account, requestIDHeader, requestModel)
 	}
 
-	s.updateGrokUsageSnapshot(ctx, account.ID, xai.ParseQuotaHeaders(resp.Header, resp.StatusCode))
+	quotaSnapshot := xai.ParseQuotaHeaders(resp.Header, resp.StatusCode)
+	s.updateGrokUsageSnapshot(ctx, account.ID, quotaSnapshot)
+	s.maybeClearGrokTempUnschedulable(ctx, account, quotaSnapshot)
 	respBody, err := ReadUpstreamResponseBody(resp.Body, s.cfg, c, openAITooLargeError)
 	if err != nil {
 		return nil, err

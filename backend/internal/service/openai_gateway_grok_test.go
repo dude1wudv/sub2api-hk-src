@@ -866,6 +866,160 @@ func TestForwardGrokResponsesStreamingUsesXAIResponsesAndSnapshots(t *testing.T)
 	require.Equal(t, account.ID, boundAccountID)
 }
 
+func TestForwardGrokResponsesStreamingFirstTokenUsesUpstreamStart(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	body := []byte(`{"model":"grok","input":"hi","stream":true}`)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Request.Header.Set("OpenAI-Beta", "responses=experimental")
+
+	account := &Account{
+		ID:          152,
+		Name:        "grok",
+		Platform:    PlatformGrok,
+		Type:        AccountTypeOAuth,
+		Concurrency: 1,
+		Credentials: map[string]any{
+			"access_token": "access-token",
+			"expires_at":   time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+			"base_url":     xai.DefaultCLIBaseURL,
+		},
+	}
+	repo := &grokQuotaAccountRepo{
+		mockAccountRepoForPlatform: &mockAccountRepoForPlatform{
+			accountsByID: map[int64]*Account{152: account},
+		},
+	}
+	upstreamBody := strings.Join([]string{
+		`data: {"type":"response.created","response":{"id":"resp_ft"}}`,
+		"",
+		`data: {"type":"response.output_text.delta","sequence_number":0,"delta":"ok"}`,
+		"",
+		`data: {"type":"response.completed","sequence_number":1,"response":{"id":"resp_ft","model":"grok-4.3","usage":{"input_tokens":1,"output_tokens":1}}}`,
+		"",
+	}, "\n")
+	upstream := &httpUpstreamRecorder{
+		delay: 150 * time.Millisecond,
+		resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type":   []string{"text/event-stream"},
+				"Xai-Request-Id": []string{"xai-ft-req"},
+			},
+			Body: io.NopCloser(strings.NewReader(upstreamBody)),
+		},
+	}
+	svc := &OpenAIGatewayService{
+		httpUpstream:      upstream,
+		grokTokenProvider: NewGrokTokenProvider(repo, nil),
+		accountRepo:       repo,
+	}
+
+	entryStart := time.Now().Add(-2 * time.Second)
+	result, err := svc.forwardGrokResponses(context.Background(), c, account, body, "grok", true, entryStart)
+	require.NoError(t, err)
+	require.NotNil(t, result.FirstTokenMs)
+	require.Less(t, *result.FirstTokenMs, 800, "first token should use Do() baseline, not entry startTime")
+	require.GreaterOrEqual(t, *result.FirstTokenMs, 100)
+	require.GreaterOrEqual(t, int(result.Duration.Milliseconds()), 1800)
+}
+
+func TestForwardAsChatCompletionsForGrokStreamingFirstTokenUsesUpstreamStart(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+
+	account := &Account{
+		ID:       153,
+		Name:     "grok",
+		Platform: PlatformGrok,
+		Type:     AccountTypeOAuth,
+	}
+	upstreamBody := strings.Join([]string{
+		`data: {"id":"chatcmpl_ft","object":"chat.completion.chunk","model":"grok-4.3","choices":[{"index":0,"delta":{"content":"ok"}}]}`,
+		"",
+		`data: {"id":"chatcmpl_ft","object":"chat.completion.chunk","model":"grok-4.3","choices":[],"usage":{"prompt_tokens":2,"completion_tokens":1,"total_tokens":3}}`,
+		"",
+		"data: [DONE]",
+		"",
+	}, "\n")
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header: http.Header{
+			"Content-Type": []string{"text/event-stream"},
+			"X-Request-Id": []string{"chat-ft-req"},
+		},
+		Body: io.NopCloser(strings.NewReader(upstreamBody)),
+	}
+	svc := &OpenAIGatewayService{cfg: rawChatCompletionsTestConfig()}
+
+	entryStart := time.Now().Add(-2 * time.Second)
+	upstreamStart := time.Now()
+	result, err := svc.streamRawChatCompletions(
+		c,
+		resp,
+		account,
+		"grok",
+		"grok-4.3",
+		"grok-4.3",
+		nil,
+		nil,
+		entryStart,
+		upstreamStart,
+		64,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, result.FirstTokenMs)
+	require.Less(t, *result.FirstTokenMs, 500, "raw CC first token should use upstreamStart, not entry startTime")
+	require.GreaterOrEqual(t, int(result.Duration.Milliseconds()), 1800)
+}
+
+func TestHandleChatStreamingResponseFirstTokenUsesUpstreamStart(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+
+	upstreamBody := strings.Join([]string{
+		`data: {"type":"response.created","response":{"id":"resp_ft"}}`,
+		"",
+		`data: {"type":"response.output_text.delta","delta":"ok"}`,
+		"",
+		`data: {"type":"response.completed","response":{"id":"resp_ft","model":"grok-4.3","usage":{"input_tokens":1,"output_tokens":1}}}`,
+		"",
+	}, "\n")
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}, "x-request-id": []string{"rid_ft"}},
+		Body:       io.NopCloser(strings.NewReader(upstreamBody)),
+	}
+	svc := &OpenAIGatewayService{cfg: rawChatCompletionsTestConfig()}
+
+	entryStart := time.Now().Add(-2 * time.Second)
+	upstreamStart := time.Now()
+	result, err := svc.handleChatStreamingResponse(
+		resp,
+		c,
+		&Account{ID: 154, Platform: PlatformGrok, Type: AccountTypeOAuth},
+		"grok",
+		"grok-4.3",
+		"grok-4.3",
+		entryStart,
+		upstreamStart,
+		64,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, result.FirstTokenMs)
+	require.Less(t, *result.FirstTokenMs, 500, "CC→Responses first token should use upstreamStart")
+	require.GreaterOrEqual(t, int(result.Duration.Milliseconds()), 1800)
+}
+
 func TestForwardAsChatCompletionsForGrokStreamingUsesRawXAIChatCompletions(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -1026,7 +1180,11 @@ func TestHandleGrokAccountUpstreamErrorTempUnschedulesReadinessStates(t *testing
 			require.True(t, svc.isOpenAIAccountRuntimeBlocked(account))
 			require.Equal(t, 1, repo.tempUnschedCalls)
 			require.Equal(t, account.ID, repo.lastTempUnschedID)
-			require.Equal(t, tt.wantReason, repo.lastTempUnschedReason)
+			require.Contains(t, repo.lastTempUnschedReason, tt.wantReason)
+			var state TempUnschedState
+			require.NoError(t, json.Unmarshal([]byte(repo.lastTempUnschedReason), &state))
+			require.Equal(t, tt.status, state.StatusCode)
+			require.Equal(t, tt.wantReason, state.MatchedKeyword)
 			require.True(t, repo.lastTempUnschedUntil.After(before.Add(tt.wantMinCooldown)))
 			require.True(t, repo.lastTempUnschedUntil.Before(before.Add(tt.wantMaxCooldown)))
 		})

@@ -18,15 +18,17 @@ const (
 	grokQuotaUpstreamTimeout = 20 * time.Second
 	grokQuotaProbeInput      = "."
 	grokQuotaDefaultModel    = "grok-4.3"
+	grokBillingSnapshotKey   = "grok_billing_snapshot"
 )
 
 type GrokQuotaProbeResult struct {
-	Source          string             `json:"source"`
-	Snapshot        *xai.QuotaSnapshot `json:"snapshot,omitempty"`
-	StatusCode      int                `json:"status_code,omitempty"`
-	HeadersObserved bool               `json:"headers_observed"`
-	ResetSupported  bool               `json:"reset_supported"`
-	FetchedAt       int64              `json:"fetched_at"`
+	Source          string               `json:"source"`
+	Snapshot        *xai.QuotaSnapshot   `json:"snapshot,omitempty"`
+	Billing         *xai.BillingSnapshot `json:"billing,omitempty"`
+	StatusCode      int                  `json:"status_code,omitempty"`
+	HeadersObserved bool                 `json:"headers_observed"`
+	ResetSupported  bool                 `json:"reset_supported"`
+	FetchedAt       int64                `json:"fetched_at"`
 }
 
 type GrokQuotaResetResult struct {
@@ -62,6 +64,43 @@ func (s *GrokQuotaService) ProbeUsage(ctx context.Context, accountID int64) (*Gr
 		return nil, err
 	}
 
+	headerResult, err := s.probeRateLimitHeaders(ctx, account, token, proxyURL)
+	if err != nil {
+		return nil, err
+	}
+
+	billing := s.probeBilling(ctx, account, token, proxyURL)
+	_ = s.accountRepo.UpdateExtra(ctx, account.ID, map[string]any{
+		grokQuotaSnapshotExtraKey: headerResult.Snapshot,
+		grokBillingSnapshotKey:    billing,
+	})
+
+	result := &GrokQuotaProbeResult{
+		Source:          "active_probe",
+		Snapshot:        headerResult.Snapshot,
+		Billing:         billing,
+		StatusCode:      headerResult.StatusCode,
+		HeadersObserved: headerResult.HeadersObserved,
+		ResetSupported:  false,
+		FetchedAt:       time.Now().Unix(),
+	}
+	if headerResult.StatusCode == http.StatusTooManyRequests {
+		return result, nil
+	}
+	if headerResult.StatusCode >= 400 {
+		return nil, headerResult.err
+	}
+	return result, nil
+}
+
+type grokHeaderProbeResult struct {
+	Snapshot        *xai.QuotaSnapshot
+	StatusCode      int
+	HeadersObserved bool
+	err             error
+}
+
+func (s *GrokQuotaService) probeRateLimitHeaders(ctx context.Context, account *Account, token, proxyURL string) (*grokHeaderProbeResult, error) {
 	body, err := buildGrokQuotaProbeBody(account)
 	if err != nil {
 		return nil, infraerrors.Newf(http.StatusBadRequest, "GROK_QUOTA_PROBE_BODY_ERROR", "failed to build probe body: %v", err)
@@ -89,28 +128,83 @@ func (s *GrokQuotaService) ProbeUsage(ctx context.Context, accountID int64) (*Gr
 	defer func() { _ = resp.Body.Close() }()
 
 	snapshot := xai.ObserveQuotaHeaders(resp.Header, resp.StatusCode, "active_probe")
-	_ = s.accountRepo.UpdateExtra(ctx, account.ID, map[string]any{
-		grokQuotaSnapshotExtraKey: snapshot,
-	})
-
-	result := &GrokQuotaProbeResult{
-		Source:          "active_probe",
+	out := &grokHeaderProbeResult{
 		Snapshot:        snapshot,
 		StatusCode:      resp.StatusCode,
-		HeadersObserved: snapshot.HeadersObserved,
-		ResetSupported:  false,
-		FetchedAt:       time.Now().Unix(),
+		HeadersObserved: snapshot != nil && snapshot.HeadersObserved,
 	}
 	if resp.StatusCode == http.StatusTooManyRequests {
-		return result, nil
+		return out, nil
 	}
 	if resp.StatusCode >= 400 {
 		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 240))
 		bodyText := truncate(strings.TrimSpace(string(bodyBytes)), 240)
 		slog.Warn("grok_quota_probe_failed", "account_id", account.ID, "status", resp.StatusCode, "body", bodyText)
-		return nil, infraerrors.Newf(mapUpstreamStatus(resp.StatusCode), "GROK_QUOTA_PROBE_UPSTREAM_ERROR", "upstream returned %d: %s", resp.StatusCode, bodyText)
+		out.err = infraerrors.Newf(mapUpstreamStatus(resp.StatusCode), "GROK_QUOTA_PROBE_UPSTREAM_ERROR", "upstream returned %d: %s", resp.StatusCode, bodyText)
+		return out, nil
 	}
-	return result, nil
+	return out, nil
+}
+
+func (s *GrokQuotaService) probeBilling(ctx context.Context, account *Account, token, proxyURL string) *xai.BillingSnapshot {
+	if s == nil || s.httpUpstream == nil || account == nil {
+		return xai.NewBillingErrorSnapshot(0, "billing_probe", "billing probe not configured")
+	}
+
+	callCtx, cancel := context.WithTimeout(ctx, grokQuotaUpstreamTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(callCtx, http.MethodGet, xai.BuildBillingURL(), nil)
+	if err != nil {
+		return xai.NewBillingErrorSnapshot(0, "billing_probe", err.Error())
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("X-XAI-Token-Auth", xai.TokenAuthCLI)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", xai.BillingUserAgent)
+
+	resp, err := s.httpUpstream.Do(req, proxyURL, account.ID, maxInt(account.Concurrency, 1))
+	if err != nil {
+		return xai.NewBillingErrorSnapshot(0, "billing_probe", err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+	bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		// One refresh+retry aligned with openusage; if still failing, persist error state.
+		if refreshed, refreshErr := s.refreshTokenForBilling(ctx, account); refreshErr == nil && refreshed != "" {
+			retryCtx, retryCancel := context.WithTimeout(ctx, grokQuotaUpstreamTimeout)
+			defer retryCancel()
+			retryReq, reqErr := http.NewRequestWithContext(retryCtx, http.MethodGet, xai.BuildBillingURL(), nil)
+			if reqErr == nil {
+				retryReq.Header.Set("Authorization", "Bearer "+refreshed)
+				retryReq.Header.Set("X-XAI-Token-Auth", xai.TokenAuthCLI)
+				retryReq.Header.Set("Accept", "application/json")
+				retryReq.Header.Set("User-Agent", xai.BillingUserAgent)
+				if retryResp, retryDoErr := s.httpUpstream.Do(retryReq, proxyURL, account.ID, maxInt(account.Concurrency, 1)); retryDoErr == nil {
+					defer func() { _ = retryResp.Body.Close() }()
+					retryBody, _ := io.ReadAll(io.LimitReader(retryResp.Body, 1<<20))
+					if retryResp.StatusCode < 400 {
+						return xai.ParseBillingJSON(retryBody, retryResp.StatusCode, "billing_probe")
+					}
+					return xai.NewBillingErrorSnapshot(retryResp.StatusCode, "billing_probe", xai.FormatBillingProbeError(retryResp.StatusCode, string(retryBody)))
+				}
+			}
+		}
+		return xai.NewBillingErrorSnapshot(resp.StatusCode, "billing_probe", xai.FormatBillingProbeError(resp.StatusCode, string(bodyBytes)))
+	}
+	if resp.StatusCode >= 400 {
+		return xai.NewBillingErrorSnapshot(resp.StatusCode, "billing_probe", xai.FormatBillingProbeError(resp.StatusCode, string(bodyBytes)))
+	}
+	return xai.ParseBillingJSON(bodyBytes, resp.StatusCode, "billing_probe")
+}
+
+func (s *GrokQuotaService) refreshTokenForBilling(ctx context.Context, account *Account) (string, error) {
+	if s == nil || s.tokenProvider == nil || account == nil {
+		return "", infraerrors.New(http.StatusInternalServerError, "GROK_QUOTA_NOT_CONFIGURED", "token provider missing")
+	}
+	// Force cache miss by clearing expires_at skew: GetAccessToken refreshes when near expiry.
+	// Best-effort: call GetAccessToken again; provider refreshes if needed.
+	return s.tokenProvider.GetAccessToken(ctx, account)
 }
 
 func (s *GrokQuotaService) ResetQuota(ctx context.Context, accountID int64) (*GrokQuotaResetResult, error) {

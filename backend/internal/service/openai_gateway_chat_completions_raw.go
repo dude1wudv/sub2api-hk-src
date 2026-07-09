@@ -197,6 +197,7 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 	if account.Proxy != nil {
 		proxyURL = account.Proxy.URL()
 	}
+	upstreamStart := time.Now()
 	resp, err := s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
 	if err != nil {
 		return nil, s.handleOpenAIUpstreamTransportError(ctx, c, account, err, false)
@@ -264,12 +265,14 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 	}
 
 	if account.Platform == PlatformGrok {
-		s.updateGrokUsageSnapshot(ctx, account.ID, xai.ParseQuotaHeaders(resp.Header, resp.StatusCode))
+		quotaSnapshot := xai.ParseQuotaHeaders(resp.Header, resp.StatusCode)
+		s.updateGrokUsageSnapshot(ctx, account.ID, quotaSnapshot)
+		s.maybeClearGrokTempUnschedulable(ctx, account, quotaSnapshot)
 	}
 
 	// 8. Forward response
 	if clientStream {
-		return s.streamRawChatCompletions(c, resp, account, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime, len(body))
+		return s.streamRawChatCompletions(c, resp, account, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime, upstreamStart, len(body))
 	}
 	return s.bufferRawChatCompletions(c, resp, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime)
 }
@@ -310,8 +313,12 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 	reasoningEffort *string,
 	serviceTier *string,
 	startTime time.Time,
+	firstTokenStart time.Time,
 	requestBodyLen int,
 ) (*OpenAIForwardResult, error) {
+	if firstTokenStart.IsZero() {
+		firstTokenStart = startTime
+	}
 	requestID := resp.Header.Get("x-request-id")
 
 	headersWritten := false
@@ -387,7 +394,7 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 					usage = *u
 				}
 				if firstTokenMs == nil && !usageOnlyChunk {
-					ms := openAIFirstTokenElapsedMs(startTime, time.Now(), []byte(payload))
+					ms := openAIFirstTokenElapsedMs(firstTokenStart, time.Now(), []byte(payload))
 					firstTokenMs = &ms
 				}
 			}

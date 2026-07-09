@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"strconv"
@@ -27,6 +28,7 @@ type GrokTokenProvider struct {
 	executor         OAuthRefreshExecutor
 	refreshPolicy    ProviderRefreshPolicy
 	tempUnschedCache TempUnschedCache
+	runtimeBlocker   AccountRuntimeBlocker
 }
 
 func NewGrokTokenProvider(
@@ -51,6 +53,10 @@ func (p *GrokTokenProvider) SetRefreshPolicy(policy ProviderRefreshPolicy) {
 
 func (p *GrokTokenProvider) SetTempUnschedCache(cache TempUnschedCache) {
 	p.tempUnschedCache = cache
+}
+
+func (p *GrokTokenProvider) SetAccountRuntimeBlocker(blocker AccountRuntimeBlocker) {
+	p.runtimeBlocker = blocker
 }
 
 func (p *GrokTokenProvider) GetAccessToken(ctx context.Context, account *Account) (string, error) {
@@ -141,16 +147,23 @@ func (p *GrokTokenProvider) markTempUnschedulable(account *Account, refreshErr e
 	}
 	reason := "grok token refresh failed on request path: " + redactedErr
 	bgCtx := context.Background()
-	if err := p.accountRepo.SetTempUnschedulable(bgCtx, account.ID, until, reason); err != nil {
+	state := &TempUnschedState{
+		UntilUnix:       until.Unix(),
+		TriggeredAtUnix: now.Unix(),
+		ErrorMessage:    grokTempUnschedulableErrorCode + ": " + reason,
+	}
+	reasonPayload := reason
+	if raw, err := json.Marshal(state); err == nil {
+		reasonPayload = string(raw)
+	}
+	if err := p.accountRepo.SetTempUnschedulable(bgCtx, account.ID, until, reasonPayload); err != nil {
 		slog.Warn(grokTokenProviderLogComponent+".set_temp_unschedulable_failed", "account_id", account.ID, "error", err)
 		return
 	}
+	if p.runtimeBlocker != nil {
+		p.runtimeBlocker.BlockAccountScheduling(account, until, grokTempUnschedulableErrorCode)
+	}
 	if p.tempUnschedCache != nil {
-		state := &TempUnschedState{
-			UntilUnix:       until.Unix(),
-			TriggeredAtUnix: now.Unix(),
-			ErrorMessage:    grokTempUnschedulableErrorCode + ": " + reason,
-		}
 		if err := p.tempUnschedCache.SetTempUnsched(bgCtx, account.ID, state); err != nil {
 			slog.Warn(grokTokenProviderLogComponent+".temp_unsched_cache_set_failed", "account_id", account.ID, "error", err)
 		}

@@ -1001,6 +1001,17 @@ export interface GrokQuotaWindow {
   reset_at?: string
 }
 
+export interface GrokWeeklyQuotaInfo {
+  utilization: number
+  used?: number | null
+  limit?: number | null
+  remaining?: number | null
+  reset_at?: string
+  period?: 'weekly' | 'monthly' | 'unknown' | string
+  state?: 'observed' | 'no_data' | 'error' | string
+  error?: string
+}
+
 export interface AccountUsageInfo {
   source?: 'passive' | 'active'
   updated_at: string | null
@@ -1024,6 +1035,7 @@ export interface AccountUsageInfo {
   grok_last_headers_seen_at?: string
   grok_last_status_code?: number
   grok_local_usage?: WindowStats | null
+  grok_weekly_quota?: GrokWeeklyQuotaInfo | null
   ai_credits?: Array<{
     credit_type?: string
     amount?: number

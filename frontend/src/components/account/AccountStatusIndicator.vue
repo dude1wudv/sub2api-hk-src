@@ -14,15 +14,27 @@
 
     <!-- Main Status Badge (shown when not rate limited/overloaded) -->
     <template v-else>
-      <button
-        v-if="isTempUnschedulable"
-        type="button"
-        :class="['badge text-xs', statusClass, 'cursor-pointer']"
-        :title="t('admin.accounts.status.viewTempUnschedDetails')"
-        @click="handleTempUnschedClick"
-      >
-        {{ statusText }}
-      </button>
+      <div v-if="isTempUnschedulable" class="flex flex-col items-center gap-1">
+        <button
+          type="button"
+          :class="['badge text-xs', statusClass, 'cursor-pointer']"
+          :title="t('admin.accounts.status.viewTempUnschedDetails')"
+          @click="handleTempUnschedClick"
+        >
+          {{ statusText }}
+        </button>
+        <span v-if="tempUnschedCountdown" class="text-[11px] text-gray-400 dark:text-gray-500">
+          {{ t('admin.accounts.status.tempUnschedRemaining', { time: tempUnschedCountdown }) }}
+        </span>
+      </div>
+      <div v-else-if="grokQuotaRetryHint" class="flex flex-col items-center gap-1">
+        <span :class="['badge text-xs', statusClass]">
+          {{ statusText }}
+        </span>
+        <span class="text-[11px] text-amber-600 dark:text-amber-400">
+          {{ t('admin.accounts.status.quotaRetryUntil', { time: grokQuotaRetryHint }) }}
+        </span>
+      </div>
       <span v-else :class="['badge text-xs', statusClass]">
         {{ statusText }}
       </span>
@@ -282,6 +294,38 @@ const isOverloaded = computed(() => {
 const isTempUnschedulable = computed(() => {
   if (!props.account.temp_unschedulable_until) return false
   return new Date(props.account.temp_unschedulable_until) > new Date()
+})
+
+const tempUnschedCountdown = computed(() => {
+  return formatCountdown(props.account.temp_unschedulable_until)
+})
+
+const grokQuotaRetryHint = computed(() => {
+  if (props.account.platform !== 'grok' || isTempUnschedulable.value) return ''
+  const extra = props.account.extra as Record<string, unknown> | undefined
+  const snapshot = extra?.grok_usage_snapshot as
+    | {
+        retry_after_seconds?: number
+        updated_at?: string
+        requests?: { remaining?: number; reset_at?: string }
+        tokens?: { remaining?: number; reset_at?: string }
+      }
+    | undefined
+  if (!snapshot) return ''
+  if (snapshot.retry_after_seconds && snapshot.retry_after_seconds > 0 && snapshot.updated_at) {
+    const until = new Date(snapshot.updated_at).getTime() + snapshot.retry_after_seconds * 1000
+    if (until > Date.now()) {
+      return formatCountdown(new Date(until).toISOString())
+    }
+  }
+  const resetAt = snapshot.requests?.reset_at || snapshot.tokens?.reset_at
+  if (resetAt && new Date(resetAt) > new Date()) {
+    const remaining = snapshot.requests?.remaining ?? snapshot.tokens?.remaining
+    if (remaining != null && remaining <= 0) {
+      return formatCountdown(resetAt)
+    }
+  }
+  return ''
 })
 
 // Computed: has error status

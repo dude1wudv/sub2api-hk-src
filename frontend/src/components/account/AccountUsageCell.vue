@@ -114,7 +114,7 @@
       <div v-else class="space-y-1">
         <div class="text-xs text-gray-400">-</div>
         <!-- Always allow on-demand upstream quota probe, even before passive headers exist. -->
-        <GrokQuotaProbeCell :account="account" />
+        <GrokQuotaProbeCell :account="account" @probed="handleGrokProbed" />
       </div>
     </template>
 
@@ -388,8 +388,27 @@
           :resets-at="grokTokenQuotaBar.resetsAt"
           color="emerald"
         />
+        <UsageProgressBar
+          v-if="grokWeeklyQuotaBar"
+          :label="t('admin.accounts.usageWindow.grokWeekly')"
+          :utilization="grokWeeklyQuotaBar.utilization"
+          :resets-at="grokWeeklyQuotaBar.resetsAt"
+          color="amber"
+        />
+        <div v-else-if="grokWeeklyNoData" class="text-[10px] text-gray-500 dark:text-gray-400">
+          {{ t('admin.accounts.usageWindow.grokWeeklyNoData') }}
+        </div>
+        <div v-else-if="grokWeeklyError" class="text-[10px] text-amber-600 dark:text-amber-400">
+          {{ t('admin.accounts.usageWindow.grokWeeklyError') }}
+        </div>
+        <div v-if="grokResetOnlyLabel" class="text-[10px] text-amber-600 dark:text-amber-400">
+          {{ t('admin.accounts.usageWindow.grokRateLimitResume', { time: grokResetOnlyLabel }) }}
+        </div>
         <div v-if="grokRetryAfterLabel" class="text-[10px] text-amber-600 dark:text-amber-400">
           {{ t('admin.accounts.usageWindow.grokRetryAfter', { time: grokRetryAfterLabel }) }}
+        </div>
+        <div v-if="grokTempUnschedResumeLabel" class="text-[10px] text-amber-600 dark:text-amber-400">
+          {{ t('admin.accounts.usageWindow.grokRateLimitResume', { time: grokTempUnschedResumeLabel }) }}
         </div>
         <div v-if="grokQuotaUnknown" class="text-[10px] text-gray-500 dark:text-gray-400">
           {{ grokQuotaUnknownLabel }}
@@ -400,7 +419,7 @@
         <div v-if="grokQuotaStatusLine" class="text-[10px] text-gray-500 dark:text-gray-400">
           {{ grokQuotaStatusLine }}
         </div>
-        <GrokQuotaProbeCell :account="account" />
+        <GrokQuotaProbeCell :account="account" @probed="handleGrokProbed" />
       </div>
       <div v-else class="text-xs text-gray-400">-</div>
     </template>
@@ -1038,10 +1057,40 @@ const makeGrokQuotaBar = (quota?: { limit?: number | null; remaining?: number | 
 
 const grokRequestQuotaBar = computed(() => makeGrokQuotaBar(usageInfo.value?.grok_request_quota))
 const grokTokenQuotaBar = computed(() => makeGrokQuotaBar(usageInfo.value?.grok_token_quota))
+const grokWeeklyQuotaBar = computed(() => {
+  const weekly = usageInfo.value?.grok_weekly_quota
+  if (!weekly || weekly.state !== 'observed') return null
+  return {
+    utilization: Math.min(100, Math.max(0, weekly.utilization || 0)),
+    resetsAt: weekly.reset_at || null
+  }
+})
+const grokWeeklyNoData = computed(() => usageInfo.value?.grok_weekly_quota?.state === 'no_data')
+const grokWeeklyError = computed(() => usageInfo.value?.grok_weekly_quota?.state === 'error')
 const grokQuotaUnknown = computed(() => {
   if (props.account.platform !== 'grok') return false
   if (grokRequestQuotaBar.value || grokTokenQuotaBar.value) return false
   return usageInfo.value?.grok_quota_snapshot_state !== 'observed'
+})
+const grokResetOnlyLabel = computed(() => {
+  if (grokRequestQuotaBar.value || grokTokenQuotaBar.value) return null
+  const resetAt =
+    usageInfo.value?.grok_request_quota?.reset_at ||
+    usageInfo.value?.grok_token_quota?.reset_at ||
+    null
+  if (!resetAt) return null
+  const ms = new Date(resetAt).getTime() - Date.now()
+  if (ms <= 0) return null
+  if (ms < 60_000) return `${Math.ceil(ms / 1000)}s`
+  return `${Math.ceil(ms / 60_000)}m`
+})
+const grokTempUnschedResumeLabel = computed(() => {
+  const until = props.account.temp_unschedulable_until
+  if (!until) return null
+  const ms = new Date(until).getTime() - Date.now()
+  if (ms <= 0) return null
+  if (ms < 60_000) return `${Math.ceil(ms / 1000)}s`
+  return `${Math.ceil(ms / 60_000)}m`
 })
 const grokQuotaUnknownLabel = computed(() => {
   return usageInfo.value?.grok_quota_snapshot_state === 'no_headers'
@@ -1083,6 +1132,10 @@ const grokRetryAfterLabel = computed(() => {
   const minutes = Math.ceil(seconds / 60)
   return `${minutes}m`
 })
+
+const handleGrokProbed = () => {
+  loadUsage({ source: 'passive', bypassCache: true }).catch(() => {})
+}
 
 const formatWindowRequests = (stats: WindowStats) => formatCompactNumber(stats.requests, { allowBillions: false })
 const formatWindowTokens = (stats: WindowStats) => formatCompactNumber(stats.tokens)

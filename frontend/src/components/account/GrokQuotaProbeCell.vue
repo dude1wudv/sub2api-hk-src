@@ -55,6 +55,10 @@ const props = defineProps<{
   account: Account
 }>()
 
+const emit = defineEmits<{
+  probed: [result: GrokQuotaProbeResult]
+}>()
+
 const { t } = useI18n()
 
 const visible = computed(() => props.account.platform === 'grok' && props.account.type === 'oauth')
@@ -92,18 +96,30 @@ const retryAfterLabel = computed(() => {
 const summary = computed(() => {
   const snapshot = data.value?.snapshot
   if (!data.value) return ''
-  if (!snapshot) return t('admin.accounts.usageWindow.grokNoHeaders')
-  const parts = [
-    formatWindow(t('admin.accounts.usageWindow.grokRequests'), snapshot.requests),
-    formatWindow(t('admin.accounts.usageWindow.grokTokens'), snapshot.tokens)
-  ].filter(Boolean)
-  if (retryAfterLabel.value) {
-    parts.push(t('admin.accounts.usageWindow.grokRetryAfter', { time: retryAfterLabel.value }))
+  const parts: string[] = []
+  if (snapshot) {
+    const req = formatWindow(t('admin.accounts.usageWindow.grokRequests'), snapshot.requests)
+    const tok = formatWindow(t('admin.accounts.usageWindow.grokTokens'), snapshot.tokens)
+    if (req) parts.push(req)
+    if (tok) parts.push(tok)
+    if (retryAfterLabel.value) {
+      parts.push(t('admin.accounts.usageWindow.grokRetryAfter', { time: retryAfterLabel.value }))
+    }
+    if (snapshot.entitlement_status) {
+      parts.push(snapshot.entitlement_status)
+    }
   }
-  if (snapshot.entitlement_status) {
-    parts.push(snapshot.entitlement_status)
+  const billing = data.value.billing
+  if (billing?.state === 'observed' && billing.utilization != null) {
+    parts.push(`${t('admin.accounts.usageWindow.grokWeekly')} ${Math.round(billing.utilization)}%`)
+  } else if (billing?.state === 'no_data') {
+    parts.push(t('admin.accounts.usageWindow.grokWeeklyNoData'))
+  } else if (billing?.state === 'error') {
+    parts.push(t('admin.accounts.usageWindow.grokWeeklyError'))
   }
-  return parts.length > 0 ? parts.join(' | ') : t('admin.accounts.usageWindow.grokNoHeaders')
+  if (parts.length > 0) return parts.join(' | ')
+  if (!snapshot?.headers_observed) return t('admin.accounts.usageWindow.grokNoHeaders')
+  return ''
 })
 
 const truncatedError = computed(() => {
@@ -117,6 +133,7 @@ const handleProbe = async () => {
   error.value = null
   try {
     data.value = await adminAPI.grok.queryQuota(props.account.id)
+    if (data.value) emit('probed', data.value)
   } catch (e) {
     error.value = extractErrorMessage(e)
   } finally {

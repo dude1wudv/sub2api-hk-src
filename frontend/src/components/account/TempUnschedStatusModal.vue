@@ -29,8 +29,8 @@
       </div>
 
       <div v-else class="space-y-4">
-        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-          {{ t('admin.accounts.recoverStateHint') }}
+        <div class="rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-800 dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-300">
+          {{ t('admin.accounts.tempUnschedulable.clearOnlyHint') }}
         </div>
 
         <div class="rounded-lg border border-gray-200 p-4 dark:border-dark-600">
@@ -105,15 +105,25 @@
     </div>
 
     <template #footer>
-      <div class="flex justify-end gap-3">
+      <div class="flex flex-wrap justify-end gap-3">
         <button type="button" class="btn btn-secondary" @click="handleClose">
           {{ t('common.close') }}
         </button>
         <button
           type="button"
+          class="btn btn-secondary"
+          :disabled="!isActive || resetting"
+          :title="t('admin.accounts.recoverStateHint')"
+          @click="handleFullRecover"
+        >
+          {{ t('admin.accounts.tempUnschedulable.fullRecover') }}
+        </button>
+        <button
+          type="button"
           class="btn btn-primary"
           :disabled="!isActive || resetting"
-          @click="handleReset"
+          :title="t('admin.accounts.tempUnschedulable.clearOnlyHint')"
+          @click="handleClearOnly"
         >
           <svg
             v-if="resetting"
@@ -135,7 +145,7 @@
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             ></path>
           </svg>
-          {{ t('admin.accounts.recoverState') }}
+          {{ t('admin.accounts.tempUnschedulable.clearOnly') }}
         </button>
       </div>
     </template>
@@ -225,7 +235,27 @@ const handleClose = () => {
   emit('close')
 }
 
-const handleReset = async () => {
+const handleClearOnly = async () => {
+  if (!props.account) return
+  resetting.value = true
+  try {
+    await adminAPI.accounts.resetTempUnschedulable(props.account.id)
+    appStore.showSuccess(t('admin.accounts.tempUnschedulable.clearOnlySuccess'))
+    const updated = {
+      ...props.account,
+      temp_unschedulable_until: null,
+      temp_unschedulable_reason: null
+    } as Account
+    emit('reset', updated)
+    handleClose()
+  } catch (error: any) {
+    appStore.showError(error?.message || t('admin.accounts.tempUnschedulable.clearOnlyFailed'))
+  } finally {
+    resetting.value = false
+  }
+}
+
+const handleFullRecover = async () => {
   if (!props.account) return
   resetting.value = true
   try {

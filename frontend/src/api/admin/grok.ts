@@ -64,6 +64,17 @@ export interface GrokQuotaSnapshot {
 export interface GrokQuotaProbeResult {
   source: 'active_probe'
   snapshot?: GrokQuotaSnapshot | null
+  billing?: {
+    state?: string
+    period?: string
+    utilization?: number
+    used?: number | null
+    limit?: number | null
+    remaining?: number | null
+    reset_at?: string
+    status_code?: number
+    error?: string
+  } | null
   status_code?: number
   headers_observed: boolean
   reset_supported: boolean

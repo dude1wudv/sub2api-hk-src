@@ -360,6 +360,7 @@ func TestHandleChatStreamingResponse_SilentRefusalReasoningSummaryExempt(t *test
 		"gpt-5.5",
 		"gpt-5.5",
 		time.Now(),
+		time.Now(),
 		openAISilentRefusalMinRequestBodyBytes,
 	)
 	require.NoError(t, err)

@@ -152,6 +152,18 @@ type UsageProgress struct {
 	LimitRequests    int64        `json:"limit_requests,omitempty"`
 }
 
+// GrokWeeklyQuotaInfo is the consumer weekly/monthly subscription pool from billing probe.
+type GrokWeeklyQuotaInfo struct {
+	Utilization float64  `json:"utilization"`
+	Used        *float64 `json:"used,omitempty"`
+	Limit       *float64 `json:"limit,omitempty"`
+	Remaining   *float64 `json:"remaining,omitempty"`
+	ResetAt     string   `json:"reset_at,omitempty"`
+	Period      string   `json:"period,omitempty"` // weekly | monthly | unknown
+	State       string   `json:"state,omitempty"`  // observed | no_data | error
+	Error       string   `json:"error,omitempty"`
+}
+
 // AntigravityModelQuota Antigravity 单个模型的配额信息
 type AntigravityModelQuota struct {
 	Utilization int    `json:"utilization"` // 使用率 0-100
@@ -196,15 +208,16 @@ type UsageInfo struct {
 	AntigravityQuota map[string]*AntigravityModelQuota `json:"antigravity_quota,omitempty"`
 
 	// Grok / xAI 被动额度快照
-	GrokRequestQuota       *xai.QuotaWindow `json:"grok_request_quota,omitempty"`
-	GrokTokenQuota         *xai.QuotaWindow `json:"grok_token_quota,omitempty"`
-	GrokRetryAfterSeconds  *int             `json:"grok_retry_after_seconds,omitempty"`
-	GrokEntitlementStatus  string           `json:"grok_entitlement_status,omitempty"`
-	GrokQuotaSnapshotState string           `json:"grok_quota_snapshot_state,omitempty"`
-	GrokLastQuotaProbeAt   string           `json:"grok_last_quota_probe_at,omitempty"`
-	GrokLastHeadersSeenAt  string           `json:"grok_last_headers_seen_at,omitempty"`
-	GrokLastStatusCode     int              `json:"grok_last_status_code,omitempty"`
-	GrokLocalUsage         *WindowStats     `json:"grok_local_usage,omitempty"`
+	GrokRequestQuota       *xai.QuotaWindow      `json:"grok_request_quota,omitempty"`
+	GrokTokenQuota         *xai.QuotaWindow      `json:"grok_token_quota,omitempty"`
+	GrokRetryAfterSeconds  *int                  `json:"grok_retry_after_seconds,omitempty"`
+	GrokEntitlementStatus  string                `json:"grok_entitlement_status,omitempty"`
+	GrokQuotaSnapshotState string                `json:"grok_quota_snapshot_state,omitempty"`
+	GrokLastQuotaProbeAt   string                `json:"grok_last_quota_probe_at,omitempty"`
+	GrokLastHeadersSeenAt  string                `json:"grok_last_headers_seen_at,omitempty"`
+	GrokLastStatusCode     int                   `json:"grok_last_status_code,omitempty"`
+	GrokLocalUsage         *WindowStats          `json:"grok_local_usage,omitempty"`
+	GrokWeeklyQuota        *GrokWeeklyQuotaInfo  `json:"grok_weekly_quota,omitempty"`
 
 	// Antigravity 账号级信息
 	SubscriptionTier    string `json:"subscription_tier,omitempty"`     // 归一化订阅等级: FREE/PRO/ULTRA/UNKNOWN
