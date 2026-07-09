@@ -84,6 +84,9 @@ func (s *createAccountRepoStub) ListOAuthRefreshCandidates(context.Context) ([]A
 func (s *createAccountRepoStub) ListWithFilters(context.Context, pagination.PaginationParams, string, string, string, string, int64, string) ([]Account, *pagination.PaginationResult, error) {
 	panic("unexpected")
 }
+func (s *createAccountRepoStub) ListAllWithFilters(context.Context, string, string, string, string, int64, string) ([]Account, error) {
+	panic("unexpected")
+}
 func (s *createAccountRepoStub) ListByGroup(context.Context, int64) ([]Account, error) {
 	panic("unexpected")
 }

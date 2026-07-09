@@ -6884,6 +6884,20 @@ func (s *OpenAIGatewayService) RecordCyberPolicyUsageLog(ctx context.Context, in
 	}
 }
 
+// applyGrokOAuthSimulatedCacheBilling reclassifies Grok OAuth usage when the
+// upstream did not report cached_tokens. OpenAI-style usage keeps InputTokens as
+// the inclusive total; only CacheReadInputTokens is filled so RecordUsage's
+// actualInputTokens = InputTokens - CacheReadInputTokens becomes 0.
+func applyGrokOAuthSimulatedCacheBilling(account *Account, usage *OpenAIUsage) {
+	if usage == nil || account == nil || !account.IsGrokOAuth() {
+		return
+	}
+	if usage.CacheReadInputTokens > 0 || usage.InputTokens <= 0 {
+		return
+	}
+	usage.CacheReadInputTokens = usage.InputTokens
+}
+
 // RecordUsage records usage and deducts balance
 func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRecordUsageInput) error {
 	if input == nil {
@@ -6902,6 +6916,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	account := input.Account
 	subscription := input.Subscription
 	ApplyOpenAIImageBillingResolution(result)
+	applyGrokOAuthSimulatedCacheBilling(account, &result.Usage)
 
 	// 计算实际的新输入token（减去缓存读取的token）
 	// 因为 input_tokens 包含了 cache_read_tokens，而缓存读取的token不应按输入价格计费

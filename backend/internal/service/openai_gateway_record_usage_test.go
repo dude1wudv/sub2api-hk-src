@@ -2122,3 +2122,112 @@ func TestGatewayServiceCalculateRecordUsageCost_ChannelImageBillingNormalizesMis
 	require.InDelta(t, 0.44, cost.TotalCost, 1e-12)
 	require.InDelta(t, 0.44, cost.ActualCost, 1e-12)
 }
+
+func TestApplyGrokOAuthSimulatedCacheBilling(t *testing.T) {
+	t.Parallel()
+
+	t.Run("grok oauth without cached tokens moves all input to cache read", func(t *testing.T) {
+		usage := OpenAIUsage{InputTokens: 1000, OutputTokens: 50}
+		applyGrokOAuthSimulatedCacheBilling(&Account{Platform: PlatformGrok, Type: AccountTypeOAuth}, &usage)
+		require.Equal(t, 1000, usage.InputTokens)
+		require.Equal(t, 1000, usage.CacheReadInputTokens)
+	})
+
+	t.Run("grok oauth with upstream cached tokens does not resimulate", func(t *testing.T) {
+		usage := OpenAIUsage{InputTokens: 1000, CacheReadInputTokens: 100, OutputTokens: 50}
+		applyGrokOAuthSimulatedCacheBilling(&Account{Platform: PlatformGrok, Type: AccountTypeOAuth}, &usage)
+		require.Equal(t, 1000, usage.InputTokens)
+		require.Equal(t, 100, usage.CacheReadInputTokens)
+	})
+
+	t.Run("non grok oauth is unchanged", func(t *testing.T) {
+		cases := []*Account{
+			{Platform: PlatformGrok, Type: AccountTypeAPIKey},
+			{Platform: PlatformOpenAI, Type: AccountTypeOAuth},
+			{Platform: PlatformAnthropic, Type: AccountTypeOAuth},
+			nil,
+		}
+		for _, account := range cases {
+			usage := OpenAIUsage{InputTokens: 1000, OutputTokens: 50}
+			applyGrokOAuthSimulatedCacheBilling(account, &usage)
+			require.Equal(t, 1000, usage.InputTokens)
+			require.Equal(t, 0, usage.CacheReadInputTokens)
+		}
+	})
+}
+
+func TestOpenAIGatewayServiceRecordUsage_GrokOAuthSimulatesCacheWhenUpstreamOmitsCachedTokens(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	billingRepo := &openAIRecordUsageBillingRepoStub{result: &UsageBillingApplyResult{Applied: true}}
+	userRepo := &openAIRecordUsageUserRepoStub{}
+	subRepo := &openAIRecordUsageSubRepoStub{}
+	svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, userRepo, subRepo, nil)
+
+	usage := OpenAIUsage{InputTokens: 1000, OutputTokens: 50}
+	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
+		Result: &OpenAIForwardResult{
+			RequestID: "resp_grok_oauth_sim_cache",
+			Usage:     usage,
+			Model:     "gpt-5.1",
+			Duration:  time.Second,
+		},
+		APIKey:  &APIKey{ID: 5101, Group: &Group{RateMultiplier: 1}},
+		User:    &User{ID: 6101},
+		Account: &Account{ID: 7101, Platform: PlatformGrok, Type: AccountTypeOAuth},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.Equal(t, 0, usageRepo.lastLog.InputTokens)
+	require.Equal(t, 1000, usageRepo.lastLog.CacheReadTokens)
+	require.Equal(t, 50, usageRepo.lastLog.OutputTokens)
+
+	simulated := OpenAIUsage{InputTokens: 1000, CacheReadInputTokens: 1000, OutputTokens: 50}
+	expected := expectedOpenAICost(t, svc, "gpt-5.1", simulated, 1.1)
+	require.InDelta(t, expected.ActualCost, usageRepo.lastLog.ActualCost, 1e-12)
+}
+
+func TestOpenAIGatewayServiceRecordUsage_GrokOAuthKeepsUpstreamCachedTokens(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	billingRepo := &openAIRecordUsageBillingRepoStub{result: &UsageBillingApplyResult{Applied: true}}
+	svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+
+	usage := OpenAIUsage{InputTokens: 1000, CacheReadInputTokens: 700, OutputTokens: 50}
+	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
+		Result: &OpenAIForwardResult{
+			RequestID: "resp_grok_oauth_upstream_cache",
+			Usage:     usage,
+			Model:     "gpt-5.1",
+			Duration:  time.Second,
+		},
+		APIKey:  &APIKey{ID: 5102, Group: &Group{RateMultiplier: 1}},
+		User:    &User{ID: 6102},
+		Account: &Account{ID: 7102, Platform: PlatformGrok, Type: AccountTypeOAuth},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.Equal(t, 300, usageRepo.lastLog.InputTokens)
+	require.Equal(t, 700, usageRepo.lastLog.CacheReadTokens)
+}
+
+func TestOpenAIGatewayServiceRecordUsage_GrokAPIKeyDoesNotSimulateCache(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	billingRepo := &openAIRecordUsageBillingRepoStub{result: &UsageBillingApplyResult{Applied: true}}
+	svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+
+	usage := OpenAIUsage{InputTokens: 1000, OutputTokens: 50}
+	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
+		Result: &OpenAIForwardResult{
+			RequestID: "resp_grok_apikey_no_sim",
+			Usage:     usage,
+			Model:     "gpt-5.1",
+			Duration:  time.Second,
+		},
+		APIKey:  &APIKey{ID: 5103, Group: &Group{RateMultiplier: 1}},
+		User:    &User{ID: 6103},
+		Account: &Account{ID: 7103, Platform: PlatformGrok, Type: AccountTypeAPIKey},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.Equal(t, 1000, usageRepo.lastLog.InputTokens)
+	require.Equal(t, 0, usageRepo.lastLog.CacheReadTokens)
+}
