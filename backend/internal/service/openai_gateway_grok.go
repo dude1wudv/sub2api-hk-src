@@ -77,7 +77,7 @@ func (s *OpenAIGatewayService) forwardGrokResponses(
 			AccountName:        account.Name,
 			UpstreamStatusCode: resp.StatusCode,
 			UpstreamRequestID:  firstNonEmpty(resp.Header.Get("x-request-id"), resp.Header.Get("xai-request-id")),
-			Kind:               "failover",
+			Kind:               grokUpstreamErrorKind(resp.StatusCode, upstreamMsg),
 			Message:            upstreamMsg,
 		})
 		s.handleGrokAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, respBody)
@@ -152,11 +152,127 @@ func patchGrokResponsesBody(body []byte, upstreamModel string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Upgrade deprecated Live Search (search_parameters / live_search) to Agent Tools
+	// on the Responses path before tool whitelist filtering.
+	out, err = sanitizeGrokDeprecatedLiveSearch(out, grokLiveSearchSanitizeOptions{UpgradeToAgentTools: true})
+	if err != nil {
+		return nil, err
+	}
 	out, err = sanitizeGrokResponsesTools(out)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
+}
+
+// grokLiveSearchSanitizeOptions controls how deprecated xAI Live Search fields
+// are handled. Chat Completions only strips them (Agent Tools are Responses-only);
+// Responses may upgrade an active search intent into web_search / x_search tools.
+type grokLiveSearchSanitizeOptions struct {
+	UpgradeToAgentTools bool
+}
+
+var grokDeprecatedLiveSearchFields = map[string]struct{}{
+	"search_parameters": {},
+	"live_search":       {},
+}
+
+func sanitizeGrokDeprecatedLiveSearch(body []byte, opts grokLiveSearchSanitizeOptions) ([]byte, error) {
+	if !bytes.Contains(body, []byte(`"search_parameters"`)) && !bytes.Contains(body, []byte(`"live_search"`)) {
+		return body, nil
+	}
+
+	wantUpgrade := opts.UpgradeToAgentTools && grokLiveSearchIntentActive(body)
+	alreadyHasSearchTool := grokBodyHasSearchAgentTool(body)
+
+	var payload any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, err
+	}
+	changed := deleteJSONFields(payload, grokDeprecatedLiveSearchFields)
+
+	if wantUpgrade && !alreadyHasSearchTool {
+		if root, ok := payload.(map[string]any); ok {
+			tools, _ := root["tools"].([]any)
+			if tools == nil {
+				tools = make([]any, 0, 2)
+			}
+			if !grokToolsSliceHasSearchAgentTool(tools) {
+				tools = append(tools,
+					map[string]any{"type": "web_search"},
+					map[string]any{"type": "x_search"},
+				)
+				root["tools"] = tools
+				changed = true
+			}
+		}
+	}
+
+	if !changed {
+		return body, nil
+	}
+	return json.Marshal(payload)
+}
+
+func grokLiveSearchIntentActive(body []byte) bool {
+	if live := gjson.GetBytes(body, "live_search"); live.Exists() {
+		switch live.Type {
+		case gjson.True:
+			return true
+		case gjson.String:
+			switch strings.ToLower(strings.TrimSpace(live.String())) {
+			case "true", "1", "on", "auto", "enabled":
+				return true
+			}
+		case gjson.Number:
+			return live.Num != 0
+		}
+	}
+
+	mode := strings.ToLower(strings.TrimSpace(gjson.GetBytes(body, "search_parameters.mode").String()))
+	switch mode {
+	case "on", "auto":
+		return true
+	case "off", "":
+		// Empty mode with a present search_parameters object historically meant
+		// "enable search with defaults" on some clients; treat presence of a
+		// non-off mode-less object as inactive only when mode is explicitly off
+		// or the field is absent. If search_parameters exists without mode, do
+		// not upgrade — strip only.
+		return false
+	default:
+		// Unknown non-off modes (e.g. "enabled") still imply search intent.
+		return mode != "off"
+	}
+}
+
+func grokBodyHasSearchAgentTool(body []byte) bool {
+	tools := gjson.GetBytes(body, "tools")
+	if !tools.Exists() || !tools.IsArray() {
+		return false
+	}
+	for _, tool := range tools.Array() {
+		switch strings.TrimSpace(tool.Get("type").String()) {
+		case "web_search", "x_search":
+			return true
+		}
+	}
+	return false
+}
+
+func grokToolsSliceHasSearchAgentTool(tools []any) bool {
+	for _, item := range tools {
+		tool, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		toolType, _ := tool["type"].(string)
+		switch strings.TrimSpace(toolType) {
+		case "web_search", "x_search":
+			return true
+		}
+	}
+	return false
 }
 
 var grokResponsesUnsupportedRecursiveFields = map[string]struct{}{
@@ -343,10 +459,30 @@ func (s *OpenAIGatewayService) updateGrokUsageSnapshot(ctx context.Context, acco
 	})
 }
 
+func grokUpstreamErrorKind(statusCode int, upstreamMsg string) string {
+	if isGrokDeprecatedLiveSearchError(statusCode, upstreamMsg) {
+		return "client_compat"
+	}
+	return "failover"
+}
+
+func isGrokDeprecatedLiveSearchError(statusCode int, upstreamMsg string) bool {
+	if statusCode != http.StatusGone {
+		return false
+	}
+	msg := strings.ToLower(strings.TrimSpace(upstreamMsg))
+	return strings.Contains(msg, "live search is deprecated") ||
+		strings.Contains(msg, "agent tools api") ||
+		strings.Contains(msg, "search_parameters")
+}
+
 func (s *OpenAIGatewayService) handleGrokAccountUpstreamError(ctx context.Context, account *Account, statusCode int, headers http.Header, responseBody []byte) {
 	if s == nil || account == nil {
 		return
 	}
+	// 410 Gone (e.g. deprecated Live Search) is a request-shape / client-compat
+	// issue, not an account fault — never temp-unschedulable or failover on it.
+	// shouldFailoverUpstreamError also excludes 410.
 	switch statusCode {
 	case http.StatusUnauthorized:
 		s.tempUnscheduleGrok(ctx, account, 10*time.Minute, "grok oauth token unauthorized")

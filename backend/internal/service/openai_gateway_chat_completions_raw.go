@@ -114,6 +114,20 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 	}
 	upstreamBody = updatedBody
 	serviceTier = extractOpenAIServiceTierFromBody(upstreamBody)
+	if account.Platform == PlatformGrok {
+		// Chat Completions cannot use Agent Tools; strip deprecated Live Search
+		// fields so xAI does not return 410 Gone.
+		sanitized, sanitizeErr := sanitizeGrokDeprecatedLiveSearch(upstreamBody, grokLiveSearchSanitizeOptions{UpgradeToAgentTools: false})
+		if sanitizeErr != nil {
+			return nil, fmt.Errorf("sanitize grok live search fields: %w", sanitizeErr)
+		}
+		if !bytes.Equal(sanitized, upstreamBody) {
+			logger.L().Debug("openai chat_completions raw: stripped deprecated grok live search fields",
+				zap.Int64("account_id", account.ID),
+			)
+			upstreamBody = sanitized
+		}
+	}
 	if clientStream {
 		var usageErr error
 		upstreamBody, usageErr = ensureOpenAIChatStreamUsage(upstreamBody)
@@ -207,7 +221,7 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 				AccountName:        account.Name,
 				UpstreamStatusCode: resp.StatusCode,
 				UpstreamRequestID:  firstNonEmpty(resp.Header.Get("x-request-id"), resp.Header.Get("xai-request-id")),
-				Kind:               "failover",
+				Kind:               grokUpstreamErrorKind(resp.StatusCode, upstreamMsg),
 				Message:            upstreamMsg,
 			})
 			s.handleGrokAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, respBody)

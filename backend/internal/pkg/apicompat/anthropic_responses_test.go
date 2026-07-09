@@ -718,6 +718,127 @@ func TestStreamingToolCallDoneWithoutDeltaEmitsArguments(t *testing.T) {
 	assert.Equal(t, "content_block_stop", events[1].Type)
 }
 
+// TestStreamingMultiToolLateArgsDoneAfterItemDone reproduces the Grok→Claude Code
+// "Content block not found" failure: output_item.done closes a tool block, then a
+// late function_call_arguments.done with full Arguments must not emit an orphan
+// content_block_delta on the next unused index.
+func TestStreamingMultiToolLateArgsDoneAfterItemDone(t *testing.T) {
+	state := NewResponsesEventToAnthropicState()
+	started := map[int]bool{}
+	assertDeltaHasStart := func(t *testing.T, evts []AnthropicStreamEvent) {
+		t.Helper()
+		for _, e := range evts {
+			switch e.Type {
+			case "content_block_start":
+				require.NotNil(t, e.Index)
+				started[*e.Index] = true
+			case "content_block_delta":
+				require.NotNil(t, e.Index)
+				assert.True(t, started[*e.Index], "orphan content_block_delta index=%d", *e.Index)
+			}
+		}
+	}
+
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:     "response.created",
+		Response: &ResponsesResponse{ID: "resp_multi_tool", Model: "grok-4.5"},
+	}, state)
+
+	// thinking
+	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.output_item.added",
+		OutputIndex: 0,
+		Item:        &ResponsesOutput{Type: "reasoning"},
+	}, state)
+	assertDeltaHasStart(t, events)
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.reasoning_summary_text.delta",
+		OutputIndex: 0,
+		Delta:       "plan tools",
+	}, state)
+	assertDeltaHasStart(t, events)
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type: "response.reasoning_summary_text.done",
+	}, state)
+	assertDeltaHasStart(t, events)
+
+	// text
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.output_text.delta",
+		OutputIndex: 1,
+		Delta:       "I'll inspect the repo.",
+	}, state)
+	assertDeltaHasStart(t, events)
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type: "response.output_text.done",
+	}, state)
+	assertDeltaHasStart(t, events)
+
+	// tool Glob — normal delta then done
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.output_item.added",
+		OutputIndex: 2,
+		Item:        &ResponsesOutput{Type: "function_call", CallID: "call_glob", Name: "Glob"},
+	}, state)
+	assertDeltaHasStart(t, events)
+	require.Equal(t, 2, *events[0].Index)
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.function_call_arguments.delta",
+		OutputIndex: 2,
+		Delta:       `{"pattern":"**/*.go"}`,
+	}, state)
+	assertDeltaHasStart(t, events)
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.function_call_arguments.done",
+		OutputIndex: 2,
+	}, state)
+	assertDeltaHasStart(t, events)
+	require.Len(t, events, 1)
+	assert.Equal(t, "content_block_stop", events[0].Type)
+
+	// tool Bash — closed by output_item.done first, then late arguments.done
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.output_item.added",
+		OutputIndex: 3,
+		Item:        &ResponsesOutput{Type: "function_call", CallID: "call_bash", Name: "Bash"},
+	}, state)
+	assertDeltaHasStart(t, events)
+	require.Equal(t, 3, *events[0].Index)
+	bashBlockIdx := *events[0].Index
+
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.output_item.done",
+		OutputIndex: 3,
+		Item:        &ResponsesOutput{Type: "function_call", CallID: "call_bash", Name: "Bash"},
+	}, state)
+	assertDeltaHasStart(t, events)
+	require.Len(t, events, 1)
+	assert.Equal(t, "content_block_stop", events[0].Type)
+	assert.Equal(t, bashBlockIdx, *events[0].Index)
+
+	// Late arguments.done must be a no-op (no orphan delta on index 4).
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:        "response.function_call_arguments.done",
+		OutputIndex: 3,
+		Arguments:   `{"command":"ls -la"}`,
+	}, state)
+	assert.Empty(t, events)
+	assert.False(t, state.ContentBlockOpen)
+	assert.Equal(t, "", state.CurrentBlockType)
+	assert.Equal(t, bashBlockIdx+1, state.ContentBlockIndex)
+
+	events = ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type: "response.completed",
+		Response: &ResponsesResponse{
+			Status: "completed",
+			Usage:  &ResponsesUsage{InputTokens: 20, OutputTokens: 10},
+		},
+	}, state)
+	require.Len(t, events, 2)
+	assert.Equal(t, "tool_use", events[0].Delta.StopReason)
+	assert.Equal(t, "message_stop", events[1].Type)
+}
+
 func TestStreamingReadToolDropsEmptyPages(t *testing.T) {
 	state := NewResponsesEventToAnthropicState()
 

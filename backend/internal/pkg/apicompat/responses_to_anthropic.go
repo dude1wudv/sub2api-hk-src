@@ -434,6 +434,11 @@ func resToAnthHandleFuncArgsDelta(evt *ResponsesStreamEvent, state *ResponsesEve
 }
 
 func resToAnthHandleFuncArgsDone(evt *ResponsesStreamEvent, state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {
+	// Block already closed (e.g. output_item.done before late arguments.done).
+	// Emitting a delta here would target the next unused index and break Claude Code.
+	if !state.ContentBlockOpen {
+		return nil
+	}
 	if state.CurrentBlockType != "tool_use" {
 		return resToAnthHandleBlockDone(state)
 	}
@@ -623,6 +628,7 @@ func closeCurrentBlock(state *ResponsesEventToAnthropicState) []AnthropicStreamE
 	idx := state.ContentBlockIndex
 	state.ContentBlockOpen = false
 	state.ContentBlockIndex++
+	state.CurrentBlockType = ""
 	state.CurrentToolName = ""
 	state.CurrentToolArgs = ""
 	state.CurrentToolHadDelta = false

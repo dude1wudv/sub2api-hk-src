@@ -106,6 +106,97 @@ func TestPatchGrokResponsesBodyDropsToolChoiceWhenNoSupportedToolsRemain(t *test
 	require.False(t, gjson.GetBytes(patched, "tool_choice").Exists())
 }
 
+func TestPatchGrokResponsesBodyUpgradesLiveSearchToAgentTools(t *testing.T) {
+	t.Parallel()
+
+	body := []byte(`{
+		"model": "grok",
+		"input": "latest news?",
+		"search_parameters": {"mode": "auto"}
+	}`)
+
+	patched, err := patchGrokResponsesBody(body, "grok-4.3")
+	require.NoError(t, err)
+	require.True(t, json.Valid(patched))
+	require.False(t, gjson.GetBytes(patched, "search_parameters").Exists())
+	require.False(t, gjson.GetBytes(patched, "live_search").Exists())
+	require.True(t, gjson.GetBytes(patched, `tools.#(type=="web_search")`).Exists())
+	require.True(t, gjson.GetBytes(patched, `tools.#(type=="x_search")`).Exists())
+}
+
+func TestPatchGrokResponsesBodyDoesNotDuplicateExistingSearchTools(t *testing.T) {
+	t.Parallel()
+
+	body := []byte(`{
+		"model": "grok",
+		"input": "latest news?",
+		"search_parameters": {"mode": "on"},
+		"tools": [{"type": "web_search"}, {"type": "function", "name": "kept_fn"}]
+	}`)
+
+	patched, err := patchGrokResponsesBody(body, "grok-4.3")
+	require.NoError(t, err)
+	require.False(t, gjson.GetBytes(patched, "search_parameters").Exists())
+	require.Len(t, gjson.GetBytes(patched, "tools").Array(), 2)
+	require.True(t, gjson.GetBytes(patched, `tools.#(type=="web_search")`).Exists())
+	require.True(t, gjson.GetBytes(patched, `tools.#(type=="function")`).Exists())
+	require.False(t, gjson.GetBytes(patched, `tools.#(type=="x_search")`).Exists())
+}
+
+func TestPatchGrokResponsesBodyStripsOffModeLiveSearchWithoutInjectingTools(t *testing.T) {
+	t.Parallel()
+
+	body := []byte(`{
+		"model": "grok",
+		"input": "hello",
+		"search_parameters": {"mode": "off"}
+	}`)
+
+	patched, err := patchGrokResponsesBody(body, "grok-4.3")
+	require.NoError(t, err)
+	require.False(t, gjson.GetBytes(patched, "search_parameters").Exists())
+	require.False(t, gjson.GetBytes(patched, "tools").Exists())
+}
+
+func TestSanitizeGrokDeprecatedLiveSearchChatCompletionsStripOnly(t *testing.T) {
+	t.Parallel()
+
+	body := []byte(`{
+		"model": "grok",
+		"messages": [{"role":"user","content":"hi"}],
+		"search_parameters": {"mode": "auto"},
+		"live_search": true
+	}`)
+
+	sanitized, err := sanitizeGrokDeprecatedLiveSearch(body, grokLiveSearchSanitizeOptions{UpgradeToAgentTools: false})
+	require.NoError(t, err)
+	require.False(t, gjson.GetBytes(sanitized, "search_parameters").Exists())
+	require.False(t, gjson.GetBytes(sanitized, "live_search").Exists())
+	require.False(t, gjson.GetBytes(sanitized, "tools").Exists())
+	require.Equal(t, "hi", gjson.GetBytes(sanitized, "messages.0.content").String())
+}
+
+func TestGrokUpstreamErrorKindMarksLiveSearch410AsClientCompat(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "client_compat", grokUpstreamErrorKind(http.StatusGone, "Live search is deprecated. Please switch to the Agent Tools API"))
+	require.Equal(t, "failover", grokUpstreamErrorKind(http.StatusUnauthorized, "unauthorized"))
+	require.False(t, isGrokDeprecatedLiveSearchError(http.StatusBadRequest, "Live search is deprecated"))
+	require.False(t, (&OpenAIGatewayService{}).shouldFailoverUpstreamError(http.StatusGone))
+}
+
+func TestHandleGrokAccountUpstreamErrorIgnoresGoneLiveSearch(t *testing.T) {
+	account := &Account{ID: 63, Platform: PlatformGrok, Type: AccountTypeOAuth}
+	repo := &grokQuotaAccountRepo{}
+	svc := &OpenAIGatewayService{accountRepo: repo}
+
+	svc.handleGrokAccountUpstreamError(context.Background(), account, http.StatusGone, nil, []byte(`{"error":"Live search is deprecated"}`))
+
+	require.False(t, svc.isOpenAIAccountRuntimeBlocked(account))
+	require.Equal(t, 0, repo.tempUnschedCalls)
+	require.False(t, (&OpenAIGatewayService{}).shouldFailoverUpstreamError(http.StatusGone))
+}
+
 func TestBuildGrokResponsesRequestUsesAccountBaseURLAndBearerToken(t *testing.T) {
 	t.Setenv(xai.EnvAllowUnsafeURLOverrides, "true")
 
@@ -555,6 +646,113 @@ func TestForwardAsChatCompletionsForGrokUsesXAIChatCompletionsAndSnapshots(t *te
 	require.Equal(t, 2, result.Usage.OutputTokens)
 	require.NotNil(t, repo.updates[51][grokQuotaSnapshotExtraKey])
 	require.Equal(t, http.StatusOK, recorder.Code)
+}
+
+func TestForwardAsChatCompletionsForGrokStripsSearchParameters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	body := []byte(`{
+		"model":"grok",
+		"messages":[{"role":"user","content":"hi"}],
+		"stream":false,
+		"search_parameters":{"mode":"auto"},
+		"live_search":true
+	}`)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
+
+	account := &Account{
+		ID:          54,
+		Name:        "grok",
+		Platform:    PlatformGrok,
+		Type:        AccountTypeOAuth,
+		Concurrency: 1,
+		Credentials: map[string]any{
+			"access_token": "access-token",
+			"expires_at":   time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+			"base_url":     xai.DefaultCLIBaseURL,
+		},
+	}
+	repo := &grokQuotaAccountRepo{
+		mockAccountRepoForPlatform: &mockAccountRepoForPlatform{
+			accountsByID: map[int64]*Account{54: account},
+		},
+	}
+	upstream := &httpUpstreamRecorder{resp: &http.Response{
+		StatusCode: http.StatusOK,
+		Header: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: io.NopCloser(strings.NewReader(`{"id":"chatcmpl","object":"chat.completion","model":"grok-4.3","choices":[],"usage":{"prompt_tokens":1,"completion_tokens":1}}`)),
+	}}
+	svc := &OpenAIGatewayService{
+		httpUpstream:      upstream,
+		grokTokenProvider: NewGrokTokenProvider(repo, nil),
+		accountRepo:       repo,
+	}
+
+	_, err := svc.ForwardAsChatCompletions(context.Background(), c, account, body, "", "")
+	require.NoError(t, err)
+	require.Equal(t, xai.DefaultCLIBaseURL+"/chat/completions", upstream.lastReq.URL.String())
+	require.False(t, gjson.GetBytes(upstream.lastBody, "search_parameters").Exists())
+	require.False(t, gjson.GetBytes(upstream.lastBody, "live_search").Exists())
+	require.False(t, gjson.GetBytes(upstream.lastBody, "tools").Exists())
+	require.Equal(t, "hi", gjson.GetBytes(upstream.lastBody, "messages.0.content").String())
+}
+
+func TestForwardAsChatCompletionsForGrokResponsesShapeRoutesToResponses(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	body := []byte(`{
+		"model":"grok",
+		"input":"latest news?",
+		"stream":false,
+		"search_parameters":{"mode":"auto"}
+	}`)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
+
+	account := &Account{
+		ID:          55,
+		Name:        "grok",
+		Platform:    PlatformGrok,
+		Type:        AccountTypeOAuth,
+		Concurrency: 1,
+		Credentials: map[string]any{
+			"access_token": "access-token",
+			"expires_at":   time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+			"base_url":     xai.DefaultCLIBaseURL,
+		},
+	}
+	repo := &grokQuotaAccountRepo{
+		mockAccountRepoForPlatform: &mockAccountRepoForPlatform{
+			accountsByID: map[int64]*Account{55: account},
+		},
+	}
+	upstream := &httpUpstreamRecorder{resp: &http.Response{
+		StatusCode: http.StatusOK,
+		Header: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: io.NopCloser(strings.NewReader(`{"id":"resp_grok","object":"response","model":"grok-4.3","output":[],"usage":{"input_tokens":2,"output_tokens":1}}`)),
+	}}
+	svc := &OpenAIGatewayService{
+		httpUpstream:      upstream,
+		grokTokenProvider: NewGrokTokenProvider(repo, nil),
+		accountRepo:       repo,
+	}
+
+	result, err := svc.ForwardAsChatCompletions(context.Background(), c, account, body, "", "")
+	require.NoError(t, err)
+	require.Equal(t, xai.DefaultCLIBaseURL+"/responses", upstream.lastReq.URL.String())
+	require.False(t, gjson.GetBytes(upstream.lastBody, "search_parameters").Exists())
+	require.True(t, gjson.GetBytes(upstream.lastBody, `tools.#(type=="web_search")`).Exists())
+	require.True(t, gjson.GetBytes(upstream.lastBody, `tools.#(type=="x_search")`).Exists())
+	require.Equal(t, "latest news?", gjson.GetBytes(upstream.lastBody, "input").String())
+	require.Equal(t, "grok", result.Model)
+	require.Equal(t, "grok-4.3", result.UpstreamModel)
 }
 
 func TestForwardGrokResponsesStreamingUsesXAIResponsesAndSnapshots(t *testing.T) {

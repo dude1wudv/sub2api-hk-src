@@ -75,6 +75,22 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	}
 
 	if account.Platform == PlatformGrok {
+		// Cursor/compat clients sometimes POST Responses-shaped bodies
+		// (`input` without `messages`) to /v1/chat/completions. Route those
+		// to xAI /responses instead of the raw CC path so `input` is preserved
+		// and Live Search can be upgraded to Agent Tools.
+		if !gjson.GetBytes(body, "messages").Exists() && gjson.GetBytes(body, "input").Exists() {
+			originalModel := strings.TrimSpace(gjson.GetBytes(body, "model").String())
+			if originalModel == "" {
+				writeChatCompletionsError(c, http.StatusBadRequest, "invalid_request_error", "model is required")
+				return nil, fmt.Errorf("missing model in request")
+			}
+			reqStream := gjson.GetBytes(body, "stream").Bool()
+			if err := s.IncrementOpenAIAccountRPM(ctx, account); err != nil {
+				logger.LegacyPrintf("service.openai_gateway", "IncrementOpenAIAccountRPM failed for account %d: %v", account.ID, err)
+			}
+			return s.forwardGrokResponses(ctx, c, account, body, originalModel, reqStream, time.Now())
+		}
 		return s.forwardAsRawChatCompletions(ctx, c, account, body, defaultMappedModel)
 	}
 
