@@ -869,78 +869,86 @@ func init() {
 	groupDescImageRateMultiplier := groupFields[13].Descriptor()
 	// group.DefaultImageRateMultiplier holds the default value on creation for the image_rate_multiplier field.
 	group.DefaultImageRateMultiplier = groupDescImageRateMultiplier.Default.(float64)
+	// groupDescVideoRateIndependent is the schema descriptor for video_rate_independent field.
+	groupDescVideoRateIndependent := groupFields[17].Descriptor()
+	// group.DefaultVideoRateIndependent holds the default value on creation for the video_rate_independent field.
+	group.DefaultVideoRateIndependent = groupDescVideoRateIndependent.Default.(bool)
+	// groupDescVideoRateMultiplier is the schema descriptor for video_rate_multiplier field.
+	groupDescVideoRateMultiplier := groupFields[18].Descriptor()
+	// group.DefaultVideoRateMultiplier holds the default value on creation for the video_rate_multiplier field.
+	group.DefaultVideoRateMultiplier = groupDescVideoRateMultiplier.Default.(float64)
 	// groupDescClaudeCodeOnly is the schema descriptor for claude_code_only field.
-	groupDescClaudeCodeOnly := groupFields[17].Descriptor()
+	groupDescClaudeCodeOnly := groupFields[22].Descriptor()
 	// group.DefaultClaudeCodeOnly holds the default value on creation for the claude_code_only field.
 	group.DefaultClaudeCodeOnly = groupDescClaudeCodeOnly.Default.(bool)
 	// groupDescModelRoutingEnabled is the schema descriptor for model_routing_enabled field.
-	groupDescModelRoutingEnabled := groupFields[21].Descriptor()
+	groupDescModelRoutingEnabled := groupFields[26].Descriptor()
 	// group.DefaultModelRoutingEnabled holds the default value on creation for the model_routing_enabled field.
 	group.DefaultModelRoutingEnabled = groupDescModelRoutingEnabled.Default.(bool)
 	// groupDescMcpXMLInject is the schema descriptor for mcp_xml_inject field.
-	groupDescMcpXMLInject := groupFields[22].Descriptor()
+	groupDescMcpXMLInject := groupFields[27].Descriptor()
 	// group.DefaultMcpXMLInject holds the default value on creation for the mcp_xml_inject field.
 	group.DefaultMcpXMLInject = groupDescMcpXMLInject.Default.(bool)
 	// groupDescSupportedModelScopes is the schema descriptor for supported_model_scopes field.
-	groupDescSupportedModelScopes := groupFields[23].Descriptor()
+	groupDescSupportedModelScopes := groupFields[28].Descriptor()
 	// group.DefaultSupportedModelScopes holds the default value on creation for the supported_model_scopes field.
 	group.DefaultSupportedModelScopes = groupDescSupportedModelScopes.Default.([]string)
 	// groupDescSortOrder is the schema descriptor for sort_order field.
-	groupDescSortOrder := groupFields[24].Descriptor()
+	groupDescSortOrder := groupFields[29].Descriptor()
 	// group.DefaultSortOrder holds the default value on creation for the sort_order field.
 	group.DefaultSortOrder = groupDescSortOrder.Default.(int)
 	// groupDescAllowMessagesDispatch is the schema descriptor for allow_messages_dispatch field.
-	groupDescAllowMessagesDispatch := groupFields[25].Descriptor()
+	groupDescAllowMessagesDispatch := groupFields[30].Descriptor()
 	// group.DefaultAllowMessagesDispatch holds the default value on creation for the allow_messages_dispatch field.
 	group.DefaultAllowMessagesDispatch = groupDescAllowMessagesDispatch.Default.(bool)
 	// groupDescRequireOauthOnly is the schema descriptor for require_oauth_only field.
-	groupDescRequireOauthOnly := groupFields[26].Descriptor()
+	groupDescRequireOauthOnly := groupFields[31].Descriptor()
 	// group.DefaultRequireOauthOnly holds the default value on creation for the require_oauth_only field.
 	group.DefaultRequireOauthOnly = groupDescRequireOauthOnly.Default.(bool)
 	// groupDescRequirePrivacySet is the schema descriptor for require_privacy_set field.
-	groupDescRequirePrivacySet := groupFields[27].Descriptor()
+	groupDescRequirePrivacySet := groupFields[32].Descriptor()
 	// group.DefaultRequirePrivacySet holds the default value on creation for the require_privacy_set field.
 	group.DefaultRequirePrivacySet = groupDescRequirePrivacySet.Default.(bool)
 	// groupDescDefaultMappedModel is the schema descriptor for default_mapped_model field.
-	groupDescDefaultMappedModel := groupFields[28].Descriptor()
+	groupDescDefaultMappedModel := groupFields[33].Descriptor()
 	// group.DefaultDefaultMappedModel holds the default value on creation for the default_mapped_model field.
 	group.DefaultDefaultMappedModel = groupDescDefaultMappedModel.Default.(string)
 	// group.DefaultMappedModelValidator is a validator for the "default_mapped_model" field. It is called by the builders before save.
 	group.DefaultMappedModelValidator = groupDescDefaultMappedModel.Validators[0].(func(string) error)
 	// groupDescMessagesDispatchModelConfig is the schema descriptor for messages_dispatch_model_config field.
-	groupDescMessagesDispatchModelConfig := groupFields[29].Descriptor()
+	groupDescMessagesDispatchModelConfig := groupFields[34].Descriptor()
 	// group.DefaultMessagesDispatchModelConfig holds the default value on creation for the messages_dispatch_model_config field.
 	group.DefaultMessagesDispatchModelConfig = groupDescMessagesDispatchModelConfig.Default.(domain.OpenAIMessagesDispatchModelConfig)
 	// groupDescModelsListConfig is the schema descriptor for models_list_config field.
-	groupDescModelsListConfig := groupFields[30].Descriptor()
+	groupDescModelsListConfig := groupFields[35].Descriptor()
 	// group.DefaultModelsListConfig holds the default value on creation for the models_list_config field.
 	group.DefaultModelsListConfig = groupDescModelsListConfig.Default.(domain.GroupModelsListConfig)
 	// groupDescRpmLimit is the schema descriptor for rpm_limit field.
-	groupDescRpmLimit := groupFields[31].Descriptor()
+	groupDescRpmLimit := groupFields[36].Descriptor()
 	// group.DefaultRpmLimit holds the default value on creation for the rpm_limit field.
 	group.DefaultRpmLimit = groupDescRpmLimit.Default.(int)
 	// groupDescSpendingUsedUsd is the schema descriptor for spending_used_usd field.
-	groupDescSpendingUsedUsd := groupFields[33].Descriptor()
+	groupDescSpendingUsedUsd := groupFields[38].Descriptor()
 	// group.DefaultSpendingUsedUsd holds the default value on creation for the spending_used_usd field.
 	group.DefaultSpendingUsedUsd = groupDescSpendingUsedUsd.Default.(float64)
 	// groupDescDailyBalanceEnabled is the schema descriptor for daily_balance_enabled field.
-	groupDescDailyBalanceEnabled := groupFields[34].Descriptor()
+	groupDescDailyBalanceEnabled := groupFields[39].Descriptor()
 	// group.DefaultDailyBalanceEnabled holds the default value on creation for the daily_balance_enabled field.
 	group.DefaultDailyBalanceEnabled = groupDescDailyBalanceEnabled.Default.(bool)
 	// groupDescDailyFallbackMultiplier is the schema descriptor for daily_fallback_multiplier field.
-	groupDescDailyFallbackMultiplier := groupFields[35].Descriptor()
+	groupDescDailyFallbackMultiplier := groupFields[40].Descriptor()
 	// group.DefaultDailyFallbackMultiplier holds the default value on creation for the daily_fallback_multiplier field.
 	group.DefaultDailyFallbackMultiplier = groupDescDailyFallbackMultiplier.Default.(float64)
 	// groupDescTimedDiscountEnabled is the schema descriptor for timed_discount_enabled field.
-	groupDescTimedDiscountEnabled := groupFields[36].Descriptor()
+	groupDescTimedDiscountEnabled := groupFields[41].Descriptor()
 	// group.DefaultTimedDiscountEnabled holds the default value on creation for the timed_discount_enabled field.
 	group.DefaultTimedDiscountEnabled = groupDescTimedDiscountEnabled.Default.(bool)
 	// groupDescTimedDiscountStartMinute is the schema descriptor for timed_discount_start_minute field.
-	groupDescTimedDiscountStartMinute := groupFields[37].Descriptor()
+	groupDescTimedDiscountStartMinute := groupFields[42].Descriptor()
 	// group.DefaultTimedDiscountStartMinute holds the default value on creation for the timed_discount_start_minute field.
 	group.DefaultTimedDiscountStartMinute = groupDescTimedDiscountStartMinute.Default.(int)
 	// groupDescTimedDiscountEndMinute is the schema descriptor for timed_discount_end_minute field.
-	groupDescTimedDiscountEndMinute := groupFields[38].Descriptor()
+	groupDescTimedDiscountEndMinute := groupFields[43].Descriptor()
 	// group.DefaultTimedDiscountEndMinute holds the default value on creation for the timed_discount_end_minute field.
 	group.DefaultTimedDiscountEndMinute = groupDescTimedDiscountEndMinute.Default.(int)
 	idempotencyrecordMixin := schema.IdempotencyRecord{}.Mixin()
@@ -1830,12 +1838,20 @@ func init() {
 	usagelogDescImageSizeSource := usagelogFields[37].Descriptor()
 	// usagelog.ImageSizeSourceValidator is a validator for the "image_size_source" field. It is called by the builders before save.
 	usagelog.ImageSizeSourceValidator = usagelogDescImageSizeSource.Validators[0].(func(string) error)
+	// usagelogDescVideoCount is the schema descriptor for video_count field.
+	usagelogDescVideoCount := usagelogFields[39].Descriptor()
+	// usagelog.DefaultVideoCount holds the default value on creation for the video_count field.
+	usagelog.DefaultVideoCount = usagelogDescVideoCount.Default.(int)
+	// usagelogDescVideoResolution is the schema descriptor for video_resolution field.
+	usagelogDescVideoResolution := usagelogFields[40].Descriptor()
+	// usagelog.VideoResolutionValidator is a validator for the "video_resolution" field. It is called by the builders before save.
+	usagelog.VideoResolutionValidator = usagelogDescVideoResolution.Validators[0].(func(string) error)
 	// usagelogDescCacheTTLOverridden is the schema descriptor for cache_ttl_overridden field.
-	usagelogDescCacheTTLOverridden := usagelogFields[39].Descriptor()
+	usagelogDescCacheTTLOverridden := usagelogFields[42].Descriptor()
 	// usagelog.DefaultCacheTTLOverridden holds the default value on creation for the cache_ttl_overridden field.
 	usagelog.DefaultCacheTTLOverridden = usagelogDescCacheTTLOverridden.Default.(bool)
 	// usagelogDescCreatedAt is the schema descriptor for created_at field.
-	usagelogDescCreatedAt := usagelogFields[40].Descriptor()
+	usagelogDescCreatedAt := usagelogFields[43].Descriptor()
 	// usagelog.DefaultCreatedAt holds the default value on creation for the created_at field.
 	usagelog.DefaultCreatedAt = usagelogDescCreatedAt.Default.(func() time.Time)
 	userMixin := schema.User{}.Mixin()

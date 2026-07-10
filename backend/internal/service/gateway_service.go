@@ -9709,7 +9709,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 		groupDefault := apiKey.Group.RateMultiplier
 		groupMultiplier = s.getUserGroupRateMultiplier(ctx, user.ID, *apiKey.GroupID, groupDefault)
 	}
-	multiplier, imageMultiplier := resolveUserBillingRateMultipliers(apiKey, groupMultiplier, account)
+	multiplier, imageMultiplier, _ := resolveUserBillingRateMultipliers(apiKey, groupMultiplier, account)
 
 	// 确定计费模型
 	billingModel := forwardResultBillingModel(result.Model, result.UpstreamModel)

@@ -538,6 +538,12 @@ export interface Group {
   image_price_1k: number | null
   image_price_2k: number | null
   image_price_4k: number | null
+  // 视频生成计费配置（Grok 按秒）
+  video_rate_independent: boolean
+  video_rate_multiplier: number
+  video_price_480p: number | null
+  video_price_720p: number | null
+  video_price_1080p: number | null
   // 高峰时段倍率配置
   peak_rate_enabled: boolean
   peak_start: string

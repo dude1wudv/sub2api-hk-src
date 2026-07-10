@@ -2484,6 +2484,17 @@ export default {
         finalPricePreview: '最终单张价格预览',
         notConfigured: '未配置'
       },
+      videoPricing: {
+        title: '视频生成计费',
+        description: 'Grok 视频价格为每秒单价（USD/s）。总费用 = 每秒价 × 时长（秒）。留空则使用 xAI 默认价目。',
+        independentMultiplier: '视频倍率独立',
+        videoMultiplier: '视频独立倍率',
+        price480p: '480p 每秒单价 (USD/s)',
+        price720p: '720p 每秒单价 (USD/s)',
+        price1080p: '1080p 每秒单价 (USD/s)',
+        modeHint: '默认关闭独立倍率时，视频费用 = 视频价格 × 当前分组有效倍率；开启独立倍率后，视频费用 = 视频价格 × 视频独立倍率。',
+        notConfigured: '未配置'
+      },
       modelsList: {
         title: '自定义 /v1/models 模型列表',
         hint: '仅影响 /v1/models 展示结果，不影响白名单模型调用和账号调度。',

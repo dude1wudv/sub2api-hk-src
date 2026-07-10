@@ -2368,6 +2368,17 @@ export default {
         finalPricePreview: 'Final per-image price preview',
         notConfigured: 'Not configured'
       },
+      videoPricing: {
+        title: 'Video Generation Pricing',
+        description: 'Grok video prices are per-second rates (USD/s). Total cost = per-second price × duration seconds. Leave empty to use xAI defaults.',
+        independentMultiplier: 'Use independent video multiplier',
+        videoMultiplier: 'Video multiplier',
+        price480p: '480p per-second price (USD/s)',
+        price720p: '720p per-second price (USD/s)',
+        price1080p: '1080p per-second price (USD/s)',
+        modeHint: 'By default, video billing uses video price × current effective group multiplier. Independent mode uses video price × video multiplier.',
+        notConfigured: 'Not configured'
+      },
       modelsList: {
         title: 'Custom /v1/models Model List',
         hint: 'Only changes the /v1/models response. Whitelist model calls and account routing are unchanged.',

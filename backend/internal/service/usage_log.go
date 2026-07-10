@@ -179,6 +179,11 @@ type UsageLog struct {
 	ImageSizeBreakdown map[string]int
 	MediaType          *string
 
+	// 视频生成字段（Grok 按秒计费）
+	VideoCount            int
+	VideoResolution       *string
+	VideoDurationSeconds  *int
+
 	CreatedAt time.Time
 
 	User         *User

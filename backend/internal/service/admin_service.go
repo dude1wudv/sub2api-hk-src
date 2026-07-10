@@ -219,6 +219,11 @@ type CreateGroupInput struct {
 	ImagePrice1K         *float64
 	ImagePrice2K         *float64
 	ImagePrice4K         *float64
+	VideoRateIndependent bool
+	VideoRateMultiplier  *float64
+	VideoPrice480P       *float64
+	VideoPrice720P       *float64
+	VideoPrice1080P      *float64
 	ClaudeCodeOnly       bool   // 仅允许 Claude Code 客户端
 	FallbackGroupID      *int64 // 降级分组 ID
 	// 无效请求兜底分组 ID（仅 anthropic 平台使用）
@@ -271,6 +276,11 @@ type UpdateGroupInput struct {
 	ImagePrice1K         *float64
 	ImagePrice2K         *float64
 	ImagePrice4K         *float64
+	VideoRateIndependent *bool
+	VideoRateMultiplier  *float64
+	VideoPrice480P       *float64
+	VideoPrice720P       *float64
+	VideoPrice1080P      *float64
 	ClaudeCodeOnly       *bool  // 仅允许 Claude Code 客户端
 	FallbackGroupID      *int64 // 降级分组 ID
 	// 无效请求兜底分组 ID（仅 anthropic 平台使用）
@@ -1976,6 +1986,16 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		}
 		imageRateMultiplier = *input.ImageRateMultiplier
 	}
+	videoPrice480P := normalizePrice(input.VideoPrice480P)
+	videoPrice720P := normalizePrice(input.VideoPrice720P)
+	videoPrice1080P := normalizePrice(input.VideoPrice1080P)
+	videoRateMultiplier := 1.0
+	if input.VideoRateMultiplier != nil {
+		if *input.VideoRateMultiplier < 0 {
+			return nil, errors.New("video_rate_multiplier must be >= 0")
+		}
+		videoRateMultiplier = *input.VideoRateMultiplier
+	}
 
 	// 校验降级分组
 	if input.FallbackGroupID != nil {
@@ -2051,6 +2071,11 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		ImagePrice1K:                    imagePrice1K,
 		ImagePrice2K:                    imagePrice2K,
 		ImagePrice4K:                    imagePrice4K,
+		VideoRateIndependent:            input.VideoRateIndependent,
+		VideoRateMultiplier:             videoRateMultiplier,
+		VideoPrice480P:                  videoPrice480P,
+		VideoPrice720P:                  videoPrice720P,
+		VideoPrice1080P:                 videoPrice1080P,
 		ClaudeCodeOnly:                  input.ClaudeCodeOnly,
 		FallbackGroupID:                 input.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: fallbackOnInvalidRequest,
@@ -2122,6 +2147,13 @@ func normalizePrice(price *float64) *float64 {
 		return nil
 	}
 	return price
+}
+
+func coalesceFloat(v *float64, fallback float64) float64 {
+	if v == nil {
+		return fallback
+	}
+	return *v
 }
 
 // validateFallbackGroup 校验降级分组的有效性
@@ -2251,6 +2283,21 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.ImagePrice4K != nil {
 		group.ImagePrice4K = normalizePrice(input.ImagePrice4K)
+	}
+	if input.VideoRateIndependent != nil {
+		group.VideoRateIndependent = *input.VideoRateIndependent
+	}
+	if input.VideoRateMultiplier != nil {
+		group.VideoRateMultiplier = *input.VideoRateMultiplier
+	}
+	if input.VideoPrice480P != nil {
+		group.VideoPrice480P = normalizePrice(input.VideoPrice480P)
+	}
+	if input.VideoPrice720P != nil {
+		group.VideoPrice720P = normalizePrice(input.VideoPrice720P)
+	}
+	if input.VideoPrice1080P != nil {
+		group.VideoPrice1080P = normalizePrice(input.VideoPrice1080P)
 	}
 
 	// Claude Code 客户端限制
