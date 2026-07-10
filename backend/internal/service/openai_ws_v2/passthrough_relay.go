@@ -784,10 +784,17 @@ func parseUsageAndAccumulate(
 		// 解析失败时不做部分字段累加，避免计费 usage 出现“半有效”状态。
 		return Usage{}
 	}
+	cacheWriteTokens := usageResult.Get("input_tokens_details.cache_write_tokens").Int()
+	if cacheWriteTokens == 0 {
+		cacheWriteTokens = usageResult.Get("prompt_tokens_details.cache_write_tokens").Int()
+	}
+	if cacheWriteTokens == 0 {
+		cacheWriteTokens = usageResult.Get("cache_creation_input_tokens").Int()
+	}
 	parsedUsage := Usage{
 		InputTokens:              inputTokens,
 		OutputTokens:             outputTokens,
-		CacheCreationInputTokens: int(usageResult.Get("cache_creation_input_tokens").Int()),
+		CacheCreationInputTokens: int(cacheWriteTokens),
 		CacheReadInputTokens:     cachedTokens,
 		ImageOutputTokens:        int(imageTokens),
 	}

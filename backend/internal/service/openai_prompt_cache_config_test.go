@@ -70,3 +70,26 @@ func TestConfiguredOpenAIPromptCacheRetention(t *testing.T) {
 	require.True(t, shouldPreserveConfiguredOpenAIPromptCacheRetention(account))
 	require.Equal(t, "24h", configuredOpenAIPromptCacheRetention(account))
 }
+
+func TestOpenAIModelUsesPromptCacheOptionsTTL(t *testing.T) {
+	require.True(t, openAIModelUsesPromptCacheOptionsTTL("gpt-5.6-sol"))
+	require.True(t, openAIModelUsesPromptCacheOptionsTTL("gpt-5.6-terra"))
+	require.True(t, openAIModelUsesPromptCacheOptionsTTL("GPT-5.6-luna"))
+	require.False(t, openAIModelUsesPromptCacheOptionsTTL("gpt-5.5"))
+	require.False(t, openAIModelUsesPromptCacheOptionsTTL("gpt-5.4"))
+}
+
+func TestEnsureOpenAIPromptCacheOptionsTTL(t *testing.T) {
+	body := map[string]any{"model": "gpt-5.6-sol"}
+	require.True(t, ensureOpenAIPromptCacheOptionsTTL(body))
+	opts := body["prompt_cache_options"].(map[string]any)
+	require.Equal(t, "30m", opts["ttl"])
+
+	require.False(t, ensureOpenAIPromptCacheOptionsTTL(body))
+
+	body["prompt_cache_options"] = map[string]any{"mode": "explicit", "ttl": "24h"}
+	require.True(t, ensureOpenAIPromptCacheOptionsTTL(body))
+	opts = body["prompt_cache_options"].(map[string]any)
+	require.Equal(t, "30m", opts["ttl"])
+	require.Equal(t, "explicit", opts["mode"])
+}

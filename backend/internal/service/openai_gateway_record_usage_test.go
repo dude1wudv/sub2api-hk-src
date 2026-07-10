@@ -248,8 +248,12 @@ func newOpenAIRecordUsageServiceWithBillingRepoForTest(usageRepo UsageLogReposit
 func expectedOpenAICost(t *testing.T, svc *OpenAIGatewayService, model string, usage OpenAIUsage, multiplier float64) *CostBreakdown {
 	t.Helper()
 
+	actualInput := usage.InputTokens - usage.CacheReadInputTokens - usage.CacheCreationInputTokens
+	if actualInput < 0 {
+		actualInput = 0
+	}
 	cost, err := svc.billingService.CalculateCost(model, UsageTokens{
-		InputTokens:         max(usage.InputTokens-usage.CacheReadInputTokens, 0),
+		InputTokens:         actualInput,
 		OutputTokens:        usage.OutputTokens,
 		CacheCreationTokens: usage.CacheCreationInputTokens,
 		CacheReadTokens:     usage.CacheReadInputTokens,
@@ -2154,6 +2158,44 @@ func TestApplyGrokOAuthSimulatedCacheBilling(t *testing.T) {
 			require.Equal(t, 0, usage.CacheReadInputTokens)
 		}
 	})
+}
+
+func TestOpenAIGatewayServiceRecordUsage_GPT56CacheWriteBilledAndDisplayed(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	billingRepo := &openAIRecordUsageBillingRepoStub{result: &UsageBillingApplyResult{Applied: true}}
+	svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+
+	// Inclusive OpenAI usage: uncached 86 + write 1920 + write 100 = 2106 input tokens.
+	usage := OpenAIUsage{
+		InputTokens:              2106,
+		OutputTokens:             50,
+		CacheReadInputTokens:     1920,
+		CacheCreationInputTokens: 100,
+	}
+	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
+		Result: &OpenAIForwardResult{
+			RequestID: "resp_gpt56_cache_write",
+			Usage:     usage,
+			Model:     "gpt-5.6-sol",
+			Duration:  time.Second,
+		},
+		APIKey:  &APIKey{ID: 5201, Group: &Group{RateMultiplier: 1}},
+		User:    &User{ID: 6201},
+		Account: &Account{ID: 7201, Platform: PlatformOpenAI, Type: AccountTypeAPIKey},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.Equal(t, 86, usageRepo.lastLog.InputTokens)
+	require.Equal(t, 1920, usageRepo.lastLog.CacheReadTokens)
+	require.Equal(t, 100, usageRepo.lastLog.CacheCreationTokens)
+	require.Greater(t, usageRepo.lastLog.CacheCreationCost, 0.0)
+
+	expected := expectedOpenAICost(t, svc, "gpt-5.6-sol", usage, 1.1)
+	require.InDelta(t, expected.CacheCreationCost, usageRepo.lastLog.CacheCreationCost, 1e-12)
+	require.InDelta(t, expected.ActualCost, usageRepo.lastLog.ActualCost, 1e-12)
+	// CacheCreationCost on the log is pre-multiplier; ActualCost applies group rate.
+	require.InDelta(t, 100*6.25e-6, usageRepo.lastLog.CacheCreationCost, 1e-12)
+	require.InDelta(t, 86*5e-6, usageRepo.lastLog.InputCost, 1e-12)
 }
 
 func TestOpenAIGatewayServiceRecordUsage_GrokOAuthSimulatesCacheWhenUpstreamOmitsCachedTokens(t *testing.T) {

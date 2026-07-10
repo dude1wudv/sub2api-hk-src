@@ -84,11 +84,50 @@ func shouldPreserveConfiguredOpenAIPromptCacheRetention(account *Account) bool {
 func configuredOpenAIPromptCacheRetention(account *Account) string {
 	retention := strings.TrimSpace(accountConfigString(account, "openai_prompt_cache_retention"))
 	switch retention {
-	case "24h":
+	case "24h", "in_memory":
 		return retention
 	default:
 		return ""
 	}
+}
+
+// openAIModelUsesPromptCacheOptionsTTL reports whether the model follows the
+// GPT-5.6+ prompt cache API: prompt_cache_options.ttl (minimum lifetime), not
+// the older prompt_cache_retention max-retention policy.
+func openAIModelUsesPromptCacheOptionsTTL(model string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(model))
+	switch {
+	case strings.HasPrefix(normalized, "gpt-5.6"):
+		return true
+	default:
+		return false
+	}
+}
+
+// openAIPromptCacheOptionsTTL is the only GPT-5.6+ TTL OpenAI currently supports.
+const openAIPromptCacheOptionsTTL = "30m"
+
+func ensureOpenAIPromptCacheOptionsTTL(body map[string]any) bool {
+	if body == nil {
+		return false
+	}
+	raw, ok := body["prompt_cache_options"]
+	if !ok || raw == nil {
+		body["prompt_cache_options"] = map[string]any{"ttl": openAIPromptCacheOptionsTTL}
+		return true
+	}
+	opts, ok := raw.(map[string]any)
+	if !ok {
+		body["prompt_cache_options"] = map[string]any{"ttl": openAIPromptCacheOptionsTTL}
+		return true
+	}
+	ttl, _ := opts["ttl"].(string)
+	if strings.TrimSpace(ttl) == openAIPromptCacheOptionsTTL {
+		return false
+	}
+	opts["ttl"] = openAIPromptCacheOptionsTTL
+	body["prompt_cache_options"] = opts
+	return true
 }
 
 func buildConfiguredOpenAIPromptCacheKey(c *gin.Context, body []byte, account *Account, model string) string {

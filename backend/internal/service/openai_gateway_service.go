@@ -3161,11 +3161,6 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			markPatchSet("prompt_cache_key", generated)
 		}
 	}
-	if !gjson.GetBytes(body, "prompt_cache_retention").Exists() {
-		if retention := configuredOpenAIPromptCacheRetention(account); retention != "" {
-			markPatchSet("prompt_cache_retention", retention)
-		}
-	}
 
 	billingModel := account.GetMappedModel(reqModel)
 	if billingModel != reqModel {
@@ -3198,6 +3193,20 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Upstream model resolved: %s -> %s (account: %s, type: %s, isCodexCLI: %v)", modelForNormalize, upstreamModel, account.Name, account.Type, isCodexCLI)
 			reqModel = upstreamModel
 			markPatchSet("model", upstreamModel)
+		}
+	}
+	// GPT-5.6+ uses prompt_cache_options.ttl (min lifetime, only "30m").
+	// Older models still use prompt_cache_retention ("24h" / "in_memory").
+	if openAIModelUsesPromptCacheOptionsTTL(upstreamModel) {
+		if ttl := strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_options.ttl").String()); ttl != openAIPromptCacheOptionsTTL {
+			markPatchSet("prompt_cache_options.ttl", openAIPromptCacheOptionsTTL)
+		}
+		if gjson.GetBytes(body, "prompt_cache_retention").Exists() {
+			markPatchDelete("prompt_cache_retention")
+		}
+	} else if !gjson.GetBytes(body, "prompt_cache_retention").Exists() {
+		if retention := configuredOpenAIPromptCacheRetention(account); retention != "" {
+			markPatchSet("prompt_cache_retention", retention)
 		}
 	}
 	if strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String()) == "minimal" {
@@ -3342,8 +3351,11 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 		// Remove unsupported fields (not supported by upstream OpenAI API)
 		for _, unsupportedField := range []string{"prompt_cache_retention", "safety_identifier"} {
-			// JP 本地：当账号显式配置了 prompt_cache_retention 时保留该字段。
-			if unsupportedField == "prompt_cache_retention" && shouldPreserveConfiguredOpenAIPromptCacheRetention(account) {
+			// GPT-5.6+ rejects prompt_cache_retention; always strip it.
+			// Older models: keep when the account explicitly configures retention.
+			if unsupportedField == "prompt_cache_retention" &&
+				!openAIModelUsesPromptCacheOptionsTTL(upstreamModel) &&
+				shouldPreserveConfiguredOpenAIPromptCacheRetention(account) {
 				continue
 			}
 			if gjson.GetBytes(body, unsupportedField).Exists() {
@@ -6365,6 +6377,18 @@ func openAIUsageFromGJSON(value gjson.Result) (OpenAIUsage, bool) {
 	if cacheReadTokens == 0 {
 		cacheReadTokens = value.Get("prompt_tokens_details.cached_tokens").Int()
 	}
+	// GPT-5.6+ reports cache writes as cache_write_tokens under token details.
+	// Anthropic-compatible upstreams still use cache_creation_input_tokens.
+	cacheWriteTokens := value.Get("input_tokens_details.cache_write_tokens").Int()
+	if cacheWriteTokens == 0 {
+		cacheWriteTokens = value.Get("prompt_tokens_details.cache_write_tokens").Int()
+	}
+	if cacheWriteTokens == 0 {
+		cacheWriteTokens = value.Get("cache_creation_input_tokens").Int()
+	}
+	if cacheWriteTokens == 0 {
+		cacheWriteTokens = value.Get("cache_creation_tokens").Int()
+	}
 	imageOutputTokens := value.Get("output_tokens_details.image_tokens").Int()
 	if imageOutputTokens == 0 {
 		imageOutputTokens = value.Get("completion_tokens_details.image_tokens").Int()
@@ -6372,7 +6396,7 @@ func openAIUsageFromGJSON(value gjson.Result) (OpenAIUsage, bool) {
 	return OpenAIUsage{
 		InputTokens:              int(inputTokens),
 		OutputTokens:             int(outputTokens),
-		CacheCreationInputTokens: int(value.Get("cache_creation_input_tokens").Int()),
+		CacheCreationInputTokens: int(cacheWriteTokens),
 		CacheReadInputTokens:     int(cacheReadTokens),
 		ImageOutputTokens:        int(imageOutputTokens),
 	}, true
@@ -7145,9 +7169,10 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	}
 	applyGrokOAuthSimulatedCacheBilling(account, &result.Usage)
 
-	// 计算实际的新输入token（减去缓存读取的token）
-	// 因为 input_tokens 包含了 cache_read_tokens，而缓存读取的token不应按输入价格计费
-	actualInputTokens := result.Usage.InputTokens - result.Usage.CacheReadInputTokens
+	// OpenAI-style usage keeps input/prompt tokens inclusive of cache read and
+	// cache write breakdowns. Bill those buckets at their own rates, not again
+	// as uncached input. GPT-5.6+ reports writes as cache_write_tokens.
+	actualInputTokens := result.Usage.InputTokens - result.Usage.CacheReadInputTokens - result.Usage.CacheCreationInputTokens
 	if actualInputTokens < 0 {
 		actualInputTokens = 0
 	}

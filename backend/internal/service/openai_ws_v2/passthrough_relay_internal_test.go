@@ -307,6 +307,12 @@ func TestParseUsageAndEnrichCoverage(t *testing.T) {
 	require.Equal(t, 4, state.usage.CacheCreationInputTokens)
 	require.Equal(t, 3, state.usage.ImageOutputTokens)
 
+	parseUsageAndAccumulate(state, []byte(`{"type":"response.completed","response":{"usage":{"input_tokens":2006,"output_tokens":10,"input_tokens_details":{"cached_tokens":1920,"cache_write_tokens":86}}}}`), "response.completed", nil)
+	require.Equal(t, 2008, state.usage.InputTokens)
+	require.Equal(t, 11, state.usage.OutputTokens)
+	require.Equal(t, 1921, state.usage.CacheReadInputTokens)
+	require.Equal(t, 90, state.usage.CacheCreationInputTokens)
+
 	result := &RelayResult{}
 	enrichResult(result, state, 5*time.Millisecond)
 	require.Equal(t, state.usage.InputTokens, result.Usage.InputTokens)
@@ -314,7 +320,7 @@ func TestParseUsageAndEnrichCoverage(t *testing.T) {
 	require.Equal(t, state.usage.ImageOutputTokens, result.Usage.ImageOutputTokens)
 	require.Equal(t, 5*time.Millisecond, result.Duration)
 	parseUsageAndAccumulate(state, []byte(`{"type":"response.in_progress","response":{"usage":{"input_tokens":9}}}`), "response.in_progress", nil)
-	require.Equal(t, 2, state.usage.InputTokens)
+	require.Equal(t, 2008, state.usage.InputTokens)
 	enrichResult(nil, state, 0)
 }
 

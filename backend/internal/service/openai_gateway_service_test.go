@@ -3167,6 +3167,41 @@ func TestExtractOpenAIUsageFromJSONBytes_AcceptsResponseAndChatUsageShapes(t *te
 	require.Equal(t, 4, usage.CacheReadInputTokens)
 }
 
+func TestExtractOpenAIUsageFromJSONBytes_ReadsGPT56CacheWriteTokens(t *testing.T) {
+	usage, ok := extractOpenAIUsageFromJSONBytes([]byte(`{
+		"id":"resp_56",
+		"usage":{
+			"input_tokens":2006,
+			"output_tokens":300,
+			"input_tokens_details":{"cached_tokens":1920,"cache_write_tokens":86}
+		}
+	}`))
+	require.True(t, ok)
+	require.Equal(t, 2006, usage.InputTokens)
+	require.Equal(t, 300, usage.OutputTokens)
+	require.Equal(t, 1920, usage.CacheReadInputTokens)
+	require.Equal(t, 86, usage.CacheCreationInputTokens)
+
+	usage, ok = extractOpenAIUsageFromJSONBytes([]byte(`{
+		"usage":{
+			"prompt_tokens":2006,
+			"completion_tokens":300,
+			"prompt_tokens_details":{"cached_tokens":1920,"cache_write_tokens":86}
+		}
+	}`))
+	require.True(t, ok)
+	require.Equal(t, 86, usage.CacheCreationInputTokens)
+	require.Equal(t, 1920, usage.CacheReadInputTokens)
+
+	// Anthropic-compatible field still works as fallback.
+	usage, ok = extractOpenAIUsageFromJSONBytes([]byte(`{
+		"usage":{"input_tokens":100,"output_tokens":10,"cache_creation_input_tokens":40,"input_tokens_details":{"cached_tokens":20}}
+	}`))
+	require.True(t, ok)
+	require.Equal(t, 40, usage.CacheCreationInputTokens)
+	require.Equal(t, 20, usage.CacheReadInputTokens)
+}
+
 func TestExtractCodexFinalResponse_SampleReplay(t *testing.T) {
 	body := strings.Join([]string{
 		`event: message`,
