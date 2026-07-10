@@ -330,7 +330,7 @@
             </div>
           </div>
         </div>
-        <div class="mt-3">
+        <div class="mt-3 space-y-3">
           <div
             role="button"
             tabindex="0"
@@ -360,6 +360,46 @@
               <span>{{ t('admin.accounts.summary.sampled', { count: quotaPoolSummaryView?.oauth_pool?.sampled ?? 0 }) }}</span>
               <span>{{ t('admin.accounts.summary.exhausted', { count: quotaPoolSummaryView?.oauth_pool?.exhausted ?? 0 }) }}</span>
             </div>
+          </div>
+          <div
+            role="button"
+            tabindex="0"
+            :class="['quota-pool-card quota-pool-card-grok', { 'quota-pool-card-active': activeQuotaPool === 'grok' }]"
+            @click="openQuotaPool('grok')"
+            @keydown.enter.prevent="openQuotaPool('grok')"
+            @keydown.space.prevent="openQuotaPool('grok')"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="quota-pool-label">{{ t('admin.accounts.quotaPools.grokTitle') }}</p>
+                <p class="quota-pool-value">{{ formatSummaryPercent(quotaPoolSummaryView?.grok_pool?.remaining_percent) }}</p>
+              </div>
+              <div class="quota-pool-enter" :title="t('admin.accounts.quotaPools.openGrok')">
+                <div class="quota-pool-enter-metrics">
+                  <span>{{ t('admin.accounts.quotaPools.shortWindow') }} {{ formatSummaryPercent(quotaPoolSummaryView?.grok_pool?.remaining_5h_percent) }}</span>
+                  <span>{{ t('admin.accounts.quotaPools.weekly') }} {{ formatSummaryPercent(quotaPoolSummaryView?.grok_pool?.remaining_7d_percent) }}</span>
+                </div>
+                <Icon name="arrowRight" size="sm" />
+              </div>
+            </div>
+            <div class="quota-pool-meter">
+              <div class="quota-pool-meter-fill bg-gray-700 dark:bg-gray-300" :style="{ width: summaryMeterWidth(quotaPoolSummaryView?.grok_pool?.remaining_percent) }"></div>
+            </div>
+            <div class="quota-pool-stats">
+              <span>{{ t('admin.accounts.quotaPools.accounts', { total: quotaPoolSummaryView?.grok_pool?.total ?? 0, available: quotaPoolSummaryView?.grok_pool?.available ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.summary.sampled', { count: quotaPoolSummaryView?.grok_pool?.sampled ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.summary.exhausted', { count: quotaPoolSummaryView?.grok_pool?.exhausted ?? 0 }) }}</span>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <button
+              type="button"
+              class="quota-pool-restore"
+              :disabled="!activeQuotaPool"
+              @click.stop="exitQuotaPool"
+            >
+              {{ t('admin.accounts.quotaPools.exitPool') }}
+            </button>
           </div>
         </div>
       </template>
@@ -824,7 +864,7 @@ const oauthUsageSummaryRefreshKey = ref(0)
 const oauthUsageSummaryTimer = ref<number | null>(null)
 const accountMaintenanceBusy = ref(false)
 
-type QuotaPoolKind = 'oauth'
+type QuotaPoolKind = 'oauth' | 'grok'
 
 const tokyoProxyHealth = computed<AccountProxySummary[]>(() => {
   const proxies = accountSummary.value?.proxy_distribution ?? []
@@ -834,15 +874,33 @@ const tokyoProxyHealth = computed<AccountProxySummary[]>(() => {
 
 const activeQuotaPool = computed<QuotaPoolKind | null>(() => {
   const requestParams = params as any
-  return requestParams.platform === 'openai' && requestParams.type === 'oauth' ? 'oauth' : null
+  if (requestParams.type !== 'oauth') return null
+  if (requestParams.platform === 'openai') return 'oauth'
+  if (requestParams.platform === 'grok') return 'grok'
+  return null
 })
 
 const quotaPoolSummaryView = computed(() => quotaPoolSummary.value ?? accountSummary.value)
 
-const openQuotaPool = (_kind: QuotaPoolKind) => {
+const openQuotaPool = (kind: QuotaPoolKind) => {
   const requestParams = params as any
-  requestParams.platform = 'openai'
+  requestParams.platform = kind === 'grok' ? 'grok' : 'openai'
   requestParams.type = 'oauth'
+  requestParams.status = ''
+  requestParams.privacy_mode = ''
+  requestParams.search = ''
+  requestParams.group = ''
+  pagination.page = 1
+  clearSelection()
+  resetAutoRefreshCache()
+  pendingTodayStatsRefresh.value = true
+  load()
+}
+
+const exitQuotaPool = () => {
+  const requestParams = params as any
+  requestParams.platform = ''
+  requestParams.type = ''
   requestParams.status = ''
   requestParams.privacy_mode = ''
   requestParams.search = ''
@@ -883,7 +941,9 @@ const refreshAccountSummary = async () => {
 const refreshQuotaPoolSummary = async () => {
   const reqSeq = ++quotaPoolSummaryReqSeq.value
   try {
-    const summary = await adminAPI.accounts.getSummary({ platform: 'openai' })
+    // No platform filter so both OpenAI and Grok pool cards stay populated
+    // regardless of the current list filters.
+    const summary = await adminAPI.accounts.getSummary({})
     if (reqSeq !== quotaPoolSummaryReqSeq.value) return
     quotaPoolSummary.value = summary
   } catch (error) {
@@ -2374,8 +2434,16 @@ onUnmounted(() => {
   @apply border-emerald-100 dark:border-emerald-900/40;
 }
 
+.quota-pool-card-grok {
+  @apply border-gray-400 bg-gray-50 hover:border-gray-500 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-900/60 dark:hover:border-gray-500 dark:hover:bg-gray-900;
+}
+
 .quota-pool-card-active {
   @apply border-primary-300 bg-primary-50 dark:border-primary-700 dark:bg-primary-900/20;
+}
+
+.quota-pool-restore {
+  @apply rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700;
 }
 
 .quota-pool-label {

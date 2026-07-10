@@ -3297,10 +3297,15 @@ export default {
       },
       quotaPools: {
         oauthTitle: 'OAuth Pool',
+        grokTitle: 'Grok OAuth Pool',
         oauthMetric: '5h Remaining',
         bestMetric: 'Best Remaining',
+        shortWindow: 'Short',
+        weekly: 'Weekly',
         accounts: '{available} / {total} available',
-        openOAuth: 'View OAuth pool'
+        openOAuth: 'View OAuth pool',
+        openGrok: 'View Grok OAuth pool',
+        exitPool: 'Restore'
       },
       oauthUsage: {
         title: 'OAuth Standard Usage',

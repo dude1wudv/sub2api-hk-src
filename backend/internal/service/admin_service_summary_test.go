@@ -195,3 +195,96 @@ func TestBuildAccountSummaryQuotaPoolsUseAllOpenAIOAuthAndIgnoreAPIKeys(t *testi
 		t.Fatalf("FreePool.RemainingPercent = %v, want nil", summary.FreePool.RemainingPercent)
 	}
 }
+
+func TestBuildAccountSummaryGrokPoolAggregatesShortAndWeeklyWindows(t *testing.T) {
+	accounts := []Account{
+		{
+			Platform:    PlatformGrok,
+			Type:        AccountTypeOAuth,
+			Status:      StatusActive,
+			Schedulable: true,
+			Extra: map[string]any{
+				"grok_usage_snapshot": map[string]any{
+					"requests": map[string]any{
+						"limit":     int64(100),
+						"remaining": int64(40),
+					},
+				},
+				"grok_billing_snapshot": map[string]any{
+					"state":       "observed",
+					"utilization": 20.0,
+				},
+			},
+		},
+		{
+			Platform:    PlatformGrok,
+			Type:        AccountTypeOAuth,
+			Status:      StatusActive,
+			Schedulable: true,
+			Extra: map[string]any{
+				// No requests window — fall back to tokens.
+				"grok_usage_snapshot": map[string]any{
+					"tokens": map[string]any{
+						"limit":     int64(200),
+						"remaining": int64(50),
+					},
+				},
+				"grok_billing_snapshot": map[string]any{
+					"state":       "observed",
+					"utilization": 80.0,
+				},
+			},
+		},
+		{
+			Platform:    PlatformGrok,
+			Type:        AccountTypeAPIKey,
+			Status:      StatusActive,
+			Schedulable: true,
+			Extra: map[string]any{
+				"grok_usage_snapshot": map[string]any{
+					"requests": map[string]any{
+						"limit":     int64(100),
+						"remaining": int64(0),
+					},
+				},
+				"grok_billing_snapshot": map[string]any{
+					"state":       "observed",
+					"utilization": 99.0,
+				},
+			},
+		},
+		{
+			Platform:    PlatformOpenAI,
+			Type:        AccountTypeOAuth,
+			Status:      StatusActive,
+			Schedulable: true,
+			Extra: map[string]any{
+				"codex_5h_used_percent": 10.0,
+				"codex_7d_used_percent": 10.0,
+			},
+		},
+	}
+
+	summary := buildAccountSummary(accounts)
+
+	if summary.GrokPool.Total != 2 || summary.GrokPool.Available != 2 {
+		t.Fatalf("GrokPool totals = (%d,%d), want (2,2)", summary.GrokPool.Total, summary.GrokPool.Available)
+	}
+	// Short-window used: (60 + 75) / 2 = 67.5 → remaining 32.5
+	if summary.GrokPool.Sampled != 2 {
+		t.Fatalf("GrokPool.Sampled = %d, want 2", summary.GrokPool.Sampled)
+	}
+	if summary.GrokPool.RemainingPercent == nil || *summary.GrokPool.RemainingPercent != 32.5 {
+		t.Fatalf("GrokPool.RemainingPercent = %v, want 32.5", summary.GrokPool.RemainingPercent)
+	}
+	if summary.GrokPool.Remaining5hPercent == nil || *summary.GrokPool.Remaining5hPercent != 32.5 {
+		t.Fatalf("GrokPool.Remaining5hPercent = %v, want 32.5", summary.GrokPool.Remaining5hPercent)
+	}
+	// Weekly used: (20 + 80) / 2 = 50 → remaining 50
+	if summary.GrokPool.Remaining7dPercent == nil || *summary.GrokPool.Remaining7dPercent != 50 {
+		t.Fatalf("GrokPool.Remaining7dPercent = %v, want 50", summary.GrokPool.Remaining7dPercent)
+	}
+	if summary.GrokPool.Exhausted != 0 {
+		t.Fatalf("GrokPool.Exhausted = %d, want 0", summary.GrokPool.Exhausted)
+	}
+}

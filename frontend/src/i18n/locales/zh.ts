@@ -3407,10 +3407,15 @@ export default {
       },
       quotaPools: {
         oauthTitle: 'OAuth 账号池',
+        grokTitle: 'Grok OAuth 账号池',
         oauthMetric: '5h 剩余',
         bestMetric: '最佳剩余',
+        shortWindow: '短窗',
+        weekly: '周',
         accounts: '{available} / {total} 可用',
-        openOAuth: '查看 OAuth 账号池'
+        openOAuth: '查看 OAuth 账号池',
+        openGrok: '查看 Grok OAuth 账号池',
+        exitPool: '恢复'
       },
       oauthUsage: {
         title: 'OAuth 标准用量',
