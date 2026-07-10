@@ -4455,6 +4455,29 @@ func openAIStreamEventIsPreamble(eventType string) bool {
 	}
 }
 
+// openAIResponsesStreamEventIsFirstToken reports whether an upstream Responses
+// SSE event should start first-token timing. Aligned with isOpenAIWSTokenEvent:
+// count the first content/reasoning .delta, never preamble, item lifecycle, or
+// terminal events (otherwise thinking-only streams report total duration as TTFT).
+func openAIResponsesStreamEventIsFirstToken(eventType string) bool {
+	eventType = strings.TrimSpace(eventType)
+	if eventType == "" || openAIStreamEventIsPreamble(eventType) {
+		return false
+	}
+	switch eventType {
+	case "response.output_item.added", "response.output_item.done",
+		"response.completed", "response.done", "response.incomplete", "response.failed":
+		return false
+	}
+	if strings.Contains(eventType, ".delta") {
+		return true
+	}
+	if strings.HasPrefix(eventType, "response.output_text") {
+		return true
+	}
+	return false
+}
+
 func openAIStreamDataStartsClientOutput(data, eventType string) bool {
 	trimmed := strings.TrimSpace(data)
 	if trimmed == "" {
@@ -4771,6 +4794,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 	usage := &OpenAIUsage{}
 	imageCounter := newOpenAIImageOutputCounter()
 	streamOutputAccumulator := apicompat.NewBufferedResponseAccumulator()
+	reasoningSummarySanitizer := &openAIReasoningSummarySanitizer{}
 	streamImageOutputs := make([]json.RawMessage, 0, 1)
 	streamSeenImages := make(map[string]struct{})
 	var firstTokenMs *int
@@ -4844,6 +4868,11 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 				trimmedData = strings.TrimSpace(string(normalizedData))
 				line = "data: " + string(normalizedData)
 			}
+			if sanitizedData, sanitized := reasoningSummarySanitizer.sanitizeEvent(dataBytes); sanitized {
+				dataBytes = sanitizedData
+				trimmedData = strings.TrimSpace(string(sanitizedData))
+				line = "data: " + string(sanitizedData)
+			}
 			eventType := strings.TrimSpace(gjson.Get(trimmedData, "type").String())
 			if !firstSSEEventLogged && trimmedData != "" {
 				firstSSEEventLogged = true
@@ -4915,6 +4944,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 			if imageOutput, ok := extractImageGenerationOutputFromSSEData(dataBytes, streamSeenImages); ok {
 				streamImageOutputs = append(streamImageOutputs, imageOutput)
 			}
+			flushOpenAIReasoningSummaryPending(eventType, reasoningSummarySanitizer, streamOutputAccumulator)
 			if responsesStreamEventMayContributeToOutput(eventType) {
 				var streamEvent apicompat.ResponsesStreamEvent
 				if err := json.Unmarshal(dataBytes, &streamEvent); err == nil {
@@ -5757,6 +5787,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 
 	needModelReplace := originalModel != mappedModel
 	streamOutputAccumulator := apicompat.NewBufferedResponseAccumulator()
+	reasoningSummarySanitizer := &openAIReasoningSummarySanitizer{}
 	streamImageOutputs := make([]json.RawMessage, 0, 1)
 	streamSeenImages := make(map[string]struct{})
 	resultWithUsage := func() *openaiStreamingResult {
@@ -5912,9 +5943,16 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 				line = "data: " + data
 				eventType = strings.TrimSpace(gjson.GetBytes(dataBytes, "type").String())
 			}
+			if sanitizedData, sanitized := reasoningSummarySanitizer.sanitizeEvent(dataBytes); sanitized {
+				dataBytes = sanitizedData
+				data = string(sanitizedData)
+				line = "data: " + data
+				eventType = strings.TrimSpace(gjson.GetBytes(dataBytes, "type").String())
+			}
 			if imageOutput, ok := extractImageGenerationOutputFromSSEData(dataBytes, streamSeenImages); ok {
 				streamImageOutputs = append(streamImageOutputs, imageOutput)
 			}
+			flushOpenAIReasoningSummaryPending(eventType, reasoningSummarySanitizer, streamOutputAccumulator)
 			if responsesStreamEventMayContributeToOutput(eventType) {
 				var streamEvent apicompat.ResponsesStreamEvent
 				if err := json.Unmarshal(dataBytes, &streamEvent); err == nil {
@@ -6668,6 +6706,166 @@ func extractCodexFinalResponse(body string) ([]byte, bool) {
 		return finalResponse, true
 	}
 	return nil, false
+}
+
+type openAIReasoningSummarySanitizer struct {
+	pending string
+}
+
+func (s *openAIReasoningSummarySanitizer) sanitizeEvent(data []byte) ([]byte, bool) {
+	eventType := strings.TrimSpace(gjson.GetBytes(data, "type").String())
+	if eventType == "response.reasoning_summary_text.delta" {
+		delta := gjson.GetBytes(data, "delta")
+		if !delta.Exists() {
+			return data, false
+		}
+		original := delta.String()
+		cleaned, pending := sanitizeOpenAIReasoningSummaryDelta(s.pending + original)
+		hadPending := s.pending != ""
+		s.pending = pending
+		if !hadPending && pending == "" && cleaned == original {
+			return data, false
+		}
+		updated, err := sjson.SetBytes(data, "delta", cleaned)
+		if err != nil {
+			return data, false
+		}
+		return updated, true
+	}
+
+	updated, changed, snapshotSeen := sanitizeOpenAIReasoningSummarySnapshot(data, eventType)
+	if snapshotSeen {
+		s.pending = ""
+	}
+	return updated, changed
+}
+
+func (s *openAIReasoningSummarySanitizer) takePending() string {
+	pending := s.pending
+	s.pending = ""
+	return pending
+}
+
+func sanitizeOpenAIReasoningSummaryDelta(input string) (string, string) {
+	var out strings.Builder
+	for len(input) > 0 {
+		open := strings.Index(input, "<!--")
+		if open < 0 {
+			cut := len(input)
+			for _, prefix := range []string{"<!-", "<!", "<"} {
+				if strings.HasSuffix(input, prefix) {
+					cut = len(input) - len(prefix)
+					break
+				}
+			}
+			out.WriteString(input[:cut])
+			return out.String(), input[cut:]
+		}
+		out.WriteString(input[:open])
+		input = input[open:]
+		closeOffset := strings.Index(input[4:], "-->")
+		if closeOffset < 0 {
+			if openAIReasoningCommentMayStillBeEmpty(input[4:]) {
+				return out.String(), input
+			}
+			out.WriteString(input)
+			return out.String(), ""
+		}
+		closeEnd := 4 + closeOffset + 3
+		if strings.TrimSpace(input[4:4+closeOffset]) != "" {
+			out.WriteString(input[:closeEnd])
+		}
+		input = input[closeEnd:]
+	}
+	return out.String(), ""
+}
+
+func openAIReasoningCommentMayStillBeEmpty(content string) bool {
+	remainder := strings.TrimLeft(content, " \t\r\n\v\f")
+	return remainder == "" || remainder == "-" || remainder == "--"
+}
+
+func sanitizeOpenAIReasoningSummarySnapshot(data []byte, eventType string) ([]byte, bool, bool) {
+	updated := data
+	changed := false
+	snapshotSeen := false
+	cleanPath := func(path string) {
+		value := gjson.GetBytes(updated, path)
+		if !value.Exists() || value.Type != gjson.String {
+			return
+		}
+		snapshotSeen = true
+		cleaned := sanitizeOpenAIEmptyReasoningComments(value.String())
+		if cleaned == value.String() {
+			return
+		}
+		next, err := sjson.SetBytes(updated, path, cleaned)
+		if err == nil {
+			updated = next
+			changed = true
+		}
+	}
+
+	switch eventType {
+	case "response.reasoning_summary_text.done":
+		cleanPath("text")
+	case "response.reasoning_summary_part.done":
+		cleanPath("part.text")
+	case "response.output_item.done":
+		if gjson.GetBytes(updated, "item.type").String() == "reasoning" {
+			for i := range gjson.GetBytes(updated, "item.summary").Array() {
+				cleanPath(fmt.Sprintf("item.summary.%d.text", i))
+			}
+		}
+	case "response.completed", "response.done", "response.incomplete", "response.cancelled", "response.canceled":
+		for i, item := range gjson.GetBytes(updated, "response.output").Array() {
+			if item.Get("type").String() != "reasoning" {
+				continue
+			}
+			for j := range item.Get("summary").Array() {
+				cleanPath(fmt.Sprintf("response.output.%d.summary.%d.text", i, j))
+			}
+		}
+	}
+	return updated, changed, snapshotSeen
+}
+
+func sanitizeOpenAIEmptyReasoningComments(input string) string {
+	var out strings.Builder
+	for len(input) > 0 {
+		open := strings.Index(input, "<!--")
+		if open < 0 {
+			out.WriteString(input)
+			break
+		}
+		out.WriteString(input[:open])
+		input = input[open:]
+		closeOffset := strings.Index(input[4:], "-->")
+		if closeOffset < 0 {
+			out.WriteString(input)
+			break
+		}
+		closeEnd := 4 + closeOffset + 3
+		if strings.TrimSpace(input[4:4+closeOffset]) != "" {
+			out.WriteString(input[:closeEnd])
+		}
+		input = input[closeEnd:]
+	}
+	return out.String()
+}
+
+func flushOpenAIReasoningSummaryPending(eventType string, sanitizer *openAIReasoningSummarySanitizer, acc *apicompat.BufferedResponseAccumulator) {
+	switch eventType {
+	case "response.completed", "response.done", "response.incomplete", "response.cancelled", "response.canceled":
+	default:
+		return
+	}
+	if pending := sanitizer.takePending(); pending != "" {
+		acc.ProcessEvent(&apicompat.ResponsesStreamEvent{
+			Type:  "response.reasoning_summary_text.delta",
+			Delta: pending,
+		})
+	}
 }
 
 func normalizeResponsesStreamingTerminalOutput(data []byte, acc *apicompat.BufferedResponseAccumulator, imageOutputs []json.RawMessage) ([]byte, bool) {
