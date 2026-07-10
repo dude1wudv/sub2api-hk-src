@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"log"
 	"math"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -198,7 +200,7 @@ func TestGetModelPricing_OpenAIGPT54Fallback(t *testing.T) {
 	require.InDelta(t, 2.5e-6, pricing.InputPricePerToken, 1e-12)
 	require.InDelta(t, 15e-6, pricing.OutputPricePerToken, 1e-12)
 	require.InDelta(t, 0.25e-6, pricing.CacheReadPricePerToken, 1e-12)
-	require.Equal(t, 272000, pricing.LongContextInputThreshold)
+	require.Equal(t, 256000, pricing.LongContextInputThreshold)
 	require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
 	require.InDelta(t, 1.5, pricing.LongContextOutputMultiplier, 1e-12)
 }
@@ -213,8 +215,8 @@ func TestGetModelPricing_OpenAICompactAliasesFallback(t *testing.T) {
 		cacheRead   float64
 		longContext int
 	}{
-		{model: "gpt5.5", inputPrice: 5e-6, outputPrice: 30e-6, cacheRead: 0.5e-6, longContext: 272000},
-		{model: "openai/gpt5.4", inputPrice: 2.5e-6, outputPrice: 15e-6, cacheRead: 0.25e-6, longContext: 272000},
+		{model: "gpt5.5", inputPrice: 5e-6, outputPrice: 30e-6, cacheRead: 0.5e-6, longContext: 256000},
+		{model: "openai/gpt5.4", inputPrice: 2.5e-6, outputPrice: 15e-6, cacheRead: 0.25e-6, longContext: 256000},
 		{model: "gpt5.4-mini", inputPrice: 7.5e-7, outputPrice: 4.5e-6, cacheRead: 7.5e-8, longContext: 0},
 		{model: "gpt5.3codexspark", inputPrice: 1.5e-6, outputPrice: 12e-6, cacheRead: 0.15e-6, longContext: 0},
 	}
@@ -288,7 +290,7 @@ func TestCalculateCost_OpenAIGPT55ProUsesGPT55PricingPolicy(t *testing.T) {
 func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheRead(t *testing.T) {
 	svc := newTestBillingService()
 
-	// InputTokens + CacheReadTokens = 1000 + 300000 = 301000 > 272000 阈值
+	// InputTokens + CacheReadTokens = 1000 + 300000 = 301000 > 256000 阈值
 	tokens := UsageTokens{
 		InputTokens:     1000,
 		CacheReadTokens: 300000,
@@ -316,7 +318,7 @@ func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheRead(t *tes
 func TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheReadAtBasePrice(t *testing.T) {
 	svc := newTestBillingService()
 
-	// InputTokens + CacheReadTokens = 1000 + 100000 = 101000 < 272000 阈值，不触发长上下文
+	// InputTokens + CacheReadTokens = 1000 + 100000 = 101000 < 256000 阈值，不触发长上下文
 	tokens := UsageTokens{
 		InputTokens:     1000,
 		CacheReadTokens: 100000,
@@ -338,7 +340,7 @@ func TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheReadAtBasePrice(t *test
 func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheCreation(t *testing.T) {
 	svc := newTestBillingService()
 
-	// InputTokens + CacheReadTokens = 1000 + 300000 = 301000 > 272000 阈值
+	// InputTokens + CacheReadTokens = 1000 + 300000 = 301000 > 256000 阈值
 	tokens := UsageTokens{
 		InputTokens:         1000,
 		CacheReadTokens:     300000,
@@ -359,7 +361,7 @@ func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheCreation(t 
 func TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheCreationAtBasePrice(t *testing.T) {
 	svc := newTestBillingService()
 
-	// InputTokens + CacheReadTokens = 1000 + 100000 = 101000 < 272000 阈值，不触发长上下文
+	// InputTokens + CacheReadTokens = 1000 + 100000 = 101000 < 256000 阈值，不触发长上下文
 	tokens := UsageTokens{
 		InputTokens:         1000,
 		CacheReadTokens:     100000,
@@ -389,14 +391,14 @@ func TestCalculateCost_LongContextAppliesMultiplierToCacheCreation5mAnd1h(t *tes
 				SupportsCacheBreakdown:      true,
 				CacheCreation5mPrice:        4e-6,
 				CacheCreation1hPrice:        5e-6,
-				LongContextInputThreshold:   272000,
+				LongContextInputThreshold:   256000,
 				LongContextInputMultiplier:  2.0,
 				LongContextOutputMultiplier: 1.5,
 			},
 		},
 	}
 
-	// InputTokens + CacheReadTokens = 1000 + 300000 = 301000 > 272000 阈值
+	// InputTokens + CacheReadTokens = 1000 + 300000 = 301000 > 256000 阈值
 	tokens := UsageTokens{
 		InputTokens:           1000,
 		CacheReadTokens:       300000,
@@ -1170,7 +1172,7 @@ func TestBillingServiceGetModelPricing_UsesDynamicPriorityFields(t *testing.T) {
 				CacheCreationInputTokenCost:     2.5e-6,
 				CacheReadInputTokenCost:         0.25e-6,
 				CacheReadInputTokenCostPriority: 0.5e-6,
-				LongContextInputTokenThreshold:  272000,
+				LongContextInputTokenThreshold:  256000,
 				LongContextInputCostMultiplier:  2.0,
 				LongContextOutputCostMultiplier: 1.5,
 			},
@@ -1186,7 +1188,7 @@ func TestBillingServiceGetModelPricing_UsesDynamicPriorityFields(t *testing.T) {
 	require.InDelta(t, 30e-6, pricing.OutputPricePerTokenPriority, 1e-12)
 	require.InDelta(t, 0.25e-6, pricing.CacheReadPricePerToken, 1e-12)
 	require.InDelta(t, 0.5e-6, pricing.CacheReadPricePerTokenPriority, 1e-12)
-	require.Equal(t, 272000, pricing.LongContextInputThreshold)
+	require.Equal(t, 256000, pricing.LongContextInputThreshold)
 	require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
 	require.InDelta(t, 1.5, pricing.LongContextOutputMultiplier, 1e-12)
 }
@@ -1511,4 +1513,201 @@ func TestComputeTokenBreakdown_NonExplicitZeroImagePrice_FallsBackToOutput(t *te
 	require.InDelta(t, 50*15e-6, bd.ImageOutputCost, 1e-12)
 	// textOutputTokens = 200 - 50 = 150
 	require.InDelta(t, 150*15e-6, bd.OutputCost, 1e-12)
+}
+
+func TestGetModelPricing_OpenAIGPT56IndependentShortPrices(t *testing.T) {
+	svc := newTestBillingService()
+
+	tests := []struct {
+		model        string
+		input        float64
+		output       float64
+		cacheRead    float64
+		cacheWrite   float64
+		inputPri     float64
+		outputPri    float64
+		cacheReadPri float64
+	}{
+		{
+			model: "gpt-5.6-sol", input: 5e-6, output: 30e-6, cacheRead: 0.5e-6, cacheWrite: 6.25e-6,
+			inputPri: 10e-6, outputPri: 60e-6, cacheReadPri: 1e-6,
+		},
+		{
+			model: "gpt-5.6-terra", input: 2.5e-6, output: 15e-6, cacheRead: 0.25e-6, cacheWrite: 3.125e-6,
+			inputPri: 5e-6, outputPri: 30e-6, cacheReadPri: 0.5e-6,
+		},
+		{
+			model: "gpt-5.6-luna", input: 1e-6, output: 6e-6, cacheRead: 0.1e-6, cacheWrite: 1.25e-6,
+			inputPri: 2e-6, outputPri: 12e-6, cacheReadPri: 0.2e-6,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			pricing, err := svc.GetModelPricing(tt.model)
+			require.NoError(t, err)
+			require.NotNil(t, pricing)
+			require.InDelta(t, tt.input, pricing.InputPricePerToken, 1e-12)
+			require.InDelta(t, tt.output, pricing.OutputPricePerToken, 1e-12)
+			require.InDelta(t, tt.cacheRead, pricing.CacheReadPricePerToken, 1e-12)
+			require.InDelta(t, tt.cacheWrite, pricing.CacheCreationPricePerToken, 1e-12)
+			require.InDelta(t, tt.inputPri, pricing.InputPricePerTokenPriority, 1e-12)
+			require.InDelta(t, tt.outputPri, pricing.OutputPricePerTokenPriority, 1e-12)
+			require.InDelta(t, tt.cacheReadPri, pricing.CacheReadPricePerTokenPriority, 1e-12)
+			require.Equal(t, 256000, pricing.LongContextInputThreshold)
+		})
+	}
+}
+
+func TestCalculateCost_OpenAIGPT56ShortContextIncludesCacheWrite(t *testing.T) {
+	svc := newTestBillingService()
+
+	tests := []struct {
+		model      string
+		inputPrice float64
+		output     float64
+		cacheRead  float64
+		cacheWrite float64
+	}{
+		{model: "gpt-5.6-sol", inputPrice: 5e-6, output: 30e-6, cacheRead: 0.5e-6, cacheWrite: 6.25e-6},
+		{model: "gpt-5.6-terra", inputPrice: 2.5e-6, output: 15e-6, cacheRead: 0.25e-6, cacheWrite: 3.125e-6},
+		{model: "gpt-5.6-luna", inputPrice: 1e-6, output: 6e-6, cacheRead: 0.1e-6, cacheWrite: 1.25e-6},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			// Input + CacheRead = 1000 + 2000 = 3000 ≤ 256000，不触发长上下文
+			tokens := UsageTokens{
+				InputTokens:         1000,
+				OutputTokens:        500,
+				CacheReadTokens:     2000,
+				CacheCreationTokens: 800,
+			}
+			cost, err := svc.CalculateCost(tt.model, tokens, 1.0)
+			require.NoError(t, err)
+
+			expectedInput := float64(tokens.InputTokens) * tt.inputPrice
+			expectedOutput := float64(tokens.OutputTokens) * tt.output
+			expectedCacheRead := float64(tokens.CacheReadTokens) * tt.cacheRead
+			expectedCacheWrite := float64(tokens.CacheCreationTokens) * tt.cacheWrite
+			require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
+			require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
+			require.InDelta(t, expectedCacheRead, cost.CacheReadCost, 1e-10)
+			require.InDelta(t, expectedCacheWrite, cost.CacheCreationCost, 1e-10,
+				"short-context cache_write must bill CacheCreationPricePerToken")
+			require.InDelta(t, expectedInput+expectedOutput+expectedCacheRead+expectedCacheWrite, cost.TotalCost, 1e-10)
+		})
+	}
+}
+
+func TestCalculateCost_OpenAIGPT56LongContextAppliesWholeSessionMultipliers(t *testing.T) {
+	svc := newTestBillingService()
+
+	tests := []struct {
+		model      string
+		inputPrice float64
+		output     float64
+		cacheRead  float64
+		cacheWrite float64
+	}{
+		{model: "gpt-5.6-sol", inputPrice: 5e-6, output: 30e-6, cacheRead: 0.5e-6, cacheWrite: 6.25e-6},
+		{model: "gpt-5.6-terra", inputPrice: 2.5e-6, output: 15e-6, cacheRead: 0.25e-6, cacheWrite: 3.125e-6},
+		{model: "gpt-5.6-luna", inputPrice: 1e-6, output: 6e-6, cacheRead: 0.1e-6, cacheWrite: 1.25e-6},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			// Input + CacheRead = 1000 + 256000 = 257000 > 256000
+			tokens := UsageTokens{
+				InputTokens:         1000,
+				CacheReadTokens:     256000,
+				CacheCreationTokens: 4000,
+				OutputTokens:        2000,
+			}
+			cost, err := svc.CalculateCost(tt.model, tokens, 1.0)
+			require.NoError(t, err)
+
+			expectedInput := float64(tokens.InputTokens) * tt.inputPrice * 2.0
+			expectedOutput := float64(tokens.OutputTokens) * tt.output * 1.5
+			expectedCacheRead := float64(tokens.CacheReadTokens) * tt.cacheRead * 2.0
+			expectedCacheWrite := float64(tokens.CacheCreationTokens) * tt.cacheWrite * 2.0
+			require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
+			require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
+			require.InDelta(t, expectedCacheRead, cost.CacheReadCost, 1e-10)
+			require.InDelta(t, expectedCacheWrite, cost.CacheCreationCost, 1e-10)
+		})
+	}
+}
+
+func TestCalculateCost_OpenAIGPT56AtThresholdDoesNotTriggerLongContext(t *testing.T) {
+	svc := newTestBillingService()
+
+	// Input + CacheRead = 256000 恰好等于阈值，不触发（需 > 阈值）
+	tokens := UsageTokens{
+		InputTokens:         56000,
+		CacheReadTokens:     200000,
+		CacheCreationTokens: 1000,
+		OutputTokens:        500,
+	}
+
+	for _, model := range []string{"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.4", "gpt-5.5"} {
+		t.Run(model, func(t *testing.T) {
+			pricing, err := svc.GetModelPricing(model)
+			require.NoError(t, err)
+			cost, err := svc.CalculateCost(model, tokens, 1.0)
+			require.NoError(t, err)
+
+			require.InDelta(t, float64(tokens.InputTokens)*pricing.InputPricePerToken, cost.InputCost, 1e-10)
+			require.InDelta(t, float64(tokens.OutputTokens)*pricing.OutputPricePerToken, cost.OutputCost, 1e-10)
+			require.InDelta(t, float64(tokens.CacheReadTokens)*pricing.CacheReadPricePerToken, cost.CacheReadCost, 1e-10)
+			require.InDelta(t, float64(tokens.CacheCreationTokens)*pricing.CacheCreationPricePerToken, cost.CacheCreationCost, 1e-10)
+		})
+	}
+}
+
+func TestCalculateCost_OpenAIGPT56FromLiteLLMJSONIncludesCacheWrite(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "resources", "model-pricing", "model_prices_and_context_window.json"))
+	require.NoError(t, err)
+
+	pricingSvc := &PricingService{}
+	pricingData, err := pricingSvc.parsePricingData(data)
+	require.NoError(t, err)
+	pricingSvc.pricingData = pricingData
+
+	svc := NewBillingService(&config.Config{}, pricingSvc)
+
+	tests := []struct {
+		model      string
+		inputPrice float64
+		output     float64
+		cacheRead  float64
+		cacheWrite float64
+	}{
+		{model: "gpt-5.6-sol", inputPrice: 5e-6, output: 30e-6, cacheRead: 0.5e-6, cacheWrite: 6.25e-6},
+		{model: "gpt-5.6-terra", inputPrice: 2.5e-6, output: 15e-6, cacheRead: 0.25e-6, cacheWrite: 3.125e-6},
+		{model: "gpt-5.6-luna", inputPrice: 1e-6, output: 6e-6, cacheRead: 0.1e-6, cacheWrite: 1.25e-6},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			pricing, err := svc.GetModelPricing(tt.model)
+			require.NoError(t, err)
+			require.InDelta(t, tt.cacheWrite, pricing.CacheCreationPricePerToken, 1e-12,
+				"JSON path must expose non-zero cache_creation_input_token_cost")
+			require.Equal(t, 256000, pricing.LongContextInputThreshold)
+
+			tokens := UsageTokens{
+				InputTokens:         1000,
+				OutputTokens:        500,
+				CacheReadTokens:     2000,
+				CacheCreationTokens: 800,
+			}
+			cost, err := svc.CalculateCost(tt.model, tokens, 1.0)
+			require.NoError(t, err)
+			require.InDelta(t, float64(tokens.CacheCreationTokens)*tt.cacheWrite, cost.CacheCreationCost, 1e-10)
+			require.InDelta(t, float64(tokens.InputTokens)*tt.inputPrice, cost.InputCost, 1e-10)
+			require.InDelta(t, float64(tokens.OutputTokens)*tt.output, cost.OutputCost, 1e-10)
+			require.InDelta(t, float64(tokens.CacheReadTokens)*tt.cacheRead, cost.CacheReadCost, 1e-10)
+		})
+	}
 }
