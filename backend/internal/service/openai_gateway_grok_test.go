@@ -41,6 +41,34 @@ func TestPatchGrokResponsesBodySetsMappedModelAndDropsUnsupportedFields(t *testi
 	require.Equal(t, "high", gjson.GetBytes(patched, "reasoning.effort").String())
 }
 
+func TestPatchGrokResponsesBodyClampsXHighEffortToHigh(t *testing.T) {
+	t.Parallel()
+
+	body := []byte(`{
+		"model": "grok",
+		"input": "hello",
+		"reasoning": {"effort": "xhigh"},
+		"reasoning_effort": "max"
+	}`)
+
+	patched, err := patchGrokResponsesBody(body, "grok-4.5")
+	require.NoError(t, err)
+	require.Equal(t, "high", gjson.GetBytes(patched, "reasoning.effort").String())
+	require.Equal(t, "high", gjson.GetBytes(patched, "reasoning_effort").String())
+}
+
+func TestClampGrokEffortLevel(t *testing.T) {
+	t.Parallel()
+	require.Equal(t, "low", clampGrokEffortLevel("low"))
+	require.Equal(t, "medium", clampGrokEffortLevel("MEDIUM"))
+	require.Equal(t, "high", clampGrokEffortLevel("high"))
+	require.Equal(t, "high", clampGrokEffortLevel("xhigh"))
+	require.Equal(t, "high", clampGrokEffortLevel("x-high"))
+	require.Equal(t, "high", clampGrokEffortLevel("max"))
+	require.Equal(t, "low", clampGrokEffortLevel("minimal"))
+	require.Equal(t, "", clampGrokEffortLevel("unknown"))
+}
+
 func TestPatchGrokResponsesBodyDropsGrok45ReasoningUnsupportedFields(t *testing.T) {
 	t.Parallel()
 

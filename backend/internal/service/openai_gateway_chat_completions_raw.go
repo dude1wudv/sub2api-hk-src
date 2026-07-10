@@ -127,6 +127,11 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 			)
 			upstreamBody = sanitized
 		}
+		clamped, clampErr := clampGrokReasoningEffort(upstreamBody)
+		if clampErr != nil {
+			return nil, fmt.Errorf("clamp grok reasoning effort: %w", clampErr)
+		}
+		upstreamBody = clamped
 	}
 	if clientStream {
 		var usageErr error

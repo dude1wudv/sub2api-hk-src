@@ -182,7 +182,49 @@ func patchGrokResponsesBody(body []byte, upstreamModel string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// xAI Grok only accepts low|medium|high; clamp xhigh/max before upstream.
+	out, err = clampGrokReasoningEffort(out)
+	if err != nil {
+		return nil, err
+	}
 	return out, nil
+}
+
+// clampGrokReasoningEffort maps unsupported effort levels onto Grok's
+// low|medium|high set. Client/Codex "xhigh"/"max" become "high".
+func clampGrokReasoningEffort(body []byte) ([]byte, error) {
+	out := body
+	for _, path := range []string{"reasoning.effort", "reasoning_effort"} {
+		raw := strings.TrimSpace(gjson.GetBytes(out, path).String())
+		if raw == "" {
+			continue
+		}
+		clamped := clampGrokEffortLevel(raw)
+		if clamped == "" || strings.EqualFold(clamped, raw) {
+			continue
+		}
+		updated, err := sjson.SetBytes(out, path, clamped)
+		if err != nil {
+			return nil, err
+		}
+		out = updated
+	}
+	return out, nil
+}
+
+func clampGrokEffortLevel(raw string) string {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	value = strings.NewReplacer("-", "", "_", "", " ", "").Replace(value)
+	switch value {
+	case "low", "medium", "high":
+		return value
+	case "xhigh", "extrahigh", "max":
+		return "high"
+	case "none", "minimal":
+		return "low"
+	default:
+		return ""
+	}
 }
 
 // grokLiveSearchSanitizeOptions controls how deprecated xAI Live Search fields
