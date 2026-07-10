@@ -1951,6 +1951,8 @@ export default {
       creating: 'Creating...',
       updating: 'Updating...',
       form: {
+        roleLabel: 'Role',
+        selectRole: 'Select role',
         rpmLimit: 'Requests Per Minute (RPM)',
         rpmLimitPlaceholder: '0 = unlimited',
         rpmLimitHint: 'Max requests per minute for this user; 0 = unlimited. Acts as a fallback only when the group has no rpm_limit set.'
