@@ -62,7 +62,7 @@ func AnthropicToResponses(req *AnthropicRequest) (*ResponsesRequest, error) {
 	// 4) otherwise default medium (Codex Anthropic bridge shape)
 	if req.OutputConfig != nil && strings.TrimSpace(req.OutputConfig.Effort) != "" {
 		out.Reasoning = &ResponsesReasoning{
-			Effort:  mapAnthropicEffortToResponses(req.OutputConfig.Effort),
+			Effort:  mapAnthropicEffortToResponses(req.OutputConfig.Effort, req.Model),
 			Summary: "auto",
 		}
 	} else if req.Thinking != nil && strings.EqualFold(strings.TrimSpace(req.Thinking.Type), "disabled") {
@@ -436,15 +436,37 @@ func extractAnthropicTextFromBlocks(blocks []AnthropicContentBlock) string {
 // mapAnthropicEffortToResponses converts Anthropic reasoning effort levels to
 // OpenAI Responses API effort levels.
 //
-// Both APIs default to "high". Shared levels map 1:1; Anthropic's "max"
-// passes through as OpenAI "max" (GPT-5.6+ highest single-agent tier).
+// Upstream bridge: Anthropic "max" (top Claude tier) ↔ OpenAI "xhigh".
+// GPT-5.6+ also has a first-class OpenAI effort "max" (and "ultra"); when the
+// target model is GPT-5.6, keep "max"/"ultra" as OpenAI-native values instead
+// of collapsing Claude-shaped "max" into xhigh.
 //
 //	low    → low
 //	medium → medium
 //	high   → high
-//	max    → max
-func mapAnthropicEffortToResponses(effort string) string {
-	return effort // low→low, medium→medium, high→high, max→max, unknown→passthrough
+//	max    → xhigh (non-5.6) / max (gpt-5.6+)
+//	ultra  → ultra
+func mapAnthropicEffortToResponses(effort, model string) string {
+	switch strings.TrimSpace(effort) {
+	case "max":
+		if isOpenAIGPT56ModelName(model) {
+			return "max"
+		}
+		return "xhigh"
+	default:
+		return effort // low→low, medium→medium, high→high, ultra→ultra, unknown→passthrough
+	}
+}
+
+func isOpenAIGPT56ModelName(model string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(model))
+	if i := strings.LastIndex(normalized, "/"); i >= 0 {
+		normalized = normalized[i+1:]
+	}
+	if normalized == "gpt-5.6" || strings.HasPrefix(normalized, "gpt-5.6-") {
+		return true
+	}
+	return false
 }
 
 // convertAnthropicToolsToResponses maps Anthropic tool definitions to

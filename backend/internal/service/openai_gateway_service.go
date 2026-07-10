@@ -3003,6 +3003,12 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		body = normalizedBody
 		normalizedReasoning = true
 	}
+	if normalizedBody, changed, normalizeErr := normalizeOpenAICodexCompactReasoningEffortForAccount(c, account, body); normalizeErr != nil {
+		return nil, normalizeErr
+	} else if changed {
+		body = normalizedBody
+		normalizedReasoning = true
+	}
 	if err := s.IncrementOpenAIAccountRPM(ctx, account); err != nil {
 		logger.LegacyPrintf("service.openai_gateway", "IncrementOpenAIAccountRPM failed for account %d: %v", account.ID, err)
 	}
@@ -3024,6 +3030,10 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	setOpenAICompatMessagesBridgeContext(c, compatMessagesBridge)
 
 	isCodexCLI := openai.IsCodexOfficialClientByHeaders(c.GetHeader("User-Agent"), c.GetHeader("originator")) || (s.cfg != nil && s.cfg.Gateway.ForceCodexCLI)
+	codexImageGenerationExplicitToolPolicy := codexImageGenerationExplicitToolPolicyAllow
+	if isCodexCLI {
+		codexImageGenerationExplicitToolPolicy = account.CodexImageGenerationExplicitToolPolicy()
+	}
 	wsDecision := s.getOpenAIWSProtocolResolver().Resolve(account)
 	clientTransport := GetOpenAIClientTransport(c)
 	// 仅允许 WS 入站请求走 WS 上游，避免出现 HTTP -> WS 协议混用。
@@ -3058,13 +3068,25 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	}
 	passthroughEnabled := account.IsOpenAIPassthroughEnabled()
 	if passthroughEnabled {
+		if isCodexCLI && codexImageGenerationExplicitToolPolicy == codexImageGenerationExplicitToolPolicyStrip {
+			strippedBody, changed, stripErr := stripOpenAIImageGenerationToolsFromRawPayload(body)
+			if stripErr != nil {
+				return nil, stripErr
+			}
+			if changed {
+				body = strippedBody
+				originalBody = strippedBody
+				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Stripped /responses image_generation tool for Codex client by account policy")
+			}
+		}
 		// 透传分支只需要轻量提取字段，避免热路径全量 Unmarshal。
-		reasoningEffort := extractOpenAIReasoningEffortFromBody(body, reqModel)
+		mappedModel := account.GetMappedModel(reqModel)
+		reasoningEffort := extractOpenAIReasoningEffortFromBody(body, mappedModel)
 		if normalizedReasoning {
 			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Normalized client reasoning parameter for passthrough request (account: %s)", account.Name)
 		}
 		// 国产模型默认 effort 补充：也要用 mappedModel 判定是否是 passback-required 上游。
-		reasoningEffort = ApplyThinkingEnabledFallback(reasoningEffort, body, account.GetMappedModel(reqModel))
+		reasoningEffort = ApplyThinkingEnabledFallback(reasoningEffort, body, mappedModel)
 		return s.forwardOpenAIPassthrough(ctx, c, account, originalBody, reqModel, reasoningEffort, reqStream, startTime)
 	}
 
@@ -3123,10 +3145,6 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	imageGenerationAllowed := GroupAllowsImageGeneration(nil)
 	if apiKey != nil {
 		imageGenerationAllowed = GroupAllowsImageGeneration(apiKey.Group)
-	}
-	codexImageGenerationExplicitToolPolicy := codexImageGenerationExplicitToolPolicyAllow
-	if isCodexCLI {
-		codexImageGenerationExplicitToolPolicy = account.CodexImageGenerationExplicitToolPolicy()
 	}
 	codexImageGenerationBridgeEnabled := isCodexCLI && imageGenerationAllowed && codexImageGenerationExplicitToolPolicy != codexImageGenerationExplicitToolPolicyStrip && s.isCodexImageGenerationBridgeEnabled(ctx, account, apiKey)
 	var imageIntent bool
@@ -3193,6 +3211,12 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Upstream model resolved: %s -> %s (account: %s, type: %s, isCodexCLI: %v)", modelForNormalize, upstreamModel, account.Name, account.Type, isCodexCLI)
 			reqModel = upstreamModel
 			markPatchSet("model", upstreamModel)
+		}
+	}
+	if currentEffort := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String()); currentEffort != "" {
+		effectiveModel := firstNonEmpty(upstreamModel, billingModel, reqModel)
+		if want := normalizeOpenAIReasoningEffortForModel(currentEffort, effectiveModel); want != "" && !strings.EqualFold(currentEffort, want) {
+			markPatchSet("reasoning.effort", want)
 		}
 	}
 	// GPT-5.6+ uses prompt_cache_options.ttl (min lifetime, only "30m") on the
@@ -3264,7 +3288,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			markDecodedModified()
 			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Added Codex image_generation bridge instructions")
 		}
-	} else if imageGenerationAllowed && imageIntent && openAIRequestBodyHasImageGenerationTool(body) {
+	} else if imageGenerationAllowed && imageIntent && openAIRequestBodyHasImageGenerationDeclaration(body) {
 		// 完整 image_generation tool 只做 raw 计费读取，校验/桥接/旧字段迁移命中时才展开大 input map。
 		logger.LegacyPrintf("service.openai_gateway", "[OpenAI] /responses image_generation request inbound_model=%s mapped_model=%s account_type=%s", requestView.Model, upstreamModel, account.Type)
 	}
@@ -3284,7 +3308,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	// gpt-5.3-codex-spark also rejects the image_generation tool (HTTP 400,
 	// param=tools). Strip it here so both APIKey and OAuth /responses paths are
 	// covered regardless of the image-generation feature gate.
-	if isCodexSparkModel(upstreamModel) && openAIRequestBodyHasImageGenerationTool(body) {
+	if isCodexSparkModel(upstreamModel) && openAIRequestBodyHasImageGenerationDeclaration(body) {
 		decoded, decodeErr := ensureReqBody()
 		if decodeErr != nil {
 			return nil, decodeErr
@@ -3752,7 +3776,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		reasoningEffort := extractOpenAIReasoningEffortFromBody(body, originalModel)
+		reasoningEffort := extractOpenAIReasoningEffortFromBody(body, upstreamModel, billingModel, originalModel)
 		// 国产模型默认 effort 补充：此处 reqModel 已被 mapping 重写为 billingModel（见
 		// line 2510-2515 的 GetMappedModel + reqModel 赋值），可直接作为 mappedModel。
 		reasoningEffort = ApplyThinkingEnabledFallback(reasoningEffort, body, reqModel)
@@ -4224,6 +4248,11 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 		if clientConversationID != "" {
 			req.Header.Set("conversation_id", isolateOpenAISessionID(apiKeyID, clientConversationID))
 		}
+	} else if isOpenAIResponsesCompactPath(c) {
+		// 透传白名单会放行客户端的 Accept: text/event-stream；compact 上游是
+		// unary JSON 协议，API-key 账号同样强制 Accept，避免上游按 SSE 返回
+		// （#3777 期望行为 4）。
+		req.Header.Set("accept", "application/json")
 	}
 
 	// 透传模式也支持账户自定义 User-Agent 与 ForceCodexCLI 兜底。
@@ -5177,6 +5206,7 @@ func (s *OpenAIGatewayService) handlePassthroughSSEToJSON(resp *http.Response, c
 				}
 			}
 		}
+		finalResponse = supplementCompactionItemFromSSE(c, finalResponse, bodyText)
 		body = finalResponse
 		if originalModel != "" && mappedModel != "" && originalModel != mappedModel {
 			body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
@@ -5318,6 +5348,10 @@ func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.
 				req.Header.Set("conversation_id", isolated)
 			}
 		}
+	} else if isOpenAIResponsesCompactPath(c) {
+		// compact 上游是 unary JSON 协议：API-key 账号也显式声明 Accept，
+		// 避免 OpenAI 兼容网关按 SSE 返回（#3777 期望行为 4）。
+		req.Header.Set("accept", "application/json")
 	}
 
 	// Apply custom User-Agent if configured
@@ -6432,22 +6466,8 @@ func openAIUsageFromGJSON(value gjson.Result) (OpenAIUsage, bool) {
 	if outputTokens == 0 {
 		outputTokens = value.Get("completion_tokens").Int()
 	}
-	cacheReadTokens := value.Get("input_tokens_details.cached_tokens").Int()
-	if cacheReadTokens == 0 {
-		cacheReadTokens = value.Get("prompt_tokens_details.cached_tokens").Int()
-	}
-	// GPT-5.6+ reports cache writes as cache_write_tokens under token details.
-	// Anthropic-compatible upstreams still use cache_creation_input_tokens.
-	cacheWriteTokens := value.Get("input_tokens_details.cache_write_tokens").Int()
-	if cacheWriteTokens == 0 {
-		cacheWriteTokens = value.Get("prompt_tokens_details.cache_write_tokens").Int()
-	}
-	if cacheWriteTokens == 0 {
-		cacheWriteTokens = value.Get("cache_creation_input_tokens").Int()
-	}
-	if cacheWriteTokens == 0 {
-		cacheWriteTokens = value.Get("cache_creation_tokens").Int()
-	}
+	cacheReadTokens := openAICacheReadTokensFromUsage(value)
+	cacheCreationTokens := openAICacheCreationTokensFromUsage(value)
 	imageOutputTokens := value.Get("output_tokens_details.image_tokens").Int()
 	if imageOutputTokens == 0 {
 		imageOutputTokens = value.Get("completion_tokens_details.image_tokens").Int()
@@ -6455,10 +6475,47 @@ func openAIUsageFromGJSON(value gjson.Result) (OpenAIUsage, bool) {
 	return OpenAIUsage{
 		InputTokens:              int(inputTokens),
 		OutputTokens:             int(outputTokens),
-		CacheCreationInputTokens: int(cacheWriteTokens),
-		CacheReadInputTokens:     int(cacheReadTokens),
+		CacheCreationInputTokens: cacheCreationTokens,
+		CacheReadInputTokens:     cacheReadTokens,
 		ImageOutputTokens:        int(imageOutputTokens),
 	}, true
+}
+
+func openAICacheReadTokensFromUsage(value gjson.Result) int {
+	for _, nested := range []gjson.Result{
+		value.Get("input_tokens_details.cached_tokens"),
+		value.Get("prompt_tokens_details.cached_tokens"),
+	} {
+		if nested.Exists() {
+			return max(int(nested.Int()), 0)
+		}
+	}
+
+	return firstPositiveGJSONInt(
+		value.Get("cache_read_input_tokens"),
+		value.Get("cache_read_tokens"),
+		value.Get("cached_tokens"),
+	)
+}
+
+func openAICacheCreationTokensFromUsage(value gjson.Result) int {
+	for _, nested := range []gjson.Result{
+		value.Get("input_tokens_details.cache_write_tokens"),
+		value.Get("prompt_tokens_details.cache_write_tokens"),
+		value.Get("input_tokens_details.cache_creation_tokens"),
+		value.Get("prompt_tokens_details.cache_creation_tokens"),
+	} {
+		if nested.Exists() {
+			return max(int(nested.Int()), 0)
+		}
+	}
+
+	return firstPositiveGJSONInt(
+		value.Get("cache_write_tokens"),
+		value.Get("cache_creation_input_tokens"),
+		value.Get("cache_write_input_tokens"),
+		value.Get("cache_creation_tokens"),
+	)
 }
 
 func (s *OpenAIGatewayService) handleNonStreamingResponse(ctx context.Context, resp *http.Response, c *gin.Context, account *Account, originalModel, mappedModel string) (*openaiNonStreamingResult, error) {
@@ -6566,6 +6623,7 @@ func (s *OpenAIGatewayService) handleSSEToJSON(resp *http.Response, c *gin.Conte
 				}
 			}
 		}
+		finalResponse = supplementCompactionItemFromSSE(c, finalResponse, bodyText)
 		body = finalResponse
 		if originalModel != mappedModel {
 			body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
@@ -6699,6 +6757,12 @@ func (s *OpenAIGatewayService) writeOpenAINonStreamingProtocolError(resp *http.R
 		message = "Upstream returned an invalid non-streaming response"
 	}
 	setOpsUpstreamError(c, http.StatusBadGateway, message, "")
+	// body-signal compact 心跳可能已把响应头提交为 200，此时只能以
+	// response.failed 终止事件回传错误，不能再写 JSON+状态码。
+	if openAICompactClientWantsStream(c) && StopOpenAICompactSSEKeepaliveCommitted(c) {
+		writeOpenAICompactSSEFailureMessage(c, http.StatusBadGateway, "upstream_error", message)
+		return fmt.Errorf("non-streaming openai protocol error: %s", message)
+	}
 	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 	c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	c.JSON(http.StatusBadGateway, gin.H{
@@ -6932,10 +6996,152 @@ func responsesStreamEventMayContributeToOutput(eventType string) bool {
 	}
 }
 
-// reconstructResponseOutputFromSSE scans raw SSE body text for delta events and
-// returns a JSON-encoded output array reconstructed from accumulated deltas.
-// Returns (nil, false) if no content was found in deltas.
+// collectRawResponsesOutputItemsFromSSE 按到达顺序收集 SSE 流中
+// response.output_item.done 携带的原始 item。item 以 raw JSON 逐字节保留，
+// 避免经窄结构体重建时丢弃 encrypted_content/summary/opaque 等 compact
+// 专属或未来新增字段（#3777 问题 2）。若整条流没有任何 done 事件，退回
+// 收集 output_item.added 中的 compaction 类 item——compaction 结果没有
+// delta 事件，部分上游只在 added 事件中携带完整 item。
+func collectRawResponsesOutputItemsFromSSE(bodyText string) ([]byte, bool) {
+	var items []json.RawMessage
+	seen := make(map[string]struct{})
+	hasCompactionItem := false
+	appendItem := func(item gjson.Result) {
+		if !item.Exists() || !item.IsObject() {
+			return
+		}
+		key := strings.TrimSpace(item.Get("id").String())
+		if key == "" {
+			key = item.Raw
+		}
+		if _, dup := seen[key]; dup {
+			return
+		}
+		seen[key] = struct{}{}
+		if isResponsesCompactionItemType(item.Get("type").String()) {
+			hasCompactionItem = true
+		}
+		items = append(items, json.RawMessage(item.Raw))
+	}
+	forEachOpenAISSEDataPayload(bodyText, func(data []byte) {
+		if strings.TrimSpace(gjson.GetBytes(data, "type").String()) != "response.output_item.done" {
+			return
+		}
+		appendItem(gjson.GetBytes(data, "item"))
+	})
+	// done 事件未携带 compaction item 时再看 added：覆盖"其他 item 有 done、
+	// compaction 只在 added 中"的混合形态；done 已含 compaction 时跳过，
+	// 避免同一 item 在无 id 可去重时被收集两份（Codex 要求恰好一个）。
+	if !hasCompactionItem {
+		forEachOpenAISSEDataPayload(bodyText, func(data []byte) {
+			if strings.TrimSpace(gjson.GetBytes(data, "type").String()) != "response.output_item.added" {
+				return
+			}
+			item := gjson.GetBytes(data, "item")
+			if !isResponsesCompactionItemType(item.Get("type").String()) {
+				return
+			}
+			appendItem(item)
+		})
+	}
+	if len(items) == 0 {
+		return nil, false
+	}
+	outputJSON, err := json.Marshal(items)
+	if err != nil {
+		return nil, false
+	}
+	return outputJSON, true
+}
+
+// isResponsesCompactionItemType reports whether the item type is the Codex
+// remote-compact result item ("compaction", upstream alias "compaction_summary").
+func isResponsesCompactionItemType(itemType string) bool {
+	switch strings.TrimSpace(itemType) {
+	case "compaction", "compaction_summary":
+		return true
+	default:
+		return false
+	}
+}
+
+// supplementCompactionItemFromSSE 保证 compact 请求的终态 output 携带
+// compaction item：终态 output 非空但缺失 compaction、而原始事件流的
+// output_item.done（或 added）中存在时（上游不一致形态），以 raw JSON 补入。
+// Codex remote compact v2 只从 output_item.done 收集 item 且要求恰好一个
+// compaction item——纯流式透传（v0.1.146）下客户端直接读事件流天然拿得到，
+// SSE→JSON 提取链路必须给出等价结果。非 compact 请求原样返回。
+func supplementCompactionItemFromSSE(c *gin.Context, finalResponse []byte, bodyText string) []byte {
+	if !isOpenAIResponsesCompactPath(c) {
+		return finalResponse
+	}
+	if len(gjson.GetBytes(finalResponse, "output").Array()) == 0 {
+		// 空 output 由 reconstructResponseOutputFromSSE 整体修补，不在此处理。
+		return finalResponse
+	}
+	if responsesOutputHasCompactionItem(finalResponse) {
+		return finalResponse
+	}
+	item, found := findRawCompactionItemFromSSE(bodyText)
+	if !found {
+		return finalResponse
+	}
+	patched, err := sjson.SetRawBytes(finalResponse, "output.-1", item)
+	if err != nil {
+		return finalResponse
+	}
+	return patched
+}
+
+// responsesOutputHasCompactionItem reports whether the response JSON already
+// carries a compaction item in its output array.
+func responsesOutputHasCompactionItem(response []byte) bool {
+	for _, item := range gjson.GetBytes(response, "output").Array() {
+		if isResponsesCompactionItemType(item.Get("type").String()) {
+			return true
+		}
+	}
+	return false
+}
+
+// findRawCompactionItemFromSSE 从原始 SSE 事件流中提取第一个 compaction 类
+// item 的 raw JSON：output_item.done 优先，output_item.added 兜底。
+func findRawCompactionItemFromSSE(bodyText string) (json.RawMessage, bool) {
+	var found json.RawMessage
+	pick := func(eventType string) {
+		forEachOpenAISSEDataPayload(bodyText, func(data []byte) {
+			if found != nil {
+				return
+			}
+			if strings.TrimSpace(gjson.GetBytes(data, "type").String()) != eventType {
+				return
+			}
+			item := gjson.GetBytes(data, "item")
+			if !item.IsObject() || !isResponsesCompactionItemType(item.Get("type").String()) {
+				return
+			}
+			found = json.RawMessage(item.Raw)
+		})
+	}
+	pick("response.output_item.done")
+	if found == nil {
+		pick("response.output_item.added")
+	}
+	return found, found != nil
+}
+
+// reconstructResponseOutputFromSSE scans raw SSE body text and returns a
+// JSON-encoded output array for a terminal event whose output is empty.
+// Raw output_item.done items are preferred: per the Responses protocol they
+// are the authoritative final form of each item. Delta accumulation only
+// covers text/function_call/reasoning content and silently drops unknown
+// item types such as compaction — Codex remote compact v2 then fails with
+// "expected exactly one compaction output item, got 0" (#3887).
+// Returns (nil, false) if nothing could be reconstructed.
 func reconstructResponseOutputFromSSE(bodyText string) ([]byte, bool) {
+	if outputJSON, ok := collectRawResponsesOutputItemsFromSSE(bodyText); ok {
+		return outputJSON, true
+	}
 	acc := apicompat.NewBufferedResponseAccumulator()
 	imageOutputs := make([]json.RawMessage, 0, 1)
 	seenImages := make(map[string]struct{})
@@ -7204,6 +7410,22 @@ func normalizeOpenAICompactRequestBody(body []byte) ([]byte, bool, error) {
 		return body, false, nil
 	}
 	return normalized, true, nil
+}
+
+func normalizeOpenAICodexCompactReasoningEffortForAccount(c *gin.Context, account *Account, body []byte) ([]byte, bool, error) {
+	if account == nil || !account.IsOpenAIOAuth() || !isOpenAIResponsesCompactPath(c) {
+		return body, false, nil
+	}
+
+	requestedModel := strings.TrimSpace(gjson.GetBytes(body, "model").String())
+	effectiveModel := account.GetMappedModel(requestedModel)
+	return normalizeOpenAICodexCompactReasoningEffort(body, effectiveModel)
+}
+
+func normalizeOpenAICodexCompactReasoningEffort(body []byte, effectiveModel string) ([]byte, bool, error) {
+	// JP policy: keep max/ultra as-is on compact too (do not downgrade to xhigh).
+	_ = effectiveModel
+	return body, false, nil
 }
 
 func resolveOpenAICompactSessionID(c *gin.Context) string {
@@ -8188,7 +8410,7 @@ func (s *OpenAIGatewayService) UpdateCodexUsageSnapshotFromHeaders(ctx context.C
 	}
 }
 
-func getOpenAIReasoningEffortFromReqBody(reqBody map[string]any) (value string, present bool) {
+func getOpenAIReasoningEffortFromReqBody(reqBody map[string]any, requestedModel string) (value string, present bool) {
 	if reqBody == nil {
 		return "", false
 	}
@@ -8196,17 +8418,17 @@ func getOpenAIReasoningEffortFromReqBody(reqBody map[string]any) (value string, 
 	// Primary: reasoning.effort
 	if reasoning, ok := reqBody["reasoning"].(map[string]any); ok {
 		if effort, ok := reasoning["effort"].(string); ok {
-			return normalizeOpenAIReasoningEffort(effort), true
+			return normalizeOpenAIReasoningEffortForModel(effort, requestedModel), true
 		}
 	}
 
 	// Fallback: some clients may use a flat field.
 	if effort, ok := reqBody["reasoning_effort"].(string); ok {
-		return normalizeOpenAIReasoningEffort(effort), true
+		return normalizeOpenAIReasoningEffortForModel(effort, requestedModel), true
 	}
 
 	if effort, ok := extractOpenAIReasoningEffortFromCursorParameters(reqBody["parameters"]); ok {
-		return normalizeOpenAIReasoningEffort(effort), true
+		return normalizeOpenAIReasoningEffortForModel(effort, requestedModel), true
 	}
 
 	return "", false
@@ -8245,15 +8467,24 @@ func normalizeOpenAIReasoningEffortBody(body []byte) ([]byte, bool, error) {
 	if len(body) == 0 {
 		return body, false, nil
 	}
+	model := strings.TrimSpace(gjson.GetBytes(body, "model").String())
 	rawReasoningEffort := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String())
 	if rawReasoningEffort != "" {
-		if normalizeOpenAIReasoningEffort(rawReasoningEffort) != "" {
+		forModel := normalizeOpenAIReasoningEffortForModel(rawReasoningEffort, model)
+		if forModel != "" && strings.EqualFold(rawReasoningEffort, forModel) {
 			return body, false, nil
+		}
+		// Keep max/ultra/xhigh/low/... as-is when already a known effort level.
+		// Only force a rewrite here for unknown→none.
+		if forModel == "" || !isOpenAIGPT56Model(model) {
+			if normalizeOpenAIReasoningEffort(rawReasoningEffort) != "" {
+				return body, false, nil
+			}
 		}
 	} else if !bytes.Contains(body, []byte(`"reasoning_effort"`)) && !bytes.Contains(body, []byte(`"parameters"`)) {
 		return body, false, nil
 	}
-	value, present := getOpenAIReasoningEffortFromRawBody(body)
+	value, present := getOpenAIReasoningEffortFromRawBody(body, model)
 	if !present {
 		return body, false, nil
 	}
@@ -8288,10 +8519,20 @@ func normalizeOpenAIChatReasoningEffortBody(body []byte) ([]byte, bool, error) {
 	if len(body) == 0 {
 		return body, false, nil
 	}
-	if strings.TrimSpace(gjson.GetBytes(body, "reasoning_effort").String()) != "" &&
+	model := strings.TrimSpace(gjson.GetBytes(body, "model").String())
+	rawReasoningEffort := strings.TrimSpace(gjson.GetBytes(body, "reasoning_effort").String())
+	if rawReasoningEffort != "" &&
 		!gjson.GetBytes(body, "reasoning").Exists() &&
 		!gjson.GetBytes(body, "parameters").Exists() {
-		return body, false, nil
+		forModel := normalizeOpenAIReasoningEffortForModel(rawReasoningEffort, model)
+		if forModel != "" && strings.EqualFold(rawReasoningEffort, forModel) {
+			return body, false, nil
+		}
+		if forModel == "" || !isOpenAIGPT56Model(model) {
+			if normalizeOpenAIReasoningEffort(rawReasoningEffort) != "" {
+				return body, false, nil
+			}
+		}
 	}
 	if !gjson.GetBytes(body, "reasoning").Exists() &&
 		!bytes.Contains(body, []byte(`"reasoning_effort"`)) &&
@@ -8299,7 +8540,7 @@ func normalizeOpenAIChatReasoningEffortBody(body []byte) ([]byte, bool, error) {
 		return body, false, nil
 	}
 
-	value, present := getOpenAIReasoningEffortFromRawBody(body)
+	value, present := getOpenAIReasoningEffortFromRawBody(body, model)
 	if !present {
 		return body, false, nil
 	}
@@ -8328,15 +8569,18 @@ func normalizeOpenAIChatReasoningEffortBody(body []byte) ([]byte, bool, error) {
 	return normalized, true, nil
 }
 
-func getOpenAIReasoningEffortFromRawBody(body []byte) (value string, present bool) {
+func getOpenAIReasoningEffortFromRawBody(body []byte, requestedModel string) (value string, present bool) {
 	if len(body) == 0 {
 		return "", false
 	}
+	if requestedModel == "" {
+		requestedModel = strings.TrimSpace(gjson.GetBytes(body, "model").String())
+	}
 	if raw := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String()); raw != "" {
-		return normalizeOpenAIReasoningEffort(raw), true
+		return normalizeOpenAIReasoningEffortForModel(raw, requestedModel), true
 	}
 	if raw := strings.TrimSpace(gjson.GetBytes(body, "reasoning_effort").String()); raw != "" {
-		return normalizeOpenAIReasoningEffort(raw), true
+		return normalizeOpenAIReasoningEffortForModel(raw, requestedModel), true
 	}
 	params := gjson.GetBytes(body, "parameters")
 	if !params.IsArray() {
@@ -8347,9 +8591,18 @@ func getOpenAIReasoningEffortFromRawBody(body []byte) (value string, present boo
 		if key != "reasoning" && key != "reasoning_effort" && key != "reasoning.effort" {
 			continue
 		}
-		return normalizeOpenAIReasoningEffort(item.Get("value").String()), true
+		return normalizeOpenAIReasoningEffortForModel(item.Get("value").String(), requestedModel), true
 	}
 	return "", false
+}
+
+func deriveOpenAIReasoningEffortFromModelCandidates(models []string) string {
+	for _, model := range models {
+		if value := deriveOpenAIReasoningEffortFromModel(model); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func deriveOpenAIReasoningEffortFromModel(model string) string {
@@ -8375,7 +8628,7 @@ func deriveOpenAIReasoningEffortFromModel(model string) string {
 		return ""
 	}
 
-	return normalizeOpenAIReasoningEffort(parts[len(parts)-1])
+	return normalizeOpenAIReasoningEffortForModel(parts[len(parts)-1], modelID)
 }
 
 type openAIRequestView struct {
@@ -8400,15 +8653,18 @@ func newOpenAIRequestView(body []byte) openAIRequestView {
 	if len(body) == 0 {
 		return openAIRequestView{}
 	}
+	model := strings.TrimSpace(gjson.GetBytes(body, "model").String())
 	reasoningEffort := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String())
 	if reasoningEffort == "" {
-		if value, present := getOpenAIReasoningEffortFromRawBody(body); present {
+		if value, present := getOpenAIReasoningEffortFromRawBody(body, model); present {
 			reasoningEffort = value
 		}
+	} else {
+		reasoningEffort = normalizeOpenAIReasoningEffortForModel(reasoningEffort, model)
 	}
 	return openAIRequestView{
 		body:               body,
-		Model:              strings.TrimSpace(gjson.GetBytes(body, "model").String()),
+		Model:              model,
 		Stream:             gjson.GetBytes(body, "stream").Bool(),
 		PromptCacheKey:     strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_key").String()),
 		PreviousResponseID: strings.TrimSpace(gjson.GetBytes(body, "previous_response_id").String()),
@@ -8700,25 +8956,25 @@ func detectOpenAIPassthroughInstructionsRejectReason(reqModel string, body []byt
 	return ""
 }
 
-func extractOpenAIReasoningEffortFromBody(body []byte, requestedModel string) *string {
+func extractOpenAIReasoningEffortFromBody(body []byte, modelCandidates ...string) *string {
 	reasoningEffort := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String())
 	if reasoningEffort == "" {
 		reasoningEffort = strings.TrimSpace(gjson.GetBytes(body, "reasoning_effort").String())
 	}
 	if reasoningEffort == "" {
-		if value, present := getOpenAIReasoningEffortFromRawBody(body); present {
+		if value, present := getOpenAIReasoningEffortFromRawBody(body, firstNonEmpty(modelCandidates...)); present {
 			reasoningEffort = value
 		}
 	}
 	if reasoningEffort != "" {
-		normalized := normalizeOpenAIReasoningEffort(reasoningEffort)
+		normalized := normalizeOpenAIReasoningEffortForModel(reasoningEffort, firstNonEmpty(modelCandidates...))
 		if normalized == "" {
 			return nil
 		}
 		return &normalized
 	}
 
-	value := deriveOpenAIReasoningEffortFromModel(requestedModel)
+	value := deriveOpenAIReasoningEffortFromModelCandidates(modelCandidates)
 	if value == "" {
 		return nil
 	}
@@ -8942,6 +9198,13 @@ func writeOpenAIFastPolicyBlockedResponse(c *gin.Context, err *OpenAIFastBlocked
 		return
 	}
 	MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalPolicyDenied)
+	// body-signal compact 心跳可能已把响应头提交为 200（长排队后才进入
+	// Forward），此时以 response.failed 终止事件回传；未提交时先停拍再写
+	// JSON，保持原状态码语义（#3887）。
+	if StopOpenAICompactSSEKeepaliveCommitted(c) {
+		writeOpenAICompactSSEFailureMessage(c, http.StatusForbidden, "permission_error", err.Message)
+		return
+	}
 	c.JSON(http.StatusForbidden, gin.H{
 		"error": gin.H{
 			"type":    "permission_error",
@@ -9289,15 +9552,15 @@ func getOpenAIRequestBodyMap(_ *gin.Context, body []byte) (map[string]any, error
 	return reqBody, nil
 }
 
-func extractOpenAIReasoningEffort(reqBody map[string]any, requestedModel string) *string {
-	if value, present := getOpenAIReasoningEffortFromReqBody(reqBody); present {
+func extractOpenAIReasoningEffort(reqBody map[string]any, modelCandidates ...string) *string {
+	if value, present := getOpenAIReasoningEffortFromReqBody(reqBody, firstNonEmpty(modelCandidates...)); present {
 		if value == "" {
 			return nil
 		}
 		return &value
 	}
 
-	value := deriveOpenAIReasoningEffortFromModel(requestedModel)
+	value := deriveOpenAIReasoningEffortFromModelCandidates(modelCandidates)
 	if value == "" {
 		return nil
 	}
@@ -9316,7 +9579,8 @@ func normalizeOpenAIReasoningEffort(raw string) string {
 	switch value {
 	case "none", "minimal":
 		return ""
-	case "low", "medium", "high", "max":
+	case "low", "medium", "high", "max", "ultra":
+		// max and ultra are first-class effort levels — pass through as-is.
 		return value
 	case "xhigh", "extrahigh":
 		return "xhigh"
@@ -9324,4 +9588,9 @@ func normalizeOpenAIReasoningEffort(raw string) string {
 		// Only store known effort levels for now to keep UI consistent.
 		return ""
 	}
+}
+
+func normalizeOpenAIReasoningEffortForModel(raw, model string) string {
+	_ = model
+	return normalizeOpenAIReasoningEffort(raw)
 }

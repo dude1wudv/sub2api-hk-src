@@ -789,11 +789,32 @@ func TestExtractOpenAIReasoningEffortFromBody(t *testing.T) {
 			wantValue: "xhigh",
 		},
 		{
-			name:      "max passthrough (keep max, not xhigh)",
+			name:      "max passthrough for GPT-5.6 sol",
 			body:      []byte(`{"reasoning_effort":"max"}`),
 			model:     "gpt-5.6-sol",
 			wantNil:   false,
 			wantValue: "max",
+		},
+		{
+			name:      "ultra passthrough for GPT-5.6 sol",
+			body:      []byte(`{"reasoning":{"effort":"ultra"}}`),
+			model:     "gpt-5.6-sol",
+			wantNil:   false,
+			wantValue: "ultra",
+		},
+		{
+			name:      "max passthrough for non-5.6",
+			body:      []byte(`{"reasoning_effort":"max"}`),
+			model:     "gpt-5.5",
+			wantNil:   false,
+			wantValue: "max",
+		},
+		{
+			name:      "ultra passthrough for non-5.6",
+			body:      []byte(`{"reasoning":{"effort":"ultra"}}`),
+			model:     "gpt-5.5",
+			wantNil:   false,
+			wantValue: "ultra",
 		},
 		{
 			name:    "minimal 归一化为空",
@@ -883,6 +904,28 @@ func TestNormalizeOpenAIReasoningEffortBody_MaxPassthrough(t *testing.T) {
 	require.Equal(t, "max", gjson.GetBytes(got, "reasoning.effort").String())
 }
 
+func TestNormalizeOpenAIReasoningEffortBody_UltraPassthrough(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.6-sol","input":"hi","reasoning":{"effort":"ultra"}}`)
+
+	got, changed, err := normalizeOpenAIReasoningEffortBody(body)
+
+	require.NoError(t, err)
+	require.False(t, changed)
+	require.Equal(t, "ultra", gjson.GetBytes(got, "reasoning.effort").String())
+}
+
+func TestNormalizeOpenAIReasoningEffortBody_MaxPassthroughForNonGPT56(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.5","input":"hi","reasoning":{"effort":"max"}}`)
+
+	got, changed, err := normalizeOpenAIReasoningEffortBody(body)
+
+	require.NoError(t, err)
+	require.False(t, changed)
+	require.Equal(t, "max", gjson.GetBytes(got, "reasoning.effort").String())
+	require.Equal(t, "max", normalizeOpenAIReasoningEffortForModel("max", "gpt-5.5"))
+	require.Equal(t, "ultra", normalizeOpenAIReasoningEffortForModel("ultra", "gpt-5.5"))
+}
+
 func TestNormalizeOpenAIChatReasoningEffortBody_MaxPassthrough(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.6-sol","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"max"}`)
 
@@ -895,6 +938,11 @@ func TestNormalizeOpenAIChatReasoningEffortBody_MaxPassthrough(t *testing.T) {
 
 func TestNormalizeOpenAIReasoningEffort_MaxAndAliases(t *testing.T) {
 	require.Equal(t, "max", normalizeOpenAIReasoningEffort("max"))
+	require.Equal(t, "ultra", normalizeOpenAIReasoningEffort("ultra"))
+	require.Equal(t, "max", normalizeOpenAIReasoningEffortForModel("max", "gpt-5.6-sol"))
+	require.Equal(t, "ultra", normalizeOpenAIReasoningEffortForModel("ultra", "gpt-5.6-sol"))
+	require.Equal(t, "max", normalizeOpenAIReasoningEffortForModel("max", "gpt-5.5"))
+	require.Equal(t, "ultra", normalizeOpenAIReasoningEffortForModel("ultra", "gpt-5.5"))
 	require.Equal(t, "xhigh", normalizeOpenAIReasoningEffort("extra-high"))
 	require.Equal(t, "xhigh", normalizeOpenAIReasoningEffort("xhigh"))
 	require.Equal(t, "high", normalizeOpenAIReasoningEffort("high"))

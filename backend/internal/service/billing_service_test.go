@@ -1554,6 +1554,7 @@ func TestGetModelPricing_OpenAIGPT56IndependentShortPrices(t *testing.T) {
 			require.InDelta(t, tt.inputPri, pricing.InputPricePerTokenPriority, 1e-12)
 			require.InDelta(t, tt.outputPri, pricing.OutputPricePerTokenPriority, 1e-12)
 			require.InDelta(t, tt.cacheReadPri, pricing.CacheReadPricePerTokenPriority, 1e-12)
+			require.InDelta(t, tt.cacheWrite*2, pricing.CacheCreationPricePerTokenPriority, 1e-12)
 			require.Equal(t, 256000, pricing.LongContextInputThreshold)
 		})
 	}

@@ -84,6 +84,11 @@ func splitOpenAICompatReasoningModel(model string) (normalizedModel string, reas
 		reasoningEffort = last
 	case "xhigh", "extrahigh":
 		reasoningEffort = "xhigh"
+	case "max", "ultra":
+		// OpenAI-native effort suffixes (not Claude vocabulary). Kept so
+		// Anthropic-compat model aliases like gpt-5.6-sol-max still derive effort;
+		// the bridge maps Claude "max"↔OpenAI "xhigh" separately.
+		reasoningEffort = last
 	default:
 		return trimmed, "", false
 	}
@@ -91,12 +96,17 @@ func splitOpenAICompatReasoningModel(model string) (normalizedModel string, reas
 	return normalizeCodexModel(modelID), reasoningEffort, true
 }
 
+// openAIReasoningEffortToClaudeOutputEffort copies OpenAI effort into the
+// Anthropic output_config intermediate used by the OpenAI Responses bridge.
+//
+// Keep OpenAI-native levels (xhigh/max/ultra) as-is in the intermediate so they
+// are not confused with Claude's top-tier "max". mapAnthropicEffortToResponses
+// then applies the upstream Claude-max→OpenAI-xhigh bridge only when the value
+// is Claude-shaped "max" on non-GPT-5.6 models.
 func openAIReasoningEffortToClaudeOutputEffort(effort string) string {
 	switch strings.TrimSpace(effort) {
-	case "low", "medium", "high":
+	case "low", "medium", "high", "xhigh", "max", "ultra":
 		return effort
-	case "xhigh":
-		return "max"
 	default:
 		return ""
 	}

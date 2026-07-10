@@ -531,6 +531,25 @@ func TestChatCompletionsToResponses_ServiceTier(t *testing.T) {
 	assert.Equal(t, "flex", resp.ServiceTier)
 }
 
+func TestChatCompletionsToResponses_ParallelToolCalls(t *testing.T) {
+	for _, value := range []bool{false, true} {
+		req := &ChatCompletionsRequest{
+			Model:             "gpt-4o",
+			ParallelToolCalls: &value,
+			Messages:          []ChatMessage{{Role: "user", Content: json.RawMessage(`"Hi"`)}},
+		}
+
+		resp, err := ChatCompletionsToResponses(req)
+		require.NoError(t, err)
+		require.NotNil(t, resp.ParallelToolCalls)
+		assert.Equal(t, value, *resp.ParallelToolCalls)
+
+		payload, err := json.Marshal(resp)
+		require.NoError(t, err)
+		assert.Contains(t, string(payload), `"parallel_tool_calls":`+string(mustMarshalJSON(t, value)))
+	}
+}
+
 // ---------------------------------------------------------------------------
 // temperature / top_p stripping for reasoning models
 // ---------------------------------------------------------------------------
@@ -861,6 +880,26 @@ func TestResponsesToChatCompletions_CachedTokens(t *testing.T) {
 	require.NotNil(t, chat.Usage)
 	require.NotNil(t, chat.Usage.PromptTokensDetails)
 	assert.Equal(t, 80, chat.Usage.PromptTokensDetails.CachedTokens)
+}
+
+func TestResponsesUsageNestedCacheWritePresenceOverridesTopLevelAlias(t *testing.T) {
+	tests := []struct {
+		name       string
+		nestedJSON string
+		want       int
+	}{
+		{name: "explicit zero", nestedJSON: `{"cache_write_tokens":0}`, want: 0},
+		{name: "nonzero", nestedJSON: `{"cache_write_tokens":7}`, want: 7},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var usage ResponsesUsage
+			payload := []byte(`{"input_tokens":20,"output_tokens":2,"cache_creation_input_tokens":19,"input_tokens_details":` + tt.nestedJSON + `}`)
+			require.NoError(t, json.Unmarshal(payload, &usage))
+			require.Equal(t, tt.want, usage.CacheCreationInputTokens)
+		})
+	}
 }
 
 func TestResponsesToChatCompletions_ReasoningTokens(t *testing.T) {

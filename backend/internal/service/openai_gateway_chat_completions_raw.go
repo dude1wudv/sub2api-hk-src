@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/pkg/apicompat"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"github.com/Wei-Shaw/sub2api/internal/util/responseheaders"
@@ -83,13 +81,13 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 	}
 	clientStream := gjson.GetBytes(body, "stream").Bool()
 
-	// 1b. Extract reasoning effort and service tier from the raw body before any transformation.
-	reasoningEffort := extractOpenAIReasoningEffortFromBody(body, originalModel)
+	// 1b. Extract service tier from the raw body before any transformation.
 	serviceTier := extractOpenAIServiceTierFromBody(body)
 
 	// 2. Resolve model mapping (same as ForwardAsChatCompletions)
 	billingModel := resolveOpenAIForwardModel(account, originalModel, defaultMappedModel)
 	upstreamModel := normalizeOpenAIModelForUpstream(account, billingModel)
+	reasoningEffort := extractOpenAIReasoningEffortFromBody(body, upstreamModel, billingModel, originalModel)
 	// 国产模型默认 effort 补充：需要 mappedModel 判定，推迟到 billingModel 算出之后。
 	reasoningEffort = ApplyThinkingEnabledFallback(reasoningEffort, body, billingModel)
 
@@ -521,13 +519,15 @@ func extractCCStreamUsage(payload string) *OpenAIUsage {
 		InputTokens:  int(gjson.Get(payload, "usage.prompt_tokens").Int()),
 		OutputTokens: int(gjson.Get(payload, "usage.completion_tokens").Int()),
 	}
-	if cached := gjson.Get(payload, "usage.prompt_tokens_details.cached_tokens"); cached.Exists() {
-		u.CacheReadInputTokens = int(cached.Int())
-	}
-	if cacheWrite := gjson.Get(payload, "usage.prompt_tokens_details.cache_write_tokens"); cacheWrite.Exists() {
-		u.CacheCreationInputTokens = int(cacheWrite.Int())
-	} else if cacheWrite := gjson.Get(payload, "usage.cache_creation_input_tokens"); cacheWrite.Exists() {
-		u.CacheCreationInputTokens = int(cacheWrite.Int())
+	if parsed, ok := openAIUsageFromGJSON(usageResult); ok {
+		u = parsed
+		// CC stream chunks use prompt/completion token names; keep those as primary.
+		if u.InputTokens == 0 {
+			u.InputTokens = int(gjson.Get(payload, "usage.prompt_tokens").Int())
+		}
+		if u.OutputTokens == 0 {
+			u.OutputTokens = int(gjson.Get(payload, "usage.completion_tokens").Int())
+		}
 	}
 	return &u
 }
@@ -555,25 +555,11 @@ func (s *OpenAIGatewayService) bufferRawChatCompletions(
 		return nil, fmt.Errorf("read upstream body: %w", err)
 	}
 
-	var ccResp apicompat.ChatCompletionsResponse
 	var usage OpenAIUsage
-	responseID := ""
-	if err := json.Unmarshal(respBody, &ccResp); err == nil {
-		responseID = strings.TrimSpace(ccResp.ID)
-		if ccResp.Usage != nil {
-			usage = OpenAIUsage{
-				InputTokens:  ccResp.Usage.PromptTokens,
-				OutputTokens: ccResp.Usage.CompletionTokens,
-			}
-			if ccResp.Usage.PromptTokensDetails != nil {
-				usage.CacheReadInputTokens = ccResp.Usage.PromptTokensDetails.CachedTokens
-				usage.CacheCreationInputTokens = ccResp.Usage.PromptTokensDetails.CacheWriteTokens
-			}
-		}
+	if parsedUsage, ok := extractOpenAIUsageFromJSONBytes(respBody); ok {
+		usage = parsedUsage
 	}
-	if responseID == "" {
-		responseID = strings.TrimSpace(gjson.GetBytes(respBody, "id").String())
-	}
+	responseID := strings.TrimSpace(gjson.GetBytes(respBody, "id").String())
 
 	if s.responseHeaderFilter != nil {
 		responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)

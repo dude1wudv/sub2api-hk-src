@@ -98,6 +98,17 @@ func TestApplyOpenAICompatModelNormalization(t *testing.T) {
 
 		require.Equal(t, "gpt-5.4", req.Model)
 		require.NotNil(t, req.OutputConfig)
+		// Keep OpenAI xhigh in the intermediate (do not fold into Claude max).
+		require.Equal(t, "xhigh", req.OutputConfig.Effort)
+	})
+
+	t.Run("derives openai-native max from model suffix", func(t *testing.T) {
+		req := &apicompat.AnthropicRequest{Model: "gpt-5.6-sol-max"}
+
+		applyOpenAICompatModelNormalization(req)
+
+		require.Equal(t, "gpt-5.6-sol", req.Model)
+		require.NotNil(t, req.OutputConfig)
 		require.Equal(t, "max", req.OutputConfig.Effort)
 	})
 

@@ -1438,7 +1438,8 @@ func TestAnthropicToResponses_OutputConfigHigh(t *testing.T) {
 }
 
 func TestAnthropicToResponses_OutputConfigMax(t *testing.T) {
-	// output_config.effort="max" → pass through as OpenAI "max" (GPT-5.6+).
+	// Claude-shaped output_config.effort="max" on pre-5.6 → OpenAI "xhigh"
+	// (upstream Claude max ↔ OpenAI xhigh bridge).
 	req := &AnthropicRequest{
 		Model:        "gpt-5.2",
 		MaxTokens:    1024,
@@ -1449,8 +1450,51 @@ func TestAnthropicToResponses_OutputConfigMax(t *testing.T) {
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
 	require.NotNil(t, resp.Reasoning)
-	assert.Equal(t, "max", resp.Reasoning.Effort)
+	assert.Equal(t, "xhigh", resp.Reasoning.Effort)
 	assert.Equal(t, "auto", resp.Reasoning.Summary)
+}
+
+func TestAnthropicToResponses_OutputConfigMaxOnGPT56KeepsMax(t *testing.T) {
+	// On GPT-5.6, "max" is also an OpenAI-native effort — keep it.
+	req := &AnthropicRequest{
+		Model:        "gpt-5.6-sol",
+		MaxTokens:    1024,
+		Messages:     []AnthropicMessage{{Role: "user", Content: json.RawMessage(`"Hello"`)}},
+		OutputConfig: &AnthropicOutputConfig{Effort: "max"},
+	}
+
+	resp, err := AnthropicToResponses(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp.Reasoning)
+	assert.Equal(t, "max", resp.Reasoning.Effort)
+}
+
+func TestAnthropicToResponses_OutputConfigXHighPassthrough(t *testing.T) {
+	req := &AnthropicRequest{
+		Model:        "gpt-5.4",
+		MaxTokens:    1024,
+		Messages:     []AnthropicMessage{{Role: "user", Content: json.RawMessage(`"Hello"`)}},
+		OutputConfig: &AnthropicOutputConfig{Effort: "xhigh"},
+	}
+
+	resp, err := AnthropicToResponses(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp.Reasoning)
+	assert.Equal(t, "xhigh", resp.Reasoning.Effort)
+}
+
+func TestAnthropicToResponses_OutputConfigUltraPassthrough(t *testing.T) {
+	req := &AnthropicRequest{
+		Model:        "gpt-5.6-sol",
+		MaxTokens:    1024,
+		Messages:     []AnthropicMessage{{Role: "user", Content: json.RawMessage(`"Hello"`)}},
+		OutputConfig: &AnthropicOutputConfig{Effort: "ultra"},
+	}
+
+	resp, err := AnthropicToResponses(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp.Reasoning)
+	assert.Equal(t, "ultra", resp.Reasoning.Effort)
 }
 
 func TestAnthropicToResponses_NoOutputConfig(t *testing.T) {
