@@ -2160,6 +2160,61 @@ func TestApplyGrokOAuthSimulatedCacheBilling(t *testing.T) {
 	})
 }
 
+func TestApplyGPT56SimulatedCacheWriteBilling(t *testing.T) {
+	t.Parallel()
+
+	t.Run("upstream write present is no-op", func(t *testing.T) {
+		usage := OpenAIUsage{
+			InputTokens:              2106,
+			CacheReadInputTokens:     1920,
+			CacheCreationInputTokens: 100,
+		}
+		applyGPT56SimulatedCacheWriteBilling("gpt-5.6-sol", &usage)
+		require.Equal(t, 2106, usage.InputTokens)
+		require.Equal(t, 1920, usage.CacheReadInputTokens)
+		require.Equal(t, 100, usage.CacheCreationInputTokens)
+	})
+
+	t.Run("write zero simulates input minus read", func(t *testing.T) {
+		usage := OpenAIUsage{
+			InputTokens:          29000,
+			CacheReadInputTokens: 28900,
+		}
+		applyGPT56SimulatedCacheWriteBilling("gpt-5.6-terra", &usage)
+		require.Equal(t, 29000, usage.InputTokens)
+		require.Equal(t, 28900, usage.CacheReadInputTokens)
+		require.Equal(t, 100, usage.CacheCreationInputTokens)
+	})
+
+	t.Run("luna prefix match simulates write", func(t *testing.T) {
+		usage := OpenAIUsage{
+			InputTokens:          500,
+			CacheReadInputTokens: 400,
+		}
+		applyGPT56SimulatedCacheWriteBilling("gpt-5.6-luna-preview", &usage)
+		require.Equal(t, 100, usage.CacheCreationInputTokens)
+	})
+
+	t.Run("non gpt-5.6 is no-op", func(t *testing.T) {
+		usage := OpenAIUsage{
+			InputTokens:          1000,
+			CacheReadInputTokens: 700,
+		}
+		applyGPT56SimulatedCacheWriteBilling("gpt-5.5", &usage)
+		require.Equal(t, 0, usage.CacheCreationInputTokens)
+		require.Equal(t, 700, usage.CacheReadInputTokens)
+	})
+
+	t.Run("input not greater than read is no-op", func(t *testing.T) {
+		usage := OpenAIUsage{
+			InputTokens:          1000,
+			CacheReadInputTokens: 1000,
+		}
+		applyGPT56SimulatedCacheWriteBilling("gpt-5.6-sol", &usage)
+		require.Equal(t, 0, usage.CacheCreationInputTokens)
+	})
+}
+
 func TestOpenAIGatewayServiceRecordUsage_GPT56CacheWriteBilledAndDisplayed(t *testing.T) {
 	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
 	billingRepo := &openAIRecordUsageBillingRepoStub{result: &UsageBillingApplyResult{Applied: true}}
@@ -2196,6 +2251,47 @@ func TestOpenAIGatewayServiceRecordUsage_GPT56CacheWriteBilledAndDisplayed(t *te
 	// CacheCreationCost on the log is pre-multiplier; ActualCost applies group rate.
 	require.InDelta(t, 100*6.25e-6, usageRepo.lastLog.CacheCreationCost, 1e-12)
 	require.InDelta(t, 86*5e-6, usageRepo.lastLog.InputCost, 1e-12)
+}
+
+func TestOpenAIGatewayServiceRecordUsage_GPT56SimulatesCacheWriteWhenUpstreamOmitsIt(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	billingRepo := &openAIRecordUsageBillingRepoStub{result: &UsageBillingApplyResult{Applied: true}}
+	svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+
+	// Upstream omits cache_write: inclusive input 29000 with read 28900 → simulate write 100.
+	usage := OpenAIUsage{
+		InputTokens:          29000,
+		OutputTokens:         50,
+		CacheReadInputTokens: 28900,
+	}
+	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
+		Result: &OpenAIForwardResult{
+			RequestID: "resp_gpt56_sim_cache_write",
+			Usage:     usage,
+			Model:     "gpt-5.6-terra",
+			Duration:  time.Second,
+		},
+		APIKey:  &APIKey{ID: 5202, Group: &Group{RateMultiplier: 1}},
+		User:    &User{ID: 6202},
+		Account: &Account{ID: 7202, Platform: PlatformOpenAI, Type: AccountTypeAPIKey},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.Equal(t, 0, usageRepo.lastLog.InputTokens)
+	require.Equal(t, 28900, usageRepo.lastLog.CacheReadTokens)
+	require.Equal(t, 100, usageRepo.lastLog.CacheCreationTokens)
+	require.Greater(t, usageRepo.lastLog.CacheCreationCost, 0.0)
+
+	simulated := OpenAIUsage{
+		InputTokens:              29000,
+		OutputTokens:             50,
+		CacheReadInputTokens:     28900,
+		CacheCreationInputTokens: 100,
+	}
+	expected := expectedOpenAICost(t, svc, "gpt-5.6-terra", simulated, 1.1)
+	require.InDelta(t, expected.CacheCreationCost, usageRepo.lastLog.CacheCreationCost, 1e-12)
+	require.InDelta(t, expected.ActualCost, usageRepo.lastLog.ActualCost, 1e-12)
+	require.InDelta(t, 100*3.125e-6, usageRepo.lastLog.CacheCreationCost, 1e-12)
 }
 
 func TestOpenAIGatewayServiceRecordUsage_GrokOAuthSimulatesCacheWhenUpstreamOmitsCachedTokens(t *testing.T) {

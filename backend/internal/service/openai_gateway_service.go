@@ -7147,6 +7147,28 @@ func applyGrokOAuthSimulatedCacheBilling(account *Account, usage *OpenAIUsage) {
 	usage.CacheReadInputTokens = usage.InputTokens
 }
 
+// applyGPT56SimulatedCacheWriteBilling fills CacheCreationInputTokens for GPT-5.6
+// when upstream reports inclusive input + cache_read but omits cache_write.
+// OpenAI-style usage keeps InputTokens inclusive; the uncached delta
+// (input - cache_read) is treated as a write so it bills at cache_write_price
+// instead of uncached input. Upstream-provided writes are left untouched.
+func applyGPT56SimulatedCacheWriteBilling(model string, usage *OpenAIUsage) {
+	if usage == nil {
+		return
+	}
+	normalized := strings.ToLower(strings.TrimSpace(model))
+	if !strings.HasPrefix(normalized, "gpt-5.6") {
+		return
+	}
+	if usage.CacheCreationInputTokens > 0 {
+		return
+	}
+	if usage.InputTokens <= usage.CacheReadInputTokens {
+		return
+	}
+	usage.CacheCreationInputTokens = usage.InputTokens - usage.CacheReadInputTokens
+}
+
 // RecordUsage records usage and deducts balance
 func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRecordUsageInput) error {
 	if input == nil {
@@ -7168,6 +7190,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		ApplyOpenAIImageBillingResolution(result)
 	}
 	applyGrokOAuthSimulatedCacheBilling(account, &result.Usage)
+	applyGPT56SimulatedCacheWriteBilling(result.Model, &result.Usage)
 
 	// OpenAI-style usage keeps input/prompt tokens inclusive of cache read and
 	// cache write breakdowns. Bill those buckets at their own rates, not again
