@@ -533,10 +533,15 @@ function generateOpenAIFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
 
   // config.toml content
+  // Profiles (Codex >=0.134): copy overlays to sol.config.toml / terra.config.toml / luna.config.toml
+  //   sol:   model=gpt-5.6-sol   effort=high  (override: -c model_reasoning_effort='"max"')
+  //   terra: model=gpt-5.6-terra effort=medium
+  //   luna:  model=gpt-5.6-luna  effort=low
+  // Switch: codex --profile sol
   const configContent = `model_provider = "OpenAI"
-model = "gpt-5.5"
-review_model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
+model = "gpt-5.6-terra"
+review_model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
 disable_response_storage = true
 network_access = "enabled"
 windows_wsl_setup_acknowledged = true
@@ -573,10 +578,15 @@ function generateOpenAIWsFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
 
   // config.toml content with WebSocket v2
+  // Profiles (Codex >=0.134): copy overlays to sol.config.toml / terra.config.toml / luna.config.toml
+  //   sol:   model=gpt-5.6-sol   effort=high  (override: -c model_reasoning_effort='"max"')
+  //   terra: model=gpt-5.6-terra effort=medium
+  //   luna:  model=gpt-5.6-luna  effort=low
+  // Switch: codex --profile sol
   const configContent = `model_provider = "OpenAI"
-model = "gpt-5.5"
-review_model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
+model = "gpt-5.6-terra"
+review_model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
 disable_response_storage = true
 network_access = "enabled"
 windows_wsl_setup_acknowledged = true
@@ -649,7 +659,8 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
         low: {},
         medium: {},
         high: {},
-        xhigh: {}
+        xhigh: {},
+        max: {}
       }
     },
     'gpt-5.6-terra': {
@@ -665,7 +676,8 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
         low: {},
         medium: {},
         high: {},
-        xhigh: {}
+        xhigh: {},
+        max: {}
       }
     },
     'gpt-5.6-luna': {
@@ -681,7 +693,8 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
         low: {},
         medium: {},
         high: {},
-        xhigh: {}
+        xhigh: {},
+        max: {}
       }
     },
     'gpt-5.5': {
@@ -697,7 +710,8 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
         low: {},
         medium: {},
         high: {},
-        xhigh: {}
+        xhigh: {},
+        max: {}
       }
     },
     'gpt-5.4': {

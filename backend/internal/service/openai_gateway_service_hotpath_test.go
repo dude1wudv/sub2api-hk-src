@@ -789,11 +789,11 @@ func TestExtractOpenAIReasoningEffortFromBody(t *testing.T) {
 			wantValue: "xhigh",
 		},
 		{
-			name:      "DeepSeek max 归一化为 xhigh",
+			name:      "max passthrough (keep max, not xhigh)",
 			body:      []byte(`{"reasoning_effort":"max"}`),
-			model:     "deepseek-v4-pro",
+			model:     "gpt-5.6-sol",
 			wantNil:   false,
-			wantValue: "xhigh",
+			wantValue: "max",
 		},
 		{
 			name:    "minimal 归一化为空",
@@ -871,6 +871,34 @@ func TestNormalizeOpenAIChatReasoningEffortBody_NestedReasoning(t *testing.T) {
 	require.True(t, changed)
 	require.Equal(t, "xhigh", gjson.GetBytes(got, "reasoning_effort").String())
 	require.False(t, gjson.GetBytes(got, "reasoning").Exists())
+}
+
+func TestNormalizeOpenAIReasoningEffortBody_MaxPassthrough(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.6-sol","input":"hi","reasoning":{"effort":"max"}}`)
+
+	got, changed, err := normalizeOpenAIReasoningEffortBody(body)
+
+	require.NoError(t, err)
+	require.False(t, changed)
+	require.Equal(t, "max", gjson.GetBytes(got, "reasoning.effort").String())
+}
+
+func TestNormalizeOpenAIChatReasoningEffortBody_MaxPassthrough(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.6-sol","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"max"}`)
+
+	got, changed, err := normalizeOpenAIChatReasoningEffortBody(body)
+
+	require.NoError(t, err)
+	require.False(t, changed)
+	require.Equal(t, "max", gjson.GetBytes(got, "reasoning_effort").String())
+}
+
+func TestNormalizeOpenAIReasoningEffort_MaxAndAliases(t *testing.T) {
+	require.Equal(t, "max", normalizeOpenAIReasoningEffort("max"))
+	require.Equal(t, "xhigh", normalizeOpenAIReasoningEffort("extra-high"))
+	require.Equal(t, "xhigh", normalizeOpenAIReasoningEffort("xhigh"))
+	require.Equal(t, "high", normalizeOpenAIReasoningEffort("high"))
+	require.Equal(t, "", normalizeOpenAIReasoningEffort("minimal"))
 }
 
 func TestGetOpenAIRequestBodyMap_ParseError(t *testing.T) {

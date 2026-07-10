@@ -1438,7 +1438,7 @@ func TestAnthropicToResponses_OutputConfigHigh(t *testing.T) {
 }
 
 func TestAnthropicToResponses_OutputConfigMax(t *testing.T) {
-	// output_config.effort="max" → mapped to OpenAI's highest supported level "xhigh".
+	// output_config.effort="max" → pass through as OpenAI "max" (GPT-5.6+).
 	req := &AnthropicRequest{
 		Model:        "gpt-5.2",
 		MaxTokens:    1024,
@@ -1449,7 +1449,7 @@ func TestAnthropicToResponses_OutputConfigMax(t *testing.T) {
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
 	require.NotNil(t, resp.Reasoning)
-	assert.Equal(t, "xhigh", resp.Reasoning.Effort)
+	assert.Equal(t, "max", resp.Reasoning.Effort)
 	assert.Equal(t, "auto", resp.Reasoning.Summary)
 }
 
