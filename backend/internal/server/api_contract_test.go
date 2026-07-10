@@ -2404,6 +2404,10 @@ func (r *stubUsageLogRepo) GetAccountTodayStats(ctx context.Context, accountID i
 	return nil, errors.New("not implemented")
 }
 
+func (r *stubUsageLogRepo) GetAccountLifetimeUserCostBatch(ctx context.Context, accountIDs []int64) (map[int64]float64, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (r *stubUsageLogRepo) GetDashboardStats(ctx context.Context) (*usagestats.DashboardStats, error) {
 	return nil, errors.New("not implemented")
 }

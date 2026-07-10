@@ -566,6 +566,37 @@ describe('AccountUsageCell', () => {
 		expect(badges.some(node => node.attributes('title') === 'usage.userBilled')).toBe(true)
   })
 
+  it('Key 账号旁路展示全时段 TU 徽章', async () => {
+		const wrapper = mount(AccountUsageCell, {
+		  props: {
+		    account: makeAccount({
+		      id: 3005,
+		      platform: 'anthropic',
+		      type: 'apikey'
+		    }),
+		    todayStats: {
+		      requests: 6,
+		      tokens: 527700,
+		      cost: 2.63,
+		      user_cost: 0.42
+		    },
+		    lifetimeUserCost: 12.34
+		  },
+		  global: {
+		    stubs: {
+		      UsageProgressBar: true,
+		      AccountQuotaInfo: true
+		    }
+		  }
+		})
+
+		await flushPromises()
+
+		expect(wrapper.text()).toContain('TU $12.34')
+		const badges = wrapper.findAll('span[title]')
+		expect(badges.some(node => node.attributes('title') === 'usage.lifetimeUserBilled')).toBe(true)
+  })
+
   it('Key 账号在 today stats loading 时显示骨架屏', async () => {
 		const wrapper = mount(AccountUsageCell, {
 		  props: {

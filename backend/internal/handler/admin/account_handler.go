@@ -2029,6 +2029,63 @@ func (h *AccountHandler) GetBatchTodayStats(c *gin.Context) {
 	response.Success(c, payload)
 }
 
+// BatchLifetimeUserCostRequest 批量全历史用户侧扣费请求体。
+type BatchLifetimeUserCostRequest struct {
+	AccountIDs []int64 `json:"account_ids" binding:"required"`
+}
+
+// GetBatchLifetimeUserCost 批量获取多个账号的全历史用户侧扣费（TU）。
+// POST /api/v1/admin/accounts/lifetime-user-cost/batch
+func (h *AccountHandler) GetBatchLifetimeUserCost(c *gin.Context) {
+	var req BatchLifetimeUserCostRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	accountIDs := normalizeInt64IDList(req.AccountIDs)
+	if len(accountIDs) == 0 {
+		response.Success(c, gin.H{"stats": map[string]any{}})
+		return
+	}
+
+	cacheKey := buildAccountLifetimeUserCostBatchCacheKey(accountIDs)
+	if cached, ok := accountLifetimeUserCostBatchCache.Get(cacheKey); ok {
+		if cached.ETag != "" {
+			c.Header("ETag", cached.ETag)
+			c.Header("Vary", "If-None-Match")
+			if ifNoneMatchMatched(c.GetHeader("If-None-Match"), cached.ETag) {
+				c.Status(http.StatusNotModified)
+				return
+			}
+		}
+		c.Header("X-Snapshot-Cache", "hit")
+		response.Success(c, cached.Payload)
+		return
+	}
+
+	stats, err := h.accountUsageService.GetLifetimeUserCostBatch(c.Request.Context(), accountIDs)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	// JSON map keys must be strings for stable frontend Record<string, ...> parsing.
+	out := make(map[string]*service.LifetimeUserCost, len(stats))
+	for id, cost := range stats {
+		out[strconv.FormatInt(id, 10)] = cost
+	}
+
+	payload := gin.H{"stats": out}
+	cached := accountLifetimeUserCostBatchCache.Set(cacheKey, payload)
+	if cached.ETag != "" {
+		c.Header("ETag", cached.ETag)
+		c.Header("Vary", "If-None-Match")
+	}
+	c.Header("X-Snapshot-Cache", "miss")
+	response.Success(c, payload)
+}
+
 // SetSchedulableRequest represents the request body for setting schedulable status
 type SetSchedulableRequest struct {
 	Schedulable bool `json:"schedulable"`

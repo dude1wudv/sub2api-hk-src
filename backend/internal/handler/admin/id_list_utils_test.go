@@ -55,3 +55,22 @@ func TestBuildAccountTodayStatsBatchCacheKey(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildAccountLifetimeUserCostBatchCacheKey(t *testing.T) {
+	tests := []struct {
+		name string
+		ids  []int64
+		want string
+	}{
+		{"empty", nil, "accounts_lifetime_user_cost_empty"},
+		{"single", []int64{42}, "accounts_lifetime_user_cost:42"},
+		{"multiple", []int64{1, 2, 3}, "accounts_lifetime_user_cost:1,2,3"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := buildAccountLifetimeUserCostBatchCacheKey(tc.ids)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}

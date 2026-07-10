@@ -40,6 +40,22 @@
         <div v-if="usageInfo.error" class="text-xs text-amber-600 dark:text-amber-400 truncate max-w-[200px]" :title="usageInfo.error">
           {{ usageInfo.error }}
         </div>
+        <div
+          v-if="formatLifetimeUserCost != null || lifetimeUserCostLoading"
+          class="mb-0.5 flex items-center gap-1.5 text-[9px] text-gray-500 dark:text-gray-400"
+        >
+          <span
+            v-if="formatLifetimeUserCost != null"
+            class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+            :title="t('usage.lifetimeUserBilled')"
+          >
+            TU ${{ formatLifetimeUserCost }}
+          </span>
+          <span
+            v-else
+            class="h-3 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-700"
+          ></span>
+        </div>
         <!-- 5h Window -->
         <UsageProgressBar
           v-if="usageInfo.five_hour"
@@ -121,6 +137,22 @@
     <!-- OpenAI OAuth accounts: single source from /usage API -->
     <template v-else-if="account.platform === 'openai' && account.type === 'oauth'">
       <div v-if="hasOpenAIUsageFallback" class="space-y-1">
+        <div
+          v-if="formatLifetimeUserCost != null || lifetimeUserCostLoading"
+          class="mb-0.5 flex items-center gap-1.5 text-[9px] text-gray-500 dark:text-gray-400"
+        >
+          <span
+            v-if="formatLifetimeUserCost != null"
+            class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+            :title="t('usage.lifetimeUserBilled')"
+          >
+            TU ${{ formatLifetimeUserCost }}
+          </span>
+          <span
+            v-else
+            class="h-3 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-700"
+          ></span>
+        </div>
         <UsageProgressBar
           v-if="usageInfo?.five_hour"
           label="5h"
@@ -184,6 +216,17 @@
         </div>
       </div>
       <div v-else>
+        <div
+          v-if="formatLifetimeUserCost != null"
+          class="mb-0.5 flex items-center gap-1.5 text-[9px] text-gray-500 dark:text-gray-400"
+        >
+          <span
+            class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+            :title="t('usage.lifetimeUserBilled')"
+          >
+            TU ${{ formatLifetimeUserCost }}
+          </span>
+        </div>
         <div class="text-xs text-gray-400">-</div>
         <!-- Always allow on-demand upstream quota query, even before local data exists. -->
         <OpenAIQuotaResetCell :account="account" class="mt-1" />
@@ -379,6 +422,17 @@
             >
               U ${{ formatWindowUserCost(grokLocalUsage) }}
             </span>
+            <span
+              v-if="formatLifetimeUserCost != null"
+              class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+              :title="t('usage.lifetimeUserBilled')"
+            >
+              TU ${{ formatLifetimeUserCost }}
+            </span>
+            <span
+              v-else-if="lifetimeUserCostLoading"
+              class="h-3 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-700"
+            ></span>
           </div>
         </div>
         <UsageProgressBar
@@ -499,6 +553,17 @@
             >
               U ${{ formatKeyUserCost }}
             </span>
+            <span
+              v-if="formatLifetimeUserCost != null"
+              class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+              :title="t('usage.lifetimeUserBilled')"
+            >
+              TU ${{ formatLifetimeUserCost }}
+            </span>
+            <span
+              v-else-if="lifetimeUserCostLoading"
+              class="h-3 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-700"
+            ></span>
           </div>
         </div>
         <div
@@ -575,6 +640,17 @@
           >
             U ${{ formatKeyUserCost }}
           </span>
+          <span
+            v-if="formatLifetimeUserCost != null"
+            class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+            :title="t('usage.lifetimeUserBilled')"
+          >
+            TU ${{ formatLifetimeUserCost }}
+          </span>
+          <span
+            v-else-if="lifetimeUserCostLoading"
+            class="h-3 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-700"
+          ></span>
         </div>
       </div>
       <!-- Loading skeleton for today stats -->
@@ -637,11 +713,15 @@ const props = withDefaults(
     account: Account
     todayStats?: WindowStats | null
     todayStatsLoading?: boolean
+    lifetimeUserCost?: number | null
+    lifetimeUserCostLoading?: boolean
     manualRefreshToken?: number
   }>(),
   {
     todayStats: null,
     todayStatsLoading: false,
+    lifetimeUserCost: null,
+    lifetimeUserCostLoading: false,
     manualRefreshToken: 0
   }
 )
@@ -1421,6 +1501,11 @@ const formatKeyCost = computed(() => {
 const formatKeyUserCost = computed(() => {
   if (!props.todayStats || props.todayStats.user_cost == null) return '0.00'
   return props.todayStats.user_cost.toFixed(2)
+})
+
+const formatLifetimeUserCost = computed(() => {
+  if (props.lifetimeUserCost == null) return null
+  return props.lifetimeUserCost.toFixed(2)
 })
 
 onMounted(() => {

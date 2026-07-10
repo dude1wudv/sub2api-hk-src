@@ -42,6 +42,7 @@ type UsageLogRepository interface {
 
 	GetAccountWindowStats(ctx context.Context, accountID int64, startTime time.Time) (*usagestats.AccountStats, error)
 	GetAccountTodayStats(ctx context.Context, accountID int64) (*usagestats.AccountStats, error)
+	GetAccountLifetimeUserCostBatch(ctx context.Context, accountIDs []int64) (map[int64]float64, error)
 
 	// Admin dashboard stats
 	GetDashboardStats(ctx context.Context) (*usagestats.DashboardStats, error)
@@ -1115,6 +1116,41 @@ func (s *AccountUsageService) GetTodayStats(ctx context.Context, accountID int64
 		StandardCost: stats.StandardCost,
 		UserCost:     stats.UserCost,
 	}, nil
+}
+
+// LifetimeUserCost 账号全历史用户侧扣费（TU）。
+type LifetimeUserCost struct {
+	UserCost float64 `json:"user_cost"`
+}
+
+// GetLifetimeUserCostBatch 批量获取账号全历史用户侧扣费。
+func (s *AccountUsageService) GetLifetimeUserCostBatch(ctx context.Context, accountIDs []int64) (map[int64]*LifetimeUserCost, error) {
+	uniqueIDs := make([]int64, 0, len(accountIDs))
+	seen := make(map[int64]struct{}, len(accountIDs))
+	for _, accountID := range accountIDs {
+		if accountID <= 0 {
+			continue
+		}
+		if _, exists := seen[accountID]; exists {
+			continue
+		}
+		seen[accountID] = struct{}{}
+		uniqueIDs = append(uniqueIDs, accountID)
+	}
+
+	result := make(map[int64]*LifetimeUserCost, len(uniqueIDs))
+	if len(uniqueIDs) == 0 {
+		return result, nil
+	}
+
+	costs, err := s.usageLogRepo.GetAccountLifetimeUserCostBatch(ctx, uniqueIDs)
+	if err != nil {
+		return nil, fmt.Errorf("get lifetime user cost batch failed: %w", err)
+	}
+	for _, accountID := range uniqueIDs {
+		result[accountID] = &LifetimeUserCost{UserCost: costs[accountID]}
+	}
+	return result, nil
 }
 
 // GetTodayStatsBatch 批量获取账号今日统计，优先走批量 SQL，失败时回退单账号查询。

@@ -565,6 +565,27 @@ export async function getBatchTodayStats(accountIds: number[]): Promise<BatchTod
   return data
 }
 
+export interface LifetimeUserCost {
+  user_cost: number
+}
+
+export interface BatchLifetimeUserCostResponse {
+  stats: Record<string, LifetimeUserCost>
+}
+
+/**
+ * 批量获取多个账号的全历史用户侧扣费（TU）
+ */
+export async function getBatchLifetimeUserCost(
+  accountIds: number[]
+): Promise<BatchLifetimeUserCostResponse> {
+  const { data } = await apiClient.post<BatchLifetimeUserCostResponse>(
+    '/admin/accounts/lifetime-user-cost/batch',
+    { account_ids: accountIds }
+  )
+  return data
+}
+
 /**
  * Set account schedulable status
  * @param id - Account ID
@@ -936,6 +957,7 @@ export const accountsAPI = {
   getUsage,
   getTodayStats,
   getBatchTodayStats,
+  getBatchLifetimeUserCost,
   clearRateLimit,
   recoverState,
   resetAccountQuota,

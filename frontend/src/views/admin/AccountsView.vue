@@ -537,6 +537,8 @@
               :account="row"
               :today-stats="todayStatsByAccountId[String(row.id)] ?? null"
               :today-stats-loading="todayStatsLoading"
+              :lifetime-user-cost="lifetimeUserCostByAccountId[String(row.id)] ?? null"
+              :lifetime-user-cost-loading="lifetimeUserCostLoading"
               :manual-refresh-token="usageManualRefreshToken"
             />
           </template>
@@ -852,6 +854,10 @@ const todayStatsLoading = ref(false)
 const todayStatsError = ref<string | null>(null)
 const todayStatsReqSeq = ref(0)
 const pendingTodayStatsRefresh = ref(false)
+const lifetimeUserCostByAccountId = ref<Record<string, number>>({})
+const lifetimeUserCostLoading = ref(false)
+const lifetimeUserCostError = ref<string | null>(null)
+const lifetimeUserCostReqSeq = ref(0)
 const usageManualRefreshToken = ref(0)
 const accountSummary = ref<AccountSummary | null>(null)
 const quotaPoolSummary = ref<AccountSummary | null>(null)
@@ -1081,6 +1087,46 @@ const refreshTodayStatsBatch = async () => {
   }
 }
 
+const refreshLifetimeUserCostBatch = async () => {
+  if (hiddenColumns.has('usage')) {
+    lifetimeUserCostLoading.value = false
+    lifetimeUserCostError.value = null
+    return
+  }
+
+  const accountIDs = accounts.value.map(account => account.id)
+  const reqSeq = ++lifetimeUserCostReqSeq.value
+  if (accountIDs.length === 0) {
+    lifetimeUserCostByAccountId.value = {}
+    lifetimeUserCostError.value = null
+    lifetimeUserCostLoading.value = false
+    return
+  }
+
+  lifetimeUserCostLoading.value = true
+  lifetimeUserCostError.value = null
+
+  try {
+    const result = await adminAPI.accounts.getBatchLifetimeUserCost(accountIDs)
+    if (reqSeq !== lifetimeUserCostReqSeq.value) return
+    const serverStats = result.stats ?? {}
+    const nextStats: Record<string, number> = {}
+    for (const accountID of accountIDs) {
+      const key = String(accountID)
+      nextStats[key] = serverStats[key]?.user_cost ?? 0
+    }
+    lifetimeUserCostByAccountId.value = nextStats
+  } catch (error) {
+    if (reqSeq !== lifetimeUserCostReqSeq.value) return
+    lifetimeUserCostError.value = 'Failed'
+    console.error('Failed to load account lifetime user cost:', error)
+  } finally {
+    if (reqSeq === lifetimeUserCostReqSeq.value) {
+      lifetimeUserCostLoading.value = false
+    }
+  }
+}
+
 const autoRefreshIntervalLabel = (sec: number) => {
   if (sec === 5) return t('admin.accounts.refreshInterval5s')
   if (sec === 10) return t('admin.accounts.refreshInterval10s')
@@ -1185,6 +1231,11 @@ const toggleColumn = (key: string) => {
       console.error('Failed to load account today stats after showing column:', error)
     })
   }
+  if (key === 'usage' && wasHidden) {
+    refreshLifetimeUserCostBatch().catch((error) => {
+      console.error('Failed to load account lifetime user cost after showing column:', error)
+    })
+  }
 }
 
 const isColumnVisible = (key: string) => !hiddenColumns.has(key)
@@ -1265,6 +1316,7 @@ const load = async () => {
   }
   await Promise.all([
     refreshTodayStatsBatch(),
+    refreshLifetimeUserCostBatch(),
     refreshAccountSummary(),
     refreshQuotaPoolSummary(),
     refreshOAuthUsageSummary()
@@ -1278,6 +1330,7 @@ const reload = async () => {
   await baseReload()
   await Promise.all([
     refreshTodayStatsBatch(),
+    refreshLifetimeUserCostBatch(),
     refreshAccountSummary(),
     refreshQuotaPoolSummary(),
     refreshOAuthUsageSummary()
@@ -1326,6 +1379,9 @@ watch(loading, (isLoading, wasLoading) => {
     pendingTodayStatsRefresh.value = false
     refreshTodayStatsBatch().catch((error) => {
       console.error('Failed to refresh account today stats after table load:', error)
+    })
+    refreshLifetimeUserCostBatch().catch((error) => {
+      console.error('Failed to refresh account lifetime user cost after table load:', error)
     })
   }
 })
@@ -1444,6 +1500,7 @@ const refreshAccountsIncrementally = async () => {
 
     await Promise.all([
       refreshTodayStatsBatch(),
+      refreshLifetimeUserCostBatch(),
       refreshAccountSummary(),
       refreshQuotaPoolSummary(),
       refreshOAuthUsageSummary()
