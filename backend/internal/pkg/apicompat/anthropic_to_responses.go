@@ -55,17 +55,32 @@ func AnthropicToResponses(req *AnthropicRequest) (*ResponsesRequest, error) {
 		out.Tools = convertAnthropicToolsToResponses(req.Tools)
 	}
 
-	// Determine reasoning effort: only output_config.effort controls the
-	// level; thinking.type is ignored. Default follows Codex CLI / airgate's
-	// Anthropic bridge shape, which uses medium when unset.
-	// Anthropic levels map 1:1 to OpenAI: low→low, medium→medium, high→high, max→xhigh.
-	effort := "medium"
-	if req.OutputConfig != nil && req.OutputConfig.Effort != "" {
-		effort = req.OutputConfig.Effort
-	}
-	out.Reasoning = &ResponsesReasoning{
-		Effort:  mapAnthropicEffortToResponses(effort),
-		Summary: "auto",
+	// Determine reasoning effort:
+	// 1) output_config.effort wins when set
+	// 2) else map thinking.budget_tokens (and thinking.type) when thinking is present
+	// 3) thinking.type=disabled → omit forced medium (no reasoning block)
+	// 4) otherwise default medium (Codex Anthropic bridge shape)
+	if req.OutputConfig != nil && strings.TrimSpace(req.OutputConfig.Effort) != "" {
+		out.Reasoning = &ResponsesReasoning{
+			Effort:  mapAnthropicEffortToResponses(req.OutputConfig.Effort),
+			Summary: "auto",
+		}
+	} else if req.Thinking != nil && strings.EqualFold(strings.TrimSpace(req.Thinking.Type), "disabled") {
+		// Explicitly disabled: do not force medium.
+	} else if req.Thinking != nil {
+		effort := effortFromThinkingBudget(req.Thinking.BudgetTokens)
+		if effort == "" {
+			effort = "medium"
+		}
+		out.Reasoning = &ResponsesReasoning{
+			Effort:  effort,
+			Summary: "auto",
+		}
+	} else {
+		out.Reasoning = &ResponsesReasoning{
+			Effort:  "medium",
+			Summary: "auto",
+		}
 	}
 
 	// Convert tool_choice
@@ -78,6 +93,24 @@ func AnthropicToResponses(req *AnthropicRequest) (*ResponsesRequest, error) {
 	}
 
 	return out, nil
+}
+
+// effortFromThinkingBudget maps Anthropic thinking.budget_tokens onto Responses
+// reasoning.effort using the inverse of defaultThinkingBudget thresholds.
+func effortFromThinkingBudget(budget int) string {
+	if budget <= 0 {
+		return ""
+	}
+	switch {
+	case budget <= defaultThinkingBudget("low"):
+		return "low"
+	case budget <= defaultThinkingBudget("medium"):
+		return "medium"
+	case budget <= defaultThinkingBudget("high"):
+		return "high"
+	default:
+		return "xhigh"
+	}
 }
 
 // convertAnthropicToolChoiceToResponses maps Anthropic tool_choice to Responses format.

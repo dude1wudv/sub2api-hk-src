@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -35,6 +36,13 @@ func (s *OpenAIGatewayService) forwardGrokResponses(
 	}
 	patchedBody, err := patchGrokResponsesBody(body, upstreamModel)
 	if err != nil {
+		if errors.Is(err, ErrGrokImageGenerationUnsupported) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{
+				"type":    "invalid_request_error",
+				"message": err.Error(),
+				"code":    "client_compat",
+			}})
+		}
 		return nil, err
 	}
 
@@ -337,7 +345,40 @@ var grokResponsesSupportedToolTypes = map[string]struct{}{
 	"x_search":           {},
 }
 
+func grokResponsesHasImageGenerationTool(body []byte) bool {
+	tools := gjson.GetBytes(body, "tools")
+	if !tools.Exists() || !tools.IsArray() {
+		return false
+	}
+	for _, tool := range tools.Array() {
+		toolType := strings.TrimSpace(tool.Get("type").String())
+		if toolType == "image_generation" || toolType == "image_generation_call" {
+			return true
+		}
+		name := strings.TrimSpace(tool.Get("name").String())
+		if name == "" {
+			name = strings.TrimSpace(tool.Get("function.name").String())
+		}
+		if name == "image_gen" || name == "image_generation" {
+			return true
+		}
+	}
+	choiceType := strings.TrimSpace(gjson.GetBytes(body, "tool_choice.type").String())
+	return choiceType == "image_generation"
+}
+
+// ErrGrokImageGenerationUnsupported is returned when a Responses-shaped Grok
+// request asks for image_generation. Grok images go through /v1/images/* (see
+// grok_media.go); silently stripping the tool hid the mismatch from clients.
+var ErrGrokImageGenerationUnsupported = fmt.Errorf(
+	"image_generation is not supported on Grok chat/responses; use /v1/images/generations or /v1/images/edits",
+)
+
 func sanitizeGrokResponsesTools(body []byte) ([]byte, error) {
+	if grokResponsesHasImageGenerationTool(body) {
+		return nil, ErrGrokImageGenerationUnsupported
+	}
+
 	tools := gjson.GetBytes(body, "tools")
 	if !tools.Exists() || !tools.IsArray() {
 		return body, nil
@@ -444,6 +485,16 @@ func buildGrokResponsesRequest(ctx context.Context, c *gin.Context, account *Acc
 	if c != nil {
 		if v := c.GetHeader("OpenAI-Beta"); strings.TrimSpace(v) != "" {
 			req.Header.Set("OpenAI-Beta", v)
+		}
+		// Prefer an explicit session_id header; otherwise derive from prompt_cache_key
+		// so xAI can keep the same conversation/cache affinity across turns.
+		sessionSignal := strings.TrimSpace(c.GetHeader("session_id"))
+		if sessionSignal == "" {
+			sessionSignal = strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_key").String())
+		}
+		if sessionSignal != "" {
+			apiKeyID := getAPIKeyIDFromContext(c)
+			req.Header.Set("session_id", generateSessionUUID(isolateOpenAISessionID(apiKeyID, sessionSignal)))
 		}
 	}
 	return req, nil

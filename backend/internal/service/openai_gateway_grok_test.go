@@ -86,7 +86,7 @@ func TestPatchGrokResponsesBodyDropsUnsupportedNamespaceTools(t *testing.T) {
 	require.Equal(t, "kept_fn", gjson.GetBytes(patched, "tool_choice.name").String())
 }
 
-func TestPatchGrokResponsesBodyDropsToolChoiceWhenNoSupportedToolsRemain(t *testing.T) {
+func TestPatchGrokResponsesBodyRejectsImageGenerationTool(t *testing.T) {
 	t.Parallel()
 
 	body := []byte(`{
@@ -95,6 +95,23 @@ func TestPatchGrokResponsesBodyDropsToolChoiceWhenNoSupportedToolsRemain(t *test
 		"tools": [
 			{"type": "namespace", "namespace": "functions"},
 			{"type": "image_generation", "model": "gpt-image-2"}
+		],
+		"tool_choice": {"type": "namespace", "namespace": "functions"}
+	}`)
+
+	_, err := patchGrokResponsesBody(body, "grok-4.3")
+	require.ErrorIs(t, err, ErrGrokImageGenerationUnsupported)
+}
+
+func TestPatchGrokResponsesBodyDropsToolChoiceWhenNoSupportedToolsRemain(t *testing.T) {
+	t.Parallel()
+
+	body := []byte(`{
+		"model": "grok",
+		"input": "hello",
+		"tools": [
+			{"type": "namespace", "namespace": "functions"},
+			{"type": "unsupported_custom"}
 		],
 		"tool_choice": {"type": "namespace", "namespace": "functions"}
 	}`)
@@ -219,6 +236,32 @@ func TestBuildGrokResponsesRequestUsesAccountBaseURLAndBearerToken(t *testing.T)
 	data, err := io.ReadAll(req.Body)
 	require.NoError(t, err)
 	require.Equal(t, `{"model":"grok-4.3"}`, strings.TrimSpace(string(data)))
+}
+
+func TestBuildGrokResponsesRequestInjectsSessionIDFromPromptCacheKey(t *testing.T) {
+	t.Setenv(xai.EnvAllowUnsafeURLOverrides, "true")
+	gin.SetMode(gin.TestMode)
+
+	account := &Account{
+		Platform: PlatformGrok,
+		Type:     AccountTypeOAuth,
+		Credentials: map[string]any{
+			"base_url": "https://xai.test/v1/",
+		},
+	}
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	req, err := buildGrokResponsesRequest(
+		context.Background(),
+		c,
+		account,
+		[]byte(`{"model":"grok-4.3","prompt_cache_key":"cache-session-abc"}`),
+		"access-token",
+	)
+	require.NoError(t, err)
+	require.NotEmpty(t, req.Header.Get("session_id"))
 }
 
 func TestBuildGrokResponsesRequestRejectsUnsafeAccountBaseURL(t *testing.T) {

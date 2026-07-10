@@ -82,7 +82,13 @@ func ResponsesToAnthropicWithOptions(resp *ResponsesResponse, model string, opts
 				Name:  item.Name,
 				Input: sanitizeAnthropicToolUseInput(item.Name, item.Arguments),
 			})
-		case "web_search_call":
+		case "web_search_call", "x_search_call":
+			toolName := "web_search"
+			resultType := "web_search_tool_result"
+			if item.Type == "x_search_call" {
+				toolName = "x_search"
+				resultType = "x_search_tool_result"
+			}
 			toolUseID := "srvtoolu_" + item.ID
 			query := ""
 			if item.Action != nil {
@@ -92,12 +98,12 @@ func ResponsesToAnthropicWithOptions(resp *ResponsesResponse, model string, opts
 			blocks = append(blocks, AnthropicContentBlock{
 				Type:  "server_tool_use",
 				ID:    toolUseID,
-				Name:  "web_search",
+				Name:  toolName,
 				Input: inputJSON,
 			})
 			emptyResults, _ := json.Marshal([]struct{}{})
 			blocks = append(blocks, AnthropicContentBlock{
-				Type:      "web_search_tool_result",
+				Type:      resultType,
 				ToolUseID: toolUseID,
 				Content:   emptyResults,
 			})
@@ -577,8 +583,8 @@ func resToAnthHandleOutputItemDone(evt *ResponsesStreamEvent, state *ResponsesEv
 		return nil
 	}
 
-	// Handle web_search_call → synthesize server_tool_use + web_search_tool_result blocks.
-	if evt.Item.Type == "web_search_call" && evt.Item.Status == "completed" {
+	// Handle web_search_call / x_search_call → synthesize server_tool_use + result blocks.
+	if (evt.Item.Type == "web_search_call" || evt.Item.Type == "x_search_call") && evt.Item.Status == "completed" {
 		return resToAnthHandleWebSearchDone(evt, state)
 	}
 
@@ -601,12 +607,19 @@ func resToAnthHandleOutputItemDone(evt *ResponsesStreamEvent, state *ResponsesEv
 	return events
 }
 
-// resToAnthHandleWebSearchDone converts an OpenAI web_search_call output item
-// into Anthropic server_tool_use + web_search_tool_result content block pairs.
-// This allows Claude Code to count the searches performed.
+// resToAnthHandleWebSearchDone converts an OpenAI web_search_call or
+// x_search_call output item into Anthropic server_tool_use + result content
+// block pairs. This allows Claude Code to count the searches performed.
 func resToAnthHandleWebSearchDone(evt *ResponsesStreamEvent, state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {
 	var events []AnthropicStreamEvent
 	events = append(events, closeCurrentBlock(state)...)
+
+	toolName := "web_search"
+	resultType := "web_search_tool_result"
+	if evt.Item != nil && evt.Item.Type == "x_search_call" {
+		toolName = "x_search"
+		resultType = "x_search_tool_result"
+	}
 
 	toolUseID := "srvtoolu_" + evt.Item.ID
 	query := ""
@@ -624,7 +637,7 @@ func resToAnthHandleWebSearchDone(evt *ResponsesStreamEvent, state *ResponsesEve
 		ContentBlock: &AnthropicContentBlock{
 			Type:  "server_tool_use",
 			ID:    toolUseID,
-			Name:  "web_search",
+			Name:  toolName,
 			Input: inputJSON,
 		},
 	})
@@ -634,8 +647,8 @@ func resToAnthHandleWebSearchDone(evt *ResponsesStreamEvent, state *ResponsesEve
 	})
 	state.ContentBlockIndex++
 
-	// Emit web_search_tool_result block (start + stop).
-	// Content is empty because OpenAI does not expose individual search results;
+	// Emit search tool_result block (start + stop).
+	// Content is empty because OpenAI/xAI do not expose individual search results;
 	// the model consumes them internally and produces text output.
 	emptyResults, _ := json.Marshal([]struct{}{})
 	idx2 := state.ContentBlockIndex
@@ -643,7 +656,7 @@ func resToAnthHandleWebSearchDone(evt *ResponsesStreamEvent, state *ResponsesEve
 		Type:  "content_block_start",
 		Index: &idx2,
 		ContentBlock: &AnthropicContentBlock{
-			Type:      "web_search_tool_result",
+			Type:      resultType,
 			ToolUseID: toolUseID,
 			Content:   emptyResults,
 		},

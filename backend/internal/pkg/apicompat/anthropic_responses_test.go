@@ -1331,8 +1331,8 @@ func TestAnthropicToResponses_ThinkingEnabled(t *testing.T) {
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
 	require.NotNil(t, resp.Reasoning)
-	// thinking.type is ignored for effort; Codex bridge default medium applies.
-	assert.Equal(t, "medium", resp.Reasoning.Effort)
+	// budget_tokens=10000 maps to high (≤ defaultThinkingBudget("high")=10240).
+	assert.Equal(t, "high", resp.Reasoning.Effort)
 	assert.Equal(t, "auto", resp.Reasoning.Summary)
 	assert.Contains(t, resp.Include, "reasoning.encrypted_content")
 	assert.NotContains(t, resp.Include, "reasoning.summary")
@@ -1349,8 +1349,8 @@ func TestAnthropicToResponses_ThinkingAdaptive(t *testing.T) {
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
 	require.NotNil(t, resp.Reasoning)
-	// thinking.type is ignored for effort; Codex bridge default medium applies.
-	assert.Equal(t, "medium", resp.Reasoning.Effort)
+	// budget_tokens=5000 maps to high (≤ 10240).
+	assert.Equal(t, "high", resp.Reasoning.Effort)
 	assert.Equal(t, "auto", resp.Reasoning.Summary)
 	assert.NotContains(t, resp.Include, "reasoning.summary")
 }
@@ -1365,9 +1365,8 @@ func TestAnthropicToResponses_ThinkingDisabled(t *testing.T) {
 
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
-	// Default effort applies (medium) even when thinking is disabled.
-	require.NotNil(t, resp.Reasoning)
-	assert.Equal(t, "medium", resp.Reasoning.Effort)
+	// thinking.type=disabled must not force medium.
+	assert.Nil(t, resp.Reasoning)
 }
 
 func TestAnthropicToResponses_NoThinking(t *testing.T) {
@@ -1455,7 +1454,7 @@ func TestAnthropicToResponses_OutputConfigMax(t *testing.T) {
 }
 
 func TestAnthropicToResponses_NoOutputConfig(t *testing.T) {
-	// No output_config → default medium regardless of thinking.type.
+	// No output_config → map thinking.budget_tokens to effort.
 	req := &AnthropicRequest{
 		Model:     "gpt-5.2",
 		MaxTokens: 1024,
@@ -1466,7 +1465,7 @@ func TestAnthropicToResponses_NoOutputConfig(t *testing.T) {
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
 	require.NotNil(t, resp.Reasoning)
-	assert.Equal(t, "medium", resp.Reasoning.Effort)
+	assert.Equal(t, "high", resp.Reasoning.Effort)
 }
 
 func TestAnthropicToResponses_OutputConfigWithoutEffort(t *testing.T) {
@@ -2046,4 +2045,56 @@ func TestAnthropicEventToResponses_CacheTokensFromMessageDelta(t *testing.T) {
 	assert.Equal(t, 8, completed.Response.Usage.OutputTokens)
 	require.NotNil(t, completed.Response.Usage.InputTokensDetails)
 	assert.Equal(t, 11, completed.Response.Usage.InputTokensDetails.CachedTokens)
+}
+
+func TestResponsesToAnthropic_XSearchCall(t *testing.T) {
+	resp := &ResponsesResponse{
+		ID:     "resp_x",
+		Model:  "grok-4.3",
+		Status: "completed",
+		Output: []ResponsesOutput{
+			{
+				Type:   "x_search_call",
+				ID:     "xs_1",
+				Status: "completed",
+				Action: &WebSearchAction{Query: "latest posts"},
+			},
+			{
+				Type: "message",
+				Content: []ResponsesContentPart{
+					{Type: "output_text", Text: "done"},
+				},
+			},
+		},
+	}
+
+	anth := ResponsesToAnthropic(resp, "claude-opus-4-6")
+	require.GreaterOrEqual(t, len(anth.Content), 3)
+	assert.Equal(t, "server_tool_use", anth.Content[0].Type)
+	assert.Equal(t, "x_search", anth.Content[0].Name)
+	assert.Equal(t, "x_search_tool_result", anth.Content[1].Type)
+	assert.Equal(t, anth.Content[0].ID, anth.Content[1].ToolUseID)
+}
+
+func TestStreamingXSearchCall(t *testing.T) {
+	state := NewResponsesEventToAnthropicState()
+	ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type:     "response.created",
+		Response: &ResponsesResponse{ID: "resp_xs", Model: "grok-4.3"},
+	}, state)
+
+	events := ResponsesEventToAnthropicEvents(&ResponsesStreamEvent{
+		Type: "response.output_item.done",
+		Item: &ResponsesOutput{
+			Type:   "x_search_call",
+			ID:     "xs_stream",
+			Status: "completed",
+			Action: &WebSearchAction{Query: "xai"},
+		},
+	}, state)
+	require.GreaterOrEqual(t, len(events), 4)
+	assert.Equal(t, "content_block_start", events[0].Type)
+	assert.Equal(t, "server_tool_use", events[0].ContentBlock.Type)
+	assert.Equal(t, "x_search", events[0].ContentBlock.Name)
+	assert.Equal(t, "x_search_tool_result", events[2].ContentBlock.Type)
 }

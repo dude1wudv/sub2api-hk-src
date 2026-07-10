@@ -191,6 +191,16 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 	} else if account.Platform == PlatformGrok {
 		upstreamReq.Header.Set("user-agent", "sub2api-grok/1.0")
 	}
+	if account.Platform == PlatformGrok {
+		sessionSignal := strings.TrimSpace(c.GetHeader("session_id"))
+		if sessionSignal == "" {
+			sessionSignal = strings.TrimSpace(gjson.GetBytes(upstreamBody, "prompt_cache_key").String())
+		}
+		if sessionSignal != "" {
+			apiKeyID := getAPIKeyIDFromContext(c)
+			upstreamReq.Header.Set("session_id", generateSessionUUID(isolateOpenAISessionID(apiKeyID, sessionSignal)))
+		}
+	}
 
 	// 6. Send request
 	proxyURL := ""
@@ -271,10 +281,17 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 	}
 
 	// 8. Forward response
+	var result *OpenAIForwardResult
+	var handleErr error
 	if clientStream {
-		return s.streamRawChatCompletions(c, resp, account, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime, upstreamStart, len(body))
+		result, handleErr = s.streamRawChatCompletions(c, resp, account, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime, upstreamStart, len(body))
+	} else {
+		result, handleErr = s.bufferRawChatCompletions(c, resp, account, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime)
 	}
-	return s.bufferRawChatCompletions(c, resp, originalModel, billingModel, upstreamModel, reasoningEffort, serviceTier, startTime)
+	if handleErr == nil && result != nil && account.Platform == PlatformGrok {
+		s.bindHTTPResponseAccount(ctx, c, account, result.ResponseID)
+	}
+	return result, handleErr
 }
 
 func (s *OpenAIGatewayService) rawChatCompletionsURL(account *Account) (string, error) {
@@ -346,6 +363,7 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 
 	var usage OpenAIUsage
 	var firstTokenMs *int
+	responseID := ""
 	clientDisconnected := false
 	clientOutputStarted := false
 	pendingLines := make([]string, 0, 8)
@@ -393,7 +411,14 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 				if u := extractCCStreamUsage(payload); u != nil {
 					usage = *u
 				}
-				if firstTokenMs == nil && !usageOnlyChunk {
+				if responseID == "" {
+					if id := strings.TrimSpace(gjson.Get(payload, "id").String()); id != "" {
+						responseID = id
+					}
+				}
+				// Align with Responses first-token: skip usage-only / role-only preamble
+				// chunks; prefer upstream created_at via openAIFirstTokenElapsedMs.
+				if firstTokenMs == nil && !usageOnlyChunk && openAIChatStreamChunkStartsContent(payload) {
 					ms := openAIFirstTokenElapsedMs(firstTokenStart, time.Now(), []byte(payload))
 					firstTokenMs = &ms
 				}
@@ -444,6 +469,7 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 
 	return &OpenAIForwardResult{
 		RequestID:        requestID,
+		ResponseID:       responseID,
 		Usage:            usage,
 		Model:            originalModel,
 		BillingModel:     billingModel,
@@ -500,6 +526,7 @@ func extractCCStreamUsage(payload string) *OpenAIUsage {
 func (s *OpenAIGatewayService) bufferRawChatCompletions(
 	c *gin.Context,
 	resp *http.Response,
+	account *Account,
 	originalModel string,
 	billingModel string,
 	upstreamModel string,
@@ -507,6 +534,7 @@ func (s *OpenAIGatewayService) bufferRawChatCompletions(
 	serviceTier *string,
 	startTime time.Time,
 ) (*OpenAIForwardResult, error) {
+	_ = account
 	requestID := resp.Header.Get("x-request-id")
 
 	respBody, err := ReadUpstreamResponseBody(resp.Body, s.cfg, c, openAITooLargeError)
@@ -519,14 +547,21 @@ func (s *OpenAIGatewayService) bufferRawChatCompletions(
 
 	var ccResp apicompat.ChatCompletionsResponse
 	var usage OpenAIUsage
-	if err := json.Unmarshal(respBody, &ccResp); err == nil && ccResp.Usage != nil {
-		usage = OpenAIUsage{
-			InputTokens:  ccResp.Usage.PromptTokens,
-			OutputTokens: ccResp.Usage.CompletionTokens,
+	responseID := ""
+	if err := json.Unmarshal(respBody, &ccResp); err == nil {
+		responseID = strings.TrimSpace(ccResp.ID)
+		if ccResp.Usage != nil {
+			usage = OpenAIUsage{
+				InputTokens:  ccResp.Usage.PromptTokens,
+				OutputTokens: ccResp.Usage.CompletionTokens,
+			}
+			if ccResp.Usage.PromptTokensDetails != nil {
+				usage.CacheReadInputTokens = ccResp.Usage.PromptTokensDetails.CachedTokens
+			}
 		}
-		if ccResp.Usage.PromptTokensDetails != nil {
-			usage.CacheReadInputTokens = ccResp.Usage.PromptTokensDetails.CachedTokens
-		}
+	}
+	if responseID == "" {
+		responseID = strings.TrimSpace(gjson.GetBytes(respBody, "id").String())
 	}
 
 	if s.responseHeaderFilter != nil {
@@ -542,6 +577,7 @@ func (s *OpenAIGatewayService) bufferRawChatCompletions(
 
 	return &OpenAIForwardResult{
 		RequestID:        requestID,
+		ResponseID:       responseID,
 		Usage:            usage,
 		Model:            originalModel,
 		BillingModel:     billingModel,
@@ -552,6 +588,38 @@ func (s *OpenAIGatewayService) bufferRawChatCompletions(
 		Stream:           false,
 		Duration:         time.Since(startTime),
 	}, nil
+}
+
+// openAIChatStreamChunkStartsContent reports whether a Chat Completions SSE
+// chunk carries visible assistant content (text/tool calls), excluding
+// role-only preamble and usage-only terminal chunks.
+func openAIChatStreamChunkStartsContent(payload string) bool {
+	if strings.TrimSpace(payload) == "" || isOpenAIChatUsageOnlyStreamChunk(payload) {
+		return false
+	}
+	choices := gjson.Get(payload, "choices")
+	if !choices.Exists() || !choices.IsArray() || len(choices.Array()) == 0 {
+		return false
+	}
+	for _, choice := range choices.Array() {
+		delta := choice.Get("delta")
+		if !delta.Exists() {
+			continue
+		}
+		if strings.TrimSpace(delta.Get("content").String()) != "" {
+			return true
+		}
+		if strings.TrimSpace(delta.Get("reasoning_content").String()) != "" {
+			return true
+		}
+		if delta.Get("tool_calls").Exists() {
+			return true
+		}
+		if delta.Get("function_call").Exists() {
+			return true
+		}
+	}
+	return false
 }
 
 // buildOpenAIChatCompletionsURL 拼接上游 Chat Completions 端点 URL。

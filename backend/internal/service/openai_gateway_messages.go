@@ -258,6 +258,9 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	if account.Platform == PlatformGrok {
 		patchedBody, patchErr := patchGrokResponsesBody(responsesBody, upstreamModel)
 		if patchErr != nil {
+			if errors.Is(patchErr, ErrGrokImageGenerationUnsupported) {
+				writeAnthropicError(c, http.StatusBadRequest, "invalid_request_error", patchErr.Error())
+			}
 			return nil, patchErr
 		}
 		responsesBody = patchedBody
@@ -415,6 +418,9 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 		if responsesReq.Reasoning != nil && responsesReq.Reasoning.Effort != "" {
 			re := responsesReq.Reasoning.Effort
 			result.ReasoningEffort = &re
+		}
+		if account.Platform == PlatformGrok {
+			s.bindHTTPResponseAccount(ctx, c, account, result.ResponseID)
 		}
 	}
 

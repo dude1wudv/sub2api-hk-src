@@ -235,6 +235,9 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	if account.Platform == PlatformGrok {
 		patchedBody, patchErr := patchGrokResponsesBody(responsesBody, upstreamModel)
 		if patchErr != nil {
+			if errors.Is(patchErr, ErrGrokImageGenerationUnsupported) {
+				writeChatCompletionsError(c, http.StatusBadRequest, "invalid_request_error", patchErr.Error())
+			}
 			return nil, patchErr
 		}
 		// ChatCompletionsToResponses drops unknown live-search fields; re-apply
@@ -398,6 +401,7 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 		}
 		if account.Platform == PlatformGrok {
 			result.UpstreamEndpoint = "/v1/responses"
+			s.bindHTTPResponseAccount(ctx, c, account, result.ResponseID)
 		}
 	}
 
@@ -600,8 +604,13 @@ func (s *OpenAIGatewayService) handleChatBufferedStreamingResponse(
 	c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	c.JSON(http.StatusOK, chatResp)
 
+	responseID := ""
+	if finalResponse != nil {
+		responseID = strings.TrimSpace(finalResponse.ID)
+	}
 	return &OpenAIForwardResult{
 		RequestID:     requestID,
+		ResponseID:    responseID,
 		Usage:         usage,
 		Model:         originalModel,
 		BillingModel:  billingModel,
@@ -681,9 +690,11 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 		intervalCh = intervalTicker.C
 	}
 
+	responseID := ""
 	resultWithUsage := func() *OpenAIForwardResult {
 		return &OpenAIForwardResult{
 			RequestID:     requestID,
+			ResponseID:    responseID,
 			Usage:         usage,
 			Model:         originalModel,
 			BillingModel:  billingModel,
@@ -711,11 +722,21 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 
 		isTerminalEvent := isOpenAICompatResponsesTerminalEvent(event.Type)
 		if isTerminalEvent {
+			if event.Response != nil {
+				if id := strings.TrimSpace(event.Response.ID); id != "" {
+					responseID = id
+				}
+				if event.Response.Usage != nil {
+					usage = copyOpenAIUsageFromResponsesUsage(event.Response.Usage)
+				}
+			}
 			if event.Usage != nil {
 				usage = copyOpenAIUsageFromResponsesUsage(event.Usage)
 			}
-			if event.Response != nil && event.Response.Usage != nil {
-				usage = copyOpenAIUsageFromResponsesUsage(event.Response.Usage)
+		}
+		if responseID == "" && event.Response != nil {
+			if id := strings.TrimSpace(event.Response.ID); id != "" {
+				responseID = id
 			}
 		}
 		if strings.TrimSpace(event.Type) == "response.failed" {
