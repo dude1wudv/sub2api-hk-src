@@ -47,7 +47,7 @@ const (
 	// 与真实 Codex CLI 的 User-Agent 结构对齐：
 	// {originator}/{version} ({OS} {OS_version}; {arch}) {terminal}
 	// 旧值 "codex_cli_rs/0.125.0" 缺少 OS/架构/终端后缀，易被上游指纹识别为非官方客户端。
-	codexCLIUserAgent = "codex_cli_rs/0.125.0 (Ubuntu 22.4.0; x86_64) xterm-256color"
+	codexCLIUserAgent = "codex_cli_rs/0.144.1 (Ubuntu 22.4.0; x86_64) xterm-256color"
 	// codex_cli_only 拒绝时单个请求头日志长度上限（字符）
 	codexCLIOnlyHeaderValueMaxBytes = 256
 
@@ -61,7 +61,7 @@ const (
 	openAIWSRetryBackoffMaxDefault     = 2 * time.Second
 	openAIWSRetryJitterRatioDefault    = 0.2
 	openAICompactSessionSeedKey        = "openai_compact_session_seed"
-	codexCLIVersion                    = "0.125.0"
+	codexCLIVersion                    = "0.144.1"
 	// Codex 限额快照仅用于后台展示/诊断，不需要每个成功请求都立即落库。
 	openAICodexSnapshotPersistMinInterval = 30 * time.Second
 	// 配额自动暂停时，超过该时长仍未刷新的 used% 快照视为陈旧，不再据此暂停账号。
@@ -4460,12 +4460,25 @@ func openAIStreamEventIsPreamble(eventType string) bool {
 }
 
 // openAIResponsesStreamEventIsFirstToken reports whether an upstream Responses
-// SSE event should start first-token timing. Reuses the WS token definition so
-// HTTP/Messages/Chat paths count the first content/reasoning .delta — never
-// preamble, item lifecycle, or terminals (otherwise buffered thinking makes
-// first_token_ms equal total duration).
+// SSE event type alone should start first-token timing (WS-aligned: .delta /
+// response.output_text*, never preamble/terminals/item lifecycle).
 func openAIResponsesStreamEventIsFirstToken(eventType string) bool {
 	return isOpenAIWSTokenEvent(eventType)
+}
+
+// openAIResponsesStreamIsFirstToken is the HTTP Responses-style first-token
+// gate. It keeps the WS delta rules and additionally treats
+// response.output_item.added with item.type=reasoning as first token — Grok
+// (and similar) often open a reasoning item long before any reasoning_*.delta
+// or output_text.delta, so type-only WS rules would report near-total duration.
+func openAIResponsesStreamIsFirstToken(eventType string, data []byte) bool {
+	if openAIResponsesStreamEventIsFirstToken(eventType) {
+		return true
+	}
+	if strings.TrimSpace(eventType) != "response.output_item.added" {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(gjson.GetBytes(data, "item.type").String()), "reasoning")
 }
 
 // openAIFirstTokenElapsedMsWithKnownCreated prefers an earlier-observed
@@ -4898,7 +4911,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 				}
 				logOpenAIPassthroughTiming(ctx, "first_sse_event", startTime, account, logFields...)
 			}
-			if firstTokenMs == nil && trimmedData != "[DONE]" && openAIResponsesStreamEventIsFirstToken(eventType) {
+			if firstTokenMs == nil && trimmedData != "[DONE]" && openAIResponsesStreamIsFirstToken(eventType, dataBytes) {
 				ms := openAIFirstTokenElapsedMsWithKnownCreated(firstTokenStart, time.Now(), dataBytes, upstreamCreatedAt)
 				firstTokenMs = &ms
 			}
@@ -5891,7 +5904,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 			if createdAt, ok := openAIResponseCreatedAt(dataBytes, observedAt); ok {
 				upstreamCreatedAt = &createdAt
 			}
-			if firstTokenMs == nil && trimmedData != "" && trimmedData != "[DONE]" && openAIResponsesStreamEventIsFirstToken(eventType) {
+			if firstTokenMs == nil && trimmedData != "" && trimmedData != "[DONE]" && openAIResponsesStreamIsFirstToken(eventType, dataBytes) {
 				ms := openAIFirstTokenElapsedMsWithKnownCreated(firstTokenStart, observedAt, dataBytes, upstreamCreatedAt)
 				firstTokenMs = &ms
 			}

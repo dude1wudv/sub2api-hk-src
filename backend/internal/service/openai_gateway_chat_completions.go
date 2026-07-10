@@ -714,7 +714,7 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 			)
 			return false
 		}
-		if firstTokenMs == nil && openAIResponsesStreamEventIsFirstToken(event.Type) {
+		if firstTokenMs == nil && openAIResponsesStreamIsFirstToken(event.Type, []byte(payload)) {
 			ms := openAIFirstTokenElapsedMs(firstTokenStart, time.Now(), []byte(payload))
 			firstTokenMs = &ms
 		}

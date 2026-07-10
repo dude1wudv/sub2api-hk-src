@@ -794,10 +794,14 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 	var usage OpenAIUsage
 	responseID := ""
 	var firstTokenMs *int
+	var firstTokenEventType string
 	clientDisconnected := false
 	clientOutputStarted := false
 	var streamFailoverErr error
 	var streamNonFailoverErr error
+	const maxUpstreamSSETimeline = 20
+	upstreamSSETimeline := make([]string, 0, maxUpstreamSSETimeline)
+	logUpstreamSSETimeline := account != nil && account.Platform == PlatformGrok
 
 	scanner := bufio.NewScanner(resp.Body)
 	maxLineSize := defaultMaxLineSize
@@ -821,7 +825,27 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 	}
 
 	// resultWithUsage builds the final result snapshot.
+	timelineLogged := false
+	logTimelineOnce := func() {
+		if timelineLogged || !logUpstreamSSETimeline {
+			return
+		}
+		timelineLogged = true
+		fields := []zap.Field{
+			zap.String("request_id", requestID),
+			zap.Int64("account_id", account.ID),
+			zap.Strings("upstream_sse_timeline", upstreamSSETimeline),
+		}
+		if firstTokenMs != nil {
+			fields = append(fields,
+				zap.Int("first_token_ms", *firstTokenMs),
+				zap.String("first_token_event", firstTokenEventType),
+			)
+		}
+		logger.L().Info("openai messages stream: upstream sse timeline", fields...)
+	}
 	resultWithUsage := func() *OpenAIForwardResult {
+		logTimelineOnce()
 		return &OpenAIForwardResult{
 			RequestID:        requestID,
 			ResponseID:       responseID,
@@ -846,9 +870,26 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 			)
 			return false
 		}
-		if firstTokenMs == nil && openAIResponsesStreamEventIsFirstToken(event.Type) {
-			ms := openAIFirstTokenElapsedMs(firstTokenStart, time.Now(), []byte(payload))
+		payloadBytes := []byte(payload)
+		observedAt := time.Now()
+		elapsedMs := int(observedAt.Sub(firstTokenStart).Milliseconds())
+		if logUpstreamSSETimeline && len(upstreamSSETimeline) < maxUpstreamSSETimeline {
+			entry := fmt.Sprintf("%dms:%s", elapsedMs, strings.TrimSpace(event.Type))
+			if strings.TrimSpace(event.Type) == "response.output_item.added" && event.Item != nil {
+				entry += "(" + strings.TrimSpace(event.Item.Type) + ")"
+			}
+			upstreamSSETimeline = append(upstreamSSETimeline, entry)
+		}
+		if firstTokenMs == nil && openAIResponsesStreamIsFirstToken(event.Type, payloadBytes) {
+			ms := openAIFirstTokenElapsedMs(firstTokenStart, observedAt, payloadBytes)
 			firstTokenMs = &ms
+			firstTokenEventType = strings.TrimSpace(event.Type)
+			if event.Item != nil && strings.TrimSpace(event.Item.Type) != "" {
+				firstTokenEventType += "(" + strings.TrimSpace(event.Item.Type) + ")"
+			}
+			if logUpstreamSSETimeline && len(upstreamSSETimeline) > 0 {
+				upstreamSSETimeline[len(upstreamSSETimeline)-1] += "*ft"
+			}
 		}
 
 		isTerminalEvent := isOpenAICompatResponsesTerminalEvent(event.Type)

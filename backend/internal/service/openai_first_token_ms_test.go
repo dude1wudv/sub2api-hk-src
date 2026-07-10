@@ -106,6 +106,27 @@ func TestOpenAIResponsesStreamEventIsFirstToken_MatchesWSDefinition(t *testing.T
 	}
 }
 
+func TestOpenAIResponsesStreamIsFirstToken_ReasoningItemAdded(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, openAIResponsesStreamIsFirstToken(
+		"response.output_item.added",
+		[]byte(`{"type":"response.output_item.added","item":{"type":"reasoning","id":"rs_1"}}`),
+	))
+	require.False(t, openAIResponsesStreamIsFirstToken(
+		"response.output_item.added",
+		[]byte(`{"type":"response.output_item.added","item":{"type":"message","id":"msg_1"}}`),
+	))
+	require.True(t, openAIResponsesStreamIsFirstToken(
+		"response.reasoning_text.delta",
+		[]byte(`{"type":"response.reasoning_text.delta","delta":"x"}`),
+	))
+	require.False(t, openAIResponsesStreamIsFirstToken(
+		"response.completed",
+		[]byte(`{"type":"response.completed"}`),
+	))
+}
+
 func TestHandleStreamingResponsePassthrough_FirstTokenUsesReasoningDeltaNotCompleted(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -119,8 +140,6 @@ func TestHandleStreamingResponsePassthrough_FirstTokenUsesReasoningDeltaNotCompl
 		defer close(done)
 		defer bodyWriter.Close()
 		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.created","response":{"id":"resp_think"}}`)
-		_, _ = fmt.Fprintln(bodyWriter)
-		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.output_item.added","item":{"type":"reasoning","id":"rs_1"}}`)
 		_, _ = fmt.Fprintln(bodyWriter)
 		time.Sleep(80 * time.Millisecond)
 		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.reasoning_text.delta","delta":"step1"}`)
@@ -156,6 +175,104 @@ func TestHandleStreamingResponsePassthrough_FirstTokenUsesReasoningDeltaNotCompl
 	require.NotNil(t, result.firstTokenMs)
 	require.Less(t, *result.firstTokenMs, 200, "first token must be reasoning delta, not later text/completed")
 	require.GreaterOrEqual(t, *result.firstTokenMs, 50)
+}
+
+func TestHandleStreamingResponsePassthrough_FirstTokenUsesReasoningItemAdded(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	bodyReader, bodyWriter := io.Pipe()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer bodyWriter.Close()
+		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.created","response":{"id":"resp_item"}}`)
+		_, _ = fmt.Fprintln(bodyWriter)
+		time.Sleep(60 * time.Millisecond)
+		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.output_item.added","item":{"type":"reasoning","id":"rs_1"}}`)
+		_, _ = fmt.Fprintln(bodyWriter)
+		time.Sleep(250 * time.Millisecond)
+		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.output_text.delta","delta":"answer"}`)
+		_, _ = fmt.Fprintln(bodyWriter)
+		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.completed","response":{"id":"resp_item","usage":{"input_tokens":1,"output_tokens":1}}}`)
+		_, _ = fmt.Fprintln(bodyWriter)
+		_, _ = fmt.Fprintln(bodyWriter, "data: [DONE]")
+		_, _ = fmt.Fprintln(bodyWriter)
+	}()
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}, "x-request-id": []string{"rid-item"}},
+		Body:       bodyReader,
+	}
+	svc := &OpenAIGatewayService{}
+	start := time.Now()
+	result, err := svc.handleStreamingResponsePassthrough(
+		t.Context(),
+		resp,
+		c,
+		&Account{ID: 1, Name: "acc", Platform: PlatformOpenAI},
+		start,
+		"gpt-5.2",
+		"gpt-5.2",
+		start,
+	)
+	<-done
+	require.NoError(t, err)
+	require.NotNil(t, result.firstTokenMs)
+	require.Less(t, *result.firstTokenMs, 180, "first token must be reasoning output_item.added, not later text")
+	require.GreaterOrEqual(t, *result.firstTokenMs, 40)
+}
+
+func TestHandleAnthropicStreamingResponse_FirstTokenUsesReasoningItemAdded(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+
+	bodyReader, bodyWriter := io.Pipe()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer bodyWriter.Close()
+		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.created","response":{"id":"resp_msg_item"}}`)
+		_, _ = fmt.Fprintln(bodyWriter)
+		time.Sleep(50 * time.Millisecond)
+		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.output_item.added","item":{"type":"reasoning","id":"rs_1"}}`)
+		_, _ = fmt.Fprintln(bodyWriter)
+		time.Sleep(220 * time.Millisecond)
+		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.output_text.delta","delta":"hi"}`)
+		_, _ = fmt.Fprintln(bodyWriter)
+		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.completed","response":{"id":"resp_msg_item","usage":{"input_tokens":1,"output_tokens":1}}}`)
+		_, _ = fmt.Fprintln(bodyWriter)
+	}()
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}, "x-request-id": []string{"msg-item-ft"}},
+		Body:       bodyReader,
+	}
+	svc := &OpenAIGatewayService{}
+	start := time.Now()
+	result, err := svc.handleAnthropicStreamingResponse(
+		resp,
+		c,
+		&Account{ID: 2, Name: "grok", Platform: PlatformGrok},
+		"grok-4",
+		"grok-4",
+		"grok-4",
+		start,
+		start,
+	)
+	<-done
+	require.NoError(t, err)
+	require.NotNil(t, result.FirstTokenMs)
+	require.Less(t, *result.FirstTokenMs, 160, "messages path must record reasoning item.added, not text after thinking")
+	require.GreaterOrEqual(t, *result.FirstTokenMs, 30)
 }
 
 func TestHandleStreamingResponsePassthrough_CompletedOnlyDoesNotSetFirstToken(t *testing.T) {
@@ -207,8 +324,6 @@ func TestHandleAnthropicStreamingResponse_FirstTokenUsesReasoningDelta(t *testin
 		defer close(done)
 		defer bodyWriter.Close()
 		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.created","response":{"id":"resp_msg"}}`)
-		_, _ = fmt.Fprintln(bodyWriter)
-		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.output_item.added","item":{"type":"reasoning","id":"rs_1"}}`)
 		_, _ = fmt.Fprintln(bodyWriter)
 		time.Sleep(70 * time.Millisecond)
 		_, _ = fmt.Fprintln(bodyWriter, `data: {"type":"response.reasoning_text.delta","delta":"think"}`)
