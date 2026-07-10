@@ -55,32 +55,17 @@ func AnthropicToResponses(req *AnthropicRequest) (*ResponsesRequest, error) {
 		out.Tools = convertAnthropicToolsToResponses(req.Tools)
 	}
 
-	// Determine reasoning effort:
-	// 1) output_config.effort wins when set
-	// 2) else map thinking.budget_tokens (and thinking.type) when thinking is present
-	// 3) thinking.type=disabled → omit forced medium (no reasoning block)
-	// 4) otherwise default medium (Codex Anthropic bridge shape)
-	if req.OutputConfig != nil && strings.TrimSpace(req.OutputConfig.Effort) != "" {
-		out.Reasoning = &ResponsesReasoning{
-			Effort:  mapAnthropicEffortToResponses(req.OutputConfig.Effort, req.Model),
-			Summary: "auto",
-		}
-	} else if req.Thinking != nil && strings.EqualFold(strings.TrimSpace(req.Thinking.Type), "disabled") {
-		// Explicitly disabled: do not force medium.
-	} else if req.Thinking != nil {
-		effort := effortFromThinkingBudget(req.Thinking.BudgetTokens)
-		if effort == "" {
-			effort = "medium"
-		}
-		out.Reasoning = &ResponsesReasoning{
-			Effort:  effort,
-			Summary: "auto",
-		}
-	} else {
-		out.Reasoning = &ResponsesReasoning{
-			Effort:  "medium",
-			Summary: "auto",
-		}
+	// Determine reasoning effort: only output_config.effort controls the
+	// level; thinking.type is ignored. Default follows Codex CLI / airgate's
+	// Anthropic bridge shape, which uses medium when unset.
+	// Anthropic levels map 1:1 to OpenAI: low→low, medium→medium, high→high, max→xhigh.
+	effort := "medium"
+	if req.OutputConfig != nil && req.OutputConfig.Effort != "" {
+		effort = req.OutputConfig.Effort
+	}
+	out.Reasoning = &ResponsesReasoning{
+		Effort:  mapAnthropicEffortToResponses(effort),
+		Summary: "auto",
 	}
 
 	// Convert tool_choice
@@ -93,24 +78,6 @@ func AnthropicToResponses(req *AnthropicRequest) (*ResponsesRequest, error) {
 	}
 
 	return out, nil
-}
-
-// effortFromThinkingBudget maps Anthropic thinking.budget_tokens onto Responses
-// reasoning.effort using the inverse of defaultThinkingBudget thresholds.
-func effortFromThinkingBudget(budget int) string {
-	if budget <= 0 {
-		return ""
-	}
-	switch {
-	case budget <= defaultThinkingBudget("low"):
-		return "low"
-	case budget <= defaultThinkingBudget("medium"):
-		return "medium"
-	case budget <= defaultThinkingBudget("high"):
-		return "high"
-	default:
-		return "xhigh"
-	}
 }
 
 // convertAnthropicToolChoiceToResponses maps Anthropic tool_choice to Responses format.
@@ -436,37 +403,19 @@ func extractAnthropicTextFromBlocks(blocks []AnthropicContentBlock) string {
 // mapAnthropicEffortToResponses converts Anthropic reasoning effort levels to
 // OpenAI Responses API effort levels.
 //
-// Upstream bridge: Anthropic "max" (top Claude tier) ↔ OpenAI "xhigh".
-// GPT-5.6+ also has a first-class OpenAI effort "max" (and "ultra"); when the
-// target model is GPT-5.6, keep "max"/"ultra" as OpenAI-native values instead
-// of collapsing Claude-shaped "max" into xhigh.
+// Both APIs default to "high". The mapping is 1:1 for shared levels;
+// only Anthropic's "max" (Opus 4.6 exclusive) maps to OpenAI's "xhigh"
+// (GPT-5.2+ exclusive) as both represent the highest reasoning tier.
 //
 //	low    → low
 //	medium → medium
 //	high   → high
-//	max    → xhigh (non-5.6) / max (gpt-5.6+)
-//	ultra  → ultra
-func mapAnthropicEffortToResponses(effort, model string) string {
-	switch strings.TrimSpace(effort) {
-	case "max":
-		if isOpenAIGPT56ModelName(model) {
-			return "max"
-		}
+//	max    → xhigh
+func mapAnthropicEffortToResponses(effort string) string {
+	if effort == "max" {
 		return "xhigh"
-	default:
-		return effort // low→low, medium→medium, high→high, ultra→ultra, unknown→passthrough
 	}
-}
-
-func isOpenAIGPT56ModelName(model string) bool {
-	normalized := strings.ToLower(strings.TrimSpace(model))
-	if i := strings.LastIndex(normalized, "/"); i >= 0 {
-		normalized = normalized[i+1:]
-	}
-	if normalized == "gpt-5.6" || strings.HasPrefix(normalized, "gpt-5.6-") {
-		return true
-	}
-	return false
+	return effort // low→low, medium→medium, high→high, unknown→passthrough
 }
 
 // convertAnthropicToolsToResponses maps Anthropic tool definitions to

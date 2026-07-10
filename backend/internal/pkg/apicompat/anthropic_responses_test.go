@@ -1331,8 +1331,8 @@ func TestAnthropicToResponses_ThinkingEnabled(t *testing.T) {
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
 	require.NotNil(t, resp.Reasoning)
-	// budget_tokens=10000 maps to high (≤ defaultThinkingBudget("high")=10240).
-	assert.Equal(t, "high", resp.Reasoning.Effort)
+	// thinking.type is ignored for effort; Codex bridge default medium applies.
+	assert.Equal(t, "medium", resp.Reasoning.Effort)
 	assert.Equal(t, "auto", resp.Reasoning.Summary)
 	assert.Contains(t, resp.Include, "reasoning.encrypted_content")
 	assert.NotContains(t, resp.Include, "reasoning.summary")
@@ -1349,8 +1349,8 @@ func TestAnthropicToResponses_ThinkingAdaptive(t *testing.T) {
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
 	require.NotNil(t, resp.Reasoning)
-	// budget_tokens=5000 maps to high (≤ 10240).
-	assert.Equal(t, "high", resp.Reasoning.Effort)
+	// thinking.type is ignored for effort; Codex bridge default medium applies.
+	assert.Equal(t, "medium", resp.Reasoning.Effort)
 	assert.Equal(t, "auto", resp.Reasoning.Summary)
 	assert.NotContains(t, resp.Include, "reasoning.summary")
 }
@@ -1365,8 +1365,9 @@ func TestAnthropicToResponses_ThinkingDisabled(t *testing.T) {
 
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
-	// thinking.type=disabled must not force medium.
-	assert.Nil(t, resp.Reasoning)
+	// Default effort applies (medium) even when thinking is disabled.
+	require.NotNil(t, resp.Reasoning)
+	assert.Equal(t, "medium", resp.Reasoning.Effort)
 }
 
 func TestAnthropicToResponses_NoThinking(t *testing.T) {
@@ -1438,8 +1439,7 @@ func TestAnthropicToResponses_OutputConfigHigh(t *testing.T) {
 }
 
 func TestAnthropicToResponses_OutputConfigMax(t *testing.T) {
-	// Claude-shaped output_config.effort="max" on pre-5.6 → OpenAI "xhigh"
-	// (upstream Claude max ↔ OpenAI xhigh bridge).
+	// output_config.effort="max" → mapped to OpenAI's highest supported level "xhigh".
 	req := &AnthropicRequest{
 		Model:        "gpt-5.2",
 		MaxTokens:    1024,
@@ -1454,8 +1454,8 @@ func TestAnthropicToResponses_OutputConfigMax(t *testing.T) {
 	assert.Equal(t, "auto", resp.Reasoning.Summary)
 }
 
-func TestAnthropicToResponses_OutputConfigMaxOnGPT56KeepsMax(t *testing.T) {
-	// On GPT-5.6, "max" is also an OpenAI-native effort — keep it.
+func TestAnthropicToResponses_OutputConfigMaxAlwaysMapsToXHigh(t *testing.T) {
+	// Upstream bridge always maps Claude max → OpenAI xhigh, including on GPT-5.6.
 	req := &AnthropicRequest{
 		Model:        "gpt-5.6-sol",
 		MaxTokens:    1024,
@@ -1466,39 +1466,11 @@ func TestAnthropicToResponses_OutputConfigMaxOnGPT56KeepsMax(t *testing.T) {
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
 	require.NotNil(t, resp.Reasoning)
-	assert.Equal(t, "max", resp.Reasoning.Effort)
-}
-
-func TestAnthropicToResponses_OutputConfigXHighPassthrough(t *testing.T) {
-	req := &AnthropicRequest{
-		Model:        "gpt-5.4",
-		MaxTokens:    1024,
-		Messages:     []AnthropicMessage{{Role: "user", Content: json.RawMessage(`"Hello"`)}},
-		OutputConfig: &AnthropicOutputConfig{Effort: "xhigh"},
-	}
-
-	resp, err := AnthropicToResponses(req)
-	require.NoError(t, err)
-	require.NotNil(t, resp.Reasoning)
 	assert.Equal(t, "xhigh", resp.Reasoning.Effort)
 }
 
-func TestAnthropicToResponses_OutputConfigUltraPassthrough(t *testing.T) {
-	req := &AnthropicRequest{
-		Model:        "gpt-5.6-sol",
-		MaxTokens:    1024,
-		Messages:     []AnthropicMessage{{Role: "user", Content: json.RawMessage(`"Hello"`)}},
-		OutputConfig: &AnthropicOutputConfig{Effort: "ultra"},
-	}
-
-	resp, err := AnthropicToResponses(req)
-	require.NoError(t, err)
-	require.NotNil(t, resp.Reasoning)
-	assert.Equal(t, "ultra", resp.Reasoning.Effort)
-}
-
 func TestAnthropicToResponses_NoOutputConfig(t *testing.T) {
-	// No output_config → map thinking.budget_tokens to effort.
+	// No output_config → default medium regardless of thinking.type.
 	req := &AnthropicRequest{
 		Model:     "gpt-5.2",
 		MaxTokens: 1024,
@@ -1509,7 +1481,7 @@ func TestAnthropicToResponses_NoOutputConfig(t *testing.T) {
 	resp, err := AnthropicToResponses(req)
 	require.NoError(t, err)
 	require.NotNil(t, resp.Reasoning)
-	assert.Equal(t, "high", resp.Reasoning.Effort)
+	assert.Equal(t, "medium", resp.Reasoning.Effort)
 }
 
 func TestAnthropicToResponses_OutputConfigWithoutEffort(t *testing.T) {
