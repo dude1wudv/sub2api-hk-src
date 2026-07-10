@@ -4456,26 +4456,29 @@ func openAIStreamEventIsPreamble(eventType string) bool {
 }
 
 // openAIResponsesStreamEventIsFirstToken reports whether an upstream Responses
-// SSE event should start first-token timing. Aligned with isOpenAIWSTokenEvent:
-// count the first content/reasoning .delta, never preamble, item lifecycle, or
-// terminal events (otherwise thinking-only streams report total duration as TTFT).
+// SSE event should start first-token timing. Reuses the WS token definition so
+// HTTP/Messages/Chat paths count the first content/reasoning .delta — never
+// preamble, item lifecycle, or terminals (otherwise buffered thinking makes
+// first_token_ms equal total duration).
 func openAIResponsesStreamEventIsFirstToken(eventType string) bool {
-	eventType = strings.TrimSpace(eventType)
-	if eventType == "" || openAIStreamEventIsPreamble(eventType) {
-		return false
+	return isOpenAIWSTokenEvent(eventType)
+}
+
+// openAIFirstTokenElapsedMsWithKnownCreated prefers an earlier-observed
+// response.created_at (often only present on response.created) when the
+// actual first-token delta payload has no timestamp of its own.
+func openAIFirstTokenElapsedMsWithKnownCreated(firstTokenStart, observedAt time.Time, data []byte, knownCreatedAt *time.Time) int {
+	ms := openAIFirstTokenElapsedMs(firstTokenStart, observedAt, data)
+	if knownCreatedAt == nil {
+		return ms
 	}
-	switch eventType {
-	case "response.output_item.added", "response.output_item.done",
-		"response.completed", "response.done", "response.incomplete", "response.failed":
-		return false
+	if upstreamElapsed, ok := openAIElapsedSince(*knownCreatedAt, observedAt); ok {
+		upstreamMs := int(upstreamElapsed.Milliseconds())
+		if upstreamMs < ms {
+			return upstreamMs
+		}
 	}
-	if strings.Contains(eventType, ".delta") {
-		return true
-	}
-	if strings.HasPrefix(eventType, "response.output_text") {
-		return true
-	}
-	return false
+	return ms
 }
 
 func openAIStreamDataStartsClientOutput(data, eventType string) bool {
@@ -4874,12 +4877,11 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 				line = "data: " + string(sanitizedData)
 			}
 			eventType := strings.TrimSpace(gjson.Get(trimmedData, "type").String())
+			if createdAt, ok := openAIResponseCreatedAt(dataBytes, time.Now()); ok {
+				upstreamCreatedAt = &createdAt
+			}
 			if !firstSSEEventLogged && trimmedData != "" {
 				firstSSEEventLogged = true
-				observedAt := time.Now()
-				if createdAt, ok := openAIResponseCreatedAt(dataBytes, observedAt); ok {
-					upstreamCreatedAt = &createdAt
-				}
 				logFields := []zap.Field{
 					zap.String("event_type", eventType),
 					zap.Bool("preamble_event", openAIStreamEventIsPreamble(eventType)),
@@ -4887,12 +4889,14 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 					zap.Int("sse_data_bytes", len(dataBytes)),
 					zap.String("upstream_request_id", upstreamRequestID),
 				}
-				if firstTokenMs == nil && trimmedData != "[DONE]" {
-					ms := openAIFirstTokenElapsedMs(firstTokenStart, observedAt, dataBytes)
-					firstTokenMs = &ms
-					logFields = append(logFields, zap.Int("first_token_ms", ms))
+				if firstTokenMs != nil {
+					logFields = append(logFields, zap.Int("first_token_ms", *firstTokenMs))
 				}
 				logOpenAIPassthroughTiming(ctx, "first_sse_event", startTime, account, logFields...)
+			}
+			if firstTokenMs == nil && trimmedData != "[DONE]" && openAIResponsesStreamEventIsFirstToken(eventType) {
+				ms := openAIFirstTokenElapsedMsWithKnownCreated(firstTokenStart, time.Now(), dataBytes, upstreamCreatedAt)
+				firstTokenMs = &ms
 			}
 			if eventType == "response.failed" {
 				failedMessage = extractOpenAISSEErrorMessage(dataBytes)
@@ -5878,18 +5882,18 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 		if data, ok := extractOpenAISSEDataLine(line); ok {
 			dataBytes := []byte(data)
 			trimmedData := strings.TrimSpace(data)
-			if firstTokenMs == nil && trimmedData != "" && trimmedData != "[DONE]" {
-				observedAt := time.Now()
-				if createdAt, ok := openAIResponseCreatedAt(dataBytes, observedAt); ok {
-					upstreamCreatedAt = &createdAt
-				}
-				ms := openAIFirstTokenElapsedMs(firstTokenStart, observedAt, dataBytes)
+			eventType := strings.TrimSpace(gjson.GetBytes(dataBytes, "type").String())
+			observedAt := time.Now()
+			if createdAt, ok := openAIResponseCreatedAt(dataBytes, observedAt); ok {
+				upstreamCreatedAt = &createdAt
+			}
+			if firstTokenMs == nil && trimmedData != "" && trimmedData != "[DONE]" && openAIResponsesStreamEventIsFirstToken(eventType) {
+				ms := openAIFirstTokenElapsedMsWithKnownCreated(firstTokenStart, observedAt, dataBytes, upstreamCreatedAt)
 				firstTokenMs = &ms
 			}
 			if openAIStreamEventIsTerminal(data) {
 				sawTerminalEvent = true
 			}
-			eventType := strings.TrimSpace(gjson.GetBytes(dataBytes, "type").String())
 			if responseID == "" {
 				responseID = extractOpenAIResponseIDFromJSONBytes(dataBytes)
 			}

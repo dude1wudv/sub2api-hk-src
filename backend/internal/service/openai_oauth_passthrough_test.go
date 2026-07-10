@@ -1329,7 +1329,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_StreamingSetsFirstTokenMs(t *test
 	require.Equal(t, "priority", *result.ServiceTier)
 }
 
-func TestOpenAIGatewayService_OAuthPassthrough_FirstTokenMsUsesFirstUpstreamSSEEvent(t *testing.T) {
+func TestOpenAIGatewayService_OAuthPassthrough_FirstTokenMsUsesFirstContentDelta(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	rec := httptest.NewRecorder()
@@ -1380,7 +1380,9 @@ func TestOpenAIGatewayService_OAuthPassthrough_FirstTokenMsUsesFirstUpstreamSSEE
 	<-done
 	require.NoError(t, err)
 	require.NotNil(t, result.FirstTokenMs)
-	require.Less(t, *result.FirstTokenMs, 100)
+	// Must wait for the first content delta (~200ms), not response.created.
+	require.GreaterOrEqual(t, *result.FirstTokenMs, 150)
+	require.Less(t, *result.FirstTokenMs, 2000)
 }
 
 func TestNormalizeOpenAIPassthroughOAuthBody_InjectsReasoningSummaryAuto(t *testing.T) {
