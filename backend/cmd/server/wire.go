@@ -95,6 +95,7 @@ func provideCleanup(
 	geminiOAuth *service.GeminiOAuthService,
 	antigravityOAuth *service.AntigravityOAuthService,
 	grokOAuth *service.GrokOAuthService,
+	grokQuota *service.GrokQuotaService,
 	openAIGateway *service.OpenAIGatewayService,
 	scheduledTestRunner *service.ScheduledTestRunnerService,
 	backupSvc *service.BackupService,
@@ -176,6 +177,12 @@ func provideCleanup(
 			{"OpenAIGatewayQuotaMaintenance", func() error {
 				if openAIGateway != nil {
 					openAIGateway.StopQuotaMaintenance()
+				}
+				return nil
+			}},
+			{"GrokQuotaAutoProbe", func() error {
+				if grokQuota != nil {
+					grokQuota.StopAutoProbe()
 				}
 				return nil
 			}},

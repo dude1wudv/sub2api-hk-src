@@ -23,6 +23,24 @@ type grokQuotaAccountRepo struct {
 	lastTempUnschedID     int64
 	lastTempUnschedUntil  time.Time
 	lastTempUnschedReason string
+	listByPlatformFn      func(platform string) ([]Account, error)
+}
+
+func (r *grokQuotaAccountRepo) ListByPlatform(_ context.Context, platform string) ([]Account, error) {
+	if r.listByPlatformFn != nil {
+		return r.listByPlatformFn(platform)
+	}
+	if r.mockAccountRepoForPlatform == nil {
+		return nil, nil
+	}
+	out := make([]Account, 0, len(r.accountsByID))
+	for _, account := range r.accountsByID {
+		if account == nil || account.Platform != platform {
+			continue
+		}
+		out = append(out, *account)
+	}
+	return out, nil
 }
 
 func (r *grokQuotaAccountRepo) UpdateExtra(_ context.Context, id int64, updates map[string]any) error {
@@ -465,10 +483,10 @@ func TestMaybeClearGrokTempUnschedulableOnRecoveredHeaders(t *testing.T) {
 	t.Parallel()
 	until := time.Now().Add(5 * time.Minute)
 	account := &Account{
-		ID:                     77,
-		Platform:               PlatformGrok,
-		Type:                   AccountTypeOAuth,
-		TempUnschedulableUntil: &until,
+		ID:                      77,
+		Platform:                PlatformGrok,
+		Type:                    AccountTypeOAuth,
+		TempUnschedulableUntil:  &until,
 		TempUnschedulableReason: "grok rate limited",
 	}
 	repo := &grokQuotaAccountRepo{}
@@ -486,4 +504,65 @@ func TestMaybeClearGrokTempUnschedulableOnRecoveredHeaders(t *testing.T) {
 	require.Equal(t, 1, repo.clearTempUnschedCalls)
 	require.Nil(t, account.TempUnschedulableUntil)
 	require.False(t, svc.isOpenAIAccountRuntimeBlocked(account))
+}
+
+func TestGrokQuotaServiceProbeAllOAuthAccountsSkipsAPIKey(t *testing.T) {
+	t.Parallel()
+
+	oauth := &Account{
+		ID:       51,
+		Platform: PlatformGrok,
+		Type:     AccountTypeOAuth,
+		Credentials: map[string]any{
+			"access_token": "access-token",
+			"expires_at":   time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+		},
+	}
+	apiKey := &Account{
+		ID:       52,
+		Platform: PlatformGrok,
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"api_key": "sk-test",
+		},
+	}
+	repo := &grokQuotaAccountRepo{
+		mockAccountRepoForPlatform: &mockAccountRepoForPlatform{
+			accountsByID: map[int64]*Account{51: oauth, 52: apiKey},
+		},
+		listByPlatformFn: func(platform string) ([]Account, error) {
+			require.Equal(t, PlatformGrok, platform)
+			return []Account{*oauth, *apiKey}, nil
+		},
+	}
+	upstream := &httpUpstreamRecorder{
+		responses: []*http.Response{
+			{
+				StatusCode: http.StatusOK,
+				Header: http.Header{
+					"x-ratelimit-limit-requests":     []string{"100"},
+					"x-ratelimit-remaining-requests": []string{"90"},
+				},
+				Body: io.NopCloser(strings.NewReader(`{"id":"resp"}`)),
+			},
+			{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body: io.NopCloser(strings.NewReader(`{
+					"billingCycle":{"billingPeriodStart":"2026-07-01T00:00:00Z","billingPeriodEnd":"2026-07-08T00:00:00Z"},
+					"monthlyLimit":{"val":10000},
+					"usage":{"totalUsed":{"val":2500}}
+				}`)),
+			},
+		},
+	}
+	svc := NewGrokQuotaService(repo, nil, NewGrokTokenProvider(repo, nil), upstream)
+
+	ok, fail, err := svc.ProbeAllOAuthAccounts(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 1, ok)
+	require.Equal(t, 0, fail)
+	require.Len(t, upstream.requests, 2) // header + billing for oauth only
+	require.Contains(t, repo.updates, int64(51))
+	require.NotContains(t, repo.updates, int64(52))
 }

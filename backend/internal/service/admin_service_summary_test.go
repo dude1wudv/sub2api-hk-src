@@ -270,17 +270,17 @@ func TestBuildAccountSummaryGrokPoolAggregatesShortAndWeeklyWindows(t *testing.T
 	if summary.GrokPool.Total != 2 || summary.GrokPool.Available != 2 {
 		t.Fatalf("GrokPool totals = (%d,%d), want (2,2)", summary.GrokPool.Total, summary.GrokPool.Available)
 	}
-	// Short-window used: (60 + 75) / 2 = 67.5 → remaining 32.5
+	// Primary meter prefers weekly: used (20 + 80) / 2 = 50 → remaining 50
 	if summary.GrokPool.Sampled != 2 {
 		t.Fatalf("GrokPool.Sampled = %d, want 2", summary.GrokPool.Sampled)
 	}
-	if summary.GrokPool.RemainingPercent == nil || *summary.GrokPool.RemainingPercent != 32.5 {
-		t.Fatalf("GrokPool.RemainingPercent = %v, want 32.5", summary.GrokPool.RemainingPercent)
+	if summary.GrokPool.RemainingPercent == nil || *summary.GrokPool.RemainingPercent != 50 {
+		t.Fatalf("GrokPool.RemainingPercent = %v, want 50", summary.GrokPool.RemainingPercent)
 	}
+	// Short-window used: (60 + 75) / 2 = 67.5 → remaining 32.5
 	if summary.GrokPool.Remaining5hPercent == nil || *summary.GrokPool.Remaining5hPercent != 32.5 {
 		t.Fatalf("GrokPool.Remaining5hPercent = %v, want 32.5", summary.GrokPool.Remaining5hPercent)
 	}
-	// Weekly used: (20 + 80) / 2 = 50 → remaining 50
 	if summary.GrokPool.Remaining7dPercent == nil || *summary.GrokPool.Remaining7dPercent != 50 {
 		t.Fatalf("GrokPool.Remaining7dPercent = %v, want 50", summary.GrokPool.Remaining7dPercent)
 	}

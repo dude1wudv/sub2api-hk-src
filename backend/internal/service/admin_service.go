@@ -3229,7 +3229,8 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 	summary.Codex7d = sevenDay.summary()
 	summary.OAuthPool = oauthPool.summary("5h")
 	summary.FreePool = freePool.summary("7d")
-	summary.GrokPool = grokPool.summary("5h")
+	// Grok pool card primary meter is weekly billing remaining (not short-window).
+	summary.GrokPool = grokPool.summary("7d")
 	summary.ProxyDistribution = buildAccountProxySummary(proxyStats)
 	return summary
 }

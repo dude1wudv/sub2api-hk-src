@@ -3195,11 +3195,15 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			markPatchSet("model", upstreamModel)
 		}
 	}
-	// GPT-5.6+ uses prompt_cache_options.ttl (min lifetime, only "30m").
+	// GPT-5.6+ uses prompt_cache_options.ttl (min lifetime, only "30m") on the
+	// official API. ChatGPT internal Codex (OAuth/Plus) rejects that field with
+	// "Unsupported parameter: prompt_cache_options", so only inject for non-OAuth.
 	// Older models still use prompt_cache_retention ("24h" / "in_memory").
 	if openAIModelUsesPromptCacheOptionsTTL(upstreamModel) {
-		if ttl := strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_options.ttl").String()); ttl != openAIPromptCacheOptionsTTL {
-			markPatchSet("prompt_cache_options.ttl", openAIPromptCacheOptionsTTL)
+		if shouldInjectOpenAIPromptCacheOptionsTTL(account, upstreamModel) {
+			if ttl := strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_options.ttl").String()); ttl != openAIPromptCacheOptionsTTL {
+				markPatchSet("prompt_cache_options.ttl", openAIPromptCacheOptionsTTL)
+			}
 		}
 		if gjson.GetBytes(body, "prompt_cache_retention").Exists() {
 			markPatchDelete("prompt_cache_retention")

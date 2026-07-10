@@ -104,6 +104,14 @@ func openAIModelUsesPromptCacheOptionsTTL(model string) bool {
 	}
 }
 
+// shouldInjectOpenAIPromptCacheOptionsTTL is true only for non-OAuth accounts
+// (API Key). ChatGPT internal Codex rejects prompt_cache_options.
+func shouldInjectOpenAIPromptCacheOptionsTTL(account *Account, model string) bool {
+	return account != nil &&
+		account.Type != AccountTypeOAuth &&
+		openAIModelUsesPromptCacheOptionsTTL(model)
+}
+
 // openAIPromptCacheOptionsTTL is the only GPT-5.6+ TTL OpenAI currently supports.
 const openAIPromptCacheOptionsTTL = "30m"
 

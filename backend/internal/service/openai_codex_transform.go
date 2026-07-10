@@ -101,6 +101,7 @@ var openAIChatGPTInternalUnsupportedFields = []string{
 	"frequency_penalty",
 	"presence_penalty",
 	"prompt_cache_retention",
+	"prompt_cache_options",
 	"safety_identifier",
 	"stream_options",
 }

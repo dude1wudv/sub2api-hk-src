@@ -1240,12 +1240,34 @@ func TestApplyCodexOAuthTransform_StripsPromptCacheRetention(t *testing.T) {
 		"prompt_cache_retention must be stripped before forwarding to Codex upstream")
 }
 
+// TestApplyCodexOAuthTransform_StripsPromptCacheOptions is a regression for
+// GPT-5.6+: the official API accepts prompt_cache_options.ttl, but ChatGPT
+// internal Codex rejects it with "Unsupported parameter: prompt_cache_options".
+func TestApplyCodexOAuthTransform_StripsPromptCacheOptions(t *testing.T) {
+	reqBody := map[string]any{
+		"model": "gpt-5.6-terra",
+		"prompt_cache_options": map[string]any{
+			"ttl": "30m",
+		},
+		"input": []any{
+			map[string]any{"role": "user", "content": "hi"},
+		},
+	}
+
+	applyCodexOAuthTransform(reqBody, false, false)
+
+	_, stillThere := reqBody["prompt_cache_options"]
+	require.False(t, stillThere,
+		"prompt_cache_options must be stripped before forwarding to Codex upstream")
+}
+
 func TestApplyCodexOAuthTransform_StripsChatGPTInternalUnsupportedFields(t *testing.T) {
 	reqBody := map[string]any{
 		"model":                  "gpt-5.4",
 		"user":                   "user_123",
 		"metadata":               map[string]any{"trace_id": "abc"},
 		"prompt_cache_retention": "24h",
+		"prompt_cache_options":   map[string]any{"ttl": "30m"},
 		"safety_identifier":      "sid",
 		"stream_options":         map[string]any{"include_usage": true},
 		"input": []any{

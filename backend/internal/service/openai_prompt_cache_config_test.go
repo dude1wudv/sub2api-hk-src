@@ -79,6 +79,17 @@ func TestOpenAIModelUsesPromptCacheOptionsTTL(t *testing.T) {
 	require.False(t, openAIModelUsesPromptCacheOptionsTTL("gpt-5.4"))
 }
 
+func TestShouldInjectOpenAIPromptCacheOptionsTTL(t *testing.T) {
+	oauth := &Account{Platform: PlatformOpenAI, Type: AccountTypeOAuth}
+	apiKey := &Account{Platform: PlatformOpenAI, Type: AccountTypeAPIKey}
+
+	require.False(t, shouldInjectOpenAIPromptCacheOptionsTTL(oauth, "gpt-5.6-terra"),
+		"OAuth/Plus ChatGPT Codex rejects prompt_cache_options")
+	require.True(t, shouldInjectOpenAIPromptCacheOptionsTTL(apiKey, "gpt-5.6-terra"))
+	require.False(t, shouldInjectOpenAIPromptCacheOptionsTTL(apiKey, "gpt-5.5"))
+	require.False(t, shouldInjectOpenAIPromptCacheOptionsTTL(nil, "gpt-5.6-terra"))
+}
+
 func TestEnsureOpenAIPromptCacheOptionsTTL(t *testing.T) {
 	body := map[string]any{"model": "gpt-5.6-sol"}
 	require.True(t, ensureOpenAIPromptCacheOptionsTTL(body))

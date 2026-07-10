@@ -284,7 +284,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	dailyGrantExpiryService := service.ProvideDailyGrantExpiryService(dailyGrantRepository, leaderLockCache, db)
 	channelMonitorRunner := service.ProvideChannelMonitorRunner(channelMonitorService, settingService)
 	userPlatformQuotaUsageFlusher := service.ProvideUserPlatformQuotaUsageFlusher(configConfig, billingCache, serviceUserPlatformQuotaRepository, timingWheelService)
-	v := provideCleanup(client, redisClient, opsMetricsCollector, opsAggregationService, opsAlertEvaluatorService, opsCleanupService, opsScheduledReportService, opsSystemLogSink, schedulerSnapshotService, tokenRefreshService, accountExpiryService, proxyExpiryService, subscriptionExpiryService, usageCleanupService, idempotencyCleanupService, pricingService, emailQueueService, billingCacheService, usageRecordWorkerPool, subscriptionService, oAuthService, openAIOAuthService, geminiOAuthService, antigravityOAuthService, grokOAuthService, openAIGatewayService, scheduledTestRunnerService, backupService, paymentOrderExpiryService, dailyGrantExpiryService, channelMonitorRunner, userPlatformQuotaUsageFlusher, upstreamBalanceAlertService)
+	v := provideCleanup(client, redisClient, opsMetricsCollector, opsAggregationService, opsAlertEvaluatorService, opsCleanupService, opsScheduledReportService, opsSystemLogSink, schedulerSnapshotService, tokenRefreshService, accountExpiryService, proxyExpiryService, subscriptionExpiryService, usageCleanupService, idempotencyCleanupService, pricingService, emailQueueService, billingCacheService, usageRecordWorkerPool, subscriptionService, oAuthService, openAIOAuthService, geminiOAuthService, antigravityOAuthService, grokOAuthService, grokQuotaService, openAIGatewayService, scheduledTestRunnerService, backupService, paymentOrderExpiryService, dailyGrantExpiryService, channelMonitorRunner, userPlatformQuotaUsageFlusher, upstreamBalanceAlertService)
 	application := &Application{
 		Server:  httpServer,
 		Cleanup: v,
@@ -336,6 +336,7 @@ func provideCleanup(
 	geminiOAuth *service.GeminiOAuthService,
 	antigravityOAuth *service.AntigravityOAuthService,
 	grokOAuth *service.GrokOAuthService,
+	grokQuota *service.GrokQuotaService,
 	openAIGateway *service.OpenAIGatewayService,
 	scheduledTestRunner *service.ScheduledTestRunnerService,
 	backupSvc *service.BackupService,
@@ -416,6 +417,12 @@ func provideCleanup(
 			{"OpenAIGatewayQuotaMaintenance", func() error {
 				if openAIGateway != nil {
 					openAIGateway.StopQuotaMaintenance()
+				}
+				return nil
+			}},
+			{"GrokQuotaAutoProbe", func() error {
+				if grokQuota != nil {
+					grokQuota.StopAutoProbe()
 				}
 				return nil
 			}},

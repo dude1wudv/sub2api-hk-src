@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log"
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
@@ -19,8 +21,10 @@ const (
 	grokQuotaProbeInput      = "."
 	// Known-working upstream model for rate-limit header probes.
 	// Do not use GetMappedModel("grok"): unmapped aliases return "grok" and xAI 400s.
-	grokQuotaDefaultModel  = "grok-4.5"
-	grokBillingSnapshotKey = "grok_billing_snapshot"
+	grokQuotaDefaultModel          = "grok-4.5"
+	grokBillingSnapshotKey         = "grok_billing_snapshot"
+	grokQuotaAutoProbeInterval     = 30 * time.Minute
+	grokQuotaAutoProbeBatchTimeout = 10 * time.Minute
 )
 
 type GrokQuotaProbeResult struct {
@@ -44,6 +48,11 @@ type GrokQuotaService struct {
 	proxyRepo     ProxyRepository
 	tokenProvider *GrokTokenProvider
 	httpUpstream  HTTPUpstream
+
+	autoProbeInterval time.Duration
+	autoProbeStopCh   chan struct{}
+	autoProbeOnce     sync.Once
+	autoProbeStopOnce sync.Once
 }
 
 func NewGrokQuotaService(
@@ -53,11 +62,96 @@ func NewGrokQuotaService(
 	httpUpstream HTTPUpstream,
 ) *GrokQuotaService {
 	return &GrokQuotaService{
-		accountRepo:   accountRepo,
-		proxyRepo:     proxyRepo,
-		tokenProvider: tokenProvider,
-		httpUpstream:  httpUpstream,
+		accountRepo:       accountRepo,
+		proxyRepo:         proxyRepo,
+		tokenProvider:     tokenProvider,
+		httpUpstream:      httpUpstream,
+		autoProbeInterval: grokQuotaAutoProbeInterval,
+		autoProbeStopCh:   make(chan struct{}),
 	}
+}
+
+// StartAutoProbe periodically probes all Grok OAuth accounts so weekly billing
+// snapshots stay fresh for the admin pool meter.
+func (s *GrokQuotaService) StartAutoProbe() {
+	if s == nil || s.accountRepo == nil || s.autoProbeInterval <= 0 {
+		return
+	}
+	s.autoProbeOnce.Do(func() {
+		go func() {
+			ticker := time.NewTicker(s.autoProbeInterval)
+			defer ticker.Stop()
+
+			s.runAutoProbeOnce()
+			for {
+				select {
+				case <-ticker.C:
+					s.runAutoProbeOnce()
+				case <-s.autoProbeStopCh:
+					return
+				}
+			}
+		}()
+	})
+}
+
+func (s *GrokQuotaService) StopAutoProbe() {
+	if s == nil {
+		return
+	}
+	s.autoProbeStopOnce.Do(func() {
+		close(s.autoProbeStopCh)
+	})
+}
+
+func (s *GrokQuotaService) runAutoProbeOnce() {
+	ctx, cancel := context.WithTimeout(context.Background(), grokQuotaAutoProbeBatchTimeout)
+	defer cancel()
+
+	ok, fail, err := s.ProbeAllOAuthAccounts(ctx)
+	if err != nil {
+		log.Printf("[GrokQuotaAutoProbe] list accounts failed: %v", err)
+		return
+	}
+	if ok+fail == 0 {
+		return
+	}
+	log.Printf("[GrokQuotaAutoProbe] probed oauth accounts: ok=%d fail=%d", ok, fail)
+}
+
+// ProbeAllOAuthAccounts actively probes every Grok OAuth account (short-window
+// headers + weekly billing). Failures on individual accounts are counted, not fatal.
+func (s *GrokQuotaService) ProbeAllOAuthAccounts(ctx context.Context) (ok, fail int, err error) {
+	if s == nil || s.accountRepo == nil {
+		return 0, 0, nil
+	}
+	accounts, err := s.accountRepo.ListByPlatform(ctx, PlatformGrok)
+	if err != nil {
+		return 0, 0, err
+	}
+	for i := range accounts {
+		account := &accounts[i]
+		if !account.IsGrokOAuth() {
+			continue
+		}
+		select {
+		case <-ctx.Done():
+			return ok, fail, ctx.Err()
+		case <-s.autoProbeStopCh:
+			return ok, fail, nil
+		default:
+		}
+		if _, probeErr := s.ProbeUsage(ctx, account.ID); probeErr != nil {
+			fail++
+			slog.Warn("grok_quota_auto_probe_account_failed",
+				"account_id", account.ID,
+				"error", probeErr.Error(),
+			)
+			continue
+		}
+		ok++
+	}
+	return ok, fail, nil
 }
 
 func (s *GrokQuotaService) ProbeUsage(ctx context.Context, accountID int64) (*GrokQuotaProbeResult, error) {
