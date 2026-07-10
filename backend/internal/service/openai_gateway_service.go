@@ -4593,8 +4593,11 @@ func openAIStreamFailedEventPassthroughBody(payload []byte, failedMessage string
 	return body
 }
 
+// applyOpenAIStreamFailedErrorPassthroughRule applies error passthrough rules to response.failed.
+// platform must be account.Platform (openai and grok share this gateway).
 func applyOpenAIStreamFailedErrorPassthroughRule(
 	c *gin.Context,
+	platform string,
 	payload []byte,
 	failedMessage string,
 ) (status int, errType string, errMsg string, matched bool) {
@@ -4602,7 +4605,7 @@ func applyOpenAIStreamFailedErrorPassthroughRule(
 	upstreamStatus := openAIStreamFailedEventSemanticStatus(payload, failedMessage)
 	return applyErrorPassthroughRule(
 		c,
-		PlatformOpenAI,
+		platform,
 		upstreamStatus,
 		ruleBody,
 		http.StatusBadGateway,
@@ -4864,7 +4867,8 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 					})
 				}
 				if !openAIStreamClientOutputStarted(c, clientOutputStarted) {
-					if status, errType, errMsg, matched := applyOpenAIStreamFailedErrorPassthroughRule(c, dataBytes, failedMessage); matched {
+					if status, errType, errMsg, matched := applyOpenAIStreamFailedErrorPassthroughRule(c, account.Platform, dataBytes, failedMessage); matched {
+						s.recordOpenAIStreamUpstreamError(c, account, true, upstreamRequestID, "http_error", dataBytes, failedMessage)
 						MarkResponseCommitted(c)
 						c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 						c.JSON(status, gin.H{
@@ -5857,8 +5861,9 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 					})
 				}
 				if !openAIStreamClientOutputStarted(c, clientOutputStarted) {
-					if status, errType, errMsg, matched := applyOpenAIStreamFailedErrorPassthroughRule(c, dataBytes, failedMessage); matched {
+					if status, errType, errMsg, matched := applyOpenAIStreamFailedErrorPassthroughRule(c, account.Platform, dataBytes, failedMessage); matched {
 						sawFailedEvent = true
+						s.recordOpenAIStreamUpstreamError(c, account, false, upstreamRequestID, "http_error", dataBytes, failedMessage)
 						MarkResponseCommitted(c)
 						c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 						c.JSON(status, gin.H{
