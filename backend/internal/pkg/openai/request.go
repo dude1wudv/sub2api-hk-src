@@ -127,7 +127,9 @@ func isCodexOfficialClientRequest(userAgent string, strict bool) bool {
 // `(name; version)` 括号组——该组由 codex-rs engine 写入，保留真实 clientInfo.name。
 // 故从尾部提取 name 可以恢复被 override 的真实客户端标识（例如 cccc → codex-tui）。
 //
-// input 应为已归一化（小写 + 去首尾空格）的 UA。
+// input 应为去首尾空格的 UA；本函数本身大小写无关，大小写由调用方按需处理
+// （isCodexOfficialClientRequest 传入已小写化的 UA 做匹配；PairCodexClientIdentity
+// 传入原始大小写以保留 originator 的真实大小写）。
 // 若无法解析则返回空字符串。
 func codexUATrailerName(ua string) string {
 	last := strings.LastIndex(ua, "(")
@@ -193,6 +195,55 @@ func matchCodexClientHeaderStrictPrefixes(value string, prefixes []string) bool 
 		}
 	}
 	return false
+}
+
+// PairCodexClientIdentity derives a matching originator from the final outbound
+// User-Agent and, when needed, rewrites the UA leading client name so both agree.
+// ChatGPT /backend-api/codex rejects mismatched pairs (e.g. originator=codex_cli_rs
+// with UA=codex-tui/...) with 404 (issue #3901).
+//
+// Priority:
+//  1. UA leading segment is an official originator → pair as-is
+//  2. UA trailer (name; version) is an official originator (CODEX_INTERNAL_ORIGINATOR_OVERRIDE
+//     only rewrites the UA prefix) → rewrite leading segment from trailer name
+//  3. otherwise ok=false; caller should fall back to the default official identity
+func PairCodexClientIdentity(userAgent string) (originator string, pairedUA string, ok bool) {
+	ua := strings.TrimSpace(userAgent)
+	slash := strings.IndexByte(ua, '/')
+	if slash <= 0 {
+		return "", "", false
+	}
+	if leading := strings.TrimSpace(ua[:slash]); isSaneCodexOriginator(leading) && IsCodexOfficialClientOriginator(leading) {
+		leading = canonicalizeCodexOriginator(leading)
+		return leading, leading + ua[slash:], true
+	}
+	if trailer := codexUATrailerName(ua); trailer != "" && !strings.ContainsRune(trailer, '/') &&
+		isSaneCodexOriginator(trailer) && IsCodexOfficialClientOriginator(trailer) {
+		trailer = canonicalizeCodexOriginator(trailer)
+		return trailer, trailer + ua[slash:], true
+	}
+	return "", "", false
+}
+
+const codexOriginatorMaxLen = 64
+
+func isSaneCodexOriginator(name string) bool {
+	if name == "" || len(name) > codexOriginatorMaxLen {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if c := name[i]; c < 0x20 || c > 0x7e {
+			return false
+		}
+	}
+	return true
+}
+
+func canonicalizeCodexOriginator(name string) string {
+	if lower := normalizeCodexClientHeader(name); codexOfficialClientOriginators[lower] {
+		return lower
+	}
+	return name
 }
 
 // codexEngineVersionPattern 提取版本段开头的三段数字 X.Y.Z（忽略 -alpha 等后缀）。

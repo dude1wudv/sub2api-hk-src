@@ -726,6 +726,9 @@ func (s *AccountUsageService) probeOpenAICodexSnapshot(ctx context.Context, acco
 			req.Header.Set("User-Agent", strings.TrimSpace(fp.UserAgent))
 		}
 	}
+	// Match real forwarding: pair originator with final User-Agent (may come from
+	// fingerprint cache, e.g. codex-tui), otherwise the probe gets upstream 404 (#3901).
+	enforceCodexIdentityHeaders(req.Header)
 	setOpenAIChatGPTAccountHeaders(req.Header, account)
 
 	proxyURL := ""

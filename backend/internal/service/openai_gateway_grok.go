@@ -127,13 +127,14 @@ func (s *OpenAIGatewayService) forwardGrokResponses(
 		usage = &OpenAIUsage{}
 	}
 	s.bindHTTPResponseAccount(ctx, c, account, responseID)
+	reasoningEffort := extractOpenAIReasoningEffortFromBody(patchedBody, originalModel)
 	return &OpenAIForwardResult{
 		RequestID:       firstNonEmpty(resp.Header.Get("x-request-id"), resp.Header.Get("xai-request-id")),
 		ResponseID:      responseID,
 		Usage:           *usage,
 		Model:           originalModel,
 		UpstreamModel:   upstreamModel,
-		ReasoningEffort: ptrStringOrNil(normalizeOpenAIReasoningEffort(gjson.GetBytes(patchedBody, "reasoning.effort").String())),
+		ReasoningEffort: reasoningEffort,
 		Stream:          reqStream,
 		OpenAIWSMode:    false,
 		ResponseHeaders: resp.Header.Clone(),
@@ -718,11 +719,4 @@ func (s *OpenAIGatewayService) maybeClearGrokTempUnschedulable(ctx context.Conte
 	}
 	account.TempUnschedulableUntil = nil
 	account.TempUnschedulableReason = ""
-}
-
-func ptrStringOrNil(value string) *string {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return &value
 }
