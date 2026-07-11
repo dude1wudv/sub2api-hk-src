@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	TokenIncentiveSettingLaunchAt = "token_incentive_launch_at"
-	tokenIncentivePeriod          = 5 * 24 * time.Hour
+	TokenIncentiveSettingLaunchAt         = "token_incentive_launch_at"
+	TokenIncentiveSettingEligibleGroupIDs = "token_incentive_eligible_group_ids"
+	tokenIncentivePeriod                  = 5 * 24 * time.Hour
 )
 
 var (

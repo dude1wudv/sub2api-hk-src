@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/lib/pq"
 )
 
 type sqlQueryer interface {
@@ -20,7 +22,11 @@ func (s *UsageService) GetTokenIncentiveStatus(ctx context.Context, userID int64
 		return nil, err
 	}
 	periodStart, periodEnd := tokenIncentivePeriodFor(launchAt, now)
-	total, err := s.sumTokenIncentiveTokens(ctx, s.entClient, userID, periodStart, periodEnd)
+	eligibleGroupIDs, err := s.tokenIncentiveEligibleGroupIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("load token incentive eligible groups: %w", err)
+	}
+	total, err := s.sumTokenIncentiveTokens(ctx, s.entClient, userID, periodStart, periodEnd, eligibleGroupIDs)
 	if err != nil {
 		return nil, fmt.Errorf("sum token incentive usage: %w", err)
 	}
@@ -41,6 +47,10 @@ func (s *UsageService) ClaimTokenIncentive(ctx context.Context, userID, threshol
 		return nil, err
 	}
 	periodStart, periodEnd := tokenIncentivePeriodFor(launchAt, now)
+	eligibleGroupIDs, err := s.tokenIncentiveEligibleGroupIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("load token incentive eligible groups: %w", err)
+	}
 
 	tx, err := s.entClient.Tx(ctx)
 	if err != nil {
@@ -50,7 +60,7 @@ func (s *UsageService) ClaimTokenIncentive(ctx context.Context, userID, threshol
 	txCtx := dbent.NewTxContext(ctx, tx)
 	client := tx.Client()
 
-	total, err := s.sumTokenIncentiveTokens(txCtx, client, userID, periodStart, periodEnd)
+	total, err := s.sumTokenIncentiveTokens(txCtx, client, userID, periodStart, periodEnd, eligibleGroupIDs)
 	if err != nil {
 		return nil, fmt.Errorf("sum token incentive usage: %w", err)
 	}
@@ -113,12 +123,56 @@ func parseTokenIncentiveLaunchAt(raw string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("parse launch_at %q", raw)
 }
 
-func (s *UsageService) sumTokenIncentiveTokens(ctx context.Context, q sqlQueryer, userID int64, start, end time.Time) (int64, error) {
-	rows, err := q.QueryContext(ctx, `
+// tokenIncentiveEligibleGroupIDs returns the configured group whitelist.
+// nil means the setting is absent (count all groups). A non-nil empty slice
+// means the setting exists but lists no groups (count zero).
+func (s *UsageService) tokenIncentiveEligibleGroupIDs(ctx context.Context) ([]int64, error) {
+	rows, err := s.entClient.QueryContext(ctx, `SELECT value FROM settings WHERE key = $1`, TokenIncentiveSettingEligibleGroupIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	if !rows.Next() {
+		return nil, rows.Err()
+	}
+	var raw string
+	if err := rows.Scan(&raw); err != nil {
+		return nil, err
+	}
+	ids, err := parseTokenIncentiveEligibleGroupIDs(raw)
+	if err != nil {
+		return nil, err
+	}
+	return ids, rows.Err()
+}
+
+func parseTokenIncentiveEligibleGroupIDs(raw string) ([]int64, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return []int64{}, nil
+	}
+	var ids []int64
+	if err := json.Unmarshal([]byte(raw), &ids); err != nil {
+		return nil, fmt.Errorf("parse %s: %w", TokenIncentiveSettingEligibleGroupIDs, err)
+	}
+	if ids == nil {
+		ids = []int64{}
+	}
+	return ids, nil
+}
+
+func (s *UsageService) sumTokenIncentiveTokens(ctx context.Context, q sqlQueryer, userID int64, start, end time.Time, eligibleGroupIDs []int64) (int64, error) {
+	query := `
 		SELECT COALESCE(SUM(input_tokens + output_tokens + cache_creation_tokens + cache_read_tokens), 0)
 		FROM usage_logs
 		WHERE user_id = $1 AND created_at >= $2 AND created_at < $3
-	`, userID, start, end)
+	`
+	args := []any{userID, start, end}
+	if eligibleGroupIDs != nil {
+		query += ` AND group_id = ANY($4)`
+		args = append(args, pq.Array(eligibleGroupIDs))
+	}
+	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return 0, err
 	}

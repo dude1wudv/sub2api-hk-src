@@ -5,47 +5,47 @@
         <div>
           <div class="flex items-center gap-2">
             <span class="rounded-lg bg-amber-100 px-2 py-1 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">🎁</span>
-            <h2 class="text-lg font-semibold">Token 激励计划</h2>
-            <span v-if="claimableBalance > 0" class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">可领取</span>
+            <h2 class="text-lg font-semibold">{{ t('usage.tokenIncentive.title') }}</h2>
+            <span v-if="claimableBalance > 0" class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{{ t('usage.tokenIncentive.claimable') }}</span>
           </div>
           <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            本周期累计消耗 Token 达到档位后，可领取对应奖励余额。奖励需在本周期内领取，过期不可补领。
+            {{ t('usage.tokenIncentive.description') }}
           </p>
         </div>
         <button type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-white dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800" @click="$emit('refresh')">
-          刷新
+          {{ t('usage.tokenIncentive.refresh') }}
         </button>
       </div>
     </div>
 
-    <div v-if="loading" class="p-5 text-sm text-slate-500 dark:text-slate-400">加载激励进度中...</div>
+    <div v-if="loading" class="p-5 text-sm text-slate-500 dark:text-slate-400">{{ t('usage.tokenIncentive.loading') }}</div>
 
     <div v-else-if="status" class="space-y-5 p-5">
       <div class="grid gap-4 md:grid-cols-3">
         <div>
-          <p class="text-xs text-slate-500 dark:text-slate-400">本周期已消耗</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">{{ t('usage.tokenIncentive.periodUsed') }}</p>
           <p class="mt-1 text-2xl font-bold">{{ formatTokens(status.total_tokens) }}</p>
         </div>
         <div>
-          <p class="text-xs text-slate-500 dark:text-slate-400">当前目标</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">{{ t('usage.tokenIncentive.currentTarget') }}</p>
           <p class="mt-1 text-2xl font-bold">{{ formatTokens(status.next_threshold_tokens) }}</p>
         </div>
         <div>
-          <p class="text-xs text-slate-500 dark:text-slate-400">可领余额</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">{{ t('usage.tokenIncentive.claimableBalance') }}</p>
           <p class="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-300">¥{{ claimableBalance.toFixed(2) }}</p>
         </div>
       </div>
 
       <div>
         <div class="mb-2 flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
-          <span>本期进度</span>
-          <span v-if="status.remaining_tokens > 0">还差 {{ formatTokens(status.remaining_tokens) }}</span>
-          <span v-else>已达成全部目标</span>
+          <span>{{ t('usage.tokenIncentive.progress') }}</span>
+          <span v-if="status.remaining_tokens > 0">{{ t('usage.tokenIncentive.remaining', { tokens: formatTokens(status.remaining_tokens) }) }}</span>
+          <span v-else>{{ t('usage.tokenIncentive.allReached') }}</span>
         </div>
         <div class="h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
           <div class="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-400" :style="{ width: progressPercent + '%' }"></div>
         </div>
-        <p class="mt-2 text-xs text-slate-500 dark:text-slate-500">周期结束：{{ formatDateTime(status.period_end) }}</p>
+        <p class="mt-2 text-xs text-slate-500 dark:text-slate-500">{{ t('usage.tokenIncentive.periodEnds', { time: formatDateTime(status.period_end) }) }}</p>
       </div>
 
       <div class="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
@@ -62,9 +62,9 @@
             :disabled="claimingThreshold === tier.threshold_tokens"
             @click="$emit('claim', tier.threshold_tokens)"
           >
-            {{ claimingThreshold === tier.threshold_tokens ? '领取中...' : '领取' }}
+            {{ claimingThreshold === tier.threshold_tokens ? t('usage.tokenIncentive.claiming') : t('usage.tokenIncentive.claim') }}
           </button>
-          <p v-else-if="tier.status === 'locked'" class="mt-3 text-xs text-slate-500 dark:text-slate-500">还差 {{ formatTokens(tier.remaining_tokens || 0) }}</p>
+          <p v-else-if="tier.status === 'locked'" class="mt-3 text-xs text-slate-500 dark:text-slate-500">{{ t('usage.tokenIncentive.remaining', { tokens: formatTokens(tier.remaining_tokens || 0) }) }}</p>
         </div>
       </div>
     </div>
@@ -73,6 +73,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { TokenIncentiveStatus, TokenIncentiveTierStatus } from '@/api/usage'
 
 const props = defineProps<{
@@ -85,6 +86,8 @@ defineEmits<{
   refresh: []
   claim: [thresholdTokens: number]
 }>()
+
+const { t } = useI18n()
 
 const claimableBalance = computed(() => props.status?.claimable_balance ?? 0)
 const maxThreshold = computed(() => props.status?.tiers.at(-1)?.threshold_tokens || 1_000_000_000)
@@ -102,12 +105,7 @@ const formatTokens = (value: number) => {
 
 const formatDateTime = (value: string) => new Date(value).toLocaleString()
 
-const statusText = (status: TokenIncentiveTierStatus) => ({
-  locked: '未达成',
-  claimable: '可领取',
-  claimed: '已领取',
-  expired: '已过期',
-}[status])
+const statusText = (status: TokenIncentiveTierStatus) => t(`usage.tokenIncentive.status.${status}`)
 
 const statusClass = (status: TokenIncentiveTierStatus) => ({
   locked: 'text-slate-500',
