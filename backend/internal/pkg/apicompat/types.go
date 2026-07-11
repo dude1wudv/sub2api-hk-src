@@ -251,11 +251,32 @@ type ResponsesContentPart struct {
 
 // ResponsesTool describes a tool in the Responses API.
 type ResponsesTool struct {
-	Type        string          `json:"type"` // "function" | "web_search" | "local_shell" etc.
+	Type        string          `json:"type"` // "function" | "custom" | "web_search" | "local_shell" etc.
 	Name        string          `json:"name,omitempty"`
 	Description string          `json:"description,omitempty"`
 	Parameters  json.RawMessage `json:"parameters,omitempty"`
 	Strict      *bool           `json:"strict,omitempty"`
+
+	// type=namespace child tools (tools and children are equivalent).
+	Tools    []ResponsesTool `json:"tools,omitempty"`
+	Children []ResponsesTool `json:"children,omitempty"`
+}
+
+// UnmarshalJSON tolerates string-form tool declarations: Codex may declare a
+// custom tool as a bare name string.
+func (t *ResponsesTool) UnmarshalJSON(data []byte) error {
+	var name string
+	if err := json.Unmarshal(data, &name); err == nil {
+		*t = ResponsesTool{Type: "custom", Name: name}
+		return nil
+	}
+	type alias ResponsesTool
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*t = ResponsesTool(a)
+	return nil
 }
 
 // ResponsesResponse is the non-streaming response from POST /v1/responses.
@@ -303,9 +324,36 @@ type ResponsesOutput struct {
 	CallID    string `json:"call_id,omitempty"`
 	Name      string `json:"name,omitempty"`
 	Arguments string `json:"arguments,omitempty"`
+	// Namespace ownership when the call came from a namespace child tool.
+	Namespace string `json:"namespace,omitempty"`
+
+	// type=custom_tool_call (custom/freeform tools; input is free text)
+	Input string `json:"input,omitempty"`
 
 	// type=web_search_call
 	Action *WebSearchAction `json:"action,omitempty"`
+}
+
+// MarshalJSON handles the on-wire shape of tool_search_call items (reuses
+// CallID/Arguments): execution is fixed to "client" (required by Codex; non-
+// client calls are silently ignored), and arguments is a JSON object rather
+// than a function_call-style string. Other types use default struct encoding.
+func (o ResponsesOutput) MarshalJSON() ([]byte, error) {
+	type responsesOutputAlias ResponsesOutput
+	if o.Type != "tool_search_call" {
+		return json.Marshal(responsesOutputAlias(o))
+	}
+	m := map[string]any{
+		"type":      o.Type,
+		"id":        o.ID,
+		"call_id":   o.CallID,
+		"execution": "client",
+		"arguments": toolSearchCallArgumentsJSON(o.Arguments),
+	}
+	if o.Status != "" {
+		m["status"] = o.Status
+	}
+	return json.Marshal(m)
 }
 
 // WebSearchAction describes the search action in a web_search_call output item.
@@ -445,6 +493,9 @@ type ResponsesStreamEvent struct {
 	CallID    string `json:"call_id,omitempty"`
 	Name      string `json:"name,omitempty"`
 	Arguments string `json:"arguments,omitempty"`
+
+	// response.custom_tool_call_input.done
+	Input string `json:"input,omitempty"`
 
 	// response.reasoning_summary_text.delta / done
 	// Reuses Text/Delta fields above, SummaryIndex identifies which summary part
@@ -588,8 +639,9 @@ type ChatUsage struct {
 //     accepted_prediction_tokens, rejected_prediction_tokens
 type ChatTokenDetails struct {
 	CachedTokens             int `json:"cached_tokens,omitempty"`
-	CacheWriteTokens         int `json:"cache_write_tokens,omitempty"`
 	AudioTokens              int `json:"audio_tokens,omitempty"`
+	CacheCreationTokens      int `json:"cache_creation_tokens,omitempty"`
+	CacheWriteTokens         int `json:"cache_write_tokens,omitempty"`
 	ReasoningTokens          int `json:"reasoning_tokens,omitempty"`
 	AcceptedPredictionTokens int `json:"accepted_prediction_tokens,omitempty"`
 	RejectedPredictionTokens int `json:"rejected_prediction_tokens,omitempty"`

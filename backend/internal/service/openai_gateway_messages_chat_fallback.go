@@ -225,7 +225,7 @@ func (s *OpenAIGatewayService) bufferChatCompletionsAsAnthropic(
 		writeAnthropicError(c, http.StatusBadGateway, "api_error", "Failed to parse upstream response")
 		return nil, fmt.Errorf("parse chat completions response: %w", err)
 	}
-	responsesResp := apicompat.ChatCompletionsResponseToResponses(&ccResp, originalModel)
+	responsesResp := apicompat.ChatCompletionsResponseToResponses(&ccResp, originalModel, nil, false, nil)
 
 	anthropicOpts := apicompat.ResponsesAnthropicCompatOptions{}
 	if account != nil && account.Platform == PlatformGrok {
