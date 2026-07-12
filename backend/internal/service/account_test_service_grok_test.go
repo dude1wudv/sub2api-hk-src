@@ -59,7 +59,7 @@ func TestAccountTestService_TestAccountConnection_GrokUsesXAIResponses(t *testin
 	err := svc.TestAccountConnection(c, account.ID, "grok", "", AccountTestModeDefault)
 	require.NoError(t, err)
 
-	require.Equal(t, "https://api.x.ai/v1/responses", upstream.lastReq.URL.String())
+	require.Equal(t, xai.DefaultCLIBaseURL+"/responses", upstream.lastReq.URL.String())
 	require.Equal(t, "Bearer grok-access-token", upstream.lastReq.Header.Get("Authorization"))
 	require.Equal(t, xai.GrokCLIResponsesUserAgent, upstream.lastReq.Header.Get("User-Agent"))
 	require.Equal(t, xai.TokenAuthCLI, upstream.lastReq.Header.Get("X-XAI-Token-Auth"))

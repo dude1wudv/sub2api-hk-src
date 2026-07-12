@@ -1351,7 +1351,7 @@ func (a *Account) GetGrokBaseURL() string {
 	if baseURL != "" {
 		return baseURL
 	}
-	return xai.DefaultBaseURL
+	return xai.DefaultCLIBaseURL
 }
 
 func (a *Account) GetGrokAccessToken() string {

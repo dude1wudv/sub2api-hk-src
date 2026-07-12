@@ -4,6 +4,8 @@ package service
 
 import (
 	"testing"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 )
 
 func TestGetBaseURL(t *testing.T) {
@@ -74,6 +76,18 @@ func TestGetBaseURL(t *testing.T) {
 				t.Errorf("GetBaseURL() = %q, want %q", result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestGetGrokBaseURLDefaultsToCLIProxy(t *testing.T) {
+	account := Account{
+		Type:        AccountTypeOAuth,
+		Platform:    PlatformGrok,
+		Credentials: map[string]any{},
+	}
+
+	if got := account.GetGrokBaseURL(); got != xai.DefaultCLIBaseURL {
+		t.Fatalf("GetGrokBaseURL() = %q, want %q", got, xai.DefaultCLIBaseURL)
 	}
 }
 
