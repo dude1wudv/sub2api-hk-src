@@ -224,6 +224,22 @@ func (h *ConcurrencyHelper) TryAcquireAccountSlot(ctx context.Context, accountID
 	return result.ReleaseFunc, true, nil
 }
 
+func (h *ConcurrencyHelper) TrackAPIKeySlot(c *gin.Context, userRelease func()) func() {
+	value, exists := c.Get("api_key")
+	apiKey, ok := value.(*service.APIKey)
+	if !exists || !ok || apiKey == nil || apiKey.ID <= 0 {
+		return userRelease
+	}
+	apiKeyRelease, err := h.concurrencyService.TrackAPIKeySlot(c.Request.Context(), apiKey.ID)
+	if err != nil {
+		return userRelease
+	}
+	return func() {
+		apiKeyRelease()
+		userRelease()
+	}
+}
+
 // AcquireUserSlotWithWait acquires a user concurrency slot, waiting if necessary.
 // For streaming requests, sends ping events during the wait.
 // streamStarted is updated if streaming response has begun.
@@ -241,7 +257,7 @@ func (h *ConcurrencyHelper) acquireUserSlotWithWaitTimeout(c *gin.Context, userI
 	}
 
 	if acquired {
-		return releaseFunc, nil
+		return h.TrackAPIKeySlot(c, releaseFunc), nil
 	}
 
 	queueLimit := service.CalculateMaxWait(maxConcurrency) - maxConcurrency
@@ -258,7 +274,11 @@ func (h *ConcurrencyHelper) acquireUserSlotWithWaitTimeout(c *gin.Context, userI
 	defer h.DecrementWaitCount(ctx, userID)
 
 	// Need to wait - handle streaming ping if needed
-	return h.waitForSlotWithPingTimeout(c, "user", userID, maxConcurrency, timeout, isStream, streamStarted, false)
+	releaseFunc, err = h.waitForSlotWithPingTimeout(c, "user", userID, maxConcurrency, timeout, isStream, streamStarted, false)
+	if err != nil {
+		return nil, err
+	}
+	return h.TrackAPIKeySlot(c, releaseFunc), nil
 }
 
 // AcquireAccountSlotWithWait acquires an account concurrency slot, waiting if necessary.

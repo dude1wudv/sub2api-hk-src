@@ -858,6 +858,7 @@ export default {
     quotaResetSuccess: 'Quota reset successfully',
     failedToResetQuota: 'Failed to reset quota',
     rateLimitColumn: 'Rate Limit',
+    currentConcurrency: 'Current Concurrency',
     rateLimitSection: 'Rate Limit',
     resetUsage: 'Reset',
     rateLimit5h: '5-Hour Limit (USD)',

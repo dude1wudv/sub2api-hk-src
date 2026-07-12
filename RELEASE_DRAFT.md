@@ -1,63 +1,55 @@
-# Sub2API JP v0.1.152
+# Sub2API JP v0.1.153
 
-相对上一正式版 **v0.1.147**（`8fc93f251`）的源码发布。
+相对上一正式版 **v0.1.152** 的增量发布。
 
-- **目标提交**：`8180609b75d14b15d5f078cdb04f23fa21a19abf`
 - **分支**：`merge/upstream-v0150-20260710`
-- **相对 v0.1.147**：+72 commits
-- **上游对齐**：选择性合入 v0.1.150 / post-150 能力，并保留 JP 侧调度、计费与网关定制
+- **发布范围**：Grok OAuth/账号修复、API Key 当前并发展示、Docker 构建可复现性
+- **上游策略**：选择性 Port，未合入 Header Override（C-03）及其他大范围上游功能
 
 ---
 
-## 更新说明（摘要）
+## 更新说明
 
-### OpenAI / GPT-5.6 / Codex
-- 合入 GPT-5.6 sol/terra/luna 定价与 256K 长上下文；默认 Codex 走 `terra`
-- 透传 GPT-5.6 max effort；修复 Anthropic effort bridge
-- 模拟上游缺失的 `cache_write` 计费；解析 `cache_write_tokens` 与 30m TTL
-- 首 token 计时覆盖 content/reasoning delta 与 `output_item.added`
-- 清理 reasoning summary SSE 空 HTML 注释；剥离 Plus `prompt_cache_options`
-- Codex 客户端模型清单（manifest）透传；`response_format` 兼容映射
-- post-150：identity / fast user_ids、MCP bridge、cache tokens、ops nil 防护
+### Grok OAuth 与账号稳定性
+- 对齐 Grok OAuth Responses 客户端身份与 CLI 授权契约
+- 重新授权时持久化 CLI 代理配置
+- OAuth token 在过期前主动刷新，减少请求中断
 
-### Grok
-- 官方 Grok 4.5 支持；周配额展示与 OAuth 池卡片
-- sticky `previous_response_id` 调度；思考强度与工具桥接
-- 视频按秒计费、媒体尺寸清洗；chat completions 上游偏好
-- effort 限制为 low/medium/high；模拟 OAuth cache 计费
+### API Key 当前并发
+- 用户 Keys 页面新增“当前并发”列
+- HTTP 与 OpenAI WebSocket 请求统一追踪 API Key Redis 槽位
+- Key 列表按当前页批量读取并发，避免 N+1 查询
+- Redis 读取失败时降级为 0，不阻断 Key 管理接口
+- 增加中英文 UI 文案、DTO/Wire 接线及页面测试
 
-### 调度 / 网关 / 安全
-- 空 `model_mapping` 的 OpenAI OAuth 不再吞全模型；异族厂商前缀黑名单
-- Anthropic 无 reset 的 429 进入兜底冷却
-- `/v1/messages` 传输层错误对齐 failover；流内 200 SSE 错误写入看板
-- compact body-signal SSE bridge；`response.failed` 透传
-- 鉴权绕过与站点字段 XSS 修复（`site_name` / `doc_url` / logo URL）
-- 末位 admin 降级保护与角色更新
+### 构建与供应链
+- 根 Dockerfile 使用 frozen lockfile 和 BuildKit pnpm store cache
+- 支持显式传入 npm registry，不再默认改写 registry
+- deploy Dockerfile 固定 `pnpm@9.15.9`
+- deploy Go 构建启用 `-trimpath`
+- 前端构建设置 1536 MiB Node heap 上限
 
-### 管理台 / 用量
-- 用量页重排 + 延迟健康列 + 用户 Token 排行
-- 账号列表 lifetime TU 徽章；分组已用配额展示
-- API Key 最近使用 IP；用户角色可创建/编辑
-- Token 激励计数支持分组白名单
-- Go 工具链默认 1.26.5
+### 安全审计说明
+- production audit 当前仅命中 `xlsx@0.18.5` 的两项 high advisory
+- npm 源无已修复版本，本次未盲目续期例外、未改依赖或 lockfile
+- `xlsx` 替换保留为独立依赖迁移项
 
 ---
 
-## 发布说明
+## 验证
 
-本 tag 标记 JP 私有源码快照，供 HK 生产 `git pull` + 镜像构建部署使用。
+- 后端生产包与 `cmd/server` 构建通过
+- handler / DTO 定向测试通过
+- Wire 生成物已同步
+- 前端 typecheck、KeysView 5 项测试及生产构建通过
+- `git diff --check` 通过
 
-**部署提示**
-1. 拉取 `merge/upstream-v0150-20260710` 或 tag `v0.1.152`
-2. 按现有 runbook 构建镜像并滚动重启（保留 DB/Redis 卷）
-3. 冒烟建议：`gpt-5.6-terra`、Grok 4.5 sticky 续写、Codex reasoning 流、管理台用量/账号 TU
+## 已知限制
 
-**未包含**
-- 本次 release 不附带预构建镜像 tarball（与 v0.1.147 不同）；以源码 tag 为准构建
-- 未强制同步上游全部 v0.1.151 提交，仅为选择性 port + JP 定制
+- `go test ./internal/service` 仍被既有测试缺失 `rateLimitAccountRepoStub` 阻塞；生产包构建不受影响
+- API Key 删除后的 Redis 槽位仍依赖现有 TTL 自愈，本次未加入主动清理
+- `xlsx@0.18.5` advisory 尚未通过依赖替换解决
 
-**完整提交范围**
+## 部署
 
-```text
-git log --oneline v0.1.147..v0.1.152
-```
+HK 生产使用 GitHub 源码快照构建镜像，仅重建 `sub2api` 应用容器，保留现有 PostgreSQL、Redis、配置和数据卷。部署后检查容器健康状态、本机 `/health` 与公网 HTTPS `/health`。

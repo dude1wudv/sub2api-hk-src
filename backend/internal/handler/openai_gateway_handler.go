@@ -1623,7 +1623,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 		closeOpenAIClientWS(wsConn, coderws.StatusTryAgainLater, "too many concurrent requests, please retry later")
 		return
 	}
-	currentUserRelease = wrapReleaseOnDone(ctx, userReleaseFunc)
+	currentUserRelease = wrapReleaseOnDone(ctx, h.concurrencyHelper.TrackAPIKeySlot(c, userReleaseFunc))
 	ensureUserSlotHeld := func() bool {
 		if currentUserRelease != nil {
 			return true
@@ -1638,7 +1638,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 			closeOpenAIClientWS(wsConn, coderws.StatusTryAgainLater, "too many concurrent requests, please retry later")
 			return false
 		}
-		currentUserRelease = wrapReleaseOnDone(ctx, userReleaseFunc)
+		currentUserRelease = wrapReleaseOnDone(ctx, h.concurrencyHelper.TrackAPIKeySlot(c, userReleaseFunc))
 		return true
 	}
 
@@ -1820,7 +1820,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 					}
 					return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "account is busy, please retry later", nil)
 				}
-				currentUserRelease = wrapReleaseOnDone(ctx, userReleaseFunc)
+				currentUserRelease = wrapReleaseOnDone(ctx, h.concurrencyHelper.TrackAPIKeySlot(c, userReleaseFunc))
 				currentAccountRelease = wrapReleaseOnDone(ctx, accountReleaseFunc)
 				return nil
 			},

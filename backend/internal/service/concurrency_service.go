@@ -92,6 +92,12 @@ const (
 	maxAccountLoadBatchCacheEntries = 256
 )
 
+type APIKeyConcurrencyCache interface {
+	TrackAPIKeySlot(ctx context.Context, apiKeyID int64, requestID string) error
+	ReleaseAPIKeySlot(ctx context.Context, apiKeyID int64, requestID string) error
+	GetAPIKeyConcurrencyBatch(ctx context.Context, apiKeyIDs []int64) (map[int64]int, error)
+}
+
 // ConcurrencyService 管理账号和用户的并发限制。
 type ConcurrencyService struct {
 	cache ConcurrencyCache
@@ -115,6 +121,47 @@ func NewConcurrencyService(cache ConcurrencyCache) *ConcurrencyService {
 	}
 	svc.SetAccountLoadBatchCacheTTL(defaultAccountLoadBatchCacheTTL)
 	return svc
+}
+
+func (s *ConcurrencyService) TrackAPIKeySlot(ctx context.Context, apiKeyID int64) (func(), error) {
+	cache, ok := s.cache.(APIKeyConcurrencyCache)
+	if !ok || apiKeyID <= 0 {
+		return func() {}, nil
+	}
+
+	requestID := generateRequestID()
+	trackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+	err := cache.TrackAPIKeySlot(trackCtx, apiKeyID, requestID)
+	cancel()
+	if err != nil {
+		return nil, err
+	}
+
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			releaseCtx, releaseCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer releaseCancel()
+			if err := cache.ReleaseAPIKeySlot(releaseCtx, apiKeyID, requestID); err != nil {
+				logger.LegacyPrintf("service.concurrency", "Warning: release api key slot failed: api_key_id=%d err=%v", apiKeyID, err)
+			}
+		})
+	}, nil
+}
+
+func (s *ConcurrencyService) GetAPIKeyConcurrencyBatch(ctx context.Context, apiKeyIDs []int64) (map[int64]int, error) {
+	result := make(map[int64]int, len(apiKeyIDs))
+	for _, id := range apiKeyIDs {
+		result[id] = 0
+	}
+	cache, ok := s.cache.(APIKeyConcurrencyCache)
+	if !ok || len(apiKeyIDs) == 0 {
+		return result, nil
+	}
+
+	readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+	defer cancel()
+	return cache.GetAPIKeyConcurrencyBatch(readCtx, apiKeyIDs)
 }
 
 // SetAccountLoadBatchCacheTTL 设置账号负载批量读取的极短 TTL 缓存；非正数表示禁用缓存。

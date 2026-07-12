@@ -868,6 +868,7 @@ export default {
     quotaResetSuccess: '额度重置成功',
     failedToResetQuota: '重置额度失败',
     rateLimitColumn: '速率限制',
+    currentConcurrency: '当前并发',
     rateLimitSection: '速率限制',
     resetUsage: '重置',
     rateLimit5h: '5小时限额 (USD)',

@@ -18,9 +18,10 @@ ARG GOSUMDB=sum.golang.google.cn
 FROM ${NODE_IMAGE} AS frontend-builder
 
 WORKDIR /app/frontend
+ENV NODE_OPTIONS=--max-old-space-size=1536
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm. Pin the lockfile-compatible version so Docker builds remain reproducible.
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 # Install dependencies first (better caching)
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
@@ -73,6 +74,7 @@ RUN VERSION_VALUE="${VERSION}" && \
     CGO_ENABLED=0 GOOS=linux go build \
     -tags embed \
     -ldflags="-s -w -X main.Version=${VERSION_VALUE} -X main.Commit=${COMMIT} -X main.Date=${DATE_VALUE} -X main.BuildType=release" \
+    -trimpath \
     -o /app/sub2api \
     ./cmd/server
 

@@ -49,21 +49,22 @@ type AdminUser struct {
 }
 
 type APIKey struct {
-	ID          int64      `json:"id"`
-	UserID      int64      `json:"user_id"`
-	Key         string     `json:"key"`
-	Name        string     `json:"name"`
-	GroupID     *int64     `json:"group_id"`
-	Status      string     `json:"status"`
-	IPWhitelist []string   `json:"ip_whitelist"`
-	IPBlacklist []string   `json:"ip_blacklist"`
-	LastUsedAt  *time.Time `json:"last_used_at"`
-	LastUsedIP  *string    `json:"last_used_ip"`
-	Quota       float64    `json:"quota"`      // Quota limit in USD (0 = unlimited)
-	QuotaUsed   float64    `json:"quota_used"` // Used quota amount in USD
-	ExpiresAt   *time.Time `json:"expires_at"` // Expiration time (nil = never expires)
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID                 int64      `json:"id"`
+	UserID             int64      `json:"user_id"`
+	Key                string     `json:"key"`
+	Name               string     `json:"name"`
+	GroupID            *int64     `json:"group_id"`
+	Status             string     `json:"status"`
+	IPWhitelist        []string   `json:"ip_whitelist"`
+	IPBlacklist        []string   `json:"ip_blacklist"`
+	LastUsedAt         *time.Time `json:"last_used_at"`
+	LastUsedIP         *string    `json:"last_used_ip"`
+	CurrentConcurrency int        `json:"current_concurrency"`
+	Quota              float64    `json:"quota"`      // Quota limit in USD (0 = unlimited)
+	QuotaUsed          float64    `json:"quota_used"` // Used quota amount in USD
+	ExpiresAt          *time.Time `json:"expires_at"` // Expiration time (nil = never expires)
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
 
 	// Rate limit fields
 	RateLimit5h   float64    `json:"rate_limit_5h"`
@@ -102,9 +103,9 @@ type Group struct {
 	ImageRateIndependent bool    `json:"image_rate_independent"`
 	ImageRateMultiplier  float64 `json:"image_rate_multiplier"`
 	// 高峰时段倍率配置
-	ImagePrice1K *float64 `json:"image_price_1k"`
-	ImagePrice2K *float64 `json:"image_price_2k"`
-	ImagePrice4K *float64 `json:"image_price_4k"`
+	ImagePrice1K         *float64 `json:"image_price_1k"`
+	ImagePrice2K         *float64 `json:"image_price_2k"`
+	ImagePrice4K         *float64 `json:"image_price_4k"`
 	VideoRateIndependent bool     `json:"video_rate_independent"`
 	VideoRateMultiplier  float64  `json:"video_rate_multiplier"`
 	VideoPrice480P       *float64 `json:"video_price_480p"`
