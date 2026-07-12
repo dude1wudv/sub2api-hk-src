@@ -5,10 +5,10 @@ import "net/http"
 const (
 	GrokCLIClientName           = "grok-shell"
 	GrokCLIClientVersion        = "0.2.93"
-	GrokCLIClientIdentifier     = "grok-shell"
+	GrokCLIClientIdentifier     = "grok-pager"
 	GrokCLIClientSurface        = "tui"
 	GrokCLIAuthenticateResponse = "authenticate-response"
-	GrokCLIResponsesUserAgent   = "grok-shell/0.2.93 (linux; x86_64)"
+	GrokCLIResponsesUserAgent   = "grok-pager/0.2.93 grok-shell/0.2.93 (linux; x86_64)"
 )
 
 // SetGrokCLIResponsesHeaders applies the identity contract used by Grok CLI

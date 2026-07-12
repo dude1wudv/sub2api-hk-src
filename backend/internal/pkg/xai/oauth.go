@@ -24,7 +24,7 @@ const (
 	DefaultBaseURL      = "https://api.x.ai/v1"
 	DefaultCLIBaseURL   = "https://cli-chat-proxy.grok.com/v1"
 	DefaultClientID     = "b1a00492-073a-47ea-816f-4c329264a828"
-	DefaultScope        = "openid profile email offline_access grok-cli:access api:access"
+	DefaultScope        = "openid profile email offline_access grok-cli:access api:access conversations:read conversations:write"
 	DefaultRedirectURI  = "http://127.0.0.1:56121/callback"
 	SessionTTL          = 30 * time.Minute
 
@@ -342,7 +342,7 @@ func GenerateSessionID() (string, error) {
 }
 
 func GenerateCodeVerifier() (string, error) {
-	bytes, err := GenerateRandomBytes(32)
+	bytes, err := GenerateRandomBytes(96)
 	if err != nil {
 		return "", err
 	}
@@ -375,7 +375,7 @@ func BuildAuthorizationURL(state, codeChallenge, redirectURI, nonce string) (str
 	params.Set("code_challenge", codeChallenge)
 	params.Set("code_challenge_method", "S256")
 	params.Set("plan", "generic")
-	params.Set("referrer", "sub2api")
+	params.Set("referrer", "grok-build")
 
 	return fmt.Sprintf("%s?%s", authorizeURL, params.Encode()), nil
 }
