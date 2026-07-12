@@ -138,9 +138,6 @@ func (h *GrokOAuthHandler) RefreshAccountToken(c *gin.Context) {
 	}
 	newCredentials := h.grokOAuthService.BuildAccountCredentials(tokenInfo)
 	newCredentials = service.MergeCredentials(account.Credentials, newCredentials)
-	if baseURL := strings.TrimSpace(account.GetCredential("base_url")); baseURL != "" {
-		newCredentials["base_url"] = baseURL
-	}
 	updatedAccount, err := h.adminService.UpdateAccount(c.Request.Context(), accountID, &service.UpdateAccountInput{
 		Credentials: newCredentials,
 	})

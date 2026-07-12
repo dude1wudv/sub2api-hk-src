@@ -48,25 +48,25 @@ func (c *grokTokenCacheForProviderTest) ReleaseRefreshLock(context.Context, stri
 	return nil
 }
 
-func TestGrokTokenProviderRefreshesExpiredTokenOnRequestPath(t *testing.T) {
+func TestGrokTokenProviderRefreshesCachedTokenInsideProactiveWindow(t *testing.T) {
 	t.Setenv(xai.EnvBaseURL, xai.DefaultCLIBaseURL)
 
-	expiredAt := time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)
+	expiresAt := time.Now().Add(30 * time.Minute).UTC().Format(time.RFC3339)
 	account := &Account{
 		ID:       54,
 		Platform: PlatformGrok,
 		Type:     AccountTypeOAuth,
 		Credentials: map[string]any{
-			"access_token":  "expired-access-token",
+			"access_token":  "current-access-token",
 			"refresh_token": "refresh-token",
-			"expires_at":    expiredAt,
-			"base_url":      xai.DefaultCLIBaseURL,
+			"expires_at":    expiresAt,
+			"base_url":      "https://api.x.ai/v1",
 			"client_id":     "client-id",
 		},
 	}
 	repo := &tokenRefreshAccountRepo{}
 	repo.accountsByID = map[int64]*Account{54: account}
-	cache := &grokTokenCacheForProviderTest{lockResult: true}
+	cache := &grokTokenCacheForProviderTest{token: "cached-access-token", lockResult: true}
 	oauthSvc := NewGrokOAuthService(nil, &grokOAuthClientStub{
 		refreshResponse: &xai.TokenResponse{
 			AccessToken: "new-access-token",

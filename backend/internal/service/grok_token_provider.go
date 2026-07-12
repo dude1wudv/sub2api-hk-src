@@ -68,13 +68,20 @@ func (p *GrokTokenProvider) GetAccessToken(ctx context.Context, account *Account
 	}
 
 	cacheKey := GrokTokenCacheKey(account)
+	expiresAt := account.GetCredentialAsTime("expires_at")
 	if p.tokenCache != nil {
 		if token, err := p.tokenCache.GetAccessToken(ctx, cacheKey); err == nil && strings.TrimSpace(token) != "" {
-			return token, nil
+			// The 30-minute quota sweep is also the proactive refresh scheduler.
+			// Do not let a longer-lived cache entry bypass the one-hour refresh window.
+			if expiresAt != nil && time.Until(*expiresAt) > grokTokenRefreshSkew {
+				return token, nil
+			}
+			if strings.TrimSpace(account.GetGrokRefreshToken()) == "" && expiresAt != nil && time.Now().Before(*expiresAt) {
+				return token, nil
+			}
 		}
 	}
 
-	expiresAt := account.GetCredentialAsTime("expires_at")
 	needsRefresh := expiresAt == nil || time.Until(*expiresAt) <= grokTokenRefreshSkew
 	if needsRefresh && strings.TrimSpace(account.GetGrokRefreshToken()) == "" {
 		if expiresAt == nil || !time.Now().Before(*expiresAt) {
