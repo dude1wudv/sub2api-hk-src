@@ -26,8 +26,14 @@
         </div>
         <div class="shrink-0 text-right">
           <div class="flex items-baseline gap-1">
-            <span class="text-xs text-gray-400 dark:text-dark-500">$</span>
-            <span :class="['text-2xl font-extrabold tracking-tight', textClass]">{{ plan.price }}</span>
+            <template v-if="plan.purchase_mode === 'balance'">
+              <span :class="['text-2xl font-extrabold tracking-tight', textClass]">{{ plan.price }}</span>
+              <span class="text-xs text-gray-400 dark:text-dark-500">{{ t('payment.balanceUnit') }}</span>
+            </template>
+            <template v-else>
+              <span class="text-xs text-gray-400 dark:text-dark-500">$</span>
+              <span :class="['text-2xl font-extrabold tracking-tight', textClass]">{{ plan.price }}</span>
+            </template>
           </div>
           <span class="text-[11px] text-gray-400 dark:text-dark-500">/ {{ validitySuffix }}</span>
           <div v-if="plan.original_price" class="mt-0.5 flex items-center justify-end gap-1.5">
@@ -44,7 +50,7 @@
           <span class="font-medium text-gray-700 dark:text-gray-300">{{ rateDisplay }}</span>
         </div>
         <div v-if="plan.daily_limit_usd != null" class="flex items-center justify-between">
-          <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.dailyLimit') }}</span>
+          <span class="text-gray-400 dark:text-dark-500">{{ plan.purchase_mode === 'balance' ? t('payment.planCard.totalLimit') : t('payment.planCard.dailyLimit') }}</span>
           <span class="font-medium text-gray-700 dark:text-gray-300">${{ plan.daily_limit_usd }}</span>
         </div>
         <div v-if="plan.weekly_limit_usd != null" class="flex items-center justify-between">
@@ -68,6 +74,10 @@
             </span>
           </div>
         </div>
+      </div>
+
+      <div v-if="plan.sale_ends_at" class="mb-3 text-xs text-amber-600 dark:text-amber-300">
+        {{ t('payment.saleEndsAt', { time: saleEndsAtLabel }) }}
       </div>
 
       <!-- Features list (compact) -->
@@ -153,6 +163,15 @@ const modelScopeLabels = computed(() => {
   const scopes = props.plan.supported_model_scopes
   if (!scopes || scopes.length === 0) return []
   return scopes.map(s => MODEL_SCOPE_LABELS[s] || s)
+})
+
+const saleEndsAtLabel = computed(() => {
+  if (!props.plan.sale_ends_at) return ''
+  const date = new Date(props.plan.sale_ends_at)
+  if (Number.isNaN(date.getTime())) return props.plan.sale_ends_at
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(date)
 })
 
 const validitySuffix = computed(() => {

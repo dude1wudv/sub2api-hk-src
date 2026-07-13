@@ -22,6 +22,14 @@ describe('payment api', () => {
     post.mockResolvedValue({ data: {} })
   })
 
+  it('purchases a subscription plan with an idempotency key', async () => {
+    await paymentAPI.purchaseSubscriptionWithBalance(7, 'balance-subscription-key')
+
+    expect(post).toHaveBeenCalledWith('/payment/plans/7/purchase-with-balance', {}, {
+      headers: { 'Idempotency-Key': 'balance-subscription-key' },
+    })
+  })
+
   it('keeps legacy public out_trade_no verification for upgrade compatibility', async () => {
     await paymentAPI.verifyOrderPublic('legacy-order-no')
 

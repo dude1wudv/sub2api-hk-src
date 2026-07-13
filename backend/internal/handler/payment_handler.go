@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -54,21 +55,23 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 	}
 	// Enrich plans with group platform for frontend color coding
 	type planWithPlatform struct {
-		ID             int64    `json:"id"`
-		GroupID        int64    `json:"group_id"`
-		GroupPlatform  string   `json:"group_platform"`
-		GroupName      string   `json:"group_name"`
-		RateMultiplier float64  `json:"rate_multiplier"`
-		Name           string   `json:"name"`
-		Description    string   `json:"description"`
-		Price          float64  `json:"price"`
-		OriginalPrice  *float64 `json:"original_price,omitempty"`
-		ValidityDays   int      `json:"validity_days"`
-		ValidityUnit   string   `json:"validity_unit"`
-		Features       string   `json:"features"`
-		ProductName    string   `json:"product_name"`
-		ForSale        bool     `json:"for_sale"`
-		SortOrder      int      `json:"sort_order"`
+		ID             int64      `json:"id"`
+		GroupID        int64      `json:"group_id"`
+		GroupPlatform  string     `json:"group_platform"`
+		GroupName      string     `json:"group_name"`
+		RateMultiplier float64    `json:"rate_multiplier"`
+		Name           string     `json:"name"`
+		Description    string     `json:"description"`
+		Price          float64    `json:"price"`
+		OriginalPrice  *float64   `json:"original_price,omitempty"`
+		ValidityDays   int        `json:"validity_days"`
+		ValidityUnit   string     `json:"validity_unit"`
+		Features       string     `json:"features"`
+		ProductName    string     `json:"product_name"`
+		PurchaseMode   string     `json:"purchase_mode"`
+		SaleEndsAt     *time.Time `json:"sale_ends_at,omitempty"`
+		ForSale        bool       `json:"for_sale"`
+		SortOrder      int        `json:"sort_order"`
 	}
 	groupInfo := h.configService.GetGroupInfoMap(c.Request.Context(), plans)
 	result := make([]planWithPlatform, 0, len(plans))
@@ -80,7 +83,8 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 			RateMultiplier: gi.RateMultiplier,
 			Name:           p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: p.Features,
-			ProductName: p.ProductName, ForSale: p.ForSale, SortOrder: p.SortOrder,
+			ProductName: p.ProductName, PurchaseMode: p.PurchaseMode, SaleEndsAt: p.SaleEndsAt,
+			ForSale: p.ForSale, SortOrder: p.SortOrder,
 		})
 	}
 	response.Success(c, result)
@@ -132,7 +136,7 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 			ModelScopes: gi.ModelScopes,
 			Name:        p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: parseFeatures(p.Features),
-			ProductName: p.ProductName,
+			ProductName: p.ProductName, PurchaseMode: p.PurchaseMode, SaleEndsAt: p.SaleEndsAt,
 		})
 	}
 
@@ -152,6 +156,35 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 	})
 }
 
+// PurchaseSubscriptionWithBalance immediately activates a balance-purchasable plan.
+// POST /api/v1/payment/plans/:id/purchase-with-balance
+func (h *PaymentHandler) PurchaseSubscriptionWithBalance(c *gin.Context) {
+	subject, ok := requireAuth(c)
+	if !ok {
+		return
+	}
+	if service.DefaultIdempotencyCoordinator() == nil {
+		response.ErrorFrom(c, service.ErrIdempotencyStoreUnavail)
+		return
+	}
+	if strings.TrimSpace(c.GetHeader("Idempotency-Key")) == "" {
+		response.ErrorFrom(c, service.ErrIdempotencyKeyRequired)
+		return
+	}
+
+	planID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || planID <= 0 {
+		response.BadRequest(c, "Invalid plan id")
+		return
+	}
+	payload := struct {
+		PlanID int64 `json:"plan_id"`
+	}{PlanID: planID}
+	executeUserIdempotentJSON(c, "payment.subscription.balance.purchase", payload, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
+		return h.paymentService.PurchaseSubscriptionWithBalance(ctx, subject.UserID, planID)
+	})
+}
+
 type checkoutInfoResponse struct {
 	Methods                   map[string]service.MethodLimits `json:"methods"`
 	GlobalMin                 float64                         `json:"global_min"`
@@ -168,23 +201,25 @@ type checkoutInfoResponse struct {
 }
 
 type checkoutPlan struct {
-	ID              int64    `json:"id"`
-	GroupID         int64    `json:"group_id"`
-	GroupPlatform   string   `json:"group_platform"`
-	GroupName       string   `json:"group_name"`
-	RateMultiplier  float64  `json:"rate_multiplier"`
-	DailyLimitUSD   *float64 `json:"daily_limit_usd"`
-	WeeklyLimitUSD  *float64 `json:"weekly_limit_usd"`
-	MonthlyLimitUSD *float64 `json:"monthly_limit_usd"`
-	ModelScopes     []string `json:"supported_model_scopes"`
-	Name            string   `json:"name"`
-	Description     string   `json:"description"`
-	Price           float64  `json:"price"`
-	OriginalPrice   *float64 `json:"original_price,omitempty"`
-	ValidityDays    int      `json:"validity_days"`
-	ValidityUnit    string   `json:"validity_unit"`
-	Features        []string `json:"features"`
-	ProductName     string   `json:"product_name"`
+	ID              int64      `json:"id"`
+	GroupID         int64      `json:"group_id"`
+	GroupPlatform   string     `json:"group_platform"`
+	GroupName       string     `json:"group_name"`
+	RateMultiplier  float64    `json:"rate_multiplier"`
+	DailyLimitUSD   *float64   `json:"daily_limit_usd"`
+	WeeklyLimitUSD  *float64   `json:"weekly_limit_usd"`
+	MonthlyLimitUSD *float64   `json:"monthly_limit_usd"`
+	ModelScopes     []string   `json:"supported_model_scopes"`
+	Name            string     `json:"name"`
+	Description     string     `json:"description"`
+	Price           float64    `json:"price"`
+	OriginalPrice   *float64   `json:"original_price,omitempty"`
+	ValidityDays    int        `json:"validity_days"`
+	ValidityUnit    string     `json:"validity_unit"`
+	Features        []string   `json:"features"`
+	ProductName     string     `json:"product_name"`
+	PurchaseMode    string     `json:"purchase_mode"`
+	SaleEndsAt      *time.Time `json:"sale_ends_at,omitempty"`
 }
 
 // parseFeatures splits a newline-separated features string into a string slice.

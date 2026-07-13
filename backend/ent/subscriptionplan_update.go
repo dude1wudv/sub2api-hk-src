@@ -188,6 +188,40 @@ func (_u *SubscriptionPlanUpdate) SetNillableProductName(v *string) *Subscriptio
 	return _u
 }
 
+// SetPurchaseMode sets the "purchase_mode" field.
+func (_u *SubscriptionPlanUpdate) SetPurchaseMode(v string) *SubscriptionPlanUpdate {
+	_u.mutation.SetPurchaseMode(v)
+	return _u
+}
+
+// SetNillablePurchaseMode sets the "purchase_mode" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdate) SetNillablePurchaseMode(v *string) *SubscriptionPlanUpdate {
+	if v != nil {
+		_u.SetPurchaseMode(*v)
+	}
+	return _u
+}
+
+// SetSaleEndsAt sets the "sale_ends_at" field.
+func (_u *SubscriptionPlanUpdate) SetSaleEndsAt(v time.Time) *SubscriptionPlanUpdate {
+	_u.mutation.SetSaleEndsAt(v)
+	return _u
+}
+
+// SetNillableSaleEndsAt sets the "sale_ends_at" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdate) SetNillableSaleEndsAt(v *time.Time) *SubscriptionPlanUpdate {
+	if v != nil {
+		_u.SetSaleEndsAt(*v)
+	}
+	return _u
+}
+
+// ClearSaleEndsAt clears the value of the "sale_ends_at" field.
+func (_u *SubscriptionPlanUpdate) ClearSaleEndsAt() *SubscriptionPlanUpdate {
+	_u.mutation.ClearSaleEndsAt()
+	return _u
+}
+
 // SetForSale sets the "for_sale" field.
 func (_u *SubscriptionPlanUpdate) SetForSale(v bool) *SubscriptionPlanUpdate {
 	_u.mutation.SetForSale(v)
@@ -287,6 +321,11 @@ func (_u *SubscriptionPlanUpdate) check() error {
 			return &ValidationError{Name: "product_name", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.product_name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.PurchaseMode(); ok {
+		if err := subscriptionplan.PurchaseModeValidator(v); err != nil {
+			return &ValidationError{Name: "purchase_mode", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.purchase_mode": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -343,6 +382,15 @@ func (_u *SubscriptionPlanUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.ProductName(); ok {
 		_spec.SetField(subscriptionplan.FieldProductName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PurchaseMode(); ok {
+		_spec.SetField(subscriptionplan.FieldPurchaseMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.SaleEndsAt(); ok {
+		_spec.SetField(subscriptionplan.FieldSaleEndsAt, field.TypeTime, value)
+	}
+	if _u.mutation.SaleEndsAtCleared() {
+		_spec.ClearField(subscriptionplan.FieldSaleEndsAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.ForSale(); ok {
 		_spec.SetField(subscriptionplan.FieldForSale, field.TypeBool, value)
@@ -536,6 +584,40 @@ func (_u *SubscriptionPlanUpdateOne) SetNillableProductName(v *string) *Subscrip
 	return _u
 }
 
+// SetPurchaseMode sets the "purchase_mode" field.
+func (_u *SubscriptionPlanUpdateOne) SetPurchaseMode(v string) *SubscriptionPlanUpdateOne {
+	_u.mutation.SetPurchaseMode(v)
+	return _u
+}
+
+// SetNillablePurchaseMode sets the "purchase_mode" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdateOne) SetNillablePurchaseMode(v *string) *SubscriptionPlanUpdateOne {
+	if v != nil {
+		_u.SetPurchaseMode(*v)
+	}
+	return _u
+}
+
+// SetSaleEndsAt sets the "sale_ends_at" field.
+func (_u *SubscriptionPlanUpdateOne) SetSaleEndsAt(v time.Time) *SubscriptionPlanUpdateOne {
+	_u.mutation.SetSaleEndsAt(v)
+	return _u
+}
+
+// SetNillableSaleEndsAt sets the "sale_ends_at" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdateOne) SetNillableSaleEndsAt(v *time.Time) *SubscriptionPlanUpdateOne {
+	if v != nil {
+		_u.SetSaleEndsAt(*v)
+	}
+	return _u
+}
+
+// ClearSaleEndsAt clears the value of the "sale_ends_at" field.
+func (_u *SubscriptionPlanUpdateOne) ClearSaleEndsAt() *SubscriptionPlanUpdateOne {
+	_u.mutation.ClearSaleEndsAt()
+	return _u
+}
+
 // SetForSale sets the "for_sale" field.
 func (_u *SubscriptionPlanUpdateOne) SetForSale(v bool) *SubscriptionPlanUpdateOne {
 	_u.mutation.SetForSale(v)
@@ -648,6 +730,11 @@ func (_u *SubscriptionPlanUpdateOne) check() error {
 			return &ValidationError{Name: "product_name", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.product_name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.PurchaseMode(); ok {
+		if err := subscriptionplan.PurchaseModeValidator(v); err != nil {
+			return &ValidationError{Name: "purchase_mode", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.purchase_mode": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -721,6 +808,15 @@ func (_u *SubscriptionPlanUpdateOne) sqlSave(ctx context.Context) (_node *Subscr
 	}
 	if value, ok := _u.mutation.ProductName(); ok {
 		_spec.SetField(subscriptionplan.FieldProductName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PurchaseMode(); ok {
+		_spec.SetField(subscriptionplan.FieldPurchaseMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.SaleEndsAt(); ok {
+		_spec.SetField(subscriptionplan.FieldSaleEndsAt, field.TypeTime, value)
+	}
+	if _u.mutation.SaleEndsAtCleared() {
+		_spec.ClearField(subscriptionplan.FieldSaleEndsAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.ForSale(); ok {
 		_spec.SetField(subscriptionplan.FieldForSale, field.TypeBool, value)

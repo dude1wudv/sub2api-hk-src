@@ -221,6 +221,13 @@ func ProvideSubscriptionExpiryService(userSubRepo UserSubscriptionRepository, se
 	return svc
 }
 
+func ProvideSubscriptionPlanSaleWindowService(entClient *dbent.Client, lockCache LeaderLockCache, db *sql.DB) *SubscriptionPlanSaleWindowService {
+	svc := NewSubscriptionPlanSaleWindowService(entClient, time.Minute)
+	svc.SetLeaderLock(lockCache, db)
+	svc.Start()
+	return svc
+}
+
 // ProvideTimingWheelService creates and starts TimingWheelService
 func ProvideTimingWheelService() (*TimingWheelService, error) {
 	svc, err := NewTimingWheelService()
@@ -625,6 +632,7 @@ var ProviderSet = wire.NewSet(
 	ProvideAccountExpiryService,
 	ProvideProxyExpiryService,
 	ProvideSubscriptionExpiryService,
+	ProvideSubscriptionPlanSaleWindowService,
 	ProvideTimingWheelService,
 	ProvideDashboardAggregationService,
 	ProvideUsageCleanupService,

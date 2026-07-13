@@ -14,6 +14,8 @@ const routerReplace = vi.hoisted(() => vi.fn())
 const routerPush = vi.hoisted(() => vi.fn())
 const routerResolve = vi.hoisted(() => vi.fn(() => ({ href: '/payment/stripe?mock=1' })))
 const createOrder = vi.hoisted(() => vi.fn())
+const purchaseSubscriptionWithBalance = vi.hoisted(() => vi.fn())
+const authUser = vi.hoisted(() => ({ username: 'demo-user', balance: 0 }))
 const refreshUser = vi.hoisted(() => vi.fn())
 const fetchActiveSubscriptions = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const showError = vi.hoisted(() => vi.fn())
@@ -47,10 +49,7 @@ vi.mock('vue-i18n', async () => {
 
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
-    user: {
-      username: 'demo-user',
-      balance: 0,
-    },
+    user: authUser,
     refreshUser,
   }),
 }))
@@ -79,6 +78,7 @@ vi.mock('@/stores', () => ({
 vi.mock('@/api/payment', () => ({
   paymentAPI: {
     getCheckoutInfo,
+    purchaseSubscriptionWithBalance,
   },
 }))
 
@@ -199,8 +199,9 @@ function oauthOrderFixture() {
   }
 }
 
-async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoWithPlansFixture>[0] = {}) {
+async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoWithPlansFixture>[0] & { userBalance?: number } = {}) {
   vi.useRealTimers()
+  authUser.balance = options.userBalance ?? 0
   routeState.path = '/purchase'
   routeState.query = {
     tab: 'subscription',
@@ -210,6 +211,7 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   routerPush.mockReset().mockResolvedValue(undefined)
   routerResolve.mockClear()
   createOrder.mockReset()
+  purchaseSubscriptionWithBalance.mockReset()
   refreshUser.mockReset()
   fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
   showError.mockReset()
@@ -235,6 +237,49 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   await flushPromises()
   return wrapper
 }
+
+describe('PaymentView balance subscription purchase', () => {
+  it('reuses the same idempotency key after a retriable failure', async () => {
+    const wrapper = await mountSubscriptionConfirm({
+      userBalance: 10,
+      plan: { purchase_mode: 'balance', price: 5 },
+    })
+    purchaseSubscriptionWithBalance
+      .mockRejectedValueOnce(new Error('network timeout'))
+      .mockResolvedValueOnce({ order_id: 9, balance: 5, subscription_expires_at: '2099-01-02T00:00:00Z', subscription_was_extended: false })
+    const button = wrapper.findAll('button').find(item => item.text().includes('payment.buyWithBalance'))
+    expect(button).toBeDefined()
+
+    const view = wrapper.vm as unknown as { confirmSubscribe: () => void }
+    view.confirmSubscribe()
+    await flushPromises()
+    await flushPromises()
+    view.confirmSubscribe()
+    await flushPromises()
+    await flushPromises()
+
+    expect(createOrder).not.toHaveBeenCalled()
+    expect(purchaseSubscriptionWithBalance).toHaveBeenCalledTimes(2)
+    expect(purchaseSubscriptionWithBalance.mock.calls[0][0]).toBe(7)
+    expect(purchaseSubscriptionWithBalance.mock.calls[1][0]).toBe(7)
+    expect(purchaseSubscriptionWithBalance.mock.calls[1][1]).toBe(purchaseSubscriptionWithBalance.mock.calls[0][1])
+    expect(showInfo).toHaveBeenCalledWith('payment.balancePurchaseSuccess')
+    expect(refreshUser).toHaveBeenCalled()
+    expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
+  })
+
+  it('does not submit a balance plan when the balance is insufficient', async () => {
+    const wrapper = await mountSubscriptionConfirm({
+      userBalance: 4.99,
+      plan: { purchase_mode: 'balance', price: 5 },
+    })
+    const button = wrapper.findAll('button').find(item => item.text().includes('payment.buyWithBalance'))
+
+    expect(button!.attributes('disabled')).toBeDefined()
+    await button!.trigger('click')
+    expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
+  })
+})
 
 describe('PaymentView subscription confirmation amounts', () => {
   it('shows converted CNY pay amount using the subscription rate, not the balance multiplier', async () => {

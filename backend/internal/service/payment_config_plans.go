@@ -4,12 +4,42 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/subscriptionplan"
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 )
+
+const (
+	SubscriptionPlanPurchaseModeExternal = "external"
+	SubscriptionPlanPurchaseModeBalance  = "balance"
+)
+
+func normalizeSubscriptionPlanPurchaseMode(mode string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(mode))
+	if normalized == "" {
+		return SubscriptionPlanPurchaseModeExternal, nil
+	}
+	if normalized == SubscriptionPlanPurchaseModeExternal || normalized == SubscriptionPlanPurchaseModeBalance {
+		return normalized, nil
+	}
+	return "", infraerrors.BadRequest("PLAN_PURCHASE_MODE_INVALID", "purchase mode must be external or balance")
+}
+
+func validatePlanGroup(ctx context.Context, client *dbent.Client, groupID int64) error {
+	planGroup, err := client.Group.Query().Where(group.IDEQ(groupID)).Only(ctx)
+	if err != nil || planGroup.Status != "active" || planGroup.SubscriptionType != domain.SubscriptionTypeSubscription {
+		return infraerrors.BadRequest("PLAN_GROUP_INVALID", "plan group must be an active subscription group")
+	}
+	return nil
+}
+
+func isSubscriptionPlanForSaleAt(plan *dbent.SubscriptionPlan, now time.Time) bool {
+	return plan != nil && plan.ForSale && (plan.SaleEndsAt == nil || plan.SaleEndsAt.After(now))
+}
 
 // validatePlanRequired checks that all required fields for a plan are provided.
 func validatePlanRequired(name string, groupID int64, price float64, validityDays int, validityUnit string, originalPrice *float64) error {
@@ -107,17 +137,35 @@ func (s *PaymentConfigService) ListPlans(ctx context.Context) ([]*dbent.Subscrip
 }
 
 func (s *PaymentConfigService) ListPlansForSale(ctx context.Context) ([]*dbent.SubscriptionPlan, error) {
-	return s.entClient.SubscriptionPlan.Query().Where(subscriptionplan.ForSaleEQ(true)).Order(subscriptionplan.BySortOrder()).All(ctx)
+	now := time.Now()
+	return s.entClient.SubscriptionPlan.Query().
+		Where(
+			subscriptionplan.ForSaleEQ(true),
+			subscriptionplan.Or(
+				subscriptionplan.SaleEndsAtIsNil(),
+				subscriptionplan.SaleEndsAtGT(now),
+			),
+		).
+		Order(subscriptionplan.BySortOrder()).
+		All(ctx)
 }
 
 func (s *PaymentConfigService) CreatePlan(ctx context.Context, req CreatePlanRequest) (*dbent.SubscriptionPlan, error) {
 	if err := validatePlanRequired(req.Name, req.GroupID, req.Price, req.ValidityDays, req.ValidityUnit, req.OriginalPrice); err != nil {
 		return nil, err
 	}
+	if err := validatePlanGroup(ctx, s.entClient, req.GroupID); err != nil {
+		return nil, err
+	}
+	purchaseMode, err := normalizeSubscriptionPlanPurchaseMode(req.PurchaseMode)
+	if err != nil {
+		return nil, err
+	}
 	b := s.entClient.SubscriptionPlan.Create().
 		SetGroupID(req.GroupID).SetName(req.Name).SetDescription(req.Description).
 		SetPrice(req.Price).SetValidityDays(req.ValidityDays).SetValidityUnit(req.ValidityUnit).
-		SetFeatures(req.Features).SetProductName(req.ProductName).
+		SetFeatures(req.Features).SetProductName(req.ProductName).SetPurchaseMode(purchaseMode).
+		SetNillableSaleEndsAt(req.SaleEndsAt).
 		SetForSale(req.ForSale).SetSortOrder(req.SortOrder)
 	if req.OriginalPrice != nil {
 		b.SetOriginalPrice(*req.OriginalPrice)
@@ -131,6 +179,16 @@ func (s *PaymentConfigService) CreatePlan(ctx context.Context, req CreatePlanReq
 func (s *PaymentConfigService) UpdatePlan(ctx context.Context, id int64, req UpdatePlanRequest) (*dbent.SubscriptionPlan, error) {
 	if err := validatePlanPatch(req); err != nil {
 		return nil, err
+	}
+	if req.GroupID != nil {
+		if err := validatePlanGroup(ctx, s.entClient, *req.GroupID); err != nil {
+			return nil, err
+		}
+	}
+	if req.PurchaseMode != nil {
+		if _, err := normalizeSubscriptionPlanPurchaseMode(*req.PurchaseMode); err != nil {
+			return nil, err
+		}
 	}
 	u := s.entClient.SubscriptionPlan.UpdateOneID(id)
 	if req.GroupID != nil {
@@ -159,6 +217,15 @@ func (s *PaymentConfigService) UpdatePlan(ctx context.Context, id int64, req Upd
 	}
 	if req.ProductName != nil {
 		u.SetProductName(*req.ProductName)
+	}
+	if req.PurchaseMode != nil {
+		purchaseMode, _ := normalizeSubscriptionPlanPurchaseMode(*req.PurchaseMode)
+		u.SetPurchaseMode(purchaseMode)
+	}
+	if req.SaleEndsAt != nil {
+		u.SetSaleEndsAt(*req.SaleEndsAt)
+	} else if req.ClearSaleEndsAt != nil && *req.ClearSaleEndsAt {
+		u.ClearSaleEndsAt()
 	}
 	if req.ForSale != nil {
 		u.SetForSale(*req.ForSale)

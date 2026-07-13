@@ -29,9 +29,16 @@
         </template>
         <template #cell-price="{ value, row }">
           <div class="text-sm">
-            <span class="font-medium text-gray-900 dark:text-white">${{ (value ?? 0).toFixed(2) }}</span>
-            <span v-if="row.original_price" class="ml-1 text-xs text-gray-400 line-through">${{ row.original_price.toFixed(2) }}</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ row.purchase_mode === 'balance' ? value.toFixed(2) : `$${value.toFixed(2)}` }}</span>
+            <span v-if="row.purchase_mode === 'balance'" class="ml-1 text-xs text-gray-400">{{ t('payment.balanceUnit') }}</span>
+            <span v-else-if="row.original_price" class="ml-1 text-xs text-gray-400 line-through">${{ row.original_price.toFixed(2) }}</span>
           </div>
+        </template>
+        <template #cell-purchase_mode="{ value }">
+          <span class="text-sm">{{ purchaseModeLabel(value) }}</span>
+        </template>
+        <template #cell-sale_ends_at="{ value }">
+          <span class="text-sm text-gray-600 dark:text-gray-300">{{ saleEndsAtLabel(value) }}</span>
         </template>
         <template #cell-validity_days="{ value, row }">
           <span class="text-sm">{{ value }} {{ t('payment.admin.' + (row.validity_unit || 'days')) }}</span>
@@ -132,11 +139,32 @@ const planColumns = computed((): Column[] => [
   { key: 'name', label: t('payment.admin.planName') },
   { key: 'group_id', label: t('payment.admin.group') },
   { key: 'price', label: t('payment.admin.price') },
+  { key: 'purchase_mode', label: t('payment.admin.purchaseMode') },
   { key: 'validity_days', label: t('payment.admin.validityDays') },
+  { key: 'sale_ends_at', label: t('payment.admin.saleEndsAt') },
   { key: 'for_sale', label: t('payment.admin.forSale') },
   { key: 'sort_order', label: t('payment.admin.sortOrder') },
   { key: 'actions', label: t('common.actions') },
 ])
+
+function purchaseModeLabel(value?: string): string {
+  return value === 'balance'
+    ? t('payment.admin.purchaseModes.balance')
+    : t('payment.admin.purchaseModes.external')
+}
+
+function saleEndsAtLabel(value?: string | null): string {
+  if (!value) return t('payment.admin.saleNeverEnds')
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const label = new Intl.DateTimeFormat(undefined, {
+    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(date)
+  return date.getTime() <= Date.now()
+    ? `${label} (${t('payment.admin.saleEnded')})`
+    : label
+}
 
 async function loadPlans() {
   plansLoading.value = true

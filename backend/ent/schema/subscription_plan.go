@@ -54,6 +54,13 @@ func (SubscriptionPlan) Fields() []ent.Field {
 		field.String("product_name").
 			MaxLen(100).
 			Default(""),
+		field.String("purchase_mode").
+			MaxLen(20).
+			Default("external"),
+		field.Time("sale_ends_at").
+			Optional().
+			Nillable().
+			SchemaType(map[string]string{dialect.Postgres: "timestamptz"}),
 		field.Bool("for_sale").
 			Default(true),
 		field.Int("sort_order").
@@ -73,5 +80,6 @@ func (SubscriptionPlan) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("group_id"),
 		index.Fields("for_sale"),
+		index.Fields("for_sale", "sale_ends_at"),
 	}
 }

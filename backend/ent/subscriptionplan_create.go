@@ -124,6 +124,34 @@ func (_c *SubscriptionPlanCreate) SetNillableProductName(v *string) *Subscriptio
 	return _c
 }
 
+// SetPurchaseMode sets the "purchase_mode" field.
+func (_c *SubscriptionPlanCreate) SetPurchaseMode(v string) *SubscriptionPlanCreate {
+	_c.mutation.SetPurchaseMode(v)
+	return _c
+}
+
+// SetNillablePurchaseMode sets the "purchase_mode" field if the given value is not nil.
+func (_c *SubscriptionPlanCreate) SetNillablePurchaseMode(v *string) *SubscriptionPlanCreate {
+	if v != nil {
+		_c.SetPurchaseMode(*v)
+	}
+	return _c
+}
+
+// SetSaleEndsAt sets the "sale_ends_at" field.
+func (_c *SubscriptionPlanCreate) SetSaleEndsAt(v time.Time) *SubscriptionPlanCreate {
+	_c.mutation.SetSaleEndsAt(v)
+	return _c
+}
+
+// SetNillableSaleEndsAt sets the "sale_ends_at" field if the given value is not nil.
+func (_c *SubscriptionPlanCreate) SetNillableSaleEndsAt(v *time.Time) *SubscriptionPlanCreate {
+	if v != nil {
+		_c.SetSaleEndsAt(*v)
+	}
+	return _c
+}
+
 // SetForSale sets the "for_sale" field.
 func (_c *SubscriptionPlanCreate) SetForSale(v bool) *SubscriptionPlanCreate {
 	_c.mutation.SetForSale(v)
@@ -235,6 +263,10 @@ func (_c *SubscriptionPlanCreate) defaults() {
 		v := subscriptionplan.DefaultProductName
 		_c.mutation.SetProductName(v)
 	}
+	if _, ok := _c.mutation.PurchaseMode(); !ok {
+		v := subscriptionplan.DefaultPurchaseMode
+		_c.mutation.SetPurchaseMode(v)
+	}
 	if _, ok := _c.mutation.ForSale(); !ok {
 		v := subscriptionplan.DefaultForSale
 		_c.mutation.SetForSale(v)
@@ -292,6 +324,14 @@ func (_c *SubscriptionPlanCreate) check() error {
 	if v, ok := _c.mutation.ProductName(); ok {
 		if err := subscriptionplan.ProductNameValidator(v); err != nil {
 			return &ValidationError{Name: "product_name", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.product_name": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.PurchaseMode(); !ok {
+		return &ValidationError{Name: "purchase_mode", err: errors.New(`ent: missing required field "SubscriptionPlan.purchase_mode"`)}
+	}
+	if v, ok := _c.mutation.PurchaseMode(); ok {
+		if err := subscriptionplan.PurchaseModeValidator(v); err != nil {
+			return &ValidationError{Name: "purchase_mode", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.purchase_mode": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.ForSale(); !ok {
@@ -368,6 +408,14 @@ func (_c *SubscriptionPlanCreate) createSpec() (*SubscriptionPlan, *sqlgraph.Cre
 	if value, ok := _c.mutation.ProductName(); ok {
 		_spec.SetField(subscriptionplan.FieldProductName, field.TypeString, value)
 		_node.ProductName = value
+	}
+	if value, ok := _c.mutation.PurchaseMode(); ok {
+		_spec.SetField(subscriptionplan.FieldPurchaseMode, field.TypeString, value)
+		_node.PurchaseMode = value
+	}
+	if value, ok := _c.mutation.SaleEndsAt(); ok {
+		_spec.SetField(subscriptionplan.FieldSaleEndsAt, field.TypeTime, value)
+		_node.SaleEndsAt = &value
 	}
 	if value, ok := _c.mutation.ForSale(); ok {
 		_spec.SetField(subscriptionplan.FieldForSale, field.TypeBool, value)
@@ -572,6 +620,36 @@ func (u *SubscriptionPlanUpsert) SetProductName(v string) *SubscriptionPlanUpser
 // UpdateProductName sets the "product_name" field to the value that was provided on create.
 func (u *SubscriptionPlanUpsert) UpdateProductName() *SubscriptionPlanUpsert {
 	u.SetExcluded(subscriptionplan.FieldProductName)
+	return u
+}
+
+// SetPurchaseMode sets the "purchase_mode" field.
+func (u *SubscriptionPlanUpsert) SetPurchaseMode(v string) *SubscriptionPlanUpsert {
+	u.Set(subscriptionplan.FieldPurchaseMode, v)
+	return u
+}
+
+// UpdatePurchaseMode sets the "purchase_mode" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsert) UpdatePurchaseMode() *SubscriptionPlanUpsert {
+	u.SetExcluded(subscriptionplan.FieldPurchaseMode)
+	return u
+}
+
+// SetSaleEndsAt sets the "sale_ends_at" field.
+func (u *SubscriptionPlanUpsert) SetSaleEndsAt(v time.Time) *SubscriptionPlanUpsert {
+	u.Set(subscriptionplan.FieldSaleEndsAt, v)
+	return u
+}
+
+// UpdateSaleEndsAt sets the "sale_ends_at" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsert) UpdateSaleEndsAt() *SubscriptionPlanUpsert {
+	u.SetExcluded(subscriptionplan.FieldSaleEndsAt)
+	return u
+}
+
+// ClearSaleEndsAt clears the value of the "sale_ends_at" field.
+func (u *SubscriptionPlanUpsert) ClearSaleEndsAt() *SubscriptionPlanUpsert {
+	u.SetNull(subscriptionplan.FieldSaleEndsAt)
 	return u
 }
 
@@ -820,6 +898,41 @@ func (u *SubscriptionPlanUpsertOne) SetProductName(v string) *SubscriptionPlanUp
 func (u *SubscriptionPlanUpsertOne) UpdateProductName() *SubscriptionPlanUpsertOne {
 	return u.Update(func(s *SubscriptionPlanUpsert) {
 		s.UpdateProductName()
+	})
+}
+
+// SetPurchaseMode sets the "purchase_mode" field.
+func (u *SubscriptionPlanUpsertOne) SetPurchaseMode(v string) *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.SetPurchaseMode(v)
+	})
+}
+
+// UpdatePurchaseMode sets the "purchase_mode" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsertOne) UpdatePurchaseMode() *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.UpdatePurchaseMode()
+	})
+}
+
+// SetSaleEndsAt sets the "sale_ends_at" field.
+func (u *SubscriptionPlanUpsertOne) SetSaleEndsAt(v time.Time) *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.SetSaleEndsAt(v)
+	})
+}
+
+// UpdateSaleEndsAt sets the "sale_ends_at" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsertOne) UpdateSaleEndsAt() *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.UpdateSaleEndsAt()
+	})
+}
+
+// ClearSaleEndsAt clears the value of the "sale_ends_at" field.
+func (u *SubscriptionPlanUpsertOne) ClearSaleEndsAt() *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.ClearSaleEndsAt()
 	})
 }
 
@@ -1241,6 +1354,41 @@ func (u *SubscriptionPlanUpsertBulk) SetProductName(v string) *SubscriptionPlanU
 func (u *SubscriptionPlanUpsertBulk) UpdateProductName() *SubscriptionPlanUpsertBulk {
 	return u.Update(func(s *SubscriptionPlanUpsert) {
 		s.UpdateProductName()
+	})
+}
+
+// SetPurchaseMode sets the "purchase_mode" field.
+func (u *SubscriptionPlanUpsertBulk) SetPurchaseMode(v string) *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.SetPurchaseMode(v)
+	})
+}
+
+// UpdatePurchaseMode sets the "purchase_mode" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsertBulk) UpdatePurchaseMode() *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.UpdatePurchaseMode()
+	})
+}
+
+// SetSaleEndsAt sets the "sale_ends_at" field.
+func (u *SubscriptionPlanUpsertBulk) SetSaleEndsAt(v time.Time) *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.SetSaleEndsAt(v)
+	})
+}
+
+// UpdateSaleEndsAt sets the "sale_ends_at" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsertBulk) UpdateSaleEndsAt() *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.UpdateSaleEndsAt()
+	})
+}
+
+// ClearSaleEndsAt clears the value of the "sale_ends_at" field.
+func (u *SubscriptionPlanUpsertBulk) ClearSaleEndsAt() *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.ClearSaleEndsAt()
 	})
 }
 

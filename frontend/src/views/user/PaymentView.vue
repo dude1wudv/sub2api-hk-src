@@ -101,12 +101,21 @@
                 </div>
                 <!-- Price -->
                 <div class="flex items-baseline gap-2">
-                  <span v-if="selectedPlan.original_price" class="text-sm text-gray-400 line-through dark:text-gray-500">
-                    {{ formatSelectedSubscriptionPaymentAmount(selectedPlan.original_price) }}
-                  </span>
-                  <span :class="['text-3xl font-bold', planTextClass]">{{ formatSelectedSubscriptionPaymentAmount(selectedPlan.price) }}</span>
+                  <template v-if="isBalancePlan">
+                    <span :class="['text-3xl font-bold', planTextClass]">{{ selectedPlan.price.toFixed(2) }}</span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.balanceUnit') }}</span>
+                  </template>
+                  <template v-else>
+                    <span v-if="selectedPlan.original_price" class="text-sm text-gray-400 line-through dark:text-gray-500">
+                      {{ formatSelectedSubscriptionPaymentAmount(selectedPlan.original_price) }}
+                    </span>
+                    <span :class="['text-3xl font-bold', planTextClass]">{{ formatSelectedSubscriptionPaymentAmount(selectedPlan.price) }}</span>
+                  </template>
                   <span class="text-sm text-gray-500 dark:text-gray-400">/ {{ planValiditySuffix }}</span>
                 </div>
+                <p v-if="isBalancePlan" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('payment.currentBalance') }}: {{ user?.balance?.toFixed(2) || '0.00' }} {{ t('payment.balanceUnit') }}
+                </p>
                 <!-- Description -->
                 <p v-if="selectedPlan.description" class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
                   {{ selectedPlan.description }}
@@ -121,7 +130,7 @@
                   </div>
 
                   <div v-if="selectedPlan.daily_limit_usd != null">
-                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.dailyLimit') }}</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ isBalancePlan ? t('payment.planCard.totalLimit') : t('payment.planCard.dailyLimit') }}</span>
                     <div class="text-lg font-semibold text-gray-800 dark:text-gray-200">${{ selectedPlan.daily_limit_usd }}</div>
                   </div>
                   <div v-if="selectedPlan.weekly_limit_usd != null">
@@ -138,14 +147,14 @@
                   </div>
                 </div>
               </div>
-              <div v-if="enabledMethods.length >= 1" class="card p-6">
+              <div v-if="!isBalancePlan && enabledMethods.length >= 1" class="card p-6">
                 <PaymentMethodSelector
                   :methods="subMethodOptions"
                   :selected="selectedMethod"
                   @select="selectedMethod = $event"
                 />
               </div>
-              <div v-if="feeRate > 0 && selectedPlan.price > 0" class="card p-6">
+              <div v-if="!isBalancePlan && feeRate > 0 && selectedPlan.price > 0" class="card p-6">
                 <div class="space-y-2 text-sm">
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">{{ t('payment.amountLabel') }}</span>
@@ -161,12 +170,12 @@
                   </div>
                 </div>
               </div>
-              <button :class="['btn w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitSubscription || submitting" @click="confirmSubscribe">
+              <button :class="['btn w-full py-3 text-base font-medium', isBalancePlan ? 'btn-primary' : paymentButtonClass]" :disabled="!canSubmitSubscription || submitting" @click="confirmSubscribe">
                 <span v-if="submitting" class="flex items-center justify-center gap-2">
                   <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                   {{ t('common.processing') }}
                 </span>
-                <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(subTotalAmount) }}</span>
+                <span v-else>{{ isBalancePlan ? `${t('payment.buyWithBalance')} ${selectedPlan.price.toFixed(2)} ${t('payment.balanceUnit')}` : `${t('payment.createOrder')} ${formatSelectedPaymentAmount(subTotalAmount)}` }}</span>
               </button>
               <button class="btn btn-secondary w-full" @click="selectedPlan = null">{{ t('common.cancel') }}</button>
             </template>
@@ -308,6 +317,7 @@ const activeTab = ref<'recharge' | 'subscription'>('recharge')
 const amount = ref<number | null>(null)
 const selectedMethod = ref('')
 const selectedPlan = ref<SubscriptionPlan | null>(null)
+const balancePurchaseIdempotencyKey = ref('')
 const previewImage = ref('')
 
 const paymentPhase = ref<'select' | 'paying'>('select')
@@ -596,6 +606,7 @@ const methodOptions = computed<PaymentMethodOption[]>(() =>
 )
 
 const feeRate = computed(() => checkout.value?.recharge_fee_rate ?? 0)
+const isBalancePlan = computed(() => selectedPlan.value?.purchase_mode === 'balance')
 const feeAmount = computed(() =>
   feeRate.value > 0 && validAmount.value > 0
     ? Math.ceil(((validAmount.value * feeRate.value) / 100) * 100) / 100
@@ -664,11 +675,15 @@ const subMethodOptions = computed<PaymentMethodOption[]>(() => {
   })
 })
 
-const canSubmitSubscription = computed(() =>
-  selectedPlan.value !== null
-    && amountFitsMethod(subTotalAmount.value, selectedMethod.value)
-    && selectedLimit.value?.available !== false
-)
+const canSubmitSubscription = computed(() => {
+  if (selectedPlan.value === null) return false
+  if (isBalancePlan.value) return (user.value?.balance ?? 0) >= selectedPlan.value.price
+  return amountFitsMethod(subTotalAmount.value, selectedMethod.value) && selectedLimit.value?.available !== false
+})
+
+watch(() => selectedPlan.value?.id, () => {
+  balancePurchaseIdempotencyKey.value = ''
+})
 
 // Auto-switch to first available method when current selection can't handle the amount
 watch(() => [validAmount.value, selectedMethod.value] as const, ([amt, method]) => {
@@ -734,7 +749,28 @@ async function handleSubmitRecharge() {
 
 async function confirmSubscribe() {
   if (!selectedPlan.value || submitting.value) return
-  await createOrder(selectedPlan.value.price, 'subscription', selectedPlan.value.id)
+  if (!isBalancePlan.value) {
+    await createOrder(selectedPlan.value.price, 'subscription', selectedPlan.value.id)
+    return
+  }
+
+  submitting.value = true
+  try {
+    const idempotencyKey = balancePurchaseIdempotencyKey.value
+      || `balance-subscription-${selectedPlan.value.id}-${crypto.randomUUID()}`
+    balancePurchaseIdempotencyKey.value = idempotencyKey
+    await paymentAPI.purchaseSubscriptionWithBalance(selectedPlan.value.id, idempotencyKey)
+    selectedPlan.value = null
+    appStore.showInfo(t('payment.balancePurchaseSuccess'))
+    void Promise.all([
+      authStore.refreshUser(),
+      subscriptionStore.fetchActiveSubscriptions(true),
+    ]).catch(() => appStore.showWarning(t('payment.balancePurchaseRefreshFailed')))
+  } catch (err: unknown) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+  } finally {
+    submitting.value = false
+  }
 }
 
 async function createOrder(orderAmount: number, orderType: OrderType, planId?: number, options: CreateOrderOptions = {}) {

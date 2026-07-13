@@ -13,9 +13,12 @@ const i18n = createI18n({
     en: {
       payment: {
         days: "days",
+        balanceUnit: "balance",
+        saleEndsAt: "Sale ends: {time}",
         models: "Models",
         planCard: {
           quota: "Quota",
+          totalLimit: "Total Limit",
           rate: "Rate",
           unlimited: "Unlimited",
         },
@@ -25,7 +28,7 @@ const i18n = createI18n({
   },
 });
 
-const mountPlanCard = (groupPlatform: string) =>
+const mountPlanCard = (groupPlatform: string, plan: Record<string, unknown> = {}) =>
   mount(SubscriptionPlanCard, {
     props: {
       plan: {
@@ -41,6 +44,7 @@ const mountPlanCard = (groupPlatform: string) =>
         validity_unit: "day",
         supported_model_scopes: ["claude", "gemini_text", "gemini_image"],
         is_active: true,
+        ...plan,
       },
     },
     global: { plugins: [i18n, createPinia()] },
@@ -61,5 +65,19 @@ describe("SubscriptionPlanCard", () => {
     expect(text).toContain("Claude");
     expect(text).toContain("Gemini");
     expect(text).toContain("Imagen");
+  });
+
+  it("labels balance plans without an external-payment dollar prefix", () => {
+    const text = mountPlanCard("openai", {
+      purchase_mode: "balance",
+      price: 5,
+      daily_limit_usd: 200,
+      sale_ends_at: "2026-07-13T09:00:00.000Z",
+    }).text();
+
+    expect(text).toContain("5");
+    expect(text).toContain("payment.balanceUnit");
+    expect(text).toContain("payment.planCard.totalLimit");
+    expect(text).toContain("payment.saleEndsAt");
   });
 });

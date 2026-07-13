@@ -123,8 +123,17 @@ export interface SubscriptionPlan {
   validity_unit: string
   /** Stored as JSON string in backend; API layer should parse before use */
   features: string[]
+  purchase_mode?: 'external' | 'balance'
+  sale_ends_at?: string | null
   for_sale: boolean
   sort_order: number
+}
+
+export interface BalanceSubscriptionPurchaseResult {
+  order_id: number
+  balance: number
+  subscription_expires_at: string
+  subscription_was_extended: boolean
 }
 
 export interface PaymentChannel {

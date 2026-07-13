@@ -35,6 +35,10 @@ type SubscriptionPlan struct {
 	Features string `json:"features,omitempty"`
 	// ProductName holds the value of the "product_name" field.
 	ProductName string `json:"product_name,omitempty"`
+	// PurchaseMode holds the value of the "purchase_mode" field.
+	PurchaseMode string `json:"purchase_mode,omitempty"`
+	// SaleEndsAt holds the value of the "sale_ends_at" field.
+	SaleEndsAt *time.Time `json:"sale_ends_at,omitempty"`
 	// ForSale holds the value of the "for_sale" field.
 	ForSale bool `json:"for_sale,omitempty"`
 	// SortOrder holds the value of the "sort_order" field.
@@ -57,9 +61,9 @@ func (*SubscriptionPlan) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case subscriptionplan.FieldID, subscriptionplan.FieldGroupID, subscriptionplan.FieldValidityDays, subscriptionplan.FieldSortOrder:
 			values[i] = new(sql.NullInt64)
-		case subscriptionplan.FieldName, subscriptionplan.FieldDescription, subscriptionplan.FieldValidityUnit, subscriptionplan.FieldFeatures, subscriptionplan.FieldProductName:
+		case subscriptionplan.FieldName, subscriptionplan.FieldDescription, subscriptionplan.FieldValidityUnit, subscriptionplan.FieldFeatures, subscriptionplan.FieldProductName, subscriptionplan.FieldPurchaseMode:
 			values[i] = new(sql.NullString)
-		case subscriptionplan.FieldCreatedAt, subscriptionplan.FieldUpdatedAt:
+		case subscriptionplan.FieldSaleEndsAt, subscriptionplan.FieldCreatedAt, subscriptionplan.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -136,6 +140,19 @@ func (_m *SubscriptionPlan) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field product_name", values[i])
 			} else if value.Valid {
 				_m.ProductName = value.String
+			}
+		case subscriptionplan.FieldPurchaseMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field purchase_mode", values[i])
+			} else if value.Valid {
+				_m.PurchaseMode = value.String
+			}
+		case subscriptionplan.FieldSaleEndsAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field sale_ends_at", values[i])
+			} else if value.Valid {
+				_m.SaleEndsAt = new(time.Time)
+				*_m.SaleEndsAt = value.Time
 			}
 		case subscriptionplan.FieldForSale:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -225,6 +242,14 @@ func (_m *SubscriptionPlan) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("product_name=")
 	builder.WriteString(_m.ProductName)
+	builder.WriteString(", ")
+	builder.WriteString("purchase_mode=")
+	builder.WriteString(_m.PurchaseMode)
+	builder.WriteString(", ")
+	if v := _m.SaleEndsAt; v != nil {
+		builder.WriteString("sale_ends_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("for_sale=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ForSale))
