@@ -37,6 +37,11 @@
         <template #cell-purchase_mode="{ value }">
           <span class="text-sm">{{ purchaseModeLabel(value) }}</span>
         </template>
+        <template #cell-one_purchase_per_user="{ value }">
+          <span :class="value ? 'badge badge-warning' : 'text-sm text-gray-500 dark:text-gray-400'">
+            {{ value ? t('payment.admin.onePurchaseOnly') : t('payment.admin.unlimitedPurchases') }}
+          </span>
+        </template>
         <template #cell-sale_ends_at="{ value }">
           <span class="text-sm text-gray-600 dark:text-gray-300">{{ saleEndsAtLabel(value) }}</span>
         </template>
@@ -97,6 +102,7 @@ import Icon from '@/components/icons/Icon.vue'
 import GroupBadge from '@/components/common/GroupBadge.vue'
 import PlanEditDialog from './PlanEditDialog.vue'
 import { platformTextClass } from '@/utils/platformColors'
+import { normalizePlanFeatures } from '@/utils/planFeatures'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -140,6 +146,7 @@ const planColumns = computed((): Column[] => [
   { key: 'group_id', label: t('payment.admin.group') },
   { key: 'price', label: t('payment.admin.price') },
   { key: 'purchase_mode', label: t('payment.admin.purchaseMode') },
+  { key: 'one_purchase_per_user', label: t('payment.admin.purchaseLimit') },
   { key: 'validity_days', label: t('payment.admin.validityDays') },
   { key: 'sale_ends_at', label: t('payment.admin.saleEndsAt') },
   { key: 'for_sale', label: t('payment.admin.forSale') },
@@ -170,12 +177,11 @@ async function loadPlans() {
   plansLoading.value = true
   try {
     const res = await adminPaymentAPI.getPlans()
-    // Backend returns features as newline-separated string; parse to array
+    // Backend returns features as a newline-separated string; accept escaped newlines too.
     plans.value = (res.data || []).map((p: Omit<SubscriptionPlan, 'features'> & { features: string | string[] }) => ({
       ...p,
-      features: typeof p.features === 'string'
-        ? p.features.split('\n').map((f: string) => f.trim()).filter(Boolean)
-        : (p.features || []),
+      one_purchase_per_user: p.one_purchase_per_user || false,
+      features: normalizePlanFeatures(p.features),
     }))
   }
   catch (err: unknown) { appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error'))) }

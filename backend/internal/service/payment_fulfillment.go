@@ -162,6 +162,11 @@ func (s *PaymentService) toPaid(ctx context.Context, o *dbent.PaymentOrder, trad
 	if c == 0 {
 		return s.alreadyProcessed(ctx, o)
 	}
+	if o.OrderType == payment.OrderTypeSubscription {
+		if err := completeSubscriptionPurchaseClaim(ctx, s.entClient, o.ID); err != nil {
+			return err
+		}
+	}
 	if previousStatus == OrderStatusCancelled || previousStatus == OrderStatusExpired {
 		slog.Info("order recovered from webhook payment success",
 			"orderID", o.ID,

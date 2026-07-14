@@ -19,9 +19,15 @@
             <span :class="['shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', badgeLightClass]">
               {{ pLabel }}
             </span>
+            <span v-if="plan.one_purchase_per_user" class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+              {{ t('payment.planCard.onePurchaseOnly') }}
+            </span>
           </div>
           <p v-if="plan.description" class="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-dark-400 line-clamp-2">
             {{ plan.description }}
+          </p>
+          <p v-if="plan.one_purchase_per_user" class="mt-0.5 text-xs text-amber-600 dark:text-amber-300">
+            {{ t('payment.planCard.onePurchaseOnlyHint') }}
           </p>
         </div>
         <div class="shrink-0 text-right">
@@ -81,8 +87,8 @@
       </div>
 
       <!-- Features list (compact) -->
-      <div v-if="plan.features.length > 0" class="mb-3 space-y-1">
-        <div v-for="feature in plan.features" :key="feature" class="flex items-start gap-1.5">
+      <div v-if="features.length > 0" class="mb-3 space-y-1">
+        <div v-for="feature in features" :key="feature" class="flex items-start gap-1.5">
           <svg :class="['mt-0.5 h-3.5 w-3.5 flex-shrink-0', iconClass]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
           </svg>
@@ -119,6 +125,7 @@ import {
   platformDiscountClass,
   platformLabel,
 } from '@/utils/platformColors'
+import { normalizePlanFeatures } from '@/utils/planFeatures'
 
 const props = defineProps<{ plan: SubscriptionPlan; activeSubscriptions?: UserSubscription[] }>()
 const emit = defineEmits<{ select: [plan: SubscriptionPlan] }>()
@@ -126,8 +133,10 @@ const { t } = useI18n()
 
 const platform = computed(() => props.plan.group_platform || '')
 const isRenewal = computed(() =>
-  props.activeSubscriptions?.some(s => s.group_id === props.plan.group_id && s.status === 'active') ?? false
+  !props.plan.one_purchase_per_user
+  && (props.activeSubscriptions?.some(s => s.group_id === props.plan.group_id && s.status === 'active') ?? false)
 )
+const features = computed(() => normalizePlanFeatures(props.plan.features))
 
 // Derived color classes from central config
 const accentClass = computed(() => platformAccentBarClass(platform.value))

@@ -2,6 +2,7 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import { createPinia } from "pinia";
 import { createI18n } from "vue-i18n";
+import type { UserSubscription } from "@/types";
 import SubscriptionPlanCard from "../SubscriptionPlanCard.vue";
 
 const i18n = createI18n({
@@ -21,6 +22,8 @@ const i18n = createI18n({
           totalLimit: "Total Limit",
           rate: "Rate",
           unlimited: "Unlimited",
+          onePurchaseOnly: "One purchase only",
+          onePurchaseOnlyHint: "This plan can only be purchased once per account.",
         },
         subscribeNow: "Subscribe now",
       },
@@ -28,7 +31,11 @@ const i18n = createI18n({
   },
 });
 
-const mountPlanCard = (groupPlatform: string, plan: Record<string, unknown> = {}) =>
+const mountPlanCard = (
+  groupPlatform: string,
+  plan: Record<string, unknown> = {},
+  activeSubscriptions: UserSubscription[] = [],
+) =>
   mount(SubscriptionPlanCard, {
     props: {
       plan: {
@@ -42,10 +49,12 @@ const mountPlanCard = (groupPlatform: string, plan: Record<string, unknown> = {}
         rate_multiplier: 1,
         validity_days: 30,
         validity_unit: "day",
+        one_purchase_per_user: false,
         supported_model_scopes: ["claude", "gemini_text", "gemini_image"],
         is_active: true,
         ...plan,
       },
+      activeSubscriptions,
     },
     global: { plugins: [i18n, createPinia()] },
   });
@@ -65,6 +74,19 @@ describe("SubscriptionPlanCard", () => {
     expect(text).toContain("Claude");
     expect(text).toContain("Gemini");
     expect(text).toContain("Imagen");
+  });
+
+  it("labels one-purchase plans, splits escaped newlines, and does not offer renewal", () => {
+    const text = mountPlanCard("openai", {
+      one_purchase_per_user: true,
+      features: ["First feature\\nSecond feature"],
+    }, [{ group_id: 10, status: "active" } as UserSubscription]).text();
+
+    expect(text).toContain("payment.planCard.onePurchaseOnly");
+    expect(text).toContain("First feature");
+    expect(text).toContain("Second feature");
+    expect(text).toContain("payment.subscribeNow");
+    expect(text).not.toContain("payment.renewNow");
   });
 
   it("labels balance plans without an external-payment dollar prefix", () => {

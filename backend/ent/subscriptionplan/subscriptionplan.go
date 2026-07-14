@@ -33,6 +33,8 @@ const (
 	FieldProductName = "product_name"
 	// FieldPurchaseMode holds the string denoting the purchase_mode field in the database.
 	FieldPurchaseMode = "purchase_mode"
+	// FieldOnePurchasePerUser holds the string denoting the one_purchase_per_user field in the database.
+	FieldOnePurchasePerUser = "one_purchase_per_user"
 	// FieldSaleEndsAt holds the string denoting the sale_ends_at field in the database.
 	FieldSaleEndsAt = "sale_ends_at"
 	// FieldForSale holds the string denoting the for_sale field in the database.
@@ -60,6 +62,7 @@ var Columns = []string{
 	FieldFeatures,
 	FieldProductName,
 	FieldPurchaseMode,
+	FieldOnePurchasePerUser,
 	FieldSaleEndsAt,
 	FieldForSale,
 	FieldSortOrder,
@@ -98,6 +101,8 @@ var (
 	DefaultPurchaseMode string
 	// PurchaseModeValidator is a validator for the "purchase_mode" field. It is called by the builders before save.
 	PurchaseModeValidator func(string) error
+	// DefaultOnePurchasePerUser holds the default value on creation for the "one_purchase_per_user" field.
+	DefaultOnePurchasePerUser bool
 	// DefaultForSale holds the default value on creation for the "for_sale" field.
 	DefaultForSale bool
 	// DefaultSortOrder holds the default value on creation for the "sort_order" field.
@@ -166,6 +171,11 @@ func ByProductName(opts ...sql.OrderTermOption) OrderOption {
 // ByPurchaseMode orders the results by the purchase_mode field.
 func ByPurchaseMode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPurchaseMode, opts...).ToFunc()
+}
+
+// ByOnePurchasePerUser orders the results by the one_purchase_per_user field.
+func ByOnePurchasePerUser(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOnePurchasePerUser, opts...).ToFunc()
 }
 
 // BySaleEndsAt orders the results by the sale_ends_at field.

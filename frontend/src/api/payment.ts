@@ -52,8 +52,10 @@ export const paymentAPI = {
   },
 
   /** Create a new payment order */
-  createOrder(data: CreateOrderRequest) {
-    return apiClient.post<CreateOrderResult>('/payment/orders', data)
+  createOrder(data: CreateOrderRequest, idempotencyKey?: string) {
+    return apiClient.post<CreateOrderResult>('/payment/orders', data, idempotencyKey
+      ? { headers: { 'Idempotency-Key': idempotencyKey } }
+      : undefined)
   },
 
   purchaseSubscriptionWithBalance(planId: number, idempotencyKey: string) {

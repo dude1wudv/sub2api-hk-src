@@ -202,6 +202,20 @@ func (_u *SubscriptionPlanUpdate) SetNillablePurchaseMode(v *string) *Subscripti
 	return _u
 }
 
+// SetOnePurchasePerUser sets the "one_purchase_per_user" field.
+func (_u *SubscriptionPlanUpdate) SetOnePurchasePerUser(v bool) *SubscriptionPlanUpdate {
+	_u.mutation.SetOnePurchasePerUser(v)
+	return _u
+}
+
+// SetNillableOnePurchasePerUser sets the "one_purchase_per_user" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdate) SetNillableOnePurchasePerUser(v *bool) *SubscriptionPlanUpdate {
+	if v != nil {
+		_u.SetOnePurchasePerUser(*v)
+	}
+	return _u
+}
+
 // SetSaleEndsAt sets the "sale_ends_at" field.
 func (_u *SubscriptionPlanUpdate) SetSaleEndsAt(v time.Time) *SubscriptionPlanUpdate {
 	_u.mutation.SetSaleEndsAt(v)
@@ -385,6 +399,9 @@ func (_u *SubscriptionPlanUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.PurchaseMode(); ok {
 		_spec.SetField(subscriptionplan.FieldPurchaseMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.OnePurchasePerUser(); ok {
+		_spec.SetField(subscriptionplan.FieldOnePurchasePerUser, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.SaleEndsAt(); ok {
 		_spec.SetField(subscriptionplan.FieldSaleEndsAt, field.TypeTime, value)
@@ -594,6 +611,20 @@ func (_u *SubscriptionPlanUpdateOne) SetPurchaseMode(v string) *SubscriptionPlan
 func (_u *SubscriptionPlanUpdateOne) SetNillablePurchaseMode(v *string) *SubscriptionPlanUpdateOne {
 	if v != nil {
 		_u.SetPurchaseMode(*v)
+	}
+	return _u
+}
+
+// SetOnePurchasePerUser sets the "one_purchase_per_user" field.
+func (_u *SubscriptionPlanUpdateOne) SetOnePurchasePerUser(v bool) *SubscriptionPlanUpdateOne {
+	_u.mutation.SetOnePurchasePerUser(v)
+	return _u
+}
+
+// SetNillableOnePurchasePerUser sets the "one_purchase_per_user" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdateOne) SetNillableOnePurchasePerUser(v *bool) *SubscriptionPlanUpdateOne {
+	if v != nil {
+		_u.SetOnePurchasePerUser(*v)
 	}
 	return _u
 }
@@ -811,6 +842,9 @@ func (_u *SubscriptionPlanUpdateOne) sqlSave(ctx context.Context) (_node *Subscr
 	}
 	if value, ok := _u.mutation.PurchaseMode(); ok {
 		_spec.SetField(subscriptionplan.FieldPurchaseMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.OnePurchasePerUser(); ok {
+		_spec.SetField(subscriptionplan.FieldOnePurchasePerUser, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.SaleEndsAt(); ok {
 		_spec.SetField(subscriptionplan.FieldSaleEndsAt, field.TypeTime, value)

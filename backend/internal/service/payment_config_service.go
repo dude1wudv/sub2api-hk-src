@@ -157,36 +157,38 @@ type UpdateProviderInstanceRequest struct {
 	AllowUserRefund *bool             `json:"allow_user_refund"`
 }
 type CreatePlanRequest struct {
-	GroupID       int64      `json:"group_id"`
-	Name          string     `json:"name"`
-	Description   string     `json:"description"`
-	Price         float64    `json:"price"`
-	OriginalPrice *float64   `json:"original_price"`
-	ValidityDays  int        `json:"validity_days"`
-	ValidityUnit  string     `json:"validity_unit"`
-	Features      string     `json:"features"`
-	ProductName   string     `json:"product_name"`
-	PurchaseMode  string     `json:"purchase_mode"`
-	SaleEndsAt    *time.Time `json:"sale_ends_at"`
-	ForSale       bool       `json:"for_sale"`
-	SortOrder     int        `json:"sort_order"`
+	GroupID            int64      `json:"group_id"`
+	Name               string     `json:"name"`
+	Description        string     `json:"description"`
+	Price              float64    `json:"price"`
+	OriginalPrice      *float64   `json:"original_price"`
+	ValidityDays       int        `json:"validity_days"`
+	ValidityUnit       string     `json:"validity_unit"`
+	Features           string     `json:"features"`
+	ProductName        string     `json:"product_name"`
+	PurchaseMode       string     `json:"purchase_mode"`
+	OnePurchasePerUser bool       `json:"one_purchase_per_user"`
+	SaleEndsAt         *time.Time `json:"sale_ends_at"`
+	ForSale            bool       `json:"for_sale"`
+	SortOrder          int        `json:"sort_order"`
 }
 
 type UpdatePlanRequest struct {
-	GroupID         *int64     `json:"group_id"`
-	Name            *string    `json:"name"`
-	Description     *string    `json:"description"`
-	Price           *float64   `json:"price"`
-	OriginalPrice   *float64   `json:"original_price"`
-	ValidityDays    *int       `json:"validity_days"`
-	ValidityUnit    *string    `json:"validity_unit"`
-	Features        *string    `json:"features"`
-	ProductName     *string    `json:"product_name"`
-	PurchaseMode    *string    `json:"purchase_mode"`
-	SaleEndsAt      *time.Time `json:"sale_ends_at"`
-	ClearSaleEndsAt *bool      `json:"clear_sale_ends_at"`
-	ForSale         *bool      `json:"for_sale"`
-	SortOrder       *int       `json:"sort_order"`
+	GroupID            *int64     `json:"group_id"`
+	Name               *string    `json:"name"`
+	Description        *string    `json:"description"`
+	Price              *float64   `json:"price"`
+	OriginalPrice      *float64   `json:"original_price"`
+	ValidityDays       *int       `json:"validity_days"`
+	ValidityUnit       *string    `json:"validity_unit"`
+	Features           *string    `json:"features"`
+	ProductName        *string    `json:"product_name"`
+	PurchaseMode       *string    `json:"purchase_mode"`
+	OnePurchasePerUser *bool      `json:"one_purchase_per_user"`
+	SaleEndsAt         *time.Time `json:"sale_ends_at"`
+	ClearSaleEndsAt    *bool      `json:"clear_sale_ends_at"`
+	ForSale            *bool      `json:"for_sale"`
+	SortOrder          *int       `json:"sort_order"`
 }
 
 // PaymentConfigService manages payment configuration and CRUD for

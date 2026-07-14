@@ -37,6 +37,8 @@ type SubscriptionPlan struct {
 	ProductName string `json:"product_name,omitempty"`
 	// PurchaseMode holds the value of the "purchase_mode" field.
 	PurchaseMode string `json:"purchase_mode,omitempty"`
+	// OnePurchasePerUser holds the value of the "one_purchase_per_user" field.
+	OnePurchasePerUser bool `json:"one_purchase_per_user,omitempty"`
 	// SaleEndsAt holds the value of the "sale_ends_at" field.
 	SaleEndsAt *time.Time `json:"sale_ends_at,omitempty"`
 	// ForSale holds the value of the "for_sale" field.
@@ -55,7 +57,7 @@ func (*SubscriptionPlan) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case subscriptionplan.FieldForSale:
+		case subscriptionplan.FieldOnePurchasePerUser, subscriptionplan.FieldForSale:
 			values[i] = new(sql.NullBool)
 		case subscriptionplan.FieldPrice, subscriptionplan.FieldOriginalPrice:
 			values[i] = new(sql.NullFloat64)
@@ -146,6 +148,12 @@ func (_m *SubscriptionPlan) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field purchase_mode", values[i])
 			} else if value.Valid {
 				_m.PurchaseMode = value.String
+			}
+		case subscriptionplan.FieldOnePurchasePerUser:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field one_purchase_per_user", values[i])
+			} else if value.Valid {
+				_m.OnePurchasePerUser = value.Bool
 			}
 		case subscriptionplan.FieldSaleEndsAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -245,6 +253,9 @@ func (_m *SubscriptionPlan) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("purchase_mode=")
 	builder.WriteString(_m.PurchaseMode)
+	builder.WriteString(", ")
+	builder.WriteString("one_purchase_per_user=")
+	builder.WriteString(fmt.Sprintf("%v", _m.OnePurchasePerUser))
 	builder.WriteString(", ")
 	if v := _m.SaleEndsAt; v != nil {
 		builder.WriteString("sale_ends_at=")

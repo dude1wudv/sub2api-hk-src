@@ -89,6 +89,58 @@ func TestPurchaseSubscriptionWithBalanceDeductsAndActivates(t *testing.T) {
 	require.Equal(t, 2, count)
 }
 
+func TestPurchaseSubscriptionWithBalanceRejectsSecondLimitedPlanInSameGroup(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	require.NoError(t, client.Schema.Create(ctx))
+
+	account, err := client.User.Create().
+		SetEmail("one-purchase@example.com").
+		SetUsername("one-purchase").
+		SetPasswordHash("hash").
+		SetBalance(20).
+		SetStatus(payment.EntityStatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+	planGroup, err := client.Group.Create().
+		SetName("one-purchase-group").
+		SetSubscriptionType(domain.SubscriptionTypeSubscription).
+		SetStatus(payment.EntityStatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	createPlan := func(name string) int64 {
+		plan, createErr := client.SubscriptionPlan.Create().
+			SetGroupID(planGroup.ID).
+			SetName(name).
+			SetPrice(5).
+			SetValidityDays(1).
+			SetValidityUnit("day").
+			SetPurchaseMode(SubscriptionPlanPurchaseModeBalance).
+			SetOnePurchasePerUser(true).
+			SetForSale(true).
+			Save(ctx)
+		require.NoError(t, createErr)
+		return plan.ID
+	}
+
+	svc := NewPaymentService(client, payment.NewRegistry(), nil, nil, nil, nil, nil, nil, nil)
+	_, err = svc.PurchaseSubscriptionWithBalance(ctx, account.ID, createPlan("first"))
+	require.NoError(t, err)
+	_, err = svc.PurchaseSubscriptionWithBalance(ctx, account.ID, createPlan("second"))
+	require.ErrorContains(t, err, "only be purchased once")
+
+	account, err = client.User.Get(ctx, account.ID)
+	require.NoError(t, err)
+	require.Equal(t, 15.0, account.Balance)
+	orders, err := client.PaymentOrder.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, orders)
+	claims, err := client.SubscriptionPurchaseClaim.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, claims)
+}
+
 func TestUpdatePlanCanClearSaleEndsAt(t *testing.T) {
 	ctx := context.Background()
 	client := newPaymentConfigServiceTestClient(t)

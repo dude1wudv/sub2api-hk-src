@@ -548,7 +548,7 @@ describe('PaymentView WeChat JSAPI flow', () => {
       order_type: 'subscription',
       plan_id: 7,
       wechat_resume_token: 'resume-subscription-7',
-    }))
+    }), expect.stringMatching(/^external-subscription-7-/))
     expect(locationState.href).toContain('/api/v1/auth/oauth/wechat/payment/start?')
     expect(new URL(locationState.href, 'http://localhost').searchParams.get('redirect')).toBe(
       '/purchase?from=wechat&payment_type=wxpay&order_type=subscription&plan_id=7',

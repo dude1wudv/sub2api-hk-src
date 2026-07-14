@@ -160,6 +160,11 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 	if err := s.checkDailyLimit(ctx, tx, req.UserID, limitAmount, cfg.DailyLimit); err != nil {
 		return nil, err
 	}
+	if plan != nil && plan.OnePurchasePerUser {
+		if err := reserveSubscriptionPurchaseClaim(ctx, tx.Client(), req.UserID, plan.GroupID); err != nil {
+			return nil, err
+		}
+	}
 	tm := cfg.OrderTimeoutMin
 	if tm <= 0 {
 		tm = defaultOrderTimeoutMin
@@ -216,6 +221,11 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 	order, err = tx.PaymentOrder.UpdateOneID(order.ID).SetRechargeCode(code).Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("set recharge code: %w", err)
+	}
+	if plan != nil && plan.OnePurchasePerUser {
+		if err := bindSubscriptionPurchaseClaim(ctx, tx.Client(), req.UserID, plan.GroupID, order.ID); err != nil {
+			return nil, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit order transaction: %w", err)

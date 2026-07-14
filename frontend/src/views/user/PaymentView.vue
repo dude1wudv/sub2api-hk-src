@@ -318,6 +318,7 @@ const amount = ref<number | null>(null)
 const selectedMethod = ref('')
 const selectedPlan = ref<SubscriptionPlan | null>(null)
 const balancePurchaseIdempotencyKey = ref('')
+const externalPurchaseIdempotencyKey = ref('')
 const previewImage = ref('')
 
 const paymentPhase = ref<'select' | 'paying'>('select')
@@ -726,6 +727,10 @@ const planValiditySuffix = computed(() => {
 
 
 function selectPlan(plan: SubscriptionPlan) {
+  if (selectedPlan.value?.id !== plan.id) {
+    balancePurchaseIdempotencyKey.value = ''
+    externalPurchaseIdempotencyKey.value = ''
+  }
   selectedPlan.value = plan
   errorMessage.value = ''
 }
@@ -733,6 +738,10 @@ function selectPlan(plan: SubscriptionPlan) {
 function selectPlanFromModal(plan: SubscriptionPlan) {
   showRenewalModal.value = false
   renewGroupId.value = null
+  if (selectedPlan.value?.id !== plan.id) {
+    balancePurchaseIdempotencyKey.value = ''
+    externalPurchaseIdempotencyKey.value = ''
+  }
   selectedPlan.value = plan
   errorMessage.value = ''
 }
@@ -796,7 +805,14 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
       payload.wechat_resume_token = options.wechatResumeToken
     }
 
-    const result = await paymentStore.createOrder(payload) as CreateOrderResult & { resume_token?: string }
+    const idempotencyKey = orderType === 'subscription'
+      ? externalPurchaseIdempotencyKey.value || `external-subscription-${planId || 0}-${crypto.randomUUID()}`
+      : undefined
+    if (idempotencyKey) externalPurchaseIdempotencyKey.value = idempotencyKey
+
+    const result = idempotencyKey
+      ? await paymentStore.createOrder(payload, idempotencyKey) as CreateOrderResult & { resume_token?: string }
+      : await paymentStore.createOrder(payload) as CreateOrderResult & { resume_token?: string }
     const openWindow = (url: string) => {
       const win = window.open(url, 'paymentPopup', getPaymentPopupFeatures())
       if (!win || win.closed) {

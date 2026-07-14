@@ -125,6 +125,7 @@ export interface SubscriptionPlan {
   features: string[]
   purchase_mode?: 'external' | 'balance'
   sale_ends_at?: string | null
+  one_purchase_per_user: boolean
   for_sale: boolean
   sort_order: number
 }

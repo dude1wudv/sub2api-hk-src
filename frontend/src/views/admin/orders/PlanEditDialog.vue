@@ -62,6 +62,23 @@
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.featuresHint') }}</p>
       </div>
       <div class="flex items-center gap-3">
+        <label class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.admin.onePurchasePerUser') }}</label>
+        <button
+          type="button"
+          :class="[
+            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+            planForm.one_purchase_per_user ? 'bg-primary-500' : 'bg-gray-300 dark:bg-dark-600'
+          ]"
+          @click="planForm.one_purchase_per_user = !planForm.one_purchase_per_user"
+        >
+          <span :class="[
+            'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+            planForm.one_purchase_per_user ? 'translate-x-5' : 'translate-x-0'
+          ]" />
+        </button>
+        <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.onePurchasePerUserHint') }}</span>
+      </div>
+      <div class="flex items-center gap-3">
         <label class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.admin.forSale') }}</label>
         <button
           type="button"
@@ -100,6 +117,7 @@ import Select from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
 import GroupBadge from '@/components/common/GroupBadge.vue'
 import { platformTextClass } from '@/utils/platformColors'
+import { normalizePlanFeatures, serializePlanFeatures } from '@/utils/planFeatures'
 
 const props = defineProps<{
   show: boolean
@@ -119,7 +137,7 @@ const saving = ref(false)
 const planForm = reactive({
   name: '', group_id: null as number | null, description: '', price: 0, original_price: 0,
   validity_days: 30, validity_unit: 'days', purchase_mode: 'external' as 'external' | 'balance',
-  sale_ends_at: '', sort_order: 0, for_sale: true,
+  sale_ends_at: '', sort_order: 0, one_purchase_per_user: false, for_sale: true,
 })
 const planFeaturesText = ref('')
 
@@ -178,13 +196,13 @@ watch(() => props.show, (visible) => {
       price: props.plan.price, original_price: props.plan.original_price || 0,
       validity_days: props.plan.validity_days, validity_unit: props.plan.validity_unit || 'days',
       purchase_mode: props.plan.purchase_mode || 'external', sale_ends_at: toShanghaiDateTimeLocal(props.plan.sale_ends_at),
-      sort_order: props.plan.sort_order || 0, for_sale: props.plan.for_sale,
+      sort_order: props.plan.sort_order || 0, one_purchase_per_user: props.plan.one_purchase_per_user || false, for_sale: props.plan.for_sale,
     })
-    planFeaturesText.value = (props.plan.features || []).join('\n')
+    planFeaturesText.value = normalizePlanFeatures(props.plan.features).join('\n')
   } else {
     Object.assign(planForm, {
       name: '', group_id: null, description: '', price: 0, original_price: 0,
-      validity_days: 30, validity_unit: 'days', purchase_mode: 'external', sale_ends_at: '', sort_order: 0, for_sale: true,
+      validity_days: 30, validity_unit: 'days', purchase_mode: 'external', sale_ends_at: '', sort_order: 0, one_purchase_per_user: false, for_sale: true,
     })
     planFeaturesText.value = ''
   }
@@ -192,7 +210,7 @@ watch(() => props.show, (visible) => {
 
 /** Build request payload with snake_case keys matching backend JSON tags */
 function buildPlanPayload() {
-  const features = planFeaturesText.value.split('\n').map(f => f.trim()).filter(Boolean).join('\n')
+  const features = serializePlanFeatures(planFeaturesText.value)
   return {
     name: planForm.name,
     group_id: planForm.group_id,
@@ -205,6 +223,7 @@ function buildPlanPayload() {
     sale_ends_at: toShanghaiISOString(planForm.sale_ends_at),
     clear_sale_ends_at: !!props.plan && !planForm.sale_ends_at,
     sort_order: planForm.sort_order,
+    one_purchase_per_user: planForm.one_purchase_per_user,
     for_sale: planForm.for_sale,
     features,
   }

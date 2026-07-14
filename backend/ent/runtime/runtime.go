@@ -33,6 +33,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/securitysecret"
 	"github.com/Wei-Shaw/sub2api/ent/setting"
 	"github.com/Wei-Shaw/sub2api/ent/subscriptionplan"
+	"github.com/Wei-Shaw/sub2api/ent/subscriptionpurchaseclaim"
 	"github.com/Wei-Shaw/sub2api/ent/tlsfingerprintprofile"
 	"github.com/Wei-Shaw/sub2api/ent/usagecleanuptask"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
@@ -1606,24 +1607,46 @@ func init() {
 	subscriptionplan.DefaultPurchaseMode = subscriptionplanDescPurchaseMode.Default.(string)
 	// subscriptionplan.PurchaseModeValidator is a validator for the "purchase_mode" field. It is called by the builders before save.
 	subscriptionplan.PurchaseModeValidator = subscriptionplanDescPurchaseMode.Validators[0].(func(string) error)
+	// subscriptionplanDescOnePurchasePerUser is the schema descriptor for one_purchase_per_user field.
+	subscriptionplanDescOnePurchasePerUser := subscriptionplanFields[10].Descriptor()
+	// subscriptionplan.DefaultOnePurchasePerUser holds the default value on creation for the one_purchase_per_user field.
+	subscriptionplan.DefaultOnePurchasePerUser = subscriptionplanDescOnePurchasePerUser.Default.(bool)
 	// subscriptionplanDescForSale is the schema descriptor for for_sale field.
-	subscriptionplanDescForSale := subscriptionplanFields[11].Descriptor()
+	subscriptionplanDescForSale := subscriptionplanFields[12].Descriptor()
 	// subscriptionplan.DefaultForSale holds the default value on creation for the for_sale field.
 	subscriptionplan.DefaultForSale = subscriptionplanDescForSale.Default.(bool)
 	// subscriptionplanDescSortOrder is the schema descriptor for sort_order field.
-	subscriptionplanDescSortOrder := subscriptionplanFields[12].Descriptor()
+	subscriptionplanDescSortOrder := subscriptionplanFields[13].Descriptor()
 	// subscriptionplan.DefaultSortOrder holds the default value on creation for the sort_order field.
 	subscriptionplan.DefaultSortOrder = subscriptionplanDescSortOrder.Default.(int)
 	// subscriptionplanDescCreatedAt is the schema descriptor for created_at field.
-	subscriptionplanDescCreatedAt := subscriptionplanFields[13].Descriptor()
+	subscriptionplanDescCreatedAt := subscriptionplanFields[14].Descriptor()
 	// subscriptionplan.DefaultCreatedAt holds the default value on creation for the created_at field.
 	subscriptionplan.DefaultCreatedAt = subscriptionplanDescCreatedAt.Default.(func() time.Time)
 	// subscriptionplanDescUpdatedAt is the schema descriptor for updated_at field.
-	subscriptionplanDescUpdatedAt := subscriptionplanFields[14].Descriptor()
+	subscriptionplanDescUpdatedAt := subscriptionplanFields[15].Descriptor()
 	// subscriptionplan.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	subscriptionplan.DefaultUpdatedAt = subscriptionplanDescUpdatedAt.Default.(func() time.Time)
 	// subscriptionplan.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	subscriptionplan.UpdateDefaultUpdatedAt = subscriptionplanDescUpdatedAt.UpdateDefault.(func() time.Time)
+	subscriptionpurchaseclaimFields := schema.SubscriptionPurchaseClaim{}.Fields()
+	_ = subscriptionpurchaseclaimFields
+	// subscriptionpurchaseclaimDescStatus is the schema descriptor for status field.
+	subscriptionpurchaseclaimDescStatus := subscriptionpurchaseclaimFields[3].Descriptor()
+	// subscriptionpurchaseclaim.DefaultStatus holds the default value on creation for the status field.
+	subscriptionpurchaseclaim.DefaultStatus = subscriptionpurchaseclaimDescStatus.Default.(string)
+	// subscriptionpurchaseclaim.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	subscriptionpurchaseclaim.StatusValidator = subscriptionpurchaseclaimDescStatus.Validators[0].(func(string) error)
+	// subscriptionpurchaseclaimDescCreatedAt is the schema descriptor for created_at field.
+	subscriptionpurchaseclaimDescCreatedAt := subscriptionpurchaseclaimFields[4].Descriptor()
+	// subscriptionpurchaseclaim.DefaultCreatedAt holds the default value on creation for the created_at field.
+	subscriptionpurchaseclaim.DefaultCreatedAt = subscriptionpurchaseclaimDescCreatedAt.Default.(func() time.Time)
+	// subscriptionpurchaseclaimDescUpdatedAt is the schema descriptor for updated_at field.
+	subscriptionpurchaseclaimDescUpdatedAt := subscriptionpurchaseclaimFields[5].Descriptor()
+	// subscriptionpurchaseclaim.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	subscriptionpurchaseclaim.DefaultUpdatedAt = subscriptionpurchaseclaimDescUpdatedAt.Default.(func() time.Time)
+	// subscriptionpurchaseclaim.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	subscriptionpurchaseclaim.UpdateDefaultUpdatedAt = subscriptionpurchaseclaimDescUpdatedAt.UpdateDefault.(func() time.Time)
 	tlsfingerprintprofileMixin := schema.TLSFingerprintProfile{}.Mixin()
 	tlsfingerprintprofileMixinFields0 := tlsfingerprintprofileMixin[0].Fields()
 	_ = tlsfingerprintprofileMixinFields0

@@ -165,6 +165,7 @@ func (s *PaymentConfigService) CreatePlan(ctx context.Context, req CreatePlanReq
 		SetGroupID(req.GroupID).SetName(req.Name).SetDescription(req.Description).
 		SetPrice(req.Price).SetValidityDays(req.ValidityDays).SetValidityUnit(req.ValidityUnit).
 		SetFeatures(req.Features).SetProductName(req.ProductName).SetPurchaseMode(purchaseMode).
+		SetOnePurchasePerUser(req.OnePurchasePerUser).
 		SetNillableSaleEndsAt(req.SaleEndsAt).
 		SetForSale(req.ForSale).SetSortOrder(req.SortOrder)
 	if req.OriginalPrice != nil {
@@ -221,6 +222,9 @@ func (s *PaymentConfigService) UpdatePlan(ctx context.Context, id int64, req Upd
 	if req.PurchaseMode != nil {
 		purchaseMode, _ := normalizeSubscriptionPlanPurchaseMode(*req.PurchaseMode)
 		u.SetPurchaseMode(purchaseMode)
+	}
+	if req.OnePurchasePerUser != nil {
+		u.SetOnePurchasePerUser(*req.OnePurchasePerUser)
 	}
 	if req.SaleEndsAt != nil {
 		u.SetSaleEndsAt(*req.SaleEndsAt)

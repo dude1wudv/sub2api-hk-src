@@ -116,4 +116,17 @@ func (s *PaymentOrderExpiryService) runOnce() {
 	if expired > 0 {
 		slog.Info("[PaymentOrderExpiry] expired timed-out orders", "count", expired)
 	}
+
+	released, releaseErr := releaseStaleSubscriptionPurchaseClaims(
+		expireCtx,
+		s.paymentSvc.entClient,
+		time.Now().Add(-paymentGraceMinutes*time.Minute),
+	)
+	if releaseErr != nil {
+		slog.Error("[PaymentOrderExpiry] failed to release stale subscription purchase claims", "error", releaseErr)
+		return
+	}
+	if released > 0 {
+		slog.Info("[PaymentOrderExpiry] released stale subscription purchase claims", "count", released)
+	}
 }

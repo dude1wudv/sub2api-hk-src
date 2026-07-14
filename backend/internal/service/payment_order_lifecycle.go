@@ -384,6 +384,13 @@ func (s *PaymentService) ExpireTimedOutOrders(ctx context.Context) (int, error) 
 			n++
 		}
 	}
+	released, err := releaseStaleSubscriptionPurchaseClaims(ctx, s.entClient, now.Add(-paymentGraceMinutes*time.Minute))
+	if err != nil {
+		return n, err
+	}
+	if released > 0 {
+		slog.Info("released stale subscription purchase reservations", "count", released)
+	}
 	return n, nil
 }
 

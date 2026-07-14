@@ -73,6 +73,11 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, us
 		}
 		return nil, fmt.Errorf("query purchasing user: %w", err)
 	}
+	if plan.OnePurchasePerUser {
+		if err := reserveSubscriptionPurchaseClaim(ctx, client, userID, planGroup.ID); err != nil {
+			return nil, err
+		}
+	}
 
 	updated, err := client.User.Update().
 		Where(user.IDEQ(userID), user.BalanceGTE(plan.Price)).
@@ -111,6 +116,11 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, us
 	if err != nil {
 		return nil, fmt.Errorf("create balance subscription order: %w", err)
 	}
+	if plan.OnePurchasePerUser {
+		if err := bindSubscriptionPurchaseClaim(ctx, client, userID, planGroup.ID, order.ID); err != nil {
+			return nil, err
+		}
+	}
 
 	note := fmt.Sprintf("balance subscription order %d", order.ID)
 	subscription, extended, err := purchaseBalanceSubscriptionTerm(ctx, client, userID, planGroup.ID, validityDays, now, note)
@@ -132,6 +142,11 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, us
 		SetOperator(fmt.Sprintf("user:%d", userID)).
 		Save(ctx); err != nil {
 		return nil, fmt.Errorf("write balance subscription audit: %w", err)
+	}
+	if plan.OnePurchasePerUser {
+		if err := completeSubscriptionPurchaseClaim(ctx, client, order.ID); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

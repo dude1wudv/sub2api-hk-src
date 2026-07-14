@@ -30,6 +30,15 @@ describe('payment api', () => {
     })
   })
 
+  it('creates an external subscription order with an idempotency key', async () => {
+    const payload = { amount: 5, payment_type: 'alipay', order_type: 'subscription', plan_id: 8 }
+    await paymentAPI.createOrder(payload, 'external-subscription-key')
+
+    expect(post).toHaveBeenCalledWith('/payment/orders', payload, {
+      headers: { 'Idempotency-Key': 'external-subscription-key' },
+    })
+  })
+
   it('keeps legacy public out_trade_no verification for upgrade compatibility', async () => {
     await paymentAPI.verifyOrderPublic('legacy-order-no')
 

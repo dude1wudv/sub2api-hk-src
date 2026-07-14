@@ -1311,6 +1311,7 @@ var (
 		{Name: "features", Type: field.TypeString, Default: "", SchemaType: map[string]string{"postgres": "text"}},
 		{Name: "product_name", Type: field.TypeString, Size: 100, Default: ""},
 		{Name: "purchase_mode", Type: field.TypeString, Size: 20, Default: "external"},
+		{Name: "one_purchase_per_user", Type: field.TypeBool, Default: false},
 		{Name: "sale_ends_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
 		{Name: "for_sale", Type: field.TypeBool, Default: true},
 		{Name: "sort_order", Type: field.TypeInt, Default: 0},
@@ -1331,12 +1332,48 @@ var (
 			{
 				Name:    "subscriptionplan_for_sale",
 				Unique:  false,
-				Columns: []*schema.Column{SubscriptionPlansColumns[12]},
+				Columns: []*schema.Column{SubscriptionPlansColumns[13]},
 			},
 			{
 				Name:    "subscriptionplan_for_sale_sale_ends_at",
 				Unique:  false,
-				Columns: []*schema.Column{SubscriptionPlansColumns[12], SubscriptionPlansColumns[11]},
+				Columns: []*schema.Column{SubscriptionPlansColumns[13], SubscriptionPlansColumns[12]},
+			},
+		},
+	}
+	// SubscriptionPurchaseClaimsColumns holds the columns for the "subscription_purchase_claims" table.
+	SubscriptionPurchaseClaimsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "user_id", Type: field.TypeInt64},
+		{Name: "subscription_group_id", Type: field.TypeInt64},
+		{Name: "payment_order_id", Type: field.TypeInt64, Nullable: true},
+		{Name: "status", Type: field.TypeString, Size: 20, Default: "PENDING"},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+	}
+	// SubscriptionPurchaseClaimsTable holds the schema information for the "subscription_purchase_claims" table.
+	SubscriptionPurchaseClaimsTable = &schema.Table{
+		Name:       "subscription_purchase_claims",
+		Columns:    SubscriptionPurchaseClaimsColumns,
+		PrimaryKey: []*schema.Column{SubscriptionPurchaseClaimsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "subscriptionpurchaseclaim_user_id_subscription_group_id",
+				Unique:  true,
+				Columns: []*schema.Column{SubscriptionPurchaseClaimsColumns[1], SubscriptionPurchaseClaimsColumns[2]},
+			},
+			{
+				Name:    "subscriptionpurchaseclaim_payment_order_id",
+				Unique:  true,
+				Columns: []*schema.Column{SubscriptionPurchaseClaimsColumns[3]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "payment_order_id IS NOT NULL",
+				},
+			},
+			{
+				Name:    "subscriptionpurchaseclaim_status",
+				Unique:  false,
+				Columns: []*schema.Column{SubscriptionPurchaseClaimsColumns[4]},
 			},
 		},
 	}
@@ -1879,6 +1916,7 @@ var (
 		SecuritySecretsTable,
 		SettingsTable,
 		SubscriptionPlansTable,
+		SubscriptionPurchaseClaimsTable,
 		TLSFingerprintProfilesTable,
 		UsageCleanupTasksTable,
 		UsageLogsTable,
@@ -1994,6 +2032,9 @@ func init() {
 	}
 	SubscriptionPlansTable.Annotation = &entsql.Annotation{
 		Table: "subscription_plans",
+	}
+	SubscriptionPurchaseClaimsTable.Annotation = &entsql.Annotation{
+		Table: "subscription_purchase_claims",
 	}
 	TLSFingerprintProfilesTable.Annotation = &entsql.Annotation{
 		Table: "tls_fingerprint_profiles",

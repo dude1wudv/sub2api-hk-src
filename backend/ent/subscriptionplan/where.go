@@ -104,6 +104,11 @@ func PurchaseMode(v string) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldEQ(FieldPurchaseMode, v))
 }
 
+// OnePurchasePerUser applies equality check predicate on the "one_purchase_per_user" field. It's identical to OnePurchasePerUserEQ.
+func OnePurchasePerUser(v bool) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldOnePurchasePerUser, v))
+}
+
 // SaleEndsAt applies equality check predicate on the "sale_ends_at" field. It's identical to SaleEndsAtEQ.
 func SaleEndsAt(v time.Time) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldEQ(FieldSaleEndsAt, v))
@@ -687,6 +692,16 @@ func PurchaseModeEqualFold(v string) predicate.SubscriptionPlan {
 // PurchaseModeContainsFold applies the ContainsFold predicate on the "purchase_mode" field.
 func PurchaseModeContainsFold(v string) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldContainsFold(FieldPurchaseMode, v))
+}
+
+// OnePurchasePerUserEQ applies the EQ predicate on the "one_purchase_per_user" field.
+func OnePurchasePerUserEQ(v bool) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldOnePurchasePerUser, v))
+}
+
+// OnePurchasePerUserNEQ applies the NEQ predicate on the "one_purchase_per_user" field.
+func OnePurchasePerUserNEQ(v bool) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNEQ(FieldOnePurchasePerUser, v))
 }
 
 // SaleEndsAtEQ applies the EQ predicate on the "sale_ends_at" field.

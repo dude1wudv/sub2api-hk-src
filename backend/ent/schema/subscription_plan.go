@@ -57,6 +57,8 @@ func (SubscriptionPlan) Fields() []ent.Field {
 		field.String("purchase_mode").
 			MaxLen(20).
 			Default("external"),
+		field.Bool("one_purchase_per_user").
+			Default(false),
 		field.Time("sale_ends_at").
 			Optional().
 			Nillable().

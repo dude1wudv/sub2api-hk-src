@@ -55,23 +55,24 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 	}
 	// Enrich plans with group platform for frontend color coding
 	type planWithPlatform struct {
-		ID             int64      `json:"id"`
-		GroupID        int64      `json:"group_id"`
-		GroupPlatform  string     `json:"group_platform"`
-		GroupName      string     `json:"group_name"`
-		RateMultiplier float64    `json:"rate_multiplier"`
-		Name           string     `json:"name"`
-		Description    string     `json:"description"`
-		Price          float64    `json:"price"`
-		OriginalPrice  *float64   `json:"original_price,omitempty"`
-		ValidityDays   int        `json:"validity_days"`
-		ValidityUnit   string     `json:"validity_unit"`
-		Features       string     `json:"features"`
-		ProductName    string     `json:"product_name"`
-		PurchaseMode   string     `json:"purchase_mode"`
-		SaleEndsAt     *time.Time `json:"sale_ends_at,omitempty"`
-		ForSale        bool       `json:"for_sale"`
-		SortOrder      int        `json:"sort_order"`
+		ID                 int64      `json:"id"`
+		GroupID            int64      `json:"group_id"`
+		GroupPlatform      string     `json:"group_platform"`
+		GroupName          string     `json:"group_name"`
+		RateMultiplier     float64    `json:"rate_multiplier"`
+		Name               string     `json:"name"`
+		Description        string     `json:"description"`
+		Price              float64    `json:"price"`
+		OriginalPrice      *float64   `json:"original_price,omitempty"`
+		ValidityDays       int        `json:"validity_days"`
+		ValidityUnit       string     `json:"validity_unit"`
+		Features           string     `json:"features"`
+		ProductName        string     `json:"product_name"`
+		PurchaseMode       string     `json:"purchase_mode"`
+		OnePurchasePerUser bool       `json:"one_purchase_per_user"`
+		SaleEndsAt         *time.Time `json:"sale_ends_at,omitempty"`
+		ForSale            bool       `json:"for_sale"`
+		SortOrder          int        `json:"sort_order"`
 	}
 	groupInfo := h.configService.GetGroupInfoMap(c.Request.Context(), plans)
 	result := make([]planWithPlatform, 0, len(plans))
@@ -83,7 +84,8 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 			RateMultiplier: gi.RateMultiplier,
 			Name:           p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: p.Features,
-			ProductName: p.ProductName, PurchaseMode: p.PurchaseMode, SaleEndsAt: p.SaleEndsAt,
+			ProductName: p.ProductName, PurchaseMode: p.PurchaseMode,
+			OnePurchasePerUser: p.OnePurchasePerUser, SaleEndsAt: p.SaleEndsAt,
 			ForSale: p.ForSale, SortOrder: p.SortOrder,
 		})
 	}
@@ -136,7 +138,8 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 			ModelScopes: gi.ModelScopes,
 			Name:        p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: parseFeatures(p.Features),
-			ProductName: p.ProductName, PurchaseMode: p.PurchaseMode, SaleEndsAt: p.SaleEndsAt,
+			ProductName: p.ProductName, PurchaseMode: p.PurchaseMode,
+			OnePurchasePerUser: p.OnePurchasePerUser, SaleEndsAt: p.SaleEndsAt,
 		})
 	}
 
@@ -201,34 +204,38 @@ type checkoutInfoResponse struct {
 }
 
 type checkoutPlan struct {
-	ID              int64      `json:"id"`
-	GroupID         int64      `json:"group_id"`
-	GroupPlatform   string     `json:"group_platform"`
-	GroupName       string     `json:"group_name"`
-	RateMultiplier  float64    `json:"rate_multiplier"`
-	DailyLimitUSD   *float64   `json:"daily_limit_usd"`
-	WeeklyLimitUSD  *float64   `json:"weekly_limit_usd"`
-	MonthlyLimitUSD *float64   `json:"monthly_limit_usd"`
-	ModelScopes     []string   `json:"supported_model_scopes"`
-	Name            string     `json:"name"`
-	Description     string     `json:"description"`
-	Price           float64    `json:"price"`
-	OriginalPrice   *float64   `json:"original_price,omitempty"`
-	ValidityDays    int        `json:"validity_days"`
-	ValidityUnit    string     `json:"validity_unit"`
-	Features        []string   `json:"features"`
-	ProductName     string     `json:"product_name"`
-	PurchaseMode    string     `json:"purchase_mode"`
-	SaleEndsAt      *time.Time `json:"sale_ends_at,omitempty"`
+	ID                 int64      `json:"id"`
+	GroupID            int64      `json:"group_id"`
+	GroupPlatform      string     `json:"group_platform"`
+	GroupName          string     `json:"group_name"`
+	RateMultiplier     float64    `json:"rate_multiplier"`
+	DailyLimitUSD      *float64   `json:"daily_limit_usd"`
+	WeeklyLimitUSD     *float64   `json:"weekly_limit_usd"`
+	MonthlyLimitUSD    *float64   `json:"monthly_limit_usd"`
+	ModelScopes        []string   `json:"supported_model_scopes"`
+	Name               string     `json:"name"`
+	Description        string     `json:"description"`
+	Price              float64    `json:"price"`
+	OriginalPrice      *float64   `json:"original_price,omitempty"`
+	ValidityDays       int        `json:"validity_days"`
+	ValidityUnit       string     `json:"validity_unit"`
+	Features           []string   `json:"features"`
+	ProductName        string     `json:"product_name"`
+	PurchaseMode       string     `json:"purchase_mode"`
+	OnePurchasePerUser bool       `json:"one_purchase_per_user"`
+	SaleEndsAt         *time.Time `json:"sale_ends_at,omitempty"`
 }
 
-// parseFeatures splits a newline-separated features string into a string slice.
+// parseFeatures accepts both real line breaks and legacy literal escape sequences.
 func parseFeatures(raw string) []string {
 	if raw == "" {
 		return []string{}
 	}
+	normalized := strings.ReplaceAll(raw, `\r\n`, "\n")
+	normalized = strings.ReplaceAll(normalized, `\n`, "\n")
+	normalized = strings.ReplaceAll(normalized, "\r\n", "\n")
 	var out []string
-	for _, line := range strings.Split(raw, "\n") {
+	for _, line := range strings.Split(normalized, "\n") {
 		if s := strings.TrimSpace(line); s != "" {
 			out = append(out, s)
 		}
@@ -295,7 +302,7 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 	if req.IsMobile != nil {
 		mobile = *req.IsMobile
 	}
-	result, err := h.paymentService.CreateOrder(c.Request.Context(), service.CreateOrderRequest{
+	serviceReq := service.CreateOrderRequest{
 		UserID:          subject.UserID,
 		Amount:          req.Amount,
 		PaymentType:     req.PaymentType,
@@ -310,7 +317,17 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		OrderType:       req.OrderType,
 		PlanID:          req.PlanID,
 		Locale:          c.GetHeader("Accept-Language"),
-	})
+	}
+	if req.OrderType == payment.OrderTypeSubscription && req.PlanID > 0 {
+		plan, planErr := h.configService.GetPlan(c.Request.Context(), req.PlanID)
+		if planErr == nil && plan.OnePurchasePerUser && strings.TrimSpace(c.GetHeader("Idempotency-Key")) != "" {
+			executeUserIdempotentJSON(c, "payment.subscription.external.create", req, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
+				return h.paymentService.CreateOrder(ctx, serviceReq)
+			})
+			return
+		}
+	}
+	result, err := h.paymentService.CreateOrder(c.Request.Context(), serviceReq)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

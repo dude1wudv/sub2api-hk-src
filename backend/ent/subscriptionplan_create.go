@@ -138,6 +138,20 @@ func (_c *SubscriptionPlanCreate) SetNillablePurchaseMode(v *string) *Subscripti
 	return _c
 }
 
+// SetOnePurchasePerUser sets the "one_purchase_per_user" field.
+func (_c *SubscriptionPlanCreate) SetOnePurchasePerUser(v bool) *SubscriptionPlanCreate {
+	_c.mutation.SetOnePurchasePerUser(v)
+	return _c
+}
+
+// SetNillableOnePurchasePerUser sets the "one_purchase_per_user" field if the given value is not nil.
+func (_c *SubscriptionPlanCreate) SetNillableOnePurchasePerUser(v *bool) *SubscriptionPlanCreate {
+	if v != nil {
+		_c.SetOnePurchasePerUser(*v)
+	}
+	return _c
+}
+
 // SetSaleEndsAt sets the "sale_ends_at" field.
 func (_c *SubscriptionPlanCreate) SetSaleEndsAt(v time.Time) *SubscriptionPlanCreate {
 	_c.mutation.SetSaleEndsAt(v)
@@ -267,6 +281,10 @@ func (_c *SubscriptionPlanCreate) defaults() {
 		v := subscriptionplan.DefaultPurchaseMode
 		_c.mutation.SetPurchaseMode(v)
 	}
+	if _, ok := _c.mutation.OnePurchasePerUser(); !ok {
+		v := subscriptionplan.DefaultOnePurchasePerUser
+		_c.mutation.SetOnePurchasePerUser(v)
+	}
 	if _, ok := _c.mutation.ForSale(); !ok {
 		v := subscriptionplan.DefaultForSale
 		_c.mutation.SetForSale(v)
@@ -333,6 +351,9 @@ func (_c *SubscriptionPlanCreate) check() error {
 		if err := subscriptionplan.PurchaseModeValidator(v); err != nil {
 			return &ValidationError{Name: "purchase_mode", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.purchase_mode": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.OnePurchasePerUser(); !ok {
+		return &ValidationError{Name: "one_purchase_per_user", err: errors.New(`ent: missing required field "SubscriptionPlan.one_purchase_per_user"`)}
 	}
 	if _, ok := _c.mutation.ForSale(); !ok {
 		return &ValidationError{Name: "for_sale", err: errors.New(`ent: missing required field "SubscriptionPlan.for_sale"`)}
@@ -412,6 +433,10 @@ func (_c *SubscriptionPlanCreate) createSpec() (*SubscriptionPlan, *sqlgraph.Cre
 	if value, ok := _c.mutation.PurchaseMode(); ok {
 		_spec.SetField(subscriptionplan.FieldPurchaseMode, field.TypeString, value)
 		_node.PurchaseMode = value
+	}
+	if value, ok := _c.mutation.OnePurchasePerUser(); ok {
+		_spec.SetField(subscriptionplan.FieldOnePurchasePerUser, field.TypeBool, value)
+		_node.OnePurchasePerUser = value
 	}
 	if value, ok := _c.mutation.SaleEndsAt(); ok {
 		_spec.SetField(subscriptionplan.FieldSaleEndsAt, field.TypeTime, value)
@@ -632,6 +657,18 @@ func (u *SubscriptionPlanUpsert) SetPurchaseMode(v string) *SubscriptionPlanUpse
 // UpdatePurchaseMode sets the "purchase_mode" field to the value that was provided on create.
 func (u *SubscriptionPlanUpsert) UpdatePurchaseMode() *SubscriptionPlanUpsert {
 	u.SetExcluded(subscriptionplan.FieldPurchaseMode)
+	return u
+}
+
+// SetOnePurchasePerUser sets the "one_purchase_per_user" field.
+func (u *SubscriptionPlanUpsert) SetOnePurchasePerUser(v bool) *SubscriptionPlanUpsert {
+	u.Set(subscriptionplan.FieldOnePurchasePerUser, v)
+	return u
+}
+
+// UpdateOnePurchasePerUser sets the "one_purchase_per_user" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsert) UpdateOnePurchasePerUser() *SubscriptionPlanUpsert {
+	u.SetExcluded(subscriptionplan.FieldOnePurchasePerUser)
 	return u
 }
 
@@ -912,6 +949,20 @@ func (u *SubscriptionPlanUpsertOne) SetPurchaseMode(v string) *SubscriptionPlanU
 func (u *SubscriptionPlanUpsertOne) UpdatePurchaseMode() *SubscriptionPlanUpsertOne {
 	return u.Update(func(s *SubscriptionPlanUpsert) {
 		s.UpdatePurchaseMode()
+	})
+}
+
+// SetOnePurchasePerUser sets the "one_purchase_per_user" field.
+func (u *SubscriptionPlanUpsertOne) SetOnePurchasePerUser(v bool) *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.SetOnePurchasePerUser(v)
+	})
+}
+
+// UpdateOnePurchasePerUser sets the "one_purchase_per_user" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsertOne) UpdateOnePurchasePerUser() *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.UpdateOnePurchasePerUser()
 	})
 }
 
@@ -1368,6 +1419,20 @@ func (u *SubscriptionPlanUpsertBulk) SetPurchaseMode(v string) *SubscriptionPlan
 func (u *SubscriptionPlanUpsertBulk) UpdatePurchaseMode() *SubscriptionPlanUpsertBulk {
 	return u.Update(func(s *SubscriptionPlanUpsert) {
 		s.UpdatePurchaseMode()
+	})
+}
+
+// SetOnePurchasePerUser sets the "one_purchase_per_user" field.
+func (u *SubscriptionPlanUpsertBulk) SetOnePurchasePerUser(v bool) *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.SetOnePurchasePerUser(v)
+	})
+}
+
+// UpdateOnePurchasePerUser sets the "one_purchase_per_user" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsertBulk) UpdateOnePurchasePerUser() *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.UpdateOnePurchasePerUser()
 	})
 }
 
