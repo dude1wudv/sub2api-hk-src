@@ -776,7 +776,7 @@ async function confirmSubscribe() {
       subscriptionStore.fetchActiveSubscriptions(true),
     ]).catch(() => appStore.showWarning(t('payment.balancePurchaseRefreshFailed')))
   } catch (err: unknown) {
-    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', extractApiErrorMessage(err, t('common.error'))))
   } finally {
     submitting.value = false
   }

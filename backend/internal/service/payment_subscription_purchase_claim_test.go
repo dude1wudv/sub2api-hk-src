@@ -11,6 +11,53 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestReserveSubscriptionPurchaseClaimRejectsExistingClaimAndPaidHistory(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	require.NoError(t, client.Schema.Create(ctx))
+
+	account, err := client.User.Create().
+		SetEmail("claimed-purchase@example.com").
+		SetUsername("claimed-purchase").
+		SetPasswordHash("hash").
+		Save(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, reserveSubscriptionPurchaseClaim(ctx, client, account.ID, 123))
+	require.ErrorContains(t, reserveSubscriptionPurchaseClaim(ctx, client, account.ID, 123), "already in progress")
+
+	other, err := client.User.Create().
+		SetEmail("paid-purchase@example.com").
+		SetUsername("paid-purchase").
+		SetPasswordHash("hash").
+		Save(ctx)
+	require.NoError(t, err)
+	_, err = client.PaymentOrder.Create().
+		SetUserID(other.ID).
+		SetUserEmail(other.Email).
+		SetUserName(other.Username).
+		SetAmount(5).
+		SetPayAmount(5).
+		SetFeeRate(0).
+		SetRechargeCode("paid-claim-test").
+		SetOutTradeNo("paid-claim-test-order").
+		SetPaymentType("test").
+		SetPaymentTradeNo("trade").
+		SetOrderType(payment.OrderTypeSubscription).
+		SetPlanID(99).
+		SetSubscriptionGroupID(123).
+		SetSubscriptionDays(1).
+		SetStatus(OrderStatusCompleted).
+		SetExpiresAt(time.Now()).
+		SetPaidAt(time.Now()).
+		SetClientIP("").
+		SetSrcHost("").
+		Save(ctx)
+	require.NoError(t, err)
+
+	require.ErrorContains(t, reserveSubscriptionPurchaseClaim(ctx, client, other.ID, 123), "only be purchased once")
+}
+
 func TestReleaseStaleSubscriptionPurchaseClaims(t *testing.T) {
 	ctx := context.Background()
 	client := newPaymentConfigServiceTestClient(t)
