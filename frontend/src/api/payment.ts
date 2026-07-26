@@ -9,6 +9,7 @@ import type {
   SubscriptionPlan,
   MethodLimitsResponse,
   CheckoutInfoResponse,
+  BalanceSubscriptionPurchaseResult,
   CreateOrderRequest,
   CreateOrderResult,
   PaymentOrder
@@ -45,8 +46,16 @@ export const paymentAPI = {
   },
 
   /** Create a new payment order */
-  createOrder(data: CreateOrderRequest) {
-    return apiClient.post<CreateOrderResult>('/payment/orders', data)
+  createOrder(data: CreateOrderRequest, idempotencyKey?: string) {
+    return apiClient.post<CreateOrderResult>('/payment/orders', data, idempotencyKey
+      ? { headers: { 'Idempotency-Key': idempotencyKey } }
+      : undefined)
+  },
+
+  purchaseSubscriptionWithBalance(planId: number, idempotencyKey: string) {
+    return apiClient.post<BalanceSubscriptionPurchaseResult>(`/payment/plans/${planId}/purchase-with-balance`, {}, {
+      headers: { 'Idempotency-Key': idempotencyKey },
+    })
   },
 
   /** Get current user's orders */

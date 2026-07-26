@@ -77,7 +77,17 @@ export default {
       groupPricingDesc: '设置批量折扣和冻结比例',
       systemSettings: '系统设置',
       configureSystem: '配置系统设置',
-      failedToLoad: '加载仪表盘数据失败'
+      failedToLoad: '加载仪表盘数据失败',
+      upstreamBalance: {
+        title: '上游总余额',
+        autoRefresh: '自动刷新：1 分钟',
+        error: '异常',
+        empty: '未发现名称含“余额”的上游分组或账号',
+        last24h: '最近 24 小时消耗',
+        yesterday: '昨天消耗',
+        today: '今天消耗',
+        totalConsumption: '全部消耗'
+      }
     },
 
     backup: {

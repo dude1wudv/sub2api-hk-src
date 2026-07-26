@@ -216,6 +216,39 @@
           </div>
         </div>
 
+        <div class="card p-4">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.dashboard.upstreamBalance.title') }}</p>
+              <p class="text-2xl font-bold text-gray-900 dark:text-white">${{ formatCost(upstreamBalances?.total || 0) }}</p>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.dashboard.upstreamBalance.autoRefresh') }}</p>
+            </div>
+            <Icon name="dollar" size="md" class="text-cyan-600 dark:text-cyan-400" />
+          </div>
+          <div v-if="upstreamBalancesLoading" class="py-4"><LoadingSpinner size="sm" /></div>
+          <template v-else-if="upstreamBalances?.items?.length">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div v-for="item in upstreamBalances.items" :key="item.id" class="rounded-lg border border-gray-200 p-3 dark:border-dark-700">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ item.group_name || item.name }}</p>
+                    <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ item.name }}</p>
+                  </div>
+                  <span v-if="item.error" class="text-xs text-red-500">{{ t('admin.dashboard.upstreamBalance.error') }}</span>
+                </div>
+                <p class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">{{ item.error ? '--' : `$${formatCost(item.balance)}` }}</p>
+              </div>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div v-for="entry in upstreamConsumptionCards" :key="entry.label" class="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/10">
+                <p class="text-xs text-amber-700 dark:text-amber-300">{{ entry.label }}</p>
+                <p class="mt-1 text-lg font-semibold text-amber-900 dark:text-amber-100">${{ formatCost(entry.value) }}</p>
+              </div>
+            </div>
+          </template>
+          <p v-else class="text-sm text-gray-500 dark:text-gray-400">{{ t('admin.dashboard.upstreamBalance.empty') }}</p>
+        </div>
+
         <!-- Quick Actions -->
         <div class="card p-4">
           <div class="mb-3 flex items-center justify-between">
@@ -341,7 +374,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
@@ -355,6 +388,7 @@ import type {
   UserUsageTrendPoint,
   UserSpendingRankingItem
 } from '@/types'
+import type { UpstreamBalanceSummary } from '@/api/admin/dashboard'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -405,6 +439,16 @@ const rankingItems = ref<UserSpendingRankingItem[]>([])
 const rankingTotalActualCost = ref(0)
 const rankingTotalRequests = ref(0)
 const rankingTotalTokens = ref(0)
+const upstreamBalances = ref<UpstreamBalanceSummary | null>(null)
+const upstreamBalancesLoading = ref(false)
+let upstreamBalanceLoadSeq = 0
+let upstreamBalanceRefreshTimer: ReturnType<typeof setInterval> | null = null
+const upstreamConsumptionCards = computed(() => [
+  { label: t('admin.dashboard.upstreamBalance.last24h'), value: upstreamBalances.value?.consumption?.last_24h || 0 },
+  { label: t('admin.dashboard.upstreamBalance.yesterday'), value: upstreamBalances.value?.consumption?.yesterday || 0 },
+  { label: t('admin.dashboard.upstreamBalance.today'), value: upstreamBalances.value?.consumption?.today || 0 },
+  { label: t('admin.dashboard.upstreamBalance.totalConsumption'), value: upstreamBalances.value?.consumption?.total || 0 }
+])
 let chartLoadSeq = 0
 let usersTrendLoadSeq = 0
 let rankingLoadSeq = 0
@@ -732,11 +776,26 @@ const loadUserSpendingRanking = async () => {
   }
 }
 
+const loadUpstreamBalances = async () => {
+  const currentSeq = ++upstreamBalanceLoadSeq
+  upstreamBalancesLoading.value = true
+  try {
+    const response = await adminAPI.dashboard.getUpstreamBalances()
+    if (currentSeq === upstreamBalanceLoadSeq) upstreamBalances.value = response
+  } catch (error) {
+    if (currentSeq === upstreamBalanceLoadSeq) upstreamBalances.value = null
+    console.error('Error loading upstream balances:', error)
+  } finally {
+    if (currentSeq === upstreamBalanceLoadSeq) upstreamBalancesLoading.value = false
+  }
+}
+
 const loadDashboardStats = async () => {
   await Promise.all([
     loadDashboardSnapshot(true),
     loadUsersTrend(),
-    loadUserSpendingRanking()
+    loadUserSpendingRanking(),
+    loadUpstreamBalances()
   ])
 }
 
@@ -751,6 +810,11 @@ const loadChartData = async () => {
 onMounted(() => {
   void refreshBatchImageAccess()
   loadDashboardStats()
+  upstreamBalanceRefreshTimer = setInterval(loadUpstreamBalances, 60 * 1000)
+})
+
+onUnmounted(() => {
+  if (upstreamBalanceRefreshTimer) clearInterval(upstreamBalanceRefreshTimer)
 })
 </script>
 

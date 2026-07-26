@@ -70,6 +70,70 @@ export interface AccountListWithEtagResult {
   data: PaginatedResponse<Account> | null
 }
 
+export interface AccountUsageWindowSummary {
+  sampled: number
+  used_percent?: number
+  remaining_percent?: number
+  exhausted: number
+}
+
+export interface AccountQuotaPoolSummary {
+  total: number
+  available: number
+  sampled: number
+  remaining_percent?: number
+  remaining_5h_percent?: number
+  remaining_7d_percent?: number
+  exhausted: number
+}
+
+export interface AccountProxySummary {
+  proxy_id: number | null
+  name: string
+  total: number
+  available: number
+  used_5h_percent?: number
+  used_7d_percent?: number
+  remaining_5h_percent?: number
+  remaining_7d_percent?: number
+}
+
+export interface AccountSummary {
+  total: number
+  available: number
+  active: number
+  inactive: number
+  error: number
+  paused: number
+  unschedulable: number
+  rate_limited: number
+  temp_unschedulable: number
+  overloaded: number
+  expired: number
+  quota_exceeded: number
+  openai: number
+  codex_5h: AccountUsageWindowSummary
+  codex_7d: AccountUsageWindowSummary
+  oauth_pool: AccountQuotaPoolSummary
+  free_pool: AccountQuotaPoolSummary
+  grok_pool: AccountQuotaPoolSummary
+  recently_used: number
+  never_used: number
+  proxy_distribution: AccountProxySummary[]
+}
+
+export interface OAuthAccountUsageSummary {
+  total_standard_cost: number
+  average_standard_cost_per_oauth_account: number
+  oauth_account_count: number
+  oauth_accounts_with_usage: number
+  usage_log_count: number
+  deleted_oauth_account_count: number
+  expired_oauth_account_count: number
+  first_usage_at?: string
+  last_usage_at?: string
+}
+
 export async function listWithEtag(
   page: number = 1,
   pageSize: number = 20,
@@ -120,6 +184,25 @@ export async function listWithEtag(
     etag: etagHeader,
     data: response.data
   }
+}
+
+export async function getSummary(filters?: {
+  platform?: string
+  type?: string
+  status?: string
+  group?: string
+  search?: string
+  privacy_mode?: string
+}): Promise<AccountSummary> {
+  const { data } = await apiClient.get<AccountSummary>('/admin/accounts/summary', { params: filters })
+  return data
+}
+
+export async function getOAuthUsageSummary(options?: { refreshKey?: number }): Promise<OAuthAccountUsageSummary> {
+  const { data } = await apiClient.get<OAuthAccountUsageSummary>('/admin/accounts/oauth-usage-summary', {
+    params: options?.refreshKey ? { _: options.refreshKey } : undefined
+  })
+  return data
 }
 
 /**
@@ -931,6 +1014,8 @@ export async function refreshOllamaCloudUsage(id: number): Promise<OllamaCloudUs
 export const accountsAPI = {
   list,
   listWithEtag,
+  getSummary,
+  getOAuthUsageSummary,
   getById,
   create,
   duplicate,

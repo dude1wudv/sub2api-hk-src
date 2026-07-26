@@ -95,6 +95,20 @@ export default {
       schedulableDisabled: '调度已关闭',
       failedToToggleSchedulable: '切换调度状态失败',
       groupCountTotal: '共 {count} 个分组',
+      summary: {
+        statusTitle: '账号状态',
+        active: '正常',
+        error: '异常',
+        paused: '暂停',
+        codex5h: 'Codex 5h 剩余',
+        codex7d: 'Codex 7d 剩余',
+        sampled: '已采样 {count} 个'
+      },
+      oauthUsage: {
+        title: 'OAuth 标准用量',
+        oauthAccounts: 'OAuth 账号',
+        logs: '{count} 条记录'
+      },
       columns: {
         name: '名称',
         id: '账号ID',

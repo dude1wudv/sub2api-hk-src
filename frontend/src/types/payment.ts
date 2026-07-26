@@ -19,7 +19,7 @@ export type OrderStatus =
   | 'REFUNDED'
   | 'REFUND_FAILED'
 
-export type PaymentType = 'alipay' | 'wxpay' | 'alipay_direct' | 'wxpay_direct' | 'stripe' | 'easypay' | 'airwallex'
+export type PaymentType = 'alipay' | 'alipay_manual' | 'wxpay' | 'alipay_direct' | 'wxpay_direct' | 'stripe' | 'easypay' | 'airwallex'
 
 export type OrderType = 'balance' | 'subscription'
 
@@ -132,8 +132,19 @@ export interface SubscriptionPlan {
   validity_unit: string
   /** Stored as JSON string in backend; API layer should parse before use */
   features: string[]
+  purchase_mode?: 'external' | 'balance' | 'both'
+  fixed_expires_at?: string | null
+  sale_ends_at?: string | null
+  one_purchase_per_user?: boolean
   for_sale: boolean
   sort_order: number
+}
+
+export interface BalanceSubscriptionPurchaseResult {
+  order_id: number
+  balance: number
+  subscription_expires_at: string
+  subscription_was_extended: boolean
 }
 
 export interface PaymentChannel {

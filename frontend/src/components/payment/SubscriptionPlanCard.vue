@@ -19,9 +19,15 @@
             <span :class="['shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', badgeLightClass]">
               {{ pLabel }}
             </span>
+            <span v-if="plan.one_purchase_per_user" class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+              {{ t('payment.planCard.onePurchaseOnly') }}
+            </span>
           </div>
           <p v-if="plan.description" class="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-dark-400 line-clamp-2">
             {{ plan.description }}
+          </p>
+          <p v-if="plan.one_purchase_per_user" class="mt-0.5 text-xs text-amber-600 dark:text-amber-300">
+            {{ t('payment.planCard.onePurchaseOnlyHint') }}
           </p>
         </div>
         <div class="shrink-0 text-right">
@@ -75,6 +81,13 @@
         </div>
       </div>
 
+      <div v-if="plan.fixed_expires_at" class="mb-3 text-xs text-amber-600 dark:text-amber-300">
+        {{ t('payment.fixedExpiresAt', { time: fixedExpiresAtLabel }) }}
+      </div>
+      <div v-if="plan.sale_ends_at" class="mb-3 text-xs text-amber-600 dark:text-amber-300">
+        {{ t('payment.saleEndsAt', { time: saleEndsAtLabel }) }}
+      </div>
+
       <!-- Features list (compact) -->
       <div v-if="plan.features.length > 0" class="mb-3 space-y-1">
         <div v-for="feature in plan.features" :key="feature" class="flex items-start gap-1.5">
@@ -90,10 +103,14 @@
       <!-- Subscribe Button -->
       <button
         type="button"
-        :class="['w-full rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-[0.98]', btnClass]"
-        @click="emit('select', plan)"
+        :disabled="isPurchased"
+        :class="[
+          'w-full rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-[0.98]',
+          isPurchased ? 'cursor-not-allowed bg-gray-200 text-gray-500 dark:bg-dark-600 dark:text-gray-400' : btnClass,
+        ]"
+        @click="selectPlan"
       >
-        {{ isRenewal ? t('payment.renewNow') : t('payment.subscribeNow') }}
+        {{ isPurchased ? t('payment.planCard.alreadyPurchased') : isRenewal ? t('payment.renewNow') : t('payment.subscribeNow') }}
       </button>
     </div>
   </div>
@@ -125,7 +142,12 @@ const { t } = useI18n()
 
 const platform = computed(() => props.plan.group_platform || '')
 const isRenewal = computed(() =>
-  props.activeSubscriptions?.some(s => s.group_id === props.plan.group_id && s.status === 'active') ?? false
+  !props.plan.one_purchase_per_user
+  && (props.activeSubscriptions?.some(s => s.group_id === props.plan.group_id && s.status === 'active') ?? false)
+)
+const isPurchased = computed(() =>
+  props.plan.one_purchase_per_user
+  && (props.activeSubscriptions?.some(s => s.group_id === props.plan.group_id && s.status === 'active') ?? false)
 )
 
 // Derived color classes from central config
@@ -172,4 +194,20 @@ const modelScopeLabels = computed(() => {
 })
 
 const validitySuffix = computed(() => planValiditySuffix(props.plan, t))
+
+function selectPlan() {
+  if (!isPurchased.value) emit('select', props.plan)
+}
+
+function formatShanghaiDate(value?: string | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(date)
+}
+
+const saleEndsAtLabel = computed(() => formatShanghaiDate(props.plan.sale_ends_at))
+const fixedExpiresAtLabel = computed(() => formatShanghaiDate(props.plan.fixed_expires_at))
 </script>

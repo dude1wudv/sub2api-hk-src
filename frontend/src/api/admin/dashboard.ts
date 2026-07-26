@@ -25,6 +25,34 @@ export async function getStats(): Promise<DashboardStats> {
   return data
 }
 
+export interface UpstreamBalanceAccount {
+  id: number
+  name: string
+  group_id: number
+  group_name: string
+  balance: number
+  unit: string
+  error?: string
+}
+
+export interface UpstreamBalanceSummary {
+  total: number
+  unit: string
+  consumption: {
+    last_24h: number
+    yesterday: number
+    today: number
+    total: number
+    unit: string
+  }
+  items: UpstreamBalanceAccount[]
+}
+
+export async function getUpstreamBalances(): Promise<UpstreamBalanceSummary> {
+  const { data } = await apiClient.get<UpstreamBalanceSummary>('/admin/dashboard/upstream-balances')
+  return data
+}
+
 /**
  * Get real-time metrics
  * @returns Real-time system metrics
@@ -326,6 +354,7 @@ export async function getBatchApiKeysUsage(
 
 export const dashboardAPI = {
   getStats,
+  getUpstreamBalances,
   getRealtimeMetrics,
   getUsageTrend,
   getModelStats,

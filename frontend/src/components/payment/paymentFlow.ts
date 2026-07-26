@@ -11,6 +11,7 @@ export const PAYMENT_RECOVERY_STORAGE_KEY = 'payment.recovery.current'
 
 const VISIBLE_METHOD_ALIASES = {
   alipay: 'alipay',
+  alipay_manual: 'alipay_manual',
   alipay_direct: 'alipay',
   wxpay: 'wxpay',
   wxpay_direct: 'wxpay',
@@ -18,7 +19,7 @@ const VISIBLE_METHOD_ALIASES = {
   airwallex: 'airwallex',
 } as const
 
-export type VisiblePaymentMethod = 'alipay' | 'wxpay' | 'stripe' | 'airwallex'
+export type VisiblePaymentMethod = 'alipay' | 'alipay_manual' | 'wxpay' | 'stripe' | 'airwallex'
 export type StripeVisibleMethod = 'alipay' | 'wechat_pay'
 export type PaymentLaunchKind =
   | 'qr_waiting'
@@ -203,6 +204,10 @@ export function decidePaymentLaunch(
   const jsapiPayload = result.jsapi ?? result.jsapi_payload
   if (result.result_type === 'jsapi_ready' && jsapiPayload) {
     return { kind: 'wechat_jsapi', paymentState: baseState, recovery: baseState, jsapi: jsapiPayload }
+  }
+
+  if (visibleMethod === 'alipay_manual') {
+    return { kind: 'qr_waiting', paymentState: baseState, recovery: baseState }
   }
 
   if (

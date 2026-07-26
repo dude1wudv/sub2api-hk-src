@@ -77,7 +77,17 @@ export default {
       groupPricingDesc: 'Configure batch discount and hold ratio',
       systemSettings: 'System Settings',
       configureSystem: 'Configure system settings',
-      failedToLoad: 'Failed to load dashboard statistics'
+      failedToLoad: 'Failed to load dashboard statistics',
+      upstreamBalance: {
+        title: 'Upstream balance',
+        autoRefresh: 'Auto refresh: 1 minute',
+        error: 'Error',
+        empty: 'No upstream group or account containing “balance” was found',
+        last24h: 'Last 24 hours',
+        yesterday: 'Yesterday',
+        today: 'Today',
+        totalConsumption: 'All-time consumption'
+      }
     },
 
     backup: {

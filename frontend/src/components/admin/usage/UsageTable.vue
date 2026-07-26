@@ -156,6 +156,20 @@
                   <span class="font-medium text-pink-600 dark:text-pink-400">{{ row.image_output_tokens.toLocaleString() }}</span>
                 </div>
               </div>
+              <div class="flex flex-wrap gap-1.5 text-[10px] font-semibold leading-tight tabular-nums">
+                <span
+                  class="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-sky-700 ring-1 ring-inset ring-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-500/30"
+                  :title="t('usage.cacheReadRateFormula')"
+                >
+                  {{ t('usage.cacheReadRateShort') }} {{ formatCacheReadRate(row) }}
+                </span>
+                <span
+                  class="inline-flex items-center rounded bg-violet-50 px-1.5 py-0.5 text-violet-700 ring-1 ring-inset ring-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-500/30"
+                  :title="t('usage.outputTpsFormula')"
+                >
+                  {{ t('usage.outputTpsShort') }} {{ formatOutputTps(row) }}
+                </span>
+              </div>
             </div>
             <!-- Token Detail Tooltip -->
             <div
@@ -311,6 +325,22 @@
               <span class="text-gray-400">{{ t('admin.usage.cacheReadTokens') }}</span>
               <span class="font-medium text-white">{{ tokenTooltipData.cache_read_tokens.toLocaleString() }}</span>
             </div>
+            <template v-if="tokenTooltipData && !isImageUsage(tokenTooltipData)">
+              <div class="mt-2 border-t border-gray-700 pt-1.5">
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-gray-400">{{ t('usage.cacheReadRate') }}</span>
+                  <span class="font-semibold text-sky-300">{{ formatCacheReadRate(tokenTooltipData) }}</span>
+                </div>
+                <div class="mt-0.5 text-[10px] leading-snug text-gray-500">{{ t('usage.cacheReadRateFormula') }}</div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-gray-400">{{ t('usage.outputTps') }}</span>
+                  <span class="font-semibold text-violet-300">{{ formatOutputTps(tokenTooltipData) }}</span>
+                </div>
+                <div class="mt-0.5 text-[10px] leading-snug text-gray-500">{{ t('usage.outputTpsFormula') }}</div>
+              </div>
+            </template>
           </div>
           <div class="flex items-center justify-between gap-6 border-t border-gray-700 pt-1.5">
             <span class="text-gray-400">{{ t('usage.totalTokens') }}</span>
@@ -614,6 +644,21 @@ const formatDuration = (ms: number | null | undefined): string => {
   const totalSec = Math.round(ms / 1000)
   if (totalSec < 3600) return `${Math.floor(totalSec / 60)}m ${totalSec % 60}s`
   return `${Math.floor(totalSec / 3600)}h ${Math.floor((totalSec % 3600) / 60)}m`
+}
+
+const formatCacheReadRate = (row: AdminUsageLog): string => {
+  const denominator = row.input_tokens + row.cache_creation_tokens + row.cache_read_tokens
+  if (denominator <= 0) return '—'
+  return `${((row.cache_read_tokens / denominator) * 100).toFixed(1)}%`
+}
+
+const formatOutputTps = (row: AdminUsageLog): string => {
+  if (row.duration_ms == null || row.duration_ms <= 0) return '—'
+  const outputDuration = row.first_token_ms == null || row.duration_ms - row.first_token_ms <= 0
+    ? row.duration_ms
+    : row.duration_ms - row.first_token_ms
+  if (outputDuration <= 0) return '—'
+  return `${(row.output_tokens / (outputDuration / 1000)).toFixed(1)} tok/s`
 }
 
 // Cost tooltip functions

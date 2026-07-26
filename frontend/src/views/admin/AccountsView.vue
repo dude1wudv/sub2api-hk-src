@@ -173,6 +173,38 @@
             {{ t('admin.accounts.listPendingSyncAction') }}
           </button>
         </div>
+        <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div class="account-summary-panel">
+            <p class="account-summary-label">{{ t('admin.accounts.summary.statusTitle') }}</p>
+            <p class="account-summary-value">
+              <span v-if="accountSummaryLoading">…</span>
+              <span v-else>{{ accountSummary?.available ?? '-' }} / {{ accountSummary?.total ?? '-' }}</span>
+            </p>
+            <p class="account-summary-detail">
+              {{ t('admin.accounts.summary.active') }} {{ accountSummary?.active ?? '-' }} ·
+              {{ t('admin.accounts.summary.error') }} {{ accountSummary?.error ?? '-' }} ·
+              {{ t('admin.accounts.summary.paused') }} {{ accountSummary?.paused ?? '-' }}
+            </p>
+          </div>
+          <div class="account-summary-panel">
+            <p class="account-summary-label">{{ t('admin.accounts.summary.codex5h') }}</p>
+            <p class="account-summary-value">{{ formatSummaryPercent(accountSummary?.codex_5h?.remaining_percent) }}</p>
+            <p class="account-summary-detail">{{ t('admin.accounts.summary.sampled', { count: accountSummary?.codex_5h?.sampled ?? 0 }) }}</p>
+          </div>
+          <div class="account-summary-panel">
+            <p class="account-summary-label">{{ t('admin.accounts.summary.codex7d') }}</p>
+            <p class="account-summary-value">{{ formatSummaryPercent(accountSummary?.codex_7d?.remaining_percent) }}</p>
+            <p class="account-summary-detail">{{ t('admin.accounts.summary.sampled', { count: accountSummary?.codex_7d?.sampled ?? 0 }) }}</p>
+          </div>
+          <div class="account-summary-panel">
+            <p class="account-summary-label">{{ t('admin.accounts.oauthUsage.title') }}</p>
+            <p class="account-summary-value">{{ formatStandardCost(oauthUsageSummary?.total_standard_cost) }}</p>
+            <p class="account-summary-detail">
+              {{ t('admin.accounts.oauthUsage.oauthAccounts') }} {{ oauthUsageSummary?.oauth_account_count ?? '-' }} ·
+              {{ t('admin.accounts.oauthUsage.logs', { count: oauthUsageSummary?.usage_log_count ?? 0 }) }}
+            </p>
+          </div>
+        </div>
       </template>
       <template #table>
         <AccountBulkActionsBar
@@ -511,6 +543,7 @@ import { proxyExpiryBadgeClass, proxyExpiryLabelKey } from '@/utils/proxyExpiry'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { sanitizeUrl } from '@/utils/url'
 import { getFloatingPanelPosition } from '@/utils/floatingPanel'
+import type { AccountSummary, OAuthAccountUsageSummary } from '@/api/admin/accounts'
 import type { Account, AccountPlatform, AccountSchedulerGroupScore, AccountType, Proxy as AccountProxy, AdminGroup, WindowStats, ClaudeModel, UpstreamBillingProbeSnapshot } from '@/types'
 
 const { t } = useI18n()
@@ -519,6 +552,9 @@ const authStore = useAuthStore()
 
 const proxies = ref<AccountProxy[]>([])
 const groups = ref<AdminGroup[]>([])
+const accountSummary = ref<AccountSummary | null>(null)
+const oauthUsageSummary = ref<OAuthAccountUsageSummary | null>(null)
+const accountSummaryLoading = ref(false)
 const accountTableRef = ref<HTMLElement | null>(null)
 const dataTableRef = ref<InstanceType<typeof DataTable> | null>(null)
 type AccountBulkEditTarget =
@@ -949,6 +985,33 @@ const resetAutoRefreshCache = () => {
 
 const isFirstLoad = ref(true)
 
+const formatSummaryPercent = (value?: number): string => value == null ? '—' : `${value.toFixed(1)}%`
+const formatStandardCost = (value?: number): string => value == null ? '—' : `$${value.toFixed(2)}`
+
+const refreshAccountSummaries = async () => {
+  accountSummaryLoading.value = true
+  const filters = {
+    platform: params.platform || undefined,
+    type: params.type || undefined,
+    status: params.status || undefined,
+    group: params.group || undefined,
+    search: params.search || undefined,
+    privacy_mode: params.privacy_mode || undefined
+  }
+  try {
+    const [summary, oauth] = await Promise.all([
+      adminAPI.accounts.getSummary(filters),
+      adminAPI.accounts.getOAuthUsageSummary({ refreshKey: Date.now() })
+    ])
+    accountSummary.value = summary
+    oauthUsageSummary.value = oauth
+  } catch (error) {
+    console.error('Failed to load account summaries:', error)
+  } finally {
+    accountSummaryLoading.value = false
+  }
+}
+
 function markUpstreamBillingSortRefresh() {
   if (sortState.sort_by === 'upstream_billing_rate') {
     lastUpstreamBillingSortRefreshMinute = Math.floor(Date.now() / 60_000)
@@ -965,7 +1028,7 @@ const load = async () => {
   if (isFirstLoad.value) {
     requestParams.lite = '1'
   }
-  await baseLoad()
+  await Promise.all([baseLoad(), refreshAccountSummaries()])
   if (isFirstLoad.value) {
     isFirstLoad.value = false
     delete requestParams.lite
@@ -2127,5 +2190,21 @@ onUnmounted(() => {
 
 .account-tools-menu-icon {
   @apply inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md;
+}
+
+.account-summary-panel {
+  @apply rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800;
+}
+
+.account-summary-label {
+  @apply text-xs font-medium uppercase text-gray-500 dark:text-gray-400;
+}
+
+.account-summary-value {
+  @apply mt-1 text-xl font-semibold text-gray-900 dark:text-white;
+}
+
+.account-summary-detail {
+  @apply mt-2 text-xs text-gray-500 dark:text-gray-400;
 }
 </style>

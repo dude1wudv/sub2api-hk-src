@@ -97,6 +97,20 @@ export default {
       schedulableDisabled: 'Scheduling disabled',
       failedToToggleSchedulable: 'Failed to toggle scheduling status',
       groupCountTotal: '{count} groups total',
+      summary: {
+        statusTitle: 'Account Status',
+        active: 'Active',
+        error: 'Error',
+        paused: 'Paused',
+        codex5h: 'Codex 5h remaining',
+        codex7d: 'Codex 7d remaining',
+        sampled: '{count} sampled'
+      },
+      oauthUsage: {
+        title: 'OAuth Standard Usage',
+        oauthAccounts: 'OAuth accounts',
+        logs: '{count} logs'
+      },
       platforms: {
         anthropic: 'Anthropic',
         claude: 'Claude',

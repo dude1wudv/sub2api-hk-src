@@ -26,6 +26,10 @@
               <Icon name="eye" size="sm" />
               {{ t('common.view') }}
             </button>
+            <button v-if="row.payment_type === 'alipay_manual' && row.status === 'PENDING'" @click="handleManualConfirm(row)" class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-cyan-600 hover:bg-cyan-50 dark:text-cyan-400 dark:hover:bg-cyan-900/20">
+              <Icon name="check" size="sm" />
+              {{ t('payment.admin.confirmManualReceipt') }}
+            </button>
             <button v-if="row.status === 'PENDING'" @click="handleCancelOrder(row)" class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/20">
               <Icon name="x" size="sm" />
               {{ t('payment.orders.cancel') }}
@@ -202,6 +206,7 @@ const statusFilterOptions = computed(() => [
 const paymentTypeFilterOptions = computed(() => [
   { value: '', label: t('payment.admin.allPaymentTypes') },
   { value: 'alipay', label: t('payment.methods.alipay') },
+  { value: 'alipay_manual', label: t('payment.methods.alipay_manual') },
   { value: 'wxpay', label: t('payment.methods.wxpay') },
   { value: 'stripe', label: t('payment.methods.stripe') },
   { value: 'airwallex', label: t('payment.methods.airwallex') },
@@ -223,6 +228,18 @@ async function showOrderDetail(order: PaymentOrder) {
     if (data.order) selectedOrder.value = data.order as PaymentOrder
     orderAuditLogs.value = ((data.auditLogs || data.audit_logs || []) as unknown) as AuditLog[]
   } catch (_err: unknown) { /* keep cached order data */ }
+}
+
+async function handleManualConfirm(order: PaymentOrder) {
+  const amount = window.prompt(t('payment.admin.manualReceiptAmountPrompt'), order.pay_amount.toFixed(2))
+  if (!amount) return
+  try {
+    await adminPaymentAPI.confirmManualPayment(order.id, { amount })
+    appStore.showSuccess(t('payment.admin.manualReceiptConfirmed'))
+    loadOrders()
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+  }
 }
 
 async function handleCancelOrder(order: PaymentOrder) {

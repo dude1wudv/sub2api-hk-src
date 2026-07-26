@@ -110,6 +110,11 @@ export const adminPaymentAPI = {
     return apiClient.post(`/admin/payment/orders/${id}/cancel`)
   },
 
+  /** Confirm an exact receipt for a static manual-Alipay order */
+  confirmManualPayment(id: number, data: { amount: string; note?: string }) {
+    return apiClient.post(`/admin/payment/orders/${id}/manual-confirm`, data)
+  },
+
   /** Retry recharge for a failed order */
   retryRecharge(id: number) {
     return apiClient.post(`/admin/payment/orders/${id}/retry`)

@@ -52,7 +52,20 @@
         <div><label class="input-label">{{ t('payment.admin.validityUnit') }} <span class="text-red-500">*</span></label><Select v-model="planForm.validity_unit" :options="validityUnitOptions" /></div>
       </div>
       <div class="grid grid-cols-2 gap-4">
-        <div><label class="input-label">{{ t('payment.admin.sortOrder') }}</label><input v-model.number="planForm.sort_order" type="number" min="0" class="input" /></div>
+        <div>
+          <label class="input-label">{{ t('payment.admin.purchaseMode') }}</label>
+          <Select v-model="planForm.purchase_mode" :options="purchaseModeOptions" />
+        </div>
+        <div>
+          <label class="input-label">{{ t('payment.admin.saleEndsAt') }}</label>
+          <input v-model="planForm.sale_ends_at" type="datetime-local" class="input" />
+        </div>
+        <div>
+          <label class="input-label">{{ t('payment.admin.fixedExpiresAt') }}</label>
+          <input v-model="planForm.fixed_expires_at" type="datetime-local" class="input" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="input-label">{{ t('payment.admin.currency') }}</label>
           <input v-model="planForm.currency" type="text" maxlength="3" class="input uppercase" :placeholder="t('payment.admin.currencyPlaceholder')" />
@@ -65,7 +78,22 @@
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.featuresHint') }}</p>
       </div>
       <div class="flex items-center gap-3">
-        <label class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.admin.forSale') }}</label>
+        <label class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.admin.onePurchasePerUser') }}</label>
+        <button
+          type="button"
+          :class="[
+            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+            planForm.one_purchase_per_user ? 'bg-primary-500' : 'bg-gray-300 dark:bg-dark-600'
+          ]"
+          @click="planForm.one_purchase_per_user = !planForm.one_purchase_per_user"
+        >
+          <span :class="[
+            'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+            planForm.one_purchase_per_user ? 'translate-x-5' : 'translate-x-0'
+          ]" />
+        </button>
+      </div>
+      <div class="flex items-center gap-3">
         <button
           type="button"
           :class="[
@@ -122,13 +150,23 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const saving = ref(false)
-const planForm = reactive({ name: '', group_id: null as number | null, description: '', price: 0, original_price: 0, currency: '', validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
+const planForm = reactive({
+  name: '', group_id: null as number | null, description: '', price: 0, original_price: 0, currency: '',
+  validity_days: 30, validity_unit: 'days', purchase_mode: 'external' as 'external' | 'balance' | 'both',
+  sale_ends_at: '', fixed_expires_at: '', sort_order: 0, one_purchase_per_user: false, for_sale: true,
+})
 const planFeaturesText = ref('')
 
 const validityUnitOptions = computed(() => [
   { value: 'days', label: t('payment.admin.days') },
   { value: 'weeks', label: t('payment.admin.weeks') },
   { value: 'months', label: t('payment.admin.months') },
+])
+
+const purchaseModeOptions = computed(() => [
+  { value: 'external', label: t('payment.admin.purchaseModes.external') },
+  { value: 'balance', label: t('payment.admin.purchaseModes.balance') },
+  { value: 'both', label: t('payment.admin.purchaseModes.both') },
 ])
 
 const groupOptions = computed(() =>
@@ -171,14 +209,45 @@ const subscriptionCnyPreview = computed(() => {
   }
 })
 
+function toShanghaiDateTimeLocal(value?: string | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date).reduce<Record<string, string>>((result, part) => {
+    result[part.type] = part.value
+    return result
+  }, {})
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
+}
+
+function toShanghaiISOString(value: string): string | null {
+  if (!value) return null
+  const date = new Date(`${value}:00+08:00`)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
 // Reset form when dialog opens
 watch(() => props.show, (visible) => {
   if (!visible) return
   if (props.plan) {
-    Object.assign(planForm, { name: props.plan.name, group_id: props.plan.group_id, description: props.plan.description, price: props.plan.price, original_price: props.plan.original_price || 0, currency: props.plan.currency || '', validity_days: props.plan.validity_days, validity_unit: props.plan.validity_unit || 'days', sort_order: props.plan.sort_order || 0, for_sale: props.plan.for_sale })
+    Object.assign(planForm, {
+      name: props.plan.name, group_id: props.plan.group_id, description: props.plan.description,
+      price: props.plan.price, original_price: props.plan.original_price || 0, currency: props.plan.currency || '',
+      validity_days: props.plan.validity_days, validity_unit: props.plan.validity_unit || 'days',
+      purchase_mode: props.plan.purchase_mode || 'external', sale_ends_at: toShanghaiDateTimeLocal(props.plan.sale_ends_at),
+      fixed_expires_at: toShanghaiDateTimeLocal(props.plan.fixed_expires_at), sort_order: props.plan.sort_order || 0,
+      one_purchase_per_user: props.plan.one_purchase_per_user === true, for_sale: props.plan.for_sale,
+    })
     planFeaturesText.value = (props.plan.features || []).join('\n')
   } else {
-    Object.assign(planForm, { name: '', group_id: null, description: '', price: 0, original_price: 0, currency: '', validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
+    Object.assign(planForm, {
+      name: '', group_id: null, description: '', price: 0, original_price: 0, currency: '',
+      validity_days: 30, validity_unit: 'days', purchase_mode: 'external', sale_ends_at: '', fixed_expires_at: '',
+      sort_order: 0, one_purchase_per_user: false, for_sale: true,
+    })
     planFeaturesText.value = ''
   }
 })
@@ -195,7 +264,13 @@ function buildPlanPayload() {
     currency: planForm.currency.trim().toUpperCase(),
     validity_days: planForm.validity_days,
     validity_unit: planForm.validity_unit,
+    purchase_mode: planForm.purchase_mode,
+    sale_ends_at: toShanghaiISOString(planForm.sale_ends_at),
+    clear_sale_ends_at: !!props.plan && !planForm.sale_ends_at,
+    fixed_expires_at: toShanghaiISOString(planForm.fixed_expires_at),
+    clear_fixed_expires_at: !!props.plan && !planForm.fixed_expires_at,
     sort_order: planForm.sort_order,
+    one_purchase_per_user: planForm.one_purchase_per_user,
     for_sale: planForm.for_sale,
     features,
   }

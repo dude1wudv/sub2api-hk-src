@@ -1,54 +1,64 @@
 /** @type {import('tailwindcss').Config} */
+
+const varPalette = (name) => ({
+  50: `rgb(var(--color-${name}-50) / <alpha-value>)`,
+  100: `rgb(var(--color-${name}-100) / <alpha-value>)`,
+  200: `rgb(var(--color-${name}-200) / <alpha-value>)`,
+  300: `rgb(var(--color-${name}-300) / <alpha-value>)`,
+  400: `rgb(var(--color-${name}-400) / <alpha-value>)`,
+  500: `rgb(var(--color-${name}-500) / <alpha-value>)`,
+  600: `rgb(var(--color-${name}-600) / <alpha-value>)`,
+  700: `rgb(var(--color-${name}-700) / <alpha-value>)`,
+  800: `rgb(var(--color-${name}-800) / <alpha-value>)`,
+  900: `rgb(var(--color-${name}-900) / <alpha-value>)`,
+  950: `rgb(var(--color-${name}-950) / <alpha-value>)`
+})
+
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // 主色调 - Teal/Cyan 青色系
-        primary: {
-          50: '#f0fdfa',
-          100: '#ccfbf1',
-          200: '#99f6e4',
-          300: '#5eead4',
-          400: '#2dd4bf',
-          500: '#14b8a6',
-          600: '#0d9488',
-          700: '#0f766e',
-          800: '#115e59',
-          900: '#134e4a',
-          950: '#042f2e'
-        },
-        // 辅助色 - 深蓝灰
-        accent: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617'
-        },
-        // 深色模式背景
+        primary: varPalette('primary'),
+        accent: varPalette('link'),
+        link: varPalette('link'),
+        ok: varPalette('ok'),
+        warn: varPalette('warn'),
+        err: varPalette('err'),
+        amber: varPalette('warn'),
+        yellow: varPalette('warn'),
+        emerald: varPalette('ok'),
+        green: varPalette('ok'),
+        lime: varPalette('ok'),
+        red: varPalette('err'),
+        rose: varPalette('err'),
+        orange: varPalette('warn'),
+        indigo: varPalette('link'),
+        teal: varPalette('link'),
+        cyan: varPalette('link'),
+        sky: varPalette('link'),
+        blue: varPalette('link'),
+        purple: varPalette('primary'),
+        violet: varPalette('primary'),
+        fuchsia: varPalette('primary'),
+        pink: varPalette('primary'),
         dark: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617'
+          50: '#ece7dc',
+          100: '#d9d2c4',
+          200: '#b3ac9e',
+          300: '#8d8677',
+          400: '#6b6557',
+          500: '#524d41',
+          600: '#403b32',
+          700: '#2e2b25',
+          800: '#23201b',
+          900: '#1b1915',
+          950: '#13110e'
         }
       },
       fontFamily: {
+        serif: ['Iowan Old Style', 'Palatino Linotype', 'Songti SC', 'STSong', 'Georgia', 'serif'],
         sans: [
           'system-ui',
           '-apple-system',

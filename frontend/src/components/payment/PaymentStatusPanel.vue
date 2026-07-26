@@ -169,8 +169,13 @@
     <template v-else-if="showQRCode">
       <div class="card p-6">
         <div class="flex flex-col items-center space-y-4">
-          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ scanTitle }}</p>
-          <div :class="['relative rounded-lg border-2 p-4', qrBorderClass]">
+          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ isManualAlipay ? t('payment.manual.title') : scanTitle }}</p>
+          <template v-if="isManualAlipay">
+            <img :src="props.qrCode" :alt="t('payment.manual.qrAlt')" class="w-56 rounded-lg border-2 border-[#00AEEF] bg-white p-2" />
+            <p class="text-center text-sm text-gray-500 dark:text-gray-400">{{ t('payment.manual.exactAmountHint') }}</p>
+            <p class="text-3xl font-bold tabular-nums text-[#00AEEF]">¥{{ (props.payAmount ?? 0).toFixed(2) }}</p>
+          </template>
+          <div v-else :class="['relative rounded-lg border-2 p-4', qrBorderClass]">
             <canvas ref="qrCanvas" class="mx-auto"></canvas>
             <!-- Brand logo overlay -->
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -179,7 +184,7 @@
               </span>
             </div>
           </div>
-          <p v-if="scanHint" class="text-center text-sm text-gray-500 dark:text-gray-400">{{ scanHint }}</p>
+          <p v-if="!isManualAlipay && scanHint" class="text-center text-sm text-gray-500 dark:text-gray-400">{{ scanHint }}</p>
           <button v-if="payUrl" class="btn btn-secondary text-sm" @click="reopenPopup">
             {{ t('payment.qr.openPayWindow') }}
           </button>
@@ -292,6 +297,7 @@ const VERIFY_RETRY_INTERVAL_MS = 15000
 const VERIFY_RETRY_MAX_ATTEMPTS = 6
 
 const isAlipay = computed(() => isBuiltInAlipayMethod(props.paymentType))
+const isManualAlipay = computed(() => props.paymentType === 'alipay_manual')
 const isWxpay = computed(() => isBuiltInWxpayMethod(props.paymentType))
 const isMobileAlipayDeepLink = computed(() => props.mobileAlipayDeepLink === true && isAlipay.value && !!qrUrl.value)
 const showQRCode = computed(() => !!qrUrl.value && (!isMobileAlipayDeepLink.value || deepLinkFallbackVisible.value))
