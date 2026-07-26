@@ -7,7 +7,10 @@
 -- session identifiers stay NULL. Only explicit client correlation identity is
 -- stored here; prompt_cache_key and content-derived sticky hashes are never
 -- persisted as session_id.
-ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS session_id VARCHAR(255);
+-- The production-compatible branch already owns usage_logs.session_id as a
+-- BIGINT foreign key into usage_sessions. Keep that history intact and store the
+-- upstream explicit client correlation identifier in a separate text column.
+ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS client_session_id VARCHAR(255);
 
 -- Batch image usage is recorded asynchronously after the originating HTTP
 -- request has finished, so retain the same sanitized identifier on the job.
