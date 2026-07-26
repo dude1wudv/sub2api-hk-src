@@ -48,6 +48,24 @@ See [APPLE_CONTAINER.md](./APPLE_CONTAINER.md) for configuration, upgrades, pers
 
 ---
 
+## Managed Shared-Server Deployments
+
+> **Workspace warning:** a managed shared-server checkout is not a fresh deployment. Do not run `docker-deploy.sh`, replace `docker-compose.yml`, copy a generated `.env`, or apply the Apple-container workflow there. Those commands create or replace an entire stack and can overwrite operator-managed settings.
+
+Use the repository's reviewed deployment template and keep the existing runtime configuration out of version control. For an application-only update, build or pull the approved image, then recreate only the application service:
+
+```bash
+docker compose up -d --no-deps --force-recreate sub2api
+```
+
+This procedure deliberately leaves PostgreSQL and Redis data/services untouched. Verify health and migrations before treating the update as complete; database migrations are forward-only.
+
+## Image2 Embedded SPA
+
+`/image2` is an embedded SPA endpoint, not a separate production service. Keep its approved, pinned build output in the application image and retain its route plus SPA fallback during reverse-proxy or deployment changes. Do not replace it with an arbitrary runtime download.
+
+---
+
 ## Docker Deployment (Recommended)
 
 ### Method 1: One-Click Deployment (Recommended)
@@ -239,6 +257,8 @@ docker compose down -v
 | `ADMIN_PASSWORD` | No | *(auto-generated)* | Admin password |
 | `TZ` | No | `Asia/Shanghai` | Timezone |
 | `UPDATE_GITHUB_TOKEN` | No | *(empty)* | Token for `api.github.com` release checks only; asset downloads remain anonymous. |
+| `REDIS_PASSWORD` | No | *(empty)* | Redis password; required with `REDIS_USERNAME` ACL mode. |
+| `REDIS_USERNAME` | No | *(empty)* | Named Redis ACL user; disables Redis's default user when set. |
 | `GEMINI_OAUTH_CLIENT_ID` | No | *(builtin)* | Google OAuth client ID (Gemini OAuth). Leave empty to use the built-in Gemini CLI client. |
 | `GEMINI_OAUTH_CLIENT_SECRET` | No | *(builtin)* | Google OAuth client secret (Gemini OAuth). Leave empty to use the built-in Gemini CLI client. |
 | `GEMINI_OAUTH_SCOPES` | No | *(default)* | OAuth scopes (Gemini OAuth) |

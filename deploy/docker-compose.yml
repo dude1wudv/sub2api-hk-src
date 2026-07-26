@@ -24,7 +24,7 @@ services:
         soft: 100000
         hard: 100000
     ports:
-      - "${BIND_HOST:-0.0.0.0}:${SERVER_PORT:-8080}:8080"
+      - "${BIND_HOST:-127.0.0.1}:${SERVER_PORT:-8080}:8080"
     volumes:
       # Data persistence (config.yaml will be auto-generated here)
       - sub2api_data:/app/data
@@ -139,10 +139,10 @@ services:
       # =======================================================================
       # Enable URL allowlist validation (false to skip allowlist checks)
       - SECURITY_URL_ALLOWLIST_ENABLED=${SECURITY_URL_ALLOWLIST_ENABLED:-false}
-      # Allow insecure HTTP URLs when allowlist is disabled (default: true; set to false to require https)
-      - SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP=${SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP:-true}
-      # Allow private IP addresses for upstream/pricing/CRS (default: true; set to false to block private hosts)
-      - SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS=${SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS:-true}
+      # Reject insecure HTTP unless a reviewed deployment explicitly opts in.
+      - SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP=${SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP:-false}
+      # Reject localhost/private upstreams unless a reviewed deployment explicitly opts in.
+      - SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS=${SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS:-false}
       # Upstream hosts whitelist (comma-separated, only used when enabled=true)
       - SECURITY_URL_ALLOWLIST_UPSTREAM_HOSTS=${SECURITY_URL_ALLOWLIST_UPSTREAM_HOSTS:-}
 
@@ -256,17 +256,25 @@ services:
         hard: 100000
     volumes:
       - redis_data:/data
-    # The command is one quoted script for the inner `sh -c`. Compose keeps
-    # the newlines inside the quoted string, so every line needs a trailing
-    # `\` — without it, `redis-server` on the first line runs with no flags
-    # at all, and the --save/--appendonly/--appendfsync lines are never read.
+    # A named ACL user disables Redis's unauthenticated default user. Leave both
+    # variables empty only for an isolated local stack.
     command: >
       sh -c '
-        redis-server \
-        --save 60 1 \
-        --appendonly yes \
-        --appendfsync everysec \
-        ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}'
+        if [ -n "$$REDIS_USERNAME" ]; then
+          test -n "$$REDIS_PASSWORD" || { echo "REDIS_PASSWORD is required when REDIS_USERNAME is set" >&2; exit 1; }
+          exec redis-server \
+            --save 60 1 \
+            --appendonly yes \
+            --appendfsync everysec \
+            --user default off \
+            --user "$$REDIS_USERNAME" on ">$$REDIS_PASSWORD" ~* "&*" "+@all"
+        fi
+        exec redis-server \
+          --save 60 1 \
+          --appendonly yes \
+          --appendfsync everysec \
+          $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
+      '
     environment:
       - TZ=${TZ:-Asia/Shanghai}
       # REDISCLI_AUTH is used by redis-cli for authentication (safer than -a flag)
@@ -274,7 +282,7 @@ services:
     networks:
       - sub2api-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "if [ -n \"$$REDIS_USERNAME\" ]; then redis-cli --user \"$$REDIS_USERNAME\" ping; else redis-cli ping; fi"]
       interval: 10s
       timeout: 5s
       retries: 5

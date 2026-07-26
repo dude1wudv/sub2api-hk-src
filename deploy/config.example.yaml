@@ -11,9 +11,8 @@
 # 服务器配置
 # =============================================================================
 server:
-  # Bind address (0.0.0.0 for all interfaces)
-  # 绑定地址（0.0.0.0 表示监听所有网络接口）
-  host: "0.0.0.0"
+  # Bind to loopback by default; publish only through a reviewed reverse proxy.
+  host: "127.0.0.1"
   # Port to listen on
   # 监听端口
   port: 8080
@@ -139,12 +138,12 @@ security:
     # Allowed hosts for CRS sync (required when using CRS sync)
     # 允许 CRS 同步的主机列表（使用 CRS 同步功能时必须配置）
     crs_hosts: []
-    # Allow localhost/private IPs for upstream/pricing/CRS (use only in trusted networks)
-    # 允许本地/私有 IP 地址用于上游/定价/CRS（仅在可信网络中使用）
-    allow_private_hosts: true
-    # Allow http:// URLs when allowlist is disabled (default: true; set to false to require https)
-    # 白名单禁用时是否允许 http:// URL（默认: true，设为 false 则仅允许 https）
-    allow_insecure_http: true
+    # Reject localhost/private IPs unless a reviewed trusted-network deployment opts in.
+    # 默认拒绝本地/私有 IP 地址；仅在已审查的可信网络中显式开启。
+    allow_private_hosts: false
+    # Require HTTPS when the allowlist is disabled; allow HTTP only by explicit exception.
+    # 白名单关闭时默认要求 HTTPS；仅通过显式例外允许 HTTP。
+    allow_insecure_http: false
   response_headers:
     # Enable configurable response header filtering (default: true)
     # 启用可配置的响应头过滤（默认启用，过滤上游敏感响应头）

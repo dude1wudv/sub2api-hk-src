@@ -30,6 +30,7 @@ POSTGRES_USER=""
 POSTGRES_PASSWORD=""
 POSTGRES_DB=""
 REDIS_PASSWORD=""
+REDIS_USERNAME=""
 TZ_VALUE=""
 POSTGRES_ADDRESS=""
 REDIS_ADDRESS=""
@@ -403,11 +404,12 @@ prepare_environment() {
     APP_IMAGE="$(read_env_value APPLE_CONTAINER_SUB2API_IMAGE weishaw/sub2api:latest)"
     POSTGRES_IMAGE="$(read_env_value APPLE_CONTAINER_POSTGRES_IMAGE postgres:18-alpine)"
     REDIS_IMAGE="$(read_env_value APPLE_CONTAINER_REDIS_IMAGE redis:8-alpine)"
-    BIND_HOST="$(read_env_value BIND_HOST 0.0.0.0)"
+    BIND_HOST="$(read_env_value BIND_HOST 127.0.0.1)"
     HOST_PORT="$(read_env_value SERVER_PORT 8080)"
     POSTGRES_USER="$(read_env_value POSTGRES_USER sub2api)"
     POSTGRES_PASSWORD="$(read_env_value POSTGRES_PASSWORD)"
     POSTGRES_DB="$(read_env_value POSTGRES_DB sub2api)"
+    REDIS_USERNAME="$(read_env_value REDIS_USERNAME)"
     REDIS_PASSWORD="$(read_env_value REDIS_PASSWORD)"
     TZ_VALUE="$(read_env_value TZ Asia/Shanghai)"
 
@@ -423,6 +425,9 @@ prepare_environment() {
     [[ -n "${POSTGRES_DB}" ]] || die "POSTGRES_DB must not be empty."
     if [[ -z "${POSTGRES_PASSWORD}" || "${POSTGRES_PASSWORD}" == "change_this_secure_password" ]]; then
         die "Set a secure POSTGRES_PASSWORD in ${ENV_FILE}."
+    fi
+    if [[ -n "${REDIS_USERNAME}" && -z "${REDIS_PASSWORD}" ]]; then
+        die "Set REDIS_PASSWORD when REDIS_USERNAME is configured."
     fi
 
     TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sub2api-apple.XXXXXX")"
@@ -443,6 +448,7 @@ PGPASSWORD=${POSTGRES_PASSWORD}
 EOF
 
     cat >"${REDIS_ENV_FILE}" <<EOF
+REDIS_USERNAME=${REDIS_USERNAME}
 REDIS_PASSWORD=${REDIS_PASSWORD}
 TZ=${TZ_VALUE}
 EOF
@@ -471,6 +477,7 @@ DATABASE_DBNAME=${POSTGRES_DB}
 DATABASE_SSLMODE=disable
 REDIS_HOST=${REDIS_ADDRESS}
 REDIS_PORT=6379
+REDIS_USERNAME=${REDIS_USERNAME}
 REDIS_PASSWORD=${REDIS_PASSWORD}
 DATA_DIR=/app/storage/data
 EOF
@@ -501,7 +508,7 @@ create_redis_container() {
         --env-file "${REDIS_ENV_FILE}" \
         --volume "${REDIS_VOLUME}:/var/lib/redis" \
         "${REDIS_IMAGE}" \
-        sh -c 'set -e; mkdir -p /var/lib/redis/data; chown redis:redis /var/lib/redis/data; exec /usr/local/bin/docker-entrypoint.sh redis-server --dir /var/lib/redis/data --save 60 1 --appendonly yes --appendfsync everysec ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}' \
+        sh -c 'set -e; mkdir -p /var/lib/redis/data; chown redis:redis /var/lib/redis/data; if [ -n "$REDIS_USERNAME" ]; then test -n "$REDIS_PASSWORD" || { echo "REDIS_PASSWORD is required when REDIS_USERNAME is set" >&2; exit 1; }; exec /usr/local/bin/docker-entrypoint.sh redis-server --dir /var/lib/redis/data --save 60 1 --appendonly yes --appendfsync everysec --user default off --user "$REDIS_USERNAME" on ">$REDIS_PASSWORD" ~* "&*" "+@all"; fi; exec /usr/local/bin/docker-entrypoint.sh redis-server --dir /var/lib/redis/data --save 60 1 --appendonly yes --appendfsync everysec ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}' \
         >/dev/null
 }
 
@@ -597,9 +604,13 @@ probe_postgres() {
 }
 
 probe_redis() {
+    if [[ -n "${REDIS_USERNAME}" ]]; then
+        container exec --env-file "${REDIS_ENV_FILE}" \
+            "${REDIS_CONTAINER}" redis-cli --user "${REDIS_USERNAME}" ping
+        return
+    fi
     container exec --env-file "${REDIS_ENV_FILE}" \
-        "${REDIS_CONTAINER}" \
-        redis-cli ping
+        "${REDIS_CONTAINER}" redis-cli ping
 }
 
 probe_app() {

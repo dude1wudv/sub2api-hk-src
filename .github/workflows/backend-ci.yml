@@ -16,6 +16,7 @@ jobs:
         run: |
           /bin/bash -n deploy/apple-container.sh
           /bin/bash deploy/tests/apple-container-test.sh
+          make secret-scan
 
   test:
     runs-on: ubuntu-latest

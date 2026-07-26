@@ -116,7 +116,7 @@ Apple-specific handling of shared settings:
 | Application and gateway variables | Passed to Sub2API from `.env` |
 | `BIND_HOST`, `SERVER_PORT` | Used for the macOS published port |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | PostgreSQL first initialization only |
-| `REDIS_PASSWORD` | Applied to Redis and Sub2API |
+| `REDIS_USERNAME`, `REDIS_PASSWORD` | Leave both empty for an isolated local stack, or set both to use a named ACL user with Redis's default user disabled |
 | `DATABASE_PORT`, `REDIS_PORT` | Internal ports are fixed to 5432 and 6379 |
 | `POSTGRES_MAX_*`, `REDIS_MAXCLIENTS` | Not currently applied to the database/cache server |
 

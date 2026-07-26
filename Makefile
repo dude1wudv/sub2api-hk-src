@@ -1,4 +1,6 @@
-.PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical
+.PHONY: build build-backend build-frontend build-datamanagementd test test-backend test-frontend test-frontend-critical test-datamanagementd secret-scan
+
+DATAMANAGEMENTD_DIR ?= datamanagement
 
 FRONTEND_CRITICAL_VITEST := \
 	src/views/auth/__tests__/LinuxDoCallbackView.spec.ts \
@@ -19,6 +21,11 @@ build-backend:
 build-frontend:
 	@pnpm --dir frontend run build
 
+# 编译 datamanagementd（该可选组件需位于 DATAMANAGEMENTD_DIR）
+build-datamanagementd:
+	@test -d "$(DATAMANAGEMENTD_DIR)" || { echo "datamanagementd source is not included: $(DATAMANAGEMENTD_DIR)" >&2; exit 1; }
+	@cd "$(DATAMANAGEMENTD_DIR)" && go build -o datamanagementd ./cmd/datamanagementd
+
 # 运行测试（后端 + 前端）
 test: test-backend test-frontend
 
@@ -32,3 +39,10 @@ test-frontend:
 
 test-frontend-critical:
 	@pnpm --dir frontend exec vitest run $(FRONTEND_CRITICAL_VITEST)
+
+test-datamanagementd:
+	@test -d "$(DATAMANAGEMENTD_DIR)" || { echo "datamanagementd source is not included: $(DATAMANAGEMENTD_DIR)" >&2; exit 1; }
+	@cd "$(DATAMANAGEMENTD_DIR)" && go test ./...
+
+secret-scan:
+	@command -v python3 >/dev/null 2>&1 && python3 tools/secret_scan.py || python tools/secret_scan.py

@@ -51,6 +51,9 @@ services:
       - HTTPS_PROXY=${SUB2API_DEV_HTTPS_PROXY:-http://host.docker.internal:7897}
       - ALL_PROXY=${SUB2API_DEV_ALL_PROXY:-socks5://host.docker.internal:7897}
       - NO_PROXY=${SUB2API_DEV_NO_PROXY:-127.0.0.1,localhost,::1,postgres,redis,sub2api,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,.local}
+      # Reject insecure HTTP and private upstreams unless a reviewed development environment opts in.
+      - SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP=${SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP:-false}
+      - SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS=${SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS:-false}
       # OpenAI HTTP upstream protocol/timeout
       - GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT=${GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT:-0}
       - GATEWAY_OPENAI_HTTP2_ENABLED=${GATEWAY_OPENAI_HTTP2_ENABLED:-true}
@@ -118,24 +121,30 @@ services:
     restart: unless-stopped
     volumes:
       - ./redis_data:/data:Z
-    # The command is one quoted script for the inner `sh -c`. Compose keeps
-    # the newlines inside the quoted string, so every line needs a trailing
-    # `\` — without it, `redis-server` on the first line runs with no flags
-    # at all, and the --save/--appendonly/--appendfsync lines are never read.
     command: >
         sh -c '
-          redis-server \
-          --save 60 1 \
-          --appendonly yes \
-          --appendfsync everysec \
-          ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}'
+          if [ -n "$$REDIS_USERNAME" ]; then
+            test -n "$$REDIS_PASSWORD" || { echo "REDIS_PASSWORD is required when REDIS_USERNAME is set" >&2; exit 1; }
+            exec redis-server \
+              --save 60 1 \
+              --appendonly yes \
+              --appendfsync everysec \
+              --user default off \
+              --user "$$REDIS_USERNAME" on ">$$REDIS_PASSWORD" ~* "&*" "+@all"
+          fi
+          exec redis-server \
+            --save 60 1 \
+            --appendonly yes \
+            --appendfsync everysec \
+            $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
+        '
     environment:
       - TZ=${TZ:-Asia/Shanghai}
       - REDISCLI_AUTH=${REDIS_PASSWORD:-}
     networks:
       - sub2api-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "if [ -n \"$$REDIS_USERNAME\" ]; then redis-cli --user \"$$REDIS_USERNAME\" ping; else redis-cli ping; fi"]
       interval: 10s
       timeout: 5s
       retries: 5
