@@ -694,6 +694,48 @@ func (h *AccountHandler) List(c *gin.Context) {
 	response.Paginated(c, result, total, page, pageSize)
 }
 
+// Summary returns aggregate account status and quota information for the active filters.
+func (h *AccountHandler) Summary(c *gin.Context) {
+	platform := c.Query("platform")
+	accountType := c.Query("type")
+	status := c.Query("status")
+	search := strings.TrimSpace(c.Query("search"))
+	if len(search) > 100 {
+		search = search[:100]
+	}
+	privacyMode := strings.TrimSpace(c.Query("privacy_mode"))
+	var groupID int64
+	if groupIDStr := c.Query("group"); groupIDStr != "" {
+		if groupIDStr == accountListGroupUngroupedQueryValue {
+			groupID = service.AccountListGroupUngrouped
+		} else {
+			parsed, err := strconv.ParseInt(groupIDStr, 10, 64)
+			if err != nil || parsed < 0 {
+				response.BadRequest(c, "invalid group filter")
+				return
+			}
+			groupID = parsed
+		}
+	}
+	summary, err := h.adminService.GetAccountSummary(c.Request.Context(), platform, accountType, status, search, groupID, privacyMode)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, summary)
+}
+
+// OAuthUsageSummary returns standard-pricing usage for OpenAI OAuth accounts.
+func (h *AccountHandler) OAuthUsageSummary(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	summary, err := h.adminService.GetOAuthAccountUsageSummary(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, summary)
+}
+
 func buildAccountsListETag(
 	items []AccountWithConcurrency,
 	total int64,

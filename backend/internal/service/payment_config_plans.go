@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/subscriptionplan"
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 )
@@ -23,6 +25,35 @@ func normalizePlanCurrency(raw string) (string, error) {
 		return "", infraerrors.BadRequest("PLAN_CURRENCY_INVALID", "currency must be a 3-letter ISO currency code")
 	}
 	return currency, nil
+}
+
+const (
+	SubscriptionPlanPurchaseModeExternal = "external"
+	SubscriptionPlanPurchaseModeBalance  = "balance"
+	SubscriptionPlanPurchaseModeBoth     = "both"
+)
+
+func normalizeSubscriptionPlanPurchaseMode(mode string) (string, error) {
+	mode = strings.ToLower(strings.TrimSpace(mode))
+	if mode == "" {
+		return SubscriptionPlanPurchaseModeExternal, nil
+	}
+	if mode == SubscriptionPlanPurchaseModeExternal || mode == SubscriptionPlanPurchaseModeBalance || mode == SubscriptionPlanPurchaseModeBoth {
+		return mode, nil
+	}
+	return "", infraerrors.BadRequest("PLAN_PURCHASE_MODE_INVALID", "purchase mode must be external, balance, or both")
+}
+
+func validatePlanGroup(ctx context.Context, client *dbent.Client, groupID int64) error {
+	group, err := client.Group.Query().Where(group.IDEQ(groupID)).Only(ctx)
+	if err != nil || group.Status != payment.EntityStatusActive || group.SubscriptionType != domain.SubscriptionTypeSubscription {
+		return infraerrors.BadRequest("PLAN_GROUP_INVALID", "plan group must be an active subscription group")
+	}
+	return nil
+}
+
+func isSubscriptionPlanForSaleAt(plan *dbent.SubscriptionPlan, now time.Time) bool {
+	return plan != nil && plan.ForSale && (plan.SaleEndsAt == nil || plan.SaleEndsAt.After(now)) && (plan.FixedExpiresAt == nil || plan.FixedExpiresAt.After(now))
 }
 
 // validatePlanRequired checks that all required fields for a plan are provided.
@@ -129,7 +160,12 @@ func (s *PaymentConfigService) ListPlans(ctx context.Context) ([]*dbent.Subscrip
 }
 
 func (s *PaymentConfigService) ListPlansForSale(ctx context.Context) ([]*dbent.SubscriptionPlan, error) {
-	return s.entClient.SubscriptionPlan.Query().Where(subscriptionplan.ForSaleEQ(true)).Order(subscriptionplan.BySortOrder()).All(ctx)
+	now := subscriptionBusinessNow()
+	return s.entClient.SubscriptionPlan.Query().Where(
+		subscriptionplan.ForSaleEQ(true),
+		subscriptionplan.Or(subscriptionplan.SaleEndsAtIsNil(), subscriptionplan.SaleEndsAtGT(now)),
+		subscriptionplan.Or(subscriptionplan.FixedExpiresAtIsNil(), subscriptionplan.FixedExpiresAtGT(now)),
+	).Order(subscriptionplan.BySortOrder()).All(ctx)
 }
 
 func (s *PaymentConfigService) CreatePlan(ctx context.Context, req CreatePlanRequest) (*dbent.SubscriptionPlan, error) {
@@ -140,10 +176,24 @@ func (s *PaymentConfigService) CreatePlan(ctx context.Context, req CreatePlanReq
 	if err != nil {
 		return nil, err
 	}
+	purchaseMode, err := normalizeSubscriptionPlanPurchaseMode(req.PurchaseMode)
+	if err != nil {
+		return nil, err
+	}
+	if err := validatePlanGroup(ctx, s.entClient, req.GroupID); err != nil {
+		return nil, err
+	}
+	if req.FixedExpiresAt != nil && !req.FixedExpiresAt.After(subscriptionBusinessNow()) {
+		return nil, infraerrors.BadRequest("PLAN_FIXED_EXPIRY_INVALID", "fixed expiry must be in the future")
+	}
+	if req.SaleEndsAt != nil && !req.SaleEndsAt.After(subscriptionBusinessNow()) {
+		return nil, infraerrors.BadRequest("PLAN_SALE_END_INVALID", "sale end must be in the future")
+	}
 	b := s.entClient.SubscriptionPlan.Create().
 		SetGroupID(req.GroupID).SetName(req.Name).SetDescription(req.Description).
 		SetPrice(req.Price).SetCurrency(currency).SetValidityDays(req.ValidityDays).SetValidityUnit(req.ValidityUnit).
-		SetFeatures(req.Features).SetProductName(req.ProductName).
+		SetFeatures(req.Features).SetProductName(req.ProductName).SetPurchaseMode(purchaseMode).
+		SetNillableFixedExpiresAt(req.FixedExpiresAt).SetOnePurchasePerUser(req.OnePurchasePerUser).SetNillableSaleEndsAt(req.SaleEndsAt).
 		SetForSale(req.ForSale).SetSortOrder(req.SortOrder)
 	if req.OriginalPrice != nil {
 		b.SetOriginalPrice(*req.OriginalPrice)
@@ -160,6 +210,9 @@ func (s *PaymentConfigService) UpdatePlan(ctx context.Context, id int64, req Upd
 	}
 	u := s.entClient.SubscriptionPlan.UpdateOneID(id)
 	if req.GroupID != nil {
+		if err := validatePlanGroup(ctx, s.entClient, *req.GroupID); err != nil {
+			return nil, err
+		}
 		u.SetGroupID(*req.GroupID)
 	}
 	if req.Name != nil {
@@ -192,6 +245,34 @@ func (s *PaymentConfigService) UpdatePlan(ctx context.Context, id int64, req Upd
 	}
 	if req.ProductName != nil {
 		u.SetProductName(*req.ProductName)
+	}
+	if req.PurchaseMode != nil {
+		mode, err := normalizeSubscriptionPlanPurchaseMode(*req.PurchaseMode)
+		if err != nil {
+			return nil, err
+		}
+		u.SetPurchaseMode(mode)
+	}
+	if req.FixedExpiresAt != nil {
+		if !req.FixedExpiresAt.After(subscriptionBusinessNow()) {
+			return nil, infraerrors.BadRequest("PLAN_FIXED_EXPIRY_INVALID", "fixed expiry must be in the future")
+		}
+		u.SetFixedExpiresAt(*req.FixedExpiresAt)
+	}
+	if req.ClearFixedExpiresAt != nil && *req.ClearFixedExpiresAt {
+		u.ClearFixedExpiresAt()
+	}
+	if req.OnePurchasePerUser != nil {
+		u.SetOnePurchasePerUser(*req.OnePurchasePerUser)
+	}
+	if req.SaleEndsAt != nil {
+		if !req.SaleEndsAt.After(subscriptionBusinessNow()) {
+			return nil, infraerrors.BadRequest("PLAN_SALE_END_INVALID", "sale end must be in the future")
+		}
+		u.SetSaleEndsAt(*req.SaleEndsAt)
+	}
+	if req.ClearSaleEndsAt != nil && *req.ClearSaleEndsAt {
+		u.ClearSaleEndsAt()
 	}
 	if req.ForSale != nil {
 		u.SetForSale(*req.ForSale)

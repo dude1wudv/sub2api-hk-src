@@ -26,6 +26,10 @@ func (s *RedeemCodeRepoSuite) SetupTest() {
 	s.ctx = dbent.NewTxContext(context.Background(), tx)
 	s.client = tx.Client()
 	s.repo = NewRedeemCodeRepository(s.client).(*redeemCodeRepository)
+	// The migration bundle seeds production subscription cards. Clear them only
+	// inside this rollback-only test transaction so list assertions stay isolated.
+	_, err := s.client.RedeemCode.Delete().Exec(s.ctx)
+	s.Require().NoError(err)
 }
 
 func TestRedeemCodeRepoSuite(t *testing.T) {

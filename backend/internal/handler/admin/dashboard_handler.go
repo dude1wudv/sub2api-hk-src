@@ -187,6 +187,16 @@ func (h *DashboardHandler) GetRealtimeMetrics(c *gin.Context) {
 	})
 }
 
+// GetUpstreamBalances returns the monitored upstream balance summary.
+func (h *DashboardHandler) GetUpstreamBalances(c *gin.Context) {
+	summary, err := h.dashboardService.GetUpstreamBalances(c.Request.Context())
+	if err != nil {
+		response.InternalError(c, "Failed to get upstream balances")
+		return
+	}
+	response.Success(c, summary)
+}
+
 // GetUsageTrend handles getting usage trend data
 // GET /api/v1/admin/dashboard/trend
 // Query params: start_date, end_date (YYYY-MM-DD), granularity (day/hour), user_id, api_key_id, model, account_id, group_id, request_type, stream, billing_type

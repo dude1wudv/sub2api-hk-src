@@ -802,5 +802,13 @@ func (s *stubAdminService) CreateShadow(ctx context.Context, parentID int64, opt
 	}, nil
 }
 
+func (s *stubAdminService) GetAccountSummary(context.Context, string, string, string, string, int64, string) (*service.AccountSummary, error) {
+	return &service.AccountSummary{}, nil
+}
+
+func (s *stubAdminService) GetOAuthAccountUsageSummary(context.Context) (*service.OAuthAccountUsageSummary, error) {
+	return &service.OAuthAccountUsageSummary{}, nil
+}
+
 // Ensure stub implements interface.
 var _ service.AdminService = (*stubAdminService)(nil)

@@ -13,6 +13,7 @@ import (
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
+	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	"github.com/Wei-Shaw/sub2api/internal/payment/provider"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
@@ -62,6 +63,9 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		orderAmount = calculateCreditedBalance(req.Amount, cfg.BalanceRechargeMultiplier)
 	}
 	feeRate := cfg.RechargeFeeRate
+	if req.PaymentType == payment.TypeAlipayManual {
+		feeRate = 0
+	}
 	methodCurrency := payment.DefaultPaymentCurrency
 	if s.configService != nil {
 		methodCurrency, err = s.configService.ValidateMethodCurrencyConsistency(ctx, req.PaymentType)
@@ -84,7 +88,16 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	if sel != nil {
 		selectedCurrency = paymentProviderConfigCurrency(sel.ProviderKey, sel.Config)
 	}
-	if selectedCurrency != methodCurrency {
+	if req.PaymentType == payment.TypeAlipayManual {
+		if plan == nil {
+			return nil, infraerrors.BadRequest("ALIPAY_MANUAL_PLAN_REQUIRED", "manual Alipay requires a subscription plan")
+		}
+		if selectedCurrency != payment.DefaultPaymentCurrency {
+			return nil, infraerrors.BadRequest("ALIPAY_MANUAL_CURRENCY_INVALID", "manual Alipay requires a CNY provider instance")
+		}
+		payAmountStr = payment.FormatAmountForCurrency(plan.Price, payment.DefaultPaymentCurrency)
+		payAmount = plan.Price
+	} else if selectedCurrency != methodCurrency {
 		payAmountStr, payAmount, err = calculateCreateOrderPayAmountForOrderType(limitAmount, feeRate, selectedCurrency, req.OrderType, cfg.SubscriptionUSDToCNYRate)
 		if err != nil {
 			return nil, err
@@ -136,8 +149,14 @@ func (s *PaymentService) validateSubOrder(ctx context.Context, req CreateOrderRe
 		return nil, infraerrors.BadRequest("INVALID_INPUT", "subscription order requires a plan")
 	}
 	plan, err := s.configService.GetPlan(ctx, req.PlanID)
-	if err != nil || !plan.ForSale {
+	if err != nil || !isSubscriptionPlanForSaleAt(plan, subscriptionBusinessNow()) || (plan.PurchaseMode != SubscriptionPlanPurchaseModeExternal && plan.PurchaseMode != SubscriptionPlanPurchaseModeBoth) {
 		return nil, infraerrors.NotFound("PLAN_NOT_AVAILABLE", "plan not found or not for sale")
+	}
+	if req.PaymentType == payment.TypeAlipayManual {
+		currency, currencyErr := payment.NormalizePaymentCurrency(plan.Currency)
+		if currencyErr != nil || currency != payment.DefaultPaymentCurrency {
+			return nil, infraerrors.BadRequest("ALIPAY_MANUAL_PLAN_CURRENCY_INVALID", "manual Alipay subscriptions require a CNY-priced plan")
+		}
 	}
 	group, err := s.groupRepo.GetByID(ctx, plan.GroupID)
 	if err != nil || group.Status != payment.EntityStatusActive {
@@ -161,7 +180,15 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 	if err := s.checkDailyLimit(ctx, tx, req.UserID, limitAmount, cfg.DailyLimit); err != nil {
 		return nil, err
 	}
+	if plan != nil && plan.OnePurchasePerUser {
+		if err := reserveSubscriptionPurchaseClaim(ctx, tx.Client(), req.UserID, plan.GroupID); err != nil {
+			return nil, err
+		}
+	}
 	tm := cfg.OrderTimeoutMin
+	if req.PaymentType == payment.TypeAlipayManual {
+		tm = 10
+	}
 	if tm <= 0 {
 		tm = defaultOrderTimeoutMin
 	}
@@ -207,7 +234,21 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 		b.SetProviderSnapshot(providerSnapshot)
 	}
 	if plan != nil {
-		b.SetPlanID(plan.ID).SetSubscriptionGroupID(plan.GroupID).SetSubscriptionDays(psComputeValidityDays(plan.ValidityDays, plan.ValidityUnit))
+		validityDays := psComputeValidityDays(plan.ValidityDays, plan.ValidityUnit)
+		b.SetPlanID(plan.ID).SetSubscriptionGroupID(plan.GroupID).SetSubscriptionDays(validityDays)
+		if plan.FixedExpiresAt != nil {
+			var existingExpiresAt *time.Time
+			existing, queryErr := tx.UserSubscription.Query().Where(usersubscription.UserIDEQ(req.UserID), usersubscription.GroupIDEQ(plan.GroupID)).Only(ctx)
+			if queryErr == nil {
+				existingExpiresAt = &existing.ExpiresAt
+			} else if !dbent.IsNotFound(queryErr) {
+				return nil, fmt.Errorf("query existing subscription: %w", queryErr)
+			}
+			if err := validateFixedSubscriptionExpiry(time.Now(), plan.FixedExpiresAt, existingExpiresAt); err != nil {
+				return nil, err
+			}
+			b.SetSubscriptionExpiresAt(ResolveSubscriptionExpiry(time.Now(), validityDays, plan.FixedExpiresAt, existingExpiresAt))
+		}
 	}
 	order, err := b.Save(ctx)
 	if err != nil {
@@ -217,6 +258,11 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 	order, err = tx.PaymentOrder.UpdateOneID(order.ID).SetRechargeCode(code).Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("set recharge code: %w", err)
+	}
+	if plan != nil && plan.OnePurchasePerUser {
+		if err := bindSubscriptionPurchaseClaim(ctx, tx.Client(), req.UserID, plan.GroupID, order.ID); err != nil {
+			return nil, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit order transaction: %w", err)

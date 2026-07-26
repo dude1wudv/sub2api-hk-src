@@ -19,6 +19,7 @@ type dashboardAggregationRepository struct {
 
 const usageLogsCleanupBatchSize = 10000
 const usageBillingDedupCleanupBatchSize = 10000
+const upstreamBalanceEpsilon = 0.000000001
 
 // NewDashboardAggregationRepository 创建仪表盘预聚合仓储。
 func NewDashboardAggregationRepository(sqlDB *sql.DB) service.DashboardAggregationRepository {
@@ -34,6 +35,78 @@ func NewDashboardAggregationRepository(sqlDB *sql.DB) service.DashboardAggregati
 
 func newDashboardAggregationRepositoryWithSQL(sqlq sqlExecutor) *dashboardAggregationRepository {
 	return &dashboardAggregationRepository{sql: sqlq}
+}
+
+func (r *dashboardAggregationRepository) RecordUpstreamBalance(ctx context.Context, item service.UpstreamBalanceAccount, observedAt time.Time) error {
+	if r == nil || r.sql == nil || item.ID == 0 || item.Error != "" {
+		return nil
+	}
+	if db, ok := r.sql.(*sql.DB); ok {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		if err := newDashboardAggregationRepositoryWithSQL(tx).RecordUpstreamBalance(ctx, item, observedAt); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		return tx.Commit()
+	}
+	var previous *float64
+	rows, err := r.sql.QueryContext(ctx, `SELECT balance FROM upstream_balance_snapshots WHERE account_id = $1 FOR UPDATE`, item.ID)
+	if err != nil {
+		return err
+	}
+	if rows.Next() {
+		var balance float64
+		if err := rows.Scan(&balance); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		previous = &balance
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if previous != nil && *previous-item.Balance > upstreamBalanceEpsilon {
+		if _, err := r.sql.ExecContext(ctx, `INSERT INTO upstream_balance_consumptions
+			(account_id, group_id, account_name, group_name, previous_balance, current_balance, amount, unit, consumed_at)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, item.ID, item.GroupID, item.Name, item.GroupName, *previous, item.Balance, *previous-item.Balance, item.Unit, observedAt); err != nil {
+			return err
+		}
+	}
+	_, err = r.sql.ExecContext(ctx, `INSERT INTO upstream_balance_snapshots
+		(account_id, group_id, account_name, group_name, balance, unit, observed_at) VALUES ($1,$2,$3,$4,$5,$6,$7)
+		ON CONFLICT (account_id) DO UPDATE SET group_id=EXCLUDED.group_id, account_name=EXCLUDED.account_name,
+		group_name=EXCLUDED.group_name, balance=EXCLUDED.balance, unit=EXCLUDED.unit, observed_at=EXCLUDED.observed_at`,
+		item.ID, item.GroupID, item.Name, item.GroupName, item.Balance, item.Unit, observedAt)
+	return err
+}
+
+func (r *dashboardAggregationRepository) GetUpstreamBalanceConsumptionSummary(ctx context.Context, now time.Time) (service.UpstreamBalanceConsumptionSummary, error) {
+	out := service.UpstreamBalanceConsumptionSummary{Unit: "USD"}
+	if r == nil || r.sql == nil {
+		return out, nil
+	}
+	loc := timezone.Location()
+	today := truncateToDay(now.In(loc))
+	yesterday := today.Add(-24 * time.Hour)
+	tomorrow := today.Add(24 * time.Hour)
+	rows, err := r.sql.QueryContext(ctx, `SELECT
+		COALESCE(SUM(CASE WHEN consumed_at >= $1 THEN amount ELSE 0 END),0),
+		COALESCE(SUM(CASE WHEN consumed_at >= $2 AND consumed_at < $3 THEN amount ELSE 0 END),0),
+		COALESCE(SUM(CASE WHEN consumed_at >= $3 AND consumed_at < $4 THEN amount ELSE 0 END),0), COALESCE(SUM(amount),0)
+		FROM upstream_balance_consumptions`, now.Add(-24*time.Hour), yesterday, today, tomorrow)
+	if err != nil {
+		return out, err
+	}
+	defer func() { _ = rows.Close() }()
+	if rows.Next() {
+		if err := rows.Scan(&out.Last24h, &out.Yesterday, &out.Today, &out.Total); err != nil {
+			return out, err
+		}
+	}
+	return out, rows.Err()
 }
 
 func isPostgresDriver(db *sql.DB) bool {

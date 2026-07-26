@@ -498,12 +498,31 @@ func (s *PaymentService) ExecuteSubscriptionFulfillment(ctx context.Context, oid
 func (s *PaymentService) doSub(ctx context.Context, o *dbent.PaymentOrder, lease *paymentFulfillmentLease) error {
 	gid := *o.SubscriptionGroupID
 	days := *o.SubscriptionDays
+	shouldCompletePurchaseClaim := false
+	if o.PlanID != nil {
+		plan, err := s.entClient.SubscriptionPlan.Get(ctx, *o.PlanID)
+		if err != nil {
+			if !dbent.IsNotFound(err) {
+				return fmt.Errorf("get subscription plan: %w", err)
+			}
+			// Payment orders snapshot entitlement fields at checkout. A removed plan
+			// must not prevent a previously paid order from being fulfilled.
+			shouldCompletePurchaseClaim = true
+		} else {
+			shouldCompletePurchaseClaim = plan.OnePurchasePerUser
+		}
+	}
 	g, err := s.groupRepo.GetByID(ctx, gid)
 	if err != nil || g.Status != payment.EntityStatusActive {
 		return fmt.Errorf("group %d no longer exists or inactive", gid)
 	}
 	if err := s.ensurePaymentSubscriptionAssigned(ctx, o, gid, days); err != nil {
 		return err
+	}
+	if shouldCompletePurchaseClaim {
+		if err := completeSubscriptionPurchaseClaim(ctx, s.entClient, o.ID); err != nil {
+			return err
+		}
 	}
 	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
 		return err
@@ -540,11 +559,7 @@ func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, 
 			return fmt.Errorf("check existing subscription assignment: %w", lookupErr)
 		default:
 			if _, _, err := s.subscriptionSvc.assignOrExtendSubscription(txCtx, &AssignSubscriptionInput{
-				UserID:       o.UserID,
-				GroupID:      groupID,
-				ValidityDays: days,
-				AssignedBy:   0,
-				Notes:        orderNote,
+				UserID: o.UserID, GroupID: groupID, ValidityDays: days, FixedExpiresAt: o.SubscriptionExpiresAt, AssignedBy: 0, Notes: orderNote,
 			}, true); err != nil {
 				return fmt.Errorf("assign subscription: %w", err)
 			}

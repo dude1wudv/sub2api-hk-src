@@ -189,11 +189,12 @@ func (s *SubscriptionService) invalidateSubscriptionCaches(userID, groupID int64
 
 // AssignSubscriptionInput 分配订阅输入
 type AssignSubscriptionInput struct {
-	UserID       int64
-	GroupID      int64
-	ValidityDays int
-	AssignedBy   int64
-	Notes        string
+	UserID         int64
+	GroupID        int64
+	ValidityDays   int
+	FixedExpiresAt *time.Time
+	AssignedBy     int64
+	Notes          string
 }
 
 // AssignSubscription 分配订阅给用户（不允许重复分配）
@@ -242,22 +243,12 @@ func (s *SubscriptionService) assignOrExtendSubscription(ctx context.Context, in
 
 	// 已有订阅，执行续期（在事务中完成所有更新）
 	if existingSub != nil {
-		now := time.Now()
-		var newExpiresAt time.Time
-
+		now := subscriptionBusinessNow()
 		isExpired := !existingSub.ExpiresAt.After(now)
-		if !isExpired {
-			// 未过期：从当前过期时间累加
-			newExpiresAt = existingSub.ExpiresAt.AddDate(0, 0, validityDays)
-		} else {
-			// 已过期：从当前时间开始计算
-			newExpiresAt = now.AddDate(0, 0, validityDays)
+		if err := validateFixedSubscriptionExpiry(now, input.FixedExpiresAt, &existingSub.ExpiresAt); err != nil {
+			return nil, false, err
 		}
-
-		// 确保不超过最大过期时间
-		if newExpiresAt.After(MaxExpiresAt) {
-			newExpiresAt = MaxExpiresAt
-		}
+		newExpiresAt := ResolveSubscriptionExpiry(now, validityDays, input.FixedExpiresAt, &existingSub.ExpiresAt)
 
 		if err := s.updateExistingSubscriptionTerm(ctx, existingSub, input.Notes, now, newExpiresAt, isExpired); err != nil {
 			return nil, false, err
@@ -402,11 +393,11 @@ func (s *SubscriptionService) createSubscription(ctx context.Context, input *Ass
 		validityDays = MaxValidityDays
 	}
 
-	now := time.Now()
-	expiresAt := now.AddDate(0, 0, validityDays)
-	if expiresAt.After(MaxExpiresAt) {
-		expiresAt = MaxExpiresAt
+	now := subscriptionBusinessNow()
+	if err := validateFixedSubscriptionExpiry(now, input.FixedExpiresAt, nil); err != nil {
+		return nil, err
 	}
+	expiresAt := ResolveSubscriptionExpiry(now, validityDays, input.FixedExpiresAt, nil)
 
 	sub := &UserSubscription{
 		UserID:     input.UserID,

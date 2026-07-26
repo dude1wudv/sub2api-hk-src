@@ -10,6 +10,7 @@ type PaymentType = string
 // Supported payment type constants.
 const (
 	TypeAlipay       PaymentType = "alipay"
+	TypeAlipayManual PaymentType = "alipay_manual"
 	TypeWxpay        PaymentType = "wxpay"
 	TypeAlipayDirect PaymentType = "alipay_direct"
 	TypeWxpayDirect  PaymentType = "wxpay_direct"
@@ -82,6 +83,8 @@ const ConfigKeyPublishableKey = "publishableKey"
 // For example, "alipay_direct" -> "alipay".
 func GetBasePaymentType(t string) string {
 	switch {
+	case t == TypeAlipayManual:
+		return TypeAlipayManual
 	case t == TypeEasyPay:
 		return TypeEasyPay
 	case t == TypeAirwallex:

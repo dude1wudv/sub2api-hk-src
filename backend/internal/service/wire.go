@@ -687,7 +687,7 @@ var ProviderSet = wire.NewSet(
 	NewRedeemService,
 	NewPromoService,
 	NewUsageService,
-	NewDashboardService,
+	ProvideDashboardService,
 	ProvidePricingService,
 	NewBillingService,
 	ProvideBillingCacheService,
@@ -782,6 +782,7 @@ var ProviderSet = wire.NewSet(
 	ProvidePaymentConfigService,
 	ProvidePaymentService,
 	ProvidePaymentOrderExpiryService,
+	ProvideSubscriptionPlanSaleWindowService,
 	ProvideBalanceNotifyService,
 	ProvideChannelMonitorService,
 	ProvideChannelMonitorRunner,
@@ -819,6 +820,15 @@ func ProvidePaymentService(entClient *dbent.Client, registry *payment.Registry, 
 // ProvidePaymentOrderExpiryService creates and starts PaymentOrderExpiryService.
 func ProvidePaymentOrderExpiryService(paymentSvc *PaymentService, lockCache LeaderLockCache, db *sql.DB) *PaymentOrderExpiryService {
 	svc := NewPaymentOrderExpiryService(paymentSvc, 60*time.Second)
+	svc.SetLeaderLock(lockCache, db)
+	svc.Start()
+	return svc
+}
+
+// ProvideSubscriptionPlanSaleWindowService creates and starts the periodic
+// sale-window unlisting job with the shared cross-instance leader lock.
+func ProvideSubscriptionPlanSaleWindowService(entClient *dbent.Client, lockCache LeaderLockCache, db *sql.DB) *SubscriptionPlanSaleWindowService {
+	svc := NewSubscriptionPlanSaleWindowService(entClient, time.Minute)
 	svc.SetLeaderLock(lockCache, db)
 	svc.Start()
 	return svc

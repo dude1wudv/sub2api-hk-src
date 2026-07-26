@@ -13,6 +13,8 @@ func CreateProvider(providerKey string, instanceID string, config map[string]str
 		return NewEasyPay(instanceID, config)
 	case payment.TypeAlipay:
 		return NewAlipay(instanceID, config)
+	case payment.TypeAlipayManual:
+		return NewAlipayManual(instanceID), nil
 	case payment.TypeWxpay:
 		return NewWxpay(instanceID, config)
 	case payment.TypeStripe:

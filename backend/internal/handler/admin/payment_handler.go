@@ -1,11 +1,13 @@
 package admin
 
 import (
+	"context"
 	"strconv"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
+	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -100,6 +102,39 @@ func (h *PaymentHandler) CancelOrder(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{"message": msg})
+}
+
+// ManualConfirmOrder records an administrator's verified static-code receipt.
+type ManualConfirmOrderRequest struct {
+	Amount string `json:"amount" binding:"required"`
+	Note   string `json:"note"`
+}
+
+func (h *PaymentHandler) ManualConfirmOrder(c *gin.Context) {
+	orderID, ok := parseIDParam(c, "id")
+	if !ok {
+		return
+	}
+	var req ManualConfirmOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	operator := "admin"
+	if subject, ok := middleware.GetAuthSubjectFromContext(c); ok {
+		operator = "admin:" + strconv.FormatInt(subject.UserID, 10)
+	}
+	executeAdminIdempotentJSON(c, "admin.payment.orders.manual_confirm", struct {
+		OrderID  int64  `json:"order_id"`
+		Amount   string `json:"amount"`
+		Note     string `json:"note"`
+		Operator string `json:"operator"`
+	}{OrderID: orderID, Amount: req.Amount, Note: req.Note, Operator: operator}, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
+		if err := h.paymentService.ConfirmManualAlipayPayment(ctx, orderID, req.Amount, req.Note, operator); err != nil {
+			return nil, err
+		}
+		return gin.H{"message": "manual payment confirmed"}, nil
+	})
 }
 
 // RetryFulfillment retries fulfillment for a paid order.

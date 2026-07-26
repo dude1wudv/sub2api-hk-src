@@ -42,7 +42,9 @@ type dashboardStatsCacheEntry struct {
 type DashboardService struct {
 	usageRepo      UsageLogRepository
 	aggRepo        DashboardAggregationRepository
+	accountRepo    AccountRepository
 	cache          DashboardStatsCache
+	httpUpstream   HTTPUpstream
 	cacheFreshTTL  time.Duration
 	cacheTTL       time.Duration
 	refreshTimeout time.Duration
