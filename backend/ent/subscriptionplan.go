@@ -44,7 +44,15 @@ type SubscriptionPlan struct {
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt    time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// PurchaseMode holds the value of the "purchase_mode" field.
+	PurchaseMode string `json:"purchase_mode,omitempty"`
+	// FixedExpiresAt holds the value of the "fixed_expires_at" field.
+	FixedExpiresAt *time.Time `json:"fixed_expires_at,omitempty"`
+	// OnePurchasePerUser holds the value of the "one_purchase_per_user" field.
+	OnePurchasePerUser bool `json:"one_purchase_per_user,omitempty"`
+	// SaleEndsAt holds the value of the "sale_ends_at" field.
+	SaleEndsAt   *time.Time `json:"sale_ends_at,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -53,15 +61,15 @@ func (*SubscriptionPlan) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case subscriptionplan.FieldForSale:
+		case subscriptionplan.FieldForSale, subscriptionplan.FieldOnePurchasePerUser:
 			values[i] = new(sql.NullBool)
 		case subscriptionplan.FieldPrice, subscriptionplan.FieldOriginalPrice:
 			values[i] = new(sql.NullFloat64)
 		case subscriptionplan.FieldID, subscriptionplan.FieldGroupID, subscriptionplan.FieldValidityDays, subscriptionplan.FieldSortOrder:
 			values[i] = new(sql.NullInt64)
-		case subscriptionplan.FieldName, subscriptionplan.FieldDescription, subscriptionplan.FieldCurrency, subscriptionplan.FieldValidityUnit, subscriptionplan.FieldFeatures, subscriptionplan.FieldProductName:
+		case subscriptionplan.FieldName, subscriptionplan.FieldDescription, subscriptionplan.FieldCurrency, subscriptionplan.FieldValidityUnit, subscriptionplan.FieldFeatures, subscriptionplan.FieldProductName, subscriptionplan.FieldPurchaseMode:
 			values[i] = new(sql.NullString)
-		case subscriptionplan.FieldCreatedAt, subscriptionplan.FieldUpdatedAt:
+		case subscriptionplan.FieldCreatedAt, subscriptionplan.FieldUpdatedAt, subscriptionplan.FieldFixedExpiresAt, subscriptionplan.FieldSaleEndsAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -169,6 +177,32 @@ func (_m *SubscriptionPlan) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
 			}
+		case subscriptionplan.FieldPurchaseMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field purchase_mode", values[i])
+			} else if value.Valid {
+				_m.PurchaseMode = value.String
+			}
+		case subscriptionplan.FieldFixedExpiresAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field fixed_expires_at", values[i])
+			} else if value.Valid {
+				_m.FixedExpiresAt = new(time.Time)
+				*_m.FixedExpiresAt = value.Time
+			}
+		case subscriptionplan.FieldOnePurchasePerUser:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field one_purchase_per_user", values[i])
+			} else if value.Valid {
+				_m.OnePurchasePerUser = value.Bool
+			}
+		case subscriptionplan.FieldSaleEndsAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field sale_ends_at", values[i])
+			} else if value.Valid {
+				_m.SaleEndsAt = new(time.Time)
+				*_m.SaleEndsAt = value.Time
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -248,6 +282,22 @@ func (_m *SubscriptionPlan) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("purchase_mode=")
+	builder.WriteString(_m.PurchaseMode)
+	builder.WriteString(", ")
+	if v := _m.FixedExpiresAt; v != nil {
+		builder.WriteString("fixed_expires_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("one_purchase_per_user=")
+	builder.WriteString(fmt.Sprintf("%v", _m.OnePurchasePerUser))
+	builder.WriteString(", ")
+	if v := _m.SaleEndsAt; v != nil {
+		builder.WriteString("sale_ends_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

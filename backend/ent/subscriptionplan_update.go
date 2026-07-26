@@ -243,6 +243,74 @@ func (_u *SubscriptionPlanUpdate) SetUpdatedAt(v time.Time) *SubscriptionPlanUpd
 	return _u
 }
 
+// SetPurchaseMode sets the "purchase_mode" field.
+func (_u *SubscriptionPlanUpdate) SetPurchaseMode(v string) *SubscriptionPlanUpdate {
+	_u.mutation.SetPurchaseMode(v)
+	return _u
+}
+
+// SetNillablePurchaseMode sets the "purchase_mode" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdate) SetNillablePurchaseMode(v *string) *SubscriptionPlanUpdate {
+	if v != nil {
+		_u.SetPurchaseMode(*v)
+	}
+	return _u
+}
+
+// SetFixedExpiresAt sets the "fixed_expires_at" field.
+func (_u *SubscriptionPlanUpdate) SetFixedExpiresAt(v time.Time) *SubscriptionPlanUpdate {
+	_u.mutation.SetFixedExpiresAt(v)
+	return _u
+}
+
+// SetNillableFixedExpiresAt sets the "fixed_expires_at" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdate) SetNillableFixedExpiresAt(v *time.Time) *SubscriptionPlanUpdate {
+	if v != nil {
+		_u.SetFixedExpiresAt(*v)
+	}
+	return _u
+}
+
+// ClearFixedExpiresAt clears the value of the "fixed_expires_at" field.
+func (_u *SubscriptionPlanUpdate) ClearFixedExpiresAt() *SubscriptionPlanUpdate {
+	_u.mutation.ClearFixedExpiresAt()
+	return _u
+}
+
+// SetOnePurchasePerUser sets the "one_purchase_per_user" field.
+func (_u *SubscriptionPlanUpdate) SetOnePurchasePerUser(v bool) *SubscriptionPlanUpdate {
+	_u.mutation.SetOnePurchasePerUser(v)
+	return _u
+}
+
+// SetNillableOnePurchasePerUser sets the "one_purchase_per_user" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdate) SetNillableOnePurchasePerUser(v *bool) *SubscriptionPlanUpdate {
+	if v != nil {
+		_u.SetOnePurchasePerUser(*v)
+	}
+	return _u
+}
+
+// SetSaleEndsAt sets the "sale_ends_at" field.
+func (_u *SubscriptionPlanUpdate) SetSaleEndsAt(v time.Time) *SubscriptionPlanUpdate {
+	_u.mutation.SetSaleEndsAt(v)
+	return _u
+}
+
+// SetNillableSaleEndsAt sets the "sale_ends_at" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdate) SetNillableSaleEndsAt(v *time.Time) *SubscriptionPlanUpdate {
+	if v != nil {
+		_u.SetSaleEndsAt(*v)
+	}
+	return _u
+}
+
+// ClearSaleEndsAt clears the value of the "sale_ends_at" field.
+func (_u *SubscriptionPlanUpdate) ClearSaleEndsAt() *SubscriptionPlanUpdate {
+	_u.mutation.ClearSaleEndsAt()
+	return _u
+}
+
 // Mutation returns the SubscriptionPlanMutation object of the builder.
 func (_u *SubscriptionPlanUpdate) Mutation() *SubscriptionPlanMutation {
 	return _u.mutation
@@ -304,6 +372,11 @@ func (_u *SubscriptionPlanUpdate) check() error {
 	if v, ok := _u.mutation.ProductName(); ok {
 		if err := subscriptionplan.ProductNameValidator(v); err != nil {
 			return &ValidationError{Name: "product_name", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.product_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.PurchaseMode(); ok {
+		if err := subscriptionplan.PurchaseModeValidator(v); err != nil {
+			return &ValidationError{Name: "purchase_mode", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.purchase_mode": %w`, err)}
 		}
 	}
 	return nil
@@ -377,6 +450,24 @@ func (_u *SubscriptionPlanUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(subscriptionplan.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.PurchaseMode(); ok {
+		_spec.SetField(subscriptionplan.FieldPurchaseMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.FixedExpiresAt(); ok {
+		_spec.SetField(subscriptionplan.FieldFixedExpiresAt, field.TypeTime, value)
+	}
+	if _u.mutation.FixedExpiresAtCleared() {
+		_spec.ClearField(subscriptionplan.FieldFixedExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.OnePurchasePerUser(); ok {
+		_spec.SetField(subscriptionplan.FieldOnePurchasePerUser, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.SaleEndsAt(); ok {
+		_spec.SetField(subscriptionplan.FieldSaleEndsAt, field.TypeTime, value)
+	}
+	if _u.mutation.SaleEndsAtCleared() {
+		_spec.ClearField(subscriptionplan.FieldSaleEndsAt, field.TypeTime)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -613,6 +704,74 @@ func (_u *SubscriptionPlanUpdateOne) SetUpdatedAt(v time.Time) *SubscriptionPlan
 	return _u
 }
 
+// SetPurchaseMode sets the "purchase_mode" field.
+func (_u *SubscriptionPlanUpdateOne) SetPurchaseMode(v string) *SubscriptionPlanUpdateOne {
+	_u.mutation.SetPurchaseMode(v)
+	return _u
+}
+
+// SetNillablePurchaseMode sets the "purchase_mode" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdateOne) SetNillablePurchaseMode(v *string) *SubscriptionPlanUpdateOne {
+	if v != nil {
+		_u.SetPurchaseMode(*v)
+	}
+	return _u
+}
+
+// SetFixedExpiresAt sets the "fixed_expires_at" field.
+func (_u *SubscriptionPlanUpdateOne) SetFixedExpiresAt(v time.Time) *SubscriptionPlanUpdateOne {
+	_u.mutation.SetFixedExpiresAt(v)
+	return _u
+}
+
+// SetNillableFixedExpiresAt sets the "fixed_expires_at" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdateOne) SetNillableFixedExpiresAt(v *time.Time) *SubscriptionPlanUpdateOne {
+	if v != nil {
+		_u.SetFixedExpiresAt(*v)
+	}
+	return _u
+}
+
+// ClearFixedExpiresAt clears the value of the "fixed_expires_at" field.
+func (_u *SubscriptionPlanUpdateOne) ClearFixedExpiresAt() *SubscriptionPlanUpdateOne {
+	_u.mutation.ClearFixedExpiresAt()
+	return _u
+}
+
+// SetOnePurchasePerUser sets the "one_purchase_per_user" field.
+func (_u *SubscriptionPlanUpdateOne) SetOnePurchasePerUser(v bool) *SubscriptionPlanUpdateOne {
+	_u.mutation.SetOnePurchasePerUser(v)
+	return _u
+}
+
+// SetNillableOnePurchasePerUser sets the "one_purchase_per_user" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdateOne) SetNillableOnePurchasePerUser(v *bool) *SubscriptionPlanUpdateOne {
+	if v != nil {
+		_u.SetOnePurchasePerUser(*v)
+	}
+	return _u
+}
+
+// SetSaleEndsAt sets the "sale_ends_at" field.
+func (_u *SubscriptionPlanUpdateOne) SetSaleEndsAt(v time.Time) *SubscriptionPlanUpdateOne {
+	_u.mutation.SetSaleEndsAt(v)
+	return _u
+}
+
+// SetNillableSaleEndsAt sets the "sale_ends_at" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdateOne) SetNillableSaleEndsAt(v *time.Time) *SubscriptionPlanUpdateOne {
+	if v != nil {
+		_u.SetSaleEndsAt(*v)
+	}
+	return _u
+}
+
+// ClearSaleEndsAt clears the value of the "sale_ends_at" field.
+func (_u *SubscriptionPlanUpdateOne) ClearSaleEndsAt() *SubscriptionPlanUpdateOne {
+	_u.mutation.ClearSaleEndsAt()
+	return _u
+}
+
 // Mutation returns the SubscriptionPlanMutation object of the builder.
 func (_u *SubscriptionPlanUpdateOne) Mutation() *SubscriptionPlanMutation {
 	return _u.mutation
@@ -687,6 +846,11 @@ func (_u *SubscriptionPlanUpdateOne) check() error {
 	if v, ok := _u.mutation.ProductName(); ok {
 		if err := subscriptionplan.ProductNameValidator(v); err != nil {
 			return &ValidationError{Name: "product_name", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.product_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.PurchaseMode(); ok {
+		if err := subscriptionplan.PurchaseModeValidator(v); err != nil {
+			return &ValidationError{Name: "purchase_mode", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.purchase_mode": %w`, err)}
 		}
 	}
 	return nil
@@ -777,6 +941,24 @@ func (_u *SubscriptionPlanUpdateOne) sqlSave(ctx context.Context) (_node *Subscr
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(subscriptionplan.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.PurchaseMode(); ok {
+		_spec.SetField(subscriptionplan.FieldPurchaseMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.FixedExpiresAt(); ok {
+		_spec.SetField(subscriptionplan.FieldFixedExpiresAt, field.TypeTime, value)
+	}
+	if _u.mutation.FixedExpiresAtCleared() {
+		_spec.ClearField(subscriptionplan.FieldFixedExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.OnePurchasePerUser(); ok {
+		_spec.SetField(subscriptionplan.FieldOnePurchasePerUser, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.SaleEndsAt(); ok {
+		_spec.SetField(subscriptionplan.FieldSaleEndsAt, field.TypeTime, value)
+	}
+	if _u.mutation.SaleEndsAtCleared() {
+		_spec.ClearField(subscriptionplan.FieldSaleEndsAt, field.TypeTime)
 	}
 	_node = &SubscriptionPlan{config: _u.config}
 	_spec.Assign = _node.assignValues

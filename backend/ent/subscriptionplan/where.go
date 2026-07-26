@@ -124,6 +124,26 @@ func UpdatedAt(v time.Time) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
+// PurchaseMode applies equality check predicate on the "purchase_mode" field. It's identical to PurchaseModeEQ.
+func PurchaseMode(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldPurchaseMode, v))
+}
+
+// FixedExpiresAt applies equality check predicate on the "fixed_expires_at" field. It's identical to FixedExpiresAtEQ.
+func FixedExpiresAt(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldFixedExpiresAt, v))
+}
+
+// OnePurchasePerUser applies equality check predicate on the "one_purchase_per_user" field. It's identical to OnePurchasePerUserEQ.
+func OnePurchasePerUser(v bool) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldOnePurchasePerUser, v))
+}
+
+// SaleEndsAt applies equality check predicate on the "sale_ends_at" field. It's identical to SaleEndsAtEQ.
+func SaleEndsAt(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldSaleEndsAt, v))
+}
+
 // GroupIDEQ applies the EQ predicate on the "group_id" field.
 func GroupIDEQ(v int64) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldEQ(FieldGroupID, v))
@@ -812,6 +832,181 @@ func UpdatedAtLT(v time.Time) predicate.SubscriptionPlan {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// PurchaseModeEQ applies the EQ predicate on the "purchase_mode" field.
+func PurchaseModeEQ(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldPurchaseMode, v))
+}
+
+// PurchaseModeNEQ applies the NEQ predicate on the "purchase_mode" field.
+func PurchaseModeNEQ(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNEQ(FieldPurchaseMode, v))
+}
+
+// PurchaseModeIn applies the In predicate on the "purchase_mode" field.
+func PurchaseModeIn(vs ...string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldIn(FieldPurchaseMode, vs...))
+}
+
+// PurchaseModeNotIn applies the NotIn predicate on the "purchase_mode" field.
+func PurchaseModeNotIn(vs ...string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNotIn(FieldPurchaseMode, vs...))
+}
+
+// PurchaseModeGT applies the GT predicate on the "purchase_mode" field.
+func PurchaseModeGT(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldGT(FieldPurchaseMode, v))
+}
+
+// PurchaseModeGTE applies the GTE predicate on the "purchase_mode" field.
+func PurchaseModeGTE(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldGTE(FieldPurchaseMode, v))
+}
+
+// PurchaseModeLT applies the LT predicate on the "purchase_mode" field.
+func PurchaseModeLT(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldLT(FieldPurchaseMode, v))
+}
+
+// PurchaseModeLTE applies the LTE predicate on the "purchase_mode" field.
+func PurchaseModeLTE(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldLTE(FieldPurchaseMode, v))
+}
+
+// PurchaseModeContains applies the Contains predicate on the "purchase_mode" field.
+func PurchaseModeContains(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldContains(FieldPurchaseMode, v))
+}
+
+// PurchaseModeHasPrefix applies the HasPrefix predicate on the "purchase_mode" field.
+func PurchaseModeHasPrefix(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldHasPrefix(FieldPurchaseMode, v))
+}
+
+// PurchaseModeHasSuffix applies the HasSuffix predicate on the "purchase_mode" field.
+func PurchaseModeHasSuffix(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldHasSuffix(FieldPurchaseMode, v))
+}
+
+// PurchaseModeEqualFold applies the EqualFold predicate on the "purchase_mode" field.
+func PurchaseModeEqualFold(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEqualFold(FieldPurchaseMode, v))
+}
+
+// PurchaseModeContainsFold applies the ContainsFold predicate on the "purchase_mode" field.
+func PurchaseModeContainsFold(v string) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldContainsFold(FieldPurchaseMode, v))
+}
+
+// FixedExpiresAtEQ applies the EQ predicate on the "fixed_expires_at" field.
+func FixedExpiresAtEQ(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldFixedExpiresAt, v))
+}
+
+// FixedExpiresAtNEQ applies the NEQ predicate on the "fixed_expires_at" field.
+func FixedExpiresAtNEQ(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNEQ(FieldFixedExpiresAt, v))
+}
+
+// FixedExpiresAtIn applies the In predicate on the "fixed_expires_at" field.
+func FixedExpiresAtIn(vs ...time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldIn(FieldFixedExpiresAt, vs...))
+}
+
+// FixedExpiresAtNotIn applies the NotIn predicate on the "fixed_expires_at" field.
+func FixedExpiresAtNotIn(vs ...time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNotIn(FieldFixedExpiresAt, vs...))
+}
+
+// FixedExpiresAtGT applies the GT predicate on the "fixed_expires_at" field.
+func FixedExpiresAtGT(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldGT(FieldFixedExpiresAt, v))
+}
+
+// FixedExpiresAtGTE applies the GTE predicate on the "fixed_expires_at" field.
+func FixedExpiresAtGTE(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldGTE(FieldFixedExpiresAt, v))
+}
+
+// FixedExpiresAtLT applies the LT predicate on the "fixed_expires_at" field.
+func FixedExpiresAtLT(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldLT(FieldFixedExpiresAt, v))
+}
+
+// FixedExpiresAtLTE applies the LTE predicate on the "fixed_expires_at" field.
+func FixedExpiresAtLTE(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldLTE(FieldFixedExpiresAt, v))
+}
+
+// FixedExpiresAtIsNil applies the IsNil predicate on the "fixed_expires_at" field.
+func FixedExpiresAtIsNil() predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldIsNull(FieldFixedExpiresAt))
+}
+
+// FixedExpiresAtNotNil applies the NotNil predicate on the "fixed_expires_at" field.
+func FixedExpiresAtNotNil() predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNotNull(FieldFixedExpiresAt))
+}
+
+// OnePurchasePerUserEQ applies the EQ predicate on the "one_purchase_per_user" field.
+func OnePurchasePerUserEQ(v bool) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldOnePurchasePerUser, v))
+}
+
+// OnePurchasePerUserNEQ applies the NEQ predicate on the "one_purchase_per_user" field.
+func OnePurchasePerUserNEQ(v bool) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNEQ(FieldOnePurchasePerUser, v))
+}
+
+// SaleEndsAtEQ applies the EQ predicate on the "sale_ends_at" field.
+func SaleEndsAtEQ(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldSaleEndsAt, v))
+}
+
+// SaleEndsAtNEQ applies the NEQ predicate on the "sale_ends_at" field.
+func SaleEndsAtNEQ(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNEQ(FieldSaleEndsAt, v))
+}
+
+// SaleEndsAtIn applies the In predicate on the "sale_ends_at" field.
+func SaleEndsAtIn(vs ...time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldIn(FieldSaleEndsAt, vs...))
+}
+
+// SaleEndsAtNotIn applies the NotIn predicate on the "sale_ends_at" field.
+func SaleEndsAtNotIn(vs ...time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNotIn(FieldSaleEndsAt, vs...))
+}
+
+// SaleEndsAtGT applies the GT predicate on the "sale_ends_at" field.
+func SaleEndsAtGT(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldGT(FieldSaleEndsAt, v))
+}
+
+// SaleEndsAtGTE applies the GTE predicate on the "sale_ends_at" field.
+func SaleEndsAtGTE(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldGTE(FieldSaleEndsAt, v))
+}
+
+// SaleEndsAtLT applies the LT predicate on the "sale_ends_at" field.
+func SaleEndsAtLT(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldLT(FieldSaleEndsAt, v))
+}
+
+// SaleEndsAtLTE applies the LTE predicate on the "sale_ends_at" field.
+func SaleEndsAtLTE(v time.Time) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldLTE(FieldSaleEndsAt, v))
+}
+
+// SaleEndsAtIsNil applies the IsNil predicate on the "sale_ends_at" field.
+func SaleEndsAtIsNil() predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldIsNull(FieldSaleEndsAt))
+}
+
+// SaleEndsAtNotNil applies the NotNil predicate on the "sale_ends_at" field.
+func SaleEndsAtNotNil() predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNotNull(FieldSaleEndsAt))
 }
 
 // And groups predicates with the AND operator between them.

@@ -41,6 +41,14 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// FieldPurchaseMode holds the string denoting the purchase_mode field in the database.
+	FieldPurchaseMode = "purchase_mode"
+	// FieldFixedExpiresAt holds the string denoting the fixed_expires_at field in the database.
+	FieldFixedExpiresAt = "fixed_expires_at"
+	// FieldOnePurchasePerUser holds the string denoting the one_purchase_per_user field in the database.
+	FieldOnePurchasePerUser = "one_purchase_per_user"
+	// FieldSaleEndsAt holds the string denoting the sale_ends_at field in the database.
+	FieldSaleEndsAt = "sale_ends_at"
 	// Table holds the table name of the subscriptionplan in the database.
 	Table = "subscription_plans"
 )
@@ -62,6 +70,10 @@ var Columns = []string{
 	FieldSortOrder,
 	FieldCreatedAt,
 	FieldUpdatedAt,
+	FieldPurchaseMode,
+	FieldFixedExpiresAt,
+	FieldOnePurchasePerUser,
+	FieldSaleEndsAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -105,6 +117,12 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultPurchaseMode holds the default value on creation for the "purchase_mode" field.
+	DefaultPurchaseMode string
+	// PurchaseModeValidator is a validator for the "purchase_mode" field. It is called by the builders before save.
+	PurchaseModeValidator func(string) error
+	// DefaultOnePurchasePerUser holds the default value on creation for the "one_purchase_per_user" field.
+	DefaultOnePurchasePerUser bool
 )
 
 // OrderOption defines the ordering options for the SubscriptionPlan queries.
@@ -183,4 +201,24 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByUpdatedAt orders the results by the updated_at field.
 func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByPurchaseMode orders the results by the purchase_mode field.
+func ByPurchaseMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPurchaseMode, opts...).ToFunc()
+}
+
+// ByFixedExpiresAt orders the results by the fixed_expires_at field.
+func ByFixedExpiresAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFixedExpiresAt, opts...).ToFunc()
+}
+
+// ByOnePurchasePerUser orders the results by the one_purchase_per_user field.
+func ByOnePurchasePerUser(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOnePurchasePerUser, opts...).ToFunc()
+}
+
+// BySaleEndsAt orders the results by the sale_ends_at field.
+func BySaleEndsAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSaleEndsAt, opts...).ToFunc()
 }

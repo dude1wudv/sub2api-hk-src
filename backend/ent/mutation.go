@@ -43,6 +43,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/securitysecret"
 	"github.com/Wei-Shaw/sub2api/ent/setting"
 	"github.com/Wei-Shaw/sub2api/ent/subscriptionplan"
+	"github.com/Wei-Shaw/sub2api/ent/subscriptionpurchaseclaim"
 	"github.com/Wei-Shaw/sub2api/ent/tlsfingerprintprofile"
 	"github.com/Wei-Shaw/sub2api/ent/usagecleanuptask"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
@@ -94,6 +95,7 @@ const (
 	TypeSecuritySecret                = "SecuritySecret"
 	TypeSetting                       = "Setting"
 	TypeSubscriptionPlan              = "SubscriptionPlan"
+	TypeSubscriptionPurchaseClaim     = "SubscriptionPurchaseClaim"
 	TypeTLSFingerprintProfile         = "TLSFingerprintProfile"
 	TypeUsageCleanupTask              = "UsageCleanupTask"
 	TypeUsageLog                      = "UsageLog"
@@ -28826,6 +28828,7 @@ type PaymentOrderMutation struct {
 	src_url                  *string
 	created_at               *time.Time
 	updated_at               *time.Time
+	subscription_expires_at  *time.Time
 	clearedFields            map[string]struct{}
 	user                     *int64
 	cleareduser              bool
@@ -30739,6 +30742,55 @@ func (m *PaymentOrderMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
+// SetSubscriptionExpiresAt sets the "subscription_expires_at" field.
+func (m *PaymentOrderMutation) SetSubscriptionExpiresAt(t time.Time) {
+	m.subscription_expires_at = &t
+}
+
+// SubscriptionExpiresAt returns the value of the "subscription_expires_at" field in the mutation.
+func (m *PaymentOrderMutation) SubscriptionExpiresAt() (r time.Time, exists bool) {
+	v := m.subscription_expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubscriptionExpiresAt returns the old "subscription_expires_at" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldSubscriptionExpiresAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubscriptionExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubscriptionExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubscriptionExpiresAt: %w", err)
+	}
+	return oldValue.SubscriptionExpiresAt, nil
+}
+
+// ClearSubscriptionExpiresAt clears the value of the "subscription_expires_at" field.
+func (m *PaymentOrderMutation) ClearSubscriptionExpiresAt() {
+	m.subscription_expires_at = nil
+	m.clearedFields[paymentorder.FieldSubscriptionExpiresAt] = struct{}{}
+}
+
+// SubscriptionExpiresAtCleared returns if the "subscription_expires_at" field was cleared in this mutation.
+func (m *PaymentOrderMutation) SubscriptionExpiresAtCleared() bool {
+	_, ok := m.clearedFields[paymentorder.FieldSubscriptionExpiresAt]
+	return ok
+}
+
+// ResetSubscriptionExpiresAt resets all changes to the "subscription_expires_at" field.
+func (m *PaymentOrderMutation) ResetSubscriptionExpiresAt() {
+	m.subscription_expires_at = nil
+	delete(m.clearedFields, paymentorder.FieldSubscriptionExpiresAt)
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *PaymentOrderMutation) ClearUser() {
 	m.cleareduser = true
@@ -30800,7 +30852,7 @@ func (m *PaymentOrderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PaymentOrderMutation) Fields() []string {
-	fields := make([]string, 0, 39)
+	fields := make([]string, 0, 40)
 	if m.user != nil {
 		fields = append(fields, paymentorder.FieldUserID)
 	}
@@ -30918,6 +30970,9 @@ func (m *PaymentOrderMutation) Fields() []string {
 	if m.updated_at != nil {
 		fields = append(fields, paymentorder.FieldUpdatedAt)
 	}
+	if m.subscription_expires_at != nil {
+		fields = append(fields, paymentorder.FieldSubscriptionExpiresAt)
+	}
 	return fields
 }
 
@@ -31004,6 +31059,8 @@ func (m *PaymentOrderMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case paymentorder.FieldUpdatedAt:
 		return m.UpdatedAt()
+	case paymentorder.FieldSubscriptionExpiresAt:
+		return m.SubscriptionExpiresAt()
 	}
 	return nil, false
 }
@@ -31091,6 +31148,8 @@ func (m *PaymentOrderMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldCreatedAt(ctx)
 	case paymentorder.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
+	case paymentorder.FieldSubscriptionExpiresAt:
+		return m.OldSubscriptionExpiresAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown PaymentOrder field %s", name)
 }
@@ -31373,6 +31432,13 @@ func (m *PaymentOrderMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUpdatedAt(v)
 		return nil
+	case paymentorder.FieldSubscriptionExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubscriptionExpiresAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown PaymentOrder field %s", name)
 }
@@ -31550,6 +31616,9 @@ func (m *PaymentOrderMutation) ClearedFields() []string {
 	if m.FieldCleared(paymentorder.FieldSrcURL) {
 		fields = append(fields, paymentorder.FieldSrcURL)
 	}
+	if m.FieldCleared(paymentorder.FieldSubscriptionExpiresAt) {
+		fields = append(fields, paymentorder.FieldSubscriptionExpiresAt)
+	}
 	return fields
 }
 
@@ -31623,6 +31692,9 @@ func (m *PaymentOrderMutation) ClearField(name string) error {
 		return nil
 	case paymentorder.FieldSrcURL:
 		m.ClearSrcURL()
+		return nil
+	case paymentorder.FieldSubscriptionExpiresAt:
+		m.ClearSubscriptionExpiresAt()
 		return nil
 	}
 	return fmt.Errorf("unknown PaymentOrder nullable field %s", name)
@@ -31748,6 +31820,9 @@ func (m *PaymentOrderMutation) ResetField(name string) error {
 		return nil
 	case paymentorder.FieldUpdatedAt:
 		m.ResetUpdatedAt()
+		return nil
+	case paymentorder.FieldSubscriptionExpiresAt:
+		m.ResetSubscriptionExpiresAt()
 		return nil
 	}
 	return fmt.Errorf("unknown PaymentOrder field %s", name)
@@ -39445,32 +39520,36 @@ func (m *SettingMutation) ResetEdge(name string) error {
 // SubscriptionPlanMutation represents an operation that mutates the SubscriptionPlan nodes in the graph.
 type SubscriptionPlanMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *int64
-	group_id          *int64
-	addgroup_id       *int64
-	name              *string
-	description       *string
-	price             *float64
-	addprice          *float64
-	original_price    *float64
-	addoriginal_price *float64
-	currency          *string
-	validity_days     *int
-	addvalidity_days  *int
-	validity_unit     *string
-	features          *string
-	product_name      *string
-	for_sale          *bool
-	sort_order        *int
-	addsort_order     *int
-	created_at        *time.Time
-	updated_at        *time.Time
-	clearedFields     map[string]struct{}
-	done              bool
-	oldValue          func(context.Context) (*SubscriptionPlan, error)
-	predicates        []predicate.SubscriptionPlan
+	op                    Op
+	typ                   string
+	id                    *int64
+	group_id              *int64
+	addgroup_id           *int64
+	name                  *string
+	description           *string
+	price                 *float64
+	addprice              *float64
+	original_price        *float64
+	addoriginal_price     *float64
+	currency              *string
+	validity_days         *int
+	addvalidity_days      *int
+	validity_unit         *string
+	features              *string
+	product_name          *string
+	for_sale              *bool
+	sort_order            *int
+	addsort_order         *int
+	created_at            *time.Time
+	updated_at            *time.Time
+	purchase_mode         *string
+	fixed_expires_at      *time.Time
+	one_purchase_per_user *bool
+	sale_ends_at          *time.Time
+	clearedFields         map[string]struct{}
+	done                  bool
+	oldValue              func(context.Context) (*SubscriptionPlan, error)
+	predicates            []predicate.SubscriptionPlan
 }
 
 var _ ent.Mutation = (*SubscriptionPlanMutation)(nil)
@@ -40189,6 +40268,176 @@ func (m *SubscriptionPlanMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
+// SetPurchaseMode sets the "purchase_mode" field.
+func (m *SubscriptionPlanMutation) SetPurchaseMode(s string) {
+	m.purchase_mode = &s
+}
+
+// PurchaseMode returns the value of the "purchase_mode" field in the mutation.
+func (m *SubscriptionPlanMutation) PurchaseMode() (r string, exists bool) {
+	v := m.purchase_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPurchaseMode returns the old "purchase_mode" field's value of the SubscriptionPlan entity.
+// If the SubscriptionPlan object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPlanMutation) OldPurchaseMode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPurchaseMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPurchaseMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPurchaseMode: %w", err)
+	}
+	return oldValue.PurchaseMode, nil
+}
+
+// ResetPurchaseMode resets all changes to the "purchase_mode" field.
+func (m *SubscriptionPlanMutation) ResetPurchaseMode() {
+	m.purchase_mode = nil
+}
+
+// SetFixedExpiresAt sets the "fixed_expires_at" field.
+func (m *SubscriptionPlanMutation) SetFixedExpiresAt(t time.Time) {
+	m.fixed_expires_at = &t
+}
+
+// FixedExpiresAt returns the value of the "fixed_expires_at" field in the mutation.
+func (m *SubscriptionPlanMutation) FixedExpiresAt() (r time.Time, exists bool) {
+	v := m.fixed_expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFixedExpiresAt returns the old "fixed_expires_at" field's value of the SubscriptionPlan entity.
+// If the SubscriptionPlan object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPlanMutation) OldFixedExpiresAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFixedExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFixedExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFixedExpiresAt: %w", err)
+	}
+	return oldValue.FixedExpiresAt, nil
+}
+
+// ClearFixedExpiresAt clears the value of the "fixed_expires_at" field.
+func (m *SubscriptionPlanMutation) ClearFixedExpiresAt() {
+	m.fixed_expires_at = nil
+	m.clearedFields[subscriptionplan.FieldFixedExpiresAt] = struct{}{}
+}
+
+// FixedExpiresAtCleared returns if the "fixed_expires_at" field was cleared in this mutation.
+func (m *SubscriptionPlanMutation) FixedExpiresAtCleared() bool {
+	_, ok := m.clearedFields[subscriptionplan.FieldFixedExpiresAt]
+	return ok
+}
+
+// ResetFixedExpiresAt resets all changes to the "fixed_expires_at" field.
+func (m *SubscriptionPlanMutation) ResetFixedExpiresAt() {
+	m.fixed_expires_at = nil
+	delete(m.clearedFields, subscriptionplan.FieldFixedExpiresAt)
+}
+
+// SetOnePurchasePerUser sets the "one_purchase_per_user" field.
+func (m *SubscriptionPlanMutation) SetOnePurchasePerUser(b bool) {
+	m.one_purchase_per_user = &b
+}
+
+// OnePurchasePerUser returns the value of the "one_purchase_per_user" field in the mutation.
+func (m *SubscriptionPlanMutation) OnePurchasePerUser() (r bool, exists bool) {
+	v := m.one_purchase_per_user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOnePurchasePerUser returns the old "one_purchase_per_user" field's value of the SubscriptionPlan entity.
+// If the SubscriptionPlan object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPlanMutation) OldOnePurchasePerUser(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOnePurchasePerUser is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOnePurchasePerUser requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOnePurchasePerUser: %w", err)
+	}
+	return oldValue.OnePurchasePerUser, nil
+}
+
+// ResetOnePurchasePerUser resets all changes to the "one_purchase_per_user" field.
+func (m *SubscriptionPlanMutation) ResetOnePurchasePerUser() {
+	m.one_purchase_per_user = nil
+}
+
+// SetSaleEndsAt sets the "sale_ends_at" field.
+func (m *SubscriptionPlanMutation) SetSaleEndsAt(t time.Time) {
+	m.sale_ends_at = &t
+}
+
+// SaleEndsAt returns the value of the "sale_ends_at" field in the mutation.
+func (m *SubscriptionPlanMutation) SaleEndsAt() (r time.Time, exists bool) {
+	v := m.sale_ends_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSaleEndsAt returns the old "sale_ends_at" field's value of the SubscriptionPlan entity.
+// If the SubscriptionPlan object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPlanMutation) OldSaleEndsAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSaleEndsAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSaleEndsAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSaleEndsAt: %w", err)
+	}
+	return oldValue.SaleEndsAt, nil
+}
+
+// ClearSaleEndsAt clears the value of the "sale_ends_at" field.
+func (m *SubscriptionPlanMutation) ClearSaleEndsAt() {
+	m.sale_ends_at = nil
+	m.clearedFields[subscriptionplan.FieldSaleEndsAt] = struct{}{}
+}
+
+// SaleEndsAtCleared returns if the "sale_ends_at" field was cleared in this mutation.
+func (m *SubscriptionPlanMutation) SaleEndsAtCleared() bool {
+	_, ok := m.clearedFields[subscriptionplan.FieldSaleEndsAt]
+	return ok
+}
+
+// ResetSaleEndsAt resets all changes to the "sale_ends_at" field.
+func (m *SubscriptionPlanMutation) ResetSaleEndsAt() {
+	m.sale_ends_at = nil
+	delete(m.clearedFields, subscriptionplan.FieldSaleEndsAt)
+}
+
 // Where appends a list predicates to the SubscriptionPlanMutation builder.
 func (m *SubscriptionPlanMutation) Where(ps ...predicate.SubscriptionPlan) {
 	m.predicates = append(m.predicates, ps...)
@@ -40223,7 +40472,7 @@ func (m *SubscriptionPlanMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SubscriptionPlanMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 18)
 	if m.group_id != nil {
 		fields = append(fields, subscriptionplan.FieldGroupID)
 	}
@@ -40266,6 +40515,18 @@ func (m *SubscriptionPlanMutation) Fields() []string {
 	if m.updated_at != nil {
 		fields = append(fields, subscriptionplan.FieldUpdatedAt)
 	}
+	if m.purchase_mode != nil {
+		fields = append(fields, subscriptionplan.FieldPurchaseMode)
+	}
+	if m.fixed_expires_at != nil {
+		fields = append(fields, subscriptionplan.FieldFixedExpiresAt)
+	}
+	if m.one_purchase_per_user != nil {
+		fields = append(fields, subscriptionplan.FieldOnePurchasePerUser)
+	}
+	if m.sale_ends_at != nil {
+		fields = append(fields, subscriptionplan.FieldSaleEndsAt)
+	}
 	return fields
 }
 
@@ -40302,6 +40563,14 @@ func (m *SubscriptionPlanMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case subscriptionplan.FieldUpdatedAt:
 		return m.UpdatedAt()
+	case subscriptionplan.FieldPurchaseMode:
+		return m.PurchaseMode()
+	case subscriptionplan.FieldFixedExpiresAt:
+		return m.FixedExpiresAt()
+	case subscriptionplan.FieldOnePurchasePerUser:
+		return m.OnePurchasePerUser()
+	case subscriptionplan.FieldSaleEndsAt:
+		return m.SaleEndsAt()
 	}
 	return nil, false
 }
@@ -40339,6 +40608,14 @@ func (m *SubscriptionPlanMutation) OldField(ctx context.Context, name string) (e
 		return m.OldCreatedAt(ctx)
 	case subscriptionplan.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
+	case subscriptionplan.FieldPurchaseMode:
+		return m.OldPurchaseMode(ctx)
+	case subscriptionplan.FieldFixedExpiresAt:
+		return m.OldFixedExpiresAt(ctx)
+	case subscriptionplan.FieldOnePurchasePerUser:
+		return m.OldOnePurchasePerUser(ctx)
+	case subscriptionplan.FieldSaleEndsAt:
+		return m.OldSaleEndsAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown SubscriptionPlan field %s", name)
 }
@@ -40446,6 +40723,34 @@ func (m *SubscriptionPlanMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetUpdatedAt(v)
 		return nil
+	case subscriptionplan.FieldPurchaseMode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPurchaseMode(v)
+		return nil
+	case subscriptionplan.FieldFixedExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFixedExpiresAt(v)
+		return nil
+	case subscriptionplan.FieldOnePurchasePerUser:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOnePurchasePerUser(v)
+		return nil
+	case subscriptionplan.FieldSaleEndsAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSaleEndsAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown SubscriptionPlan field %s", name)
 }
@@ -40542,6 +40847,12 @@ func (m *SubscriptionPlanMutation) ClearedFields() []string {
 	if m.FieldCleared(subscriptionplan.FieldOriginalPrice) {
 		fields = append(fields, subscriptionplan.FieldOriginalPrice)
 	}
+	if m.FieldCleared(subscriptionplan.FieldFixedExpiresAt) {
+		fields = append(fields, subscriptionplan.FieldFixedExpiresAt)
+	}
+	if m.FieldCleared(subscriptionplan.FieldSaleEndsAt) {
+		fields = append(fields, subscriptionplan.FieldSaleEndsAt)
+	}
 	return fields
 }
 
@@ -40558,6 +40869,12 @@ func (m *SubscriptionPlanMutation) ClearField(name string) error {
 	switch name {
 	case subscriptionplan.FieldOriginalPrice:
 		m.ClearOriginalPrice()
+		return nil
+	case subscriptionplan.FieldFixedExpiresAt:
+		m.ClearFixedExpiresAt()
+		return nil
+	case subscriptionplan.FieldSaleEndsAt:
+		m.ClearSaleEndsAt()
 		return nil
 	}
 	return fmt.Errorf("unknown SubscriptionPlan nullable field %s", name)
@@ -40609,6 +40926,18 @@ func (m *SubscriptionPlanMutation) ResetField(name string) error {
 	case subscriptionplan.FieldUpdatedAt:
 		m.ResetUpdatedAt()
 		return nil
+	case subscriptionplan.FieldPurchaseMode:
+		m.ResetPurchaseMode()
+		return nil
+	case subscriptionplan.FieldFixedExpiresAt:
+		m.ResetFixedExpiresAt()
+		return nil
+	case subscriptionplan.FieldOnePurchasePerUser:
+		m.ResetOnePurchasePerUser()
+		return nil
+	case subscriptionplan.FieldSaleEndsAt:
+		m.ResetSaleEndsAt()
+		return nil
 	}
 	return fmt.Errorf("unknown SubscriptionPlan field %s", name)
 }
@@ -40659,6 +40988,727 @@ func (m *SubscriptionPlanMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *SubscriptionPlanMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown SubscriptionPlan edge %s", name)
+}
+
+// SubscriptionPurchaseClaimMutation represents an operation that mutates the SubscriptionPurchaseClaim nodes in the graph.
+type SubscriptionPurchaseClaimMutation struct {
+	config
+	op                       Op
+	typ                      string
+	id                       *int64
+	user_id                  *int64
+	adduser_id               *int64
+	subscription_group_id    *int64
+	addsubscription_group_id *int64
+	payment_order_id         *int64
+	addpayment_order_id      *int64
+	status                   *string
+	created_at               *time.Time
+	updated_at               *time.Time
+	clearedFields            map[string]struct{}
+	done                     bool
+	oldValue                 func(context.Context) (*SubscriptionPurchaseClaim, error)
+	predicates               []predicate.SubscriptionPurchaseClaim
+}
+
+var _ ent.Mutation = (*SubscriptionPurchaseClaimMutation)(nil)
+
+// subscriptionpurchaseclaimOption allows management of the mutation configuration using functional options.
+type subscriptionpurchaseclaimOption func(*SubscriptionPurchaseClaimMutation)
+
+// newSubscriptionPurchaseClaimMutation creates new mutation for the SubscriptionPurchaseClaim entity.
+func newSubscriptionPurchaseClaimMutation(c config, op Op, opts ...subscriptionpurchaseclaimOption) *SubscriptionPurchaseClaimMutation {
+	m := &SubscriptionPurchaseClaimMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSubscriptionPurchaseClaim,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSubscriptionPurchaseClaimID sets the ID field of the mutation.
+func withSubscriptionPurchaseClaimID(id int64) subscriptionpurchaseclaimOption {
+	return func(m *SubscriptionPurchaseClaimMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *SubscriptionPurchaseClaim
+		)
+		m.oldValue = func(ctx context.Context) (*SubscriptionPurchaseClaim, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().SubscriptionPurchaseClaim.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSubscriptionPurchaseClaim sets the old SubscriptionPurchaseClaim of the mutation.
+func withSubscriptionPurchaseClaim(node *SubscriptionPurchaseClaim) subscriptionpurchaseclaimOption {
+	return func(m *SubscriptionPurchaseClaimMutation) {
+		m.oldValue = func(context.Context) (*SubscriptionPurchaseClaim, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SubscriptionPurchaseClaimMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SubscriptionPurchaseClaimMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SubscriptionPurchaseClaimMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SubscriptionPurchaseClaimMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().SubscriptionPurchaseClaim.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetUserID sets the "user_id" field.
+func (m *SubscriptionPurchaseClaimMutation) SetUserID(i int64) {
+	m.user_id = &i
+	m.adduser_id = nil
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *SubscriptionPurchaseClaimMutation) UserID() (r int64, exists bool) {
+	v := m.user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the SubscriptionPurchaseClaim entity.
+// If the SubscriptionPurchaseClaim object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPurchaseClaimMutation) OldUserID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// AddUserID adds i to the "user_id" field.
+func (m *SubscriptionPurchaseClaimMutation) AddUserID(i int64) {
+	if m.adduser_id != nil {
+		*m.adduser_id += i
+	} else {
+		m.adduser_id = &i
+	}
+}
+
+// AddedUserID returns the value that was added to the "user_id" field in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) AddedUserID() (r int64, exists bool) {
+	v := m.adduser_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *SubscriptionPurchaseClaimMutation) ResetUserID() {
+	m.user_id = nil
+	m.adduser_id = nil
+}
+
+// SetSubscriptionGroupID sets the "subscription_group_id" field.
+func (m *SubscriptionPurchaseClaimMutation) SetSubscriptionGroupID(i int64) {
+	m.subscription_group_id = &i
+	m.addsubscription_group_id = nil
+}
+
+// SubscriptionGroupID returns the value of the "subscription_group_id" field in the mutation.
+func (m *SubscriptionPurchaseClaimMutation) SubscriptionGroupID() (r int64, exists bool) {
+	v := m.subscription_group_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubscriptionGroupID returns the old "subscription_group_id" field's value of the SubscriptionPurchaseClaim entity.
+// If the SubscriptionPurchaseClaim object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPurchaseClaimMutation) OldSubscriptionGroupID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubscriptionGroupID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubscriptionGroupID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubscriptionGroupID: %w", err)
+	}
+	return oldValue.SubscriptionGroupID, nil
+}
+
+// AddSubscriptionGroupID adds i to the "subscription_group_id" field.
+func (m *SubscriptionPurchaseClaimMutation) AddSubscriptionGroupID(i int64) {
+	if m.addsubscription_group_id != nil {
+		*m.addsubscription_group_id += i
+	} else {
+		m.addsubscription_group_id = &i
+	}
+}
+
+// AddedSubscriptionGroupID returns the value that was added to the "subscription_group_id" field in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) AddedSubscriptionGroupID() (r int64, exists bool) {
+	v := m.addsubscription_group_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSubscriptionGroupID resets all changes to the "subscription_group_id" field.
+func (m *SubscriptionPurchaseClaimMutation) ResetSubscriptionGroupID() {
+	m.subscription_group_id = nil
+	m.addsubscription_group_id = nil
+}
+
+// SetPaymentOrderID sets the "payment_order_id" field.
+func (m *SubscriptionPurchaseClaimMutation) SetPaymentOrderID(i int64) {
+	m.payment_order_id = &i
+	m.addpayment_order_id = nil
+}
+
+// PaymentOrderID returns the value of the "payment_order_id" field in the mutation.
+func (m *SubscriptionPurchaseClaimMutation) PaymentOrderID() (r int64, exists bool) {
+	v := m.payment_order_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPaymentOrderID returns the old "payment_order_id" field's value of the SubscriptionPurchaseClaim entity.
+// If the SubscriptionPurchaseClaim object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPurchaseClaimMutation) OldPaymentOrderID(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPaymentOrderID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPaymentOrderID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPaymentOrderID: %w", err)
+	}
+	return oldValue.PaymentOrderID, nil
+}
+
+// AddPaymentOrderID adds i to the "payment_order_id" field.
+func (m *SubscriptionPurchaseClaimMutation) AddPaymentOrderID(i int64) {
+	if m.addpayment_order_id != nil {
+		*m.addpayment_order_id += i
+	} else {
+		m.addpayment_order_id = &i
+	}
+}
+
+// AddedPaymentOrderID returns the value that was added to the "payment_order_id" field in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) AddedPaymentOrderID() (r int64, exists bool) {
+	v := m.addpayment_order_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearPaymentOrderID clears the value of the "payment_order_id" field.
+func (m *SubscriptionPurchaseClaimMutation) ClearPaymentOrderID() {
+	m.payment_order_id = nil
+	m.addpayment_order_id = nil
+	m.clearedFields[subscriptionpurchaseclaim.FieldPaymentOrderID] = struct{}{}
+}
+
+// PaymentOrderIDCleared returns if the "payment_order_id" field was cleared in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) PaymentOrderIDCleared() bool {
+	_, ok := m.clearedFields[subscriptionpurchaseclaim.FieldPaymentOrderID]
+	return ok
+}
+
+// ResetPaymentOrderID resets all changes to the "payment_order_id" field.
+func (m *SubscriptionPurchaseClaimMutation) ResetPaymentOrderID() {
+	m.payment_order_id = nil
+	m.addpayment_order_id = nil
+	delete(m.clearedFields, subscriptionpurchaseclaim.FieldPaymentOrderID)
+}
+
+// SetStatus sets the "status" field.
+func (m *SubscriptionPurchaseClaimMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *SubscriptionPurchaseClaimMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the SubscriptionPurchaseClaim entity.
+// If the SubscriptionPurchaseClaim object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPurchaseClaimMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *SubscriptionPurchaseClaimMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *SubscriptionPurchaseClaimMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *SubscriptionPurchaseClaimMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the SubscriptionPurchaseClaim entity.
+// If the SubscriptionPurchaseClaim object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPurchaseClaimMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *SubscriptionPurchaseClaimMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *SubscriptionPurchaseClaimMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *SubscriptionPurchaseClaimMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the SubscriptionPurchaseClaim entity.
+// If the SubscriptionPurchaseClaim object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPurchaseClaimMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *SubscriptionPurchaseClaimMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// Where appends a list predicates to the SubscriptionPurchaseClaimMutation builder.
+func (m *SubscriptionPurchaseClaimMutation) Where(ps ...predicate.SubscriptionPurchaseClaim) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SubscriptionPurchaseClaimMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SubscriptionPurchaseClaimMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.SubscriptionPurchaseClaim, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SubscriptionPurchaseClaimMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SubscriptionPurchaseClaimMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (SubscriptionPurchaseClaim).
+func (m *SubscriptionPurchaseClaimMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SubscriptionPurchaseClaimMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.user_id != nil {
+		fields = append(fields, subscriptionpurchaseclaim.FieldUserID)
+	}
+	if m.subscription_group_id != nil {
+		fields = append(fields, subscriptionpurchaseclaim.FieldSubscriptionGroupID)
+	}
+	if m.payment_order_id != nil {
+		fields = append(fields, subscriptionpurchaseclaim.FieldPaymentOrderID)
+	}
+	if m.status != nil {
+		fields = append(fields, subscriptionpurchaseclaim.FieldStatus)
+	}
+	if m.created_at != nil {
+		fields = append(fields, subscriptionpurchaseclaim.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, subscriptionpurchaseclaim.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SubscriptionPurchaseClaimMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case subscriptionpurchaseclaim.FieldUserID:
+		return m.UserID()
+	case subscriptionpurchaseclaim.FieldSubscriptionGroupID:
+		return m.SubscriptionGroupID()
+	case subscriptionpurchaseclaim.FieldPaymentOrderID:
+		return m.PaymentOrderID()
+	case subscriptionpurchaseclaim.FieldStatus:
+		return m.Status()
+	case subscriptionpurchaseclaim.FieldCreatedAt:
+		return m.CreatedAt()
+	case subscriptionpurchaseclaim.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SubscriptionPurchaseClaimMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case subscriptionpurchaseclaim.FieldUserID:
+		return m.OldUserID(ctx)
+	case subscriptionpurchaseclaim.FieldSubscriptionGroupID:
+		return m.OldSubscriptionGroupID(ctx)
+	case subscriptionpurchaseclaim.FieldPaymentOrderID:
+		return m.OldPaymentOrderID(ctx)
+	case subscriptionpurchaseclaim.FieldStatus:
+		return m.OldStatus(ctx)
+	case subscriptionpurchaseclaim.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case subscriptionpurchaseclaim.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown SubscriptionPurchaseClaim field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SubscriptionPurchaseClaimMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case subscriptionpurchaseclaim.FieldUserID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case subscriptionpurchaseclaim.FieldSubscriptionGroupID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubscriptionGroupID(v)
+		return nil
+	case subscriptionpurchaseclaim.FieldPaymentOrderID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPaymentOrderID(v)
+		return nil
+	case subscriptionpurchaseclaim.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case subscriptionpurchaseclaim.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case subscriptionpurchaseclaim.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SubscriptionPurchaseClaim field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SubscriptionPurchaseClaimMutation) AddedFields() []string {
+	var fields []string
+	if m.adduser_id != nil {
+		fields = append(fields, subscriptionpurchaseclaim.FieldUserID)
+	}
+	if m.addsubscription_group_id != nil {
+		fields = append(fields, subscriptionpurchaseclaim.FieldSubscriptionGroupID)
+	}
+	if m.addpayment_order_id != nil {
+		fields = append(fields, subscriptionpurchaseclaim.FieldPaymentOrderID)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SubscriptionPurchaseClaimMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case subscriptionpurchaseclaim.FieldUserID:
+		return m.AddedUserID()
+	case subscriptionpurchaseclaim.FieldSubscriptionGroupID:
+		return m.AddedSubscriptionGroupID()
+	case subscriptionpurchaseclaim.FieldPaymentOrderID:
+		return m.AddedPaymentOrderID()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SubscriptionPurchaseClaimMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case subscriptionpurchaseclaim.FieldUserID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUserID(v)
+		return nil
+	case subscriptionpurchaseclaim.FieldSubscriptionGroupID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSubscriptionGroupID(v)
+		return nil
+	case subscriptionpurchaseclaim.FieldPaymentOrderID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPaymentOrderID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SubscriptionPurchaseClaim numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SubscriptionPurchaseClaimMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(subscriptionpurchaseclaim.FieldPaymentOrderID) {
+		fields = append(fields, subscriptionpurchaseclaim.FieldPaymentOrderID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SubscriptionPurchaseClaimMutation) ClearField(name string) error {
+	switch name {
+	case subscriptionpurchaseclaim.FieldPaymentOrderID:
+		m.ClearPaymentOrderID()
+		return nil
+	}
+	return fmt.Errorf("unknown SubscriptionPurchaseClaim nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SubscriptionPurchaseClaimMutation) ResetField(name string) error {
+	switch name {
+	case subscriptionpurchaseclaim.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case subscriptionpurchaseclaim.FieldSubscriptionGroupID:
+		m.ResetSubscriptionGroupID()
+		return nil
+	case subscriptionpurchaseclaim.FieldPaymentOrderID:
+		m.ResetPaymentOrderID()
+		return nil
+	case subscriptionpurchaseclaim.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case subscriptionpurchaseclaim.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case subscriptionpurchaseclaim.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown SubscriptionPurchaseClaim field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SubscriptionPurchaseClaimMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SubscriptionPurchaseClaimMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown SubscriptionPurchaseClaim unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SubscriptionPurchaseClaimMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown SubscriptionPurchaseClaim edge %s", name)
 }
 
 // TLSFingerprintProfileMutation represents an operation that mutates the TLSFingerprintProfile nodes in the graph.

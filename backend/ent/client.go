@@ -45,6 +45,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/securitysecret"
 	"github.com/Wei-Shaw/sub2api/ent/setting"
 	"github.com/Wei-Shaw/sub2api/ent/subscriptionplan"
+	"github.com/Wei-Shaw/sub2api/ent/subscriptionpurchaseclaim"
 	"github.com/Wei-Shaw/sub2api/ent/tlsfingerprintprofile"
 	"github.com/Wei-Shaw/sub2api/ent/usagecleanuptask"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
@@ -123,6 +124,8 @@ type Client struct {
 	Setting *SettingClient
 	// SubscriptionPlan is the client for interacting with the SubscriptionPlan builders.
 	SubscriptionPlan *SubscriptionPlanClient
+	// SubscriptionPurchaseClaim is the client for interacting with the SubscriptionPurchaseClaim builders.
+	SubscriptionPurchaseClaim *SubscriptionPurchaseClaimClient
 	// TLSFingerprintProfile is the client for interacting with the TLSFingerprintProfile builders.
 	TLSFingerprintProfile *TLSFingerprintProfileClient
 	// UsageCleanupTask is the client for interacting with the UsageCleanupTask builders.
@@ -182,6 +185,7 @@ func (c *Client) init() {
 	c.SecuritySecret = NewSecuritySecretClient(c.config)
 	c.Setting = NewSettingClient(c.config)
 	c.SubscriptionPlan = NewSubscriptionPlanClient(c.config)
+	c.SubscriptionPurchaseClaim = NewSubscriptionPurchaseClaimClient(c.config)
 	c.TLSFingerprintProfile = NewTLSFingerprintProfileClient(c.config)
 	c.UsageCleanupTask = NewUsageCleanupTaskClient(c.config)
 	c.UsageLog = NewUsageLogClient(c.config)
@@ -313,6 +317,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		SecuritySecret:                NewSecuritySecretClient(cfg),
 		Setting:                       NewSettingClient(cfg),
 		SubscriptionPlan:              NewSubscriptionPlanClient(cfg),
+		SubscriptionPurchaseClaim:     NewSubscriptionPurchaseClaimClient(cfg),
 		TLSFingerprintProfile:         NewTLSFingerprintProfileClient(cfg),
 		UsageCleanupTask:              NewUsageCleanupTaskClient(cfg),
 		UsageLog:                      NewUsageLogClient(cfg),
@@ -371,6 +376,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		SecuritySecret:                NewSecuritySecretClient(cfg),
 		Setting:                       NewSettingClient(cfg),
 		SubscriptionPlan:              NewSubscriptionPlanClient(cfg),
+		SubscriptionPurchaseClaim:     NewSubscriptionPurchaseClaimClient(cfg),
 		TLSFingerprintProfile:         NewTLSFingerprintProfileClient(cfg),
 		UsageCleanupTask:              NewUsageCleanupTaskClient(cfg),
 		UsageLog:                      NewUsageLogClient(cfg),
@@ -417,9 +423,9 @@ func (c *Client) Use(hooks ...Hook) {
 		c.IdentityAdoptionDecision, c.PaymentAuditLog, c.PaymentOrder,
 		c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode, c.PromoCodeUsage,
 		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
-		c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog, c.User,
-		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserPlatformQuota, c.UserSubscription,
+		c.SubscriptionPurchaseClaim, c.TLSFingerprintProfile, c.UsageCleanupTask,
+		c.UsageLog, c.User, c.UserAllowedGroup, c.UserAttributeDefinition,
+		c.UserAttributeValue, c.UserPlatformQuota, c.UserSubscription,
 	} {
 		n.Use(hooks...)
 	}
@@ -437,9 +443,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.IdentityAdoptionDecision, c.PaymentAuditLog, c.PaymentOrder,
 		c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode, c.PromoCodeUsage,
 		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
-		c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog, c.User,
-		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserPlatformQuota, c.UserSubscription,
+		c.SubscriptionPurchaseClaim, c.TLSFingerprintProfile, c.UsageCleanupTask,
+		c.UsageLog, c.User, c.UserAllowedGroup, c.UserAttributeDefinition,
+		c.UserAttributeValue, c.UserPlatformQuota, c.UserSubscription,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -508,6 +514,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Setting.mutate(ctx, m)
 	case *SubscriptionPlanMutation:
 		return c.SubscriptionPlan.mutate(ctx, m)
+	case *SubscriptionPurchaseClaimMutation:
+		return c.SubscriptionPurchaseClaim.mutate(ctx, m)
 	case *TLSFingerprintProfileMutation:
 		return c.TLSFingerprintProfile.mutate(ctx, m)
 	case *UsageCleanupTaskMutation:
@@ -5202,6 +5210,139 @@ func (c *SubscriptionPlanClient) mutate(ctx context.Context, m *SubscriptionPlan
 	}
 }
 
+// SubscriptionPurchaseClaimClient is a client for the SubscriptionPurchaseClaim schema.
+type SubscriptionPurchaseClaimClient struct {
+	config
+}
+
+// NewSubscriptionPurchaseClaimClient returns a client for the SubscriptionPurchaseClaim from the given config.
+func NewSubscriptionPurchaseClaimClient(c config) *SubscriptionPurchaseClaimClient {
+	return &SubscriptionPurchaseClaimClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `subscriptionpurchaseclaim.Hooks(f(g(h())))`.
+func (c *SubscriptionPurchaseClaimClient) Use(hooks ...Hook) {
+	c.hooks.SubscriptionPurchaseClaim = append(c.hooks.SubscriptionPurchaseClaim, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `subscriptionpurchaseclaim.Intercept(f(g(h())))`.
+func (c *SubscriptionPurchaseClaimClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SubscriptionPurchaseClaim = append(c.inters.SubscriptionPurchaseClaim, interceptors...)
+}
+
+// Create returns a builder for creating a SubscriptionPurchaseClaim entity.
+func (c *SubscriptionPurchaseClaimClient) Create() *SubscriptionPurchaseClaimCreate {
+	mutation := newSubscriptionPurchaseClaimMutation(c.config, OpCreate)
+	return &SubscriptionPurchaseClaimCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SubscriptionPurchaseClaim entities.
+func (c *SubscriptionPurchaseClaimClient) CreateBulk(builders ...*SubscriptionPurchaseClaimCreate) *SubscriptionPurchaseClaimCreateBulk {
+	return &SubscriptionPurchaseClaimCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SubscriptionPurchaseClaimClient) MapCreateBulk(slice any, setFunc func(*SubscriptionPurchaseClaimCreate, int)) *SubscriptionPurchaseClaimCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SubscriptionPurchaseClaimCreateBulk{err: fmt.Errorf("calling to SubscriptionPurchaseClaimClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SubscriptionPurchaseClaimCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SubscriptionPurchaseClaimCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SubscriptionPurchaseClaim.
+func (c *SubscriptionPurchaseClaimClient) Update() *SubscriptionPurchaseClaimUpdate {
+	mutation := newSubscriptionPurchaseClaimMutation(c.config, OpUpdate)
+	return &SubscriptionPurchaseClaimUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SubscriptionPurchaseClaimClient) UpdateOne(_m *SubscriptionPurchaseClaim) *SubscriptionPurchaseClaimUpdateOne {
+	mutation := newSubscriptionPurchaseClaimMutation(c.config, OpUpdateOne, withSubscriptionPurchaseClaim(_m))
+	return &SubscriptionPurchaseClaimUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SubscriptionPurchaseClaimClient) UpdateOneID(id int64) *SubscriptionPurchaseClaimUpdateOne {
+	mutation := newSubscriptionPurchaseClaimMutation(c.config, OpUpdateOne, withSubscriptionPurchaseClaimID(id))
+	return &SubscriptionPurchaseClaimUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SubscriptionPurchaseClaim.
+func (c *SubscriptionPurchaseClaimClient) Delete() *SubscriptionPurchaseClaimDelete {
+	mutation := newSubscriptionPurchaseClaimMutation(c.config, OpDelete)
+	return &SubscriptionPurchaseClaimDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SubscriptionPurchaseClaimClient) DeleteOne(_m *SubscriptionPurchaseClaim) *SubscriptionPurchaseClaimDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SubscriptionPurchaseClaimClient) DeleteOneID(id int64) *SubscriptionPurchaseClaimDeleteOne {
+	builder := c.Delete().Where(subscriptionpurchaseclaim.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SubscriptionPurchaseClaimDeleteOne{builder}
+}
+
+// Query returns a query builder for SubscriptionPurchaseClaim.
+func (c *SubscriptionPurchaseClaimClient) Query() *SubscriptionPurchaseClaimQuery {
+	return &SubscriptionPurchaseClaimQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSubscriptionPurchaseClaim},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SubscriptionPurchaseClaim entity by its id.
+func (c *SubscriptionPurchaseClaimClient) Get(ctx context.Context, id int64) (*SubscriptionPurchaseClaim, error) {
+	return c.Query().Where(subscriptionpurchaseclaim.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SubscriptionPurchaseClaimClient) GetX(ctx context.Context, id int64) *SubscriptionPurchaseClaim {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *SubscriptionPurchaseClaimClient) Hooks() []Hook {
+	return c.hooks.SubscriptionPurchaseClaim
+}
+
+// Interceptors returns the client interceptors.
+func (c *SubscriptionPurchaseClaimClient) Interceptors() []Interceptor {
+	return c.inters.SubscriptionPurchaseClaim
+}
+
+func (c *SubscriptionPurchaseClaimClient) mutate(ctx context.Context, m *SubscriptionPurchaseClaimMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SubscriptionPurchaseClaimCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SubscriptionPurchaseClaimUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SubscriptionPurchaseClaimUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SubscriptionPurchaseClaimDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SubscriptionPurchaseClaim mutation op: %q", m.Op())
+	}
+}
+
 // TLSFingerprintProfileClient is a client for the TLSFingerprintProfile schema.
 type TLSFingerprintProfileClient struct {
 	config
@@ -6828,24 +6969,24 @@ type (
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
 		AuthIdentityChannel, BatchImageEvent, BatchImageItem, BatchImageJob,
 		ChannelMonitor, ChannelMonitorDailyRollup, ChannelMonitorHistory,
-		ChannelMonitorRequestTemplate, CompositeModelRoute,
-		ErrorPassthroughRule, Group, IdempotencyRecord, IdentityAdoptionDecision,
-		PaymentAuditLog, PaymentOrder, PaymentProviderInstance, PendingAuthSession,
-		PromoCode, PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting,
-		SubscriptionPlan, TLSFingerprintProfile, UsageCleanupTask, UsageLog, User,
-		UserAllowedGroup, UserAttributeDefinition, UserAttributeValue,
+		ChannelMonitorRequestTemplate, CompositeModelRoute, ErrorPassthroughRule,
+		Group, IdempotencyRecord, IdentityAdoptionDecision, PaymentAuditLog,
+		PaymentOrder, PaymentProviderInstance, PendingAuthSession, PromoCode,
+		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
+		SubscriptionPurchaseClaim, TLSFingerprintProfile, UsageCleanupTask, UsageLog,
+		User, UserAllowedGroup, UserAttributeDefinition, UserAttributeValue,
 		UserPlatformQuota, UserSubscription []ent.Hook
 	}
 	inters struct {
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
 		AuthIdentityChannel, BatchImageEvent, BatchImageItem, BatchImageJob,
 		ChannelMonitor, ChannelMonitorDailyRollup, ChannelMonitorHistory,
-		ChannelMonitorRequestTemplate, CompositeModelRoute,
-		ErrorPassthroughRule, Group, IdempotencyRecord, IdentityAdoptionDecision,
-		PaymentAuditLog, PaymentOrder, PaymentProviderInstance, PendingAuthSession,
-		PromoCode, PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting,
-		SubscriptionPlan, TLSFingerprintProfile, UsageCleanupTask, UsageLog, User,
-		UserAllowedGroup, UserAttributeDefinition, UserAttributeValue,
+		ChannelMonitorRequestTemplate, CompositeModelRoute, ErrorPassthroughRule,
+		Group, IdempotencyRecord, IdentityAdoptionDecision, PaymentAuditLog,
+		PaymentOrder, PaymentProviderInstance, PendingAuthSession, PromoCode,
+		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
+		SubscriptionPurchaseClaim, TLSFingerprintProfile, UsageCleanupTask, UsageLog,
+		User, UserAllowedGroup, UserAttributeDefinition, UserAttributeValue,
 		UserPlatformQuota, UserSubscription []ent.Interceptor
 	}
 )

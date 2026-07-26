@@ -245,6 +245,11 @@ func UpdatedAt(v time.Time) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
+// SubscriptionExpiresAt applies equality check predicate on the "subscription_expires_at" field. It's identical to SubscriptionExpiresAtEQ.
+func SubscriptionExpiresAt(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldSubscriptionExpiresAt, v))
+}
+
 // UserIDEQ applies the EQ predicate on the "user_id" field.
 func UserIDEQ(v int64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldUserID, v))
@@ -2438,6 +2443,56 @@ func UpdatedAtLT(v time.Time) predicate.PaymentOrder {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// SubscriptionExpiresAtEQ applies the EQ predicate on the "subscription_expires_at" field.
+func SubscriptionExpiresAtEQ(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldSubscriptionExpiresAt, v))
+}
+
+// SubscriptionExpiresAtNEQ applies the NEQ predicate on the "subscription_expires_at" field.
+func SubscriptionExpiresAtNEQ(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldSubscriptionExpiresAt, v))
+}
+
+// SubscriptionExpiresAtIn applies the In predicate on the "subscription_expires_at" field.
+func SubscriptionExpiresAtIn(vs ...time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldSubscriptionExpiresAt, vs...))
+}
+
+// SubscriptionExpiresAtNotIn applies the NotIn predicate on the "subscription_expires_at" field.
+func SubscriptionExpiresAtNotIn(vs ...time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldSubscriptionExpiresAt, vs...))
+}
+
+// SubscriptionExpiresAtGT applies the GT predicate on the "subscription_expires_at" field.
+func SubscriptionExpiresAtGT(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldSubscriptionExpiresAt, v))
+}
+
+// SubscriptionExpiresAtGTE applies the GTE predicate on the "subscription_expires_at" field.
+func SubscriptionExpiresAtGTE(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldSubscriptionExpiresAt, v))
+}
+
+// SubscriptionExpiresAtLT applies the LT predicate on the "subscription_expires_at" field.
+func SubscriptionExpiresAtLT(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldSubscriptionExpiresAt, v))
+}
+
+// SubscriptionExpiresAtLTE applies the LTE predicate on the "subscription_expires_at" field.
+func SubscriptionExpiresAtLTE(v time.Time) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldSubscriptionExpiresAt, v))
+}
+
+// SubscriptionExpiresAtIsNil applies the IsNil predicate on the "subscription_expires_at" field.
+func SubscriptionExpiresAtIsNil() predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIsNull(FieldSubscriptionExpiresAt))
+}
+
+// SubscriptionExpiresAtNotNil applies the NotNil predicate on the "subscription_expires_at" field.
+func SubscriptionExpiresAtNotNil() predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotNull(FieldSubscriptionExpiresAt))
 }
 
 // HasUser applies the HasEdge predicate on the "user" edge.

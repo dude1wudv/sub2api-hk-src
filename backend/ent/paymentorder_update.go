@@ -714,6 +714,26 @@ func (_u *PaymentOrderUpdate) SetUpdatedAt(v time.Time) *PaymentOrderUpdate {
 	return _u
 }
 
+// SetSubscriptionExpiresAt sets the "subscription_expires_at" field.
+func (_u *PaymentOrderUpdate) SetSubscriptionExpiresAt(v time.Time) *PaymentOrderUpdate {
+	_u.mutation.SetSubscriptionExpiresAt(v)
+	return _u
+}
+
+// SetNillableSubscriptionExpiresAt sets the "subscription_expires_at" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableSubscriptionExpiresAt(v *time.Time) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetSubscriptionExpiresAt(*v)
+	}
+	return _u
+}
+
+// ClearSubscriptionExpiresAt clears the value of the "subscription_expires_at" field.
+func (_u *PaymentOrderUpdate) ClearSubscriptionExpiresAt() *PaymentOrderUpdate {
+	_u.mutation.ClearSubscriptionExpiresAt()
+	return _u
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_u *PaymentOrderUpdate) SetUser(v *User) *PaymentOrderUpdate {
 	return _u.SetUserID(v.ID)
@@ -1042,6 +1062,12 @@ func (_u *PaymentOrderUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(paymentorder.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.SubscriptionExpiresAt(); ok {
+		_spec.SetField(paymentorder.FieldSubscriptionExpiresAt, field.TypeTime, value)
+	}
+	if _u.mutation.SubscriptionExpiresAtCleared() {
+		_spec.ClearField(paymentorder.FieldSubscriptionExpiresAt, field.TypeTime)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1777,6 +1803,26 @@ func (_u *PaymentOrderUpdateOne) SetUpdatedAt(v time.Time) *PaymentOrderUpdateOn
 	return _u
 }
 
+// SetSubscriptionExpiresAt sets the "subscription_expires_at" field.
+func (_u *PaymentOrderUpdateOne) SetSubscriptionExpiresAt(v time.Time) *PaymentOrderUpdateOne {
+	_u.mutation.SetSubscriptionExpiresAt(v)
+	return _u
+}
+
+// SetNillableSubscriptionExpiresAt sets the "subscription_expires_at" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableSubscriptionExpiresAt(v *time.Time) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetSubscriptionExpiresAt(*v)
+	}
+	return _u
+}
+
+// ClearSubscriptionExpiresAt clears the value of the "subscription_expires_at" field.
+func (_u *PaymentOrderUpdateOne) ClearSubscriptionExpiresAt() *PaymentOrderUpdateOne {
+	_u.mutation.ClearSubscriptionExpiresAt()
+	return _u
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_u *PaymentOrderUpdateOne) SetUser(v *User) *PaymentOrderUpdateOne {
 	return _u.SetUserID(v.ID)
@@ -2135,6 +2181,12 @@ func (_u *PaymentOrderUpdateOne) sqlSave(ctx context.Context) (_node *PaymentOrd
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(paymentorder.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.SubscriptionExpiresAt(); ok {
+		_spec.SetField(paymentorder.FieldSubscriptionExpiresAt, field.TypeTime, value)
+	}
+	if _u.mutation.SubscriptionExpiresAtCleared() {
+		_spec.ClearField(paymentorder.FieldSubscriptionExpiresAt, field.TypeTime)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
