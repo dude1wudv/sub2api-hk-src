@@ -206,6 +206,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/image2',
+    name: 'Image2',
+    component: () => import('@/views/user/Image2RedirectView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Image Workbench',
+      titleKey: 'nav.image2'
+    }
+  },
+  {
     path: '/batch-image',
     name: 'BatchImageGuide',
     alias: '/docs/batch-image',

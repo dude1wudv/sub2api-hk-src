@@ -650,11 +650,11 @@ func TestFrontendServer_Middleware(t *testing.T) {
 
 		// Request for existing static file
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "/logo.png", nil)
+		req := httptest.NewRequest(http.MethodGet, "/logo.svg", nil)
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		assert.Contains(t, w.Header().Get("Content-Type"), "image/png")
+		assert.Contains(t, w.Header().Get("Content-Type"), "image/svg")
 		assert.Empty(t, w.Header().Get("Cache-Control"))
 
 		entries, err := fs.ReadDir(server.distFS, "assets")
@@ -735,11 +735,11 @@ func TestServeEmbeddedFrontend(t *testing.T) {
 		router.Use(middleware)
 
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "/logo.png", nil)
+		req := httptest.NewRequest(http.MethodGet, "/logo.svg", nil)
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		assert.Contains(t, w.Header().Get("Content-Type"), "image/png")
+		assert.Contains(t, w.Header().Get("Content-Type"), "image/svg")
 	})
 
 	t.Run("serves_index_html_for_root", func(t *testing.T) {
@@ -811,6 +811,42 @@ func TestServeEmbeddedFrontend(t *testing.T) {
 				assert.True(t, nextCalled, "next handler should be called for API route")
 			})
 		}
+	})
+}
+
+func TestImage2EmbeddedHost(t *testing.T) {
+	provider := &mockSettingsProvider{settings: map[string]string{"test": "value"}}
+	server, err := NewFrontendServer(provider)
+	require.NoError(t, err)
+
+	router := gin.New()
+	router.Use(server.Middleware())
+
+	t.Run("serves_image2_index", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/image2", nil))
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+		assert.Equal(t, "no-cache", w.Header().Get("Cache-Control"))
+		assert.Contains(t, w.Body.String(), `<div id="root">`)
+	})
+
+	t.Run("serves_static_image2_asset", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/image2/manifest.webmanifest", nil))
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), `"name"`)
+	})
+
+	t.Run("falls_back_to_image2_spa_index", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/image2/history/item-1", nil))
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+		assert.Contains(t, w.Body.String(), `<div id="root">`)
 	})
 }
 

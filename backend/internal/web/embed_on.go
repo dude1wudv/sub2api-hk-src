@@ -29,6 +29,9 @@ const (
 //go:embed all:dist
 var frontendFS embed.FS
 
+//go:embed all:image2-dist
+var image2FS embed.FS
+
 // PublicSettingsProvider is an interface to fetch public settings
 type PublicSettingsProvider interface {
 	GetPublicSettingsForInjection(ctx context.Context) (any, error)
@@ -36,12 +39,14 @@ type PublicSettingsProvider interface {
 
 // FrontendServer serves the embedded frontend with settings injection
 type FrontendServer struct {
-	distFS      fs.FS
-	fileServer  http.Handler
-	baseHTML    []byte
-	cache       *HTMLCache
-	settings    PublicSettingsProvider
-	overrideDir string // local file override directory
+	distFS           fs.FS
+	fileServer       http.Handler
+	baseHTML         []byte
+	cache            *HTMLCache
+	settings         PublicSettingsProvider
+	overrideDir      string // local file override directory
+	image2DistFS     fs.FS
+	image2FileServer http.Handler
 }
 
 // NewFrontendServer creates a new frontend server with settings injection
@@ -63,16 +68,28 @@ func NewFrontendServer(settingsProvider PublicSettingsProvider) (*FrontendServer
 		return nil, err
 	}
 
+	image2DistFS, err := fs.Sub(image2FS, "image2-dist")
+	if err != nil {
+		return nil, err
+	}
+	image2Index, err := image2DistFS.Open("index.html")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = image2Index.Close() }()
+
 	cache := NewHTMLCache()
 	cache.SetBaseHTML(baseHTML)
 
 	return &FrontendServer{
-		distFS:      distFS,
-		fileServer:  http.FileServer(http.FS(distFS)),
-		baseHTML:    baseHTML,
-		cache:       cache,
-		settings:    settingsProvider,
-		overrideDir: filepath.Join("data", "public"),
+		distFS:           distFS,
+		fileServer:       http.FileServer(http.FS(distFS)),
+		baseHTML:         baseHTML,
+		cache:            cache,
+		settings:         settingsProvider,
+		overrideDir:      filepath.Join("data", "public"),
+		image2DistFS:     image2DistFS,
+		image2FileServer: http.StripPrefix("/image2/", http.FileServer(http.FS(image2DistFS))),
 	}, nil
 }
 
@@ -91,6 +108,10 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 		// Skip API routes
 		if shouldBypassEmbeddedFrontend(path) {
 			c.Next()
+			return
+		}
+
+		if s.serveImage2(c) {
 			return
 		}
 
@@ -115,6 +136,64 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 		s.fileServer.ServeHTTP(c.Writer, c.Request)
 		c.Abort()
 	}
+}
+
+func (s *FrontendServer) serveImage2(c *gin.Context) bool {
+	return serveImage2Static(c, s.image2DistFS, s.image2FileServer, filepath.Join(s.overrideDir, "image2"))
+}
+
+func serveImage2Static(c *gin.Context, distFS fs.FS, fileServer http.Handler, overrideDir string) bool {
+	path := strings.TrimPrefix(c.Request.URL.Path, "/")
+	if path != "image2" && !strings.HasPrefix(path, "image2/") {
+		return false
+	}
+
+	cleanPath := strings.TrimPrefix(strings.TrimPrefix(path, "image2"), "/")
+	if cleanPath == "" {
+		cleanPath = "index.html"
+	}
+
+	file, err := distFS.Open(cleanPath)
+	if cleanPath == "index.html" || err != nil {
+		if err == nil {
+			_ = file.Close()
+		}
+		serveImage2IndexHTML(c, distFS)
+		return true
+	}
+	_ = file.Close()
+
+	if tryServeOverrideFile(c, overrideDir, cleanPath) {
+		return true
+	}
+
+	applyStaticAssetCacheHeaders(c.Writer.Header(), cleanPath)
+	originalPath := c.Request.URL.Path
+	c.Request.URL.Path = "/image2/" + cleanPath
+	defer func() { c.Request.URL.Path = originalPath }()
+	fileServer.ServeHTTP(c.Writer, c.Request)
+	c.Abort()
+	return true
+}
+
+func serveImage2IndexHTML(c *gin.Context, distFS fs.FS) {
+	file, err := distFS.Open("index.html")
+	if err != nil {
+		c.String(http.StatusNotFound, "Image playground not found")
+		c.Abort()
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to read image playground index.html")
+		c.Abort()
+		return
+	}
+	c.Header("Cache-Control", "no-cache")
+	c.Data(http.StatusOK, "text/html; charset=utf-8", content)
+	c.Abort()
 }
 
 func (s *FrontendServer) fileExists(path string) bool {
@@ -306,6 +385,11 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 		panic("failed to get dist subdirectory: " + err.Error())
 	}
 	fileServer := http.FileServer(http.FS(distFS))
+	image2DistFS, err := fs.Sub(image2FS, "image2-dist")
+	if err != nil {
+		panic("failed to get image playground dist subdirectory: " + err.Error())
+	}
+	image2FileServer := http.StripPrefix("/image2/", http.FileServer(http.FS(image2DistFS)))
 	overrideDir := filepath.Join("data", "public")
 
 	return func(c *gin.Context) {
@@ -313,6 +397,10 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 
 		if shouldBypassEmbeddedFrontend(path) {
 			c.Next()
+			return
+		}
+
+		if serveImage2Static(c, image2DistFS, image2FileServer, filepath.Join(overrideDir, "image2")) {
 			return
 		}
 
