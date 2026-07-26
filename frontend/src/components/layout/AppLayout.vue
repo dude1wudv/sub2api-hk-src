@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-dark-950">
+  <div class="app-shell min-h-screen">
     <!-- Background Decoration -->
-    <div class="pointer-events-none fixed inset-0 bg-mesh-gradient"></div>
+    <div class="app-shell-bg pointer-events-none fixed inset-0"></div>
 
     <!-- Sidebar -->
     <AppSidebar />

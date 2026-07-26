@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <TablePageLayout>
+    <TablePageLayout page-scroll>
       <template #filters>
         <div class="flex flex-wrap-reverse items-start justify-between gap-3">
           <AccountTableFilters
@@ -173,36 +173,244 @@
             {{ t('admin.accounts.listPendingSyncAction') }}
           </button>
         </div>
-        <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div class="mt-3 grid gap-3 lg:grid-cols-4">
           <div class="account-summary-panel">
-            <p class="account-summary-label">{{ t('admin.accounts.summary.statusTitle') }}</p>
-            <p class="account-summary-value">
-              <span v-if="accountSummaryLoading">…</span>
-              <span v-else>{{ accountSummary?.available ?? '-' }} / {{ accountSummary?.total ?? '-' }}</span>
-            </p>
-            <p class="account-summary-detail">
-              {{ t('admin.accounts.summary.active') }} {{ accountSummary?.active ?? '-' }} ·
-              {{ t('admin.accounts.summary.error') }} {{ accountSummary?.error ?? '-' }} ·
-              {{ t('admin.accounts.summary.paused') }} {{ accountSummary?.paused ?? '-' }}
-            </p>
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="account-summary-label">{{ t('admin.accounts.summary.statusTitle') }}</p>
+                <p class="account-summary-value">
+                  <span v-if="accountSummaryLoading">…</span>
+                  <span v-else>{{ accountSummary?.available ?? '-' }} / {{ accountSummary?.total ?? '-' }}</span>
+                </p>
+              </div>
+              <span class="account-summary-pill text-emerald-700 dark:text-emerald-300">
+                {{ t('admin.accounts.summary.available') }}
+              </span>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <span class="account-summary-subvalue text-emerald-600 dark:text-emerald-300">{{ accountSummary?.active ?? '-' }}</span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.summary.active') }}</span>
+              </div>
+              <div>
+                <span class="account-summary-subvalue text-rose-600 dark:text-rose-300">{{ accountSummary?.error ?? '-' }}</span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.summary.error') }}</span>
+              </div>
+              <div>
+                <span class="account-summary-subvalue text-amber-600 dark:text-amber-300">{{ accountSummary?.paused ?? '-' }}</span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.summary.paused') }}</span>
+              </div>
+            </div>
           </div>
+
           <div class="account-summary-panel">
-            <p class="account-summary-label">{{ t('admin.accounts.summary.codex5h') }}</p>
-            <p class="account-summary-value">{{ formatSummaryPercent(accountSummary?.codex_5h?.remaining_percent) }}</p>
-            <p class="account-summary-detail">{{ t('admin.accounts.summary.sampled', { count: accountSummary?.codex_5h?.sampled ?? 0 }) }}</p>
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="account-summary-label">{{ t('admin.accounts.summary.codex5h') }}</p>
+                <p class="account-summary-value">{{ formatSummaryPercent(accountSummary?.codex_5h?.remaining_percent) }}</p>
+              </div>
+              <span class="account-summary-pill">{{ t('admin.accounts.summary.sampled', { count: accountSummary?.codex_5h?.sampled ?? 0 }) }}</span>
+            </div>
+            <div class="account-summary-meter mt-3">
+              <div class="account-summary-meter-fill bg-emerald-500" :style="{ width: summaryMeterWidth(accountSummary?.codex_5h?.remaining_percent) }"></div>
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span>{{ t('admin.accounts.summary.used', { percent: formatSummaryPercent(accountSummary?.codex_5h?.used_percent) }) }}</span>
+              <span>{{ t('admin.accounts.summary.exhausted', { count: accountSummary?.codex_5h?.exhausted ?? 0 }) }}</span>
+            </div>
           </div>
+
           <div class="account-summary-panel">
-            <p class="account-summary-label">{{ t('admin.accounts.summary.codex7d') }}</p>
-            <p class="account-summary-value">{{ formatSummaryPercent(accountSummary?.codex_7d?.remaining_percent) }}</p>
-            <p class="account-summary-detail">{{ t('admin.accounts.summary.sampled', { count: accountSummary?.codex_7d?.sampled ?? 0 }) }}</p>
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="account-summary-label">{{ t('admin.accounts.summary.codex7d') }}</p>
+                <p class="account-summary-value">{{ formatSummaryPercent(accountSummary?.codex_7d?.remaining_percent) }}</p>
+              </div>
+              <span class="account-summary-pill">{{ t('admin.accounts.summary.sampled', { count: accountSummary?.codex_7d?.sampled ?? 0 }) }}</span>
+            </div>
+            <div class="account-summary-meter mt-3">
+              <div class="account-summary-meter-fill bg-sky-500" :style="{ width: summaryMeterWidth(accountSummary?.codex_7d?.remaining_percent) }"></div>
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span>{{ t('admin.accounts.summary.used', { percent: formatSummaryPercent(accountSummary?.codex_7d?.used_percent) }) }}</span>
+              <span>{{ t('admin.accounts.summary.exhausted', { count: accountSummary?.codex_7d?.exhausted ?? 0 }) }}</span>
+            </div>
           </div>
+
           <div class="account-summary-panel">
-            <p class="account-summary-label">{{ t('admin.accounts.oauthUsage.title') }}</p>
-            <p class="account-summary-value">{{ formatStandardCost(oauthUsageSummary?.total_standard_cost) }}</p>
-            <p class="account-summary-detail">
-              {{ t('admin.accounts.oauthUsage.oauthAccounts') }} {{ oauthUsageSummary?.oauth_account_count ?? '-' }} ·
-              {{ t('admin.accounts.oauthUsage.logs', { count: oauthUsageSummary?.usage_log_count ?? 0 }) }}
-            </p>
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="account-summary-label">{{ t('admin.accounts.oauthUsage.title') }}</p>
+                <p class="account-summary-value">{{ formatStandardCost(oauthUsageSummary?.total_standard_cost) }}</p>
+              </div>
+              <span class="account-summary-pill text-emerald-700 dark:text-emerald-300">
+                {{ t('admin.accounts.oauthUsage.standardPricing') }}
+              </span>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <span class="account-summary-subvalue text-emerald-600 dark:text-emerald-300">
+                  {{ formatStandardCost(oauthUsageSummary?.average_standard_cost_per_oauth_account) }}
+                </span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.oauthUsage.average') }}</span>
+              </div>
+              <div>
+                <span class="account-summary-subvalue text-gray-900 dark:text-gray-100">
+                  {{ oauthUsageSummary?.oauth_account_count ?? '-' }}
+                </span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.oauthUsage.oauthAccounts') }}</span>
+              </div>
+              <div>
+                <span class="account-summary-subvalue text-amber-600 dark:text-amber-300">
+                  {{ oauthUsageSummary?.deleted_oauth_account_count ?? 0 }} / {{ oauthUsageSummary?.expired_oauth_account_count ?? 0 }}
+                </span>
+                <span class="account-summary-sublabel">{{ t('admin.accounts.oauthUsage.deletedExpired') }}</span>
+              </div>
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span>{{ t('admin.accounts.oauthUsage.withUsage', { count: oauthUsageSummary?.oauth_accounts_with_usage ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.oauthUsage.logs', { count: oauthUsageSummary?.usage_log_count ?? 0 }) }}</span>
+            </div>
+            <div class="mt-1 text-right text-[11px] text-gray-400 dark:text-gray-500">
+              {{ t('admin.accounts.oauthUsage.refreshedAt', { time: oauthUsageSummaryRefreshedAt || '-' }) }}
+            </div>
+          </div>
+
+          <div class="account-summary-panel lg:col-span-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="account-summary-label">{{ t('admin.accounts.summary.proxyTitle') }}</p>
+                <p class="account-summary-value">{{ accountSummary?.openai ?? '-' }}</p>
+              </div>
+              <span class="account-summary-pill">{{ t('admin.accounts.summary.tokyoPool') }}</span>
+            </div>
+            <div class="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              <div
+                v-for="proxy in tokyoProxyHealth"
+                :key="proxy.proxy_id ?? 'none'"
+                class="proxy-health-row"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span :class="['proxy-health-dot', proxyHealthDotClass(proxy)]"></span>
+                      <span class="truncate text-sm font-medium text-gray-900 dark:text-white" :title="proxy.name">{{ proxy.name }}</span>
+                    </div>
+                    <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400" :title="proxyHealthMessage(proxy)">
+                      {{ proxyHealthMessage(proxy) }}
+                    </p>
+                  </div>
+                  <span :class="['proxy-health-chip', proxyHealthChipClass(proxy)]">
+                    {{ proxyHealthLabel(proxy) }}
+                  </span>
+                </div>
+                <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <span class="account-summary-subvalue text-gray-900 dark:text-white">{{ proxy.total }}</span>
+                    <span class="account-summary-sublabel">{{ t('admin.accounts.summary.accounts') }}</span>
+                  </div>
+                  <div>
+                    <span class="account-summary-subvalue text-emerald-600 dark:text-emerald-300">{{ proxy.available }}</span>
+                    <span class="account-summary-sublabel">{{ t('admin.accounts.summary.usable') }}</span>
+                  </div>
+                  <div>
+                    <span class="account-summary-subvalue text-sky-600 dark:text-sky-300">{{ formatProxyLatency(proxy) }}</span>
+                    <span class="account-summary-sublabel">{{ t('admin.accounts.summary.latency') }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="tokyoProxyHealth.length === 0" class="text-xs text-gray-400 dark:text-gray-500">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 space-y-3">
+          <div
+            role="button"
+            tabindex="0"
+            :class="['quota-pool-card quota-pool-card-oauth', { 'quota-pool-card-active': activeQuotaPool === 'oauth' }]"
+            @click="openQuotaPool('oauth')"
+            @keydown.enter.prevent="openQuotaPool('oauth')"
+            @keydown.space.prevent="openQuotaPool('oauth')"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="quota-pool-label">{{ t('admin.accounts.quotaPools.oauthTitle') }}</p>
+                <p class="quota-pool-value">{{ formatSummaryPercent(quotaPoolSummaryView?.oauth_pool?.remaining_percent) }}</p>
+              </div>
+              <div class="quota-pool-enter" :title="t('admin.accounts.quotaPools.openOAuth')">
+                <Icon name="arrowRight" size="sm" />
+              </div>
+            </div>
+            <div class="quota-pool-windows">
+              <div class="quota-pool-window-row">
+                <span>5h</span>
+                <div class="quota-pool-meter">
+                  <div class="quota-pool-meter-fill bg-emerald-500" :style="{ width: summaryMeterWidth(quotaPoolSummaryView?.oauth_pool?.remaining_5h_percent) }"></div>
+                </div>
+                <strong>{{ formatSummaryPercent(quotaPoolSummaryView?.oauth_pool?.remaining_5h_percent) }}</strong>
+              </div>
+              <div class="quota-pool-window-row">
+                <span>7d</span>
+                <div class="quota-pool-meter">
+                  <div class="quota-pool-meter-fill bg-emerald-500" :style="{ width: summaryMeterWidth(quotaPoolSummaryView?.oauth_pool?.remaining_7d_percent) }"></div>
+                </div>
+                <strong>{{ formatSummaryPercent(quotaPoolSummaryView?.oauth_pool?.remaining_7d_percent) }}</strong>
+              </div>
+            </div>
+            <div class="quota-pool-stats">
+              <span>{{ t('admin.accounts.quotaPools.accounts', { total: quotaPoolSummaryView?.oauth_pool?.total ?? 0, available: quotaPoolSummaryView?.oauth_pool?.available ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.summary.sampled', { count: quotaPoolSummaryView?.oauth_pool?.sampled ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.summary.exhausted', { count: quotaPoolSummaryView?.oauth_pool?.exhausted ?? 0 }) }}</span>
+            </div>
+          </div>
+          <div
+            role="button"
+            tabindex="0"
+            :class="['quota-pool-card quota-pool-card-grok', { 'quota-pool-card-active': activeQuotaPool === 'grok' }]"
+            @click="openQuotaPool('grok')"
+            @keydown.enter.prevent="openQuotaPool('grok')"
+            @keydown.space.prevent="openQuotaPool('grok')"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="quota-pool-label">{{ t('admin.accounts.quotaPools.grokTitle') }}</p>
+                <p class="quota-pool-value">{{ formatSummaryPercent(quotaPoolSummaryView?.grok_pool?.remaining_percent) }}</p>
+              </div>
+              <div class="quota-pool-enter" :title="t('admin.accounts.quotaPools.openGrok')">
+                <Icon name="arrowRight" size="sm" />
+              </div>
+            </div>
+            <div class="quota-pool-windows">
+              <div class="quota-pool-window-row">
+                <span>5h</span>
+                <div class="quota-pool-meter">
+                  <div class="quota-pool-meter-fill bg-gray-700 dark:bg-gray-300" :style="{ width: summaryMeterWidth(quotaPoolSummaryView?.grok_pool?.remaining_5h_percent) }"></div>
+                </div>
+                <strong>{{ formatSummaryPercent(quotaPoolSummaryView?.grok_pool?.remaining_5h_percent) }}</strong>
+              </div>
+              <div class="quota-pool-window-row">
+                <span>7d</span>
+                <div class="quota-pool-meter">
+                  <div class="quota-pool-meter-fill bg-gray-700 dark:bg-gray-300" :style="{ width: summaryMeterWidth(quotaPoolSummaryView?.grok_pool?.remaining_7d_percent) }"></div>
+                </div>
+                <strong>{{ formatSummaryPercent(quotaPoolSummaryView?.grok_pool?.remaining_7d_percent) }}</strong>
+              </div>
+            </div>
+            <div class="quota-pool-stats">
+              <span>{{ t('admin.accounts.quotaPools.accounts', { total: quotaPoolSummaryView?.grok_pool?.total ?? 0, available: quotaPoolSummaryView?.grok_pool?.available ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.summary.sampled', { count: quotaPoolSummaryView?.grok_pool?.sampled ?? 0 }) }}</span>
+              <span>{{ t('admin.accounts.summary.exhausted', { count: quotaPoolSummaryView?.grok_pool?.exhausted ?? 0 }) }}</span>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <button
+              type="button"
+              class="quota-pool-restore"
+              :disabled="!activeQuotaPool"
+              @click.stop="exitQuotaPool"
+            >
+              {{ t('admin.accounts.quotaPools.exitPool') }}
+            </button>
           </div>
         </div>
       </template>
@@ -219,7 +427,7 @@
           @select-page="selectPage"
           @toggle-schedulable="handleBulkToggleSchedulable"
         />
-        <div ref="accountTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div ref="accountTableRef" class="account-table-shell">
         <DataTable
           ref="dataTableRef"
           :columns="cols"
@@ -543,7 +751,7 @@ import { proxyExpiryBadgeClass, proxyExpiryLabelKey } from '@/utils/proxyExpiry'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { sanitizeUrl } from '@/utils/url'
 import { getFloatingPanelPosition } from '@/utils/floatingPanel'
-import type { AccountSummary, OAuthAccountUsageSummary } from '@/api/admin/accounts'
+import type { AccountSummary, AccountProxySummary, OAuthAccountUsageSummary } from '@/api/admin/accounts'
 import type { Account, AccountPlatform, AccountSchedulerGroupScore, AccountType, Proxy as AccountProxy, AdminGroup, WindowStats, ClaudeModel, UpstreamBillingProbeSnapshot } from '@/types'
 
 const { t } = useI18n()
@@ -553,7 +761,9 @@ const authStore = useAuthStore()
 const proxies = ref<AccountProxy[]>([])
 const groups = ref<AdminGroup[]>([])
 const accountSummary = ref<AccountSummary | null>(null)
+const quotaPoolSummary = ref<AccountSummary | null>(null)
 const oauthUsageSummary = ref<OAuthAccountUsageSummary | null>(null)
+const oauthUsageSummaryRefreshedAt = ref('')
 const accountSummaryLoading = ref(false)
 const accountTableRef = ref<HTMLElement | null>(null)
 const dataTableRef = ref<InstanceType<typeof DataTable> | null>(null)
@@ -988,7 +1198,107 @@ const isFirstLoad = ref(true)
 const formatSummaryPercent = (value?: number): string => value == null ? '—' : `${value.toFixed(1)}%`
 const formatStandardCost = (value?: number): string => value == null ? '—' : `$${value.toFixed(2)}`
 
+const summaryMeterWidth = (value?: number | null) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '0%'
+  return `${Math.max(0, Math.min(100, value))}%`
+}
+
+const formatClockTime = (date: Date) => {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+}
+
+type QuotaPoolKind = 'oauth' | 'grok'
+
+const tokyoProxyHealth = computed<AccountProxySummary[]>(() => {
+  const proxyRows = accountSummary.value?.proxy_distribution ?? []
+  const tokyo = proxyRows.filter((proxy) => /tokyo|東京|日本|japan|jp/i.test(proxy.name))
+  return (tokyo.length > 0 ? tokyo : proxyRows).slice(0, 4)
+})
+
+const activeQuotaPool = computed<QuotaPoolKind | null>(() => {
+  const requestParams = params as any
+  if (requestParams.type !== 'oauth') return null
+  if (requestParams.platform === 'openai') return 'oauth'
+  if (requestParams.platform === 'grok') return 'grok'
+  return null
+})
+
+const quotaPoolSummaryView = computed(() => quotaPoolSummary.value ?? accountSummary.value)
+
+const openQuotaPool = (kind: QuotaPoolKind) => {
+  const requestParams = params as any
+  requestParams.platform = kind === 'grok' ? 'grok' : 'openai'
+  requestParams.type = 'oauth'
+  requestParams.status = ''
+  requestParams.privacy_mode = ''
+  requestParams.search = ''
+  requestParams.group = ''
+  pagination.page = 1
+  clearSelection()
+  load()
+}
+
+const exitQuotaPool = () => {
+  const requestParams = params as any
+  requestParams.platform = ''
+  requestParams.type = ''
+  requestParams.status = ''
+  requestParams.privacy_mode = ''
+  requestParams.search = ''
+  requestParams.group = ''
+  pagination.page = 1
+  clearSelection()
+  load()
+}
+
+const isProxyCoolingDown = (proxy: AccountProxySummary) => {
+  if (!proxy.cooldown_until) return false
+  const until = new Date(proxy.cooldown_until).getTime()
+  return Number.isFinite(until) && until > Date.now()
+}
+
+const proxyHealthState = (proxy: AccountProxySummary): 'healthy' | 'degraded' | 'failed' => {
+  if (isProxyCoolingDown(proxy) || proxy.latency_status === 'failed') return 'failed'
+  if (proxy.available <= 0 || (proxy.failure_count ?? 0) > 0) return 'degraded'
+  return 'healthy'
+}
+
+const proxyHealthLabel = (proxy: AccountProxySummary) => {
+  const state = proxyHealthState(proxy)
+  if (state === 'failed') return t('admin.accounts.summary.proxyFailed')
+  if (state === 'degraded') return t('admin.accounts.summary.proxyDegraded')
+  return t('admin.accounts.summary.proxyHealthy')
+}
+
+const proxyHealthDotClass = (proxy: AccountProxySummary) => {
+  const state = proxyHealthState(proxy)
+  if (state === 'failed') return 'bg-rose-500'
+  if (state === 'degraded') return 'bg-amber-500'
+  return 'bg-emerald-500'
+}
+
+const proxyHealthChipClass = (proxy: AccountProxySummary) => {
+  const state = proxyHealthState(proxy)
+  if (state === 'failed') return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+  if (state === 'degraded') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+  return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+}
+
+const formatProxyLatency = (proxy: AccountProxySummary) => {
+  return typeof proxy.latency_ms === 'number' ? `${proxy.latency_ms}ms` : '-'
+}
+
+const proxyHealthMessage = (proxy: AccountProxySummary) => {
+  if (isProxyCoolingDown(proxy) && proxy.cooldown_reason) return proxy.cooldown_reason
+  if (proxy.latency_message) return proxy.latency_message
+  if (proxy.last_error_at) return t('admin.accounts.summary.lastErrorAt', { time: formatRelativeTime(proxy.last_error_at) })
+  return t('admin.accounts.summary.noRecentError')
+}
+
+const summaryRefreshSeq = ref(0)
+
 const refreshAccountSummaries = async () => {
+  const reqSeq = ++summaryRefreshSeq.value
   accountSummaryLoading.value = true
   const filters = {
     platform: params.platform || undefined,
@@ -999,16 +1309,23 @@ const refreshAccountSummaries = async () => {
     privacy_mode: params.privacy_mode || undefined
   }
   try {
-    const [summary, oauth] = await Promise.all([
+    // 配额池卡片不带列表过滤，保证 OpenAI / Grok 两张池卡在任意筛选下都有数据。
+    const [summary, poolSummary, oauth] = await Promise.all([
       adminAPI.accounts.getSummary(filters),
+      adminAPI.accounts.getSummary({}),
       adminAPI.accounts.getOAuthUsageSummary({ refreshKey: Date.now() })
     ])
+    if (reqSeq !== summaryRefreshSeq.value) return
     accountSummary.value = summary
+    quotaPoolSummary.value = poolSummary
     oauthUsageSummary.value = oauth
+    oauthUsageSummaryRefreshedAt.value = formatClockTime(new Date())
   } catch (error) {
     console.error('Failed to load account summaries:', error)
   } finally {
-    accountSummaryLoading.value = false
+    if (reqSeq === summaryRefreshSeq.value) {
+      accountSummaryLoading.value = false
+    }
   }
 }
 
@@ -2196,6 +2513,10 @@ onUnmounted(() => {
   @apply rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800;
 }
 
+.account-table-shell {
+  @apply flex min-h-fit flex-col overflow-visible;
+}
+
 .account-summary-label {
   @apply text-xs font-medium uppercase text-gray-500 dark:text-gray-400;
 }
@@ -2206,5 +2527,93 @@ onUnmounted(() => {
 
 .account-summary-detail {
   @apply mt-2 text-xs text-gray-500 dark:text-gray-400;
+}
+
+.account-summary-pill {
+  @apply inline-flex flex-shrink-0 items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-dark-700 dark:text-gray-300;
+}
+
+.account-summary-subvalue {
+  @apply block text-sm font-semibold;
+}
+
+.account-summary-sublabel {
+  @apply block text-gray-500 dark:text-gray-400;
+}
+
+.account-summary-meter {
+  @apply h-2 overflow-hidden rounded-md bg-gray-100 dark:bg-dark-700;
+}
+
+.account-summary-meter-fill {
+  @apply h-full rounded-md transition-all;
+}
+
+.proxy-health-row {
+  @apply rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-dark-700 dark:bg-dark-900/30;
+}
+
+.proxy-health-dot {
+  @apply h-2 w-2 flex-shrink-0 rounded-full;
+}
+
+.proxy-health-chip {
+  @apply inline-flex flex-shrink-0 items-center rounded-md px-2 py-1 text-xs font-medium;
+}
+
+.quota-pool-card {
+  @apply cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-primary-200 hover:bg-primary-50/40 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-dark-700 dark:bg-dark-800 dark:hover:border-primary-700 dark:hover:bg-primary-900/10 dark:focus:ring-offset-dark-900;
+}
+
+.quota-pool-card-oauth {
+  @apply border-emerald-100 dark:border-emerald-900/40;
+}
+
+.quota-pool-card-grok {
+  @apply border-gray-400 bg-gray-50 hover:border-gray-500 hover:bg-gray-100 dark:border-dark-600 dark:bg-dark-900/60 dark:hover:border-dark-500 dark:hover:bg-dark-900;
+}
+
+.quota-pool-card-active {
+  @apply border-primary-300 bg-primary-50 dark:border-primary-700 dark:bg-primary-900/20;
+}
+
+.quota-pool-restore {
+  @apply rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:bg-dark-700;
+}
+
+.quota-pool-label {
+  @apply text-xs font-medium uppercase text-gray-500 dark:text-gray-400;
+}
+
+.quota-pool-value {
+  @apply mt-1 text-xl font-semibold text-gray-900 dark:text-white;
+}
+
+.quota-pool-enter {
+  @apply inline-flex flex-shrink-0 items-center gap-2 rounded-md bg-white px-2 py-1 text-xs font-medium text-gray-600 shadow-sm ring-1 ring-gray-200 dark:bg-dark-900 dark:text-gray-300 dark:ring-dark-700;
+}
+
+.quota-pool-windows {
+  @apply mt-3 space-y-2;
+}
+
+.quota-pool-window-row {
+  @apply grid grid-cols-[2rem_minmax(0,1fr)_3rem] items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400;
+}
+
+.quota-pool-window-row strong {
+  @apply text-right font-medium text-gray-700 dark:text-gray-200;
+}
+
+.quota-pool-meter {
+  @apply h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700;
+}
+
+.quota-pool-meter-fill {
+  @apply h-full rounded-full transition-all;
+}
+
+.quota-pool-stats {
+  @apply mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400;
 }
 </style>

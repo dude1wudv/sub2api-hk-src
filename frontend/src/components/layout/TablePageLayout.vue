@@ -1,5 +1,11 @@
 <template>
-  <div class="table-page-layout" :class="{ 'mobile-mode': isMobile }">
+  <div
+    class="table-page-layout"
+    :class="{
+      'mobile-mode': isMobile,
+      'page-scroll-mode': pageScroll
+    }"
+  >
     <!-- 固定区域：操作按钮 -->
     <div v-if="$slots.actions" class="layout-section-fixed">
       <slot name="actions" />
@@ -26,6 +32,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+
+withDefaults(defineProps<{
+  pageScroll?: boolean
+}>(), {
+  pageScroll: false
+})
 
 const isMobile = ref(false)
 
@@ -58,9 +70,29 @@ onUnmounted(() => {
   @apply flex-1 min-h-0 flex flex-col;
 }
 
-/* 表格滚动容器 - 增强版表体滚动方案 */
+/* page-scroll 模式：整页滚动，卡片区完整展开，表格保留横向滚动 */
+.table-page-layout.page-scroll-mode {
+  height: auto;
+  min-height: calc(100vh - 64px - 4rem);
+}
+
+.table-page-layout.page-scroll-mode .layout-section-scrollable {
+  @apply flex-none min-h-fit;
+}
+
+.table-page-layout.page-scroll-mode .table-scroll-container {
+  @apply h-auto;
+}
+
+.table-page-layout.page-scroll-mode .table-scroll-container :deep(.table-wrapper) {
+  @apply flex-none overflow-x-auto overflow-y-visible;
+}
+
+/* 表格滚动容器 - 保留表体滚动、sticky 与横向滚动行为，仅替换视觉 */
 .table-scroll-container {
-  @apply flex flex-col overflow-hidden h-full bg-white dark:bg-dark-800 rounded-2xl border border-gray-200 dark:border-dark-700 shadow-sm;
+  @apply flex flex-col overflow-hidden h-full rounded-2xl border shadow-sm;
+  border-color: rgb(var(--line));
+  background: rgb(var(--surface));
 }
 
 .table-scroll-container :deep(.table-wrapper) {
@@ -76,7 +108,8 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(thead) {
-  @apply bg-gray-50/80 dark:bg-dark-800/80 backdrop-blur-sm;
+  background: rgb(var(--surface-2) / 0.94);
+  backdrop-filter: blur(8px);
 }
 
 .table-scroll-container :deep(tbody) {
@@ -84,11 +117,15 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  @apply px-5 py-4 text-left text-sm font-medium text-gray-600 dark:text-dark-300 border-b border-gray-200 dark:border-dark-700;
+  @apply px-5 py-4 text-left text-sm font-medium;
+  color: rgb(var(--ink-2));
+  border-bottom: 1px solid rgb(var(--line));
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-5 py-4 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-dark-800;
+  @apply px-5 py-4 text-sm;
+  color: rgb(var(--ink));
+  border-bottom: 1px solid rgb(var(--line));
 }
 
 /* 移动端：恢复正常滚动 */

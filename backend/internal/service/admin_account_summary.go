@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 )
 
@@ -31,14 +32,21 @@ type AccountQuotaPoolSummary struct {
 }
 
 type AccountProxySummary struct {
-	ProxyID            *int64   `json:"proxy_id"`
-	Name               string   `json:"name"`
-	Total              int      `json:"total"`
-	Available          int      `json:"available"`
-	Used5hPercent      *float64 `json:"used_5h_percent,omitempty"`
-	Used7dPercent      *float64 `json:"used_7d_percent,omitempty"`
-	Remaining5hPercent *float64 `json:"remaining_5h_percent,omitempty"`
-	Remaining7dPercent *float64 `json:"remaining_7d_percent,omitempty"`
+	ProxyID            *int64     `json:"proxy_id"`
+	Name               string     `json:"name"`
+	Total              int        `json:"total"`
+	Available          int        `json:"available"`
+	Used5hPercent      *float64   `json:"used_5h_percent,omitempty"`
+	Used7dPercent      *float64   `json:"used_7d_percent,omitempty"`
+	Remaining5hPercent *float64   `json:"remaining_5h_percent,omitempty"`
+	Remaining7dPercent *float64   `json:"remaining_7d_percent,omitempty"`
+	LatencyMs          *int64     `json:"latency_ms,omitempty"`
+	LatencyStatus      string     `json:"latency_status,omitempty"`
+	LatencyMessage     string     `json:"latency_message,omitempty"`
+	CooldownUntil      *time.Time `json:"cooldown_until,omitempty"`
+	CooldownReason     string     `json:"cooldown_reason,omitempty"`
+	FailureCount       int        `json:"failure_count,omitempty"`
+	LastErrorAt        *time.Time `json:"last_error_at,omitempty"`
 }
 
 type AccountSummary struct {
@@ -107,7 +115,82 @@ func (s *adminServiceImpl) GetAccountSummary(ctx context.Context, platform, acco
 	if err != nil {
 		return nil, err
 	}
-	return buildAccountSummary(accounts), nil
+	summary := buildAccountSummary(accounts)
+	s.attachAccountSummaryProxyHealth(ctx, summary.ProxyDistribution)
+	return summary, nil
+}
+
+// attachAccountSummaryProxyHealth 在基础汇总后批量补全代理持久状态与延迟缓存。
+// 候选 Proxy 领域模型没有冷却/失败列，这里只能补全名称与延迟；
+// cooldown/failure 字段保持零值并通过 omitempty 省略，前端按可选字段渲染。
+func (s *adminServiceImpl) attachAccountSummaryProxyHealth(ctx context.Context, proxies []AccountProxySummary) {
+	if len(proxies) == 0 {
+		return
+	}
+
+	ids := make([]int64, 0, len(proxies))
+	seen := make(map[int64]struct{}, len(proxies))
+	for i := range proxies {
+		if proxies[i].ProxyID == nil {
+			continue
+		}
+		id := *proxies[i].ProxyID
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return
+	}
+
+	if s.proxyRepo != nil {
+		proxyRows, err := s.proxyRepo.ListByIDs(ctx, ids)
+		if err != nil {
+			logger.LegacyPrintf("service.admin", "Warning: load account summary proxy health failed: %v", err)
+		} else {
+			byID := make(map[int64]Proxy, len(proxyRows))
+			for _, proxy := range proxyRows {
+				byID[proxy.ID] = proxy
+			}
+			for i := range proxies {
+				if proxies[i].ProxyID == nil {
+					continue
+				}
+				if proxy, ok := byID[*proxies[i].ProxyID]; ok {
+					if strings.TrimSpace(proxy.Name) != "" {
+						proxies[i].Name = proxy.Name
+					}
+				}
+			}
+		}
+	}
+
+	if s.proxyLatencyCache == nil {
+		return
+	}
+	latencies, err := s.proxyLatencyCache.GetProxyLatencies(ctx, ids)
+	if err != nil {
+		logger.LegacyPrintf("service.admin", "Warning: load account summary proxy latency failed: %v", err)
+		return
+	}
+	for i := range proxies {
+		if proxies[i].ProxyID == nil {
+			continue
+		}
+		info := latencies[*proxies[i].ProxyID]
+		if info == nil {
+			continue
+		}
+		if info.Success {
+			proxies[i].LatencyStatus = "success"
+			proxies[i].LatencyMs = info.LatencyMs
+		} else {
+			proxies[i].LatencyStatus = "failed"
+		}
+		proxies[i].LatencyMessage = info.Message
+	}
 }
 
 type accountQuotaPoolAccumulator struct {

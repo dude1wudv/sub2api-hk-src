@@ -96,6 +96,13 @@ export interface AccountProxySummary {
   used_7d_percent?: number
   remaining_5h_percent?: number
   remaining_7d_percent?: number
+  latency_ms?: number
+  latency_status?: string
+  latency_message?: string
+  cooldown_until?: string
+  cooldown_reason?: string
+  failure_count?: number
+  last_error_at?: string
 }
 
 export interface AccountSummary {

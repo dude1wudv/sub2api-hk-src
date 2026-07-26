@@ -832,20 +832,26 @@
   --color-err-950: 48 16 13;
   --canvas: 247 243 236;
   --surface: 255 253 249;
+  --surface-2: 241 236 226;
   --ink: 38 36 31;
   --ink-2: 107 103 94;
+  --ink-3: 155 150 138;
   --line: 230 224 211;
   --line-strong: 216 209 192;
+  --action-contrast: #fffdf9;
   color-scheme: light;
 }
 
 .dark {
   --canvas: 27 25 21;
   --surface: 35 32 27;
+  --surface-2: 42 38 32;
   --ink: 236 231 220;
   --ink-2: 179 172 158;
+  --ink-3: 127 120 105;
   --line: 55 50 42;
   --line-strong: 74 67 54;
+  --action-contrast: #1b1915;
   color-scheme: dark;
 }
 
@@ -859,6 +865,10 @@
     background: rgb(var(--color-primary-500) / 0.2);
     color: rgb(var(--color-primary-900));
   }
+
+  .dark ::selection {
+    color: rgb(var(--color-primary-100));
+  }
 }
 
 @layer components {
@@ -869,6 +879,12 @@
 
   .app-shell-bg {
     background-image: radial-gradient(circle at 78% 8%, rgb(var(--color-primary-500) / 0.05), transparent 26rem), radial-gradient(circle at 12% 88%, rgb(var(--color-link-500) / 0.04), transparent 22rem);
+    opacity: 0.8;
+  }
+
+  .dark .app-shell-bg {
+    background-image: radial-gradient(circle at 78% 6%, rgb(var(--color-primary-500) / 0.08), transparent 26rem), radial-gradient(circle at 12% 90%, rgb(var(--color-link-500) / 0.06), transparent 22rem);
+    opacity: 0.9;
   }
 
   .card,
@@ -883,11 +899,23 @@
 
   .btn-primary {
     background: linear-gradient(180deg, rgb(var(--color-primary-500)), rgb(var(--color-primary-600)));
+    color: var(--action-contrast);
     box-shadow: 0 8px 20px rgb(var(--color-primary-600) / 0.22);
   }
 
   .btn-primary:hover {
     background: linear-gradient(180deg, rgb(var(--color-primary-400)), rgb(var(--color-primary-600)));
+    box-shadow: 0 10px 26px rgb(var(--color-primary-600) / 0.26);
+  }
+
+  .dark .btn-primary {
+    background: linear-gradient(180deg, rgb(var(--color-primary-400)), rgb(var(--color-primary-500)));
+    color: var(--action-contrast);
+    box-shadow: 0 8px 22px rgb(var(--color-primary-500) / 0.28);
+  }
+
+  .dark .btn-primary:hover {
+    background: linear-gradient(180deg, rgb(var(--color-primary-300)), rgb(var(--color-primary-400)));
   }
 
   .sidebar-link {
