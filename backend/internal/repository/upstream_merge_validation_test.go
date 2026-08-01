@@ -23,12 +23,13 @@ import (
 
 const (
 	productionHistoryMigrationCount = 252
-	candidateMigrationCount         = 254
+	candidateMigrationCount         = 255
 )
 
 var candidateOnlyMigrations = []string{
 	"186_alipay_mobile_precreate_deep_link.sql",
 	"191_convert_usage_log_session_id_to_text.sql",
+	"191_passkey_credentials.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {
