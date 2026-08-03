@@ -185,8 +185,8 @@ func TestOpenAIGatewayService_Forward_DecodedMutationKeepsLaterFieldDeletes(t *t
 }
 
 // #4417：/v1/responses 原生转发路径需将 Chat-Completions 风格的 max_tokens 归一化为
-// max_output_tokens；GPT-5.6 原生 OpenAI 路径保留 explicit prompt cache，旧模型继续剥离。
-func TestOpenAIGatewayService_Forward_NormalizesMaxTokensAndGatesPromptCacheOptions(t *testing.T) {
+// max_output_tokens，并移除兼容上游不接受的 prompt_cache_options。
+func TestOpenAIGatewayService_Forward_NormalizesMaxTokensAndStripsPromptCacheOptions(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	runForward := func(t *testing.T, body []byte) []byte {
@@ -224,19 +224,11 @@ func TestOpenAIGatewayService_Forward_NormalizesMaxTokensAndGatesPromptCacheOpti
 		return upstream.lastBody
 	}
 
-	t.Run("旧模型归一化 max_tokens 并移除 prompt_cache_options", func(t *testing.T) {
-		out := runForward(t, []byte(`{"model":"gpt-5.4","stream":false,"max_tokens":256,"prompt_cache_options":{"type":"explicit"},"input":[{"type":"message","content":"hi","prompt_cache_breakpoint":true}]}`))
+	t.Run("max_tokens 归一化为 max_output_tokens 并移除 prompt_cache_options", func(t *testing.T) {
+		out := runForward(t, []byte(`{"model":"gpt-5.4","stream":false,"max_tokens":256,"prompt_cache_options":{"enabled":true},"input":[{"type":"message","content":"hi"}]}`))
 		require.Equal(t, int64(256), gjson.GetBytes(out, "max_output_tokens").Int())
 		require.False(t, gjson.GetBytes(out, "max_tokens").Exists())
 		require.False(t, gjson.GetBytes(out, "prompt_cache_options").Exists())
-	})
-
-	t.Run("GPT-5.6 保留 explicit prompt cache 和嵌套断点", func(t *testing.T) {
-		out := runForward(t, []byte(`{"model":"gpt-5.6-sol","stream":false,"max_tokens":256,"prompt_cache_options":{"type":"explicit"},"input":[{"type":"message","role":"user","content":"hi","prompt_cache_breakpoint":true}]}`))
-		require.Equal(t, int64(256), gjson.GetBytes(out, "max_output_tokens").Int())
-		require.False(t, gjson.GetBytes(out, "max_tokens").Exists())
-		require.Equal(t, "explicit", gjson.GetBytes(out, "prompt_cache_options.type").String())
-		require.True(t, gjson.GetBytes(out, "input.0.prompt_cache_breakpoint").Bool())
 	})
 
 	t.Run("同时存在时保留 max_output_tokens 丢弃 max_tokens", func(t *testing.T) {
@@ -244,15 +236,6 @@ func TestOpenAIGatewayService_Forward_NormalizesMaxTokensAndGatesPromptCacheOpti
 		require.Equal(t, int64(512), gjson.GetBytes(out, "max_output_tokens").Int())
 		require.False(t, gjson.GetBytes(out, "max_tokens").Exists())
 	})
-}
-
-func TestSupportsOpenAIExplicitPromptCaching(t *testing.T) {
-	openAI := &Account{Platform: PlatformOpenAI}
-	require.True(t, supportsOpenAIExplicitPromptCaching(openAI, "gpt-5.6-sol"))
-	require.True(t, supportsOpenAIExplicitPromptCaching(openAI, "openai/gpt-5.6-terra"))
-	require.False(t, supportsOpenAIExplicitPromptCaching(openAI, "gpt-5.5"))
-	require.False(t, supportsOpenAIExplicitPromptCaching(&Account{Platform: PlatformAnthropic}, "gpt-5.6-sol"))
-	require.False(t, supportsOpenAIExplicitPromptCaching(nil, "gpt-5.6-sol"))
 }
 
 func TestOpenAIGatewayService_Forward_MappedImageModelUsesImageGate(t *testing.T) {

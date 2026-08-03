@@ -453,16 +453,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		if gjson.GetBytes(body, "max_completion_tokens").Exists() && (account.Type == AccountTypeAPIKey || account.Platform != PlatformOpenAI) {
 			markPatchDelete("max_completion_tokens")
 		}
-		unsupportedFields := []string{"prompt_cache_retention", "safety_identifier"}
-		// GPT-5.6 Responses supports explicit prompt caching. Preserve the top-level
-		// prompt_cache_options object for native OpenAI GPT-5.6 routes so nested
-		// prompt_cache_breakpoint markers survive the relay. Older and compatible
-		// upstreams keep the historical strip behavior. Official Codex-family
-		// requests bypass this non-Codex normalization block and are preserved too.
-		if !supportsOpenAIExplicitPromptCaching(account, upstreamModel) {
-			unsupportedFields = append(unsupportedFields, "prompt_cache_options")
-		}
-		for _, unsupportedField := range unsupportedFields {
+		for _, unsupportedField := range []string{"prompt_cache_retention", "safety_identifier", "prompt_cache_options"} {
 			if gjson.GetBytes(body, unsupportedField).Exists() {
 				markPatchDelete(unsupportedField)
 			}
@@ -995,17 +986,6 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 		return forwardResult, nil
 	}
-}
-
-func supportsOpenAIExplicitPromptCaching(account *Account, model string) bool {
-	if account == nil || account.Platform != PlatformOpenAI {
-		return false
-	}
-	normalized := strings.ToLower(strings.TrimSpace(model))
-	if slash := strings.LastIndex(normalized, "/"); slash >= 0 {
-		normalized = strings.TrimSpace(normalized[slash+1:])
-	}
-	return strings.HasPrefix(normalized, "gpt-5.6")
 }
 
 func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.Context, account *Account, body []byte, token string, isStream bool, promptCacheKey string, isCodexCLI bool) (*http.Request, error) {

@@ -263,8 +263,6 @@ psql -U sub2api -h 127.0.0.1 -d sub2api -f migration.sql
 
 ### Git 操作
 
-> **同步上游前必须先检查 [`JP_HK_DOWNSTREAM_PATCHES.md`](JP_HK_DOWNSTREAM_PATCHES.md)。** 该清单记录不能被整文件冲突解决覆盖的 JP/HK 行为、代码锚点和回归测试。若 upstream 已提供等价实现，也必须先证明行为等价并保留测试，再移除下游补丁。
-
 ```bash
 # 同步上游
 git fetch upstream
