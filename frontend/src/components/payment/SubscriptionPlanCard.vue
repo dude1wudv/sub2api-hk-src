@@ -14,16 +14,13 @@
       <!-- Header: name + badge + price -->
       <div class="mb-3 flex items-start justify-between gap-2">
         <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2">
+          <div class="flex min-w-0 flex-1 items-center gap-2">
             <h3
               :title="plan.name"
-              class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-base font-bold leading-6 text-gray-900 dark:text-white line-clamp-2"
+              class="h-12 min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-base font-bold leading-6 text-gray-900 dark:text-white line-clamp-2"
             >
               {{ plan.name }}
             </h3>
-            <span :class="['shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', badgeLightClass]">
-              {{ pLabel }}
-            </span>
             <span v-if="plan.one_purchase_per_user" class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
               {{ t('payment.planCard.onePurchaseOnly') }}
             </span>
