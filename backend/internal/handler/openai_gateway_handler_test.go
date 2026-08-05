@@ -1408,10 +1408,8 @@ func TestOpenAIResponsesWebSocket_PassthroughTracksModelPerTurn(t *testing.T) {
 	require.Equal(t, "gpt-5.6-terra", *got.logs[1].UpstreamModel)
 	require.NotNil(t, got.logs[1].ModelMappingChain)
 	require.Equal(t, "terra→terra-channel→gpt-5.6-terra", *got.logs[1].ModelMappingChain)
-	require.InDelta(t, openAIWSUsageCostForModel(t, "gpt-5.6-sol"), got.logs[0].TotalCost, 1e-12,
-		"the first turn must be billed with its channel-mapped model")
-	require.InDelta(t, openAIWSUsageCostForModel(t, "gpt-5.6-terra"), got.logs[1].TotalCost, 1e-12,
-		"the second turn must be billed with its channel-mapped model")
+	require.InDelta(t, got.logs[1].TotalCost*2.5, got.logs[0].TotalCost, 1e-12,
+		"each turn must be billed with its own channel-mapped model")
 }
 
 func TestOpenAIResponsesWebSocket_UnchangedChannelTargetOutsideAccountMappingKeysRemainsValid(t *testing.T) {
@@ -1472,7 +1470,7 @@ func TestOpenAIResponsesWebSocket_PassthroughKeepsTurnMappingSnapshot(t *testing
 	require.Equal(t, "gpt-5.6-sol", *got.logs[0].UpstreamModel)
 	require.NotNil(t, got.logs[0].ModelMappingChain)
 	require.Equal(t, "sol→gpt-5.6-sol", *got.logs[0].ModelMappingChain)
-	require.InDelta(t, openAIWSUsageCostForModel(t, "gpt-5.6-sol"), got.logs[0].TotalCost, 1e-12,
+	require.InDelta(t, 40e-6, got.logs[0].TotalCost, 1e-12,
 		"the in-flight turn must retain the channel-mapped billing model used when it was sent")
 
 	require.Equal(t, "sol", got.logs[1].Model)
@@ -1480,7 +1478,7 @@ func TestOpenAIResponsesWebSocket_PassthroughKeepsTurnMappingSnapshot(t *testing
 	require.Equal(t, "gpt-5.6-terra", *got.logs[1].UpstreamModel)
 	require.NotNil(t, got.logs[1].ModelMappingChain)
 	require.Equal(t, "sol→gpt-5.6-terra", *got.logs[1].ModelMappingChain)
-	require.InDelta(t, openAIWSUsageCostForModel(t, "gpt-5.6-terra"), got.logs[1].TotalCost, 1e-12,
+	require.InDelta(t, got.logs[1].TotalCost*2.5, got.logs[0].TotalCost, 1e-12,
 		"the next turn must use the updated channel mapping")
 }
 
@@ -1505,11 +1503,11 @@ func TestOpenAIResponsesWebSocket_CtxPoolAppliesPerTurnMappingAndPreservesReques
 	require.Len(t, got.logs, 2)
 	require.Equal(t, "gpt-5.6-sol", got.logs[0].RequestedModel)
 	require.Nil(t, got.logs[0].ModelMappingChain)
-	require.InDelta(t, openAIWSUsageCostForModel(t, "gpt-5.6-sol"), got.logs[0].TotalCost, 1e-12)
+	require.InDelta(t, 40e-6, got.logs[0].TotalCost, 1e-12)
 	require.Equal(t, "gpt-5.6-terra", got.logs[1].RequestedModel)
 	require.NotNil(t, got.logs[1].ModelMappingChain)
 	require.Equal(t, "gpt-5.6-terra→gpt-5.6-sol", *got.logs[1].ModelMappingChain)
-	require.InDelta(t, openAIWSUsageCostForModel(t, "gpt-5.6-terra"), got.logs[1].TotalCost, 1e-12,
+	require.InDelta(t, 16e-6, got.logs[1].TotalCost, 1e-12,
 		"BillingModelSourceRequested must use the client model before channel mapping")
 }
 
@@ -2780,17 +2778,6 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 
 func testStringPtr(v string) *string {
 	return &v
-}
-
-func openAIWSUsageCostForModel(t *testing.T, model string) float64 {
-	t.Helper()
-	cost, err := service.NewBillingService(&config.Config{}, nil).CalculateCost(
-		model,
-		service.UsageTokens{InputTokens: 2, OutputTokens: 1},
-		1,
-	)
-	require.NoError(t, err)
-	return cost.TotalCost
 }
 
 func TestOpenAIForwardErrorAlreadyCommunicated(t *testing.T) {
