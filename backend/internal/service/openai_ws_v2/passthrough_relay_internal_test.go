@@ -438,6 +438,32 @@ func TestIsTokenEventCoverageBranches(t *testing.T) {
 	require.False(t, isTokenEvent("response.output_audio.done"), "audio stream completion carries no audio content")
 	require.False(t, isTokenEvent("response.output_text.annotation.added"), "annotation metadata is not output content")
 	require.False(t, isTokenEvent("response.reasoning_summary_part.added"), "summary structure is not output content")
+	require.True(t, isTokenEvent("response.function_call_arguments.delta"))
+	require.True(t, isTokenEvent("response.reasoning_summary_text.delta"))
+	require.True(t, isTokenEvent("response.output_text.done"))
+	require.True(t, isTokenEvent("response.function_call_arguments.done"))
+	require.True(t, isTokenEvent("response.output"))
+	require.False(t, isTokenEvent("response.output_audio.done"))
+	require.False(t, isTokenEvent("response.content_part.done"))
+	require.False(t, isTokenEvent("response.output_item.done"))
+	require.False(t, isTokenEvent("response.output_text.annotation.added"))
+	require.False(t, isTokenEvent("response.done"))
+}
+
+func TestTerminalAndTokenEventSetsAreDisjoint(t *testing.T) {
+	t.Parallel()
+
+	for _, eventType := range []string{
+		"response.completed",
+		"response.done",
+		"response.failed",
+		"response.incomplete",
+		"response.cancelled",
+		"response.canceled",
+	} {
+		require.True(t, isTerminalEvent(eventType), eventType)
+		require.False(t, isTokenEvent(eventType), eventType)
+	}
 }
 
 func TestObserveUpstreamMessage_FirstTokenRequiresSemanticOutput(t *testing.T) {
