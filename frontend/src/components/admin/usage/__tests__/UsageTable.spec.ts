@@ -66,6 +66,10 @@ const messages: Record<string, string> = {
 	'usage.upstreamResponseModel': 'Upstream response',
 	'usage.modelVariant': 'Possible version variant',
 	'usage.modelMismatch': 'Different model',
+	'usage.outputTpsShort': 'Output',
+	'usage.outputTpsFormula': 'Output tokens ÷ (total duration − time to first token)',
+	'usage.overallTpsShort': 'Overall',
+	'usage.overallTpsFormula': 'Output tokens ÷ total duration',
 }
 
 vi.mock('vue-i18n', async () => {
@@ -120,6 +124,70 @@ const baseImageRow = {
   image_size_source: null,
   image_size_breakdown: null,
 }
+
+describe('admin UsageTable TPS metrics', () => {
+  it('shows output-phase TPS and overall average TPS separately', () => {
+    const wrapper = mount(UsageTable, {
+      props: {
+        data: [{
+          request_id: 'req-tps',
+          input_tokens: 3951,
+          output_tokens: 1604,
+          cache_creation_tokens: 0,
+          cache_read_tokens: 68992,
+          duration_ms: 37475,
+          first_token_ms: 36644,
+          billing_mode: 'token',
+        }],
+        loading: false,
+        columns: [],
+      },
+      global: {
+        stubs: {
+          DataTable: DataTableStub,
+          EmptyState: true,
+          Icon: true,
+          Teleport: true,
+        },
+      },
+    })
+
+    const text = wrapper.text()
+    expect(text).toContain('Output 1930.2 tok/s')
+    expect(text).toContain('Overall 42.8 tok/s')
+  })
+
+  it('does not fabricate output-phase TPS when first-token timing is unavailable', () => {
+    const wrapper = mount(UsageTable, {
+      props: {
+        data: [{
+          request_id: 'req-tps-no-first-token',
+          input_tokens: 1,
+          output_tokens: 100,
+          cache_creation_tokens: 0,
+          cache_read_tokens: 0,
+          duration_ms: 2000,
+          first_token_ms: null,
+          billing_mode: 'token',
+        }],
+        loading: false,
+        columns: [],
+      },
+      global: {
+        stubs: {
+          DataTable: DataTableStub,
+          EmptyState: true,
+          Icon: true,
+          Teleport: true,
+        },
+      },
+    })
+
+    const text = wrapper.text()
+    expect(text).toContain('Output —')
+    expect(text).toContain('Overall 50.0 tok/s')
+  })
+})
 
 describe('admin UsageTable tooltip', () => {
   beforeEach(() => {

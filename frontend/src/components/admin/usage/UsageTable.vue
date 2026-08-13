@@ -187,6 +187,12 @@
                 >
                   {{ t('usage.outputTpsShort') }} {{ formatOutputTps(row) }}
                 </span>
+                <span
+                  class="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30"
+                  :title="t('usage.overallTpsFormula')"
+                >
+                  {{ t('usage.overallTpsShort') }} {{ formatOverallTps(row) }}
+                </span>
               </div>
             </div>
             <!-- Token Detail Tooltip -->
@@ -726,12 +732,15 @@ const formatCacheReadRate = (row: AdminUsageLog): string => {
 }
 
 const formatOutputTps = (row: AdminUsageLog): string => {
-  if (row.duration_ms == null || row.duration_ms <= 0) return '—'
-  const outputDuration = row.first_token_ms == null || row.duration_ms - row.first_token_ms <= 0
-    ? row.duration_ms
-    : row.duration_ms - row.first_token_ms
+  if (row.duration_ms == null || row.first_token_ms == null) return '—'
+  const outputDuration = row.duration_ms - row.first_token_ms
   if (outputDuration <= 0) return '—'
   return `${(row.output_tokens / (outputDuration / 1000)).toFixed(1)} tok/s`
+}
+
+const formatOverallTps = (row: AdminUsageLog): string => {
+  if (row.duration_ms == null || row.duration_ms <= 0) return '—'
+  return `${(row.output_tokens / (row.duration_ms / 1000)).toFixed(1)} tok/s`
 }
 
 // Cost tooltip functions
