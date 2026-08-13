@@ -667,6 +667,7 @@ func usageLogFromServiceUser(l *service.UsageLog) UsageLog {
 		OpenAIWSMode:              openAIWSMode,
 		DurationMs:                l.DurationMs,
 		FirstTokenMs:              l.FirstTokenMs,
+		FirstResponseMs:           l.FirstResponseMs,
 		ImageCount:                l.ImageCount,
 		ImageSize:                 l.ImageSize,
 		ImageInputSize:            l.ImageInputSize,

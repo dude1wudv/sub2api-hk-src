@@ -25,6 +25,7 @@ import (
 type openaiStreamingResult struct {
 	usage            *OpenAIUsage
 	firstTokenMs     *int
+	firstResponseMs  *int
 	responseID       string
 	imageCount       int
 	imageOutputSizes []string
@@ -103,6 +104,16 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 		maxLineSize = s.cfg.Gateway.MaxLineSize
 	}
 	var firstTokenMs *int
+	var firstResponseMs *int
+	recordFirstResponse := func() {
+		if firstResponseMs != nil {
+			return
+		}
+		ms := int(time.Since(startTime).Milliseconds())
+		if ms >= 0 {
+			firstResponseMs = &ms
+		}
+	}
 	firstOutputProgressObserved := false
 	bufferedWriter := bufio.NewWriterSize(w, 4*1024)
 	var firstOutputStage *openAIFirstOutputStage
@@ -320,6 +331,7 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 		return &openaiStreamingResult{
 			usage:            usage,
 			firstTokenMs:     firstTokenMs,
+			firstResponseMs:  firstResponseMs,
 			responseID:       responseID,
 			imageCount:       imageCounter.Count(),
 			imageOutputSizes: imageCounter.Sizes(),
@@ -433,6 +445,9 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 		// Extract data from SSE line (supports both "data: " and "data:" formats)
 		if data, ok := extractOpenAISSEDataLine(line); ok {
 			dataBytes := []byte(data)
+			if strings.TrimSpace(data) != "" && strings.TrimSpace(data) != "[DONE]" && gjson.ValidBytes(dataBytes) {
+				recordFirstResponse()
+			}
 			eventTypeRaw := gjson.GetBytes(dataBytes, "type").String()
 			eventType := strings.TrimSpace(eventTypeRaw)
 			observer.ObserveOpenAI(dataBytes, eventTypeRaw)

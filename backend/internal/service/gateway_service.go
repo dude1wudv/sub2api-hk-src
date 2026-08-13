@@ -603,6 +603,7 @@ type ForwardResult struct {
 	Stream                        bool
 	Duration                      time.Duration
 	FirstTokenMs                  *int // 首字时间（流式请求）
+	FirstResponseMs               *int // 首响应时间（从请求开始到首个有效上游响应事件）
 	ClientDisconnect              bool // 客户端是否在流式传输过程中断开
 	ReasoningEffort               *string
 

@@ -463,6 +463,20 @@ func (_c *UsageLogCreate) SetNillableFirstTokenMs(v *int) *UsageLogCreate {
 	return _c
 }
 
+// SetFirstResponseMs sets the "first_response_ms" field.
+func (_c *UsageLogCreate) SetFirstResponseMs(v int) *UsageLogCreate {
+	_c.mutation.SetFirstResponseMs(v)
+	return _c
+}
+
+// SetNillableFirstResponseMs sets the "first_response_ms" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableFirstResponseMs(v *int) *UsageLogCreate {
+	if v != nil {
+		_c.SetFirstResponseMs(*v)
+	}
+	return _c
+}
+
 // SetUserAgent sets the "user_agent" field.
 func (_c *UsageLogCreate) SetUserAgent(v string) *UsageLogCreate {
 	_c.mutation.SetUserAgent(v)
@@ -1082,6 +1096,10 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FirstTokenMs(); ok {
 		_spec.SetField(usagelog.FieldFirstTokenMs, field.TypeInt, value)
 		_node.FirstTokenMs = &value
+	}
+	if value, ok := _c.mutation.FirstResponseMs(); ok {
+		_spec.SetField(usagelog.FieldFirstResponseMs, field.TypeInt, value)
+		_node.FirstResponseMs = &value
 	}
 	if value, ok := _c.mutation.UserAgent(); ok {
 		_spec.SetField(usagelog.FieldUserAgent, field.TypeString, value)
@@ -1863,6 +1881,30 @@ func (u *UsageLogUpsert) AddFirstTokenMs(v int) *UsageLogUpsert {
 // ClearFirstTokenMs clears the value of the "first_token_ms" field.
 func (u *UsageLogUpsert) ClearFirstTokenMs() *UsageLogUpsert {
 	u.SetNull(usagelog.FieldFirstTokenMs)
+	return u
+}
+
+// SetFirstResponseMs sets the "first_response_ms" field.
+func (u *UsageLogUpsert) SetFirstResponseMs(v int) *UsageLogUpsert {
+	u.Set(usagelog.FieldFirstResponseMs, v)
+	return u
+}
+
+// UpdateFirstResponseMs sets the "first_response_ms" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateFirstResponseMs() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldFirstResponseMs)
+	return u
+}
+
+// AddFirstResponseMs adds v to the "first_response_ms" field.
+func (u *UsageLogUpsert) AddFirstResponseMs(v int) *UsageLogUpsert {
+	u.Add(usagelog.FieldFirstResponseMs, v)
+	return u
+}
+
+// ClearFirstResponseMs clears the value of the "first_response_ms" field.
+func (u *UsageLogUpsert) ClearFirstResponseMs() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldFirstResponseMs)
 	return u
 }
 
@@ -2817,6 +2859,34 @@ func (u *UsageLogUpsertOne) UpdateFirstTokenMs() *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) ClearFirstTokenMs() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearFirstTokenMs()
+	})
+}
+
+// SetFirstResponseMs sets the "first_response_ms" field.
+func (u *UsageLogUpsertOne) SetFirstResponseMs(v int) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetFirstResponseMs(v)
+	})
+}
+
+// AddFirstResponseMs adds v to the "first_response_ms" field.
+func (u *UsageLogUpsertOne) AddFirstResponseMs(v int) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.AddFirstResponseMs(v)
+	})
+}
+
+// UpdateFirstResponseMs sets the "first_response_ms" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateFirstResponseMs() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateFirstResponseMs()
+	})
+}
+
+// ClearFirstResponseMs clears the value of the "first_response_ms" field.
+func (u *UsageLogUpsertOne) ClearFirstResponseMs() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearFirstResponseMs()
 	})
 }
 
@@ -3973,6 +4043,34 @@ func (u *UsageLogUpsertBulk) UpdateFirstTokenMs() *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) ClearFirstTokenMs() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearFirstTokenMs()
+	})
+}
+
+// SetFirstResponseMs sets the "first_response_ms" field.
+func (u *UsageLogUpsertBulk) SetFirstResponseMs(v int) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetFirstResponseMs(v)
+	})
+}
+
+// AddFirstResponseMs adds v to the "first_response_ms" field.
+func (u *UsageLogUpsertBulk) AddFirstResponseMs(v int) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.AddFirstResponseMs(v)
+	})
+}
+
+// UpdateFirstResponseMs sets the "first_response_ms" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateFirstResponseMs() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateFirstResponseMs()
+	})
+}
+
+// ClearFirstResponseMs clears the value of the "first_response_ms" field.
+func (u *UsageLogUpsertBulk) ClearFirstResponseMs() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearFirstResponseMs()
 	})
 }
 

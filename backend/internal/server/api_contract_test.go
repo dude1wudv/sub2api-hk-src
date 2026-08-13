@@ -570,6 +570,7 @@ func TestAPIContracts(t *testing.T) {
 						Stream:                true,
 						DurationMs:            ptr(100),
 						FirstTokenMs:          ptr(50),
+						FirstResponseMs:       ptr(10),
 						CreatedAt:             deps.now,
 					},
 				})
@@ -610,6 +611,7 @@ func TestAPIContracts(t *testing.T) {
 						"billing_type": 0,
 							"stream": true,
 							"duration_ms": 100,
+							"first_response_ms": 10,
 							"first_token_ms": 50,
 							"image_count": 0,
 							"image_size": null,

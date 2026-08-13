@@ -70,6 +70,9 @@ const messages: Record<string, string> = {
 	'usage.outputTpsFormula': 'Output tokens ÷ (total duration − time to first token)',
 	'usage.overallTpsShort': 'Overall',
 	'usage.overallTpsFormula': 'Output tokens ÷ total duration',
+	'usage.latencyFirstResponse': 'First Response',
+	'usage.latencyFirstToken': 'First',
+	'usage.latencyDuration': 'Total',
 }
 
 vi.mock('vue-i18n', async () => {
@@ -91,6 +94,7 @@ const DataTableStub = {
         <slot name="cell-billing_mode" :row="row" />
         <slot name="cell-tokens" :row="row" />
         <slot name="cell-cost" :row="row" />
+        <slot name="cell-latency" :row="row" />
         <slot name="cell-request_id" :row="row" />
       </div>
     </div>
@@ -136,6 +140,7 @@ describe('admin UsageTable TPS metrics', () => {
           cache_creation_tokens: 0,
           cache_read_tokens: 68992,
           duration_ms: 37475,
+          first_response_ms: 120,
           first_token_ms: 36644,
           billing_mode: 'token',
         }],
@@ -153,6 +158,7 @@ describe('admin UsageTable TPS metrics', () => {
     })
 
     const text = wrapper.text()
+    expect(text).toContain('First Response120ms')
     expect(text).toContain('Output 1930.2 tok/s')
     expect(text).toContain('Overall 42.8 tok/s')
   })
@@ -632,6 +638,7 @@ const DataTableStubWithUser = {
         <slot name="cell-billing_mode" :row="row" />
         <slot name="cell-tokens" :row="row" />
         <slot name="cell-cost" :row="row" />
+        <slot name="cell-latency" :row="row" />
       </div>
     </div>
   `,

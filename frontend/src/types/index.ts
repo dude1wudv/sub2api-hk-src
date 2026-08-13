@@ -1653,6 +1653,7 @@ export interface UsageLog {
   openai_ws_mode?: boolean
   duration_ms: number | null
   first_token_ms: number | null
+  first_response_ms: number | null
 
   // 图片生成字段
   image_count: number

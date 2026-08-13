@@ -241,6 +241,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 
 	var usage *OpenAIUsage
 	var firstTokenMs *int
+	var firstResponseMs *int
 	responseID := ""
 	imageCount := 0
 	var imageOutputSizes []string
@@ -251,6 +252,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		}
 		usage = result.usage
 		firstTokenMs = result.firstTokenMs
+		firstResponseMs = result.firstResponseMs
 		responseID = strings.TrimSpace(result.responseID)
 		imageCount = result.imageCount
 		imageOutputSizes = result.imageOutputSizes
@@ -291,6 +293,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		OpenAIWSMode:                  false,
 		Duration:                      time.Since(startTime),
 		FirstTokenMs:                  firstTokenMs,
+		FirstResponseMs:               firstResponseMs,
 	}
 	if imageCount > 0 {
 		forwardResult.ImageCount = imageCount
@@ -756,6 +759,7 @@ func collectOpenAIPassthroughTimeoutHeaders(h http.Header) []string {
 type openaiStreamingResultPassthrough struct {
 	usage            *OpenAIUsage
 	firstTokenMs     *int
+	firstResponseMs  *int
 	responseID       string
 	imageCount       int
 	imageOutputSizes []string
@@ -1215,6 +1219,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 	usage := &OpenAIUsage{}
 	imageCounter := newOpenAIImageOutputCounter()
 	var firstTokenMs *int
+	var firstResponseMs *int
 	responseID := ""
 	clientDisconnected := false
 	sawDone := false
@@ -1263,6 +1268,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 		return &openaiStreamingResultPassthrough{
 			usage:            usage,
 			firstTokenMs:     firstTokenMs,
+			firstResponseMs:  firstResponseMs,
 			responseID:       responseID,
 			imageCount:       imageCounter.Count(),
 			imageOutputSizes: imageCounter.Sizes(),
@@ -1275,6 +1281,12 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 		forceFlushFailedEvent := false
 		if data, ok := extractOpenAISSEDataLine(line); ok {
 			dataBytes := []byte(data)
+			if strings.TrimSpace(data) != "" && strings.TrimSpace(data) != "[DONE]" && gjson.ValidBytes(dataBytes) && firstResponseMs == nil {
+				ms := int(time.Since(startTime).Milliseconds())
+				if ms >= 0 {
+					firstResponseMs = &ms
+				}
+			}
 			trimmedData := strings.TrimSpace(data)
 			rawEventType := strings.TrimSpace(gjson.GetBytes(dataBytes, "type").String())
 			observer.ObserveOpenAI(dataBytes, rawEventType)
