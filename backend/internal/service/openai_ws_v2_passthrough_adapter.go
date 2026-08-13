@@ -565,11 +565,24 @@ func (c *openAIWSPassthroughFirstOutputFrameConn) notifyDeadlineChanged() {
 
 func openAIWSPassthroughStartsSemanticOutput(payload []byte) bool {
 	eventType := strings.TrimSpace(gjson.GetBytes(payload, "type").String())
-	return openaiwsv2.IsSemanticOutputEvent(eventType)
+	switch eventType {
+	case "response.completed", "response.done", "response.failed", "response.incomplete", "response.cancelled", "response.canceled":
+		return true
+	case "", "response.created", "response.in_progress", "response.output_item.added", "response.output_item.done":
+		return false
+	}
+	return strings.Contains(eventType, ".delta") ||
+		strings.HasPrefix(eventType, "response.output_text") ||
+		strings.HasPrefix(eventType, "response.output")
 }
 
 func openAIWSPassthroughIsTerminalOutput(payload []byte) bool {
-	return openaiwsv2.IsTerminalEvent(strings.TrimSpace(gjson.GetBytes(payload, "type").String()))
+	switch strings.TrimSpace(gjson.GetBytes(payload, "type").String()) {
+	case "response.completed", "response.done", "response.failed", "response.incomplete", "response.cancelled", "response.canceled":
+		return true
+	default:
+		return false
+	}
 }
 
 var _ openaiwsv2.FrameConn = (*openAIWSClientFrameConn)(nil)

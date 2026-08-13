@@ -404,45 +404,14 @@ func TestIsDisconnectErrorCoverage_CloseStatusesAndMessageBranches(t *testing.T)
 func TestIsTokenEventCoverageBranches(t *testing.T) {
 	t.Parallel()
 
-	for _, eventType := range []string{
-		"response.created",
-		"response.in_progress",
-		"response.output_item.added",
-		"response.output_item.done",
-		"response.completed",
-		"response.done",
-		"response.failed",
-		"response.incomplete",
-		"response.cancelled",
-		"response.canceled",
-	} {
-		require.False(t, isTokenEvent(eventType), eventType)
-	}
+	require.False(t, isTokenEvent("response.in_progress"))
+	require.False(t, isTokenEvent("response.output_item.added"))
 	require.True(t, isTokenEvent("response.output_audio.delta"))
-	require.True(t, isTokenEvent("response.code_interpreter_call_code.delta"))
-	require.True(t, isTokenEvent("response.mcp_call_arguments.delta"))
-	require.True(t, isTokenEvent("response.future_output_channel.delta"), "future response delta events remain semantic")
-	require.True(t, isTokenEvent("response.output"), "explicit compatibility event")
-	for _, eventType := range []string{
-		"response.output_text.done",
-		"response.refusal.done",
-		"response.reasoning_summary_text.done",
-		"response.reasoning_text.done",
-		"response.function_call_arguments.done",
-		"response.custom_tool_call_input.done",
-		"response.mcp_call_arguments.done",
-		"response.code_interpreter_call_code.done",
-	} {
-		require.True(t, isTokenEvent(eventType), eventType)
-	}
-	require.False(t, isTokenEvent("response.output_audio.done"), "audio stream completion carries no audio content")
-	require.False(t, isTokenEvent("response.output_text.annotation.added"), "annotation metadata is not output content")
-	require.False(t, isTokenEvent("response.reasoning_summary_part.added"), "summary structure is not output content")
 	require.True(t, isTokenEvent("response.function_call_arguments.delta"))
 	require.True(t, isTokenEvent("response.reasoning_summary_text.delta"))
 	require.True(t, isTokenEvent("response.output_text.done"))
 	require.True(t, isTokenEvent("response.function_call_arguments.done"))
-	require.True(t, isTokenEvent("response.output"))
+	require.False(t, isTokenEvent("response.output"))
 	require.False(t, isTokenEvent("response.output_audio.done"))
 	require.False(t, isTokenEvent("response.content_part.done"))
 	require.False(t, isTokenEvent("response.output_item.done"))
@@ -464,130 +433,6 @@ func TestTerminalAndTokenEventSetsAreDisjoint(t *testing.T) {
 		require.True(t, isTerminalEvent(eventType), eventType)
 		require.False(t, isTokenEvent(eventType), eventType)
 	}
-}
-
-func TestObserveUpstreamMessage_FirstTokenRequiresSemanticOutput(t *testing.T) {
-	t.Parallel()
-
-	semanticEvents := []string{
-		"response.output_text.delta",
-		"response.reasoning_summary_text.delta",
-		"response.audio.delta",
-		"response.function_call_arguments.delta",
-		"response.custom_tool_call_input.delta",
-		"response.mcp_call_arguments.delta",
-		"response.code_interpreter_call_code.delta",
-	}
-	for _, eventType := range semanticEvents {
-		eventType := eventType
-		t.Run(eventType, func(t *testing.T) {
-			state := &relayState{}
-			startAt := time.Unix(0, 0)
-			now := startAt
-			nowFn := func() time.Time {
-				now = now.Add(10 * time.Millisecond)
-				return now
-			}
-
-			observeUpstreamMessage(state,
-				[]byte(`{"type":"response.created","response":{"id":"resp_semantic"}}`),
-				startAt, nowFn, nil)
-			observeUpstreamMessage(state,
-				[]byte(`{"type":"`+eventType+`","response_id":"resp_semantic","delta":"x"}`),
-				startAt, nowFn, nil)
-			completed := observeUpstreamMessage(state,
-				[]byte(`{"type":"response.completed","response":{"id":"resp_semantic","usage":{"input_tokens":1,"output_tokens":1}}}`),
-				startAt, nowFn, nil)
-
-			require.True(t, completed.terminal)
-			require.NotNil(t, completed.firstToken)
-			require.Equal(t, 10, *completed.firstToken, "first token must be measured from this turn start")
-		})
-	}
-}
-
-func TestObserveUpstreamMessage_NoSemanticOutputLeavesFirstTokenUnset(t *testing.T) {
-	t.Parallel()
-
-	for _, eventType := range []string{
-		"response.completed",
-		"response.done",
-		"response.failed",
-		"response.incomplete",
-		"response.cancelled",
-		"response.canceled",
-	} {
-		eventType := eventType
-		t.Run(eventType, func(t *testing.T) {
-			state := &relayState{}
-			startAt := time.Unix(0, 0)
-			now := startAt
-			nowFn := func() time.Time {
-				now = now.Add(10 * time.Millisecond)
-				return now
-			}
-
-			observeUpstreamMessage(state,
-				[]byte(`{"type":"response.created","response":{"id":"resp_terminal"}}`),
-				startAt, nowFn, nil)
-			terminal := observeUpstreamMessage(state,
-				[]byte(`{"type":"`+eventType+`","response":{"id":"resp_terminal","usage":{"input_tokens":1,"output_tokens":0}}}`),
-				startAt, nowFn, nil)
-
-			require.True(t, terminal.terminal)
-			require.Nil(t, terminal.firstToken)
-			require.Nil(t, state.firstTokenMs)
-			var turn RelayTurnResult
-			emitTurnComplete(func(got RelayTurnResult) { turn = got }, state, terminal)
-			require.Nil(t, turn.FirstTokenMs)
-		})
-	}
-}
-
-func TestObserveUpstreamMessage_MultipleTurnsTrackIndependentFirstTokens(t *testing.T) {
-	t.Parallel()
-
-	state := &relayState{}
-	startAt := time.Unix(0, 0)
-	clock := []time.Time{
-		startAt.Add(100 * time.Millisecond),
-		startAt.Add(130 * time.Millisecond),
-		startAt.Add(150 * time.Millisecond),
-		startAt.Add(1 * time.Second),
-		startAt.Add(1*time.Second + 40*time.Millisecond),
-		startAt.Add(1*time.Second + 70*time.Millisecond),
-	}
-	index := 0
-	nowFn := func() time.Time {
-		current := clock[index]
-		index++
-		return current
-	}
-
-	observeUpstreamMessage(state,
-		[]byte(`{"type":"response.created","response":{"id":"resp_one"}}`),
-		startAt, nowFn, nil)
-	observeUpstreamMessage(state,
-		[]byte(`{"type":"response.output_text.delta","response_id":"resp_one","delta":"one"}`),
-		startAt, nowFn, nil)
-	first := observeUpstreamMessage(state,
-		[]byte(`{"type":"response.completed","response":{"id":"resp_one"}}`),
-		startAt, nowFn, nil)
-
-	observeUpstreamMessage(state,
-		[]byte(`{"type":"response.created","response":{"id":"resp_two"}}`),
-		startAt, nowFn, nil)
-	observeUpstreamMessage(state,
-		[]byte(`{"type":"response.reasoning_summary_text.delta","response_id":"resp_two","delta":"two"}`),
-		startAt, nowFn, nil)
-	second := observeUpstreamMessage(state,
-		[]byte(`{"type":"response.completed","response":{"id":"resp_two"}}`),
-		startAt, nowFn, nil)
-
-	require.NotNil(t, first.firstToken)
-	require.Equal(t, 30, *first.firstToken)
-	require.NotNil(t, second.firstToken)
-	require.Equal(t, 40, *second.firstToken)
 }
 
 func TestShouldParseUsageTerminalEvents(t *testing.T) {

@@ -1005,7 +1005,12 @@ func isDisconnectError(err error) bool {
 }
 
 func isTerminalEvent(eventType string) bool {
-	return IsTerminalEvent(eventType)
+	switch eventType {
+	case "response.completed", "response.done", "response.failed", "response.incomplete", "response.cancelled", "response.canceled":
+		return true
+	default:
+		return false
+	}
 }
 
 func shouldParseUsage(eventType string) bool {
@@ -1018,7 +1023,10 @@ func shouldParseUsage(eventType string) bool {
 }
 
 func isTokenEvent(eventType string) bool {
-	return IsSemanticOutputEvent(eventType)
+	eventType = strings.TrimSpace(eventType)
+	return strings.HasSuffix(eventType, ".delta") ||
+		eventType == "response.output_text.done" ||
+		eventType == "response.function_call_arguments.done"
 }
 
 func minDuration(a, b time.Duration) time.Duration {
