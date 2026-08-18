@@ -60,6 +60,23 @@ docker compose up -d --no-deps --force-recreate sub2api
 
 This procedure deliberately leaves PostgreSQL and Redis data/services untouched. Verify health and migrations before treating the update as complete; database migrations are forward-only.
 
+### HK production baseline (verified 2026-08-18)
+
+This workspace currently deploys commit `82ab68242dd2d7f51029ea7db8e0d65290d2f9d9` (Sub2API `0.1.178`) as `sub2api:hk-v0.1.178-merge-82ab68242-20260818` on the HK host. The `sub2api` container was `running/healthy` at verification time. Its managed Compose service uses `mem_limit: 2g`; the process runs with `GOMEMLIMIT=1800MiB`. These are dated production facts, not defaults for the portable Compose templates below.
+
+After an application-only update, verify all of the following before handoff:
+
+```bash
+docker inspect sub2api --format '{{.Config.Image}} {{.State.Status}} {{.State.Health.Status}} {{.HostConfig.Memory}}'
+docker exec sub2api printenv GOMEMLIMIT
+curl -fsS http://127.0.0.1:8080/health
+curl -fsS --resolve sub.sunmmyapi.xyz:443:127.0.0.1 https://sub.sunmmyapi.xyz/health
+docker exec sub2api-postgres psql -U sub2api -d sub2api -Atc \
+  "SELECT filename FROM schema_migrations WHERE filename IN ('224_user_platform_quotas_add_cn_providers.sql','225_backfill_codex_fingerprint_seed.sql','225_channel_model_time_pricing.sql','226_channel_monitor_quota_mode.sql') ORDER BY filename"
+```
+
+The migration query must return all four filenames. Migrations are forward-only: rolling back the application image does not roll back the database. Restore a verified backup or ship a new forward compensation migration when database rollback is required.
+
 ## Image2 Embedded SPA
 
 `/image2` is an embedded SPA endpoint, not a separate production service. Keep its approved, pinned build output in the application image and retain its route plus SPA fallback during reverse-proxy or deployment changes. Do not replace it with an arbitrary runtime download.

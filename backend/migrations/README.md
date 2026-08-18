@@ -70,14 +70,11 @@ Why?
    - Put only the intended schema change in the file
    - If rollback is needed, create a new migration file to revert
 
-3. **Test locally**
-   ```bash
-   # Apply migration
-   make migrate-up
-
-   # Test rollback
-   make migrate-down
-   ```
+3. **Test against a disposable database**
+   - Start the application against a one-time test database so the built-in runner applies the migration.
+   - Confirm startup reports no migration failure.
+   - Query `schema_migrations` and verify the filename plus SHA256 checksum record.
+   - Run the migration integration tests relevant to the changed schema.
 
 4. **Commit and deploy**
    ```bash
@@ -124,9 +121,9 @@ touch migrations/018_your_new_change.sql
    - One logical change per migration
    - Easier to review and rollback
 
-2. **Write reversible migrations**
-   - Always provide a working Down migration
-   - Test rollback before committing
+2. **Use forward compensation**
+   - The runner is forward-only; never add executable Down SQL to an existing migration.
+   - If a deployed change must be undone, restore a verified backup or create a new forward migration that compensates for it.
 
 3. **Use transactions**
    - Wrap DDL statements in transactions when possible
@@ -137,9 +134,32 @@ touch migrations/018_your_new_change.sql
    - Document any special considerations
 
 5. **Test in development first**
-   - Apply migration locally
-   - Verify data integrity
-   - Test rollback
+   - Apply migrations through application startup against a disposable database.
+   - Verify schema/data invariants and the corresponding `schema_migrations` checksums.
+   - Test backup restoration or the new forward compensation migration when rollback is required.
+
+### HK v0.1.178 migration baseline (verified 2026-08-18)
+
+The current HK production database has applied these four forward migrations:
+
+- `224_user_platform_quotas_add_cn_providers.sql`
+- `225_backfill_codex_fingerprint_seed.sql`
+- `225_channel_model_time_pricing.sql`
+- `226_channel_monitor_quota_mode.sql`
+
+Verify metadata only; do not dump business tables or credentials:
+
+```sql
+SELECT filename
+FROM schema_migrations
+WHERE filename IN (
+  '224_user_platform_quotas_add_cn_providers.sql',
+  '225_backfill_codex_fingerprint_seed.sql',
+  '225_channel_model_time_pricing.sql',
+  '226_channel_monitor_quota_mode.sql'
+)
+ORDER BY filename;
+```
 
 ## Example Migration
 
