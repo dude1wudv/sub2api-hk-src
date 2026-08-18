@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -193,23 +194,43 @@ func (s *CNProviderBalanceService) queryBalance(ctx context.Context, accountID i
 		balance, _ := cnParseF64(gjson.GetBytes(bodyBytes, "data.available_balance").Value())
 		entries = append(entries, CNProviderBalanceEntry{Currency: "CNY", Balance: balance})
 	case PlatformDeepseek:
-		// is_available 缺省视为 true（健康）；显式存在时取其值。
+		// Third-party OpenAI-compatible relays may return their HTML landing page
+		// with HTTP 200 for /user/balance. Treat an unrecognized payload as a
+		// failed probe, never as a real zero balance that pauses the account.
+		if !gjson.ValidBytes(bodyBytes) {
+			result.Error = "Invalid DeepSeek balance response: expected JSON"
+			return result, nil
+		}
 		if v := gjson.GetBytes(bodyBytes, "is_available"); v.Exists() {
+			if v.Type != gjson.True && v.Type != gjson.False {
+				result.Error = "Invalid DeepSeek balance response: is_available must be boolean"
+				return result, nil
+			}
 			available = v.Bool()
 		}
-		// balance_infos 逐条解析：双币种账号同时返回 CNY + USD（数组顺序即
-		// 主次序，首条为主币种）。
-		gjson.GetBytes(bodyBytes, "balance_infos").ForEach(func(_, info gjson.Result) bool {
+		infos := gjson.GetBytes(bodyBytes, "balance_infos")
+		if !infos.Exists() || !infos.IsArray() {
+			result.Error = "Invalid DeepSeek balance response: balance_infos is missing"
+			return result, nil
+		}
+		validEntries := true
+		infos.ForEach(func(_, info gjson.Result) bool {
 			currency := strings.ToUpper(strings.TrimSpace(info.Get("currency").String()))
-			balance, _ := cnParseF64(info.Get("total_balance").Value())
+			balance, valid := cnParseF64(info.Get("total_balance").Value())
+			valid = valid && !math.IsNaN(balance) && !math.IsInf(balance, 0)
+			if !valid {
+				validEntries = false
+				return false
+			}
 			if currency == "" {
 				currency = "CNY"
 			}
 			entries = append(entries, CNProviderBalanceEntry{Currency: currency, Balance: balance})
 			return true
 		})
-		if len(entries) == 0 {
-			entries = append(entries, CNProviderBalanceEntry{Currency: "CNY"})
+		if !validEntries || len(entries) == 0 {
+			result.Error = "Invalid DeepSeek balance response: balance_infos has no valid entries"
+			return result, nil
 		}
 	}
 	result.Balances = entries

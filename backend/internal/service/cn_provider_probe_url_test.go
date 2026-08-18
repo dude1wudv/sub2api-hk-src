@@ -82,10 +82,16 @@ func (u *fixedCNBalanceUpstream) DoWithTLS(req *http.Request, proxyURL string, a
 type fakeCNProbeAccountRepo struct {
 	AccountRepository
 	account *Account
+	updates map[string]any
 }
 
 func (r *fakeCNProbeAccountRepo) GetByID(ctx context.Context, id int64) (*Account, error) {
 	return r.account, nil
+}
+
+func (r *fakeCNProbeAccountRepo) UpdateExtra(_ context.Context, _ int64, updates map[string]any) error {
+	r.updates = updates
+	return nil
 }
 
 // kimi coding 账号的 base_url 指向中转（含 api.kimi.com/coding 路径段即可被识别
@@ -167,5 +173,73 @@ func TestCNProviderBalanceService_KimiBusinessErrorIsNotTreatedAsZeroBalance(t *
 	require.Contains(t, result.Error, "invalid balance credential")
 	require.Empty(t, result.Balances)
 	require.Zero(t, result.Balance)
+	require.Equal(t, 1, upstream.calls)
+}
+
+func TestCNProviderBalanceService_DeepSeekInvalidSuccessPayloadIsNotZeroBalance(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "HTML relay landing page", body: `<html><body>relay</body></html>`, want: "expected JSON"},
+		{name: "JSON without balance schema", body: `{"status":"ok"}`, want: "balance_infos is missing"},
+		{name: "empty balance list", body: `{"is_available":true,"balance_infos":[]}`, want: "no valid entries"},
+		{name: "non boolean availability", body: `{"is_available":"yes","balance_infos":[{"currency":"CNY","total_balance":"1"}]}`, want: "must be boolean"},
+		{name: "non finite balance", body: `{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"NaN"}]}`, want: "no valid entries"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &fakeCNProbeAccountRepo{account: &Account{
+				ID: 5, Platform: PlatformDeepseek, Type: AccountTypeAPIKey, Status: StatusActive,
+				Credentials: map[string]any{
+					"account_mode": AccountModePayG,
+					"api_key":      "sk-test",
+					"base_url":     "https://relay.example",
+				},
+			}}
+			upstream := &fixedCNBalanceUpstream{response: &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"text/html"}},
+				Body:       io.NopCloser(strings.NewReader(tt.body)),
+			}}
+			svc := NewCNProviderBalanceService(repo, nil, upstream, nil)
+
+			result, err := svc.QueryBalance(context.Background(), 5)
+
+			require.NoError(t, err)
+			require.False(t, result.Success)
+			require.False(t, result.Persisted)
+			require.Contains(t, result.Error, tt.want)
+			require.Empty(t, result.Balances)
+			require.Zero(t, result.Balance)
+			require.Equal(t, 1, upstream.calls)
+		})
+	}
+}
+
+func TestCNProviderBalanceService_DeepSeekValidPayloadPersistsBalances(t *testing.T) {
+	repo := &fakeCNProbeAccountRepo{account: &Account{
+		ID: 6, Platform: PlatformDeepseek, Type: AccountTypeAPIKey, Status: StatusActive,
+		Credentials: map[string]any{"account_mode": AccountModePayG, "api_key": "sk-test"},
+	}}
+	upstream := &fixedCNBalanceUpstream{response: &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(`{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"12.5"},{"currency":"USD","total_balance":"3.25"}]}`)),
+	}}
+	svc := NewCNProviderBalanceService(repo, nil, upstream, nil)
+
+	result, err := svc.QueryBalance(context.Background(), 6)
+
+	require.NoError(t, err)
+	require.True(t, result.Success)
+	require.True(t, result.Persisted)
+	require.True(t, result.Available)
+	require.Equal(t, 12.5, result.Balance)
+	require.Equal(t, "CNY", result.Currency)
+	require.Equal(t, []CNProviderBalanceEntry{{Currency: "CNY", Balance: 12.5}, {Currency: "USD", Balance: 3.25}}, result.Balances)
+	require.NotEmpty(t, repo.updates)
 	require.Equal(t, 1, upstream.calls)
 }
