@@ -289,6 +289,10 @@ func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int
 		return s.testOpenAIAccountConnection(c, account, modelID, prompt, normalizeAccountTestMode(mode))
 	}
 
+	if account.Platform == PlatformDeepseek {
+		return s.testDeepSeekAccountConnection(c, account, account.GetAPIProtocol(), modelID, prompt)
+	}
+
 	if account.IsGemini() {
 		return s.testGeminiAccountConnection(c, account, modelID, prompt)
 	}
@@ -302,6 +306,127 @@ func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int
 	}
 
 	return s.testClaudeAccountConnection(c, account, modelID)
+}
+
+// testDeepSeekAccountConnection probes the protocol selected for a DeepSeek API-key account.
+func (s *AccountTestService) testDeepSeekAccountConnection(c *gin.Context, account *Account, protocol string, modelID string, prompt string) error {
+	if account.Type != AccountTypeAPIKey {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Unsupported DeepSeek account type: %s", account.Type))
+	}
+
+	apiKey := strings.TrimSpace(account.GetCNAPIKey())
+	if apiKey == "" {
+		return s.sendErrorAndEnd(c, "No API key available")
+	}
+
+	testModelID := modelID
+	if testModelID == "" {
+		testModelID = "deepseek-chat"
+	}
+	testModelID = account.GetMappedModel(testModelID)
+
+	var (
+		apiURL       string
+		payloadBytes []byte
+		err          error
+	)
+
+	switch protocol {
+	case APIProtocolChatCompletions:
+		baseURL, validationErr := s.validateUpstreamBaseURL(account.GetOpenAIFormatBaseURL())
+		if validationErr != nil {
+			return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", validationErr.Error()))
+		}
+		apiURL = buildOpenAIChatCompletionsURL(baseURL)
+		payloadBytes, err = json.Marshal(createOpenAIChatCompletionsTestPayload(testModelID, prompt))
+	case APIProtocolResponses:
+		baseURL, validationErr := s.validateUpstreamBaseURL(account.GetOpenAIFormatBaseURL())
+		if validationErr != nil {
+			return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", validationErr.Error()))
+		}
+		apiURL = buildOpenAIResponsesURLForPlatform(account.Platform, baseURL)
+		payloadBytes, err = json.Marshal(createOpenAITestPayload(testModelID, false))
+		payloadBytes = normalizeDeepSeekResponsesRequestBody(account, payloadBytes)
+	case APIProtocolAnthropic:
+		baseURL, validationErr := s.validateUpstreamBaseURL(account.GetAnthropicProtocolBaseURL())
+		if validationErr != nil {
+			return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", validationErr.Error()))
+		}
+		apiURL = strings.TrimRight(baseURL, "/") + "/v1/messages"
+		payload, payloadErr := createTestPayload(testModelID)
+		if payloadErr != nil {
+			return s.sendErrorAndEnd(c, "Failed to create test payload")
+		}
+		payloadBytes, err = json.Marshal(payload)
+	default:
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Unsupported DeepSeek API protocol: %s", protocol))
+	}
+	if err != nil {
+		return s.sendErrorAndEnd(c, "Failed to create test payload")
+	}
+
+	resp, err := s.requestDeepSeekTestStream(c, account, protocol, testModelID, apiURL, payloadBytes, apiKey)
+	if err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	switch protocol {
+	case APIProtocolChatCompletions:
+		return s.processOpenAIChatCompletionsStream(c, resp.Body)
+	case APIProtocolResponses:
+		return s.processOpenAIStream(c, resp.Body)
+	case APIProtocolAnthropic:
+		return s.processClaudeStream(c, resp.Body)
+	default:
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Unsupported DeepSeek API protocol: %s", protocol))
+	}
+}
+
+// requestDeepSeekTestStream applies the protocol-specific auth while keeping the
+// transport, header overrides, proxy, and SSE setup shared by every DeepSeek probe.
+func (s *AccountTestService) requestDeepSeekTestStream(c *gin.Context, account *Account, protocol string, modelID string, apiURL string, payload []byte, apiKey string) (*http.Response, error) {
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Writer.Flush()
+
+	s.sendEvent(c, TestEvent{Type: "test_start", Model: modelID})
+
+	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, apiURL, bytes.NewReader(payload))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	if protocol != APIProtocolAnthropic {
+		req = req.WithContext(WithHTTPUpstreamProfile(req.Context(), HTTPUpstreamProfileOpenAI))
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if protocol == APIProtocolAnthropic {
+		req.Header.Set("anthropic-version", "2023-06-01")
+		setAnthropicAPIKeyAuthHeader(req.Header, account, apiKey)
+	} else {
+		req.Header.Set("Accept", "text/event-stream")
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+
+	account.ApplyHeaderOverrides(req.Header)
+
+	proxyURL := ""
+	if account.ProxyID != nil && account.Proxy != nil {
+		proxyURL = account.Proxy.URL()
+	}
+
+	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("API returned %d: %s", resp.StatusCode, string(body))
+	}
+	return resp, nil
 }
 
 // testClaudeAccountConnection tests an Anthropic Claude account's connection
