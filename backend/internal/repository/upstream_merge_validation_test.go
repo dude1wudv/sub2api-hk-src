@@ -23,12 +23,16 @@ import (
 
 const (
 	productionHistoryMigrationCount = 278
-	candidateMigrationCount         = 280
+	candidateMigrationCount         = 284
 )
 
 var candidateOnlyMigrations = []string{
 	"222_group_usage_daily_rollups.sql",
 	"223_group_usage_rollup_timezone.sql",
+	"224_user_platform_quotas_add_cn_providers.sql",
+	"225_backfill_codex_fingerprint_seed.sql",
+	"225_channel_model_time_pricing.sql",
+	"226_channel_monitor_quota_mode.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   ANTIGRAVITY_PROJECT_ID_CREDENTIAL_KEY,
+  CN_BASE_URL_PRESETS,
   HEADER_OVERRIDE_ENABLED_CREDENTIAL_KEY,
   HEADER_OVERRIDES_CREDENTIAL_KEY,
   applyAntigravityProjectID,
@@ -9,6 +10,9 @@ import {
   applyPlanType,
   buildHeaderOverridesObject,
   buildPlanTypeOptions,
+  cnBalanceCellVisible,
+  cnQuotaCellVisible,
+  defaultCNBaseUrl,
   isCustomGrokBaseUrl,
   isHeaderOverrideCapable,
   GROK_BASE_URL_PRESETS,
@@ -217,6 +221,31 @@ describe('GROK_BASE_URL_PRESETS', () => {
     expect(GROK_BASE_URL_PRESETS[2].label).toBe('us-east-1')
     expect(GROK_BASE_URL_PRESETS[3].label).toBe('us-west-2')
     expect(GROK_BASE_URL_PRESETS[4].label).toBe('eu-west-1')
+  })
+})
+
+describe('CN provider presets and usage visibility', () => {
+  it('keeps the provider × mode × protocol endpoint matrix intact', () => {
+    expect(defaultCNBaseUrl('kimi', 'payg', 'chat_completions')).toBe('https://api.moonshot.cn/v1')
+    expect(defaultCNBaseUrl('kimi', 'coding', 'anthropic')).toBe('https://api.kimi.com/coding')
+    expect(defaultCNBaseUrl('zhipu', 'coding', 'chat_completions')).toBe('https://open.bigmodel.cn/api/coding/paas/v4')
+    expect(defaultCNBaseUrl('zhipu', 'payg', 'anthropic')).toBe('https://open.bigmodel.cn/api/anthropic')
+    expect(defaultCNBaseUrl('deepseek', 'payg', 'responses')).toBe('https://api.deepseek.com')
+  })
+
+  it('offers Responses only for DeepSeek and respects quota/balance capabilities', () => {
+    expect(CN_BASE_URL_PRESETS.kimi.some(preset => preset.protocol === 'responses')).toBe(false)
+    expect(CN_BASE_URL_PRESETS.zhipu.some(preset => preset.protocol === 'responses')).toBe(false)
+    expect(CN_BASE_URL_PRESETS.deepseek.some(preset => preset.protocol === 'responses')).toBe(true)
+    expect(CN_BASE_URL_PRESETS.deepseek.every(preset => preset.mode === 'payg')).toBe(true)
+
+    expect(cnQuotaCellVisible('kimi', 'coding')).toBe(true)
+    expect(cnQuotaCellVisible('zhipu', 'coding')).toBe(true)
+    expect(cnQuotaCellVisible('deepseek', 'coding')).toBe(false)
+    expect(cnBalanceCellVisible('kimi', 'payg')).toBe(true)
+    expect(cnBalanceCellVisible('deepseek', 'payg')).toBe(true)
+    expect(cnBalanceCellVisible('zhipu', 'payg')).toBe(false)
+    expect(cnBalanceCellVisible('kimi', 'coding')).toBe(false)
   })
 })
 

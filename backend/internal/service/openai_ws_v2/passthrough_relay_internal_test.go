@@ -244,11 +244,11 @@ func TestHelperFunctionsCoverage(t *testing.T) {
 	require.True(t, isDisconnectError(errors.New("broken pipe")))
 	require.False(t, isDisconnectError(errors.New("unrelated")))
 
-	require.True(t, isTokenEvent("response.output_text.delta"))
-	require.True(t, isTokenEvent("response.output_audio.delta"))
-	require.False(t, isTokenEvent("response.completed"))
-	require.False(t, isTokenEvent(""))
-	require.False(t, isTokenEvent("response.created"))
+	require.True(t, isTokenEvent("response.output_text.delta", []byte(`{"delta":"text"}`)))
+	require.True(t, isTokenEvent("response.output_audio.delta", []byte(`{"delta":"audio"}`)))
+	require.False(t, isTokenEvent("response.completed", []byte(`{"response":{"output":[]}}`)))
+	require.False(t, isTokenEvent("", nil))
+	require.False(t, isTokenEvent("response.created", []byte(`{"type":"response.created"}`)))
 
 	require.Equal(t, 2*time.Second, minDuration(2*time.Second, 5*time.Second))
 	require.Equal(t, 2*time.Second, minDuration(5*time.Second, 2*time.Second))
@@ -404,22 +404,36 @@ func TestIsDisconnectErrorCoverage_CloseStatusesAndMessageBranches(t *testing.T)
 func TestIsTokenEventCoverageBranches(t *testing.T) {
 	t.Parallel()
 
-	require.False(t, isTokenEvent("response.in_progress"))
-	require.False(t, isTokenEvent("response.output_item.added"))
-	require.True(t, isTokenEvent("response.output_audio.delta"))
-	require.True(t, isTokenEvent("response.function_call_arguments.delta"))
-	require.True(t, isTokenEvent("response.reasoning_summary_text.delta"))
-	require.True(t, isTokenEvent("response.output_text.done"))
-	require.True(t, isTokenEvent("response.function_call_arguments.done"))
-	require.False(t, isTokenEvent("response.output"))
-	require.False(t, isTokenEvent("response.output_audio.done"))
-	require.False(t, isTokenEvent("response.content_part.done"))
-	require.False(t, isTokenEvent("response.output_item.done"))
-	require.False(t, isTokenEvent("response.output_text.annotation.added"))
-	require.False(t, isTokenEvent("response.done"))
+	tests := []struct {
+		name      string
+		eventType string
+		payload   string
+		want      bool
+	}{
+		{name: "progress", eventType: "response.in_progress", payload: `{}`, want: false},
+		{name: "empty delta", eventType: "response.output_text.delta", payload: `{"delta":""}`, want: false},
+		{name: "audio delta", eventType: "response.output_audio.delta", payload: `{"delta":"pcm"}`, want: true},
+		{name: "function delta", eventType: "response.function_call_arguments.delta", payload: `{"delta":"{}"}`, want: true},
+		{name: "reasoning delta", eventType: "response.reasoning_summary_text.delta", payload: `{"delta":"thought"}`, want: true},
+		{name: "text done", eventType: "response.output_text.done", payload: `{"text":"answer"}`, want: true},
+		{name: "function done", eventType: "response.function_call_arguments.done", payload: `{"arguments":"{}"}`, want: true},
+		{name: "partial image", eventType: "response.image_generation_call.partial_image", payload: `{"partial_image_b64":"aW1hZ2U="}`, want: true},
+		{name: "output item text", eventType: "response.output_item.done", payload: `{"item":{"content":[{"text":"answer"}]}}`, want: true},
+		{name: "completed text", eventType: "response.completed", payload: `{"response":{"output":[{"content":[{"text":"answer"}]}]}}`, want: false},
+		{name: "output", eventType: "response.output", payload: `{}`, want: false},
+		{name: "audio done", eventType: "response.output_audio.done", payload: `{}`, want: false},
+		{name: "content part done", eventType: "response.content_part.done", payload: `{}`, want: false},
+		{name: "empty output item", eventType: "response.output_item.done", payload: `{"item":{}}`, want: false},
+		{name: "annotation", eventType: "response.output_text.annotation.added", payload: `{}`, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, isTokenEvent(tt.eventType, []byte(tt.payload)))
+		})
+	}
 }
 
-func TestTerminalAndTokenEventSetsAreDisjoint(t *testing.T) {
+func TestTerminalEventsWithoutVisibleOutputDoNotStartTTFT(t *testing.T) {
 	t.Parallel()
 
 	for _, eventType := range []string{
@@ -430,8 +444,9 @@ func TestTerminalAndTokenEventSetsAreDisjoint(t *testing.T) {
 		"response.cancelled",
 		"response.canceled",
 	} {
+		payload := []byte(`{"type":"` + eventType + `","response":{"output":[]}}`)
 		require.True(t, isTerminalEvent(eventType), eventType)
-		require.False(t, isTokenEvent(eventType), eventType)
+		require.False(t, isTokenEvent(eventType, payload), eventType)
 	}
 }
 
@@ -461,6 +476,13 @@ func TestRelayTurnTimingHelpersCoverage(t *testing.T) {
 	_, ok := openAIWSRelayDeleteTurnTiming(nil, "resp_nil")
 	require.False(t, ok)
 
+	pendingStartAt := now.Add(-time.Second)
+	pendingState := &relayState{}
+	pendingState.setPendingTurnStartedAt(pendingStartAt)
+	pendingTiming := openAIWSRelayGetOrInitTurnTiming(pendingState, "resp_pending", now)
+	require.Equal(t, pendingStartAt, pendingTiming.startAt)
+	require.Equal(t, pendingStartAt, pendingTiming.requestStartAt)
+
 	state := &relayState{}
 	timing := openAIWSRelayGetOrInitTurnTiming(state, "resp_a", now)
 	require.NotNil(t, timing)
@@ -479,6 +501,32 @@ func TestRelayTurnTimingHelpersCoverage(t *testing.T) {
 	// 删除不存在键
 	_, ok = openAIWSRelayDeleteTurnTiming(state, "resp_a")
 	require.False(t, ok)
+}
+
+func TestObserveUpstreamMessage_TerminalEventPreservesFirstResponseTiming(t *testing.T) {
+	t.Parallel()
+
+	startAt := time.Unix(100, 0)
+	state := &relayState{}
+	state.setPendingTurnStartedAt(startAt)
+	nowValues := []time.Time{startAt.Add(10 * time.Millisecond), startAt.Add(30 * time.Millisecond)}
+	nextNow := 0
+	nowFn := func() time.Time {
+		value := nowValues[nextNow]
+		nextNow++
+		return value
+	}
+
+	created := observeUpstreamMessage(state, []byte(`{"type":"response.created","response":{"id":"resp_first"}}`), startAt, nowFn, nil)
+	require.False(t, created.terminal)
+	require.NotNil(t, state.firstResponseMs)
+	require.Equal(t, 10, *state.firstResponseMs)
+
+	completed := observeUpstreamMessage(state, []byte(`{"type":"response.completed","response":{"id":"resp_first","usage":{"input_tokens":1,"output_tokens":1}}}`), startAt, nowFn, nil)
+	require.True(t, completed.terminal)
+	require.Equal(t, 10, *state.firstResponseMs)
+	require.NotNil(t, completed.firstResponse)
+	require.Equal(t, 10, *completed.firstResponse)
 }
 
 func TestObserveUpstreamMessage_ResponseModelIsTurnLocalAndTerminalWins(t *testing.T) {

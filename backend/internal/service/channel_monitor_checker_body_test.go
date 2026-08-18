@@ -199,7 +199,7 @@ func TestGrokMonitorConfiguration(t *testing.T) {
 	if err := validateProvider(MonitorProviderGrok); err != nil {
 		t.Fatalf("grok provider should be supported: %v", err)
 	}
-	if got := normalizeMonitorPrimaryModel(MonitorProviderGrok, ""); got != MonitorDefaultGrokModel {
+	if got := normalizeMonitorPrimaryModel(MonitorProviderGrok, MonitorCheckModeProbe, ""); got != MonitorDefaultGrokModel {
 		t.Fatalf("expected default Grok model %q, got %q", MonitorDefaultGrokModel, got)
 	}
 	if err := validateAPIMode(MonitorProviderGrok, MonitorAPIModeChatCompletions); err != nil {
@@ -496,5 +496,23 @@ func TestValidateChallenge_AnthropicTextAfterThinking(t *testing.T) {
 
 	if !validateChallenge(respText, "2") {
 		t.Fatalf("validateChallenge(%q, %q) = false, want true", respText, "2")
+	}
+}
+
+func TestSanitizeErrorMessage_RedactsHeaderCredentials(t *testing.T) {
+	const bearerToken = "opaque-monitor-bearer-token"
+	const apiKey = "opaque-monitor-api-key"
+	const customToken = "opaque-monitor-custom-token"
+
+	message := `upstream response: {"Authorization":"Bearer ` + bearerToken + `","x-api-key":"` + apiKey + `","token":"` + customToken + `"}`
+	sanitized := sanitizeErrorMessage(message)
+
+	for _, secret := range []string{bearerToken, apiKey, customToken} {
+		if strings.Contains(sanitized, secret) {
+			t.Fatalf("sanitizeErrorMessage leaked %q in %q", secret, sanitized)
+		}
+	}
+	if !strings.Contains(sanitized, `"Authorization":"Bearer REDACTED"`) {
+		t.Fatalf("authorization header was not redacted: %q", sanitized)
 	}
 }

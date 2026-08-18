@@ -56,22 +56,6 @@ func TestOpenAIResponsesTTFTStartsAtVisibleOutput(t *testing.T) {
 	}
 }
 
-func TestOpenAIResponsesRecordsFirstResponseBeforeVisibleTTFT(t *testing.T) {
-	for _, passthrough := range []bool{false, true} {
-		name := "native"
-		if passthrough {
-			name = "passthrough"
-		}
-		t.Run(name, func(t *testing.T) {
-			result := runSyntheticVisibleTTFTStream(t, passthrough, 120*time.Millisecond, 0,
-				`{"type":"response.output_text.delta","delta":"test output"}`)
-			require.NotNil(t, result.firstResponseMs)
-			require.NotNil(t, result.firstTokenMs)
-			require.Less(t, *result.firstResponseMs, *result.firstTokenMs)
-		})
-	}
-}
-
 func TestOpenAIResponsesTTFTStartsAtCompletedImage(t *testing.T) {
 	for _, passthrough := range []bool{false, true} {
 		name := "native"
@@ -127,8 +111,7 @@ func runSyntheticVisibleTTFTStream(t *testing.T, passthrough bool, visibleDelay 
 		passthroughResult, err = svc.handleStreamingResponsePassthrough(context.Background(), resp, c, account, started, "test-model", "test-model")
 		if passthroughResult != nil {
 			result = &openaiStreamingResult{
-				firstTokenMs:    passthroughResult.firstTokenMs,
-				firstResponseMs: passthroughResult.firstResponseMs,
+				firstTokenMs: passthroughResult.firstTokenMs,
 			}
 		}
 	} else {
