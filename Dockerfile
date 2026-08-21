@@ -80,6 +80,12 @@ RUN --mount=type=cache,id=sub2api-gomod,target=/go/pkg/mod \
 # Copy backend source first
 COPY backend/ ./
 
+# Migration checksums are byte-exact. Windows conflict/editing tools can leave
+# CRLF bytes in an otherwise clean Git worktree, so canonicalize the build copy
+# before the migrations package is embedded in the server binary.
+RUN find migrations -type f -name '*.sql' -exec sh -c \
+    'for file; do tr -d "\r" < "$file" > "$file.lf" && mv "$file.lf" "$file"; done' sh {} +
+
 # Copy frontend dist from previous stage (must be after backend copy to avoid being overwritten)
 COPY --from=frontend-builder /app/backend/internal/web/dist ./internal/web/dist
 
