@@ -933,12 +933,13 @@ func applyMonitorUpdate(existing *ChannelMonitor, p ChannelMonitorUpdateParams) 
 		}
 		existing.Endpoint = normalizeEndpoint(*p.Endpoint)
 	}
-	// Provider may change while CheckMode is omitted. Revalidate the persisted
-	// mode against the final provider so antigravity can never retain probe or
-	// quota_probe through a partial update.
+// Revalidate only when provider/check_mode changed. Name/enabled-only edits
+// must remain possible for legacy rows created before the matrix was tightened.
+if p.Provider != nil || p.CheckMode != nil {
 	if err := validateCheckMode(existing.Provider, defaultCheckMode(existing.CheckMode)); err != nil {
 		return err
 	}
+}
 	// 模式与字段的组合校验（provider/check_mode/account_id/endpoint 全部应用后）。
 	if err := validateMonitorModeFields(existing); err != nil {
 		return err

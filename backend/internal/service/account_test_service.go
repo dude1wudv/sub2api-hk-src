@@ -286,7 +286,7 @@ func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int
 
 	// Route DeepSeek through its protocol-specific probe first: Responses and
 	// Anthropic require distinct URL, payload, and authentication semantics.
-	if account.Platform == PlatformDeepseek {
+	if account.Platform == PlatformDeepseek && account.GetAPIProtocol() != APIProtocolAdaptive {
 		return s.testDeepSeekAccountConnection(c, account, account.GetAPIProtocol(), modelID, prompt)
 	}
 
