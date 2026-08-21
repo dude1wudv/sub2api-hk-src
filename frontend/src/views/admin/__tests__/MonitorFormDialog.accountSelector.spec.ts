@@ -384,4 +384,20 @@ describe('MonitorFormDialog linked account selector', () => {
 
     expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ account_id: 0 }))
   })
+
+  // P2-7(c)：create 绝不发 0（后端会把 0 存成 &0 触发外键违约），保持 null。
+  it('keeps account_id null when creating a probe monitor', async () => {
+    const wrapper = mountDialog()
+    await flushPromises()
+
+    await wrapper.findAll('input[type="text"]')[0].setValue('my monitor')
+    await wrapper.get('[data-testid="monitor-primary-model"]').setValue('claude-sonnet-4-5')
+    await wrapper.get('#channel-monitor-form').trigger('submit')
+    await flushPromises()
+
+    expect(monitorCreate).toHaveBeenCalledWith(expect.objectContaining({
+      check_mode: 'probe',
+      account_id: null,
+    }))
+  })
 })

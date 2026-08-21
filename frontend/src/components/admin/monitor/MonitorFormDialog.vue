@@ -695,6 +695,14 @@ function selectProvider(provider: Provider) {
   if (provider === PROVIDER_ANTIGRAVITY && form.check_mode !== CHECK_MODE_QUOTA) {
     form.check_mode = CHECK_MODE_QUOTA
   }
+  // 对称还原：从 antigravity 切走时撤掉强制 quota，否则编辑存量 antigravity
+  // 监控换平台后仍停留在 quota（目标平台未必支持），update 会携带残留配置。
+  // 同步清掉 quota 占位模型（loadFromMonitor 回填的 'quota'），否则切回
+  // probe 后拿 'quota' 当探活模型（与离开 grok 清 DEFAULT_GROK_MODEL 同理）。
+  if (previousProvider === PROVIDER_ANTIGRAVITY && form.check_mode === CHECK_MODE_QUOTA) {
+    form.check_mode = CHECK_MODE_PROBE
+    if (form.primary_model.trim() === 'quota') form.primary_model = ''
+  }
   if (provider === PROVIDER_GROK) {
     if (!form.endpoint.trim()) form.endpoint = DEFAULT_GROK_ENDPOINT
     if (!form.primary_model.trim()) form.primary_model = DEFAULT_GROK_MODEL
