@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -182,54 +181,26 @@ func (s *CNProviderBalanceService) queryBalanceForAccount(ctx context.Context, a
 	switch provider {
 	case PlatformKimi:
 		// Moonshot：code==0 成功；data.available_balance（number），单币种 CNY。
-		// HTTP 2xx 但业务 code 非 0 不能被误判为零余额，否则周期检查会把
-		// 账号错误地临时停调并覆盖已有健康快照。
-		code := gjson.GetBytes(bodyBytes, "code")
-		if code.Exists() {
-			value, valid := cnParseF64(code.Value())
-			if !valid || value != 0 {
-				message := firstNonEmpty(
-					gjson.GetBytes(bodyBytes, "message").String(),
-					gjson.GetBytes(bodyBytes, "msg").String(),
-					gjson.GetBytes(bodyBytes, "error.message").String(),
-				)
-				if message == "" {
-					message = "unknown Kimi balance error"
-				}
-				result.Error = "API error: " + message
-				return result, nil
-			}
-		}
 		balance, _ := cnParseF64(gjson.GetBytes(bodyBytes, "data.available_balance").Value())
 		entries = append(entries, CNProviderBalanceEntry{Currency: "CNY", Balance: balance})
 	case PlatformDeepseek:
-		// Third-party OpenAI-compatible relays may return their HTML landing page
-		// with HTTP 200 for /user/balance. Treat an unrecognized payload as a
-		// failed probe, never as a real zero balance that pauses the account.
-		if !gjson.ValidBytes(bodyBytes) {
-			result.Error = "Invalid DeepSeek balance response: expected JSON"
-			return result, nil
-		}
+		// is_available 缺省视为 true（健康）；显式存在时取其值。
 		if v := gjson.GetBytes(bodyBytes, "is_available"); v.Exists() {
-			if v.Type != gjson.True && v.Type != gjson.False {
-				result.Error = "Invalid DeepSeek balance response: is_available must be boolean"
-				return result, nil
-			}
 			available = v.Bool()
 		}
-		infos := gjson.GetBytes(bodyBytes, "balance_infos")
-		if !infos.Exists() || !infos.IsArray() {
-			result.Error = "Invalid DeepSeek balance response: balance_infos is missing"
+		// balance_infos 逐条解析：双币种账号同时返回 CNY + USD（数组顺序即
+		// 主次序，首条为主币种）。
+		balanceInfos := gjson.GetBytes(bodyBytes, "balance_infos")
+		if !balanceInfos.Exists() || !balanceInfos.IsArray() {
+			result.Error = "Invalid balance response: missing balance_infos"
 			return result, nil
 		}
-		validEntries := true
-		infos.ForEach(func(_, info gjson.Result) bool {
+		balanceInfos.ForEach(func(_, info gjson.Result) bool {
 			currency := strings.ToUpper(strings.TrimSpace(info.Get("currency").String()))
-			balance, valid := cnParseF64(info.Get("total_balance").Value())
-			valid = valid && !math.IsNaN(balance) && !math.IsInf(balance, 0)
-			if !valid {
-				validEntries = false
-				return false
+			totalBalance := info.Get("total_balance")
+			balance, ok := cnParseF64(totalBalance.Value())
+			if !totalBalance.Exists() || !ok {
+				return true
 			}
 			if currency == "" {
 				currency = "CNY"
@@ -237,8 +208,8 @@ func (s *CNProviderBalanceService) queryBalanceForAccount(ctx context.Context, a
 			entries = append(entries, CNProviderBalanceEntry{Currency: currency, Balance: balance})
 			return true
 		})
-		if !validEntries || len(entries) == 0 {
-			result.Error = "Invalid DeepSeek balance response: balance_infos has no valid entries"
+		if len(entries) == 0 {
+			result.Error = "Invalid balance response: no valid balance entries"
 			return result, nil
 		}
 	}
