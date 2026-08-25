@@ -28,12 +28,12 @@ ensure_local_base_image() {
 }
 
 NODE_IMAGE="${SUB2API_NODE_IMAGE:-node:24-alpine}"
-GOLANG_IMAGE="${SUB2API_GOLANG_IMAGE:-golang:1.26.6-alpine}"
+GOLANG_IMAGE="${SUB2API_GOLANG_IMAGE:-golang:1.27.0-alpine}"
 ALPINE_IMAGE="${SUB2API_ALPINE_IMAGE:-alpine:3.21}"
 POSTGRES_IMAGE="${SUB2API_POSTGRES_IMAGE:-postgres:18-alpine}"
 
 LOCAL_NODE_IMAGE="${SUB2API_LOCAL_NODE_IMAGE:-localhost/sub2api-base-node:24-alpine}"
-LOCAL_GOLANG_IMAGE="${SUB2API_LOCAL_GOLANG_IMAGE:-localhost/sub2api-base-golang:1.26.6-alpine}"
+LOCAL_GOLANG_IMAGE="${SUB2API_LOCAL_GOLANG_IMAGE:-localhost/sub2api-base-golang:1.27.0-alpine}"
 LOCAL_ALPINE_IMAGE="${SUB2API_LOCAL_ALPINE_IMAGE:-localhost/sub2api-base-alpine:3.21}"
 LOCAL_POSTGRES_IMAGE="${SUB2API_LOCAL_POSTGRES_IMAGE:-localhost/sub2api-base-postgres:18-alpine}"
 
