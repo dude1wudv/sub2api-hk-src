@@ -137,12 +137,14 @@ type observedUpstreamEvent struct {
 	responseServiceTier string
 	duration            time.Duration
 	firstToken          *int
+	firstResponse       *int
 }
 
 type relayTurnTiming struct {
 	startAt               time.Time
 	requestStartAt        time.Time
 	firstTokenMs          *int
+	firstResponseMs       *int
 	firstResponseModel    string
 	terminalResponseModel string
 	responseModelConflict bool
