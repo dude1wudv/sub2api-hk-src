@@ -43,6 +43,7 @@ type RelayResult struct {
 	RequestID               string
 	TerminalEventType       string
 	FirstTokenMs            *int
+	FirstResponseMs         *int
 	Duration                time.Duration
 	ClientToUpstreamFrames  int64
 	UpstreamToClientFrames  int64
@@ -60,6 +61,7 @@ type RelayTurnResult struct {
 	StartedAt             time.Time
 	Duration              time.Duration
 	FirstTokenMs          *int
+	FirstResponseMs       *int
 }
 
 type RelayExit struct {
@@ -111,6 +113,7 @@ type relayState struct {
 	responseConflict        bool
 	terminalEventType       string
 	firstTokenMs            *int
+	firstResponseMs         *int
 	turnTimingByID          map[string]*relayTurnTiming
 	activeTurn              *relayTurnTiming
 	pendingBareError        *observedUpstreamEvent
@@ -138,6 +141,7 @@ type observedUpstreamEvent struct {
 
 type relayTurnTiming struct {
 	startAt               time.Time
+	requestStartAt        time.Time
 	firstTokenMs          *int
 	firstResponseModel    string
 	terminalResponseModel string
@@ -732,7 +736,14 @@ func observeUpstreamMessage(
 	}
 	now := nowFn()
 
-	if state.firstTokenMs == nil && isTokenEvent(eventType) {
+	if state.firstResponseMs == nil {
+		ms := int(now.Sub(startAt).Milliseconds())
+		if ms >= 0 {
+			state.firstResponseMs = &ms
+		}
+	}
+
+	if state.firstTokenMs == nil && isTokenEvent(eventType, message) {
 		ms := int(now.Sub(startAt).Milliseconds())
 		if ms >= 0 {
 			state.firstTokenMs = &ms
@@ -753,7 +764,7 @@ func observeUpstreamMessage(
 	var turnTiming *relayTurnTiming
 	if responseID != "" {
 		turnTiming = openAIWSRelayGetOrInitTurnTiming(state, responseID, now)
-		if turnTiming != nil && turnTiming.firstTokenMs == nil && isTokenEvent(eventType) {
+		if turnTiming != nil && turnTiming.firstTokenMs == nil && isTokenEvent(eventType, message) {
 			ms := int(now.Sub(turnTiming.startAt).Milliseconds())
 			if ms >= 0 {
 				turnTiming.firstTokenMs = &ms
@@ -761,6 +772,16 @@ func observeUpstreamMessage(
 		}
 	} else {
 		turnTiming = state.activeTurn
+	}
+	if turnTiming != nil && turnTiming.firstResponseMs == nil {
+		requestStartAt := turnTiming.requestStartAt
+		if requestStartAt.IsZero() {
+			requestStartAt = startAt
+		}
+		ms := int(now.Sub(requestStartAt).Milliseconds())
+		if ms >= 0 {
+			turnTiming.firstResponseMs = &ms
+		}
 	}
 	observeRelayTurnResponseModel(turnTiming, firstRelayResponseModel(message), isTerminalEvent(eventType))
 	if !isTerminalEvent(eventType) {
@@ -836,6 +857,7 @@ func finalizeObservedRelayTerminal(state *relayState, observed observedUpstreamE
 			observed.startedAt = turnTiming.startAt
 			observed.duration = duration
 			observed.firstToken = openAIWSRelayCloneIntPtr(turnTiming.firstTokenMs)
+			observed.firstResponse = openAIWSRelayCloneIntPtr(turnTiming.firstResponseMs)
 		}
 	} else {
 		state.consumePendingTurnStartedAt()
@@ -871,6 +893,7 @@ func emitTurnComplete(
 		StartedAt:             observed.startedAt,
 		Duration:              observed.duration,
 		FirstTokenMs:          openAIWSRelayCloneIntPtr(observed.firstToken),
+		FirstResponseMs:       openAIWSRelayCloneIntPtr(observed.firstResponse),
 	})
 }
 
@@ -1208,6 +1231,7 @@ func enrichResult(result *RelayResult, state *relayState, duration time.Duration
 	result.RequestID = state.lastResponseID
 	result.TerminalEventType = state.terminalEventType
 	result.FirstTokenMs = state.firstTokenMs
+	result.FirstResponseMs = state.firstResponseMs
 }
 
 func (s *relayState) setRequestModel(model string) {
@@ -1267,11 +1291,27 @@ func shouldParseUsage(eventType string) bool {
 	return strings.HasPrefix(eventType, "response.") && !strings.HasSuffix(eventType, ".delta")
 }
 
-func isTokenEvent(eventType string) bool {
+func isTokenEvent(eventType string, message ...[]byte) bool {
 	eventType = strings.TrimSpace(eventType)
-	return strings.HasSuffix(eventType, ".delta") ||
-		eventType == "response.output_text.done" ||
-		eventType == "response.function_call_arguments.done"
+	if strings.HasSuffix(eventType, ".delta") {
+		if len(message) == 0 || len(message[0]) == 0 {
+			return true
+		}
+		return gjson.GetBytes(message[0], "delta").String() != ""
+	}
+	switch eventType {
+	case "response.output_text.done", "response.reasoning_summary_text.done", "response.reasoning_text.done", "response.audio_transcript.done":
+		if len(message) == 0 || len(message[0]) == 0 {
+			return true
+		}
+		return gjson.GetBytes(message[0], "text").String() != ""
+	case "response.function_call_arguments.done":
+		if len(message) == 0 || len(message[0]) == 0 {
+			return true
+		}
+		return gjson.GetBytes(message[0], "arguments").String() != ""
+	}
+	return false
 }
 
 func minDuration(a, b time.Duration) time.Duration {
