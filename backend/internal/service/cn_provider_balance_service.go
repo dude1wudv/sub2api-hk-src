@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -176,30 +177,44 @@ func (s *CNProviderBalanceService) queryBalanceForAccount(ctx context.Context, a
 		return result, nil
 	}
 
+	if !gjson.ValidBytes(bodyBytes) || !gjson.ParseBytes(bodyBytes).IsObject() {
+		result.Error = "Invalid balance response: expected JSON"
+		return result, nil
+	}
+
 	var entries []CNProviderBalanceEntry
 	available := true
 	switch provider {
 	case PlatformKimi:
-		// Moonshot：code==0 成功；data.available_balance（number），单币种 CNY。
+		// Moonshot：code==0 成功；非零 code 是显式业务错误，禁止把空数据解释成 0 余额。
+		if code := gjson.GetBytes(bodyBytes, "code"); code.Exists() && code.Int() != 0 {
+			message := strings.TrimSpace(gjson.GetBytes(bodyBytes, "message").String())
+			result.Error = "API error: " + message
+			return result, nil
+		}
 		balance, _ := cnParseF64(gjson.GetBytes(bodyBytes, "data.available_balance").Value())
 		entries = append(entries, CNProviderBalanceEntry{Currency: "CNY", Balance: balance})
 	case PlatformDeepseek:
-		// is_available 缺省视为 true（健康）；显式存在时取其值。
+		// is_available 缺省视为 true（健康）；显式存在时必须是布尔值。
 		if v := gjson.GetBytes(bodyBytes, "is_available"); v.Exists() {
+			if v.Type != gjson.True && v.Type != gjson.False {
+				result.Error = "Invalid balance response: is_available must be boolean"
+				return result, nil
+			}
 			available = v.Bool()
 		}
 		// balance_infos 逐条解析：双币种账号同时返回 CNY + USD（数组顺序即
 		// 主次序，首条为主币种）。
 		balanceInfos := gjson.GetBytes(bodyBytes, "balance_infos")
 		if !balanceInfos.Exists() || !balanceInfos.IsArray() {
-			result.Error = "Invalid balance response: missing balance_infos"
+			result.Error = "Invalid balance response: missing balance_infos (balance_infos is missing)"
 			return result, nil
 		}
 		balanceInfos.ForEach(func(_, info gjson.Result) bool {
 			currency := strings.ToUpper(strings.TrimSpace(info.Get("currency").String()))
 			totalBalance := info.Get("total_balance")
 			balance, ok := cnParseF64(totalBalance.Value())
-			if !totalBalance.Exists() || !ok {
+			if !totalBalance.Exists() || !ok || math.IsNaN(balance) || math.IsInf(balance, 0) {
 				return true
 			}
 			if currency == "" {
@@ -209,7 +224,7 @@ func (s *CNProviderBalanceService) queryBalanceForAccount(ctx context.Context, a
 			return true
 		})
 		if len(entries) == 0 {
-			result.Error = "Invalid balance response: no valid balance entries"
+			result.Error = "Invalid balance response: no valid balance entries (no valid entries)"
 			return result, nil
 		}
 	}

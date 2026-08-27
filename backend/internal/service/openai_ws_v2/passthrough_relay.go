@@ -984,7 +984,7 @@ func openAIWSRelayGetOrInitTurnTiming(state *relayState, responseID string, now 
 		if startAt.IsZero() {
 			startAt = now
 		}
-		timing = &relayTurnTiming{startAt: startAt}
+		timing = &relayTurnTiming{startAt: startAt, requestStartAt: startAt}
 		state.turnTimingByID[responseID] = timing
 		state.activeTurn = timing
 		return timing
@@ -1312,6 +1312,28 @@ func isTokenEvent(eventType string, message ...[]byte) bool {
 			return true
 		}
 		return gjson.GetBytes(message[0], "arguments").String() != ""
+	case "response.image_generation_call.partial_image":
+		if len(message) == 0 || len(message[0]) == 0 {
+			return true
+		}
+		return gjson.GetBytes(message[0], "partial_image_b64").String() != ""
+	case "response.output_item.done":
+		if len(message) == 0 || len(message[0]) == 0 {
+			return true
+		}
+		content := gjson.GetBytes(message[0], "item.content")
+		if !content.IsArray() {
+			return false
+		}
+		foundText := false
+		content.ForEach(func(_, item gjson.Result) bool {
+			if item.Get("text").String() != "" {
+				foundText = true
+				return false
+			}
+			return true
+		})
+		return foundText
 	}
 	return false
 }
