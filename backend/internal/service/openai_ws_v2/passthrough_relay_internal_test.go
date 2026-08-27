@@ -695,14 +695,9 @@ func TestObserveUpstreamMessage_TerminalEventPreservesFirstResponseTiming(t *tes
 
 	created := observeUpstreamMessage(state, []byte(`{"type":"response.created","response":{"id":"resp_first"}}`), startAt, nowFn, nil)
 	require.False(t, created.terminal)
-	require.NotNil(t, state.firstResponseMs)
-	require.Equal(t, 10, *state.firstResponseMs)
 
 	completed := observeUpstreamMessage(state, []byte(`{"type":"response.completed","response":{"id":"resp_first","usage":{"input_tokens":1,"output_tokens":1}}}`), startAt, nowFn, nil)
 	require.True(t, completed.terminal)
-	require.Equal(t, 10, *state.firstResponseMs)
-	require.NotNil(t, completed.firstResponse)
-	require.Equal(t, 10, *completed.firstResponse)
 }
 
 func TestObserveUpstreamMessage_ResponseModelIsTurnLocalAndTerminalWins(t *testing.T) {

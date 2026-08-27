@@ -712,33 +712,6 @@ func (_u *UsageLogUpdate) ClearFirstTokenMs() *UsageLogUpdate {
 	return _u
 }
 
-// SetFirstResponseMs sets the "first_response_ms" field.
-func (_u *UsageLogUpdate) SetFirstResponseMs(v int) *UsageLogUpdate {
-	_u.mutation.ResetFirstResponseMs()
-	_u.mutation.SetFirstResponseMs(v)
-	return _u
-}
-
-// SetNillableFirstResponseMs sets the "first_response_ms" field if the given value is not nil.
-func (_u *UsageLogUpdate) SetNillableFirstResponseMs(v *int) *UsageLogUpdate {
-	if v != nil {
-		_u.SetFirstResponseMs(*v)
-	}
-	return _u
-}
-
-// AddFirstResponseMs adds value to the "first_response_ms" field.
-func (_u *UsageLogUpdate) AddFirstResponseMs(v int) *UsageLogUpdate {
-	_u.mutation.AddFirstResponseMs(v)
-	return _u
-}
-
-// ClearFirstResponseMs clears the value of the "first_response_ms" field.
-func (_u *UsageLogUpdate) ClearFirstResponseMs() *UsageLogUpdate {
-	_u.mutation.ClearFirstResponseMs()
-	return _u
-}
-
 // SetUserAgent sets the "user_agent" field.
 func (_u *UsageLogUpdate) SetUserAgent(v string) *UsageLogUpdate {
 	_u.mutation.SetUserAgent(v)
@@ -1335,15 +1308,6 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.FirstTokenMsCleared() {
 		_spec.ClearField(usagelog.FieldFirstTokenMs, field.TypeInt)
-	}
-	if value, ok := _u.mutation.FirstResponseMs(); ok {
-		_spec.SetField(usagelog.FieldFirstResponseMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedFirstResponseMs(); ok {
-		_spec.AddField(usagelog.FieldFirstResponseMs, field.TypeInt, value)
-	}
-	if _u.mutation.FirstResponseMsCleared() {
-		_spec.ClearField(usagelog.FieldFirstResponseMs, field.TypeInt)
 	}
 	if value, ok := _u.mutation.UserAgent(); ok {
 		_spec.SetField(usagelog.FieldUserAgent, field.TypeString, value)
@@ -2262,33 +2226,6 @@ func (_u *UsageLogUpdateOne) ClearFirstTokenMs() *UsageLogUpdateOne {
 	return _u
 }
 
-// SetFirstResponseMs sets the "first_response_ms" field.
-func (_u *UsageLogUpdateOne) SetFirstResponseMs(v int) *UsageLogUpdateOne {
-	_u.mutation.ResetFirstResponseMs()
-	_u.mutation.SetFirstResponseMs(v)
-	return _u
-}
-
-// SetNillableFirstResponseMs sets the "first_response_ms" field if the given value is not nil.
-func (_u *UsageLogUpdateOne) SetNillableFirstResponseMs(v *int) *UsageLogUpdateOne {
-	if v != nil {
-		_u.SetFirstResponseMs(*v)
-	}
-	return _u
-}
-
-// AddFirstResponseMs adds value to the "first_response_ms" field.
-func (_u *UsageLogUpdateOne) AddFirstResponseMs(v int) *UsageLogUpdateOne {
-	_u.mutation.AddFirstResponseMs(v)
-	return _u
-}
-
-// ClearFirstResponseMs clears the value of the "first_response_ms" field.
-func (_u *UsageLogUpdateOne) ClearFirstResponseMs() *UsageLogUpdateOne {
-	_u.mutation.ClearFirstResponseMs()
-	return _u
-}
-
 // SetUserAgent sets the "user_agent" field.
 func (_u *UsageLogUpdateOne) SetUserAgent(v string) *UsageLogUpdateOne {
 	_u.mutation.SetUserAgent(v)
@@ -2915,15 +2852,6 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.FirstTokenMsCleared() {
 		_spec.ClearField(usagelog.FieldFirstTokenMs, field.TypeInt)
-	}
-	if value, ok := _u.mutation.FirstResponseMs(); ok {
-		_spec.SetField(usagelog.FieldFirstResponseMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedFirstResponseMs(); ok {
-		_spec.AddField(usagelog.FieldFirstResponseMs, field.TypeInt, value)
-	}
-	if _u.mutation.FirstResponseMsCleared() {
-		_spec.ClearField(usagelog.FieldFirstResponseMs, field.TypeInt)
 	}
 	if value, ok := _u.mutation.UserAgent(); ok {
 		_spec.SetField(usagelog.FieldUserAgent, field.TypeString, value)

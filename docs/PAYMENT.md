@@ -23,6 +23,7 @@ Sub2API has a built-in payment system that enables user self-service top-up with
 |----------|----------------|-------------|
 | **EasyPay** | Alipay, WeChat Pay | Third-party aggregation via EasyPay protocol |
 | **Alipay (Direct)** | Desktop QR code, mobile Alipay redirect | Direct integration with Alipay Open Platform, returning desktop QR codes and mobile WAP/app launch links |
+| **Alipay (Manual)** | Static payment QR code | Users pay by QR code; an administrator verifies the received amount and confirms the order; CNY only |
 | **WeChat Pay (Direct)** | Native QR, H5, MP/JSAPI Pay | Direct integration with WeChat Pay APIv3 with environment-aware routing |
 | **Stripe** | Card, Alipay, WeChat Pay, Link, etc. | International payments, multi-currency support |
 
@@ -130,6 +131,19 @@ Direct integration with Alipay Open Platform. Mobile flows return an Alipay WAP/
 | **Private Key** | RSA2 application private key | Yes |
 | **Alipay Public Key** | Alipay public key | Yes |
 
+### Alipay (Manual)
+
+Manual Alipay uses a static payment QR code configured for the provider instance. It does not call the Alipay API and does not use a webhook. Users may enter any valid positive top-up amount with at most two decimal places, subject to the global and provider-instance min/max limits.
+
+Manual Alipay also supports subscription plans. A subscription order must use an active CNY-priced plan. After the user pays, an administrator enters the received amount in the order details; it must exactly match the order's payable amount. Confirmation marks the order paid and reuses the normal balance or subscription fulfillment path. Expired, already-processed, or mismatched orders do not grant entitlements.
+
+Setup:
+
+1. Add an **Alipay (Manual)** provider instance in Provider Management.
+2. Configure its static payment QR code and any per-instance amount limits.
+3. The user creates a top-up or subscription order and scans the QR code.
+4. An administrator verifies the payment and confirms the order from the admin order details page.
+
 ### WeChat Pay (Direct)
 
 Direct integration with WeChat Pay APIv3. Supports Native QR code payment, H5 payment, and MP/JSAPI payment inside the WeChat environment.
@@ -193,6 +207,7 @@ When adding a provider, the system auto-generates callback URLs from your site d
 |----------|-------------|
 | **EasyPay** | `https://your-domain.com/api/v1/payment/webhook/easypay` |
 | **Alipay (Direct)** | `https://your-domain.com/api/v1/payment/webhook/alipay` |
+| **Alipay (Manual)** | None (administrator confirmation) |
 | **WeChat Pay (Direct)** | `https://your-domain.com/api/v1/payment/webhook/wxpay` |
 | **Stripe** | `https://your-domain.com/api/v1/payment/webhook/stripe` |
 
@@ -211,7 +226,7 @@ When adding a provider, the system auto-generates callback URLs from your site d
 - Callback URLs must use **HTTPS** (required by Stripe, strongly recommended for others)
 - Ensure your firewall allows callback requests from payment platforms
 - The system automatically verifies callback signatures to prevent forgery
-- Balance top-up is processed automatically upon successful payment — no manual intervention needed
+- Successful payments automatically fulfill balance top-ups; manual Alipay orders are the exception and require administrator confirmation
 
 ---
 
@@ -229,7 +244,8 @@ User selects amount and payment method
        ▼
   User completes payment
   ├─ EasyPay     → QR code / H5 redirect
-  ├─ Alipay      → Desktop QR payload (Face-to-Face preferred, Website Pay fallback) / mobile Alipay redirect
+  ├─ Alipay (Direct)   → Desktop QR payload (Face-to-Face preferred, Website Pay fallback) / mobile Alipay redirect
+  ├─ Alipay (Manual)   → Static payment QR code → administrator verifies and confirms
   ├─ WeChat Pay  → Desktop Native QR / non-WeChat H5 / in-WeChat JSAPI
   └─ Stripe      → Payment Element (card/Alipay/WeChat/etc.)
        │
@@ -274,7 +290,7 @@ If you previously used [Sub2ApiPay](https://github.com/touwaeriol/sub2apipay) as
 | Payment Methods | EasyPay, Alipay, WeChat, Stripe | Same |
 | Configuration | Environment variables + separate admin UI | Unified in Sub2API admin dashboard |
 | Top-up Integration | Via Admin API callback | Internal processing, more reliable |
-| Subscription Plans | Supported | Not yet (planned) |
+| Subscription Plans | Supported | Supported (manual Alipay requires CNY-priced plans) |
 | Order Management | Separate admin interface | Integrated in Sub2API admin dashboard |
 
 ### Migration Steps

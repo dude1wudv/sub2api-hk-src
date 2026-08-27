@@ -772,7 +772,7 @@ func TestRelay_OnTurnComplete_UsesExplicitFirstTurnStartedAt(t *testing.T) {
 	responseCreateAt := time.Date(2026, time.August, 17, 9, 59, 59, 0, time.UTC)
 	relayStartedAt := responseCreateAt.Add(time.Second)
 	var turn RelayTurnResult
-	result, relayExit := Relay(
+	_, relayExit := Relay(
 		context.Background(),
 		clientConn,
 		upstreamConn,
@@ -786,10 +786,6 @@ func TestRelay_OnTurnComplete_UsesExplicitFirstTurnStartedAt(t *testing.T) {
 
 	require.Nil(t, relayExit)
 	require.Equal(t, responseCreateAt, turn.StartedAt)
-	require.NotNil(t, turn.FirstResponseMs)
-	require.Equal(t, 1000, *turn.FirstResponseMs)
-	require.NotNil(t, result.FirstResponseMs)
-	require.Equal(t, 0, *result.FirstResponseMs)
 }
 
 func TestRelay_OnTurnComplete_UsesSubsequentResponseCreateTimeAcrossPricingBoundary(t *testing.T) {

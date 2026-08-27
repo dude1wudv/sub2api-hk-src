@@ -48,7 +48,7 @@
             <div class="card p-6">
               <AmountInput
                 v-model="amount"
-                :amounts="selectedMethod === 'alipay_manual' ? [5, 10, 20] : [10, 20, 50, 100, 200, 500, 1000, 2000, 5000]"
+                :amounts="[10, 20, 50, 100, 200, 500, 1000, 2000, 5000]"
                 :min="globalMinAmount"
                 :max="globalMaxAmount"
               />
@@ -563,7 +563,6 @@ const planGridClass = computed(() => {
 // Check if an amount fits a method's [min, max]. 0 = no limit.
 function amountFitsMethod(amt: number, methodType: string): boolean {
   if (amt <= 0) return true
-  if (methodType === 'alipay_manual' && ![5, 10, 20].includes(amt)) return false
   const ml = visibleMethods.value[methodType]
   if (!ml) return false
   if (ml.single_min > 0 && amt < ml.single_min) return false

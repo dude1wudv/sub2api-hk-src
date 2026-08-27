@@ -89,14 +89,13 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		selectedCurrency = paymentProviderConfigCurrency(sel.ProviderKey, sel.Config)
 	}
 	if req.PaymentType == payment.TypeAlipayManual {
-		if plan == nil {
-			return nil, infraerrors.BadRequest("ALIPAY_MANUAL_PLAN_REQUIRED", "manual Alipay requires a subscription plan")
-		}
 		if selectedCurrency != payment.DefaultPaymentCurrency {
 			return nil, infraerrors.BadRequest("ALIPAY_MANUAL_CURRENCY_INVALID", "manual Alipay requires a CNY provider instance")
 		}
-		payAmountStr = payment.FormatAmountForCurrency(plan.Price, payment.DefaultPaymentCurrency)
-		payAmount = plan.Price
+		if plan != nil {
+			payAmountStr = payment.FormatAmountForCurrency(plan.Price, payment.DefaultPaymentCurrency)
+			payAmount = plan.Price
+		}
 	} else if selectedCurrency != methodCurrency {
 		payAmountStr, payAmount, err = calculateCreateOrderPayAmountForOrderType(limitAmount, feeRate, selectedCurrency, req.OrderType, cfg.SubscriptionUSDToCNYRate)
 		if err != nil {

@@ -9,8 +9,26 @@ import (
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/stretchr/testify/require"
 )
 
+func TestCalculateCreateOrderPayAmountAllowsArbitraryCNYManualAmount(t *testing.T) {
+	t.Parallel()
+
+	amountStr, amount, err := calculateCreateOrderPayAmountForOrderType(37.25, 0, "CNY", payment.OrderTypeBalance, 0)
+	require.NoError(t, err)
+	require.Equal(t, "37.25", amountStr)
+	require.InDelta(t, 37.25, amount, 1e-9)
+}
+
+func TestCalculateSubscriptionManualAlipayAmountUsesPlanPrice(t *testing.T) {
+	t.Parallel()
+
+	amountStr, amount, err := calculateCreateOrderPayAmountForOrderType(88.8, 0, "CNY", payment.OrderTypeSubscription, 7.15)
+	require.NoError(t, err)
+	require.Equal(t, "88.80", amountStr)
+	require.InDelta(t, 88.8, amount, 1e-9)
+}
 func TestShouldUseAlipayMobilePrecreate(t *testing.T) {
 	t.Parallel()
 

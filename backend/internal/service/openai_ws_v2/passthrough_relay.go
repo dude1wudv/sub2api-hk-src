@@ -43,7 +43,6 @@ type RelayResult struct {
 	RequestID               string
 	TerminalEventType       string
 	FirstTokenMs            *int
-	FirstResponseMs         *int
 	Duration                time.Duration
 	ClientToUpstreamFrames  int64
 	UpstreamToClientFrames  int64
@@ -61,7 +60,6 @@ type RelayTurnResult struct {
 	StartedAt             time.Time
 	Duration              time.Duration
 	FirstTokenMs          *int
-	FirstResponseMs       *int
 }
 
 type RelayExit struct {
@@ -113,7 +111,6 @@ type relayState struct {
 	responseConflict        bool
 	terminalEventType       string
 	firstTokenMs            *int
-	firstResponseMs         *int
 	turnTimingByID          map[string]*relayTurnTiming
 	activeTurn              *relayTurnTiming
 	pendingBareError        *observedUpstreamEvent
@@ -137,14 +134,12 @@ type observedUpstreamEvent struct {
 	responseServiceTier string
 	duration            time.Duration
 	firstToken          *int
-	firstResponse       *int
 }
 
 type relayTurnTiming struct {
 	startAt               time.Time
 	requestStartAt        time.Time
 	firstTokenMs          *int
-	firstResponseMs       *int
 	firstResponseModel    string
 	terminalResponseModel string
 	responseModelConflict bool
@@ -738,13 +733,6 @@ func observeUpstreamMessage(
 	}
 	now := nowFn()
 
-	if state.firstResponseMs == nil {
-		ms := int(now.Sub(startAt).Milliseconds())
-		if ms >= 0 {
-			state.firstResponseMs = &ms
-		}
-	}
-
 	if state.firstTokenMs == nil && isTokenEvent(eventType, message) {
 		ms := int(now.Sub(startAt).Milliseconds())
 		if ms >= 0 {
@@ -774,16 +762,6 @@ func observeUpstreamMessage(
 		}
 	} else {
 		turnTiming = state.activeTurn
-	}
-	if turnTiming != nil && turnTiming.firstResponseMs == nil {
-		requestStartAt := turnTiming.requestStartAt
-		if requestStartAt.IsZero() {
-			requestStartAt = startAt
-		}
-		ms := int(now.Sub(requestStartAt).Milliseconds())
-		if ms >= 0 {
-			turnTiming.firstResponseMs = &ms
-		}
 	}
 	observeRelayTurnResponseModel(turnTiming, firstRelayResponseModel(message), isTerminalEvent(eventType))
 	if !isTerminalEvent(eventType) {
@@ -859,7 +837,6 @@ func finalizeObservedRelayTerminal(state *relayState, observed observedUpstreamE
 			observed.startedAt = turnTiming.startAt
 			observed.duration = duration
 			observed.firstToken = openAIWSRelayCloneIntPtr(turnTiming.firstTokenMs)
-			observed.firstResponse = openAIWSRelayCloneIntPtr(turnTiming.firstResponseMs)
 		}
 	} else {
 		state.consumePendingTurnStartedAt()
@@ -895,7 +872,6 @@ func emitTurnComplete(
 		StartedAt:             observed.startedAt,
 		Duration:              observed.duration,
 		FirstTokenMs:          openAIWSRelayCloneIntPtr(observed.firstToken),
-		FirstResponseMs:       openAIWSRelayCloneIntPtr(observed.firstResponse),
 	})
 }
 
@@ -1233,7 +1209,6 @@ func enrichResult(result *RelayResult, state *relayState, duration time.Duration
 	result.RequestID = state.lastResponseID
 	result.TerminalEventType = state.terminalEventType
 	result.FirstTokenMs = state.firstTokenMs
-	result.FirstResponseMs = state.firstResponseMs
 }
 
 func (s *relayState) setRequestModel(model string) {

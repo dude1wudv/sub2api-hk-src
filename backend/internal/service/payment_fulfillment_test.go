@@ -837,6 +837,28 @@ func TestHasPaymentSubscriptionOrderNoteRequiresIndependentExactLine(t *testing.
 	require.False(t, hasPaymentSubscriptionOrderNote("prefix payment order 42 suffix", "payment order 42"))
 }
 
+func TestConfirmManualAlipayPaymentRejectsAmountMismatch(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	order := createPaymentFulfillmentSubscriptionOrder(t, ctx, client, OrderStatusPending, time.Now())
+	order, err := client.PaymentOrder.UpdateOneID(order.ID).
+		SetProviderKey(payment.TypeAlipayManual).
+		SetOrderType(payment.OrderTypeBalance).
+		ClearPlanID().
+		ClearSubscriptionGroupID().
+		ClearSubscriptionDays().
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc := &PaymentService{entClient: client}
+	err = svc.ConfirmManualAlipayPayment(ctx, order.ID, "79.99", "", "admin:1")
+	require.Error(t, err)
+	require.Equal(t, "PAYMENT_AMOUNT_MISMATCH", infraerrors.Reason(err))
+	reloaded, err := client.PaymentOrder.Get(ctx, order.ID)
+	require.NoError(t, err)
+	require.Equal(t, OrderStatusPending, reloaded.Status)
+}
+
 func createPaymentFulfillmentSubscriptionOrder(
 	t *testing.T,
 	ctx context.Context,

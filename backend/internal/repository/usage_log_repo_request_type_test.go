@@ -76,7 +76,6 @@ func TestUsageLogRepositoryCreateSyncRequestTypeAndLegacyFields(t *testing.T) {
 			true,
 			sqlmock.AnyArg(), // duration_ms
 			sqlmock.AnyArg(), // first_token_ms
-			sqlmock.AnyArg(), // first_response_ms
 			sqlmock.AnyArg(), // user_agent
 			sqlmock.AnyArg(), // ip_address
 			log.ImageCount,
@@ -169,7 +168,6 @@ func TestUsageLogRepositoryCreate_PersistsServiceTier(t *testing.T) {
 			false,
 			sqlmock.AnyArg(), // duration_ms
 			sqlmock.AnyArg(), // first_token_ms
-			sqlmock.AnyArg(), // first_response_ms
 			sqlmock.AnyArg(), // user_agent
 			sqlmock.AnyArg(), // ip_address
 			log.ImageCount,
@@ -279,11 +277,11 @@ func TestPrepareUsageLogInsert_PersistsImageSizeMetadata(t *testing.T) {
 		CreatedAt:          time.Date(2025, 1, 6, 12, 0, 0, 0, time.UTC),
 	})
 
-	require.Equal(t, sql.NullString{String: imageSize, Valid: true}, prepared.args[39])
-	require.Equal(t, sql.NullString{String: inputSize, Valid: true}, prepared.args[40])
-	require.Equal(t, sql.NullString{String: outputSize, Valid: true}, prepared.args[41])
-	require.Equal(t, sql.NullString{String: source, Valid: true}, prepared.args[42])
-	breakdownJSON, ok := prepared.args[43].(string)
+	require.Equal(t, sql.NullString{String: imageSize, Valid: true}, prepared.args[38])
+	require.Equal(t, sql.NullString{String: inputSize, Valid: true}, prepared.args[39])
+	require.Equal(t, sql.NullString{String: outputSize, Valid: true}, prepared.args[40])
+	require.Equal(t, sql.NullString{String: source, Valid: true}, prepared.args[41])
+	breakdownJSON, ok := prepared.args[42].(string)
 	require.True(t, ok)
 	require.JSONEq(t, `{"1K":1,"4K":1}`, breakdownJSON)
 }
@@ -818,7 +816,6 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			false,
 			sql.NullInt64{},
 			sql.NullInt64{},
-			sql.NullInt64{}, // first_response_ms
 			sql.NullString{},
 			sql.NullString{},
 			2,
@@ -896,7 +893,6 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			false, // legacy openai ws
 			sql.NullInt64{},
 			sql.NullInt64{},
-			sql.NullInt64{}, // first_response_ms
 			sql.NullString{},
 			sql.NullString{},
 			0,
@@ -957,7 +953,6 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			false,
 			sql.NullInt64{},
 			sql.NullInt64{},
-			sql.NullInt64{}, // first_response_ms
 			sql.NullString{},
 			sql.NullString{},
 			0,
@@ -1018,7 +1013,6 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			false,
 			sql.NullInt64{},
 			sql.NullInt64{},
-			sql.NullInt64{}, // first_response_ms
 			sql.NullString{},
 			sql.NullString{},
 			0,
