@@ -21,13 +21,13 @@ func TestCalculateCreateOrderPayAmountAllowsArbitraryCNYManualAmount(t *testing.
 	require.InDelta(t, 37.25, amount, 1e-9)
 }
 
-func TestCalculateSubscriptionManualAlipayAmountUsesPlanPrice(t *testing.T) {
+func TestCalculateSubscriptionPaymentAmountConvertsCNY(t *testing.T) {
 	t.Parallel()
 
 	amountStr, amount, err := calculateCreateOrderPayAmountForOrderType(88.8, 0, "CNY", payment.OrderTypeSubscription, 7.15)
 	require.NoError(t, err)
-	require.Equal(t, "88.80", amountStr)
-	require.InDelta(t, 88.8, amount, 1e-9)
+	require.Equal(t, "634.92", amountStr)
+	require.InDelta(t, 634.92, amount, 1e-9)
 }
 func TestShouldUseAlipayMobilePrecreate(t *testing.T) {
 	t.Parallel()
