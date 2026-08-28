@@ -797,114 +797,6 @@ func TestForwardAsRawChatCompletions_StreamReadErrorAfterOutputFailsRequest(t *t
 	require.Contains(t, rec.Body.String(), `"content":"partial"`)
 }
 
-func TestForwardAsRawChatCompletions_IdleTimeoutAfterOutputFailsRequest(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	body := []byte(`{"model":"deepseek-v4-pro","messages":[{"role":"user","content":"hello"}],"stream":true}`)
-	rec := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(rec)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
-	c.Request.Header.Set("Content-Type", "application/json")
-
-	reader, writer := io.Pipe()
-	writeDone := make(chan error, 1)
-	go func() {
-		_, err := io.WriteString(writer, `data: {"id":"chatcmpl_idle","object":"chat.completion.chunk","model":"deepseek-v4-pro","choices":[{"index":0,"delta":{"content":"partial answer before upstream stalls"},"finish_reason":null}]}`+"\n\n")
-		writeDone <- err
-	}()
-	defer writer.Close()
-
-	upstream := &httpUpstreamRecorder{resp: &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     http.Header{"Content-Type": []string{"text/event-stream"}, "x-request-id": []string{"rid_idle"}},
-		Body:       reader,
-	}}
-	cfg := rawChatCompletionsTestConfig()
-	cfg.Gateway.StreamDataIntervalTimeout = 1
-	svc := &OpenAIGatewayService{cfg: cfg, httpUpstream: upstream}
-
-	started := time.Now()
-	result, err := svc.forwardAsRawChatCompletions(context.Background(), c, rawChatCompletionsTestAccount(), body, "")
-	elapsed := time.Since(started)
-	require.Error(t, err)
-	require.NotNil(t, result)
-	require.ErrorIs(t, err, ErrOpenAIUpstreamStreamIdleTimeout)
-	require.GreaterOrEqual(t, elapsed, 900*time.Millisecond)
-	require.Less(t, elapsed, 3*time.Second)
-	code, _, ok := OpenAIUpstreamStreamReadErrorDetails(err)
-	require.True(t, ok)
-	require.Equal(t, OpenAIUpstreamStreamReadErrorCode, code)
-	require.Contains(t, rec.Body.String(), `"content":"partial answer before upstream stalls"`)
-	require.NotContains(t, rec.Body.String(), "data: [DONE]")
-	require.NoError(t, <-writeDone)
-}
-
-func TestForwardAsRawChatCompletions_IdleTimeoutBeforeOutputTriggersFailover(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	body := []byte(`{"model":"deepseek-v4-pro","messages":[{"role":"user","content":"hello"}],"stream":true}`)
-	rec := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(rec)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
-	c.Request.Header.Set("Content-Type", "application/json")
-
-	reader, writer := io.Pipe()
-	defer writer.Close()
-	upstream := &httpUpstreamRecorder{resp: &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     http.Header{"Content-Type": []string{"text/event-stream"}, "x-request-id": []string{"rid_idle_empty"}},
-		Body:       reader,
-	}}
-	cfg := rawChatCompletionsTestConfig()
-	cfg.Gateway.StreamDataIntervalTimeout = 1
-	svc := &OpenAIGatewayService{cfg: cfg, httpUpstream: upstream}
-
-	started := time.Now()
-	result, err := svc.forwardAsRawChatCompletions(context.Background(), c, rawChatCompletionsTestAccount(), body, "")
-	elapsed := time.Since(started)
-	require.Error(t, err)
-	require.Nil(t, result)
-	require.GreaterOrEqual(t, elapsed, 900*time.Millisecond)
-	require.Less(t, elapsed, 3*time.Second)
-	var failoverErr *UpstreamFailoverError
-	require.ErrorAs(t, err, &failoverErr)
-	require.Equal(t, http.StatusBadGateway, failoverErr.StatusCode)
-	require.Contains(t, string(failoverErr.ResponseBody), OpenAIUpstreamStreamReadErrorCode)
-	require.False(t, c.Writer.Written())
-}
-
-func TestScanRawChatCompletionsSSE_AnyUpstreamBytesResetIdleTimer(t *testing.T) {
-	reader, writer := io.Pipe()
-	defer writer.Close()
-
-	writeDone := make(chan error, 1)
-	go func() {
-		for index, part := range []string{"data:", " ", "{}\n\n"} {
-			if index > 0 {
-				time.Sleep(180 * time.Millisecond)
-			}
-			if _, err := io.WriteString(writer, part); err != nil {
-				writeDone <- err
-				return
-			}
-		}
-		writeDone <- writer.Close()
-	}()
-
-	svc := &OpenAIGatewayService{cfg: rawChatCompletionsTestConfig()}
-	var lines []string
-	started := time.Now()
-	err := svc.scanRawChatCompletionsSSE(reader, 300*time.Millisecond, func(line string) {
-		lines = append(lines, line)
-	})
-	elapsed := time.Since(started)
-	require.NoError(t, err)
-	require.NoError(t, <-writeDone)
-	require.GreaterOrEqual(t, elapsed, 300*time.Millisecond, "total duration must exceed one idle window")
-	require.Less(t, elapsed, time.Second)
-	require.Equal(t, []string{"data: {}", ""}, lines)
-}
-
 // 边界：缺 [DONE] 但收到了 usage 帧 —— 生成已完整，只是尾巴丢失。必须继续按成功
 // 计费，否则会误伤那些跑完就直接 EOF 的兼容上游并白送 token。
 func TestForwardAsRawChatCompletions_MissingDoneWithUsageStillSucceeds(t *testing.T) {
@@ -1038,10 +930,8 @@ func TestForwardAsRawChatCompletions_ClientCancelTruncationStillBills(t *testing
 		},
 	}}
 
-	cfg := rawChatCompletionsTestConfig()
-	cfg.Gateway.StreamDataIntervalTimeout = 1
 	svc := &OpenAIGatewayService{
-		cfg:          cfg,
+		cfg:          rawChatCompletionsTestConfig(),
 		httpUpstream: upstream,
 	}
 

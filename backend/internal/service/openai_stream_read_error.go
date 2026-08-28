@@ -23,10 +23,6 @@ const (
 // EOF — without a read error — before any terminal signal arrived.
 var ErrOpenAIUpstreamStreamTruncated = errors.New("upstream stream ended before any terminal chunk")
 
-// ErrOpenAIUpstreamStreamIdleTimeout marks a raw CC stream whose upstream body
-// produced no bytes within gateway.stream_data_interval_timeout.
-var ErrOpenAIUpstreamStreamIdleTimeout = errors.New("upstream stream data interval timeout")
-
 type openAIUpstreamStreamReadError struct {
 	cause         error
 	clientCode    string

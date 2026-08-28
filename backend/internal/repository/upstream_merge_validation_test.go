@@ -23,7 +23,7 @@ import (
 
 const (
 	productionHistoryMigrationCount = 278
-	candidateMigrationCount         = 289
+	candidateMigrationCount         = 291
 )
 
 var candidateOnlyMigrations = []string{
@@ -38,6 +38,8 @@ var candidateOnlyMigrations = []string{
 	"228_channel_pricing_multipliers.sql",
 	"229_plugins.sql",
 	"230_plugin_artifacts.sql",
+	"231_add_usage_log_requested_reasoning_effort.sql",
+	"231_user_restrict_public_groups.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {

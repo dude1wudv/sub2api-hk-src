@@ -277,6 +277,7 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 	}
 	requestID := resp.Header.Get("x-request-id")
 	writeStreamHeaders := s.newStreamHeaderWriter(c, resp.Header)
+	scanner := s.newUpstreamSSEScanner(resp.Body)
 
 	var usage OpenAIUsage
 	var firstTokenMs *int
@@ -318,7 +319,8 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 		}
 	}
 
-	processLine := func(line string) {
+	for scanner.Scan() {
+		line := scanner.Text()
 		refusalDetector.ObserveSSELine(line)
 		if payload, ok := extractOpenAISSEDataLine(line); ok {
 			trimmedPayload := strings.TrimSpace(payload)
@@ -343,14 +345,12 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 			if !clientDisconnected && clientOutputStarted {
 				c.Writer.Flush()
 			}
-			return
+			continue
 		}
 		if !clientDisconnected && clientOutputStarted {
 			c.Writer.Flush()
 		}
 	}
-
-	scanErr := s.scanRawChatCompletionsSSE(resp.Body, s.rawChatCompletionsStreamIdleTimeout(), processLine)
 
 	resultWithUsage := func() *OpenAIForwardResult {
 		return &OpenAIForwardResult{
@@ -370,6 +370,7 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 		}
 	}
 
+	scanErr := scanner.Err()
 	if scanErr != nil && !errors.Is(scanErr, context.Canceled) && !errors.Is(scanErr, context.DeadlineExceeded) {
 		logger.L().Warn("openai chat_completions raw: stream read error",
 			zap.Error(scanErr),
