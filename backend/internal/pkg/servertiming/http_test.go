@@ -64,7 +64,7 @@ func TestWrapRoundTripperRecordsResponseHeaderLatency(t *testing.T) {
 
 func TestWrapRoundTripperUsesContextModuleOverride(t *testing.T) {
 	collector := New(time.Now())
-	ctx := WithDependencyModule(WithCollector(context.Background(), collector), "data-managementd")
+	ctx := WithDependencyModule(WithCollector(context.Background(), collector), "test-module")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://private.example.test/path", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ func TestWrapRoundTripperUsesContextModuleOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	header := collector.HeaderValue(time.Now(), "bypass")
-	if !strings.Contains(header, "dep_data_managementd") {
+	if !strings.Contains(header, "dep_test_module") {
 		t.Fatalf("module override missing from header: %q", header)
 	}
 	if strings.Contains(header, "private.example") {
