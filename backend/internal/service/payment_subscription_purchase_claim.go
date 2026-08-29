@@ -73,3 +73,44 @@ func completeSubscriptionPurchaseClaim(ctx context.Context, client *dbent.Client
 	_, err := client.SubscriptionPurchaseClaim.Update().Where(subscriptionpurchaseclaim.PaymentOrderIDEQ(orderID)).SetStatus(subscriptionPurchaseClaimSucceeded).Save(ctx)
 	return err
 }
+
+// releaseSubscriptionPurchaseClaim allows a user to retry a one-time purchase
+// when the order reached a terminal state before payment was confirmed.
+// Succeeded claims are deliberately immutable.
+func releaseSubscriptionPurchaseClaim(ctx context.Context, client *dbent.Client, orderID int64) error {
+	_, err := client.SubscriptionPurchaseClaim.Delete().
+		Where(
+			subscriptionpurchaseclaim.PaymentOrderIDEQ(orderID),
+			subscriptionpurchaseclaim.StatusEQ(subscriptionPurchaseClaimPending),
+		).
+		Exec(ctx)
+	return err
+}
+
+// transitionPendingOrderAndReleaseClaim commits the unpaid terminal status and
+// pending-claim release together. If either write fails, neither is visible.
+func transitionPendingOrderAndReleaseClaim(ctx context.Context, client *dbent.Client, orderID int64, status string) (int, error) {
+	tx, err := client.Tx(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	txClient := tx.Client()
+	updated, err := txClient.PaymentOrder.Update().
+		Where(paymentorder.IDEQ(orderID), paymentorder.StatusEQ(OrderStatusPending)).
+		SetStatus(status).
+		Save(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if updated > 0 {
+		if err := releaseSubscriptionPurchaseClaim(ctx, txClient, orderID); err != nil {
+			return 0, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return updated, nil
+}

@@ -127,9 +127,9 @@ func (s *PaymentService) cancelCore(ctx context.Context, o *dbent.PaymentOrder, 
 			return checkPaidResultAlreadyPaid, nil
 		}
 	}
-	c, err := s.entClient.PaymentOrder.Update().Where(paymentorder.IDEQ(o.ID), paymentorder.StatusEQ(OrderStatusPending)).SetStatus(fs).Save(ctx)
+	c, err := transitionPendingOrderAndReleaseClaim(ctx, s.entClient, o.ID, fs)
 	if err != nil {
-		return "", fmt.Errorf("update order status: %w", err)
+		return "", fmt.Errorf("update order status and release purchase claim: %w", err)
 	}
 	if c > 0 {
 		auditAction := "ORDER_CANCELLED"

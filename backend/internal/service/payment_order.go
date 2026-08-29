@@ -118,9 +118,9 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	}
 	resp, err := s.invokeProvider(ctx, order, req, cfg, limitAmount, payAmountStr, payAmount, plan, sel)
 	if err != nil {
-		_, _ = s.entClient.PaymentOrder.UpdateOneID(order.ID).
-			SetStatus(OrderStatusFailed).
-			Save(ctx)
+		if _, transitionErr := transitionPendingOrderAndReleaseClaim(ctx, s.entClient, order.ID, OrderStatusFailed); transitionErr != nil {
+			slog.Error("[PaymentService] atomically fail order and release subscription purchase claim", "orderID", order.ID, "error", transitionErr)
+		}
 		return nil, err
 	}
 	return resp, nil

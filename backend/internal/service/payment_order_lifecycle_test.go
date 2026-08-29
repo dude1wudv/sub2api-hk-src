@@ -10,6 +10,7 @@ import (
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/enttest"
+	"github.com/Wei-Shaw/sub2api/ent/subscriptionpurchaseclaim"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/stretchr/testify/require"
@@ -540,6 +541,14 @@ func TestCancelOrderStillClosesUnpaidUpstreamOrder(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
+	claim, err := client.SubscriptionPurchaseClaim.Create().
+		SetUserID(user.ID).
+		SetSubscriptionGroupID(77).
+		SetPaymentOrderID(order.ID).
+		SetStatus(subscriptionPurchaseClaimPending).
+		Save(ctx)
+	require.NoError(t, err)
+
 	registry := payment.NewRegistry()
 	provider := &paymentOrderLifecycleQueryProvider{
 		resp: &payment.QueryOrderResponse{
@@ -565,6 +574,9 @@ func TestCancelOrderStillClosesUnpaidUpstreamOrder(t *testing.T) {
 	reloaded, err := client.PaymentOrder.Get(ctx, order.ID)
 	require.NoError(t, err)
 	require.Equal(t, OrderStatusCancelled, reloaded.Status)
+	require.False(t, client.SubscriptionPurchaseClaim.Query().Where(
+		subscriptionpurchaseclaim.IDEQ(claim.ID),
+	).ExistX(ctx))
 }
 
 func TestReconcilePendingWxpayOrdersBackfillsPaidOrder(t *testing.T) {
