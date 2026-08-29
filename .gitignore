@@ -141,6 +141,7 @@ docs/*
 !docs/COMPOSITE_GROUPS.md
 !docs/PLUGIN_DEVELOPMENT.md
 !docs/channel-monitor-v2-safe-defaults.md
+!docs/HK_PATCH_LAYERS.md
 !docs/legal/
 !docs/legal/*.md
 !docs/screenshots/
@@ -152,6 +153,7 @@ frontend/coverage/
 aicodex
 output/
 .codegraph/
+/deploy_artifacts/
 
 # Vitest / Vite cache at repo root
 .vite/
