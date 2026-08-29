@@ -142,6 +142,13 @@ func (i *PluginPackageInstaller) Install(ctx context.Context, reader io.Reader, 
 	}
 	extracted = true
 
+	// Windows denies renaming an archive while zip.OpenReader still owns an
+	// open handle. Extraction is complete, so release it before committing the
+	// uploaded artifact; the deferred Close remains a harmless fallback.
+	if err := archive.Close(); err != nil {
+		_ = os.RemoveAll(installPath)
+		return nil, fmt.Errorf("关闭插件包归档: %w", err)
+	}
 	artifactPath := filepath.Join(packagesDir, manifest.ID+"-"+manifest.Version+"-"+artifactSHA[:12]+"-"+installNonce+".s2plugin")
 	if err := os.Rename(tempPath, artifactPath); err != nil {
 		_ = os.RemoveAll(installPath)
