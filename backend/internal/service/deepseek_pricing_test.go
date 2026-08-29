@@ -287,21 +287,28 @@ func TestGetModelPricing_DeepseekForcesOfficialRatesOverJSON(t *testing.T) {
 	}
 }
 
-func TestGetModelPricing_UnknownDeepseekMapsToFlash(t *testing.T) {
-	// JSON 含 $0 占位条目（如旧 deepseek-v3-2-251201）：未知 deepseek-* 不再
-	// fail-closed，统一按 flash 价兜底（2.2e-7/6.6e-7/7e-9），不得按 $0 计费。
+func TestGetModelPricing_UnknownDeepseekFailsClosed(t *testing.T) {
+	// Even when a remote catalog contains an unknown or zero-priced DeepSeek
+	// entry, traffic must wait for an explicitly reviewed local price card.
 	pricingSvc := &PricingService{pricingData: map[string]*LiteLLMModelPricing{
 		"deepseek-v3-2-251201": {InputCostPerToken: 0, OutputCostPerToken: 0},
 	}}
 	bs := NewBillingService(&config.Config{}, pricingSvc)
 
-	for _, m := range []string{"deepseek-v3-2-251201", "deepseek-chat", "deepseek-reasoner", "deepseek-foo"} {
-		t.Run(m, func(t *testing.T) {
-			pricing, err := bs.GetModelPricing(m)
+	for _, model := range []string{"deepseek-v3-2-251201", "deepseek-foo"} {
+		t.Run(model, func(t *testing.T) {
+			require.False(t, bs.HasIdentifiedTokenPricing(model))
+			pricing, err := bs.GetModelPricing(model)
+			require.Nil(t, pricing)
+			require.ErrorIs(t, err, ErrModelPricingUnavailable)
+		})
+	}
+
+	for _, model := range []string{"deepseek-chat", "deepseek-reasoner"} {
+		t.Run(model, func(t *testing.T) {
+			pricing, err := bs.GetModelPricing(model)
 			require.NoError(t, err)
-			require.InDelta(t, 2.2e-7, pricing.InputPricePerToken, 1e-15)
-			require.InDelta(t, 6.6e-7, pricing.OutputPricePerToken, 1e-15)
-			require.InDelta(t, 7e-9, pricing.CacheReadPricePerToken, 1e-15)
+			require.InDelta(t, deepseekFlashOffPeakInputPrice, pricing.InputPricePerToken, 1e-15)
 		})
 	}
 }

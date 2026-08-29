@@ -244,14 +244,29 @@ const (
 	deepseekProOffPeakCacheRead     = 2.2e-8  // $0.022 per MTok (cache hit)
 )
 
-// isDeepSeekModel 判断模型名是否为 DeepSeek 模型（大小写不敏感）。
-// 任意 deepseek- 前缀均视为 DeepSeek 模型：官方模型（v4-flash / v4-pro /
-// v4-flash-vision-exp）按各自价卡计价，其余 deepseek-*（含已停服的
-// deepseek-chat / deepseek-reasoner 与未知型号）统一按 flash 价兜底，
-// 避免计费中断；新名字由 fallback warn 日志（每模型每进程一条）暴露，
-// 运营者据此更新价卡。
+// isDeepSeekModel identifies the DeepSeek namespace. It is intentionally
+// broader than the billing allowlist so unknown DeepSeek models can fail closed.
 func isDeepSeekModel(model string) bool {
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(model)), "deepseek-")
+}
+
+// isKnownDeepSeekBillingModel is the explicit money-safety allowlist. New
+// DeepSeek SKUs must receive a reviewed price card before traffic is accepted.
+func isKnownDeepSeekBillingModel(model string) bool {
+	model = strings.ToLower(strings.TrimSpace(model))
+	if model == "deepseek-chat" || model == "deepseek-reasoner" {
+		return true
+	}
+	for _, canonical := range []string{
+		"deepseek-v4-pro",
+		"deepseek-v4-flash",
+		"deepseek-v4-flash-vision-exp",
+	} {
+		if model == canonical || strings.HasPrefix(model, canonical+"-") {
+			return true
+		}
+	}
+	return false
 }
 
 // deepseekPeakMultiplierAt 返回指定时刻的 DeepSeek 官方峰谷定价因子。
@@ -848,11 +863,8 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 		return s.fallbackPrices["gemini-3.6-flash"]
 	}
 
-	// DeepSeek 系列：官方模型 V4 Pro/Flash（含 vision-exp）按各自价卡；
-	// 其余 deepseek-*（含已停服的 deepseek-chat / deepseek-reasoner 与未知型号）
-	// 统一按 flash 价兜底，避免计费中断。新名字由 fallback warn 日志
-	// （每模型每进程一条）暴露，运营者据此更新价卡。
-	// "deepseek-v4-flash-vision-exp" 含 "deepseek-v4-flash" 子串，显式分支置于 flash 之前，语义清晰。
+	// DeepSeek pricing is allowlist-based. Unknown SKUs are rejected by
+	// GetModelPricing before reaching this fallback.
 	if strings.Contains(modelLower, "deepseek-v4-flash-vision-exp") {
 		return s.fallbackPrices["deepseek-v4-flash-vision-exp"]
 	}
@@ -862,7 +874,7 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	if strings.Contains(modelLower, "deepseek-v4-pro") {
 		return s.fallbackPrices["deepseek-v4-pro"]
 	}
-	if strings.HasPrefix(modelLower, "deepseek-") {
+	if modelLower == "deepseek-chat" || modelLower == "deepseek-reasoner" {
 		return s.fallbackPrices["deepseek-v4-flash"]
 	}
 
@@ -1079,6 +1091,9 @@ func (s *BillingService) HasIdentifiedTokenPricing(model string) bool {
 	if model == "" {
 		return false
 	}
+	if isDeepSeekModel(model) && !isKnownDeepSeekBillingModel(model) {
+		return false
+	}
 	if s.pricingService != nil {
 		// 仅有图片价的条目不能用于 token 计费，口径与 GetModelPricing 保持一致。
 		if pricing := s.pricingService.GetIdentifiedModelPricing(model); pricing != nil && !pricing.TokenPricingAbsent {
@@ -1092,7 +1107,10 @@ func (s *BillingService) HasIdentifiedTokenPricing(model string) bool {
 // GetModelPricing 获取模型价格配置
 func (s *BillingService) GetModelPricing(model string) (*ModelPricing, error) {
 	// 标准化模型名称（转小写）
-	model = strings.ToLower(model)
+	model = strings.ToLower(strings.TrimSpace(model))
+	if isDeepSeekModel(model) && !isKnownDeepSeekBillingModel(model) {
+		return nil, fmt.Errorf("%w for unapproved DeepSeek model: %s", ErrModelPricingUnavailable, model)
+	}
 
 	// 1. 优先从动态价格服务获取
 	if s.pricingService != nil {
@@ -1587,8 +1605,8 @@ func (s *BillingService) applyModelSpecificPricingPolicyEx(model string, pricing
 	// DeepSeek 模型：无论 JSON/远端价格表给什么价，一律强制官方低谷价
 	// （2026-08-23 起生效）。这是覆盖远端旧价的关键——远端仓库不可改，生产会先
 	// 拉到旧价，必须在此兜底修正；克隆后再覆盖，避免污染共享 fallbackPrices 指针。
-	// 档位判定：含 "deepseek-v4-pro" 的版本化名称（如 deepseek-v4-pro-0813）归 pro 档，
-	// 其余 deepseek-*（含已停服的 chat/reasoner 与未知型号）统一归 flash 档。
+	// 档位判定：已批准的 deepseek-v4-pro 版本归 pro 档；已批准的
+	// flash、vision、chat/reasoner alias 归 flash 档。未知 SKU 已在入口拒绝。
 	// 高峰时段倍率不在本函数处理，由 calculateTokenCost 按 deepseekPeakMultiplierAt
 	// 对默认价卡另行叠加（分组/渠道自定义定价不叠加）。
 	if forceDeepSeekRates && isDeepSeekModel(model) {

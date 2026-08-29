@@ -69,6 +69,11 @@ type PricingInput struct {
 // 1. 获取基础定价（LiteLLM → Fallback）
 // 2. 如果指定了 GroupID，查找渠道定价并覆盖
 func (r *ModelPricingResolver) Resolve(ctx context.Context, input PricingInput) *ResolvedPricing {
+	// DeepSeek is a fail-closed namespace: local group/channel cards cannot
+	// admit a SKU until it is added to the reviewed billing allowlist.
+	if isDeepSeekModel(input.Model) && !isKnownDeepSeekBillingModel(input.Model) {
+		return &ResolvedPricing{Mode: BillingModeToken}
+	}
 	longContextPricingEnabled := input.Group == nil || input.Group.LongContextPricingEnabled
 	if groupPricing := matchGroupModelPricing(input.Group, input.Model); groupPricing != nil {
 		// Group token cards only override the first-tier / flat rates.
