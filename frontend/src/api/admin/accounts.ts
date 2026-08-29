@@ -124,7 +124,6 @@ export interface AccountSummary {
   codex_7d: AccountUsageWindowSummary
   oauth_pool: AccountQuotaPoolSummary
   free_pool: AccountQuotaPoolSummary
-  grok_pool: AccountQuotaPoolSummary
   recently_used: number
   never_used: number
   proxy_distribution: AccountProxySummary[]

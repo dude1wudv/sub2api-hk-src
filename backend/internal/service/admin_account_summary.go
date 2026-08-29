@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 )
 
 // AccountUsageWindowSummary describes aggregate quota usage for one window.
@@ -67,7 +66,6 @@ type AccountSummary struct {
 	Codex7d           AccountUsageWindowSummary `json:"codex_7d"`
 	OAuthPool         AccountQuotaPoolSummary   `json:"oauth_pool"`
 	FreePool          AccountQuotaPoolSummary   `json:"free_pool"`
-	GrokPool          AccountQuotaPoolSummary   `json:"grok_pool"`
 	RecentlyUsed      int                       `json:"recently_used"`
 	NeverUsed         int                       `json:"never_used"`
 	ProxyDistribution []AccountProxySummary     `json:"proxy_distribution"`
@@ -227,7 +225,7 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 	out := &AccountSummary{ProxyDistribution: []AccountProxySummary{}}
 	proxyStats := map[string]*accountProxyAccumulator{}
 	var fiveHour, sevenDay accountUsageAccumulator
-	var oauthPool, grokPool accountQuotaPoolAccumulator
+	var oauthPool accountQuotaPoolAccumulator
 	for i := range accounts {
 		account := &accounts[i]
 		out.Total++
@@ -269,15 +267,6 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 		if account.IsAPIKeyOrBedrock() && account.IsQuotaExceeded() {
 			out.QuotaExceeded++
 		}
-		if account.IsGrokOAuth() {
-			grokPool.addAccount(available)
-			if value, ok := grokShortWindowUsedPercentFromExtra(account.Extra, now); ok {
-				grokPool.fiveHour.add(value)
-			}
-			if value, ok := grokWeeklyUsedPercentFromExtra(account.Extra); ok {
-				grokPool.sevenDay.add(value)
-			}
-		}
 		if account.Platform != PlatformOpenAI {
 			continue
 		}
@@ -309,7 +298,6 @@ func buildAccountSummary(accounts []Account) *AccountSummary {
 	}
 	out.Codex5h, out.Codex7d = fiveHour.summary(), sevenDay.summary()
 	out.OAuthPool = oauthPool.summary("5h")
-	out.GrokPool = grokPool.summary("7d")
 	out.ProxyDistribution = buildAccountProxySummary(proxyStats)
 	return out
 }
@@ -357,58 +345,6 @@ func buildAccountProxySummary(stats map[string]*accountProxyAccumulator) []Accou
 		return out[i].Name < out[j].Name
 	})
 	return out
-}
-
-func grokShortWindowUsedPercentFromExtra(extra map[string]any, now time.Time) (float64, bool) {
-	snapshot, err := grokQuotaSnapshotFromExtra(extra)
-	if err != nil || snapshot == nil {
-		return 0, false
-	}
-	if value, ok := grokQuotaWindowUsedPercent(snapshot.Requests, now); ok {
-		return value, true
-	}
-	return grokQuotaWindowUsedPercent(snapshot.Tokens, now)
-}
-
-func grokQuotaWindowUsedPercent(window *xai.QuotaWindow, now time.Time) (float64, bool) {
-	if window == nil || window.Limit == nil || *window.Limit <= 0 {
-		return 0, false
-	}
-	if window.ResetAt != "" {
-		if resetAt, err := parseTime(window.ResetAt); err == nil && !now.Before(resetAt) {
-			return 0, true
-		}
-	}
-	remaining := int64(0)
-	if window.Remaining != nil {
-		remaining = *window.Remaining
-		if remaining < 0 {
-			remaining = 0
-		}
-	}
-	used := float64(*window.Limit - remaining)
-	if used < 0 {
-		used = 0
-	}
-	return used / float64(*window.Limit) * 100, true
-}
-
-func grokWeeklyUsedPercentFromExtra(extra map[string]any) (float64, bool) {
-	billing, err := grokBillingSnapshotFromExtra(extra)
-	if err == nil && billing != nil {
-		if billing.UsagePercent != nil {
-			return *billing.UsagePercent, true
-		}
-		if billing.UsedPercent != nil {
-			return *billing.UsedPercent, true
-		}
-	}
-	if raw, ok := extra["grok_billing_snapshot"].(map[string]any); ok {
-		if utilization, exists := raw["utilization"]; exists {
-			return parseExtraFloat64(utilization), true
-		}
-	}
-	return 0, false
 }
 
 const (

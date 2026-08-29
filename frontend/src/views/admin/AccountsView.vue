@@ -328,9 +328,9 @@
             role="button"
             tabindex="0"
             :class="['quota-pool-card quota-pool-card-oauth', { 'quota-pool-card-active': activeQuotaPool === 'oauth' }]"
-            @click="openQuotaPool('oauth')"
-            @keydown.enter.prevent="openQuotaPool('oauth')"
-            @keydown.space.prevent="openQuotaPool('oauth')"
+            @click="openQuotaPool"
+            @keydown.enter.prevent="openQuotaPool"
+            @keydown.space.prevent="openQuotaPool"
           >
             <div class="flex items-start justify-between gap-3">
               <div>
@@ -361,45 +361,6 @@
               <span>{{ t('admin.accounts.quotaPools.accounts', { total: quotaPoolSummaryView?.oauth_pool?.total ?? 0, available: quotaPoolSummaryView?.oauth_pool?.available ?? 0 }) }}</span>
               <span>{{ t('admin.accounts.summary.sampled', { count: quotaPoolSummaryView?.oauth_pool?.sampled ?? 0 }) }}</span>
               <span>{{ t('admin.accounts.summary.exhausted', { count: quotaPoolSummaryView?.oauth_pool?.exhausted ?? 0 }) }}</span>
-            </div>
-          </div>
-          <div
-            role="button"
-            tabindex="0"
-            :class="['quota-pool-card quota-pool-card-grok', { 'quota-pool-card-active': activeQuotaPool === 'grok' }]"
-            @click="openQuotaPool('grok')"
-            @keydown.enter.prevent="openQuotaPool('grok')"
-            @keydown.space.prevent="openQuotaPool('grok')"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="quota-pool-label">{{ t('admin.accounts.quotaPools.grokTitle') }}</p>
-                <p class="quota-pool-value">{{ formatSummaryPercent(quotaPoolSummaryView?.grok_pool?.remaining_percent) }}</p>
-              </div>
-              <div class="quota-pool-enter" :title="t('admin.accounts.quotaPools.openGrok')">
-                <Icon name="arrowRight" size="sm" />
-              </div>
-            </div>
-            <div class="quota-pool-windows">
-              <div class="quota-pool-window-row">
-                <span>5h</span>
-                <div class="quota-pool-meter">
-                  <div class="quota-pool-meter-fill bg-gray-700 dark:bg-gray-300" :style="{ width: summaryMeterWidth(quotaPoolSummaryView?.grok_pool?.remaining_5h_percent) }"></div>
-                </div>
-                <strong>{{ formatSummaryPercent(quotaPoolSummaryView?.grok_pool?.remaining_5h_percent) }}</strong>
-              </div>
-              <div class="quota-pool-window-row">
-                <span>7d</span>
-                <div class="quota-pool-meter">
-                  <div class="quota-pool-meter-fill bg-gray-700 dark:bg-gray-300" :style="{ width: summaryMeterWidth(quotaPoolSummaryView?.grok_pool?.remaining_7d_percent) }"></div>
-                </div>
-                <strong>{{ formatSummaryPercent(quotaPoolSummaryView?.grok_pool?.remaining_7d_percent) }}</strong>
-              </div>
-            </div>
-            <div class="quota-pool-stats">
-              <span>{{ t('admin.accounts.quotaPools.accounts', { total: quotaPoolSummaryView?.grok_pool?.total ?? 0, available: quotaPoolSummaryView?.grok_pool?.available ?? 0 }) }}</span>
-              <span>{{ t('admin.accounts.summary.sampled', { count: quotaPoolSummaryView?.grok_pool?.sampled ?? 0 }) }}</span>
-              <span>{{ t('admin.accounts.summary.exhausted', { count: quotaPoolSummaryView?.grok_pool?.exhausted ?? 0 }) }}</span>
             </div>
           </div>
           <div class="flex justify-end">
@@ -1402,27 +1363,23 @@ const formatClockTime = (date: Date) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 }
 
-type QuotaPoolKind = 'oauth' | 'grok'
-
 const tokyoProxyHealth = computed<AccountProxySummary[]>(() => {
   const proxyRows = accountSummary.value?.proxy_distribution ?? []
   const tokyo = proxyRows.filter((proxy) => /tokyo|東京|日本|japan|jp/i.test(proxy.name))
   return (tokyo.length > 0 ? tokyo : proxyRows).slice(0, 4)
 })
 
-const activeQuotaPool = computed<QuotaPoolKind | null>(() => {
+const activeQuotaPool = computed<'oauth' | null>(() => {
   const requestParams = params as any
   if (requestParams.type !== 'oauth') return null
-  if (requestParams.platform === 'openai') return 'oauth'
-  if (requestParams.platform === 'grok') return 'grok'
-  return null
+  return requestParams.platform === 'openai' ? 'oauth' : null
 })
 
 const quotaPoolSummaryView = computed(() => quotaPoolSummary.value ?? accountSummary.value)
 
-const openQuotaPool = (kind: QuotaPoolKind) => {
+const openQuotaPool = () => {
   const requestParams = params as any
-  requestParams.platform = kind === 'grok' ? 'grok' : 'openai'
+  requestParams.platform = 'openai'
   requestParams.type = 'oauth'
   requestParams.status = ''
   requestParams.privacy_mode = ''
@@ -1504,7 +1461,7 @@ const refreshAccountSummaries = async () => {
     privacy_mode: params.privacy_mode || undefined
   }
   try {
-    // 配额池卡片不带列表过滤，保证 OpenAI / Grok 两张池卡在任意筛选下都有数据。
+    // 配额池卡片不带列表过滤，保证 OpenAI OAuth 池在任意筛选下都有数据。
     const [summary, poolSummary, oauth] = await Promise.all([
       adminAPI.accounts.getSummary(filters),
       adminAPI.accounts.getSummary({}),
@@ -3040,10 +2997,6 @@ onUnmounted(() => {
 
 .quota-pool-card-oauth {
   @apply border-emerald-100 dark:border-emerald-900/40;
-}
-
-.quota-pool-card-grok {
-  @apply border-gray-400 bg-gray-50 hover:border-gray-500 hover:bg-gray-100 dark:border-dark-600 dark:bg-dark-900/60 dark:hover:border-dark-500 dark:hover:bg-dark-900;
 }
 
 .quota-pool-card-active {

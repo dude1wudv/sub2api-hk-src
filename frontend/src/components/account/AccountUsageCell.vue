@@ -1116,6 +1116,12 @@ interface GrokQuotaBarInfo {
 }
 
 const grokBilling = computed(() => usageInfo.value?.grok_billing || null)
+const grokLocalUsage7d = computed(() => (
+  usageInfo.value?.grok_local_usage_7d || usageInfo.value?.seven_day?.window_stats || null
+))
+const grokLocalUsageMonthly = computed(() => (
+  usageInfo.value?.grok_local_usage_monthly || usageInfo.value?.thirty_day?.window_stats || null
+))
 const grokWeeklyBillingBar = computed((): GrokQuotaBarInfo | null => {
   const billing = grokBilling.value
   if (billing?.period_type?.toLowerCase() !== 'weekly' || billing.usage_percent == null) {
@@ -1124,7 +1130,7 @@ const grokWeeklyBillingBar = computed((): GrokQuotaBarInfo | null => {
   return {
     utilization: Math.min(100, Math.max(0, billing.usage_percent)),
     resetsAt: billing.period_end || null,
-    windowStats: usageInfo.value?.seven_day?.window_stats || null
+    windowStats: grokLocalUsage7d.value
   }
 })
 // Monthly used/limit % from billing probe (used_percent or derived from cents).
@@ -1149,7 +1155,7 @@ const grokMonthlyBillingBar = computed((): GrokQuotaBarInfo | null => {
   return {
     utilization: Math.min(100, Math.max(0, utilization)),
     resetsAt: billing.billing_period_end || billing.period_end || null,
-    windowStats: usageInfo.value?.thirty_day?.window_stats || null
+    windowStats: grokLocalUsageMonthly.value
   }
 })
 const formatGrokMoney = (value?: number | null) => {

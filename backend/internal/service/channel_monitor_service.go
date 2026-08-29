@@ -954,11 +954,7 @@ func applyMonitorUpdate(existing *ChannelMonitor, p ChannelMonitorUpdateParams) 
 	} else if checkMode != MonitorCheckModeQuota && strings.TrimSpace(existing.PrimaryModel) == MonitorDefaultQuotaModel {
 		// A quota-only monitor may carry the virtual placeholder. It cannot be
 		// reused for an active probe when the caller omits primary_model.
-		if existing.Provider == MonitorProviderGrok {
-			existing.PrimaryModel = MonitorDefaultGrokModel
-		} else {
-			return ErrChannelMonitorMissingPrimaryModel
-		}
+		return ErrChannelMonitorMissingPrimaryModel
 	} else if providerChanged && existing.Provider == MonitorProviderGrok {
 		existing.PrimaryModel = MonitorDefaultGrokModel
 	}

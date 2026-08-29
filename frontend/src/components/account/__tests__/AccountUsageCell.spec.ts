@@ -658,7 +658,6 @@ describe('AccountUsageCell', () => {
 		expect(badges.some(node => node.attributes('title') === 'usage.userBilled')).toBe(true)
   })
 
-
   it('Grok OAuth compact UI drops local chips and header quota bars', async () => {
     getUsage.mockResolvedValue({
       grok_local_usage: {
@@ -1058,7 +1057,7 @@ describe('AccountUsageCell', () => {
     expect(wrapper.text()).not.toContain('7d|')
   })
 
-  it('Grok paid bars use official 7d and 30d stats instead of local usage', async () => {
+  it('Grok SuperGrok and Heavy bars show period-aligned local 7d and 30d usage', async () => {
     getUsage.mockResolvedValue({
       subscription_tier: 'SuperGrok Heavy',
       grok_billing: {
@@ -1069,6 +1068,18 @@ describe('AccountUsageCell', () => {
         period_end: '2026-07-16T03:25:00Z',
         billing_period_end: '2026-08-01T00:00:00Z',
         plan: 'SuperGrok Heavy'
+      },
+      grok_local_usage: {
+        requests: 1,
+        tokens: 99,
+        cost: 0,
+        standard_cost: 0
+      },
+      grok_local_usage_24h: {
+        requests: 2,
+        tokens: 100,
+        cost: 0,
+        standard_cost: 0
       },
       grok_local_usage_7d: {
         requests: 8,
@@ -1081,24 +1092,6 @@ describe('AccountUsageCell', () => {
         tokens: 8_000_000,
         cost: 18.5,
         standard_cost: 18.5
-      },
-      seven_day: {
-        utilization: 37,
-        window_stats: {
-          requests: 9,
-          tokens: 1_500_000,
-          cost: 3.1,
-          standard_cost: 3.1
-        }
-      },
-      thirty_day: {
-        utilization: 12,
-        window_stats: {
-          requests: 21,
-          tokens: 4_400_000,
-          cost: 9.2,
-          standard_cost: 9.2
-        }
       }
     })
 
@@ -1118,11 +1111,10 @@ describe('AccountUsageCell', () => {
     })
 
     await flushPromises()
-
-    expect(wrapper.text()).toContain('7d|37|1500000')
-    expect(wrapper.text()).toContain('30d|12|4400000')
-    expect(wrapper.text()).not.toContain('|2200000')
-    expect(wrapper.text()).not.toContain('|8000000')
+    expect(wrapper.text()).toContain('7d|37|2200000')
+    expect(wrapper.text()).toContain('30d|12|8000000')
+    expect(wrapper.text()).not.toContain('|99')
+    expect(wrapper.text()).not.toContain('|100')
     expect(wrapper.text()).not.toContain('24h|')
   })
 
