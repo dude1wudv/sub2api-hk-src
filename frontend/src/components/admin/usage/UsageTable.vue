@@ -2,14 +2,14 @@
   <div :class="flat ? '' : 'card overflow-hidden'">
     <div
       v-if="showIpGeoToolbar"
-      class="flex items-center justify-end gap-2 border-b border-gray-200 px-4 py-2 dark:border-dark-700"
+      class="flex min-h-11 items-center justify-end gap-2 border-b border-gray-100 bg-gray-50/60 px-4 py-2 dark:border-dark-700 dark:bg-dark-800/40"
     >
       <span v-if="pendingIpCount > 0" class="text-xs text-gray-500 dark:text-gray-400">
         {{ t('usage.ipGeo.pending', { count: pendingIpCount }) }}
       </span>
       <button
         type="button"
-        class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-400 dark:hover:bg-primary-900/30"
+        class="inline-flex min-h-9 items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-300 dark:hover:bg-primary-950/30"
         :disabled="ipGeoBatchLoading || pendingIpCount === 0"
         @click="handleBatchFetchIpGeo"
       >
@@ -45,7 +45,7 @@
         </template>
 
         <template #cell-api_key="{ row }">
-          <span class="text-sm text-gray-900 dark:text-white">{{ row.api_key?.name || '-' }}</span>
+          <span class="block max-w-48 truncate text-sm font-medium text-gray-900 dark:text-white" :title="row.api_key?.name || '-'">{{ row.api_key?.name || '-' }}</span>
         </template>
 
         <template #cell-account="{ row }">
@@ -70,7 +70,7 @@
                 <span class="mr-0.5">↳</span>{{ row.upstream_model }}
               </div>
             </div>
-            <span v-else class="font-medium text-gray-900 dark:text-white">{{ row.model }}</span>
+            <span v-else class="block max-w-64 truncate font-mono font-medium text-gray-900 dark:text-white" :title="row.model">{{ row.model }}</span>
             <div
               v-if="row.upstream_model_mismatch === true && row.upstream_response_model"
               class="break-all pl-3 text-[11px]"
@@ -118,7 +118,7 @@
         </template>
 
         <template #cell-group="{ row }">
-          <span v-if="row.group" class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+          <span v-if="row.group" class="inline-flex items-center rounded-full bg-link-50 px-2 py-0.5 text-xs font-medium text-link-800 ring-1 ring-inset ring-link-200 dark:bg-link-950/30 dark:text-link-200 dark:ring-link-900">
             {{ row.group.name }}
           </span>
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
@@ -142,7 +142,7 @@
             <svg class="h-4 w-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <span class="font-medium text-gray-900 dark:text-white">{{ row.image_count }}{{ t('usage.imageUnit') }}</span>
+            <span class="font-mono font-medium tabular-nums text-gray-900 dark:text-white">{{ row.image_count }}{{ t('usage.imageUnit') }}</span>
             <span class="text-gray-400">({{ formatImageBillingSize(row, t) }})</span>
           </div>
           <!-- Token 请求 -->
@@ -151,11 +151,11 @@
               <div class="flex items-center gap-2">
                 <div class="inline-flex items-center gap-1">
                   <Icon name="arrowDown" size="sm" class="h-3.5 w-3.5 text-emerald-500" />
-                  <span class="font-medium text-gray-900 dark:text-white">{{ row.input_tokens?.toLocaleString() || 0 }}</span>
+                  <span class="font-mono font-medium tabular-nums text-gray-900 dark:text-white">{{ row.input_tokens?.toLocaleString() || 0 }}</span>
                 </div>
                 <div class="inline-flex items-center gap-1">
                   <Icon name="arrowUp" size="sm" class="h-3.5 w-3.5 text-violet-500" />
-                  <span class="font-medium text-gray-900 dark:text-white">{{ row.output_tokens?.toLocaleString() || 0 }}</span>
+                  <span class="font-mono font-medium tabular-nums text-gray-900 dark:text-white">{{ row.output_tokens?.toLocaleString() || 0 }}</span>
                 </div>
               </div>
               <div v-if="row.cache_read_tokens > 0 || row.cache_creation_tokens > 0" class="flex items-center gap-2">
@@ -213,7 +213,7 @@
         <template #cell-cost="{ row }">
           <div class="text-sm">
             <div class="flex items-center gap-1.5">
-              <span class="font-medium text-green-600 dark:text-green-400">${{ row.actual_cost?.toFixed(6) || '0.000000' }}</span>
+              <span class="font-mono font-semibold tabular-nums text-primary-700 dark:text-primary-300">${{ row.actual_cost?.toFixed(6) || '0.000000' }}</span>
               <span
                 v-if="row.long_context_billing_applied"
                 data-testid="long-context-billing-marker"
@@ -257,7 +257,7 @@
         </template>
 
         <template #cell-created_at="{ value }">
-          <span class="text-sm text-gray-600 dark:text-gray-400">{{ formatDateTime(value) }}</span>
+          <span class="whitespace-nowrap text-sm tabular-nums text-gray-500 dark:text-dark-300">{{ formatDateTime(value) }}</span>
         </template>
 
         <template #cell-request_id="{ row }">
@@ -267,7 +267,7 @@
             </span>
             <button
               type="button"
-              class="shrink-0 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
+              class="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:hover:bg-dark-700 dark:hover:text-dark-200"
               :class="copiedRequestId === row.request_id ? 'text-green-500 hover:text-green-500' : ''"
               :title="copiedRequestId === row.request_id ? t('keys.copied') : t('keys.copyToClipboard')"
               @click="copyRequestId(row.request_id)"
@@ -306,7 +306,7 @@
         top: tokenTooltipPosition.y + 'px'
       }"
     >
-      <div class="whitespace-nowrap rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-gray-600 dark:bg-gray-800">
+      <div class="max-w-[calc(100vw-2rem)] overflow-auto whitespace-nowrap rounded-xl border border-gray-700 bg-gray-950 px-3 py-2.5 text-xs text-white shadow-xl dark:border-dark-600 dark:bg-dark-900">
         <div class="space-y-1.5">
           <div>
             <div class="text-xs font-semibold text-gray-300 mb-1">{{ t('usage.tokenDetails') }}</div>
@@ -406,7 +406,7 @@
         top: tooltipPosition.y + 'px'
       }"
     >
-      <div class="whitespace-nowrap rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-gray-600 dark:bg-gray-800">
+      <div class="max-w-[calc(100vw-2rem)] overflow-auto whitespace-nowrap rounded-xl border border-gray-700 bg-gray-950 px-3 py-2.5 text-xs text-white shadow-xl dark:border-dark-600 dark:bg-dark-900">
         <div class="space-y-1.5">
           <!-- Cost Breakdown -->
           <div class="mb-2 border-b border-gray-700 pb-1.5">

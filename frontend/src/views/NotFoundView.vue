@@ -1,34 +1,29 @@
 <template>
   <div
-    class="relative flex min-h-screen items-center justify-center overflow-hidden bg-gray-50 px-4 dark:bg-dark-950"
+    class="relative flex min-h-screen items-center justify-center overflow-hidden bg-[rgb(var(--canvas))] px-4 py-12 text-[rgb(var(--ink))] sm:px-6"
   >
-    <!-- Background Decoration -->
-    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+    <!-- Background Decoration: Subtle Warm Ambient Glow -->
+    <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       <div
-        class="absolute -right-40 -top-40 h-80 w-80 rounded-full bg-primary-400/10 blur-3xl"
-      ></div>
-      <div
-        class="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-primary-500/10 blur-3xl"
+        class="absolute -top-32 left-1/2 h-80 w-full max-w-4xl -translate-x-1/2 bg-gradient-to-b from-primary-500/[0.06] to-transparent dark:from-primary-500/[0.04]"
       ></div>
     </div>
 
     <div class="relative z-10 w-full max-w-md text-center">
       <!-- 404 Display -->
-      <div class="mb-8">
-        <div class="relative inline-block">
-          <span class="text-[12rem] font-bold leading-none text-gray-100 dark:text-dark-800"
-            >404</span
-          >
+      <div class="mb-6">
+        <div class="relative inline-block select-none">
+          <span class="text-8xl font-black tracking-tight text-gray-200/90 dark:text-dark-800 sm:text-9xl md:text-[10rem]">404</span>
           <div class="absolute inset-0 flex items-center justify-center">
             <div
-              class="flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/30"
+              class="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary-400/30 bg-primary-600 text-white shadow-lg shadow-primary-600/25 ring-4 ring-[rgb(var(--canvas))] dark:bg-primary-500 dark:shadow-primary-500/20 sm:h-20 sm:w-20"
             >
               <svg
-                class="h-12 w-12 text-white"
+                class="h-8 w-8 sm:h-10 sm:w-10"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                stroke-width="1.5"
+                stroke-width="1.75"
               >
                 <path
                   stroke-linecap="round"
@@ -43,32 +38,32 @@
 
       <!-- Text Content -->
       <div class="mb-8">
-        <h1 class="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 class="mb-2.5 text-2xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-3xl">
           {{ t('errors.pageNotFound') }}
         </h1>
-        <p class="text-gray-500 dark:text-dark-400">
+        <p class="mx-auto max-w-sm text-sm leading-relaxed text-gray-600 dark:text-dark-300 sm:text-base">
           The page you are looking for doesn't exist or has been moved.
         </p>
       </div>
 
       <!-- Action Buttons -->
       <div class="flex flex-col justify-center gap-3 sm:flex-row">
-        <button @click="goBack" class="btn btn-secondary">
-          <Icon name="arrowLeft" size="md" class="mr-2" />
+        <button @click="goBack" class="btn btn-secondary min-h-[44px] px-5 text-sm font-medium">
+          <Icon name="arrowLeft" size="md" class="mr-1.5" />
           Go Back
         </button>
-        <router-link to="/dashboard" class="btn btn-primary">
-          <Icon name="home" size="md" class="mr-2" />
+        <router-link to="/dashboard" class="btn btn-primary min-h-[44px] px-5 text-sm font-medium shadow-sm">
+          <Icon name="home" size="md" class="mr-1.5" />
           Go to Dashboard
         </router-link>
       </div>
 
       <!-- Help Link -->
-      <p class="mt-8 text-sm text-gray-400 dark:text-dark-500">
+      <p class="mt-8 text-xs text-gray-500 dark:text-dark-400 sm:text-sm">
         Need help?
         <a
           href="#"
-          class="text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+          class="font-medium text-primary-600 underline underline-offset-4 decoration-primary-500/30 transition-colors hover:text-primary-700 hover:decoration-primary-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 rounded dark:text-primary-400 dark:hover:text-primary-300"
         >
           Contact support
         </a>

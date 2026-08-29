@@ -1,5 +1,5 @@
 <template>
-  <div class="card p-4">
+  <div class="card p-4 sm:p-5">
     <div class="mb-4 flex items-center justify-between gap-3">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
         {{ title || t('usage.endpointDistribution') }}
@@ -7,7 +7,7 @@
       <div class="flex flex-wrap items-center justify-end gap-2">
         <div
           v-if="showSourceToggle"
-          class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-dark-700 dark:bg-dark-800"
+          class="inline-flex rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
         >
           <button
             type="button"
@@ -43,7 +43,7 @@
 
         <div
           v-if="showMetricToggle"
-          class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-dark-700 dark:bg-dark-800"
+          class="inline-flex rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
         >
           <button
             type="button"
@@ -72,18 +72,18 @@
       <LoadingSpinner />
     </div>
     <div v-else-if="displayEndpointStats.length > 0 && chartData" class="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
-      <div class="h-48 w-48 shrink-0">
+      <div class="h-44 w-44 shrink-0 sm:h-48 sm:w-48">
         <Doughnut :data="chartData" :options="doughnutOptions" />
       </div>
       <div class="max-h-48 w-full min-w-0 flex-1 overflow-auto">
         <table class="w-full text-xs">
           <thead>
-            <tr class="text-gray-500 dark:text-gray-400">
-              <th class="pb-2 text-left">{{ t('usage.endpoint') }}</th>
-              <th class="pb-2 text-right">{{ t('admin.dashboard.requests') }}</th>
-              <th class="pb-2 text-right">{{ t('admin.dashboard.tokens') }}</th>
-              <th class="pb-2 text-right">{{ t('admin.dashboard.actual') }}</th>
-              <th class="pb-2 text-right">{{ t('admin.dashboard.standard') }}</th>
+            <tr class="text-gray-400 dark:text-dark-400">
+              <th class="pb-2 text-left font-medium">{{ t('usage.endpoint') }}</th>
+              <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.requests') }}</th>
+              <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.tokens') }}</th>
+              <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.actual') }}</th>
+              <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.standard') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -93,7 +93,7 @@
                 :class="enableBreakdown ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/40' : ''"
                 @click="enableBreakdown && toggleBreakdown(item.endpoint)"
               >
-                <td class="max-w-[180px] truncate py-1.5 font-medium" :class="enableBreakdown ? 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300' : 'text-gray-900 dark:text-white'" :title="item.endpoint">
+                <td class="max-w-[180px] truncate py-1.5 font-medium" :class="enableBreakdown ? 'text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300' : 'text-gray-900 dark:text-white'" :title="item.endpoint">
                   <span class="inline-flex items-center gap-1">
                     <svg v-if="enableBreakdown && expandedKey === item.endpoint" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     <svg v-else-if="enableBreakdown" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -106,10 +106,10 @@
                 <td class="py-1.5 text-right text-gray-600 dark:text-gray-400">
                   {{ formatTokens(item.total_tokens) }}
                 </td>
-                <td class="py-1.5 text-right text-green-600 dark:text-green-400">
+                <td class="py-1.5 text-right font-mono font-medium tabular-nums text-primary-700 dark:text-primary-300">
                   ${{ formatCost(item.actual_cost) }}
                 </td>
-                <td class="py-1.5 text-right text-gray-400 dark:text-gray-500">
+                <td class="py-1.5 text-right font-mono tabular-nums text-gray-400 dark:text-dark-400">
                   ${{ formatCost(item.cost) }}
                 </td>
               </tr>
@@ -126,7 +126,7 @@
         </table>
       </div>
     </div>
-    <div v-else class="flex h-48 items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+    <div v-else class="flex h-48 items-center justify-center text-xs text-gray-400 dark:text-dark-400">
       {{ t('admin.dashboard.noDataAvailable') }}
     </div>
   </div>

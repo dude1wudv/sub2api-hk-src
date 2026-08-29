@@ -8,46 +8,46 @@
 
       <template v-else-if="stats">
         <!-- Row 1: Core Stats -->
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
           <!-- Total API Keys -->
-          <div class="card p-4">
+          <div class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30">
-                <Icon name="key" size="md" class="text-blue-600 dark:text-blue-400" :stroke-width="2" />
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-100/70 text-link-700 dark:bg-link-900/30 dark:text-link-300">
+                <Icon name="key" size="md" :stroke-width="2" />
               </div>
-              <div>
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.apiKeys') }}
                 </p>
-                <p class="text-xl font-bold text-gray-900 dark:text-white">
+                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ stats.total_api_keys }}
                 </p>
-                <p class="text-xs text-green-600 dark:text-green-400">
-                  {{ stats.active_api_keys }} {{ t('common.active') }}
+                <p class="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  <span class="tabular-nums">{{ stats.active_api_keys }}</span> {{ t('common.active') }}
                 </p>
               </div>
             </div>
           </div>
 
           <!-- Service Accounts -->
-          <div class="card p-4">
+          <div class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg bg-purple-100 p-2 dark:bg-purple-900/30">
-                <Icon name="server" size="md" class="text-purple-600 dark:text-purple-400" :stroke-width="2" />
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                <Icon name="server" size="md" :stroke-width="2" />
               </div>
-              <div>
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.accounts') }}
                 </p>
-                <p class="text-xl font-bold text-gray-900 dark:text-white">
+                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ stats.total_accounts }}
                 </p>
-                <p class="text-xs">
-                  <span class="text-green-600 dark:text-green-400"
-                    >{{ stats.normal_accounts }} {{ t('common.active') }}</span
+                <p class="truncate text-xs">
+                  <span class="font-medium text-emerald-600 dark:text-emerald-400"
+                    ><span class="tabular-nums">{{ stats.normal_accounts }}</span> {{ t('common.active') }}</span
                   >
-                  <span v-if="stats.error_accounts > 0" class="ml-1 text-red-500"
-                    >{{ stats.error_accounts }} {{ t('common.error') }}</span
+                  <span v-if="stats.error_accounts > 0" class="ml-1.5 font-medium text-err-600 dark:text-err-400"
+                    ><span class="tabular-nums">{{ stats.error_accounts }}</span> {{ t('common.error') }}</span
                   >
                 </p>
               </div>
@@ -55,40 +55,40 @@
           </div>
 
           <!-- Today Requests -->
-          <div class="card p-4">
+          <div class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg bg-green-100 p-2 dark:bg-green-900/30">
-                <Icon name="chart" size="md" class="text-green-600 dark:text-green-400" :stroke-width="2" />
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+                <Icon name="chart" size="md" :stroke-width="2" />
               </div>
-              <div>
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.todayRequests') }}
                 </p>
-                <p class="text-xl font-bold text-gray-900 dark:text-white">
+                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ stats.today_requests }}
                 </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ t('common.total') }}: {{ formatNumber(stats.total_requests) }}
+                <p class="truncate text-xs text-gray-400 dark:text-dark-400">
+                  {{ t('common.total') }}: <span class="font-medium text-gray-600 dark:text-dark-200 tabular-nums">{{ formatNumber(stats.total_requests) }}</span>
                 </p>
               </div>
             </div>
           </div>
 
           <!-- New Users Today -->
-          <div class="card p-4">
+          <div class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg bg-emerald-100 p-2 dark:bg-emerald-900/30">
-                <Icon name="userPlus" size="md" class="text-emerald-600 dark:text-emerald-400" :stroke-width="2" />
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                <Icon name="userPlus" size="md" :stroke-width="2" />
               </div>
-              <div>
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.users') }}
                 </p>
-                <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                <p class="text-xl font-bold tracking-tight text-emerald-600 tabular-nums dark:text-emerald-400 sm:text-2xl">
                   +{{ stats.today_new_users }}
                 </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ t('common.total') }}: {{ formatNumber(stats.total_users) }}
+                <p class="truncate text-xs text-gray-400 dark:text-dark-400">
+                  {{ t('common.total') }}: <span class="font-medium text-gray-600 dark:text-dark-200 tabular-nums">{{ formatNumber(stats.total_users) }}</span>
                 </p>
               </div>
             </div>
@@ -96,35 +96,35 @@
         </div>
 
         <!-- Row 2: Token Stats -->
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
           <!-- Today Tokens -->
-          <div class="card p-4">
+          <div class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/30">
-                <Icon name="cube" size="md" class="text-amber-600 dark:text-amber-400" :stroke-width="2" />
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                <Icon name="cube" size="md" :stroke-width="2" />
               </div>
-              <div>
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.todayTokens') }}
                 </p>
-                <p class="text-xl font-bold text-gray-900 dark:text-white">
+                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ formatTokens(stats.today_tokens) }}
                 </p>
-                <p class="text-xs">
+                <p class="truncate text-xs">
                   <span
-                    class="text-green-600 dark:text-green-400"
+                    class="font-medium text-emerald-600 tabular-nums dark:text-emerald-400"
                     :title="t('admin.dashboard.actual')"
                     >${{ formatCost(stats.today_actual_cost) }}</span
                   >
-                  <span class="text-gray-400 dark:text-gray-500"> / </span>
+                  <span class="text-gray-300 dark:text-dark-600"> / </span>
                   <span
-                    class="text-orange-500 dark:text-orange-400"
+                    class="font-medium text-amber-600 tabular-nums dark:text-amber-400"
                     :title="t('admin.dashboard.accountCost')"
                     >${{ formatCost(stats.today_account_cost) }}</span
                   >
-                  <span class="text-gray-400 dark:text-gray-500"> / </span>
+                  <span class="text-gray-300 dark:text-dark-600"> / </span>
                   <span
-                    class="text-gray-400 dark:text-gray-500"
+                    class="text-gray-400 tabular-nums dark:text-dark-400"
                     :title="t('admin.dashboard.standard')"
                     >${{ formatCost(stats.today_cost) }}</span
                   >
@@ -134,33 +134,33 @@
           </div>
 
           <!-- Total Tokens -->
-          <div class="card p-4">
+          <div class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg bg-indigo-100 p-2 dark:bg-indigo-900/30">
-                <Icon name="database" size="md" class="text-indigo-600 dark:text-indigo-400" :stroke-width="2" />
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+                <Icon name="database" size="md" :stroke-width="2" />
               </div>
-              <div>
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.totalTokens') }}
                 </p>
-                <p class="text-xl font-bold text-gray-900 dark:text-white">
+                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ formatTokens(stats.total_tokens) }}
                 </p>
-                <p class="text-xs">
+                <p class="truncate text-xs">
                   <span
-                    class="text-green-600 dark:text-green-400"
+                    class="font-medium text-emerald-600 tabular-nums dark:text-emerald-400"
                     :title="t('admin.dashboard.actual')"
                     >${{ formatCost(stats.total_actual_cost) }}</span
                   >
-                  <span class="text-gray-400 dark:text-gray-500"> / </span>
+                  <span class="text-gray-300 dark:text-dark-600"> / </span>
                   <span
-                    class="text-orange-500 dark:text-orange-400"
+                    class="font-medium text-amber-600 tabular-nums dark:text-amber-400"
                     :title="t('admin.dashboard.accountCost')"
                     >${{ formatCost(stats.total_account_cost) }}</span
                   >
-                  <span class="text-gray-400 dark:text-gray-500"> / </span>
+                  <span class="text-gray-300 dark:text-dark-600"> / </span>
                   <span
-                    class="text-gray-400 dark:text-gray-500"
+                    class="text-gray-400 tabular-nums dark:text-dark-400"
                     :title="t('admin.dashboard.standard')"
                     >${{ formatCost(stats.total_cost) }}</span
                   >
@@ -170,88 +170,90 @@
           </div>
 
           <!-- Performance (RPM/TPM) -->
-          <div class="card p-4">
+          <div class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg bg-violet-100 p-2 dark:bg-violet-900/30">
-                <Icon name="bolt" size="md" class="text-violet-600 dark:text-violet-400" :stroke-width="2" />
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-50 text-link-700 dark:bg-link-950/30 dark:text-link-300">
+                <Icon name="bolt" size="md" :stroke-width="2" />
               </div>
-              <div class="flex-1">
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.performance') }}
                 </p>
-                <div class="flex items-baseline gap-2">
-                  <p class="text-xl font-bold text-gray-900 dark:text-white">
+                <div class="flex items-baseline gap-1.5">
+                  <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                     {{ formatTokens(stats.rpm) }}
                   </p>
-                  <span class="text-xs text-gray-500 dark:text-gray-400">RPM</span>
+                  <span class="text-xs font-semibold uppercase text-gray-400 dark:text-dark-400">RPM</span>
                 </div>
-                <div class="flex items-baseline gap-2">
-                  <p class="text-sm font-semibold text-violet-600 dark:text-violet-400">
+                <div class="flex items-baseline gap-1.5">
+                  <p class="text-xs font-semibold text-link-700 tabular-nums dark:text-link-300">
                     {{ formatTokens(stats.tpm) }}
                   </p>
-                  <span class="text-xs text-gray-500 dark:text-gray-400">TPM</span>
+                  <span class="text-[10px] uppercase text-gray-400 dark:text-dark-400">TPM</span>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Avg Response Time -->
-          <div class="card p-4">
+          <div class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg bg-rose-100 p-2 dark:bg-rose-900/30">
-                <Icon name="clock" size="md" class="text-rose-600 dark:text-rose-400" :stroke-width="2" />
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+                <Icon name="clock" size="md" :stroke-width="2" />
               </div>
-              <div>
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.avgResponse') }}
                 </p>
-                <p class="text-xl font-bold text-gray-900 dark:text-white">
+                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ formatDuration(stats.average_duration_ms) }}
                 </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ stats.active_users }} {{ t('admin.dashboard.activeUsers') }}
+                <p class="truncate text-xs text-gray-400 dark:text-dark-400">
+                  <span class="font-medium text-gray-600 dark:text-dark-200 tabular-nums">{{ stats.active_users }}</span> {{ t('admin.dashboard.activeUsers') }}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="card p-4">
+        <div class="card p-4 sm:p-5">
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
-              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.dashboard.upstreamBalance.title') }}</p>
-              <p class="text-2xl font-bold text-gray-900 dark:text-white">${{ formatCost(upstreamBalances?.total || 0) }}</p>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.dashboard.upstreamBalance.autoRefresh') }}</p>
+              <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('admin.dashboard.upstreamBalance.title') }}</p>
+              <p class="text-2xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-3xl">${{ formatCost(upstreamBalances?.total || 0) }}</p>
+              <p class="mt-1 text-xs text-gray-400 dark:text-dark-400">{{ t('admin.dashboard.upstreamBalance.autoRefresh') }}</p>
             </div>
-            <Icon name="dollar" size="md" class="text-cyan-600 dark:text-cyan-400" />
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-100/70 text-link-700 dark:bg-link-900/30 dark:text-link-300">
+              <Icon name="dollar" size="md" />
+            </div>
           </div>
           <div v-if="upstreamBalancesLoading" class="py-4"><LoadingSpinner size="sm" /></div>
           <template v-else-if="upstreamBalances?.items?.length">
             <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <div v-for="item in upstreamBalances.items" :key="item.id" class="rounded-lg border border-gray-200 p-3 dark:border-dark-700">
+              <div v-for="item in upstreamBalances.items" :key="item.id" class="rounded-xl border border-gray-200/80 bg-white/60 p-3.5 transition-colors hover:border-gray-300 dark:border-dark-700 dark:bg-dark-800/40 dark:hover:border-dark-500">
                 <div class="flex items-start justify-between gap-2">
                   <div class="min-w-0">
-                    <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ item.group_name || item.name }}</p>
-                    <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ item.name }}</p>
+                    <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">{{ item.group_name || item.name }}</p>
+                    <p class="truncate text-xs text-gray-400 dark:text-dark-400">{{ item.name }}</p>
                   </div>
-                  <span v-if="item.error" class="text-xs text-red-500">{{ t('admin.dashboard.upstreamBalance.error') }}</span>
+                  <span v-if="item.error" class="badge badge-danger text-xs font-medium">{{ t('admin.dashboard.upstreamBalance.error') }}</span>
                 </div>
-                <p class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">{{ item.error ? '--' : `$${formatCost(item.balance)}` }}</p>
+                <p class="mt-2 text-lg font-bold tracking-tight text-gray-900 tabular-nums dark:text-white">{{ item.error ? '--' : `$${formatCost(item.balance)}` }}</p>
               </div>
             </div>
-            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div v-for="entry in upstreamConsumptionCards" :key="entry.label" class="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/10">
-                <p class="text-xs text-amber-700 dark:text-amber-300">{{ entry.label }}</p>
-                <p class="mt-1 text-lg font-semibold text-amber-900 dark:text-amber-100">${{ formatCost(entry.value) }}</p>
+            <div class="mt-3.5 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div v-for="entry in upstreamConsumptionCards" :key="entry.label" class="rounded-xl bg-amber-50/80 p-3.5 dark:bg-amber-950/20">
+                <p class="text-xs font-medium text-amber-700 dark:text-amber-300">{{ entry.label }}</p>
+                <p class="mt-1 text-lg font-bold tracking-tight text-amber-900 tabular-nums dark:text-amber-100">${{ formatCost(entry.value) }}</p>
               </div>
             </div>
           </template>
-          <p v-else class="text-sm text-gray-500 dark:text-gray-400">{{ t('admin.dashboard.upstreamBalance.empty') }}</p>
+          <p v-else class="text-sm text-gray-500 dark:text-dark-400">{{ t('admin.dashboard.upstreamBalance.empty') }}</p>
         </div>
 
         <!-- Quick Actions -->
-        <div class="card p-4">
-          <div class="mb-3 flex items-center justify-between">
+        <div class="card p-4 sm:p-5">
+          <div class="mb-3.5 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
               {{ t('admin.dashboard.quickActions') }}
             </h2>
@@ -260,39 +262,39 @@
             <button
               v-if="canUseBatchImage"
               type="button"
-              class="group flex items-center gap-3 rounded-lg bg-gray-50 p-3 text-left transition-colors hover:bg-sky-50 dark:bg-dark-800/50 dark:hover:bg-sky-900/20"
+              class="group flex items-center gap-3 rounded-xl border border-gray-200/80 bg-white/50 p-3.5 text-left transition-[border-color,background-color] hover:border-link-300 hover:bg-link-50/50 dark:border-dark-700 dark:bg-dark-800/40 dark:hover:border-link-700 dark:hover:bg-link-950/20"
               @click="router.push('/batch-image')"
             >
-              <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400">
+              <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-link-100/80 text-link-700 dark:bg-link-900/30 dark:text-link-300">
                 <Icon name="sparkles" size="md" :stroke-width="2" />
               </span>
               <span class="min-w-0 flex-1">
-                <span class="block text-sm font-medium text-gray-900 dark:text-white">
+                <span class="block text-sm font-semibold text-gray-900 dark:text-white">
                   {{ t('admin.dashboard.batchImage') }}
                 </span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400">
+                <span class="block text-xs text-gray-500 dark:text-dark-400">
                   {{ t('admin.dashboard.batchImageDesc') }}
                 </span>
               </span>
-              <Icon name="chevronRight" size="sm" class="text-gray-400 group-hover:text-sky-500" />
+              <Icon name="chevronRight" size="sm" class="text-gray-400 group-hover:text-link-600" />
             </button>
             <button
               type="button"
-              class="group flex items-center gap-3 rounded-lg bg-gray-50 p-3 text-left transition-colors hover:bg-emerald-50 dark:bg-dark-800/50 dark:hover:bg-emerald-900/20"
+              class="group flex items-center gap-3 rounded-xl border border-gray-200/80 bg-white/50 p-3.5 text-left transition-[border-color,background-color] hover:border-primary-300 hover:bg-primary-50/50 dark:border-dark-700 dark:bg-dark-800/40 dark:hover:border-primary-700 dark:hover:bg-primary-950/20"
               @click="router.push('/admin/groups')"
             >
-              <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+              <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
                 <Icon name="grid" size="md" :stroke-width="2" />
               </span>
               <span class="min-w-0 flex-1">
-                <span class="block text-sm font-medium text-gray-900 dark:text-white">
+                <span class="block text-sm font-semibold text-gray-900 dark:text-white">
                   {{ t('admin.dashboard.groupPricing') }}
                 </span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400">
+                <span class="block text-xs text-gray-500 dark:text-dark-400">
                   {{ t('admin.dashboard.groupPricingDesc') }}
                 </span>
               </span>
-              <Icon name="chevronRight" size="sm" class="text-gray-400 group-hover:text-emerald-500" />
+              <Icon name="chevronRight" size="sm" class="text-gray-400 group-hover:text-primary-600" />
             </button>
           </div>
         </div>
@@ -300,10 +302,10 @@
         <!-- Charts Section -->
         <div class="space-y-6">
           <!-- Date Range Filter -->
-          <div class="card p-4">
+          <div class="card p-3.5 sm:p-4">
             <div class="flex flex-wrap items-center gap-4">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300"
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-medium text-gray-700 dark:text-dark-200"
                   >{{ t('admin.dashboard.timeRange') }}:</span
                 >
                 <DateRangePicker
@@ -312,11 +314,12 @@
                   @change="onDateRangeChange"
                 />
               </div>
-              <button @click="loadDashboardStats" :disabled="chartsLoading" class="btn btn-secondary">
+              <button @click="loadDashboardStats" :disabled="chartsLoading" class="btn btn-secondary px-3">
+                <Icon name="refresh" size="sm" class="mr-1.5" :class="chartsLoading ? 'animate-spin' : ''" />
                 {{ t('common.refresh') }}
               </button>
               <div class="ml-auto flex items-center gap-2">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                <span class="text-sm font-medium text-gray-700 dark:text-dark-200"
                   >{{ t('admin.dashboard.granularity') }}:</span
                 >
                 <div class="w-28">
@@ -350,7 +353,7 @@
           </div>
 
           <!-- User Usage Trend (Full Width) -->
-          <div class="card p-4">
+          <div class="card p-4 sm:p-5">
             <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
               {{ t('admin.dashboard.recentUsage') }} (Top 12)
             </h3>
@@ -361,7 +364,7 @@
               <Line v-else-if="userTrendChartData" :data="userTrendChartData" :options="lineOptions" />
               <div
                 v-else
-                class="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+                class="flex h-full items-center justify-center text-sm text-gray-500 dark:text-dark-400"
               >
                 {{ t('admin.dashboard.noDataAvailable') }}
               </div>

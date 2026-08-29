@@ -1,6 +1,6 @@
 <template>
   <div class="flex min-h-0 flex-1 flex-col">
-    <div class="card flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div class="card flex min-h-0 flex-1 flex-col overflow-hidden shadow-sm">
       <IpGeoBatchToolbar :ips="rows.map((r) => r.client_ip)" @failed="emit('ipGeoBatchFailed')" />
 
       <DataTable
@@ -15,7 +15,7 @@
         @rowClick="(row) => openDetail(row.id)"
       >
         <template #cell-model="{ row }">
-          <span v-if="row.model" class="text-sm font-medium text-gray-900 dark:text-white">{{ row.model }}</span>
+          <span v-if="row.model" class="block max-w-64 truncate font-mono text-sm font-medium text-gray-900 dark:text-white" :title="row.model">{{ row.model }}</span>
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
         </template>
 
@@ -60,7 +60,7 @@
         <template #cell-group="{ row }">
           <span
             v-if="row.group_name"
-            class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
+            class="inline-flex items-center rounded-full bg-link-50 px-2 py-0.5 text-xs font-medium text-link-800 ring-1 ring-inset ring-link-200 dark:bg-link-950/30 dark:text-link-200 dark:ring-link-900"
           >{{ row.group_name }}</span>
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
         </template>
@@ -89,7 +89,7 @@
         </template>
 
         <template #cell-created_at="{ row }">
-          <span class="text-sm text-gray-600 dark:text-gray-400">{{ formatDateTime(row.created_at) }}</span>
+          <span class="whitespace-nowrap text-sm tabular-nums text-gray-500 dark:text-dark-300">{{ formatDateTime(row.created_at) }}</span>
         </template>
 
         <template #cell-user_agent="{ row }">

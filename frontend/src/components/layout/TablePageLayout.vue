@@ -90,7 +90,7 @@ onUnmounted(() => {
 
 /* 表格滚动容器 - 保留表体滚动、sticky 与横向滚动行为，仅替换视觉 */
 .table-scroll-container {
-  @apply flex flex-col overflow-hidden h-full rounded-2xl border shadow-sm;
+  @apply flex flex-col overflow-hidden h-full rounded-xl border shadow-sm;
   border-color: rgb(var(--line));
   background: rgb(var(--surface));
 }
@@ -117,13 +117,13 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  @apply px-5 py-4 text-left text-sm font-medium;
+  @apply px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider;
   color: rgb(var(--ink-2));
   border-bottom: 1px solid rgb(var(--line));
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-5 py-4 text-sm;
+  @apply px-4 py-2.5 text-sm;
   color: rgb(var(--ink));
   border-bottom: 1px solid rgb(var(--line));
 }

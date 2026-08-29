@@ -2,11 +2,11 @@
   <BaseDialog :show="show" :title="t('admin.users.balanceHistoryTitle')" width="wide" :close-on-click-outside="true" :z-index="40" @close="$emit('close')">
     <div v-if="user" class="space-y-4">
       <!-- User header: two-row layout with full user info -->
-      <div class="rounded-xl bg-gray-50 p-4 dark:bg-dark-700">
+      <div class="rounded-xl border border-gray-200/80 bg-gray-50/80 p-4 dark:border-dark-700 dark:bg-dark-800/50">
         <!-- Row 1: avatar + email/username/created_at (left) + current balance (right) -->
         <div class="flex items-center gap-3">
           <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30">
-            <span class="text-lg font-medium text-primary-700 dark:text-primary-300">
+            <span class="text-base font-semibold text-primary-700 dark:text-primary-300">
               {{ user.email.charAt(0).toUpperCase() }}
             </span>
           </div>
@@ -24,25 +24,25 @@
               </span>
             </div>
             <p class="text-xs text-gray-400 dark:text-dark-500">
-              {{ t('admin.users.createdAt') }}: {{ formatDateTime(user.created_at) }}
+              {{ t('admin.users.createdAt') }}: <span class="tabular-nums">{{ formatDateTime(user.created_at) }}</span>
             </p>
           </div>
           <!-- Current balance: prominent display on the right -->
           <div class="flex-shrink-0 text-right">
             <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.users.currentBalance') }}</p>
-            <p class="text-xl font-bold text-gray-900 dark:text-white">
+            <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white">
               ${{ user.balance?.toFixed(2) || '0.00' }}
             </p>
           </div>
         </div>
         <!-- Row 2: notes + total recharged -->
-        <div class="mt-2.5 flex items-center justify-between border-t border-gray-200/60 pt-2.5 dark:border-dark-600/60">
+        <div class="mt-2.5 flex items-center justify-between border-t border-gray-200/60 pt-2.5 dark:border-dark-700/60">
           <p class="min-w-0 flex-1 truncate text-xs text-gray-500 dark:text-dark-400" :title="user.notes || ''">
             <template v-if="user.notes">{{ t('admin.users.notes') }}: {{ user.notes }}</template>
             <template v-else>&nbsp;</template>
           </p>
           <p class="ml-4 flex-shrink-0 text-xs text-gray-500 dark:text-dark-400">
-            {{ t('admin.users.totalRecharged') }}: <span class="font-semibold text-emerald-600 dark:text-emerald-400">${{ totalRecharged.toFixed(2) }}</span>
+            {{ t('admin.users.totalRecharged') }}: <span class="font-semibold text-emerald-600 tabular-nums dark:text-emerald-400">${{ totalRecharged.toFixed(2) }}</span>
           </p>
         </div>
       </div>

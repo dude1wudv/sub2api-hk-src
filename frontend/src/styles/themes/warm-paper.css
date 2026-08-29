@@ -6,12 +6,12 @@
   --color-primary-200: 238 203 178;
   --color-primary-300: 228 172 138;
   --color-primary-400: 215 128 84;
-  --color-primary-500: 192 90 46;
-  --color-primary-600: 168 76 36;
-  --color-primary-700: 138 62 30;
-  --color-primary-800: 110 50 26;
-  --color-primary-900: 88 41 23;
-  --color-primary-950: 56 27 16;
+  --color-primary-500: 180 80 36;
+  --color-primary-600: 154 66 28;
+  --color-primary-700: 128 54 22;
+  --color-primary-800: 104 44 18;
+  --color-primary-900: 82 36 16;
+  --color-primary-950: 52 24 12;
   --color-link-50: 240 245 248;
   --color-link-100: 224 234 240;
   --color-link-200: 192 213 226;
@@ -59,25 +59,32 @@
   --canvas: 247 243 236;
   --surface: 255 253 249;
   --surface-2: 241 236 226;
+  --surface-elevated: 255 255 253;
   --ink: 38 36 31;
-  --ink-2: 107 103 94;
-  --ink-3: 155 150 138;
-  --line: 230 224 211;
-  --line-strong: 216 209 192;
-  --action-contrast: #fffdf9;
+  --ink-2: 98 94 85;
+  --ink-3: 142 137 125;
+  --line: 228 222 209;
+  --line-strong: 206 198 181;
+  --focus-ring: 47 93 124;
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-overlay: 0.75rem;
+  --action-contrast: #ffffff;
   color-scheme: light;
 }
 
 .dark {
-  --canvas: 27 25 21;
-  --surface: 35 32 27;
-  --surface-2: 42 38 32;
-  --ink: 236 231 220;
-  --ink-2: 179 172 158;
-  --ink-3: 127 120 105;
-  --line: 55 50 42;
-  --line-strong: 74 67 54;
-  --action-contrast: #1b1915;
+  --canvas: 22 20 17;
+  --surface: 30 27 23;
+  --surface-2: 38 34 29;
+  --surface-elevated: 44 40 34;
+  --ink: 240 236 227;
+  --ink-2: 184 177 163;
+  --ink-3: 146 139 125;
+  --line: 58 52 44;
+  --line-strong: 78 70 58;
+  --focus-ring: 106 156 184;
+  --action-contrast: #ffffff;
   color-scheme: dark;
 }
 
@@ -121,27 +128,40 @@ body {
 
   .card-hover:hover {
     border-color: rgb(var(--line-strong));
+    box-shadow: 0 4px 16px -2px rgb(0 0 0 / 0.05);
+  }
+
+  .dark .card-hover:hover {
+    box-shadow: 0 4px 16px -2px rgb(0 0 0 / 0.25);
   }
 
   .btn-primary {
-    background: linear-gradient(180deg, rgb(var(--color-primary-500)), rgb(var(--color-primary-600)));
+    background-color: rgb(var(--color-primary-500));
     color: var(--action-contrast);
-    box-shadow: 0 8px 20px rgb(var(--color-primary-600) / 0.22);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.06), 0 1px 3px 0 rgb(var(--color-primary-600) / 0.15);
   }
 
   .btn-primary:hover {
-    background: linear-gradient(180deg, rgb(var(--color-primary-400)), rgb(var(--color-primary-600)));
-    box-shadow: 0 10px 26px rgb(var(--color-primary-600) / 0.26);
+    background-color: rgb(var(--color-primary-600));
+    box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.08), 0 2px 6px 0 rgb(var(--color-primary-600) / 0.2);
+  }
+
+  .btn-primary:active {
+    background-color: rgb(var(--color-primary-700));
   }
 
   .dark .btn-primary {
-    background: linear-gradient(180deg, rgb(var(--color-primary-400)), rgb(var(--color-primary-500)));
+    background-color: rgb(var(--color-primary-500));
     color: var(--action-contrast);
-    box-shadow: 0 8px 22px rgb(var(--color-primary-500) / 0.28);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.2), 0 1px 3px 0 rgb(var(--color-primary-500) / 0.2);
   }
 
   .dark .btn-primary:hover {
-    background: linear-gradient(180deg, rgb(var(--color-primary-300)), rgb(var(--color-primary-400)));
+    background-color: rgb(var(--color-primary-600));
+  }
+
+  .dark .btn-primary:active {
+    background-color: rgb(var(--color-primary-700));
   }
 
   .sidebar-link {
@@ -156,7 +176,11 @@ body {
 
 .sidebar-link-active,
 .dark .sidebar-link-active {
-  background-color: rgb(var(--color-primary-500) / 0.12);
+  background-color: rgb(var(--color-primary-500) / 0.1);
   color: rgb(var(--color-primary-600));
   box-shadow: inset 2.5px 0 0 rgb(var(--color-primary-500));
+}
+
+.dark .sidebar-link-active {
+  color: rgb(var(--color-primary-400));
 }

@@ -38,12 +38,12 @@
                 </button>
                 <div
                   v-if="showAutoRefreshDropdown"
-                  class="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-lg border border-gray-200 bg-white shadow-lg dark:border-dark-700 dark:bg-dark-800"
+                  class="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-xl border border-gray-200/90 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-dark-700/90 dark:bg-dark-800/95"
                 >
-                  <div class="p-2">
+                  <div class="space-y-0.5 p-1">
                     <button
                       @click="setAutoRefreshEnabled(!autoRefreshEnabled)"
-                      class="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-dark-700"
+                      class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-dark-700"
                     >
                       <span>{{ t('admin.accounts.enableAutoRefresh') }}</span>
                       <Icon v-if="autoRefreshEnabled" name="check" size="sm" class="text-primary-500" />
@@ -53,7 +53,7 @@
                       v-for="sec in autoRefreshIntervals"
                       :key="sec"
                       @click="setAutoRefreshInterval(sec)"
-                      class="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-dark-700"
+                      class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-dark-700"
                     >
                       <span>{{ autoRefreshIntervalLabel(sec) }}</span>
                       <Icon v-if="autoRefreshIntervalSeconds === sec" name="check" size="sm" class="text-primary-500" />
@@ -78,18 +78,18 @@
                 <Teleport to="body">
                   <div
                     v-if="showAccountToolsDropdown"
-                    class="fixed z-[9999] origin-top-right overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl dark:border-dark-700 dark:bg-dark-800"
+                    class="fixed z-[9999] origin-top-right overflow-hidden rounded-xl border border-gray-200/90 bg-white/95 shadow-2xl backdrop-blur-md dark:border-dark-700/90 dark:bg-dark-800/95"
                     :style="accountToolsDropdownStyle"
                     @click.stop
                   >
                     <div class="overflow-y-auto p-2" :style="{ maxHeight: `${accountToolsDropdownPosition.maxHeight}px` }">
-                      <div class="px-2 py-2">
-                        <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                      <div class="px-2 py-1.5">
+                        <div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400">
                           {{ t('admin.accounts.dataActions') }}
                         </div>
                       </div>
                       <button class="account-tools-menu-item" @click="openSyncFromCrs">
-                        <span class="account-tools-menu-icon bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                        <span class="account-tools-menu-icon bg-link-50 text-link-600 dark:bg-link-900/30 dark:text-link-300">
                           <Icon name="sync" size="sm" />
                         </span>
                         <span class="flex-1 text-left">{{ t('admin.accounts.syncFromCrs') }}</span>
@@ -101,7 +101,7 @@
                         <span class="flex-1 text-left">{{ t('admin.accounts.dataImport') }}</span>
                       </button>
                       <button class="account-tools-menu-item" @click="openExportDataDialogFromMenu">
-                        <span class="account-tools-menu-icon bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
+                        <span class="account-tools-menu-icon bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
                           <Icon name="download" size="sm" />
                         </span>
                         <span class="flex-1 text-left">
@@ -109,15 +109,15 @@
                         </span>
                         <span
                           v-if="selIds.length"
-                          class="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+                          class="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium tabular-nums text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
                         >
                           {{ t('admin.accounts.selectedCount', { count: selIds.length }) }}
                         </span>
                       </button>
 
-                      <div class="my-2 border-t border-gray-100 dark:border-dark-700"></div>
-                      <div class="px-2 py-2">
-                        <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                      <div class="my-1.5 border-t border-gray-100 dark:border-dark-700"></div>
+                      <div class="px-2 py-1.5">
+                        <div class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400">
                           {{ t('admin.accounts.toolActions') }}
                         </div>
                       </div>
@@ -128,27 +128,27 @@
                         <span class="flex-1 text-left">{{ t('admin.errorPassthrough.title') }}</span>
                       </button>
                       <button class="account-tools-menu-item" @click="openTLSFingerprintProfiles">
-                        <span class="account-tools-menu-icon bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                        <span class="account-tools-menu-icon bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-gray-200">
                           <Icon name="lock" size="sm" />
                         </span>
                         <span class="flex-1 text-left">{{ t('admin.tlsFingerprintProfiles.title') }}</span>
                       </button>
 
-                      <div class="my-2 border-t border-gray-100 dark:border-dark-700"></div>
-                      <div class="px-2 py-2">
+                      <div class="my-1.5 border-t border-gray-100 dark:border-dark-700"></div>
+                      <div class="px-2 py-1.5">
                         <div class="flex items-center justify-between gap-3">
-                          <span class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                          <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400">
                             {{ t('admin.accounts.viewColumns') }}
                           </span>
                           <Icon name="grid" size="sm" class="text-gray-400" />
                         </div>
                       </div>
-                      <div class="grid grid-cols-1 gap-1">
+                      <div class="grid grid-cols-1 gap-0.5">
                         <button
                           v-for="col in toggleableColumns"
                           :key="col.key"
                           @click="toggleColumn(col.key)"
-                          class="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-dark-700"
+                          class="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs sm:text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-dark-700"
                         >
                           <span class="truncate">{{ col.label }}</span>
                           <Icon v-if="isColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
@@ -2932,15 +2932,15 @@ onUnmounted(() => {
 
 <style scoped>
 .account-tools-menu-item {
-  @apply flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-dark-700;
+  @apply flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs sm:text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200/60 dark:text-gray-200 dark:hover:bg-dark-700 dark:active:bg-dark-600/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40;
 }
 
 .account-tools-menu-icon {
-  @apply inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md;
+  @apply inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg;
 }
 
 .account-summary-panel {
-  @apply rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800;
+  @apply rounded-xl border border-gray-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-gray-300 hover:shadow dark:border-dark-700/80 dark:bg-dark-800/80 dark:hover:border-dark-600;
 }
 
 .account-table-shell {
@@ -2948,39 +2948,39 @@ onUnmounted(() => {
 }
 
 .account-summary-label {
-  @apply text-xs font-medium uppercase text-gray-500 dark:text-gray-400;
+  @apply text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-dark-300;
 }
 
 .account-summary-value {
-  @apply mt-1 text-xl font-semibold text-gray-900 dark:text-white;
+  @apply mt-1 text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl;
 }
 
 .account-summary-detail {
-  @apply mt-2 text-xs text-gray-500 dark:text-gray-400;
+  @apply mt-2 text-xs text-gray-500 tabular-nums dark:text-gray-400;
 }
 
 .account-summary-pill {
-  @apply inline-flex flex-shrink-0 items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-dark-700 dark:text-gray-300;
+  @apply inline-flex flex-shrink-0 items-center rounded-md bg-gray-100/90 px-2 py-0.5 text-xs font-medium tabular-nums text-gray-600 dark:bg-dark-700/90 dark:text-gray-300;
 }
 
 .account-summary-subvalue {
-  @apply block text-sm font-semibold;
+  @apply block text-sm font-semibold tabular-nums;
 }
 
 .account-summary-sublabel {
-  @apply block text-gray-500 dark:text-gray-400;
+  @apply block text-[11px] text-gray-500 dark:text-dark-400 mt-0.5;
 }
 
 .account-summary-meter {
-  @apply h-2 overflow-hidden rounded-md bg-gray-100 dark:bg-dark-700;
+  @apply h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700/80;
 }
 
 .account-summary-meter-fill {
-  @apply h-full rounded-md transition-all;
+  @apply h-full rounded-full transition-all duration-300;
 }
 
 .proxy-health-row {
-  @apply rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-dark-700 dark:bg-dark-900/30;
+  @apply rounded-lg border border-gray-100/90 bg-gray-50/70 p-3 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:border-dark-700/70 dark:bg-dark-900/40 dark:hover:border-dark-600 dark:hover:bg-dark-900/60;
 }
 
 .proxy-health-dot {
@@ -2988,35 +2988,35 @@ onUnmounted(() => {
 }
 
 .proxy-health-chip {
-  @apply inline-flex flex-shrink-0 items-center rounded-md px-2 py-1 text-xs font-medium;
+  @apply inline-flex flex-shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-medium tabular-nums;
 }
 
 .quota-pool-card {
-  @apply cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-primary-200 hover:bg-primary-50/40 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-dark-700 dark:bg-dark-800 dark:hover:border-primary-700 dark:hover:bg-primary-900/10 dark:focus:ring-offset-dark-900;
+  @apply cursor-pointer rounded-xl border border-gray-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-primary-300 hover:bg-primary-50/30 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-dark-700/80 dark:bg-dark-800/80 dark:hover:border-primary-700/60 dark:hover:bg-primary-950/20 dark:focus-visible:ring-offset-dark-900;
 }
 
 .quota-pool-card-oauth {
-  @apply border-emerald-100 dark:border-emerald-900/40;
+  @apply border-emerald-200/60 dark:border-emerald-900/40;
 }
 
 .quota-pool-card-active {
-  @apply border-primary-300 bg-primary-50 dark:border-primary-700 dark:bg-primary-900/20;
+  @apply border-primary-400/80 bg-primary-50/50 shadow-sm dark:border-primary-600/80 dark:bg-primary-950/30;
 }
 
 .quota-pool-restore {
-  @apply rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:bg-dark-700;
+  @apply rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:bg-dark-700;
 }
 
 .quota-pool-label {
-  @apply text-xs font-medium uppercase text-gray-500 dark:text-gray-400;
+  @apply text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-dark-300;
 }
 
 .quota-pool-value {
-  @apply mt-1 text-xl font-semibold text-gray-900 dark:text-white;
+  @apply mt-1 text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl;
 }
 
 .quota-pool-enter {
-  @apply inline-flex flex-shrink-0 items-center gap-2 rounded-md bg-white px-2 py-1 text-xs font-medium text-gray-600 shadow-sm ring-1 ring-gray-200 dark:bg-dark-900 dark:text-gray-300 dark:ring-dark-700;
+  @apply inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:border-primary-300 hover:text-primary-600 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-300 dark:hover:border-primary-600 dark:hover:text-primary-400;
 }
 
 .quota-pool-windows {
@@ -3024,22 +3024,22 @@ onUnmounted(() => {
 }
 
 .quota-pool-window-row {
-  @apply grid grid-cols-[2rem_minmax(0,1fr)_3rem] items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400;
+  @apply grid grid-cols-[2rem_minmax(0,1fr)_3rem] items-center gap-2 text-xs text-gray-500 tabular-nums dark:text-gray-400;
 }
 
 .quota-pool-window-row strong {
-  @apply text-right font-medium text-gray-700 dark:text-gray-200;
+  @apply text-right font-semibold tabular-nums text-gray-700 dark:text-gray-200;
 }
 
 .quota-pool-meter {
-  @apply h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700;
+  @apply h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700/80;
 }
 
 .quota-pool-meter-fill {
-  @apply h-full rounded-full transition-all;
+  @apply h-full rounded-full transition-all duration-300;
 }
 
 .quota-pool-stats {
-  @apply mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400;
+  @apply mt-3 flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums text-gray-500 dark:text-gray-400;
 }
 </style>
