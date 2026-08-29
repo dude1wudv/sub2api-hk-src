@@ -42,6 +42,14 @@ describe('AppSidebar scroll position persistence', () => {
   })
 })
 
+describe('AppSidebar Image2 navigation', () => {
+  it('opens the standalone Image2 application in a new tab', () => {
+    expect(componentSource).toContain("{ path: '/image2', externalHref: '/image2/'")
+    expect(componentSource).toContain(":target=\"item.externalHref ? '_blank' : undefined\"")
+    expect(componentSource).toContain(":rel=\"item.externalHref ? 'noopener noreferrer' : undefined\"")
+  })
+})
+
 describe('AppSidebar header styles', () => {
   it('does not clip the version badge dropdown', () => {
     const sidebarHeaderBlockMatch = styleSource.match(/\.sidebar-header\s*\{[\s\S]*?\n {2}\}/)

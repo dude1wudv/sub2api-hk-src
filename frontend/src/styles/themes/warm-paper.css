@@ -1,0 +1,162 @@
+/* Warm-paper skin. The rules only replace visual tokens so upstream layouts
+ * and responsive utility classes remain in control. */
+:root {
+  --color-primary-50: 250 240 230;
+  --color-primary-100: 246 227 214;
+  --color-primary-200: 238 203 178;
+  --color-primary-300: 228 172 138;
+  --color-primary-400: 215 128 84;
+  --color-primary-500: 192 90 46;
+  --color-primary-600: 168 76 36;
+  --color-primary-700: 138 62 30;
+  --color-primary-800: 110 50 26;
+  --color-primary-900: 88 41 23;
+  --color-primary-950: 56 27 16;
+  --color-link-50: 240 245 248;
+  --color-link-100: 224 234 240;
+  --color-link-200: 192 213 226;
+  --color-link-300: 152 188 208;
+  --color-link-400: 106 156 184;
+  --color-link-500: 47 93 124;
+  --color-link-600: 35 74 99;
+  --color-link-700: 29 62 82;
+  --color-link-800: 24 50 66;
+  --color-link-900: 20 41 53;
+  --color-link-950: 12 26 34;
+  --color-ok-50: 240 246 240;
+  --color-ok-100: 226 239 228;
+  --color-ok-200: 196 224 201;
+  --color-ok-300: 152 202 161;
+  --color-ok-400: 104 168 119;
+  --color-ok-500: 62 125 79;
+  --color-ok-600: 51 105 66;
+  --color-ok-700: 42 86 55;
+  --color-ok-800: 34 68 45;
+  --color-ok-900: 28 55 37;
+  --color-ok-950: 16 33 22;
+  --color-warn-50: 250 244 232;
+  --color-warn-100: 246 236 212;
+  --color-warn-200: 238 216 172;
+  --color-warn-300: 226 190 122;
+  --color-warn-400: 208 156 66;
+  --color-warn-500: 169 111 22;
+  --color-warn-600: 144 94 18;
+  --color-warn-700: 118 77 16;
+  --color-warn-800: 94 62 14;
+  --color-warn-900: 76 50 12;
+  --color-warn-950: 46 30 8;
+  --color-err-50: 250 238 234;
+  --color-err-100: 246 222 216;
+  --color-err-200: 238 196 186;
+  --color-err-300: 226 152 138;
+  --color-err-400: 208 100 82;
+  --color-err-500: 176 64 47;
+  --color-err-600: 150 52 38;
+  --color-err-700: 122 42 31;
+  --color-err-800: 96 34 26;
+  --color-err-900: 78 28 22;
+  --color-err-950: 48 16 13;
+  --canvas: 247 243 236;
+  --surface: 255 253 249;
+  --surface-2: 241 236 226;
+  --ink: 38 36 31;
+  --ink-2: 107 103 94;
+  --ink-3: 155 150 138;
+  --line: 230 224 211;
+  --line-strong: 216 209 192;
+  --action-contrast: #fffdf9;
+  color-scheme: light;
+}
+
+.dark {
+  --canvas: 27 25 21;
+  --surface: 35 32 27;
+  --surface-2: 42 38 32;
+  --ink: 236 231 220;
+  --ink-2: 179 172 158;
+  --ink-3: 127 120 105;
+  --line: 55 50 42;
+  --line-strong: 74 67 54;
+  --action-contrast: #1b1915;
+  color-scheme: dark;
+}
+
+/* Theme overrides are intentionally unlayered. Unlayered author rules outrank
+ * the upstream Tailwind base/components layers even though CSS imports must
+ * stay at the beginning of style.css. */
+body {
+  background-color: rgb(var(--canvas));
+  color: rgb(var(--ink));
+}
+
+::selection {
+  background: rgb(var(--color-primary-500) / 0.2);
+  color: rgb(var(--color-primary-900));
+}
+
+.dark ::selection {
+  color: rgb(var(--color-primary-100));
+}
+
+.app-shell {
+    background-color: rgb(var(--canvas));
+    color: rgb(var(--ink));
+  }
+
+  .app-shell-bg {
+    background-image: radial-gradient(circle at 78% 8%, rgb(var(--color-primary-500) / 0.05), transparent 26rem), radial-gradient(circle at 12% 88%, rgb(var(--color-link-500) / 0.04), transparent 22rem);
+    opacity: 0.8;
+  }
+
+  .dark .app-shell-bg {
+    background-image: radial-gradient(circle at 78% 6%, rgb(var(--color-primary-500) / 0.08), transparent 26rem), radial-gradient(circle at 12% 90%, rgb(var(--color-link-500) / 0.06), transparent 22rem);
+    opacity: 0.9;
+  }
+
+  .card,
+  .sidebar {
+    background-color: rgb(var(--surface));
+    border-color: rgb(var(--line));
+  }
+
+  .card-hover:hover {
+    border-color: rgb(var(--line-strong));
+  }
+
+  .btn-primary {
+    background: linear-gradient(180deg, rgb(var(--color-primary-500)), rgb(var(--color-primary-600)));
+    color: var(--action-contrast);
+    box-shadow: 0 8px 20px rgb(var(--color-primary-600) / 0.22);
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(180deg, rgb(var(--color-primary-400)), rgb(var(--color-primary-600)));
+    box-shadow: 0 10px 26px rgb(var(--color-primary-600) / 0.26);
+  }
+
+  .dark .btn-primary {
+    background: linear-gradient(180deg, rgb(var(--color-primary-400)), rgb(var(--color-primary-500)));
+    color: var(--action-contrast);
+    box-shadow: 0 8px 22px rgb(var(--color-primary-500) / 0.28);
+  }
+
+  .dark .btn-primary:hover {
+    background: linear-gradient(180deg, rgb(var(--color-primary-300)), rgb(var(--color-primary-400)));
+  }
+
+  .sidebar-link {
+    color: rgb(var(--ink-2));
+  }
+
+  .sidebar-link:hover,
+  .dark .sidebar-link:hover {
+    background: rgb(var(--color-primary-500) / 0.06);
+    color: rgb(var(--ink));
+  }
+
+.sidebar-link-active,
+.dark .sidebar-link-active {
+  background-color: rgb(var(--color-primary-500) / 0.12);
+  color: rgb(var(--color-primary-600));
+  box-shadow: inset 2.5px 0 0 rgb(var(--color-primary-500));
+}

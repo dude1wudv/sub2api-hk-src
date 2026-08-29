@@ -112,7 +112,9 @@
           <router-link
             v-for="item in personalNavItems"
             :key="item.path"
-            :to="item.path"
+            :to="item.externalHref || item.path"
+            :target="item.externalHref ? '_blank' : undefined"
+            :rel="item.externalHref ? 'noopener noreferrer' : undefined"
             class="sidebar-link mb-1"
             :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
             :title="sidebarCollapsed ? item.label : undefined"
@@ -132,7 +134,9 @@
           <router-link
             v-for="item in userNavItems"
             :key="item.path"
-            :to="item.path"
+            :to="item.externalHref || item.path"
+            :target="item.externalHref ? '_blank' : undefined"
+            :rel="item.externalHref ? 'noopener noreferrer' : undefined"
             class="sidebar-link mb-1"
             :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
             :title="sidebarCollapsed ? item.label : undefined"
@@ -205,6 +209,8 @@ interface NavItem {
   icon: unknown
   iconSvg?: string
   hideInSimpleMode?: boolean
+  /** Open a standalone application in a new browser tab. */
+  externalHref?: string
   children?: NavItem[]
   /**
    * When true, the parent item only toggles the expand/collapse state and
@@ -707,7 +713,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   }
   items.push(
     { path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon },
-    { path: '/image2', label: t('nav.image2'), icon: BatchImageIcon, hideInSimpleMode: true },
+    { path: '/image2', externalHref: '/image2/', label: t('nav.image2'), icon: BatchImageIcon, hideInSimpleMode: true },
     { path: '/batch-image', label: t('nav.batchImage'), icon: BatchImageIcon, hideInSimpleMode: true, featureFlag: flagBatchImageAccess },
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
