@@ -2,112 +2,115 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div
-          class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start"
-        >
-          <!-- Left: fuzzy search + filters (can wrap to multiple lines) -->
-          <div class="flex flex-1 flex-wrap items-center gap-3">
-            <div class="relative w-full sm:w-64">
-              <Icon
-                name="search"
-                size="md"
-                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
-              />
-              <input
-                v-model="searchQuery"
-                type="text"
-                :placeholder="t('admin.groups.searchGroups')"
-                class="input pl-10"
-                @input="handleSearch"
-              />
-            </div>
-            <Select
-              v-model="filters.platform"
-              :options="platformFilterOptions"
-              :placeholder="t('admin.groups.allPlatforms')"
-              class="w-44"
-              @change="loadGroups"
-            />
-            <Select
-              v-model="filters.status"
-              :options="statusOptions"
-              :placeholder="t('admin.groups.allStatus')"
-              class="w-40"
-              @change="loadGroups"
-            />
-            <Select
-              v-model="filters.is_exclusive"
-              :options="exclusiveOptions"
-              :placeholder="t('admin.groups.allGroups')"
-              class="w-44"
-              @change="loadGroups"
-            />
-          </div>
-
-          <!-- Right: actions -->
+        <div class="rounded-xl border border-gray-200/80 bg-white/70 p-3 shadow-sm backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/45 sm:p-4">
           <div
-            class="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-3 lg:w-auto"
+            class="flex flex-col justify-between gap-4 lg:flex-row lg:items-center"
           >
-            <button
-              @click="loadGroups"
-              :disabled="loading"
-              class="btn btn-secondary"
-              :title="t('common.refresh')"
-            >
-              <Icon
-                name="refresh"
-                size="md"
-                :class="loading ? 'animate-spin' : ''"
-              />
-            </button>
-            <div class="relative" ref="columnDropdownRef">
-              <button
-                @click="showColumnDropdown = !showColumnDropdown"
-                class="btn btn-secondary"
-                :title="t('admin.groups.columnSettings')"
-              >
-                <Icon name="grid" size="md" class="mr-2" />
-                <span class="hidden md:inline">{{
-                  t("admin.groups.columnSettings")
-                }}</span>
-              </button>
-              <div
-                v-if="showColumnDropdown"
-                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
-              >
-                <button
-                  v-for="col in toggleableColumns"
-                  :key="col.key"
-                  @click="toggleColumn(col.key)"
-                  class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
-                >
-                  <span>{{ col.label }}</span>
-                  <Icon
-                    v-if="isColumnVisible(col.key)"
-                    name="check"
-                    size="sm"
-                    class="text-primary-500"
-                    :stroke-width="2"
-                  />
-                </button>
+            <!-- Left: fuzzy search + filters (can wrap to multiple lines) -->
+            <div class="flex flex-1 flex-wrap items-center gap-3">
+              <div class="relative w-full sm:w-64">
+                <Icon
+                  name="search"
+                  size="md"
+                  class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-400"
+                />
+                <input
+                  v-model="searchQuery"
+                  type="text"
+                  :placeholder="t('admin.groups.searchGroups')"
+                  class="input pl-10"
+                  @input="handleSearch"
+                />
               </div>
+              <Select
+                v-model="filters.platform"
+                :options="platformFilterOptions"
+                :placeholder="t('admin.groups.allPlatforms')"
+                class="w-full sm:w-44"
+                @change="loadGroups"
+              />
+              <Select
+                v-model="filters.status"
+                :options="statusOptions"
+                :placeholder="t('admin.groups.allStatus')"
+                class="w-full sm:w-40"
+                @change="loadGroups"
+              />
+              <Select
+                v-model="filters.is_exclusive"
+                :options="exclusiveOptions"
+                :placeholder="t('admin.groups.allGroups')"
+                class="w-full sm:w-44"
+                @change="loadGroups"
+              />
             </div>
-            <button
-              @click="openSortModal"
-              class="btn btn-secondary"
-              :title="t('admin.groups.sortOrder')"
+
+            <!-- Right: actions -->
+            <div
+              class="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3 lg:w-auto"
             >
-              <Icon name="arrowsUpDown" size="md" class="mr-2" />
-              {{ t("admin.groups.sortOrder") }}
-            </button>
-            <button
-              @click="openCreateModal"
-              class="btn btn-primary"
-              data-tour="groups-create-btn"
-            >
-              <Icon name="plus" size="md" class="mr-2" />
-              {{ t("admin.groups.createGroup") }}
-            </button>
+              <button
+                @click="loadGroups"
+                :disabled="loading"
+                class="btn btn-secondary px-3"
+                :title="t('common.refresh')"
+                :aria-label="t('common.refresh')"
+              >
+                <Icon
+                  name="refresh"
+                  size="md"
+                  :class="loading ? 'animate-spin' : ''"
+                />
+              </button>
+              <div class="relative" ref="columnDropdownRef">
+                <button
+                  @click="showColumnDropdown = !showColumnDropdown"
+                  class="btn btn-secondary px-3"
+                  :title="t('admin.groups.columnSettings')"
+                >
+                  <Icon name="grid" size="md" class="mr-2" />
+                  <span class="hidden md:inline">{{
+                    t("admin.groups.columnSettings")
+                  }}</span>
+                </button>
+                <div
+                  v-if="showColumnDropdown"
+                  class="absolute right-0 top-full z-50 mt-2 max-h-80 w-52 overflow-y-auto rounded-xl border border-gray-200 bg-white/95 py-1.5 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-800/95"
+                >
+                  <button
+                    v-for="col in toggleableColumns"
+                    :key="col.key"
+                    @click="toggleColumn(col.key)"
+                    class="flex min-h-10 w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
+                  >
+                    <span>{{ col.label }}</span>
+                    <Icon
+                      v-if="isColumnVisible(col.key)"
+                      name="check"
+                      size="sm"
+                      class="text-primary-600 dark:text-primary-400"
+                      :stroke-width="2"
+                    />
+                  </button>
+                </div>
+              </div>
+              <button
+                @click="openSortModal"
+                class="btn btn-secondary"
+                :title="t('admin.groups.sortOrder')"
+              >
+                <Icon name="arrowsUpDown" size="md" class="mr-2" />
+                {{ t("admin.groups.sortOrder") }}
+              </button>
+              <button
+                @click="openCreateModal"
+                class="btn btn-primary"
+                data-tour="groups-create-btn"
+              >
+                <Icon name="plus" size="md" class="mr-2" />
+                {{ t("admin.groups.createGroup") }}
+              </button>
+            </div>
           </div>
         </div>
       </template>
@@ -256,7 +259,7 @@
           </template>
 
           <template #cell-rate_multiplier="{ value }">
-            <span class="text-sm text-gray-700 dark:text-gray-300"
+            <span class="text-sm font-medium tabular-nums text-gray-700 dark:text-dark-200"
               >{{ value }}x</span
             >
           </template>
@@ -270,9 +273,9 @@
           </template>
 
           <template #cell-account_count="{ row }">
-            <div class="space-y-0.5 text-xs">
+            <div class="space-y-0.5 text-xs tabular-nums">
               <div>
-                <span class="text-gray-500 dark:text-gray-400">{{
+                <span class="text-gray-500 dark:text-dark-400">{{
                   t("admin.groups.accountsAvailable")
                 }}</span>
                 <span
@@ -285,7 +288,7 @@
                 >
               </div>
               <div v-if="row.rate_limited_account_count">
-                <span class="text-gray-500 dark:text-gray-400">{{
+                <span class="text-gray-500 dark:text-dark-400">{{
                   t("admin.groups.accountsRateLimited")
                 }}</span>
                 <span
@@ -298,11 +301,11 @@
                 >
               </div>
               <div>
-                <span class="text-gray-500 dark:text-gray-400">{{
+                <span class="text-gray-500 dark:text-dark-400">{{
                   t("admin.groups.accountsTotal")
                 }}</span>
                 <span
-                  class="ml-1 font-medium text-gray-700 dark:text-gray-300"
+                  class="ml-1 font-medium text-gray-700 dark:text-dark-300"
                   >{{ row.account_count || 0 }}</span
                 >
                 <span
@@ -323,37 +326,37 @@
               :rpm-used="capacityMap.get(row.id)!.rpmUsed"
               :rpm-max="capacityMap.get(row.id)!.rpmMax"
             />
-            <span v-else class="text-xs text-gray-400">—</span>
+            <span v-else class="text-xs text-gray-400 dark:text-dark-500">—</span>
           </template>
 
           <template #cell-usage="{ row }">
-            <div v-if="usageLoading" class="text-xs text-gray-400">—</div>
-            <div v-else class="space-y-0.5 text-xs">
-              <div class="text-gray-500 dark:text-gray-400">
-                <span class="text-gray-400 dark:text-gray-500">{{
+            <div v-if="usageLoading" class="text-xs text-gray-400 dark:text-dark-500">—</div>
+            <div v-else class="space-y-0.5 text-xs tabular-nums">
+              <div class="text-gray-500 dark:text-dark-400">
+                <span class="text-gray-400 dark:text-dark-500">{{
                   t("admin.groups.usageToday")
                 }}</span>
-                <span class="ml-1 font-medium text-gray-700 dark:text-gray-300"
+                <span class="ml-1 font-medium text-gray-700 dark:text-dark-200"
                   >${{
                     formatCost(usageMap.get(row.id)?.today_cost ?? 0)
                   }}</span
                 >
               </div>
-              <div class="text-gray-500 dark:text-gray-400">
-                <span class="text-gray-400 dark:text-gray-500">{{
+              <div class="text-gray-500 dark:text-dark-400">
+                <span class="text-gray-400 dark:text-dark-500">{{
                   t("admin.groups.usageYesterday")
                 }}</span>
-                <span class="ml-1 font-medium text-gray-700 dark:text-gray-300"
+                <span class="ml-1 font-medium text-gray-700 dark:text-dark-200"
                   >${{
                     formatCost(usageMap.get(row.id)?.yesterday_cost ?? 0)
                   }}</span
                 >
               </div>
-              <div class="text-gray-500 dark:text-gray-400">
-                <span class="text-gray-400 dark:text-gray-500">{{
+              <div class="text-gray-500 dark:text-dark-400">
+                <span class="text-gray-400 dark:text-dark-500">{{
                   t("admin.groups.usageTotal")
                 }}</span>
-                <span class="ml-1 font-medium text-gray-700 dark:text-gray-300"
+                <span class="ml-1 font-medium text-gray-700 dark:text-dark-200"
                   >${{
                     formatCost(usageMap.get(row.id)?.total_cost ?? 0)
                   }}</span
@@ -377,7 +380,7 @@
             <div class="flex items-center gap-1">
               <button
                 @click="handleEdit(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+                class="flex min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:hover:bg-dark-700 dark:hover:text-primary-400"
               >
                 <Icon name="edit" size="sm" />
                 <span class="text-xs">{{ t("common.edit") }}</span>
@@ -391,7 +394,7 @@
                 "
                 :disabled="duplicatingGroupIds.has(row.id)"
                 @click="handleDuplicate(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+                class="flex min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-dark-700 dark:hover:text-primary-400"
               >
                 <Icon name="copy" size="sm" />
                 <span class="text-xs">
@@ -405,7 +408,7 @@
               <button
                 v-if="row.platform === 'composite'"
                 @click="handleCompositeRoutes(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-cyan-600 dark:hover:bg-dark-700 dark:hover:text-cyan-400"
+                class="flex min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-link-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-link-500/40 dark:hover:bg-dark-700 dark:hover:text-link-400"
               >
                 <Icon name="swap" size="sm" />
                 <span class="text-xs">{{
@@ -414,7 +417,7 @@
               </button>
               <button
                 @click="handleRateMultipliers(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-purple-600 dark:hover:bg-dark-700 dark:hover:text-purple-400"
+                class="flex min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:hover:bg-dark-700 dark:hover:text-primary-400"
               >
                 <Icon name="dollar" size="sm" />
                 <span class="text-xs">{{
@@ -423,7 +426,7 @@
               </button>
               <button
                 @click="handleRPMOverrides(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-orange-600 dark:hover:bg-dark-700 dark:hover:text-orange-400"
+                class="flex min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:hover:bg-dark-700 dark:hover:text-amber-400"
               >
                 <Icon name="bolt" size="sm" />
                 <span class="text-xs">{{
@@ -432,7 +435,7 @@
               </button>
               <button
                 @click="handleDelete(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                class="flex min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-err-50 hover:text-err-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-err-500/40 dark:hover:bg-err-950/30 dark:hover:text-err-400"
               >
                 <Icon name="trash" size="sm" />
                 <span class="text-xs">{{ t("common.delete") }}</span>

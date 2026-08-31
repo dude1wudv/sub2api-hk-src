@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-dark-950 dark:text-white">
-    <header class="border-b border-gray-200 bg-white/95 dark:border-dark-800 dark:bg-dark-900/95">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <RouterLink to="/home" class="flex min-w-0 items-center gap-3">
+  <div class="min-h-screen bg-[rgb(var(--canvas))] text-[rgb(var(--ink))]">
+    <header class="sticky top-0 z-20 border-b border-gray-200/80 bg-white/80 backdrop-blur-md dark:border-dark-800 dark:bg-dark-900/80">
+      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+        <RouterLink to="/home" class="flex min-w-0 items-center gap-3 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40">
           <template v-if="settings">
-            <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200 dark:bg-dark-800 dark:ring-dark-700">
+            <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-gray-200/80 dark:bg-dark-800 dark:ring-dark-700/80">
               <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
             </span>
             <span class="truncate text-base font-semibold text-gray-950 dark:text-white">
@@ -12,27 +12,27 @@
             </span>
           </template>
           <template v-else>
-            <span class="h-10 w-10 flex-shrink-0 animate-pulse rounded-xl bg-gray-200 dark:bg-dark-700" aria-hidden="true"></span>
+            <span class="h-9 w-9 flex-shrink-0 animate-pulse rounded-lg bg-gray-200 dark:bg-dark-700" aria-hidden="true"></span>
             <span class="h-5 w-28 animate-pulse rounded bg-gray-200 dark:bg-dark-700" aria-hidden="true"></span>
           </template>
         </RouterLink>
         <RouterLink
           to="/login"
-          class="inline-flex flex-shrink-0 items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-primary-600/20 transition hover:bg-primary-700"
+          class="inline-flex min-h-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-700 active:bg-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:bg-primary-500 dark:hover:bg-primary-600"
         >
           {{ t('home.login') }}
         </RouterLink>
       </div>
     </header>
 
-    <main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:py-10">
+    <main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:py-12">
       <div v-if="loading" class="flex min-h-[320px] items-center justify-center">
-        <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
+        <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary-600/20 border-t-primary-600 dark:border-primary-400/20 dark:border-t-primary-400"></div>
       </div>
 
       <section
         v-else-if="loadError"
-        class="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200"
+        class="rounded-xl border border-red-200 bg-red-50/80 p-6 text-red-700 shadow-sm dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300"
       >
         <h1 class="text-lg font-semibold">{{ t('legal.loadFailed') }}</h1>
         <p class="mt-2 text-sm">{{ t('legal.retryLater') }}</p>
@@ -40,15 +40,15 @@
 
       <section
         v-else-if="!currentDocument"
-        class="rounded-lg border border-gray-200 bg-white p-6 dark:border-dark-700 dark:bg-dark-900"
+        class="rounded-xl border border-gray-200/80 bg-white/90 p-6 shadow-sm dark:border-dark-700 dark:bg-dark-800/90"
       >
-        <div class="flex items-start gap-3">
-          <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-gray-100 text-gray-600 dark:bg-dark-800 dark:text-dark-300">
+        <div class="flex items-start gap-3.5">
+          <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-dark-300">
             <Icon name="document" size="sm" />
           </span>
           <div>
-            <h1 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('legal.notFound') }}</h1>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
+            <h1 class="text-lg font-semibold text-gray-950 dark:text-white">{{ t('legal.notFound') }}</h1>
+            <p class="mt-1.5 text-sm leading-6 text-gray-600 dark:text-dark-300">
               {{ t('legal.notFoundDescription') }}
             </p>
           </div>
@@ -56,17 +56,17 @@
       </section>
 
       <article v-else>
-        <div class="mb-8 border-b border-gray-200 pb-6 dark:border-dark-700">
+        <div class="mb-8 border-b border-gray-200/80 pb-6 dark:border-dark-700">
           <div class="flex items-start gap-4">
-            <span class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-md bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">
+            <span class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-primary-200/60 bg-primary-50 text-primary-700 dark:border-primary-800/50 dark:bg-primary-950/40 dark:text-primary-300">
               <Icon :name="documentIcon" size="md" />
             </span>
             <div class="min-w-0">
-              <p class="text-sm font-medium text-primary-700 dark:text-primary-300">{{ documentTypeLabel }}</p>
-              <h1 class="mt-2 break-words text-2xl font-bold tracking-normal text-gray-950 dark:text-white sm:text-3xl">
+              <p class="text-xs font-semibold uppercase tracking-wider text-primary-700 dark:text-primary-400">{{ documentTypeLabel }}</p>
+              <h1 class="mt-1.5 break-words text-2xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-3xl lg:text-4xl">
                 {{ currentDocument.title }}
               </h1>
-              <p v-if="updatedAt" class="mt-3 text-sm text-gray-500 dark:text-dark-400">
+              <p v-if="updatedAt" class="mt-2 text-xs text-gray-500 dark:text-dark-400 sm:text-sm">
                 {{ t('legal.updatedAt', { date: updatedAt }) }}
               </p>
             </div>
@@ -80,7 +80,7 @@
         ></div>
         <div
           v-else
-          class="rounded-lg border border-dashed border-gray-300 bg-white px-6 py-14 text-center text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-400"
+          class="rounded-xl border border-dashed border-gray-300/80 bg-white/50 px-6 py-14 text-center text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-800/40 dark:text-dark-400"
         >
           {{ t('legal.empty') }}
         </div>
@@ -184,80 +184,80 @@ onMounted(async () => {
 
 <style scoped>
 .legal-document-content {
-  line-height: 1.75;
+  line-height: 1.8;
   overflow-wrap: anywhere;
   color: inherit;
 }
 
 .legal-document-content :deep(h1) {
-  @apply mb-4 mt-8 border-b border-gray-200 pb-3 text-3xl font-bold dark:border-dark-700;
+  @apply mb-4 mt-8 border-b border-gray-200/80 pb-3 text-2xl font-bold tracking-tight text-gray-950 dark:border-dark-700 dark:text-white sm:text-3xl;
 }
 
 .legal-document-content :deep(h2) {
-  @apply mb-3 mt-7 text-2xl font-bold;
+  @apply mb-3 mt-7 text-xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-2xl;
 }
 
 .legal-document-content :deep(h3) {
-  @apply mb-2 mt-6 text-xl font-semibold;
+  @apply mb-2 mt-6 text-lg font-semibold tracking-tight text-gray-900 dark:text-white sm:text-xl;
 }
 
 .legal-document-content :deep(h4) {
-  @apply mb-2 mt-5 text-lg font-semibold;
+  @apply mb-2 mt-5 text-base font-semibold text-gray-900 dark:text-white;
 }
 
 .legal-document-content :deep(p) {
-  @apply mb-4 text-gray-700 dark:text-dark-200;
+  @apply mb-4 text-sm sm:text-base leading-relaxed text-gray-700 dark:text-dark-200;
 }
 
 .legal-document-content :deep(a) {
-  @apply text-primary-600 underline underline-offset-4 hover:text-primary-700 dark:text-primary-300 dark:hover:text-primary-200;
+  @apply font-medium text-primary-600 underline underline-offset-4 decoration-primary-500/30 transition-colors hover:text-primary-700 hover:decoration-primary-500 dark:text-primary-400 dark:hover:text-primary-300;
 }
 
 .legal-document-content :deep(ul) {
-  @apply mb-4 list-disc pl-6;
+  @apply mb-4 list-disc space-y-1 pl-6 text-sm sm:text-base;
 }
 
 .legal-document-content :deep(ol) {
-  @apply mb-4 list-decimal pl-6;
+  @apply mb-4 list-decimal space-y-1 pl-6 text-sm sm:text-base;
 }
 
 .legal-document-content :deep(li) {
-  @apply mb-1 text-gray-700 dark:text-dark-200;
+  @apply text-gray-700 dark:text-dark-200;
 }
 
 .legal-document-content :deep(blockquote) {
-  @apply my-5 border-l-4 border-gray-300 pl-4 text-gray-600 dark:border-dark-600 dark:text-dark-300;
+  @apply my-5 rounded-r-lg border-l-4 border-primary-500/60 bg-primary-50/30 py-3 pl-4 pr-3 text-sm sm:text-base text-gray-700 dark:bg-primary-950/20 dark:text-dark-200;
 }
 
 .legal-document-content :deep(code) {
-  @apply rounded bg-gray-100 px-1.5 py-0.5 font-mono text-sm dark:bg-dark-800;
+  @apply rounded border border-gray-200/80 bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-800 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200;
 }
 
 .legal-document-content :deep(pre) {
-  @apply my-5 overflow-x-auto rounded-lg bg-gray-950 p-4 text-gray-100;
+  @apply my-5 overflow-x-auto rounded-xl border border-dark-800 bg-gray-950 p-4 font-mono text-xs sm:text-sm text-gray-100;
 }
 
 .legal-document-content :deep(pre code) {
-  @apply bg-transparent p-0 text-inherit;
+  @apply border-0 bg-transparent p-0 text-inherit;
 }
 
 .legal-document-content :deep(table) {
-  @apply my-5 block w-full overflow-x-auto border-collapse;
+  @apply my-6 block w-full overflow-x-auto border-collapse text-sm;
 }
 
 .legal-document-content :deep(th) {
-  @apply border border-gray-300 bg-gray-50 px-3 py-2 text-left font-semibold dark:border-dark-600 dark:bg-dark-800;
+  @apply border border-gray-200/80 bg-gray-50/90 px-4 py-2.5 text-left font-semibold text-gray-900 dark:border-dark-700 dark:bg-dark-800 dark:text-white;
 }
 
 .legal-document-content :deep(td) {
-  @apply border border-gray-300 px-3 py-2 dark:border-dark-600;
+  @apply border border-gray-200/80 px-4 py-2.5 text-gray-700 dark:border-dark-700 dark:text-dark-200;
 }
 
 .legal-document-content :deep(img) {
-  @apply my-5 h-auto max-w-full rounded-lg;
+  @apply my-6 h-auto max-w-full rounded-xl border border-gray-200/80 shadow-sm dark:border-dark-700;
 }
 
 .legal-document-content :deep(hr) {
-  @apply my-7 border-gray-200 dark:border-dark-700;
+  @apply my-8 border-gray-200/80 dark:border-dark-700;
 }
 </style>

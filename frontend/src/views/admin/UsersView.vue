@@ -3,260 +3,263 @@
     <TablePageLayout>
       <!-- Single Row: Search, Filters, and Actions -->
       <template #filters>
-        <div class="flex flex-wrap items-center gap-3">
-          <!-- Left: Search + Active Filters -->
-          <div class="flex flex-1 flex-wrap items-center gap-3">
-            <!-- Search Box -->
-            <div class="relative w-full md:w-64">
-              <Icon
-                name="search"
-                size="md"
-                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                v-model="searchQuery"
-                type="text"
-                :placeholder="t('admin.users.searchUsers')"
-                class="input pl-10"
-                @input="handleSearch"
-              />
-            </div>
-
-            <!-- Role Filter (visible when enabled) -->
-            <div v-if="visibleFilters.has('role')" class="w-full sm:w-32">
-              <Select
-                v-model="filters.role"
-                :options="[
-                  { value: '', label: t('admin.users.allRoles') },
-                  { value: 'admin', label: t('admin.users.admin') },
-                  { value: 'user', label: t('admin.users.user') }
-                ]"
-                @change="applyFilter"
-              />
-            </div>
-
-            <!-- Status Filter (visible when enabled) -->
-            <div v-if="visibleFilters.has('status')" class="w-full sm:w-32">
-              <Select
-                v-model="filters.status"
-                :options="[
-                  { value: '', label: t('admin.users.allStatus') },
-                  { value: 'active', label: t('common.active') },
-                  { value: 'disabled', label: t('admin.users.disabled') }
-                ]"
-                @change="applyFilter"
-              />
-            </div>
-
-            <!-- Group Filter (visible when enabled) -->
-            <div v-if="visibleFilters.has('group')" class="w-full sm:w-44">
-              <Select
-                v-model="filters.group"
-                :options="groupFilterOptions"
-                searchable
-                creatable
-                :creatable-prefix="t('admin.users.fuzzySearch')"
-                :search-placeholder="t('admin.users.searchAuthorizedGroups')"
-                @change="applyFilter"
-              />
-            </div>
-
-            <!-- API Key Group Filter (visible when enabled) -->
-            <div v-if="visibleFilters.has('apiKeyGroup')" class="w-full sm:w-44">
-              <Select
-                v-model="filters.apiKeyGroup"
-                :options="apiKeyGroupFilterOptions"
-                searchable
-                :search-placeholder="t('admin.users.searchApiKeyGroups')"
-                @change="applyFilter"
-              />
-            </div>
-
-            <!-- Dynamic Attribute Filters -->
-            <template v-for="(value, attrId) in activeAttributeFilters" :key="attrId">
-              <div
-                v-if="visibleFilters.has(`attr_${attrId}`)"
-                class="relative w-full sm:w-36"
-              >
-                <!-- Text/Email/URL/Textarea/Date type: styled input -->
-                <input
-                  v-if="['text', 'textarea', 'email', 'url', 'date'].includes(getAttributeDefinition(Number(attrId))?.type || 'text')"
-                  :value="value"
-                  @input="(e) => updateAttributeFilter(Number(attrId), (e.target as HTMLInputElement).value)"
-                  @keyup.enter="applyFilter"
-                  :placeholder="getAttributeDefinitionName(Number(attrId))"
-                  class="input w-full"
+        <div class="rounded-xl border border-gray-200/80 bg-white/70 p-3 shadow-sm backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/45 sm:p-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Left: Search + Active Filters -->
+            <div class="flex flex-1 flex-wrap items-center gap-3">
+              <!-- Search Box -->
+              <div class="relative w-full md:w-64">
+                <Icon
+                  name="search"
+                  size="md"
+                  class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-400"
                 />
-                <!-- Number type: number input -->
                 <input
-                  v-else-if="getAttributeDefinition(Number(attrId))?.type === 'number'"
-                  :value="value"
-                  type="number"
-                  @input="(e) => updateAttributeFilter(Number(attrId), (e.target as HTMLInputElement).value)"
-                  @keyup.enter="applyFilter"
-                  :placeholder="getAttributeDefinitionName(Number(attrId))"
-                  class="input w-full"
-                />
-                <!-- Select/Multi-select type -->
-                <template v-else-if="['select', 'multi_select'].includes(getAttributeDefinition(Number(attrId))?.type || '')">
-                  <div class="w-full">
-                    <Select
-                      :model-value="value"
-                      :options="[
-                        { value: '', label: getAttributeDefinitionName(Number(attrId)) },
-                        ...(getAttributeDefinition(Number(attrId))?.options || [])
-                      ]"
-                      @update:model-value="(val) => { updateAttributeFilter(Number(attrId), String(val ?? '')); applyFilter() }"
-                    />
-                  </div>
-                </template>
-                <!-- Fallback -->
-                <input
-                  v-else
-                  :value="value"
-                  @input="(e) => updateAttributeFilter(Number(attrId), (e.target as HTMLInputElement).value)"
-                  @keyup.enter="applyFilter"
-                  :placeholder="getAttributeDefinitionName(Number(attrId))"
-                  class="input w-full"
+                  v-model="searchQuery"
+                  type="text"
+                  :placeholder="t('admin.users.searchUsers')"
+                  class="input pl-10"
+                  @input="handleSearch"
                 />
               </div>
-            </template>
-          </div>
 
-          <!-- Right: Actions and Settings -->
-          <div class="flex flex-wrap items-center justify-end gap-2">
-            <!-- Mobile: Secondary buttons (icon only) -->
-            <div class="flex items-center gap-2 md:contents">
-              <!-- Refresh Button -->
-              <button
-                @click="loadUsers"
-                :disabled="loading"
-                class="btn btn-secondary px-2 md:px-3"
-                :title="t('common.refresh')"
-              >
-                <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
-              </button>
-              <!-- Filter Settings Dropdown -->
-              <div class="relative" ref="filterDropdownRef">
-                <button
-                  @click="showFilterDropdown = !showFilterDropdown"
-                  class="btn btn-secondary px-2 md:px-3"
-                  :title="t('admin.users.filterSettings')"
-                >
-                  <Icon name="filter" size="sm" class="md:mr-1.5" />
-                  <span class="hidden md:inline">{{ t('admin.users.filterSettings') }}</span>
-                </button>
-                <!-- Dropdown menu -->
+              <!-- Role Filter (visible when enabled) -->
+              <div v-if="visibleFilters.has('role')" class="w-full sm:w-32">
+                <Select
+                  v-model="filters.role"
+                  :options="[
+                    { value: '', label: t('admin.users.allRoles') },
+                    { value: 'admin', label: t('admin.users.admin') },
+                    { value: 'user', label: t('admin.users.user') }
+                  ]"
+                  @change="applyFilter"
+                />
+              </div>
+
+              <!-- Status Filter (visible when enabled) -->
+              <div v-if="visibleFilters.has('status')" class="w-full sm:w-32">
+                <Select
+                  v-model="filters.status"
+                  :options="[
+                    { value: '', label: t('admin.users.allStatus') },
+                    { value: 'active', label: t('common.active') },
+                    { value: 'disabled', label: t('admin.users.disabled') }
+                  ]"
+                  @change="applyFilter"
+                />
+              </div>
+
+              <!-- Group Filter (visible when enabled) -->
+              <div v-if="visibleFilters.has('group')" class="w-full sm:w-44">
+                <Select
+                  v-model="filters.group"
+                  :options="groupFilterOptions"
+                  searchable
+                  creatable
+                  :creatable-prefix="t('admin.users.fuzzySearch')"
+                  :search-placeholder="t('admin.users.searchAuthorizedGroups')"
+                  @change="applyFilter"
+                />
+              </div>
+
+              <!-- API Key Group Filter (visible when enabled) -->
+              <div v-if="visibleFilters.has('apiKeyGroup')" class="w-full sm:w-44">
+                <Select
+                  v-model="filters.apiKeyGroup"
+                  :options="apiKeyGroupFilterOptions"
+                  searchable
+                  :search-placeholder="t('admin.users.searchApiKeyGroups')"
+                  @change="applyFilter"
+                />
+              </div>
+
+              <!-- Dynamic Attribute Filters -->
+              <template v-for="(value, attrId) in activeAttributeFilters" :key="attrId">
                 <div
-                  v-if="showFilterDropdown"
-                  class="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                  v-if="visibleFilters.has(`attr_${attrId}`)"
+                  class="relative w-full sm:w-36"
                 >
-                  <!-- Built-in filters -->
+                  <!-- Text/Email/URL/Textarea/Date type: styled input -->
+                  <input
+                    v-if="['text', 'textarea', 'email', 'url', 'date'].includes(getAttributeDefinition(Number(attrId))?.type || 'text')"
+                    :value="value"
+                    @input="(e) => updateAttributeFilter(Number(attrId), (e.target as HTMLInputElement).value)"
+                    @keyup.enter="applyFilter"
+                    :placeholder="getAttributeDefinitionName(Number(attrId))"
+                    class="input w-full"
+                  />
+                  <!-- Number type: number input -->
+                  <input
+                    v-else-if="getAttributeDefinition(Number(attrId))?.type === 'number'"
+                    :value="value"
+                    type="number"
+                    @input="(e) => updateAttributeFilter(Number(attrId), (e.target as HTMLInputElement).value)"
+                    @keyup.enter="applyFilter"
+                    :placeholder="getAttributeDefinitionName(Number(attrId))"
+                    class="input w-full"
+                  />
+                  <!-- Select/Multi-select type -->
+                  <template v-else-if="['select', 'multi_select'].includes(getAttributeDefinition(Number(attrId))?.type || '')">
+                    <div class="w-full">
+                      <Select
+                        :model-value="value"
+                        :options="[
+                          { value: '', label: getAttributeDefinitionName(Number(attrId)) },
+                          ...(getAttributeDefinition(Number(attrId))?.options || [])
+                        ]"
+                        @update:model-value="(val) => { updateAttributeFilter(Number(attrId), String(val ?? '')); applyFilter() }"
+                      />
+                    </div>
+                  </template>
+                  <!-- Fallback -->
+                  <input
+                    v-else
+                    :value="value"
+                    @input="(e) => updateAttributeFilter(Number(attrId), (e.target as HTMLInputElement).value)"
+                    @keyup.enter="applyFilter"
+                    :placeholder="getAttributeDefinitionName(Number(attrId))"
+                    class="input w-full"
+                  />
+                </div>
+              </template>
+            </div>
+
+            <!-- Right: Actions and Settings -->
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <!-- Mobile: Secondary buttons (icon only) -->
+              <div class="flex items-center gap-2 md:contents">
+                <!-- Refresh Button -->
+                <button
+                  @click="loadUsers"
+                  :disabled="loading"
+                  class="btn btn-secondary px-2 md:px-3"
+                  :title="t('common.refresh')"
+                  :aria-label="t('common.refresh')"
+                >
+                  <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+                </button>
+                <!-- Filter Settings Dropdown -->
+                <div class="relative" ref="filterDropdownRef">
                   <button
-                    v-for="filter in builtInFilters"
-                    :key="filter.key"
-                    @click="toggleBuiltInFilter(filter.key)"
-                    class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                    @click="showFilterDropdown = !showFilterDropdown"
+                    class="btn btn-secondary px-2 md:px-3"
+                    :title="t('admin.users.filterSettings')"
                   >
-                    <span>{{ filter.name }}</span>
-                    <Icon
-                      v-if="visibleFilters.has(filter.key)"
-                      name="check"
-                      size="sm"
-                      class="text-primary-500"
-                      :stroke-width="2"
-                    />
+                    <Icon name="filter" size="sm" class="md:mr-1.5" />
+                    <span class="hidden md:inline">{{ t('admin.users.filterSettings') }}</span>
                   </button>
-                  <!-- Divider if custom attributes exist -->
+                  <!-- Dropdown menu -->
                   <div
-                    v-if="filterableAttributes.length > 0"
-                    class="my-1 border-t border-gray-100 dark:border-dark-700"
-                  ></div>
-                  <!-- Custom attribute filters -->
-                  <button
-                    v-for="attr in filterableAttributes"
-                    :key="attr.id"
-                    @click="toggleAttributeFilter(attr)"
-                    class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                    v-if="showFilterDropdown"
+                    class="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white/95 py-1.5 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-800/95"
                   >
-                    <span>{{ attr.name }}</span>
-                    <Icon
-                      v-if="visibleFilters.has(`attr_${attr.id}`)"
-                      name="check"
-                      size="sm"
-                      class="text-primary-500"
-                      :stroke-width="2"
-                    />
-                  </button>
+                    <!-- Built-in filters -->
+                    <button
+                      v-for="filter in builtInFilters"
+                      :key="filter.key"
+                      @click="toggleBuiltInFilter(filter.key)"
+                      class="flex min-h-10 w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
+                    >
+                      <span>{{ filter.name }}</span>
+                      <Icon
+                        v-if="visibleFilters.has(filter.key)"
+                        name="check"
+                        size="sm"
+                        class="text-primary-600 dark:text-primary-400"
+                        :stroke-width="2"
+                      />
+                    </button>
+                    <!-- Divider if custom attributes exist -->
+                    <div
+                      v-if="filterableAttributes.length > 0"
+                      class="my-1 border-t border-gray-100 dark:border-dark-700"
+                    ></div>
+                    <!-- Custom attribute filters -->
+                    <button
+                      v-for="attr in filterableAttributes"
+                      :key="attr.id"
+                      @click="toggleAttributeFilter(attr)"
+                      class="flex min-h-10 w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
+                    >
+                      <span>{{ attr.name }}</span>
+                      <Icon
+                        v-if="visibleFilters.has(`attr_${attr.id}`)"
+                        name="check"
+                        size="sm"
+                        class="text-primary-600 dark:text-primary-400"
+                        :stroke-width="2"
+                      />
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <!-- Column Settings Dropdown -->
-              <div class="relative" ref="columnDropdownRef">
+                <!-- Column Settings Dropdown -->
+                <div class="relative" ref="columnDropdownRef">
+                  <button
+                    @click="showColumnDropdown = !showColumnDropdown"
+                    class="btn btn-secondary px-2 md:px-3"
+                    :title="t('admin.users.columnSettings')"
+                  >
+                    <svg class="h-4 w-4 md:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" />
+                    </svg>
+                    <span class="hidden md:inline">{{ t('admin.users.columnSettings') }}</span>
+                  </button>
+                  <!-- Dropdown menu -->
+                  <div
+                    v-if="showColumnDropdown"
+                    class="absolute right-0 top-full z-50 mt-2 max-h-80 w-52 overflow-y-auto rounded-xl border border-gray-200 bg-white/95 py-1.5 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-800/95"
+                  >
+                    <button
+                      v-for="col in toggleableColumns"
+                      :key="col.key"
+                      :disabled="isForcedVisibleColumn(col.key)"
+                      @click="toggleColumn(col.key)"
+                      :class="[
+                        'flex min-h-10 w-full items-center justify-between px-4 py-2 text-left text-sm transition-colors',
+                        isForcedVisibleColumn(col.key)
+                          ? 'cursor-not-allowed text-gray-400 dark:text-dark-500'
+                          : 'text-gray-700 hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30'
+                      ]"
+                      :title="isForcedVisibleColumn(col.key) ? t('admin.users.columnAlwaysVisible') : ''"
+                    >
+                      <span>{{ col.label }}</span>
+                      <Icon
+                        v-if="isColumnVisible(col.key)"
+                        name="check"
+                        size="sm"
+                        :class="isForcedVisibleColumn(col.key) ? 'text-gray-400 dark:text-dark-500' : 'text-primary-600 dark:text-primary-400'"
+                        :stroke-width="2"
+                      />
+                    </button>
+                  </div>
+                </div>
+                <!-- Attributes Config Button -->
                 <button
-                  @click="showColumnDropdown = !showColumnDropdown"
+                  @click="showAttributesModal = true"
                   class="btn btn-secondary px-2 md:px-3"
-                  :title="t('admin.users.columnSettings')"
+                  :title="t('admin.users.attributes.configButton')"
                 >
-                  <svg class="h-4 w-4 md:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" />
-                  </svg>
-                  <span class="hidden md:inline">{{ t('admin.users.columnSettings') }}</span>
+                  <Icon name="cog" size="sm" class="md:mr-1.5" />
+                  <span class="hidden md:inline">{{ t('admin.users.attributes.configButton') }}</span>
                 </button>
-                <!-- Dropdown menu -->
-                <div
-                  v-if="showColumnDropdown"
-                  class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
-                >
-                  <button
-                    v-for="col in toggleableColumns"
-                    :key="col.key"
-                    :disabled="isForcedVisibleColumn(col.key)"
-                    @click="toggleColumn(col.key)"
-                    :class="[
-                      'flex w-full items-center justify-between px-4 py-2 text-left text-sm',
-                      isForcedVisibleColumn(col.key)
-                        ? 'cursor-not-allowed text-gray-400 dark:text-gray-500'
-                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700'
-                    ]"
-                    :title="isForcedVisibleColumn(col.key) ? t('admin.users.columnAlwaysVisible') : ''"
-                  >
-                    <span>{{ col.label }}</span>
-                    <Icon
-                      v-if="isColumnVisible(col.key)"
-                      name="check"
-                      size="sm"
-                      :class="isForcedVisibleColumn(col.key) ? 'text-gray-400 dark:text-gray-500' : 'text-primary-500'"
-                      :stroke-width="2"
-                    />
-                  </button>
-                </div>
               </div>
-              <!-- Attributes Config Button -->
+
               <button
-                @click="showAttributesModal = true"
-                class="btn btn-secondary px-2 md:px-3"
-                :title="t('admin.users.attributes.configButton')"
+                v-if="selectedCount > 0"
+                class="btn btn-secondary flex-1 md:flex-initial"
+                data-test="bulk-edit-limits"
+                @click="showBulkEditModal = true"
               >
-                <Icon name="cog" size="sm" class="md:mr-1.5" />
-                <span class="hidden md:inline">{{ t('admin.users.attributes.configButton') }}</span>
+                <Icon name="users" size="md" class="mr-2" />
+                {{ t('admin.users.bulkLimits.action', { count: selectedCount }) }}
+              </button>
+
+              <!-- Create User Button (full width on mobile, auto width on desktop) -->
+              <button @click="showCreateModal = true" class="btn btn-primary flex-1 md:flex-initial">
+                <Icon name="plus" size="md" class="mr-2" />
+                {{ t('admin.users.createUser') }}
               </button>
             </div>
-
-            <button
-              v-if="selectedCount > 0"
-              class="btn btn-secondary flex-1 md:flex-initial"
-              data-test="bulk-edit-limits"
-              @click="showBulkEditModal = true"
-            >
-              <Icon name="users" size="md" class="mr-2" />
-              {{ t('admin.users.bulkLimits.action', { count: selectedCount }) }}
-            </button>
-
-            <!-- Create User Button (full width on mobile, auto width on desktop) -->
-            <button @click="showCreateModal = true" class="btn btn-primary flex-1 md:flex-initial">
-              <Icon name="plus" size="md" class="mr-2" />
-              {{ t('admin.users.createUser') }}
-            </button>
           </div>
         </div>
       </template>
@@ -425,20 +428,20 @@
             <div class="flex items-center gap-2">
               <div class="group relative">
                 <button
-                  class="font-medium text-gray-900 underline decoration-dashed decoration-gray-300 underline-offset-4 transition-colors hover:text-primary-600 dark:text-white dark:decoration-dark-500 dark:hover:text-primary-400"
+                  class="font-medium text-gray-900 tabular-nums underline decoration-dashed decoration-gray-300 underline-offset-4 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:text-white dark:decoration-dark-500 dark:hover:text-primary-400"
                   @click="handleBalanceHistory(row)"
                 >
                   ${{ value.toFixed(2) }}
                 </button>
                 <!-- Instant tooltip -->
-                <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover:opacity-100 dark:bg-dark-600">
+                <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover:opacity-100 dark:bg-dark-600">
                   {{ t('admin.users.balanceHistoryTip') }}
                   <div class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-dark-600"></div>
                 </div>
               </div>
               <button
                 @click.stop="handleDeposit(row)"
-                class="rounded px-2 py-0.5 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                class="rounded-lg px-2 py-0.5 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
                 :title="t('admin.users.deposit')"
               >
                 {{ t('admin.users.deposit') }}
@@ -574,27 +577,27 @@
               <span
                 :class="[
                   'inline-block h-2 w-2 rounded-full',
-                  value === 'active' ? 'bg-green-500' : 'bg-red-500'
+                  value === 'active' ? 'bg-emerald-500' : 'bg-err-500'
                 ]"
               ></span>
-              <span class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="text-sm text-gray-700 dark:text-dark-200">
                 {{ value === 'active' ? t('common.active') : t('admin.users.disabled') }}
               </span>
             </div>
           </template>
 
           <template #cell-created_at="{ value }">
-            <span class="text-sm text-gray-500 dark:text-dark-400">{{ formatDateTime(value) }}</span>
+            <span class="whitespace-nowrap text-sm tabular-nums text-gray-500 dark:text-dark-400">{{ formatDateTime(value) }}</span>
           </template>
 
           <template #cell-last_used_at="{ value }">
-            <span class="text-sm text-gray-500 dark:text-dark-400">
+            <span class="whitespace-nowrap text-sm tabular-nums text-gray-500 dark:text-dark-400">
               {{ value ? formatDateTime(value) : '-' }}
             </span>
           </template>
 
           <template #cell-last_active_at="{ value }">
-            <span class="text-sm text-gray-500 dark:text-dark-400">
+            <span class="whitespace-nowrap text-sm tabular-nums text-gray-500 dark:text-dark-400">
               {{ value ? formatDateTime(value) : '-' }}
             </span>
           </template>
@@ -604,7 +607,7 @@
               <!-- Edit Button -->
               <button
                 @click="handleEdit(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+                class="flex min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:hover:bg-dark-700 dark:hover:text-primary-400"
               >
                 <Icon name="edit" size="sm" />
                 <span class="text-xs">{{ t('common.edit') }}</span>
@@ -615,10 +618,10 @@
                 v-if="row.role !== 'admin'"
                 @click="handleToggleStatus(row)"
                 :class="[
-                  'flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors',
+                  'flex min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40',
                   row.status === 'active'
-                    ? 'hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-900/20 dark:hover:text-orange-400'
-                    : 'hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400'
+                    ? 'hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/30 dark:hover:text-amber-400'
+                    : 'hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400'
                 ]"
               >
                 <Icon v-if="row.status === 'active'" name="ban" size="sm" />
@@ -629,7 +632,7 @@
               <!-- More Actions Menu Trigger -->
               <button
                 @click="openActionMenu(row, $event)"
-                class="action-menu-trigger flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-dark-700 dark:hover:text-white"
+                class="action-menu-trigger flex min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:hover:bg-dark-700 dark:hover:text-white"
                 :class="{ 'bg-gray-100 text-gray-900 dark:bg-dark-700 dark:text-white': activeMenuId === row.id }"
               >
                 <Icon name="more" size="sm" />
@@ -666,16 +669,16 @@
     <Teleport to="body">
       <div
         v-if="activeMenuId !== null && menuPosition"
-        class="action-menu-content fixed z-[9999] w-48 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+        class="action-menu-content fixed z-[9999] w-52 overflow-hidden rounded-xl border border-gray-200/80 bg-white/95 py-1.5 shadow-xl ring-1 ring-black/5 backdrop-blur dark:border-dark-600 dark:bg-dark-800/95 dark:ring-white/10"
         :style="{ top: menuPosition.top + 'px', left: menuPosition.left + 'px' }"
       >
-        <div class="py-1">
+        <div class="py-0.5">
           <template v-for="user in users" :key="user.id">
             <template v-if="user.id === activeMenuId">
               <!-- View API Keys -->
               <button
                 @click="handleViewApiKeys(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
               >
                 <Icon name="key" size="sm" class="text-gray-400" :stroke-width="2" />
                 {{ t('admin.users.apiKeys') }}
@@ -684,7 +687,7 @@
               <!-- Allowed Groups -->
               <button
                 @click="handleAllowedGroups(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
               >
                 <Icon name="users" size="sm" class="text-gray-400" :stroke-width="2" />
                 {{ t('admin.users.groups') }}
@@ -695,7 +698,7 @@
               <!-- Deposit -->
               <button
                 @click="handleDeposit(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
               >
                 <Icon name="plus" size="sm" class="text-emerald-500" :stroke-width="2" />
                 {{ t('admin.users.deposit') }}
@@ -704,7 +707,7 @@
               <!-- Withdraw -->
               <button
                 @click="handleWithdraw(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
               >
                 <svg class="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
@@ -715,7 +718,7 @@
               <!-- Platform Quotas -->
               <button
                 @click="handlePlatformQuota(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
               >
                 <Icon name="chartBar" size="sm" class="text-gray-400" :stroke-width="2" />
                 {{ t('admin.users.platformQuota.menuItem') }}
@@ -724,7 +727,7 @@
               <!-- Balance History -->
               <button
                 @click="handleBalanceHistory(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
               >
                 <Icon name="dollar" size="sm" class="text-gray-400" :stroke-width="2" />
                 {{ t('admin.users.balanceHistory') }}
@@ -736,7 +739,7 @@
               <button
                 v-if="user.role !== 'admin'"
                 @click="handleDelete(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-err-600 transition-colors hover:bg-err-50 focus-visible:bg-err-100 focus-visible:outline-none dark:text-err-400 dark:hover:bg-err-950/30 dark:focus-visible:bg-err-950/50"
               >
                 <Icon name="trash" size="sm" :stroke-width="2" />
                 {{ t('common.delete') }}

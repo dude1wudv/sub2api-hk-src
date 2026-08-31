@@ -2,13 +2,13 @@
   <BaseDialog :show="show" :title="t('admin.users.groupConfig')" width="wide" @close="$emit('close')">
     <div v-if="user" class="space-y-6">
       <!-- 用户信息头部 -->
-      <div class="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-primary-50 to-primary-100 p-5 dark:from-primary-900/30 dark:to-primary-800/20">
-        <div class="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-dark-700">
-          <span class="text-2xl font-semibold text-primary-600 dark:text-primary-400">{{ user.email.charAt(0).toUpperCase() }}</span>
+      <div class="flex items-center gap-3.5 rounded-xl border border-gray-200/80 bg-gray-50/80 p-4 dark:border-dark-700 dark:bg-dark-800/50">
+        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30">
+          <span class="text-xl font-semibold text-primary-700 dark:text-primary-300">{{ user.email.charAt(0).toUpperCase() }}</span>
         </div>
-        <div class="flex-1">
-          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ user.email }}</p>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ t('admin.users.groupConfigHint', { email: user.email }) }}</p>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-base font-semibold text-gray-900 dark:text-white">{{ user.email }}</p>
+          <p class="mt-0.5 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.users.groupConfigHint', { email: user.email }) }}</p>
         </div>
       </div>
 

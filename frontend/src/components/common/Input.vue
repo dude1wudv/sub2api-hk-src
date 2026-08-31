@@ -24,10 +24,10 @@
         :autocomplete="autocomplete"
         :readonly="readonly"
         :class="[
-          'input w-full transition-all duration-200',
-          $slots.prefix ? 'pl-11' : '',
-          $slots.suffix ? 'pr-11' : '',
-          error ? 'input-error ring-2 ring-red-500/20' : '',
+          'input w-full',
+          $slots.prefix ? 'pl-10' : '',
+          $slots.suffix ? 'pr-10' : '',
+          error ? 'input-error ring-1 ring-red-500/30' : '',
           disabled ? 'cursor-not-allowed bg-gray-100 opacity-60 dark:bg-dark-900' : ''
         ]"
         @input="onInput"
@@ -37,7 +37,6 @@
         @keyup.enter="$emit('enter', $event)"
       />
 
-      <!-- Suffix Slot (e.g. Password Toggle or Clear Button) -->
       <div
         v-if="$slots.suffix"
         class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-dark-400"
