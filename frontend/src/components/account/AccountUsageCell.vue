@@ -131,7 +131,7 @@
         />
         <UsageProgressBar
           v-if="usageInfo?.seven_day"
-          label="7d"
+          :label="formatOpenAIWindowLabel(usageInfo.seven_day)"
           :utilization="usageInfo.seven_day.utilization"
           :resets-at="usageInfo.seven_day.resets_at"
           :window-stats="usageInfo.seven_day.window_stats"
@@ -775,6 +775,12 @@ const hasOpenAIUsageFallback = computed(() => {
   if (props.account.platform !== 'openai' || props.account.type !== 'oauth') return false
   return !!usageInfo.value?.five_hour || !!usageInfo.value?.seven_day
 })
+
+const formatOpenAIWindowLabel = (window: { window_seconds?: number } | null | undefined) => {
+  const seconds = window?.window_seconds ?? 0
+  if (seconds >= 28 * 24 * 60 * 60) return `${Math.round(seconds / (24 * 60 * 60))}d`
+  return '7d'
+}
 
 const openAIUsageRefreshKey = computed(() => buildOpenAIUsageRefreshKey(props.account))
 
