@@ -28,6 +28,8 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchcredential"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchlaunchgrant"
 )
 
 // UserQuery is the builder for querying User entities.
@@ -50,6 +52,8 @@ type UserQuery struct {
 	withAuthIdentities        *AuthIdentityQuery
 	withPendingAuthSessions   *PendingAuthSessionQuery
 	withPlatformQuotas        *UserPlatformQuotaQuery
+	withWorkbenchCredentials  *WorkbenchCredentialQuery
+	withWorkbenchLaunchGrants *WorkbenchLaunchGrantQuery
 	withUserAllowedGroups     *UserAllowedGroupQuery
 	modifiers                 []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
@@ -374,6 +378,50 @@ func (_q *UserQuery) QueryPlatformQuotas() *UserPlatformQuotaQuery {
 	return query
 }
 
+// QueryWorkbenchCredentials chains the current query on the "workbench_credentials" edge.
+func (_q *UserQuery) QueryWorkbenchCredentials() *WorkbenchCredentialQuery {
+	query := (&WorkbenchCredentialClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(workbenchcredential.Table, workbenchcredential.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.WorkbenchCredentialsTable, user.WorkbenchCredentialsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryWorkbenchLaunchGrants chains the current query on the "workbench_launch_grants" edge.
+func (_q *UserQuery) QueryWorkbenchLaunchGrants() *WorkbenchLaunchGrantQuery {
+	query := (&WorkbenchLaunchGrantClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(workbenchlaunchgrant.Table, workbenchlaunchgrant.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.WorkbenchLaunchGrantsTable, user.WorkbenchLaunchGrantsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // QueryUserAllowedGroups chains the current query on the "user_allowed_groups" edge.
 func (_q *UserQuery) QueryUserAllowedGroups() *UserAllowedGroupQuery {
 	query := (&UserAllowedGroupClient{config: _q.config}).Query()
@@ -601,6 +649,8 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withAuthIdentities:        _q.withAuthIdentities.Clone(),
 		withPendingAuthSessions:   _q.withPendingAuthSessions.Clone(),
 		withPlatformQuotas:        _q.withPlatformQuotas.Clone(),
+		withWorkbenchCredentials:  _q.withWorkbenchCredentials.Clone(),
+		withWorkbenchLaunchGrants: _q.withWorkbenchLaunchGrants.Clone(),
 		withUserAllowedGroups:     _q.withUserAllowedGroups.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
@@ -751,6 +801,28 @@ func (_q *UserQuery) WithPlatformQuotas(opts ...func(*UserPlatformQuotaQuery)) *
 	return _q
 }
 
+// WithWorkbenchCredentials tells the query-builder to eager-load the nodes that are connected to
+// the "workbench_credentials" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithWorkbenchCredentials(opts ...func(*WorkbenchCredentialQuery)) *UserQuery {
+	query := (&WorkbenchCredentialClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withWorkbenchCredentials = query
+	return _q
+}
+
+// WithWorkbenchLaunchGrants tells the query-builder to eager-load the nodes that are connected to
+// the "workbench_launch_grants" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithWorkbenchLaunchGrants(opts ...func(*WorkbenchLaunchGrantQuery)) *UserQuery {
+	query := (&WorkbenchLaunchGrantClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withWorkbenchLaunchGrants = query
+	return _q
+}
+
 // WithUserAllowedGroups tells the query-builder to eager-load the nodes that are connected to
 // the "user_allowed_groups" edge. The optional arguments are used to configure the query builder of the edge.
 func (_q *UserQuery) WithUserAllowedGroups(opts ...func(*UserAllowedGroupQuery)) *UserQuery {
@@ -840,7 +912,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [14]bool{
+		loadedTypes = [16]bool{
 			_q.withAPIKeys != nil,
 			_q.withRedeemCodes != nil,
 			_q.withSubscriptions != nil,
@@ -854,6 +926,8 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withAuthIdentities != nil,
 			_q.withPendingAuthSessions != nil,
 			_q.withPlatformQuotas != nil,
+			_q.withWorkbenchCredentials != nil,
+			_q.withWorkbenchLaunchGrants != nil,
 			_q.withUserAllowedGroups != nil,
 		}
 	)
@@ -970,6 +1044,24 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadPlatformQuotas(ctx, query, nodes,
 			func(n *User) { n.Edges.PlatformQuotas = []*UserPlatformQuota{} },
 			func(n *User, e *UserPlatformQuota) { n.Edges.PlatformQuotas = append(n.Edges.PlatformQuotas, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withWorkbenchCredentials; query != nil {
+		if err := _q.loadWorkbenchCredentials(ctx, query, nodes,
+			func(n *User) { n.Edges.WorkbenchCredentials = []*WorkbenchCredential{} },
+			func(n *User, e *WorkbenchCredential) {
+				n.Edges.WorkbenchCredentials = append(n.Edges.WorkbenchCredentials, e)
+			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withWorkbenchLaunchGrants; query != nil {
+		if err := _q.loadWorkbenchLaunchGrants(ctx, query, nodes,
+			func(n *User) { n.Edges.WorkbenchLaunchGrants = []*WorkbenchLaunchGrant{} },
+			func(n *User, e *WorkbenchLaunchGrant) {
+				n.Edges.WorkbenchLaunchGrants = append(n.Edges.WorkbenchLaunchGrants, e)
+			}); err != nil {
 			return nil, err
 		}
 	}
@@ -1398,6 +1490,66 @@ func (_q *UserQuery) loadPlatformQuotas(ctx context.Context, query *UserPlatform
 	}
 	query.Where(predicate.UserPlatformQuota(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.PlatformQuotasColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadWorkbenchCredentials(ctx context.Context, query *WorkbenchCredentialQuery, nodes []*User, init func(*User), assign func(*User, *WorkbenchCredential)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(workbenchcredential.FieldUserID)
+	}
+	query.Where(predicate.WorkbenchCredential(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.WorkbenchCredentialsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadWorkbenchLaunchGrants(ctx context.Context, query *WorkbenchLaunchGrantQuery, nodes []*User, init func(*User), assign func(*User, *WorkbenchLaunchGrant)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(workbenchlaunchgrant.FieldUserID)
+	}
+	query.Where(predicate.WorkbenchLaunchGrant(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.WorkbenchLaunchGrantsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

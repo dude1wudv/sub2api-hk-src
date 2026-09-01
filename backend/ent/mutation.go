@@ -53,6 +53,8 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchcredential"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchlaunchgrant"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
@@ -105,56 +107,64 @@ const (
 	TypeUserAttributeValue            = "UserAttributeValue"
 	TypeUserPlatformQuota             = "UserPlatformQuota"
 	TypeUserSubscription              = "UserSubscription"
+	TypeWorkbenchCredential           = "WorkbenchCredential"
+	TypeWorkbenchLaunchGrant          = "WorkbenchLaunchGrant"
 )
 
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
 type APIKeyMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *int64
-	created_at         *time.Time
-	updated_at         *time.Time
-	deleted_at         *time.Time
-	key                *string
-	name               *string
-	status             *string
-	last_used_at       *time.Time
-	ip_whitelist       *[]string
-	appendip_whitelist []string
-	ip_blacklist       *[]string
-	appendip_blacklist []string
-	quota              *float64
-	addquota           *float64
-	quota_used         *float64
-	addquota_used      *float64
-	expires_at         *time.Time
-	rate_limit_5h      *float64
-	addrate_limit_5h   *float64
-	rate_limit_1d      *float64
-	addrate_limit_1d   *float64
-	rate_limit_7d      *float64
-	addrate_limit_7d   *float64
-	usage_5h           *float64
-	addusage_5h        *float64
-	usage_1d           *float64
-	addusage_1d        *float64
-	usage_7d           *float64
-	addusage_7d        *float64
-	window_5h_start    *time.Time
-	window_1d_start    *time.Time
-	window_7d_start    *time.Time
-	clearedFields      map[string]struct{}
-	user               *int64
-	cleareduser        bool
-	group              *int64
-	clearedgroup       bool
-	usage_logs         map[int64]struct{}
-	removedusage_logs  map[int64]struct{}
-	clearedusage_logs  bool
-	done               bool
-	oldValue           func(context.Context) (*APIKey, error)
-	predicates         []predicate.APIKey
+	op                             Op
+	typ                            string
+	id                             *int64
+	created_at                     *time.Time
+	updated_at                     *time.Time
+	deleted_at                     *time.Time
+	key                            *string
+	name                           *string
+	status                         *string
+	last_used_at                   *time.Time
+	ip_whitelist                   *[]string
+	appendip_whitelist             []string
+	ip_blacklist                   *[]string
+	appendip_blacklist             []string
+	quota                          *float64
+	addquota                       *float64
+	quota_used                     *float64
+	addquota_used                  *float64
+	expires_at                     *time.Time
+	rate_limit_5h                  *float64
+	addrate_limit_5h               *float64
+	rate_limit_1d                  *float64
+	addrate_limit_1d               *float64
+	rate_limit_7d                  *float64
+	addrate_limit_7d               *float64
+	usage_5h                       *float64
+	addusage_5h                    *float64
+	usage_1d                       *float64
+	addusage_1d                    *float64
+	usage_7d                       *float64
+	addusage_7d                    *float64
+	window_5h_start                *time.Time
+	window_1d_start                *time.Time
+	window_7d_start                *time.Time
+	clearedFields                  map[string]struct{}
+	user                           *int64
+	cleareduser                    bool
+	group                          *int64
+	clearedgroup                   bool
+	usage_logs                     map[int64]struct{}
+	removedusage_logs              map[int64]struct{}
+	clearedusage_logs              bool
+	workbench_credentials          map[int64]struct{}
+	removedworkbench_credentials   map[int64]struct{}
+	clearedworkbench_credentials   bool
+	workbench_launch_grants        map[int64]struct{}
+	removedworkbench_launch_grants map[int64]struct{}
+	clearedworkbench_launch_grants bool
+	done                           bool
+	oldValue                       func(context.Context) (*APIKey, error)
+	predicates                     []predicate.APIKey
 }
 
 var _ ent.Mutation = (*APIKeyMutation)(nil)
@@ -1500,6 +1510,114 @@ func (m *APIKeyMutation) ResetUsageLogs() {
 	m.removedusage_logs = nil
 }
 
+// AddWorkbenchCredentialIDs adds the "workbench_credentials" edge to the WorkbenchCredential entity by ids.
+func (m *APIKeyMutation) AddWorkbenchCredentialIDs(ids ...int64) {
+	if m.workbench_credentials == nil {
+		m.workbench_credentials = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.workbench_credentials[ids[i]] = struct{}{}
+	}
+}
+
+// ClearWorkbenchCredentials clears the "workbench_credentials" edge to the WorkbenchCredential entity.
+func (m *APIKeyMutation) ClearWorkbenchCredentials() {
+	m.clearedworkbench_credentials = true
+}
+
+// WorkbenchCredentialsCleared reports if the "workbench_credentials" edge to the WorkbenchCredential entity was cleared.
+func (m *APIKeyMutation) WorkbenchCredentialsCleared() bool {
+	return m.clearedworkbench_credentials
+}
+
+// RemoveWorkbenchCredentialIDs removes the "workbench_credentials" edge to the WorkbenchCredential entity by IDs.
+func (m *APIKeyMutation) RemoveWorkbenchCredentialIDs(ids ...int64) {
+	if m.removedworkbench_credentials == nil {
+		m.removedworkbench_credentials = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.workbench_credentials, ids[i])
+		m.removedworkbench_credentials[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedWorkbenchCredentials returns the removed IDs of the "workbench_credentials" edge to the WorkbenchCredential entity.
+func (m *APIKeyMutation) RemovedWorkbenchCredentialsIDs() (ids []int64) {
+	for id := range m.removedworkbench_credentials {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// WorkbenchCredentialsIDs returns the "workbench_credentials" edge IDs in the mutation.
+func (m *APIKeyMutation) WorkbenchCredentialsIDs() (ids []int64) {
+	for id := range m.workbench_credentials {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetWorkbenchCredentials resets all changes to the "workbench_credentials" edge.
+func (m *APIKeyMutation) ResetWorkbenchCredentials() {
+	m.workbench_credentials = nil
+	m.clearedworkbench_credentials = false
+	m.removedworkbench_credentials = nil
+}
+
+// AddWorkbenchLaunchGrantIDs adds the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity by ids.
+func (m *APIKeyMutation) AddWorkbenchLaunchGrantIDs(ids ...int64) {
+	if m.workbench_launch_grants == nil {
+		m.workbench_launch_grants = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.workbench_launch_grants[ids[i]] = struct{}{}
+	}
+}
+
+// ClearWorkbenchLaunchGrants clears the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity.
+func (m *APIKeyMutation) ClearWorkbenchLaunchGrants() {
+	m.clearedworkbench_launch_grants = true
+}
+
+// WorkbenchLaunchGrantsCleared reports if the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity was cleared.
+func (m *APIKeyMutation) WorkbenchLaunchGrantsCleared() bool {
+	return m.clearedworkbench_launch_grants
+}
+
+// RemoveWorkbenchLaunchGrantIDs removes the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity by IDs.
+func (m *APIKeyMutation) RemoveWorkbenchLaunchGrantIDs(ids ...int64) {
+	if m.removedworkbench_launch_grants == nil {
+		m.removedworkbench_launch_grants = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.workbench_launch_grants, ids[i])
+		m.removedworkbench_launch_grants[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedWorkbenchLaunchGrants returns the removed IDs of the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity.
+func (m *APIKeyMutation) RemovedWorkbenchLaunchGrantsIDs() (ids []int64) {
+	for id := range m.removedworkbench_launch_grants {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// WorkbenchLaunchGrantsIDs returns the "workbench_launch_grants" edge IDs in the mutation.
+func (m *APIKeyMutation) WorkbenchLaunchGrantsIDs() (ids []int64) {
+	for id := range m.workbench_launch_grants {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetWorkbenchLaunchGrants resets all changes to the "workbench_launch_grants" edge.
+func (m *APIKeyMutation) ResetWorkbenchLaunchGrants() {
+	m.workbench_launch_grants = nil
+	m.clearedworkbench_launch_grants = false
+	m.removedworkbench_launch_grants = nil
+}
+
 // Where appends a list predicates to the APIKeyMutation builder.
 func (m *APIKeyMutation) Where(ps ...predicate.APIKey) {
 	m.predicates = append(m.predicates, ps...)
@@ -2163,7 +2281,7 @@ func (m *APIKeyMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *APIKeyMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 5)
 	if m.user != nil {
 		edges = append(edges, apikey.EdgeUser)
 	}
@@ -2172,6 +2290,12 @@ func (m *APIKeyMutation) AddedEdges() []string {
 	}
 	if m.usage_logs != nil {
 		edges = append(edges, apikey.EdgeUsageLogs)
+	}
+	if m.workbench_credentials != nil {
+		edges = append(edges, apikey.EdgeWorkbenchCredentials)
+	}
+	if m.workbench_launch_grants != nil {
+		edges = append(edges, apikey.EdgeWorkbenchLaunchGrants)
 	}
 	return edges
 }
@@ -2194,15 +2318,33 @@ func (m *APIKeyMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case apikey.EdgeWorkbenchCredentials:
+		ids := make([]ent.Value, 0, len(m.workbench_credentials))
+		for id := range m.workbench_credentials {
+			ids = append(ids, id)
+		}
+		return ids
+	case apikey.EdgeWorkbenchLaunchGrants:
+		ids := make([]ent.Value, 0, len(m.workbench_launch_grants))
+		for id := range m.workbench_launch_grants {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *APIKeyMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 5)
 	if m.removedusage_logs != nil {
 		edges = append(edges, apikey.EdgeUsageLogs)
+	}
+	if m.removedworkbench_credentials != nil {
+		edges = append(edges, apikey.EdgeWorkbenchCredentials)
+	}
+	if m.removedworkbench_launch_grants != nil {
+		edges = append(edges, apikey.EdgeWorkbenchLaunchGrants)
 	}
 	return edges
 }
@@ -2217,13 +2359,25 @@ func (m *APIKeyMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case apikey.EdgeWorkbenchCredentials:
+		ids := make([]ent.Value, 0, len(m.removedworkbench_credentials))
+		for id := range m.removedworkbench_credentials {
+			ids = append(ids, id)
+		}
+		return ids
+	case apikey.EdgeWorkbenchLaunchGrants:
+		ids := make([]ent.Value, 0, len(m.removedworkbench_launch_grants))
+		for id := range m.removedworkbench_launch_grants {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *APIKeyMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 5)
 	if m.cleareduser {
 		edges = append(edges, apikey.EdgeUser)
 	}
@@ -2232,6 +2386,12 @@ func (m *APIKeyMutation) ClearedEdges() []string {
 	}
 	if m.clearedusage_logs {
 		edges = append(edges, apikey.EdgeUsageLogs)
+	}
+	if m.clearedworkbench_credentials {
+		edges = append(edges, apikey.EdgeWorkbenchCredentials)
+	}
+	if m.clearedworkbench_launch_grants {
+		edges = append(edges, apikey.EdgeWorkbenchLaunchGrants)
 	}
 	return edges
 }
@@ -2246,6 +2406,10 @@ func (m *APIKeyMutation) EdgeCleared(name string) bool {
 		return m.clearedgroup
 	case apikey.EdgeUsageLogs:
 		return m.clearedusage_logs
+	case apikey.EdgeWorkbenchCredentials:
+		return m.clearedworkbench_credentials
+	case apikey.EdgeWorkbenchLaunchGrants:
+		return m.clearedworkbench_launch_grants
 	}
 	return false
 }
@@ -2276,6 +2440,12 @@ func (m *APIKeyMutation) ResetEdge(name string) error {
 		return nil
 	case apikey.EdgeUsageLogs:
 		m.ResetUsageLogs()
+		return nil
+	case apikey.EdgeWorkbenchCredentials:
+		m.ResetWorkbenchCredentials()
+		return nil
+	case apikey.EdgeWorkbenchLaunchGrants:
+		m.ResetWorkbenchLaunchGrants()
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey edge %s", name)
@@ -49448,83 +49618,89 @@ func (m *UsageLogMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                            Op
-	typ                           string
-	id                            *int64
-	created_at                    *time.Time
-	updated_at                    *time.Time
-	deleted_at                    *time.Time
-	email                         *string
-	password_hash                 *string
-	role                          *string
-	balance                       *float64
-	addbalance                    *float64
-	frozen_balance                *float64
-	addfrozen_balance             *float64
-	concurrency                   *int
-	addconcurrency                *int
-	status                        *string
-	username                      *string
-	notes                         *string
-	totp_secret_encrypted         *string
-	totp_enabled                  *bool
-	totp_enabled_at               *time.Time
-	signup_source                 *string
-	last_login_at                 *time.Time
-	last_active_at                *time.Time
-	restrict_public_groups        *bool
-	balance_notify_enabled        *bool
-	balance_notify_threshold_type *string
-	balance_notify_threshold      *float64
-	addbalance_notify_threshold   *float64
-	balance_notify_extra_emails   *string
-	total_recharged               *float64
-	addtotal_recharged            *float64
-	rpm_limit                     *int
-	addrpm_limit                  *int
-	clearedFields                 map[string]struct{}
-	api_keys                      map[int64]struct{}
-	removedapi_keys               map[int64]struct{}
-	clearedapi_keys               bool
-	redeem_codes                  map[int64]struct{}
-	removedredeem_codes           map[int64]struct{}
-	clearedredeem_codes           bool
-	subscriptions                 map[int64]struct{}
-	removedsubscriptions          map[int64]struct{}
-	clearedsubscriptions          bool
-	assigned_subscriptions        map[int64]struct{}
-	removedassigned_subscriptions map[int64]struct{}
-	clearedassigned_subscriptions bool
-	announcement_reads            map[int64]struct{}
-	removedannouncement_reads     map[int64]struct{}
-	clearedannouncement_reads     bool
-	allowed_groups                map[int64]struct{}
-	removedallowed_groups         map[int64]struct{}
-	clearedallowed_groups         bool
-	usage_logs                    map[int64]struct{}
-	removedusage_logs             map[int64]struct{}
-	clearedusage_logs             bool
-	attribute_values              map[int64]struct{}
-	removedattribute_values       map[int64]struct{}
-	clearedattribute_values       bool
-	promo_code_usages             map[int64]struct{}
-	removedpromo_code_usages      map[int64]struct{}
-	clearedpromo_code_usages      bool
-	payment_orders                map[int64]struct{}
-	removedpayment_orders         map[int64]struct{}
-	clearedpayment_orders         bool
-	auth_identities               map[int64]struct{}
-	removedauth_identities        map[int64]struct{}
-	clearedauth_identities        bool
-	pending_auth_sessions         map[int64]struct{}
-	removedpending_auth_sessions  map[int64]struct{}
-	clearedpending_auth_sessions  bool
-	platform_quotas               map[int64]struct{}
-	removedplatform_quotas        map[int64]struct{}
-	clearedplatform_quotas        bool
-	done                          bool
-	oldValue                      func(context.Context) (*User, error)
-	predicates                    []predicate.User
+	op                             Op
+	typ                            string
+	id                             *int64
+	created_at                     *time.Time
+	updated_at                     *time.Time
+	deleted_at                     *time.Time
+	email                          *string
+	password_hash                  *string
+	role                           *string
+	balance                        *float64
+	addbalance                     *float64
+	frozen_balance                 *float64
+	addfrozen_balance              *float64
+	concurrency                    *int
+	addconcurrency                 *int
+	status                         *string
+	username                       *string
+	notes                          *string
+	totp_secret_encrypted          *string
+	totp_enabled                   *bool
+	totp_enabled_at                *time.Time
+	signup_source                  *string
+	last_login_at                  *time.Time
+	last_active_at                 *time.Time
+	restrict_public_groups         *bool
+	balance_notify_enabled         *bool
+	balance_notify_threshold_type  *string
+	balance_notify_threshold       *float64
+	addbalance_notify_threshold    *float64
+	balance_notify_extra_emails    *string
+	total_recharged                *float64
+	addtotal_recharged             *float64
+	rpm_limit                      *int
+	addrpm_limit                   *int
+	clearedFields                  map[string]struct{}
+	api_keys                       map[int64]struct{}
+	removedapi_keys                map[int64]struct{}
+	clearedapi_keys                bool
+	redeem_codes                   map[int64]struct{}
+	removedredeem_codes            map[int64]struct{}
+	clearedredeem_codes            bool
+	subscriptions                  map[int64]struct{}
+	removedsubscriptions           map[int64]struct{}
+	clearedsubscriptions           bool
+	assigned_subscriptions         map[int64]struct{}
+	removedassigned_subscriptions  map[int64]struct{}
+	clearedassigned_subscriptions  bool
+	announcement_reads             map[int64]struct{}
+	removedannouncement_reads      map[int64]struct{}
+	clearedannouncement_reads      bool
+	allowed_groups                 map[int64]struct{}
+	removedallowed_groups          map[int64]struct{}
+	clearedallowed_groups          bool
+	usage_logs                     map[int64]struct{}
+	removedusage_logs              map[int64]struct{}
+	clearedusage_logs              bool
+	attribute_values               map[int64]struct{}
+	removedattribute_values        map[int64]struct{}
+	clearedattribute_values        bool
+	promo_code_usages              map[int64]struct{}
+	removedpromo_code_usages       map[int64]struct{}
+	clearedpromo_code_usages       bool
+	payment_orders                 map[int64]struct{}
+	removedpayment_orders          map[int64]struct{}
+	clearedpayment_orders          bool
+	auth_identities                map[int64]struct{}
+	removedauth_identities         map[int64]struct{}
+	clearedauth_identities         bool
+	pending_auth_sessions          map[int64]struct{}
+	removedpending_auth_sessions   map[int64]struct{}
+	clearedpending_auth_sessions   bool
+	platform_quotas                map[int64]struct{}
+	removedplatform_quotas         map[int64]struct{}
+	clearedplatform_quotas         bool
+	workbench_credentials          map[int64]struct{}
+	removedworkbench_credentials   map[int64]struct{}
+	clearedworkbench_credentials   bool
+	workbench_launch_grants        map[int64]struct{}
+	removedworkbench_launch_grants map[int64]struct{}
+	clearedworkbench_launch_grants bool
+	done                           bool
+	oldValue                       func(context.Context) (*User, error)
+	predicates                     []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -51426,6 +51602,114 @@ func (m *UserMutation) ResetPlatformQuotas() {
 	m.removedplatform_quotas = nil
 }
 
+// AddWorkbenchCredentialIDs adds the "workbench_credentials" edge to the WorkbenchCredential entity by ids.
+func (m *UserMutation) AddWorkbenchCredentialIDs(ids ...int64) {
+	if m.workbench_credentials == nil {
+		m.workbench_credentials = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.workbench_credentials[ids[i]] = struct{}{}
+	}
+}
+
+// ClearWorkbenchCredentials clears the "workbench_credentials" edge to the WorkbenchCredential entity.
+func (m *UserMutation) ClearWorkbenchCredentials() {
+	m.clearedworkbench_credentials = true
+}
+
+// WorkbenchCredentialsCleared reports if the "workbench_credentials" edge to the WorkbenchCredential entity was cleared.
+func (m *UserMutation) WorkbenchCredentialsCleared() bool {
+	return m.clearedworkbench_credentials
+}
+
+// RemoveWorkbenchCredentialIDs removes the "workbench_credentials" edge to the WorkbenchCredential entity by IDs.
+func (m *UserMutation) RemoveWorkbenchCredentialIDs(ids ...int64) {
+	if m.removedworkbench_credentials == nil {
+		m.removedworkbench_credentials = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.workbench_credentials, ids[i])
+		m.removedworkbench_credentials[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedWorkbenchCredentials returns the removed IDs of the "workbench_credentials" edge to the WorkbenchCredential entity.
+func (m *UserMutation) RemovedWorkbenchCredentialsIDs() (ids []int64) {
+	for id := range m.removedworkbench_credentials {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// WorkbenchCredentialsIDs returns the "workbench_credentials" edge IDs in the mutation.
+func (m *UserMutation) WorkbenchCredentialsIDs() (ids []int64) {
+	for id := range m.workbench_credentials {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetWorkbenchCredentials resets all changes to the "workbench_credentials" edge.
+func (m *UserMutation) ResetWorkbenchCredentials() {
+	m.workbench_credentials = nil
+	m.clearedworkbench_credentials = false
+	m.removedworkbench_credentials = nil
+}
+
+// AddWorkbenchLaunchGrantIDs adds the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity by ids.
+func (m *UserMutation) AddWorkbenchLaunchGrantIDs(ids ...int64) {
+	if m.workbench_launch_grants == nil {
+		m.workbench_launch_grants = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.workbench_launch_grants[ids[i]] = struct{}{}
+	}
+}
+
+// ClearWorkbenchLaunchGrants clears the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity.
+func (m *UserMutation) ClearWorkbenchLaunchGrants() {
+	m.clearedworkbench_launch_grants = true
+}
+
+// WorkbenchLaunchGrantsCleared reports if the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity was cleared.
+func (m *UserMutation) WorkbenchLaunchGrantsCleared() bool {
+	return m.clearedworkbench_launch_grants
+}
+
+// RemoveWorkbenchLaunchGrantIDs removes the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity by IDs.
+func (m *UserMutation) RemoveWorkbenchLaunchGrantIDs(ids ...int64) {
+	if m.removedworkbench_launch_grants == nil {
+		m.removedworkbench_launch_grants = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.workbench_launch_grants, ids[i])
+		m.removedworkbench_launch_grants[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedWorkbenchLaunchGrants returns the removed IDs of the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity.
+func (m *UserMutation) RemovedWorkbenchLaunchGrantsIDs() (ids []int64) {
+	for id := range m.removedworkbench_launch_grants {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// WorkbenchLaunchGrantsIDs returns the "workbench_launch_grants" edge IDs in the mutation.
+func (m *UserMutation) WorkbenchLaunchGrantsIDs() (ids []int64) {
+	for id := range m.workbench_launch_grants {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetWorkbenchLaunchGrants resets all changes to the "workbench_launch_grants" edge.
+func (m *UserMutation) ResetWorkbenchLaunchGrants() {
+	m.workbench_launch_grants = nil
+	m.clearedworkbench_launch_grants = false
+	m.removedworkbench_launch_grants = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -52081,7 +52365,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 15)
 	if m.api_keys != nil {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
@@ -52120,6 +52404,12 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.platform_quotas != nil {
 		edges = append(edges, user.EdgePlatformQuotas)
+	}
+	if m.workbench_credentials != nil {
+		edges = append(edges, user.EdgeWorkbenchCredentials)
+	}
+	if m.workbench_launch_grants != nil {
+		edges = append(edges, user.EdgeWorkbenchLaunchGrants)
 	}
 	return edges
 }
@@ -52206,13 +52496,25 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeWorkbenchCredentials:
+		ids := make([]ent.Value, 0, len(m.workbench_credentials))
+		for id := range m.workbench_credentials {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeWorkbenchLaunchGrants:
+		ids := make([]ent.Value, 0, len(m.workbench_launch_grants))
+		for id := range m.workbench_launch_grants {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 15)
 	if m.removedapi_keys != nil {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
@@ -52251,6 +52553,12 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedplatform_quotas != nil {
 		edges = append(edges, user.EdgePlatformQuotas)
+	}
+	if m.removedworkbench_credentials != nil {
+		edges = append(edges, user.EdgeWorkbenchCredentials)
+	}
+	if m.removedworkbench_launch_grants != nil {
+		edges = append(edges, user.EdgeWorkbenchLaunchGrants)
 	}
 	return edges
 }
@@ -52337,13 +52645,25 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeWorkbenchCredentials:
+		ids := make([]ent.Value, 0, len(m.removedworkbench_credentials))
+		for id := range m.removedworkbench_credentials {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeWorkbenchLaunchGrants:
+		ids := make([]ent.Value, 0, len(m.removedworkbench_launch_grants))
+		for id := range m.removedworkbench_launch_grants {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 15)
 	if m.clearedapi_keys {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
@@ -52383,6 +52703,12 @@ func (m *UserMutation) ClearedEdges() []string {
 	if m.clearedplatform_quotas {
 		edges = append(edges, user.EdgePlatformQuotas)
 	}
+	if m.clearedworkbench_credentials {
+		edges = append(edges, user.EdgeWorkbenchCredentials)
+	}
+	if m.clearedworkbench_launch_grants {
+		edges = append(edges, user.EdgeWorkbenchLaunchGrants)
+	}
 	return edges
 }
 
@@ -52416,6 +52742,10 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedpending_auth_sessions
 	case user.EdgePlatformQuotas:
 		return m.clearedplatform_quotas
+	case user.EdgeWorkbenchCredentials:
+		return m.clearedworkbench_credentials
+	case user.EdgeWorkbenchLaunchGrants:
+		return m.clearedworkbench_launch_grants
 	}
 	return false
 }
@@ -52470,6 +52800,12 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgePlatformQuotas:
 		m.ResetPlatformQuotas()
+		return nil
+	case user.EdgeWorkbenchCredentials:
+		m.ResetWorkbenchCredentials()
+		return nil
+	case user.EdgeWorkbenchLaunchGrants:
+		m.ResetWorkbenchLaunchGrants()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)
@@ -57764,4 +58100,1532 @@ func (m *UserSubscriptionMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown UserSubscription edge %s", name)
+}
+
+// WorkbenchCredentialMutation represents an operation that mutates the WorkbenchCredential nodes in the graph.
+type WorkbenchCredentialMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int64
+	created_at     *time.Time
+	updated_at     *time.Time
+	workbench      *string
+	clearedFields  map[string]struct{}
+	user           *int64
+	cleareduser    bool
+	api_key        *int64
+	clearedapi_key bool
+	done           bool
+	oldValue       func(context.Context) (*WorkbenchCredential, error)
+	predicates     []predicate.WorkbenchCredential
+}
+
+var _ ent.Mutation = (*WorkbenchCredentialMutation)(nil)
+
+// workbenchcredentialOption allows management of the mutation configuration using functional options.
+type workbenchcredentialOption func(*WorkbenchCredentialMutation)
+
+// newWorkbenchCredentialMutation creates new mutation for the WorkbenchCredential entity.
+func newWorkbenchCredentialMutation(c config, op Op, opts ...workbenchcredentialOption) *WorkbenchCredentialMutation {
+	m := &WorkbenchCredentialMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWorkbenchCredential,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWorkbenchCredentialID sets the ID field of the mutation.
+func withWorkbenchCredentialID(id int64) workbenchcredentialOption {
+	return func(m *WorkbenchCredentialMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WorkbenchCredential
+		)
+		m.oldValue = func(ctx context.Context) (*WorkbenchCredential, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WorkbenchCredential.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWorkbenchCredential sets the old WorkbenchCredential of the mutation.
+func withWorkbenchCredential(node *WorkbenchCredential) workbenchcredentialOption {
+	return func(m *WorkbenchCredentialMutation) {
+		m.oldValue = func(context.Context) (*WorkbenchCredential, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WorkbenchCredentialMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WorkbenchCredentialMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WorkbenchCredentialMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WorkbenchCredentialMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WorkbenchCredential.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *WorkbenchCredentialMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *WorkbenchCredentialMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the WorkbenchCredential entity.
+// If the WorkbenchCredential object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchCredentialMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *WorkbenchCredentialMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *WorkbenchCredentialMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *WorkbenchCredentialMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the WorkbenchCredential entity.
+// If the WorkbenchCredential object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchCredentialMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *WorkbenchCredentialMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *WorkbenchCredentialMutation) SetUserID(i int64) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *WorkbenchCredentialMutation) UserID() (r int64, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the WorkbenchCredential entity.
+// If the WorkbenchCredential object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchCredentialMutation) OldUserID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *WorkbenchCredentialMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetWorkbench sets the "workbench" field.
+func (m *WorkbenchCredentialMutation) SetWorkbench(s string) {
+	m.workbench = &s
+}
+
+// Workbench returns the value of the "workbench" field in the mutation.
+func (m *WorkbenchCredentialMutation) Workbench() (r string, exists bool) {
+	v := m.workbench
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWorkbench returns the old "workbench" field's value of the WorkbenchCredential entity.
+// If the WorkbenchCredential object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchCredentialMutation) OldWorkbench(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWorkbench is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWorkbench requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWorkbench: %w", err)
+	}
+	return oldValue.Workbench, nil
+}
+
+// ResetWorkbench resets all changes to the "workbench" field.
+func (m *WorkbenchCredentialMutation) ResetWorkbench() {
+	m.workbench = nil
+}
+
+// SetAPIKeyID sets the "api_key_id" field.
+func (m *WorkbenchCredentialMutation) SetAPIKeyID(i int64) {
+	m.api_key = &i
+}
+
+// APIKeyID returns the value of the "api_key_id" field in the mutation.
+func (m *WorkbenchCredentialMutation) APIKeyID() (r int64, exists bool) {
+	v := m.api_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAPIKeyID returns the old "api_key_id" field's value of the WorkbenchCredential entity.
+// If the WorkbenchCredential object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchCredentialMutation) OldAPIKeyID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAPIKeyID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAPIKeyID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAPIKeyID: %w", err)
+	}
+	return oldValue.APIKeyID, nil
+}
+
+// ResetAPIKeyID resets all changes to the "api_key_id" field.
+func (m *WorkbenchCredentialMutation) ResetAPIKeyID() {
+	m.api_key = nil
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *WorkbenchCredentialMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[workbenchcredential.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *WorkbenchCredentialMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *WorkbenchCredentialMutation) UserIDs() (ids []int64) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *WorkbenchCredentialMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// ClearAPIKey clears the "api_key" edge to the APIKey entity.
+func (m *WorkbenchCredentialMutation) ClearAPIKey() {
+	m.clearedapi_key = true
+	m.clearedFields[workbenchcredential.FieldAPIKeyID] = struct{}{}
+}
+
+// APIKeyCleared reports if the "api_key" edge to the APIKey entity was cleared.
+func (m *WorkbenchCredentialMutation) APIKeyCleared() bool {
+	return m.clearedapi_key
+}
+
+// APIKeyIDs returns the "api_key" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// APIKeyID instead. It exists only for internal usage by the builders.
+func (m *WorkbenchCredentialMutation) APIKeyIDs() (ids []int64) {
+	if id := m.api_key; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetAPIKey resets all changes to the "api_key" edge.
+func (m *WorkbenchCredentialMutation) ResetAPIKey() {
+	m.api_key = nil
+	m.clearedapi_key = false
+}
+
+// Where appends a list predicates to the WorkbenchCredentialMutation builder.
+func (m *WorkbenchCredentialMutation) Where(ps ...predicate.WorkbenchCredential) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WorkbenchCredentialMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WorkbenchCredentialMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WorkbenchCredential, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WorkbenchCredentialMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WorkbenchCredentialMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WorkbenchCredential).
+func (m *WorkbenchCredentialMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WorkbenchCredentialMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.created_at != nil {
+		fields = append(fields, workbenchcredential.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, workbenchcredential.FieldUpdatedAt)
+	}
+	if m.user != nil {
+		fields = append(fields, workbenchcredential.FieldUserID)
+	}
+	if m.workbench != nil {
+		fields = append(fields, workbenchcredential.FieldWorkbench)
+	}
+	if m.api_key != nil {
+		fields = append(fields, workbenchcredential.FieldAPIKeyID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WorkbenchCredentialMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case workbenchcredential.FieldCreatedAt:
+		return m.CreatedAt()
+	case workbenchcredential.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case workbenchcredential.FieldUserID:
+		return m.UserID()
+	case workbenchcredential.FieldWorkbench:
+		return m.Workbench()
+	case workbenchcredential.FieldAPIKeyID:
+		return m.APIKeyID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WorkbenchCredentialMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case workbenchcredential.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case workbenchcredential.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case workbenchcredential.FieldUserID:
+		return m.OldUserID(ctx)
+	case workbenchcredential.FieldWorkbench:
+		return m.OldWorkbench(ctx)
+	case workbenchcredential.FieldAPIKeyID:
+		return m.OldAPIKeyID(ctx)
+	}
+	return nil, fmt.Errorf("unknown WorkbenchCredential field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WorkbenchCredentialMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case workbenchcredential.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case workbenchcredential.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case workbenchcredential.FieldUserID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case workbenchcredential.FieldWorkbench:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWorkbench(v)
+		return nil
+	case workbenchcredential.FieldAPIKeyID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAPIKeyID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WorkbenchCredential field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WorkbenchCredentialMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WorkbenchCredentialMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WorkbenchCredentialMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown WorkbenchCredential numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WorkbenchCredentialMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WorkbenchCredentialMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WorkbenchCredentialMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown WorkbenchCredential nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WorkbenchCredentialMutation) ResetField(name string) error {
+	switch name {
+	case workbenchcredential.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case workbenchcredential.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case workbenchcredential.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case workbenchcredential.FieldWorkbench:
+		m.ResetWorkbench()
+		return nil
+	case workbenchcredential.FieldAPIKeyID:
+		m.ResetAPIKeyID()
+		return nil
+	}
+	return fmt.Errorf("unknown WorkbenchCredential field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WorkbenchCredentialMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.user != nil {
+		edges = append(edges, workbenchcredential.EdgeUser)
+	}
+	if m.api_key != nil {
+		edges = append(edges, workbenchcredential.EdgeAPIKey)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WorkbenchCredentialMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case workbenchcredential.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case workbenchcredential.EdgeAPIKey:
+		if id := m.api_key; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WorkbenchCredentialMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WorkbenchCredentialMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WorkbenchCredentialMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.cleareduser {
+		edges = append(edges, workbenchcredential.EdgeUser)
+	}
+	if m.clearedapi_key {
+		edges = append(edges, workbenchcredential.EdgeAPIKey)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WorkbenchCredentialMutation) EdgeCleared(name string) bool {
+	switch name {
+	case workbenchcredential.EdgeUser:
+		return m.cleareduser
+	case workbenchcredential.EdgeAPIKey:
+		return m.clearedapi_key
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WorkbenchCredentialMutation) ClearEdge(name string) error {
+	switch name {
+	case workbenchcredential.EdgeUser:
+		m.ClearUser()
+		return nil
+	case workbenchcredential.EdgeAPIKey:
+		m.ClearAPIKey()
+		return nil
+	}
+	return fmt.Errorf("unknown WorkbenchCredential unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WorkbenchCredentialMutation) ResetEdge(name string) error {
+	switch name {
+	case workbenchcredential.EdgeUser:
+		m.ResetUser()
+		return nil
+	case workbenchcredential.EdgeAPIKey:
+		m.ResetAPIKey()
+		return nil
+	}
+	return fmt.Errorf("unknown WorkbenchCredential edge %s", name)
+}
+
+// WorkbenchLaunchGrantMutation represents an operation that mutates the WorkbenchLaunchGrant nodes in the graph.
+type WorkbenchLaunchGrantMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int64
+	created_at     *time.Time
+	updated_at     *time.Time
+	code_hash      *string
+	client_id      *string
+	redirect_uri   *string
+	expires_at     *time.Time
+	consumed_at    *time.Time
+	clearedFields  map[string]struct{}
+	user           *int64
+	cleareduser    bool
+	api_key        *int64
+	clearedapi_key bool
+	done           bool
+	oldValue       func(context.Context) (*WorkbenchLaunchGrant, error)
+	predicates     []predicate.WorkbenchLaunchGrant
+}
+
+var _ ent.Mutation = (*WorkbenchLaunchGrantMutation)(nil)
+
+// workbenchlaunchgrantOption allows management of the mutation configuration using functional options.
+type workbenchlaunchgrantOption func(*WorkbenchLaunchGrantMutation)
+
+// newWorkbenchLaunchGrantMutation creates new mutation for the WorkbenchLaunchGrant entity.
+func newWorkbenchLaunchGrantMutation(c config, op Op, opts ...workbenchlaunchgrantOption) *WorkbenchLaunchGrantMutation {
+	m := &WorkbenchLaunchGrantMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWorkbenchLaunchGrant,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWorkbenchLaunchGrantID sets the ID field of the mutation.
+func withWorkbenchLaunchGrantID(id int64) workbenchlaunchgrantOption {
+	return func(m *WorkbenchLaunchGrantMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WorkbenchLaunchGrant
+		)
+		m.oldValue = func(ctx context.Context) (*WorkbenchLaunchGrant, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WorkbenchLaunchGrant.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWorkbenchLaunchGrant sets the old WorkbenchLaunchGrant of the mutation.
+func withWorkbenchLaunchGrant(node *WorkbenchLaunchGrant) workbenchlaunchgrantOption {
+	return func(m *WorkbenchLaunchGrantMutation) {
+		m.oldValue = func(context.Context) (*WorkbenchLaunchGrant, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WorkbenchLaunchGrantMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WorkbenchLaunchGrantMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WorkbenchLaunchGrantMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WorkbenchLaunchGrantMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WorkbenchLaunchGrant.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *WorkbenchLaunchGrantMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *WorkbenchLaunchGrantMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the WorkbenchLaunchGrant entity.
+// If the WorkbenchLaunchGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchLaunchGrantMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *WorkbenchLaunchGrantMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *WorkbenchLaunchGrantMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *WorkbenchLaunchGrantMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the WorkbenchLaunchGrant entity.
+// If the WorkbenchLaunchGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchLaunchGrantMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *WorkbenchLaunchGrantMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetCodeHash sets the "code_hash" field.
+func (m *WorkbenchLaunchGrantMutation) SetCodeHash(s string) {
+	m.code_hash = &s
+}
+
+// CodeHash returns the value of the "code_hash" field in the mutation.
+func (m *WorkbenchLaunchGrantMutation) CodeHash() (r string, exists bool) {
+	v := m.code_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCodeHash returns the old "code_hash" field's value of the WorkbenchLaunchGrant entity.
+// If the WorkbenchLaunchGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchLaunchGrantMutation) OldCodeHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCodeHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCodeHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCodeHash: %w", err)
+	}
+	return oldValue.CodeHash, nil
+}
+
+// ResetCodeHash resets all changes to the "code_hash" field.
+func (m *WorkbenchLaunchGrantMutation) ResetCodeHash() {
+	m.code_hash = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *WorkbenchLaunchGrantMutation) SetUserID(i int64) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *WorkbenchLaunchGrantMutation) UserID() (r int64, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the WorkbenchLaunchGrant entity.
+// If the WorkbenchLaunchGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchLaunchGrantMutation) OldUserID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *WorkbenchLaunchGrantMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetAPIKeyID sets the "api_key_id" field.
+func (m *WorkbenchLaunchGrantMutation) SetAPIKeyID(i int64) {
+	m.api_key = &i
+}
+
+// APIKeyID returns the value of the "api_key_id" field in the mutation.
+func (m *WorkbenchLaunchGrantMutation) APIKeyID() (r int64, exists bool) {
+	v := m.api_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAPIKeyID returns the old "api_key_id" field's value of the WorkbenchLaunchGrant entity.
+// If the WorkbenchLaunchGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchLaunchGrantMutation) OldAPIKeyID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAPIKeyID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAPIKeyID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAPIKeyID: %w", err)
+	}
+	return oldValue.APIKeyID, nil
+}
+
+// ResetAPIKeyID resets all changes to the "api_key_id" field.
+func (m *WorkbenchLaunchGrantMutation) ResetAPIKeyID() {
+	m.api_key = nil
+}
+
+// SetClientID sets the "client_id" field.
+func (m *WorkbenchLaunchGrantMutation) SetClientID(s string) {
+	m.client_id = &s
+}
+
+// ClientID returns the value of the "client_id" field in the mutation.
+func (m *WorkbenchLaunchGrantMutation) ClientID() (r string, exists bool) {
+	v := m.client_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldClientID returns the old "client_id" field's value of the WorkbenchLaunchGrant entity.
+// If the WorkbenchLaunchGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchLaunchGrantMutation) OldClientID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldClientID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldClientID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldClientID: %w", err)
+	}
+	return oldValue.ClientID, nil
+}
+
+// ResetClientID resets all changes to the "client_id" field.
+func (m *WorkbenchLaunchGrantMutation) ResetClientID() {
+	m.client_id = nil
+}
+
+// SetRedirectURI sets the "redirect_uri" field.
+func (m *WorkbenchLaunchGrantMutation) SetRedirectURI(s string) {
+	m.redirect_uri = &s
+}
+
+// RedirectURI returns the value of the "redirect_uri" field in the mutation.
+func (m *WorkbenchLaunchGrantMutation) RedirectURI() (r string, exists bool) {
+	v := m.redirect_uri
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRedirectURI returns the old "redirect_uri" field's value of the WorkbenchLaunchGrant entity.
+// If the WorkbenchLaunchGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchLaunchGrantMutation) OldRedirectURI(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRedirectURI is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRedirectURI requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRedirectURI: %w", err)
+	}
+	return oldValue.RedirectURI, nil
+}
+
+// ResetRedirectURI resets all changes to the "redirect_uri" field.
+func (m *WorkbenchLaunchGrantMutation) ResetRedirectURI() {
+	m.redirect_uri = nil
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (m *WorkbenchLaunchGrantMutation) SetExpiresAt(t time.Time) {
+	m.expires_at = &t
+}
+
+// ExpiresAt returns the value of the "expires_at" field in the mutation.
+func (m *WorkbenchLaunchGrantMutation) ExpiresAt() (r time.Time, exists bool) {
+	v := m.expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiresAt returns the old "expires_at" field's value of the WorkbenchLaunchGrant entity.
+// If the WorkbenchLaunchGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchLaunchGrantMutation) OldExpiresAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiresAt: %w", err)
+	}
+	return oldValue.ExpiresAt, nil
+}
+
+// ResetExpiresAt resets all changes to the "expires_at" field.
+func (m *WorkbenchLaunchGrantMutation) ResetExpiresAt() {
+	m.expires_at = nil
+}
+
+// SetConsumedAt sets the "consumed_at" field.
+func (m *WorkbenchLaunchGrantMutation) SetConsumedAt(t time.Time) {
+	m.consumed_at = &t
+}
+
+// ConsumedAt returns the value of the "consumed_at" field in the mutation.
+func (m *WorkbenchLaunchGrantMutation) ConsumedAt() (r time.Time, exists bool) {
+	v := m.consumed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConsumedAt returns the old "consumed_at" field's value of the WorkbenchLaunchGrant entity.
+// If the WorkbenchLaunchGrant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WorkbenchLaunchGrantMutation) OldConsumedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConsumedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConsumedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConsumedAt: %w", err)
+	}
+	return oldValue.ConsumedAt, nil
+}
+
+// ClearConsumedAt clears the value of the "consumed_at" field.
+func (m *WorkbenchLaunchGrantMutation) ClearConsumedAt() {
+	m.consumed_at = nil
+	m.clearedFields[workbenchlaunchgrant.FieldConsumedAt] = struct{}{}
+}
+
+// ConsumedAtCleared returns if the "consumed_at" field was cleared in this mutation.
+func (m *WorkbenchLaunchGrantMutation) ConsumedAtCleared() bool {
+	_, ok := m.clearedFields[workbenchlaunchgrant.FieldConsumedAt]
+	return ok
+}
+
+// ResetConsumedAt resets all changes to the "consumed_at" field.
+func (m *WorkbenchLaunchGrantMutation) ResetConsumedAt() {
+	m.consumed_at = nil
+	delete(m.clearedFields, workbenchlaunchgrant.FieldConsumedAt)
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *WorkbenchLaunchGrantMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[workbenchlaunchgrant.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *WorkbenchLaunchGrantMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *WorkbenchLaunchGrantMutation) UserIDs() (ids []int64) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *WorkbenchLaunchGrantMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// ClearAPIKey clears the "api_key" edge to the APIKey entity.
+func (m *WorkbenchLaunchGrantMutation) ClearAPIKey() {
+	m.clearedapi_key = true
+	m.clearedFields[workbenchlaunchgrant.FieldAPIKeyID] = struct{}{}
+}
+
+// APIKeyCleared reports if the "api_key" edge to the APIKey entity was cleared.
+func (m *WorkbenchLaunchGrantMutation) APIKeyCleared() bool {
+	return m.clearedapi_key
+}
+
+// APIKeyIDs returns the "api_key" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// APIKeyID instead. It exists only for internal usage by the builders.
+func (m *WorkbenchLaunchGrantMutation) APIKeyIDs() (ids []int64) {
+	if id := m.api_key; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetAPIKey resets all changes to the "api_key" edge.
+func (m *WorkbenchLaunchGrantMutation) ResetAPIKey() {
+	m.api_key = nil
+	m.clearedapi_key = false
+}
+
+// Where appends a list predicates to the WorkbenchLaunchGrantMutation builder.
+func (m *WorkbenchLaunchGrantMutation) Where(ps ...predicate.WorkbenchLaunchGrant) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WorkbenchLaunchGrantMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WorkbenchLaunchGrantMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WorkbenchLaunchGrant, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WorkbenchLaunchGrantMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WorkbenchLaunchGrantMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WorkbenchLaunchGrant).
+func (m *WorkbenchLaunchGrantMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WorkbenchLaunchGrantMutation) Fields() []string {
+	fields := make([]string, 0, 9)
+	if m.created_at != nil {
+		fields = append(fields, workbenchlaunchgrant.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, workbenchlaunchgrant.FieldUpdatedAt)
+	}
+	if m.code_hash != nil {
+		fields = append(fields, workbenchlaunchgrant.FieldCodeHash)
+	}
+	if m.user != nil {
+		fields = append(fields, workbenchlaunchgrant.FieldUserID)
+	}
+	if m.api_key != nil {
+		fields = append(fields, workbenchlaunchgrant.FieldAPIKeyID)
+	}
+	if m.client_id != nil {
+		fields = append(fields, workbenchlaunchgrant.FieldClientID)
+	}
+	if m.redirect_uri != nil {
+		fields = append(fields, workbenchlaunchgrant.FieldRedirectURI)
+	}
+	if m.expires_at != nil {
+		fields = append(fields, workbenchlaunchgrant.FieldExpiresAt)
+	}
+	if m.consumed_at != nil {
+		fields = append(fields, workbenchlaunchgrant.FieldConsumedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WorkbenchLaunchGrantMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case workbenchlaunchgrant.FieldCreatedAt:
+		return m.CreatedAt()
+	case workbenchlaunchgrant.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case workbenchlaunchgrant.FieldCodeHash:
+		return m.CodeHash()
+	case workbenchlaunchgrant.FieldUserID:
+		return m.UserID()
+	case workbenchlaunchgrant.FieldAPIKeyID:
+		return m.APIKeyID()
+	case workbenchlaunchgrant.FieldClientID:
+		return m.ClientID()
+	case workbenchlaunchgrant.FieldRedirectURI:
+		return m.RedirectURI()
+	case workbenchlaunchgrant.FieldExpiresAt:
+		return m.ExpiresAt()
+	case workbenchlaunchgrant.FieldConsumedAt:
+		return m.ConsumedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WorkbenchLaunchGrantMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case workbenchlaunchgrant.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case workbenchlaunchgrant.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case workbenchlaunchgrant.FieldCodeHash:
+		return m.OldCodeHash(ctx)
+	case workbenchlaunchgrant.FieldUserID:
+		return m.OldUserID(ctx)
+	case workbenchlaunchgrant.FieldAPIKeyID:
+		return m.OldAPIKeyID(ctx)
+	case workbenchlaunchgrant.FieldClientID:
+		return m.OldClientID(ctx)
+	case workbenchlaunchgrant.FieldRedirectURI:
+		return m.OldRedirectURI(ctx)
+	case workbenchlaunchgrant.FieldExpiresAt:
+		return m.OldExpiresAt(ctx)
+	case workbenchlaunchgrant.FieldConsumedAt:
+		return m.OldConsumedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown WorkbenchLaunchGrant field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WorkbenchLaunchGrantMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case workbenchlaunchgrant.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case workbenchlaunchgrant.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case workbenchlaunchgrant.FieldCodeHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCodeHash(v)
+		return nil
+	case workbenchlaunchgrant.FieldUserID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case workbenchlaunchgrant.FieldAPIKeyID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAPIKeyID(v)
+		return nil
+	case workbenchlaunchgrant.FieldClientID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetClientID(v)
+		return nil
+	case workbenchlaunchgrant.FieldRedirectURI:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRedirectURI(v)
+		return nil
+	case workbenchlaunchgrant.FieldExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiresAt(v)
+		return nil
+	case workbenchlaunchgrant.FieldConsumedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConsumedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WorkbenchLaunchGrant field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WorkbenchLaunchGrantMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WorkbenchLaunchGrantMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WorkbenchLaunchGrantMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown WorkbenchLaunchGrant numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WorkbenchLaunchGrantMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(workbenchlaunchgrant.FieldConsumedAt) {
+		fields = append(fields, workbenchlaunchgrant.FieldConsumedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WorkbenchLaunchGrantMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WorkbenchLaunchGrantMutation) ClearField(name string) error {
+	switch name {
+	case workbenchlaunchgrant.FieldConsumedAt:
+		m.ClearConsumedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown WorkbenchLaunchGrant nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WorkbenchLaunchGrantMutation) ResetField(name string) error {
+	switch name {
+	case workbenchlaunchgrant.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case workbenchlaunchgrant.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case workbenchlaunchgrant.FieldCodeHash:
+		m.ResetCodeHash()
+		return nil
+	case workbenchlaunchgrant.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case workbenchlaunchgrant.FieldAPIKeyID:
+		m.ResetAPIKeyID()
+		return nil
+	case workbenchlaunchgrant.FieldClientID:
+		m.ResetClientID()
+		return nil
+	case workbenchlaunchgrant.FieldRedirectURI:
+		m.ResetRedirectURI()
+		return nil
+	case workbenchlaunchgrant.FieldExpiresAt:
+		m.ResetExpiresAt()
+		return nil
+	case workbenchlaunchgrant.FieldConsumedAt:
+		m.ResetConsumedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown WorkbenchLaunchGrant field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WorkbenchLaunchGrantMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.user != nil {
+		edges = append(edges, workbenchlaunchgrant.EdgeUser)
+	}
+	if m.api_key != nil {
+		edges = append(edges, workbenchlaunchgrant.EdgeAPIKey)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WorkbenchLaunchGrantMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case workbenchlaunchgrant.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case workbenchlaunchgrant.EdgeAPIKey:
+		if id := m.api_key; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WorkbenchLaunchGrantMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WorkbenchLaunchGrantMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WorkbenchLaunchGrantMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.cleareduser {
+		edges = append(edges, workbenchlaunchgrant.EdgeUser)
+	}
+	if m.clearedapi_key {
+		edges = append(edges, workbenchlaunchgrant.EdgeAPIKey)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WorkbenchLaunchGrantMutation) EdgeCleared(name string) bool {
+	switch name {
+	case workbenchlaunchgrant.EdgeUser:
+		return m.cleareduser
+	case workbenchlaunchgrant.EdgeAPIKey:
+		return m.clearedapi_key
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WorkbenchLaunchGrantMutation) ClearEdge(name string) error {
+	switch name {
+	case workbenchlaunchgrant.EdgeUser:
+		m.ClearUser()
+		return nil
+	case workbenchlaunchgrant.EdgeAPIKey:
+		m.ClearAPIKey()
+		return nil
+	}
+	return fmt.Errorf("unknown WorkbenchLaunchGrant unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WorkbenchLaunchGrantMutation) ResetEdge(name string) error {
+	switch name {
+	case workbenchlaunchgrant.EdgeUser:
+		m.ResetUser()
+		return nil
+	case workbenchlaunchgrant.EdgeAPIKey:
+		m.ResetAPIKey()
+		return nil
+	}
+	return fmt.Errorf("unknown WorkbenchLaunchGrant edge %s", name)
 }

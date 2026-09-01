@@ -125,3 +125,9 @@ type UserPlatformQuota func(*sql.Selector)
 
 // UserSubscription is the predicate function for usersubscription builders.
 type UserSubscription func(*sql.Selector)
+
+// WorkbenchCredential is the predicate function for workbenchcredential builders.
+type WorkbenchCredential func(*sql.Selector)
+
+// WorkbenchLaunchGrant is the predicate function for workbenchlaunchgrant builders.
+type WorkbenchLaunchGrant func(*sql.Selector)

@@ -94,6 +94,10 @@ type Tx struct {
 	UserPlatformQuota *UserPlatformQuotaClient
 	// UserSubscription is the client for interacting with the UserSubscription builders.
 	UserSubscription *UserSubscriptionClient
+	// WorkbenchCredential is the client for interacting with the WorkbenchCredential builders.
+	WorkbenchCredential *WorkbenchCredentialClient
+	// WorkbenchLaunchGrant is the client for interacting with the WorkbenchLaunchGrant builders.
+	WorkbenchLaunchGrant *WorkbenchLaunchGrantClient
 
 	// lazily loaded.
 	client     *Client
@@ -265,6 +269,8 @@ func (tx *Tx) init() {
 	tx.UserAttributeValue = NewUserAttributeValueClient(tx.config)
 	tx.UserPlatformQuota = NewUserPlatformQuotaClient(tx.config)
 	tx.UserSubscription = NewUserSubscriptionClient(tx.config)
+	tx.WorkbenchCredential = NewWorkbenchCredentialClient(tx.config)
+	tx.WorkbenchLaunchGrant = NewWorkbenchLaunchGrantClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

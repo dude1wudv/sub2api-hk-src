@@ -55,6 +55,8 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchcredential"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchlaunchgrant"
 
 	stdsql "database/sql"
 )
@@ -144,6 +146,10 @@ type Client struct {
 	UserPlatformQuota *UserPlatformQuotaClient
 	// UserSubscription is the client for interacting with the UserSubscription builders.
 	UserSubscription *UserSubscriptionClient
+	// WorkbenchCredential is the client for interacting with the WorkbenchCredential builders.
+	WorkbenchCredential *WorkbenchCredentialClient
+	// WorkbenchLaunchGrant is the client for interacting with the WorkbenchLaunchGrant builders.
+	WorkbenchLaunchGrant *WorkbenchLaunchGrantClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -195,6 +201,8 @@ func (c *Client) init() {
 	c.UserAttributeValue = NewUserAttributeValueClient(c.config)
 	c.UserPlatformQuota = NewUserPlatformQuotaClient(c.config)
 	c.UserSubscription = NewUserSubscriptionClient(c.config)
+	c.WorkbenchCredential = NewWorkbenchCredentialClient(c.config)
+	c.WorkbenchLaunchGrant = NewWorkbenchLaunchGrantClient(c.config)
 }
 
 type (
@@ -327,6 +335,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		UserAttributeValue:            NewUserAttributeValueClient(cfg),
 		UserPlatformQuota:             NewUserPlatformQuotaClient(cfg),
 		UserSubscription:              NewUserSubscriptionClient(cfg),
+		WorkbenchCredential:           NewWorkbenchCredentialClient(cfg),
+		WorkbenchLaunchGrant:          NewWorkbenchLaunchGrantClient(cfg),
 	}, nil
 }
 
@@ -386,6 +396,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		UserAttributeValue:            NewUserAttributeValueClient(cfg),
 		UserPlatformQuota:             NewUserPlatformQuotaClient(cfg),
 		UserSubscription:              NewUserSubscriptionClient(cfg),
+		WorkbenchCredential:           NewWorkbenchCredentialClient(cfg),
+		WorkbenchLaunchGrant:          NewWorkbenchLaunchGrantClient(cfg),
 	}, nil
 }
 
@@ -426,6 +438,7 @@ func (c *Client) Use(hooks ...Hook) {
 		c.SubscriptionPurchaseClaim, c.TLSFingerprintProfile, c.UsageCleanupTask,
 		c.UsageLog, c.User, c.UserAllowedGroup, c.UserAttributeDefinition,
 		c.UserAttributeValue, c.UserPlatformQuota, c.UserSubscription,
+		c.WorkbenchCredential, c.WorkbenchLaunchGrant,
 	} {
 		n.Use(hooks...)
 	}
@@ -446,6 +459,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.SubscriptionPurchaseClaim, c.TLSFingerprintProfile, c.UsageCleanupTask,
 		c.UsageLog, c.User, c.UserAllowedGroup, c.UserAttributeDefinition,
 		c.UserAttributeValue, c.UserPlatformQuota, c.UserSubscription,
+		c.WorkbenchCredential, c.WorkbenchLaunchGrant,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -534,6 +548,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.UserPlatformQuota.mutate(ctx, m)
 	case *UserSubscriptionMutation:
 		return c.UserSubscription.mutate(ctx, m)
+	case *WorkbenchCredentialMutation:
+		return c.WorkbenchCredential.mutate(ctx, m)
+	case *WorkbenchLaunchGrantMutation:
+		return c.WorkbenchLaunchGrant.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -688,6 +706,38 @@ func (c *APIKeyClient) QueryUsageLogs(_m *APIKey) *UsageLogQuery {
 			sqlgraph.From(apikey.Table, apikey.FieldID, id),
 			sqlgraph.To(usagelog.Table, usagelog.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, apikey.UsageLogsTable, apikey.UsageLogsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryWorkbenchCredentials queries the workbench_credentials edge of a APIKey.
+func (c *APIKeyClient) QueryWorkbenchCredentials(_m *APIKey) *WorkbenchCredentialQuery {
+	query := (&WorkbenchCredentialClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(apikey.Table, apikey.FieldID, id),
+			sqlgraph.To(workbenchcredential.Table, workbenchcredential.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, apikey.WorkbenchCredentialsTable, apikey.WorkbenchCredentialsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryWorkbenchLaunchGrants queries the workbench_launch_grants edge of a APIKey.
+func (c *APIKeyClient) QueryWorkbenchLaunchGrants(_m *APIKey) *WorkbenchLaunchGrantQuery {
+	query := (&WorkbenchLaunchGrantClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(apikey.Table, apikey.FieldID, id),
+			sqlgraph.To(workbenchlaunchgrant.Table, workbenchlaunchgrant.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, apikey.WorkbenchLaunchGrantsTable, apikey.WorkbenchLaunchGrantsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -6138,6 +6188,38 @@ func (c *UserClient) QueryPlatformQuotas(_m *User) *UserPlatformQuotaQuery {
 	return query
 }
 
+// QueryWorkbenchCredentials queries the workbench_credentials edge of a User.
+func (c *UserClient) QueryWorkbenchCredentials(_m *User) *WorkbenchCredentialQuery {
+	query := (&WorkbenchCredentialClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(workbenchcredential.Table, workbenchcredential.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.WorkbenchCredentialsTable, user.WorkbenchCredentialsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryWorkbenchLaunchGrants queries the workbench_launch_grants edge of a User.
+func (c *UserClient) QueryWorkbenchLaunchGrants(_m *User) *WorkbenchLaunchGrantQuery {
+	query := (&WorkbenchLaunchGrantClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(workbenchlaunchgrant.Table, workbenchlaunchgrant.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.WorkbenchLaunchGrantsTable, user.WorkbenchLaunchGrantsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryUserAllowedGroups queries the user_allowed_groups edge of a User.
 func (c *UserClient) QueryUserAllowedGroups(_m *User) *UserAllowedGroupQuery {
 	query := (&UserAllowedGroupClient{config: c.config}).Query()
@@ -6963,6 +7045,336 @@ func (c *UserSubscriptionClient) mutate(ctx context.Context, m *UserSubscription
 	}
 }
 
+// WorkbenchCredentialClient is a client for the WorkbenchCredential schema.
+type WorkbenchCredentialClient struct {
+	config
+}
+
+// NewWorkbenchCredentialClient returns a client for the WorkbenchCredential from the given config.
+func NewWorkbenchCredentialClient(c config) *WorkbenchCredentialClient {
+	return &WorkbenchCredentialClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `workbenchcredential.Hooks(f(g(h())))`.
+func (c *WorkbenchCredentialClient) Use(hooks ...Hook) {
+	c.hooks.WorkbenchCredential = append(c.hooks.WorkbenchCredential, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `workbenchcredential.Intercept(f(g(h())))`.
+func (c *WorkbenchCredentialClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WorkbenchCredential = append(c.inters.WorkbenchCredential, interceptors...)
+}
+
+// Create returns a builder for creating a WorkbenchCredential entity.
+func (c *WorkbenchCredentialClient) Create() *WorkbenchCredentialCreate {
+	mutation := newWorkbenchCredentialMutation(c.config, OpCreate)
+	return &WorkbenchCredentialCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WorkbenchCredential entities.
+func (c *WorkbenchCredentialClient) CreateBulk(builders ...*WorkbenchCredentialCreate) *WorkbenchCredentialCreateBulk {
+	return &WorkbenchCredentialCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WorkbenchCredentialClient) MapCreateBulk(slice any, setFunc func(*WorkbenchCredentialCreate, int)) *WorkbenchCredentialCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WorkbenchCredentialCreateBulk{err: fmt.Errorf("calling to WorkbenchCredentialClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WorkbenchCredentialCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WorkbenchCredentialCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WorkbenchCredential.
+func (c *WorkbenchCredentialClient) Update() *WorkbenchCredentialUpdate {
+	mutation := newWorkbenchCredentialMutation(c.config, OpUpdate)
+	return &WorkbenchCredentialUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WorkbenchCredentialClient) UpdateOne(_m *WorkbenchCredential) *WorkbenchCredentialUpdateOne {
+	mutation := newWorkbenchCredentialMutation(c.config, OpUpdateOne, withWorkbenchCredential(_m))
+	return &WorkbenchCredentialUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WorkbenchCredentialClient) UpdateOneID(id int64) *WorkbenchCredentialUpdateOne {
+	mutation := newWorkbenchCredentialMutation(c.config, OpUpdateOne, withWorkbenchCredentialID(id))
+	return &WorkbenchCredentialUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WorkbenchCredential.
+func (c *WorkbenchCredentialClient) Delete() *WorkbenchCredentialDelete {
+	mutation := newWorkbenchCredentialMutation(c.config, OpDelete)
+	return &WorkbenchCredentialDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WorkbenchCredentialClient) DeleteOne(_m *WorkbenchCredential) *WorkbenchCredentialDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WorkbenchCredentialClient) DeleteOneID(id int64) *WorkbenchCredentialDeleteOne {
+	builder := c.Delete().Where(workbenchcredential.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WorkbenchCredentialDeleteOne{builder}
+}
+
+// Query returns a query builder for WorkbenchCredential.
+func (c *WorkbenchCredentialClient) Query() *WorkbenchCredentialQuery {
+	return &WorkbenchCredentialQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWorkbenchCredential},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WorkbenchCredential entity by its id.
+func (c *WorkbenchCredentialClient) Get(ctx context.Context, id int64) (*WorkbenchCredential, error) {
+	return c.Query().Where(workbenchcredential.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WorkbenchCredentialClient) GetX(ctx context.Context, id int64) *WorkbenchCredential {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a WorkbenchCredential.
+func (c *WorkbenchCredentialClient) QueryUser(_m *WorkbenchCredential) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(workbenchcredential.Table, workbenchcredential.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, workbenchcredential.UserTable, workbenchcredential.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryAPIKey queries the api_key edge of a WorkbenchCredential.
+func (c *WorkbenchCredentialClient) QueryAPIKey(_m *WorkbenchCredential) *APIKeyQuery {
+	query := (&APIKeyClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(workbenchcredential.Table, workbenchcredential.FieldID, id),
+			sqlgraph.To(apikey.Table, apikey.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, workbenchcredential.APIKeyTable, workbenchcredential.APIKeyColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WorkbenchCredentialClient) Hooks() []Hook {
+	return c.hooks.WorkbenchCredential
+}
+
+// Interceptors returns the client interceptors.
+func (c *WorkbenchCredentialClient) Interceptors() []Interceptor {
+	return c.inters.WorkbenchCredential
+}
+
+func (c *WorkbenchCredentialClient) mutate(ctx context.Context, m *WorkbenchCredentialMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WorkbenchCredentialCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WorkbenchCredentialUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WorkbenchCredentialUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WorkbenchCredentialDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WorkbenchCredential mutation op: %q", m.Op())
+	}
+}
+
+// WorkbenchLaunchGrantClient is a client for the WorkbenchLaunchGrant schema.
+type WorkbenchLaunchGrantClient struct {
+	config
+}
+
+// NewWorkbenchLaunchGrantClient returns a client for the WorkbenchLaunchGrant from the given config.
+func NewWorkbenchLaunchGrantClient(c config) *WorkbenchLaunchGrantClient {
+	return &WorkbenchLaunchGrantClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `workbenchlaunchgrant.Hooks(f(g(h())))`.
+func (c *WorkbenchLaunchGrantClient) Use(hooks ...Hook) {
+	c.hooks.WorkbenchLaunchGrant = append(c.hooks.WorkbenchLaunchGrant, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `workbenchlaunchgrant.Intercept(f(g(h())))`.
+func (c *WorkbenchLaunchGrantClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WorkbenchLaunchGrant = append(c.inters.WorkbenchLaunchGrant, interceptors...)
+}
+
+// Create returns a builder for creating a WorkbenchLaunchGrant entity.
+func (c *WorkbenchLaunchGrantClient) Create() *WorkbenchLaunchGrantCreate {
+	mutation := newWorkbenchLaunchGrantMutation(c.config, OpCreate)
+	return &WorkbenchLaunchGrantCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WorkbenchLaunchGrant entities.
+func (c *WorkbenchLaunchGrantClient) CreateBulk(builders ...*WorkbenchLaunchGrantCreate) *WorkbenchLaunchGrantCreateBulk {
+	return &WorkbenchLaunchGrantCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WorkbenchLaunchGrantClient) MapCreateBulk(slice any, setFunc func(*WorkbenchLaunchGrantCreate, int)) *WorkbenchLaunchGrantCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WorkbenchLaunchGrantCreateBulk{err: fmt.Errorf("calling to WorkbenchLaunchGrantClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WorkbenchLaunchGrantCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WorkbenchLaunchGrantCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WorkbenchLaunchGrant.
+func (c *WorkbenchLaunchGrantClient) Update() *WorkbenchLaunchGrantUpdate {
+	mutation := newWorkbenchLaunchGrantMutation(c.config, OpUpdate)
+	return &WorkbenchLaunchGrantUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WorkbenchLaunchGrantClient) UpdateOne(_m *WorkbenchLaunchGrant) *WorkbenchLaunchGrantUpdateOne {
+	mutation := newWorkbenchLaunchGrantMutation(c.config, OpUpdateOne, withWorkbenchLaunchGrant(_m))
+	return &WorkbenchLaunchGrantUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WorkbenchLaunchGrantClient) UpdateOneID(id int64) *WorkbenchLaunchGrantUpdateOne {
+	mutation := newWorkbenchLaunchGrantMutation(c.config, OpUpdateOne, withWorkbenchLaunchGrantID(id))
+	return &WorkbenchLaunchGrantUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WorkbenchLaunchGrant.
+func (c *WorkbenchLaunchGrantClient) Delete() *WorkbenchLaunchGrantDelete {
+	mutation := newWorkbenchLaunchGrantMutation(c.config, OpDelete)
+	return &WorkbenchLaunchGrantDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WorkbenchLaunchGrantClient) DeleteOne(_m *WorkbenchLaunchGrant) *WorkbenchLaunchGrantDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WorkbenchLaunchGrantClient) DeleteOneID(id int64) *WorkbenchLaunchGrantDeleteOne {
+	builder := c.Delete().Where(workbenchlaunchgrant.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WorkbenchLaunchGrantDeleteOne{builder}
+}
+
+// Query returns a query builder for WorkbenchLaunchGrant.
+func (c *WorkbenchLaunchGrantClient) Query() *WorkbenchLaunchGrantQuery {
+	return &WorkbenchLaunchGrantQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWorkbenchLaunchGrant},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WorkbenchLaunchGrant entity by its id.
+func (c *WorkbenchLaunchGrantClient) Get(ctx context.Context, id int64) (*WorkbenchLaunchGrant, error) {
+	return c.Query().Where(workbenchlaunchgrant.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WorkbenchLaunchGrantClient) GetX(ctx context.Context, id int64) *WorkbenchLaunchGrant {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a WorkbenchLaunchGrant.
+func (c *WorkbenchLaunchGrantClient) QueryUser(_m *WorkbenchLaunchGrant) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(workbenchlaunchgrant.Table, workbenchlaunchgrant.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, workbenchlaunchgrant.UserTable, workbenchlaunchgrant.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryAPIKey queries the api_key edge of a WorkbenchLaunchGrant.
+func (c *WorkbenchLaunchGrantClient) QueryAPIKey(_m *WorkbenchLaunchGrant) *APIKeyQuery {
+	query := (&APIKeyClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(workbenchlaunchgrant.Table, workbenchlaunchgrant.FieldID, id),
+			sqlgraph.To(apikey.Table, apikey.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, workbenchlaunchgrant.APIKeyTable, workbenchlaunchgrant.APIKeyColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WorkbenchLaunchGrantClient) Hooks() []Hook {
+	return c.hooks.WorkbenchLaunchGrant
+}
+
+// Interceptors returns the client interceptors.
+func (c *WorkbenchLaunchGrantClient) Interceptors() []Interceptor {
+	return c.inters.WorkbenchLaunchGrant
+}
+
+func (c *WorkbenchLaunchGrantClient) mutate(ctx context.Context, m *WorkbenchLaunchGrantMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WorkbenchLaunchGrantCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WorkbenchLaunchGrantUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WorkbenchLaunchGrantUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WorkbenchLaunchGrantDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WorkbenchLaunchGrant mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
@@ -6975,7 +7387,8 @@ type (
 		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		SubscriptionPurchaseClaim, TLSFingerprintProfile, UsageCleanupTask, UsageLog,
 		User, UserAllowedGroup, UserAttributeDefinition, UserAttributeValue,
-		UserPlatformQuota, UserSubscription []ent.Hook
+		UserPlatformQuota, UserSubscription, WorkbenchCredential,
+		WorkbenchLaunchGrant []ent.Hook
 	}
 	inters struct {
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
@@ -6987,7 +7400,8 @@ type (
 		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		SubscriptionPurchaseClaim, TLSFingerprintProfile, UsageCleanupTask, UsageLog,
 		User, UserAllowedGroup, UserAttributeDefinition, UserAttributeValue,
-		UserPlatformQuota, UserSubscription []ent.Interceptor
+		UserPlatformQuota, UserSubscription, WorkbenchCredential,
+		WorkbenchLaunchGrant []ent.Interceptor
 	}
 )
 

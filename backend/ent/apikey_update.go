@@ -17,6 +17,8 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchcredential"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchlaunchgrant"
 )
 
 // APIKeyUpdate is the builder for updating APIKey entities.
@@ -463,6 +465,36 @@ func (_u *APIKeyUpdate) AddUsageLogs(v ...*UsageLog) *APIKeyUpdate {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddWorkbenchCredentialIDs adds the "workbench_credentials" edge to the WorkbenchCredential entity by IDs.
+func (_u *APIKeyUpdate) AddWorkbenchCredentialIDs(ids ...int64) *APIKeyUpdate {
+	_u.mutation.AddWorkbenchCredentialIDs(ids...)
+	return _u
+}
+
+// AddWorkbenchCredentials adds the "workbench_credentials" edges to the WorkbenchCredential entity.
+func (_u *APIKeyUpdate) AddWorkbenchCredentials(v ...*WorkbenchCredential) *APIKeyUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddWorkbenchCredentialIDs(ids...)
+}
+
+// AddWorkbenchLaunchGrantIDs adds the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity by IDs.
+func (_u *APIKeyUpdate) AddWorkbenchLaunchGrantIDs(ids ...int64) *APIKeyUpdate {
+	_u.mutation.AddWorkbenchLaunchGrantIDs(ids...)
+	return _u
+}
+
+// AddWorkbenchLaunchGrants adds the "workbench_launch_grants" edges to the WorkbenchLaunchGrant entity.
+func (_u *APIKeyUpdate) AddWorkbenchLaunchGrants(v ...*WorkbenchLaunchGrant) *APIKeyUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddWorkbenchLaunchGrantIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdate) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -499,6 +531,48 @@ func (_u *APIKeyUpdate) RemoveUsageLogs(v ...*UsageLog) *APIKeyUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearWorkbenchCredentials clears all "workbench_credentials" edges to the WorkbenchCredential entity.
+func (_u *APIKeyUpdate) ClearWorkbenchCredentials() *APIKeyUpdate {
+	_u.mutation.ClearWorkbenchCredentials()
+	return _u
+}
+
+// RemoveWorkbenchCredentialIDs removes the "workbench_credentials" edge to WorkbenchCredential entities by IDs.
+func (_u *APIKeyUpdate) RemoveWorkbenchCredentialIDs(ids ...int64) *APIKeyUpdate {
+	_u.mutation.RemoveWorkbenchCredentialIDs(ids...)
+	return _u
+}
+
+// RemoveWorkbenchCredentials removes "workbench_credentials" edges to WorkbenchCredential entities.
+func (_u *APIKeyUpdate) RemoveWorkbenchCredentials(v ...*WorkbenchCredential) *APIKeyUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveWorkbenchCredentialIDs(ids...)
+}
+
+// ClearWorkbenchLaunchGrants clears all "workbench_launch_grants" edges to the WorkbenchLaunchGrant entity.
+func (_u *APIKeyUpdate) ClearWorkbenchLaunchGrants() *APIKeyUpdate {
+	_u.mutation.ClearWorkbenchLaunchGrants()
+	return _u
+}
+
+// RemoveWorkbenchLaunchGrantIDs removes the "workbench_launch_grants" edge to WorkbenchLaunchGrant entities by IDs.
+func (_u *APIKeyUpdate) RemoveWorkbenchLaunchGrantIDs(ids ...int64) *APIKeyUpdate {
+	_u.mutation.RemoveWorkbenchLaunchGrantIDs(ids...)
+	return _u
+}
+
+// RemoveWorkbenchLaunchGrants removes "workbench_launch_grants" edges to WorkbenchLaunchGrant entities.
+func (_u *APIKeyUpdate) RemoveWorkbenchLaunchGrants(v ...*WorkbenchLaunchGrant) *APIKeyUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveWorkbenchLaunchGrantIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -792,6 +866,96 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WorkbenchCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchCredentialsTable,
+			Columns: []string{apikey.WorkbenchCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchcredential.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedWorkbenchCredentialsIDs(); len(nodes) > 0 && !_u.mutation.WorkbenchCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchCredentialsTable,
+			Columns: []string{apikey.WorkbenchCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WorkbenchCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchCredentialsTable,
+			Columns: []string{apikey.WorkbenchCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WorkbenchLaunchGrantsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchLaunchGrantsTable,
+			Columns: []string{apikey.WorkbenchLaunchGrantsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedWorkbenchLaunchGrantsIDs(); len(nodes) > 0 && !_u.mutation.WorkbenchLaunchGrantsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchLaunchGrantsTable,
+			Columns: []string{apikey.WorkbenchLaunchGrantsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WorkbenchLaunchGrantsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchLaunchGrantsTable,
+			Columns: []string{apikey.WorkbenchLaunchGrantsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -1250,6 +1414,36 @@ func (_u *APIKeyUpdateOne) AddUsageLogs(v ...*UsageLog) *APIKeyUpdateOne {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddWorkbenchCredentialIDs adds the "workbench_credentials" edge to the WorkbenchCredential entity by IDs.
+func (_u *APIKeyUpdateOne) AddWorkbenchCredentialIDs(ids ...int64) *APIKeyUpdateOne {
+	_u.mutation.AddWorkbenchCredentialIDs(ids...)
+	return _u
+}
+
+// AddWorkbenchCredentials adds the "workbench_credentials" edges to the WorkbenchCredential entity.
+func (_u *APIKeyUpdateOne) AddWorkbenchCredentials(v ...*WorkbenchCredential) *APIKeyUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddWorkbenchCredentialIDs(ids...)
+}
+
+// AddWorkbenchLaunchGrantIDs adds the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity by IDs.
+func (_u *APIKeyUpdateOne) AddWorkbenchLaunchGrantIDs(ids ...int64) *APIKeyUpdateOne {
+	_u.mutation.AddWorkbenchLaunchGrantIDs(ids...)
+	return _u
+}
+
+// AddWorkbenchLaunchGrants adds the "workbench_launch_grants" edges to the WorkbenchLaunchGrant entity.
+func (_u *APIKeyUpdateOne) AddWorkbenchLaunchGrants(v ...*WorkbenchLaunchGrant) *APIKeyUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddWorkbenchLaunchGrantIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdateOne) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -1286,6 +1480,48 @@ func (_u *APIKeyUpdateOne) RemoveUsageLogs(v ...*UsageLog) *APIKeyUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearWorkbenchCredentials clears all "workbench_credentials" edges to the WorkbenchCredential entity.
+func (_u *APIKeyUpdateOne) ClearWorkbenchCredentials() *APIKeyUpdateOne {
+	_u.mutation.ClearWorkbenchCredentials()
+	return _u
+}
+
+// RemoveWorkbenchCredentialIDs removes the "workbench_credentials" edge to WorkbenchCredential entities by IDs.
+func (_u *APIKeyUpdateOne) RemoveWorkbenchCredentialIDs(ids ...int64) *APIKeyUpdateOne {
+	_u.mutation.RemoveWorkbenchCredentialIDs(ids...)
+	return _u
+}
+
+// RemoveWorkbenchCredentials removes "workbench_credentials" edges to WorkbenchCredential entities.
+func (_u *APIKeyUpdateOne) RemoveWorkbenchCredentials(v ...*WorkbenchCredential) *APIKeyUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveWorkbenchCredentialIDs(ids...)
+}
+
+// ClearWorkbenchLaunchGrants clears all "workbench_launch_grants" edges to the WorkbenchLaunchGrant entity.
+func (_u *APIKeyUpdateOne) ClearWorkbenchLaunchGrants() *APIKeyUpdateOne {
+	_u.mutation.ClearWorkbenchLaunchGrants()
+	return _u
+}
+
+// RemoveWorkbenchLaunchGrantIDs removes the "workbench_launch_grants" edge to WorkbenchLaunchGrant entities by IDs.
+func (_u *APIKeyUpdateOne) RemoveWorkbenchLaunchGrantIDs(ids ...int64) *APIKeyUpdateOne {
+	_u.mutation.RemoveWorkbenchLaunchGrantIDs(ids...)
+	return _u
+}
+
+// RemoveWorkbenchLaunchGrants removes "workbench_launch_grants" edges to WorkbenchLaunchGrant entities.
+func (_u *APIKeyUpdateOne) RemoveWorkbenchLaunchGrants(v ...*WorkbenchLaunchGrant) *APIKeyUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveWorkbenchLaunchGrantIDs(ids...)
 }
 
 // Where appends a list predicates to the APIKeyUpdate builder.
@@ -1609,6 +1845,96 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WorkbenchCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchCredentialsTable,
+			Columns: []string{apikey.WorkbenchCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchcredential.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedWorkbenchCredentialsIDs(); len(nodes) > 0 && !_u.mutation.WorkbenchCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchCredentialsTable,
+			Columns: []string{apikey.WorkbenchCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WorkbenchCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchCredentialsTable,
+			Columns: []string{apikey.WorkbenchCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WorkbenchLaunchGrantsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchLaunchGrantsTable,
+			Columns: []string{apikey.WorkbenchLaunchGrantsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedWorkbenchLaunchGrantsIDs(); len(nodes) > 0 && !_u.mutation.WorkbenchLaunchGrantsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchLaunchGrantsTable,
+			Columns: []string{apikey.WorkbenchLaunchGrantsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WorkbenchLaunchGrantsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.WorkbenchLaunchGrantsTable,
+			Columns: []string{apikey.WorkbenchLaunchGrantsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

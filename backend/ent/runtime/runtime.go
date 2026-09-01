@@ -46,6 +46,8 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchcredential"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchlaunchgrant"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
@@ -2489,6 +2491,110 @@ func init() {
 	usersubscriptionDescAssignedAt := usersubscriptionFields[12].Descriptor()
 	// usersubscription.DefaultAssignedAt holds the default value on creation for the assigned_at field.
 	usersubscription.DefaultAssignedAt = usersubscriptionDescAssignedAt.Default.(func() time.Time)
+	workbenchcredentialMixin := schema.WorkbenchCredential{}.Mixin()
+	workbenchcredentialMixinFields0 := workbenchcredentialMixin[0].Fields()
+	_ = workbenchcredentialMixinFields0
+	workbenchcredentialFields := schema.WorkbenchCredential{}.Fields()
+	_ = workbenchcredentialFields
+	// workbenchcredentialDescCreatedAt is the schema descriptor for created_at field.
+	workbenchcredentialDescCreatedAt := workbenchcredentialMixinFields0[0].Descriptor()
+	// workbenchcredential.DefaultCreatedAt holds the default value on creation for the created_at field.
+	workbenchcredential.DefaultCreatedAt = workbenchcredentialDescCreatedAt.Default.(func() time.Time)
+	// workbenchcredentialDescUpdatedAt is the schema descriptor for updated_at field.
+	workbenchcredentialDescUpdatedAt := workbenchcredentialMixinFields0[1].Descriptor()
+	// workbenchcredential.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	workbenchcredential.DefaultUpdatedAt = workbenchcredentialDescUpdatedAt.Default.(func() time.Time)
+	// workbenchcredential.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	workbenchcredential.UpdateDefaultUpdatedAt = workbenchcredentialDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// workbenchcredentialDescWorkbench is the schema descriptor for workbench field.
+	workbenchcredentialDescWorkbench := workbenchcredentialFields[1].Descriptor()
+	// workbenchcredential.WorkbenchValidator is a validator for the "workbench" field. It is called by the builders before save.
+	workbenchcredential.WorkbenchValidator = func() func(string) error {
+		validators := workbenchcredentialDescWorkbench.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+			validators[2].(func(string) error),
+		}
+		return func(workbench string) error {
+			for _, fn := range fns {
+				if err := fn(workbench); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	workbenchlaunchgrantMixin := schema.WorkbenchLaunchGrant{}.Mixin()
+	workbenchlaunchgrantMixinFields0 := workbenchlaunchgrantMixin[0].Fields()
+	_ = workbenchlaunchgrantMixinFields0
+	workbenchlaunchgrantFields := schema.WorkbenchLaunchGrant{}.Fields()
+	_ = workbenchlaunchgrantFields
+	// workbenchlaunchgrantDescCreatedAt is the schema descriptor for created_at field.
+	workbenchlaunchgrantDescCreatedAt := workbenchlaunchgrantMixinFields0[0].Descriptor()
+	// workbenchlaunchgrant.DefaultCreatedAt holds the default value on creation for the created_at field.
+	workbenchlaunchgrant.DefaultCreatedAt = workbenchlaunchgrantDescCreatedAt.Default.(func() time.Time)
+	// workbenchlaunchgrantDescUpdatedAt is the schema descriptor for updated_at field.
+	workbenchlaunchgrantDescUpdatedAt := workbenchlaunchgrantMixinFields0[1].Descriptor()
+	// workbenchlaunchgrant.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	workbenchlaunchgrant.DefaultUpdatedAt = workbenchlaunchgrantDescUpdatedAt.Default.(func() time.Time)
+	// workbenchlaunchgrant.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	workbenchlaunchgrant.UpdateDefaultUpdatedAt = workbenchlaunchgrantDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// workbenchlaunchgrantDescCodeHash is the schema descriptor for code_hash field.
+	workbenchlaunchgrantDescCodeHash := workbenchlaunchgrantFields[0].Descriptor()
+	// workbenchlaunchgrant.CodeHashValidator is a validator for the "code_hash" field. It is called by the builders before save.
+	workbenchlaunchgrant.CodeHashValidator = func() func(string) error {
+		validators := workbenchlaunchgrantDescCodeHash.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+			validators[2].(func(string) error),
+		}
+		return func(code_hash string) error {
+			for _, fn := range fns {
+				if err := fn(code_hash); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// workbenchlaunchgrantDescClientID is the schema descriptor for client_id field.
+	workbenchlaunchgrantDescClientID := workbenchlaunchgrantFields[3].Descriptor()
+	// workbenchlaunchgrant.ClientIDValidator is a validator for the "client_id" field. It is called by the builders before save.
+	workbenchlaunchgrant.ClientIDValidator = func() func(string) error {
+		validators := workbenchlaunchgrantDescClientID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(client_id string) error {
+			for _, fn := range fns {
+				if err := fn(client_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// workbenchlaunchgrantDescRedirectURI is the schema descriptor for redirect_uri field.
+	workbenchlaunchgrantDescRedirectURI := workbenchlaunchgrantFields[4].Descriptor()
+	// workbenchlaunchgrant.RedirectURIValidator is a validator for the "redirect_uri" field. It is called by the builders before save.
+	workbenchlaunchgrant.RedirectURIValidator = func() func(string) error {
+		validators := workbenchlaunchgrantDescRedirectURI.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(redirect_uri string) error {
+			for _, fn := range fns {
+				if err := fn(redirect_uri); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
 }
 
 const (

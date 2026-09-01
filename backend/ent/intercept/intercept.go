@@ -49,6 +49,8 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchcredential"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchlaunchgrant"
 )
 
 // The Query interface represents an operation that queries a graph.
@@ -1187,6 +1189,60 @@ func (f TraverseUserSubscription) Traverse(ctx context.Context, q ent.Query) err
 	return fmt.Errorf("unexpected query type %T. expect *ent.UserSubscriptionQuery", q)
 }
 
+// The WorkbenchCredentialFunc type is an adapter to allow the use of ordinary function as a Querier.
+type WorkbenchCredentialFunc func(context.Context, *ent.WorkbenchCredentialQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f WorkbenchCredentialFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.WorkbenchCredentialQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.WorkbenchCredentialQuery", q)
+}
+
+// The TraverseWorkbenchCredential type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseWorkbenchCredential func(context.Context, *ent.WorkbenchCredentialQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseWorkbenchCredential) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseWorkbenchCredential) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.WorkbenchCredentialQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.WorkbenchCredentialQuery", q)
+}
+
+// The WorkbenchLaunchGrantFunc type is an adapter to allow the use of ordinary function as a Querier.
+type WorkbenchLaunchGrantFunc func(context.Context, *ent.WorkbenchLaunchGrantQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f WorkbenchLaunchGrantFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.WorkbenchLaunchGrantQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.WorkbenchLaunchGrantQuery", q)
+}
+
+// The TraverseWorkbenchLaunchGrant type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseWorkbenchLaunchGrant func(context.Context, *ent.WorkbenchLaunchGrantQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseWorkbenchLaunchGrant) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseWorkbenchLaunchGrant) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.WorkbenchLaunchGrantQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.WorkbenchLaunchGrantQuery", q)
+}
+
 // NewQuery returns the generic Query interface for the given typed query.
 func NewQuery(q ent.Query) (Query, error) {
 	switch q := q.(type) {
@@ -1270,6 +1326,10 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.UserPlatformQuotaQuery, predicate.UserPlatformQuota, userplatformquota.OrderOption]{typ: ent.TypeUserPlatformQuota, tq: q}, nil
 	case *ent.UserSubscriptionQuery:
 		return &query[*ent.UserSubscriptionQuery, predicate.UserSubscription, usersubscription.OrderOption]{typ: ent.TypeUserSubscription, tq: q}, nil
+	case *ent.WorkbenchCredentialQuery:
+		return &query[*ent.WorkbenchCredentialQuery, predicate.WorkbenchCredential, workbenchcredential.OrderOption]{typ: ent.TypeWorkbenchCredential, tq: q}, nil
+	case *ent.WorkbenchLaunchGrantQuery:
+		return &query[*ent.WorkbenchLaunchGrantQuery, predicate.WorkbenchLaunchGrant, workbenchlaunchgrant.OrderOption]{typ: ent.TypeWorkbenchLaunchGrant, tq: q}, nil
 	default:
 		return nil, fmt.Errorf("unknown query type %T", q)
 	}

@@ -80,9 +80,13 @@ type APIKeyEdges struct {
 	Group *Group `json:"group,omitempty"`
 	// UsageLogs holds the value of the usage_logs edge.
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
+	// WorkbenchCredentials holds the value of the workbench_credentials edge.
+	WorkbenchCredentials []*WorkbenchCredential `json:"workbench_credentials,omitempty"`
+	// WorkbenchLaunchGrants holds the value of the workbench_launch_grants edge.
+	WorkbenchLaunchGrants []*WorkbenchLaunchGrant `json:"workbench_launch_grants,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [5]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -114,6 +118,24 @@ func (e APIKeyEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 		return e.UsageLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "usage_logs"}
+}
+
+// WorkbenchCredentialsOrErr returns the WorkbenchCredentials value or an error if the edge
+// was not loaded in eager-loading.
+func (e APIKeyEdges) WorkbenchCredentialsOrErr() ([]*WorkbenchCredential, error) {
+	if e.loadedTypes[3] {
+		return e.WorkbenchCredentials, nil
+	}
+	return nil, &NotLoadedError{edge: "workbench_credentials"}
+}
+
+// WorkbenchLaunchGrantsOrErr returns the WorkbenchLaunchGrants value or an error if the edge
+// was not loaded in eager-loading.
+func (e APIKeyEdges) WorkbenchLaunchGrantsOrErr() ([]*WorkbenchLaunchGrant, error) {
+	if e.loadedTypes[4] {
+		return e.WorkbenchLaunchGrants, nil
+	}
+	return nil, &NotLoadedError{edge: "workbench_launch_grants"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -327,6 +349,16 @@ func (_m *APIKey) QueryGroup() *GroupQuery {
 // QueryUsageLogs queries the "usage_logs" edge of the APIKey entity.
 func (_m *APIKey) QueryUsageLogs() *UsageLogQuery {
 	return NewAPIKeyClient(_m.config).QueryUsageLogs(_m)
+}
+
+// QueryWorkbenchCredentials queries the "workbench_credentials" edge of the APIKey entity.
+func (_m *APIKey) QueryWorkbenchCredentials() *WorkbenchCredentialQuery {
+	return NewAPIKeyClient(_m.config).QueryWorkbenchCredentials(_m)
+}
+
+// QueryWorkbenchLaunchGrants queries the "workbench_launch_grants" edge of the APIKey entity.
+func (_m *APIKey) QueryWorkbenchLaunchGrants() *WorkbenchLaunchGrantQuery {
+	return NewAPIKeyClient(_m.config).QueryWorkbenchLaunchGrants(_m)
 }
 
 // Update returns a builder for updating this APIKey.

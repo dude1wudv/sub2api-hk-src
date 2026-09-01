@@ -109,44 +109,48 @@
             </span>
           </div>
 
-          <router-link
+          <component
             v-for="item in personalNavItems"
             :key="item.path"
-            :to="item.externalHref || item.path"
+            :is="item.launchAction ? 'a' : 'router-link'"
+            :to="item.launchAction ? undefined : item.externalHref || item.path"
+            :href="item.launchAction ? item.path : undefined"
             :target="item.externalHref ? '_blank' : undefined"
             :rel="item.externalHref ? 'noopener noreferrer' : undefined"
             class="sidebar-link mb-1"
             :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
             :title="sidebarCollapsed ? item.label : undefined"
             :data-tour="item.path === '/keys' ? 'sidebar-my-keys' : undefined"
-            @click="handleMenuItemClick(item.path)"
+            @click="handleMenuItemClick(item.path, $event, item)"
           >
             <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
             <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
             <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
-          </router-link>
+          </component>
         </div>
       </template>
 
       <!-- Regular User View -->
       <template v-else-if="!appStore.backendModeEnabled">
         <div class="sidebar-section">
-          <router-link
+          <component
             v-for="item in userNavItems"
             :key="item.path"
-            :to="item.externalHref || item.path"
+            :is="item.launchAction ? 'a' : 'router-link'"
+            :to="item.launchAction ? undefined : item.externalHref || item.path"
+            :href="item.launchAction ? item.path : undefined"
             :target="item.externalHref ? '_blank' : undefined"
             :rel="item.externalHref ? 'noopener noreferrer' : undefined"
             class="sidebar-link mb-1"
             :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
             :title="sidebarCollapsed ? item.label : undefined"
             :data-tour="item.path === '/keys' ? 'sidebar-my-keys' : undefined"
-            @click="handleMenuItemClick(item.path)"
+            @click="handleMenuItemClick(item.path, $event, item)"
           >
             <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
             <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
             <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
-          </router-link>
+          </component>
         </div>
       </template>
     </nav>
@@ -201,6 +205,8 @@ import Icon from '@/components/icons/Icon.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
+import { launchHeliosWorkbench } from '@/utils/heliosLaunch'
+import type { HeliosLaunchFailure } from '@/utils/heliosLaunch'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 
 interface NavItem {
@@ -211,6 +217,8 @@ interface NavItem {
   hideInSimpleMode?: boolean
   /** Open a standalone application in a new browser tab. */
   externalHref?: string
+  /** Start a protected external application through its one-time launch flow. */
+  launchAction?: () => Promise<boolean>
   children?: NavItem[]
   /**
    * When true, the parent item only toggles the expand/collapse state and
@@ -714,6 +722,13 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   items.push(
     { path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon },
     { path: '/image2', externalHref: '/image2/', label: t('nav.image2'), icon: BatchImageIcon, hideInSimpleMode: true },
+    {
+      path: '/helios',
+      label: t('nav.infiniteCanvas'),
+      icon: BatchImageIcon,
+      hideInSimpleMode: true,
+      launchAction: launchHeliosFromSidebar
+    },
     { path: '/batch-image', label: t('nav.batchImage'), icon: BatchImageIcon, hideInSimpleMode: true, featureFlag: flagBatchImageAccess },
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
@@ -861,8 +876,20 @@ function toggleTheme() {
 function closeMobile() {
   appStore.setMobileOpen(false)
 }
+function showHeliosLaunchError(failure: HeliosLaunchFailure) {
+  appStore.showError(failure === 'popup-blocked' ? t('helios.popupBlocked') : t('helios.launchFailed'))
+}
 
-function handleMenuItemClick(itemPath: string) {
+function launchHeliosFromSidebar() {
+  return launchHeliosWorkbench({ mode: 'popup', notify: showHeliosLaunchError })
+}
+
+function handleMenuItemClick(itemPath: string, event?: MouseEvent, item?: NavItem) {
+  if (item?.launchAction) {
+    event?.preventDefault()
+    void item.launchAction()
+  }
+
   if (mobileOpen.value) {
     setTimeout(() => {
       appStore.setMobileOpen(false)

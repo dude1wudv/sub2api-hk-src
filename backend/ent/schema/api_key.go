@@ -130,6 +130,8 @@ func (APIKey) Edges() []ent.Edge {
 			Field("group_id").
 			Unique(),
 		edge.To("usage_logs", UsageLog.Type),
+		edge.To("workbench_credentials", WorkbenchCredential.Type),
+		edge.To("workbench_launch_grants", WorkbenchLaunchGrant.Type),
 	}
 }
 

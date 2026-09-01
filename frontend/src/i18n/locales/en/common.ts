@@ -162,6 +162,7 @@ export default {
     apiKeys: 'API Keys',
     batchImage: 'Batch Images',
     image2: 'Image Workbench',
+    infiniteCanvas: 'Infinite Canvas',
     usage: 'Usage',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
@@ -207,6 +208,12 @@ export default {
     contentModeration: 'Content Moderation',
     promptAudit: 'Prompt Audit',
     auditLogs: 'Audit Logs',
+  },
+
+  helios: {
+    starting: 'Opening Infinite Canvas…',
+    popupBlocked: 'Allow pop-ups to open Infinite Canvas.',
+    launchFailed: 'Unable to open Infinite Canvas. Please try again.'
   },
 
   // Auth

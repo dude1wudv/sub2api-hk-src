@@ -162,6 +162,7 @@ export default {
     apiKeys: 'API 密钥',
     batchImage: '批量生图',
     image2: '图像工作台',
+    infiniteCanvas: '无限画布',
     usage: '使用记录',
     redeem: '兑换',
     affiliate: '邀请返利',
@@ -207,6 +208,12 @@ export default {
     contentModeration: '内容审核',
     promptAudit: '提示词审计',
     auditLogs: '操作日志',
+  },
+
+  helios: {
+    starting: '正在打开无限画布…',
+    popupBlocked: '请允许弹出窗口以打开无限画布。',
+    launchFailed: '无法打开无限画布，请稍后重试。'
   },
 
   // Auth

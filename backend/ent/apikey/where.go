@@ -1194,6 +1194,52 @@ func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.APIKey {
 	})
 }
 
+// HasWorkbenchCredentials applies the HasEdge predicate on the "workbench_credentials" edge.
+func HasWorkbenchCredentials() predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, WorkbenchCredentialsTable, WorkbenchCredentialsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasWorkbenchCredentialsWith applies the HasEdge predicate on the "workbench_credentials" edge with a given conditions (other predicates).
+func HasWorkbenchCredentialsWith(preds ...predicate.WorkbenchCredential) predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := newWorkbenchCredentialsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasWorkbenchLaunchGrants applies the HasEdge predicate on the "workbench_launch_grants" edge.
+func HasWorkbenchLaunchGrants() predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, WorkbenchLaunchGrantsTable, WorkbenchLaunchGrantsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasWorkbenchLaunchGrantsWith applies the HasEdge predicate on the "workbench_launch_grants" edge with a given conditions (other predicates).
+func HasWorkbenchLaunchGrantsWith(preds ...predicate.WorkbenchLaunchGrant) predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := newWorkbenchLaunchGrantsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.APIKey) predicate.APIKey {
 	return predicate.APIKey(sql.AndPredicates(predicates...))

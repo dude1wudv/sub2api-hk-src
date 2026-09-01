@@ -489,6 +489,30 @@ func (f UserSubscriptionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.V
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserSubscriptionMutation", m)
 }
 
+// The WorkbenchCredentialFunc type is an adapter to allow the use of ordinary
+// function as WorkbenchCredential mutator.
+type WorkbenchCredentialFunc func(context.Context, *ent.WorkbenchCredentialMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WorkbenchCredentialFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WorkbenchCredentialMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WorkbenchCredentialMutation", m)
+}
+
+// The WorkbenchLaunchGrantFunc type is an adapter to allow the use of ordinary
+// function as WorkbenchLaunchGrant mutator.
+type WorkbenchLaunchGrantFunc func(context.Context, *ent.WorkbenchLaunchGrantMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WorkbenchLaunchGrantFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WorkbenchLaunchGrantMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WorkbenchLaunchGrantMutation", m)
+}
+
 // Condition is a hook condition function.
 type Condition func(context.Context, ent.Mutation) bool
 

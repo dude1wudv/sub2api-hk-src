@@ -227,6 +227,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/helios',
+    name: 'HeliosLaunch',
+    component: () => import('@/views/user/HeliosLaunchView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Infinite Canvas',
+      titleKey: 'nav.infiniteCanvas'
+    }
+  },
+  {
     path: '/batch-image',
     name: 'BatchImageGuide',
     alias: '/docs/batch-image',

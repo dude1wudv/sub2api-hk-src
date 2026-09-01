@@ -104,6 +104,20 @@ type Config struct {
 	BatchImage              BatchImageConfig              `mapstructure:"batch_image"`
 	ImageStorage            ImageStorageConfig            `mapstructure:"image_storage"`
 	Plugins                 PluginConfig                  `mapstructure:"plugins"`
+	HeliosWorkbench         HeliosWorkbenchConfig         `mapstructure:"helios_workbench"`
+}
+
+// HeliosWorkbenchConfig configures the confidential, one-time handoff to the
+// hosted HeliosGen workbench. Addresses are deployment configuration and are
+// never inferred from request headers.
+type HeliosWorkbenchConfig struct {
+	Enabled          bool   `mapstructure:"enabled"`
+	PublicURL        string `mapstructure:"public_url"`
+	RedirectURI      string `mapstructure:"redirect_uri"`
+	APIBaseURL       string `mapstructure:"api_base_url"`
+	ClientID         string `mapstructure:"client_id"`
+	ClientSecret     string `mapstructure:"client_secret"`
+	GrantTTLSeconds  int    `mapstructure:"grant_ttl_seconds"`
 }
 
 // PluginConfig 控制管理员手动上传的本地进程插件。
@@ -1845,6 +1859,11 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 	}
 	cfg.Server.FrontendURL = strings.TrimSpace(cfg.Server.FrontendURL)
 	cfg.JWT.Secret = strings.TrimSpace(cfg.JWT.Secret)
+	cfg.HeliosWorkbench.PublicURL = strings.TrimSpace(cfg.HeliosWorkbench.PublicURL)
+	cfg.HeliosWorkbench.RedirectURI = strings.TrimSpace(cfg.HeliosWorkbench.RedirectURI)
+	cfg.HeliosWorkbench.APIBaseURL = strings.TrimSpace(cfg.HeliosWorkbench.APIBaseURL)
+	cfg.HeliosWorkbench.ClientID = strings.TrimSpace(cfg.HeliosWorkbench.ClientID)
+	cfg.HeliosWorkbench.ClientSecret = strings.TrimSpace(cfg.HeliosWorkbench.ClientSecret)
 	cfg.LinuxDo.ClientID = strings.TrimSpace(cfg.LinuxDo.ClientID)
 	cfg.LinuxDo.ClientSecret = strings.TrimSpace(cfg.LinuxDo.ClientSecret)
 	cfg.LinuxDo.AuthorizeURL = strings.TrimSpace(cfg.LinuxDo.AuthorizeURL)
@@ -1991,6 +2010,15 @@ func configureConfigSource(setConfigFile, addConfigPath func(string)) {
 
 func setDefaults() {
 	viper.SetDefault("run_mode", RunModeStandard)
+	// Hosted HeliosGen workbench handoff. Defaults are registered explicitly so
+	// AutomaticEnv includes every key in Viper's AllKeys set.
+	viper.SetDefault("helios_workbench.enabled", false)
+	viper.SetDefault("helios_workbench.public_url", "https://canvas.sub.sunmmyapi.xyz")
+	viper.SetDefault("helios_workbench.redirect_uri", "https://canvas.sub.sunmmyapi.xyz/bootstrap")
+	viper.SetDefault("helios_workbench.api_base_url", "https://sub.sunmmyapi.xyz/v1")
+	viper.SetDefault("helios_workbench.client_id", "heliosgen-web")
+	viper.SetDefault("helios_workbench.client_secret", "")
+	viper.SetDefault("helios_workbench.grant_ttl_seconds", 90)
 
 	// Server
 	viper.SetDefault("server.host", "0.0.0.0")
@@ -2620,6 +2648,7 @@ func setEnvReachableDefaults() {
 		viper.SetDefault(provider+".authorize_url", "")
 		viper.SetDefault(provider+".token_url", "")
 		viper.SetDefault(provider+".userinfo_url", "")
+
 		viper.SetDefault(provider+".emails_url", "")
 		viper.SetDefault(provider+".scopes", "")
 		viper.SetDefault(provider+".redirect_url", "")
@@ -2648,6 +2677,51 @@ func setEnvReachableDefaults() {
 }
 
 func (c *Config) Validate() error {
+	if c.HeliosWorkbench.Enabled {
+		if strings.TrimSpace(c.HeliosWorkbench.ClientID) != "heliosgen-web" {
+			return fmt.Errorf("helios_workbench.client_id must be heliosgen-web")
+		}
+		if c.HeliosWorkbench.GrantTTLSeconds != 90 {
+			return fmt.Errorf("helios_workbench.grant_ttl_seconds must be 90")
+		}
+		parseWorkbenchURL := func(field, raw string, requireHTTPS bool) (*url.URL, error) {
+			parsed, err := url.Parse(strings.TrimSpace(raw))
+			if err != nil || parsed.Scheme == "" || parsed.Host == "" ||
+				parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+				return nil, fmt.Errorf("helios_workbench.%s must be an absolute URL without credentials, query, or fragment", field)
+			}
+			if !isHTTPScheme(parsed.Scheme) {
+				return nil, fmt.Errorf("helios_workbench.%s must use http or https", field)
+			}
+			if requireHTTPS && !strings.EqualFold(parsed.Scheme, "https") {
+				return nil, fmt.Errorf("helios_workbench.%s must use HTTPS", field)
+			}
+			return parsed, nil
+		}
+		publicURL, err := parseWorkbenchURL("public_url", c.HeliosWorkbench.PublicURL, true)
+		if err != nil {
+			return err
+		}
+		redirectURL, err := parseWorkbenchURL("redirect_uri", c.HeliosWorkbench.RedirectURI, true)
+		if err != nil {
+			return err
+		}
+		if !strings.EqualFold(publicURL.Scheme, redirectURL.Scheme) ||
+			!strings.EqualFold(publicURL.Host, redirectURL.Host) ||
+			redirectURL.Path != "/bootstrap" {
+			return fmt.Errorf("helios_workbench.redirect_uri must be /bootstrap on the public URL origin")
+		}
+		apiBaseURL, err := parseWorkbenchURL("api_base_url", c.HeliosWorkbench.APIBaseURL, true)
+		if err != nil {
+			return err
+		}
+		if !strings.HasSuffix(apiBaseURL.Path, "/v1") {
+			return fmt.Errorf("helios_workbench.api_base_url path must end with /v1")
+		}
+		if len([]byte(c.HeliosWorkbench.ClientSecret)) < 32 {
+			return fmt.Errorf("helios_workbench.client_secret must be at least 32 bytes")
+		}
+	}
 	forwardedClientIPHeaders, err := NormalizeForwardedClientIPHeaders(c.Security.ForwardedClientIPHeaders)
 	if err != nil {
 		return fmt.Errorf("security.forwarded_client_ip_headers: %w", err)

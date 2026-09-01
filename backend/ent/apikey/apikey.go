@@ -67,6 +67,10 @@ const (
 	EdgeGroup = "group"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
+	// EdgeWorkbenchCredentials holds the string denoting the workbench_credentials edge name in mutations.
+	EdgeWorkbenchCredentials = "workbench_credentials"
+	// EdgeWorkbenchLaunchGrants holds the string denoting the workbench_launch_grants edge name in mutations.
+	EdgeWorkbenchLaunchGrants = "workbench_launch_grants"
 	// Table holds the table name of the apikey in the database.
 	Table = "api_keys"
 	// UserTable is the table that holds the user relation/edge.
@@ -90,6 +94,20 @@ const (
 	UsageLogsInverseTable = "usage_logs"
 	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
 	UsageLogsColumn = "api_key_id"
+	// WorkbenchCredentialsTable is the table that holds the workbench_credentials relation/edge.
+	WorkbenchCredentialsTable = "workbench_credentials"
+	// WorkbenchCredentialsInverseTable is the table name for the WorkbenchCredential entity.
+	// It exists in this package in order to avoid circular dependency with the "workbenchcredential" package.
+	WorkbenchCredentialsInverseTable = "workbench_credentials"
+	// WorkbenchCredentialsColumn is the table column denoting the workbench_credentials relation/edge.
+	WorkbenchCredentialsColumn = "api_key_id"
+	// WorkbenchLaunchGrantsTable is the table that holds the workbench_launch_grants relation/edge.
+	WorkbenchLaunchGrantsTable = "workbench_launch_grants"
+	// WorkbenchLaunchGrantsInverseTable is the table name for the WorkbenchLaunchGrant entity.
+	// It exists in this package in order to avoid circular dependency with the "workbenchlaunchgrant" package.
+	WorkbenchLaunchGrantsInverseTable = "workbench_launch_grants"
+	// WorkbenchLaunchGrantsColumn is the table column denoting the workbench_launch_grants relation/edge.
+	WorkbenchLaunchGrantsColumn = "api_key_id"
 )
 
 // Columns holds all SQL columns for apikey fields.
@@ -310,6 +328,34 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newUsageLogsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByWorkbenchCredentialsCount orders the results by workbench_credentials count.
+func ByWorkbenchCredentialsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newWorkbenchCredentialsStep(), opts...)
+	}
+}
+
+// ByWorkbenchCredentials orders the results by workbench_credentials terms.
+func ByWorkbenchCredentials(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newWorkbenchCredentialsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByWorkbenchLaunchGrantsCount orders the results by workbench_launch_grants count.
+func ByWorkbenchLaunchGrantsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newWorkbenchLaunchGrantsStep(), opts...)
+	}
+}
+
+// ByWorkbenchLaunchGrants orders the results by workbench_launch_grants terms.
+func ByWorkbenchLaunchGrants(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newWorkbenchLaunchGrantsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -329,5 +375,19 @@ func newUsageLogsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UsageLogsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
+	)
+}
+func newWorkbenchCredentialsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(WorkbenchCredentialsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, WorkbenchCredentialsTable, WorkbenchCredentialsColumn),
+	)
+}
+func newWorkbenchLaunchGrantsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(WorkbenchLaunchGrantsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, WorkbenchLaunchGrantsTable, WorkbenchLaunchGrantsColumn),
 	)
 }

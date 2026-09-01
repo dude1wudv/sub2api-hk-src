@@ -192,6 +192,7 @@ func ProvideHandlers(
 	modelPlazaHandler *ModelPlazaHandler,
 	asyncImageHandler *AsyncImageHandler,
 	batchImageHandler *BatchImageHandler,
+	workbenchHandler *WorkbenchHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -216,7 +217,7 @@ func ProvideHandlers(
 		PaymentWebhook:   paymentWebhookHandler,
 		AvailableChannel: availableChannelHandler,
 		ModelPlaza:       modelPlazaHandler,
-		AsyncImage:       asyncImageHandler,
+		Workbench:        workbenchHandler,
 		BatchImage:       batchImageHandler,
 	}
 }
@@ -242,6 +243,7 @@ var ProviderSet = wire.NewSet(
 	NewPaymentWebhookHandler,
 	NewAvailableChannelHandler,
 	NewModelPlazaHandler,
+	NewWorkbenchHandler,
 	NewAsyncImageHandler,
 	ProvideBatchImageHandler,
 

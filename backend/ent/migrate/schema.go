@@ -2128,6 +2128,97 @@ var (
 			},
 		},
 	}
+	// WorkbenchCredentialsColumns holds the columns for the "workbench_credentials" table.
+	WorkbenchCredentialsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "workbench", Type: field.TypeString, Size: 64},
+		{Name: "api_key_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// WorkbenchCredentialsTable holds the schema information for the "workbench_credentials" table.
+	WorkbenchCredentialsTable = &schema.Table{
+		Name:       "workbench_credentials",
+		Columns:    WorkbenchCredentialsColumns,
+		PrimaryKey: []*schema.Column{WorkbenchCredentialsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "workbench_credentials_api_keys_workbench_credentials",
+				Columns:    []*schema.Column{WorkbenchCredentialsColumns[4]},
+				RefColumns: []*schema.Column{APIKeysColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "workbench_credentials_users_workbench_credentials",
+				Columns:    []*schema.Column{WorkbenchCredentialsColumns[5]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "workbenchcredential_user_id_workbench",
+				Unique:  true,
+				Columns: []*schema.Column{WorkbenchCredentialsColumns[5], WorkbenchCredentialsColumns[3]},
+			},
+			{
+				Name:    "workbenchcredential_api_key_id",
+				Unique:  true,
+				Columns: []*schema.Column{WorkbenchCredentialsColumns[4]},
+			},
+		},
+	}
+	// WorkbenchLaunchGrantsColumns holds the columns for the "workbench_launch_grants" table.
+	WorkbenchLaunchGrantsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "code_hash", Type: field.TypeString, Unique: true, Size: 64},
+		{Name: "client_id", Type: field.TypeString, Size: 128},
+		{Name: "redirect_uri", Type: field.TypeString, Size: 2048},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "consumed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "api_key_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// WorkbenchLaunchGrantsTable holds the schema information for the "workbench_launch_grants" table.
+	WorkbenchLaunchGrantsTable = &schema.Table{
+		Name:       "workbench_launch_grants",
+		Columns:    WorkbenchLaunchGrantsColumns,
+		PrimaryKey: []*schema.Column{WorkbenchLaunchGrantsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "workbench_launch_grants_api_keys_workbench_launch_grants",
+				Columns:    []*schema.Column{WorkbenchLaunchGrantsColumns[8]},
+				RefColumns: []*schema.Column{APIKeysColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "workbench_launch_grants_users_workbench_launch_grants",
+				Columns:    []*schema.Column{WorkbenchLaunchGrantsColumns[9]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "workbenchlaunchgrant_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{WorkbenchLaunchGrantsColumns[9]},
+			},
+			{
+				Name:    "workbenchlaunchgrant_api_key_id",
+				Unique:  false,
+				Columns: []*schema.Column{WorkbenchLaunchGrantsColumns[8]},
+			},
+			{
+				Name:    "workbenchlaunchgrant_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{WorkbenchLaunchGrantsColumns[6]},
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		APIKeysTable,
@@ -2170,6 +2261,8 @@ var (
 		UserAttributeValuesTable,
 		UserPlatformQuotasTable,
 		UserSubscriptionsTable,
+		WorkbenchCredentialsTable,
+		WorkbenchLaunchGrantsTable,
 	}
 )
 
@@ -2329,5 +2422,15 @@ func init() {
 	UserSubscriptionsTable.ForeignKeys[2].RefTable = UsersTable
 	UserSubscriptionsTable.Annotation = &entsql.Annotation{
 		Table: "user_subscriptions",
+	}
+	WorkbenchCredentialsTable.ForeignKeys[0].RefTable = APIKeysTable
+	WorkbenchCredentialsTable.ForeignKeys[1].RefTable = UsersTable
+	WorkbenchCredentialsTable.Annotation = &entsql.Annotation{
+		Table: "workbench_credentials",
+	}
+	WorkbenchLaunchGrantsTable.ForeignKeys[0].RefTable = APIKeysTable
+	WorkbenchLaunchGrantsTable.ForeignKeys[1].RefTable = UsersTable
+	WorkbenchLaunchGrantsTable.Annotation = &entsql.Annotation{
+		Table: "workbench_launch_grants",
 	}
 }

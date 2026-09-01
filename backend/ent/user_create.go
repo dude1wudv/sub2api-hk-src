@@ -24,6 +24,8 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchcredential"
+	"github.com/Wei-Shaw/sub2api/ent/workbenchlaunchgrant"
 )
 
 // UserCreate is the builder for creating a User entity.
@@ -563,6 +565,36 @@ func (_c *UserCreate) AddPlatformQuotas(v ...*UserPlatformQuota) *UserCreate {
 	return _c.AddPlatformQuotaIDs(ids...)
 }
 
+// AddWorkbenchCredentialIDs adds the "workbench_credentials" edge to the WorkbenchCredential entity by IDs.
+func (_c *UserCreate) AddWorkbenchCredentialIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddWorkbenchCredentialIDs(ids...)
+	return _c
+}
+
+// AddWorkbenchCredentials adds the "workbench_credentials" edges to the WorkbenchCredential entity.
+func (_c *UserCreate) AddWorkbenchCredentials(v ...*WorkbenchCredential) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddWorkbenchCredentialIDs(ids...)
+}
+
+// AddWorkbenchLaunchGrantIDs adds the "workbench_launch_grants" edge to the WorkbenchLaunchGrant entity by IDs.
+func (_c *UserCreate) AddWorkbenchLaunchGrantIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddWorkbenchLaunchGrantIDs(ids...)
+	return _c
+}
+
+// AddWorkbenchLaunchGrants adds the "workbench_launch_grants" edges to the WorkbenchLaunchGrant entity.
+func (_c *UserCreate) AddWorkbenchLaunchGrants(v ...*WorkbenchLaunchGrant) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddWorkbenchLaunchGrantIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_c *UserCreate) Mutation() *UserMutation {
 	return _c.mutation
@@ -1098,6 +1130,38 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(userplatformquota.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.WorkbenchCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WorkbenchCredentialsTable,
+			Columns: []string{user.WorkbenchCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.WorkbenchLaunchGrantsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WorkbenchLaunchGrantsTable,
+			Columns: []string{user.WorkbenchLaunchGrantsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

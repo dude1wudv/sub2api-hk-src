@@ -79,6 +79,7 @@ Desktop.ini
 # 临时文件
 # ===================
 tmp/
+backend/ent/schema/.entc/
 temp/
 *.tmp
 *.temp

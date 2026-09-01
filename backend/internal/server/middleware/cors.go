@@ -65,6 +65,12 @@ func CORS(cfg config.CORSConfig) gin.HandlerFunc {
 	allowHeadersValue := strings.Join(allowHeaders, ", ")
 
 	return func(c *gin.Context) {
+		// The confidential workbench token exchange is server-to-server. Keep
+		// it outside the global CORS policy, including preflight handling.
+		if c.Request.URL.Path == "/api/v1/workbenches/helios/token" {
+			c.Next()
+			return
+		}
 		origin := strings.TrimSpace(c.GetHeader("Origin"))
 		originAllowed := allowAll
 		if origin != "" && !allowAll {

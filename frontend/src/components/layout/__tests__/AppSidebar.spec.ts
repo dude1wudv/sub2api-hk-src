@@ -50,6 +50,22 @@ describe('AppSidebar Image2 navigation', () => {
   })
 })
 
+describe('AppSidebar Helios launch item', () => {
+  it('places Infinite Canvas directly after Image2 and hides it in simple mode', () => {
+    const image2Index = componentSource.indexOf("{ path: '/image2'")
+    const heliosIndex = componentSource.indexOf("path: '/helios'")
+
+    expect(image2Index).toBeGreaterThanOrEqual(0)
+    expect(heliosIndex).toBeGreaterThan(image2Index)
+    expect(componentSource.slice(heliosIndex, heliosIndex + 300)).toContain('hideInSimpleMode: true')
+  })
+
+  it('prevents route navigation and delegates launch behavior to the shared helper', () => {
+    expect(componentSource).toContain('event?.preventDefault()')
+    expect(componentSource).toContain("launchHeliosWorkbench({ mode: 'popup'")
+  })
+})
+
 describe('AppSidebar header styles', () => {
   it('does not clip the version badge dropdown', () => {
     const sidebarHeaderBlockMatch = styleSource.match(/\.sidebar-header\s*\{[\s\S]*?\n {2}\}/)
