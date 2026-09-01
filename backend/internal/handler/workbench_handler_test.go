@@ -20,7 +20,7 @@ type handlerWorkbenchRepoStub struct {
 	resolution *service.WorkbenchGrantResolution
 }
 
-func (r *handlerWorkbenchRepoStub) EnsureCredential(context.Context, int64, string, string) (*service.WorkbenchCredential, error) {
+func (r *handlerWorkbenchRepoStub) EnsureCredential(context.Context, int64, string, string, int64) (*service.WorkbenchCredential, error) {
 	return &service.WorkbenchCredential{UserID: 9, APIKeyID: 41, Workbench: service.WorkbenchHeliosGen}, nil
 }
 func (r *handlerWorkbenchRepoStub) CreateGrant(context.Context, *service.WorkbenchLaunchGrant) error {
@@ -34,7 +34,7 @@ func handlerWorkbenchConfig() *config.Config {
 	return &config.Config{HeliosWorkbench: config.HeliosWorkbenchConfig{
 		Enabled: true, ClientID: "heliosgen-web", ClientSecret: strings.Repeat("x", 32),
 		RedirectURI: "https://canvas.sub.sunmmyapi.xyz/bootstrap", APIBaseURL: "https://sub.sunmmyapi.xyz/v1",
-		GrantTTLSeconds: 90,
+		GroupID: 7, GrantTTLSeconds: 90,
 	}}
 }
 
@@ -46,7 +46,7 @@ func newHandlerWorkbench(t *testing.T) (*WorkbenchHandler, *config.Config) {
 	t.Helper()
 	cfg := handlerWorkbenchConfig()
 	repo := &handlerWorkbenchRepoStub{resolution: &service.WorkbenchGrantResolution{
-		Grant: &service.WorkbenchLaunchGrant{UserID: 9, APIKeyID: 41, ClientID: cfg.HeliosWorkbench.ClientID, RedirectURI: cfg.HeliosWorkbench.RedirectURI},
+		Grant:      &service.WorkbenchLaunchGrant{UserID: 9, APIKeyID: 41, ClientID: cfg.HeliosWorkbench.ClientID, RedirectURI: cfg.HeliosWorkbench.RedirectURI},
 		Credential: &service.WorkbenchCredential{UserID: 9, APIKeyID: 41, Workbench: service.WorkbenchHeliosGen},
 		User:       &service.User{ID: 9, Status: service.StatusActive},
 		APIKey:     &service.APIKey{ID: 41, UserID: 9, Status: service.StatusActive, Key: "sk-server-only"},

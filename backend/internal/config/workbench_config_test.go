@@ -17,14 +17,15 @@ func TestHeliosWorkbenchConfigValidation(t *testing.T) {
 		RedirectURI:     "https://canvas.sub.sunmmyapi.xyz/bootstrap",
 		APIBaseURL:      "https://sub.sunmmyapi.xyz/v1",
 		ClientID:        "heliosgen-web",
+		GroupID:         7,
 		ClientSecret:    strings.Repeat("s", 32),
 		GrantTTLSeconds: 90,
 	}
 
 	tests := []struct {
-		name  string
+		name   string
 		mutate func(*HeliosWorkbenchConfig)
-		want  string
+		want   string
 	}{
 		{name: "valid production contract"},
 		{
@@ -75,6 +76,13 @@ func TestHeliosWorkbenchConfigValidation(t *testing.T) {
 				cfg.ClientID = "another-client"
 			},
 			want: "client_id must be heliosgen-web",
+		},
+		{
+			name: "group id must be positive",
+			mutate: func(cfg *HeliosWorkbenchConfig) {
+				cfg.GroupID = 0
+			},
+			want: "group_id must be positive",
 		},
 		{
 			name: "client secret has minimum strength",

@@ -111,13 +111,14 @@ type Config struct {
 // hosted HeliosGen workbench. Addresses are deployment configuration and are
 // never inferred from request headers.
 type HeliosWorkbenchConfig struct {
-	Enabled          bool   `mapstructure:"enabled"`
-	PublicURL        string `mapstructure:"public_url"`
-	RedirectURI      string `mapstructure:"redirect_uri"`
-	APIBaseURL       string `mapstructure:"api_base_url"`
-	ClientID         string `mapstructure:"client_id"`
-	ClientSecret     string `mapstructure:"client_secret"`
-	GrantTTLSeconds  int    `mapstructure:"grant_ttl_seconds"`
+	Enabled         bool   `mapstructure:"enabled"`
+	PublicURL       string `mapstructure:"public_url"`
+	RedirectURI     string `mapstructure:"redirect_uri"`
+	APIBaseURL      string `mapstructure:"api_base_url"`
+	ClientID        string `mapstructure:"client_id"`
+	GroupID         int64  `mapstructure:"group_id"`
+	ClientSecret    string `mapstructure:"client_secret"`
+	GrantTTLSeconds int    `mapstructure:"grant_ttl_seconds"`
 }
 
 // PluginConfig 控制管理员手动上传的本地进程插件。
@@ -2017,6 +2018,7 @@ func setDefaults() {
 	viper.SetDefault("helios_workbench.redirect_uri", "https://canvas.sub.sunmmyapi.xyz/bootstrap")
 	viper.SetDefault("helios_workbench.api_base_url", "https://sub.sunmmyapi.xyz/v1")
 	viper.SetDefault("helios_workbench.client_id", "heliosgen-web")
+	viper.SetDefault("helios_workbench.group_id", 0)
 	viper.SetDefault("helios_workbench.client_secret", "")
 	viper.SetDefault("helios_workbench.grant_ttl_seconds", 90)
 
@@ -2680,6 +2682,9 @@ func (c *Config) Validate() error {
 	if c.HeliosWorkbench.Enabled {
 		if strings.TrimSpace(c.HeliosWorkbench.ClientID) != "heliosgen-web" {
 			return fmt.Errorf("helios_workbench.client_id must be heliosgen-web")
+		}
+		if c.HeliosWorkbench.GroupID <= 0 {
+			return fmt.Errorf("helios_workbench.group_id must be positive")
 		}
 		if c.HeliosWorkbench.GrantTTLSeconds != 90 {
 			return fmt.Errorf("helios_workbench.grant_ttl_seconds must be 90")

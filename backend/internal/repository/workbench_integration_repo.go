@@ -43,8 +43,8 @@ func (r *workbenchIntegrationRepository) withTx(ctx context.Context, fn func(con
 	return tx.Commit()
 }
 
-func (r *workbenchIntegrationRepository) EnsureCredential(ctx context.Context, userID int64, workbench, apiKey string) (*service.WorkbenchCredential, error) {
-	if userID <= 0 || workbench != service.WorkbenchHeliosGen || apiKey == "" {
+func (r *workbenchIntegrationRepository) EnsureCredential(ctx context.Context, userID int64, workbench, apiKey string, groupID int64) (*service.WorkbenchCredential, error) {
+	if userID <= 0 || workbench != service.WorkbenchHeliosGen || apiKey == "" || groupID <= 0 {
 		return nil, service.ErrWorkbenchUnavailable
 	}
 	var result *service.WorkbenchCredential
@@ -82,6 +82,11 @@ func (r *workbenchIntegrationRepository) EnsureCredential(ctx context.Context, u
 				if boundKey.Status != service.StatusAPIKeyActive {
 					return service.ErrWorkbenchKeyDisabled
 				}
+				if boundKey.GroupID == nil || *boundKey.GroupID != groupID {
+					if _, updateErr := client.APIKey.UpdateOneID(boundKey.ID).SetGroupID(groupID).Save(txCtx); updateErr != nil {
+						return updateErr
+					}
+				}
 				result = workbenchCredentialEntityToService(binding)
 				return nil
 			}
@@ -95,6 +100,7 @@ func (r *workbenchIntegrationRepository) EnsureCredential(ctx context.Context, u
 			SetKey(apiKey).
 			SetName(service.WorkbenchKeyName).
 			SetStatus(service.StatusAPIKeyActive).
+			SetGroupID(groupID).
 			SetQuota(0).
 			SetQuotaUsed(0).
 			SetRateLimit5h(0).

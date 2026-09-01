@@ -13,9 +13,9 @@ func TestWorkbenchRepositoryRejectsInvalidInputsWithoutDatabase(t *testing.T) {
 	repo := &workbenchIntegrationRepository{}
 	ctx := context.Background()
 
-	_, err := repo.EnsureCredential(ctx, 0, service.WorkbenchHeliosGen, "sk-invalid")
+	_, err := repo.EnsureCredential(ctx, 0, service.WorkbenchHeliosGen, "sk-invalid", 1)
 	require.ErrorIs(t, err, service.ErrWorkbenchUnavailable)
-	_, err = repo.EnsureCredential(ctx, 1, "other", "sk-invalid")
+	_, err = repo.EnsureCredential(ctx, 1, "other", "sk-invalid", 1)
 	require.ErrorIs(t, err, service.ErrWorkbenchUnavailable)
 	_, err = repo.ConsumeGrant(ctx, "", time.Now().UTC())
 	require.ErrorIs(t, err, service.ErrWorkbenchInvalidGrant)

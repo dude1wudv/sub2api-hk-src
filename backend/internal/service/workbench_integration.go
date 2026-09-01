@@ -18,16 +18,16 @@ import (
 )
 
 const (
-	WorkbenchHeliosGen = "heliosgen"
-	WorkbenchKeyName   = "HeliosGen Workbench"
+	WorkbenchHeliosGen         = "heliosgen"
+	WorkbenchKeyName           = "HeliosGen Workbench"
 	WorkbenchSessionTTLSeconds = 86400
 )
 
 var (
-	ErrWorkbenchKeyDisabled = infraerrors.Conflict("workbench_key_disabled", "workbench key is disabled")
-	ErrWorkbenchInvalidGrant = infraerrors.BadRequest("invalid_grant", "invalid grant")
+	ErrWorkbenchKeyDisabled   = infraerrors.Conflict("workbench_key_disabled", "workbench key is disabled")
+	ErrWorkbenchInvalidGrant  = infraerrors.BadRequest("invalid_grant", "invalid grant")
 	ErrWorkbenchInvalidClient = infraerrors.Unauthorized("invalid_client", "invalid client")
-	ErrWorkbenchUnavailable = infraerrors.ServiceUnavailable("WORKBENCH_UNAVAILABLE", "workbench integration is unavailable")
+	ErrWorkbenchUnavailable   = infraerrors.ServiceUnavailable("WORKBENCH_UNAVAILABLE", "workbench integration is unavailable")
 )
 
 // WorkbenchCredential is the service representation of a dedicated workbench key binding.
@@ -66,7 +66,7 @@ type WorkbenchGrantResolution struct {
 }
 
 type WorkbenchIntegrationRepository interface {
-	EnsureCredential(ctx context.Context, userID int64, workbench, apiKey string) (*WorkbenchCredential, error)
+	EnsureCredential(ctx context.Context, userID int64, workbench, apiKey string, groupID int64) (*WorkbenchCredential, error)
 	CreateGrant(ctx context.Context, grant *WorkbenchLaunchGrant) error
 	ConsumeGrant(ctx context.Context, codeHash string, now time.Time) (*WorkbenchGrantResolution, error)
 }
@@ -77,9 +77,9 @@ type WorkbenchLaunch struct {
 }
 
 type WorkbenchIntegrationService struct {
-	repo         WorkbenchIntegrationRepository
+	repo          WorkbenchIntegrationRepository
 	apiKeyService *APIKeyService
-	cfg          *config.Config
+	cfg           *config.Config
 }
 
 func NewWorkbenchIntegrationService(repo WorkbenchIntegrationRepository, apiKeyService *APIKeyService, cfg *config.Config) *WorkbenchIntegrationService {
@@ -100,7 +100,7 @@ func (s *WorkbenchIntegrationService) EnsureCredential(ctx context.Context, user
 		if err != nil {
 			return nil, fmt.Errorf("generate workbench api key: %w", err)
 		}
-		credential, err := s.repo.EnsureCredential(ctx, userID, WorkbenchHeliosGen, key)
+		credential, err := s.repo.EnsureCredential(ctx, userID, WorkbenchHeliosGen, key, s.cfg.HeliosWorkbench.GroupID)
 		if err == nil {
 			return credential, nil
 		}
@@ -187,6 +187,7 @@ func validWorkbenchCode(code string) bool {
 var cryptoRandomRead = func(dst []byte) (int, error) {
 	return rand.Read(dst)
 }
+
 // ConstantTimeEqual compares credentials without making a length-dependent
 // secret comparison.
 func ConstantTimeEqual(a, b string) bool {

@@ -24,21 +24,38 @@ func workbenchIntegrationUser(t *testing.T, client *dbent.Client) *service.User 
 	})
 }
 
+func workbenchIntegrationGroup(t *testing.T, client *dbent.Client) int64 {
+	t.Helper()
+	group, err := client.Group.Create().
+		SetName(fmt.Sprintf("workbench-group-%d", time.Now().UnixNano())).
+		SetPlatform(service.PlatformOpenAI).
+		SetAllowImageGeneration(true).
+		Save(context.Background())
+	require.NoError(t, err)
+	return group.ID
+}
+
 func TestWorkbenchRepositoryEnsureCredentialFirstAndRepeatedReuse(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	repo := NewWorkbenchIntegrationRepository(client)
 	user := workbenchIntegrationUser(t, client)
+	groupID := workbenchIntegrationGroup(t, client)
 
-	first, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-first")
+	first, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-first", groupID)
 	require.NoError(t, err)
 	require.NotZero(t, first.ID)
 	require.NotZero(t, first.APIKeyID)
+	repeatedGroupID := workbenchIntegrationGroup(t, client)
 
-	repeated, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-second")
+	repeated, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-second", repeatedGroupID)
 	require.NoError(t, err)
 	require.Equal(t, first.ID, repeated.ID)
 	require.Equal(t, first.APIKeyID, repeated.APIKeyID)
+	key, err := client.APIKey.Get(ctx, first.APIKeyID)
+	require.NoError(t, err)
+	require.NotNil(t, key.GroupID)
+	require.Equal(t, repeatedGroupID, *key.GroupID)
 
 	keyCount, err := client.APIKey.Query().Where(
 		apikey.UserIDEQ(user.ID),
@@ -60,6 +77,7 @@ func TestWorkbenchRepositoryEnsureCredentialConcurrentFirstUseLeavesOneKey(t *te
 	client := testEntClient(t)
 	repo := NewWorkbenchIntegrationRepository(client)
 	user := workbenchIntegrationUser(t, client)
+	groupID := workbenchIntegrationGroup(t, client)
 
 	const attempts = 8
 	results := make(chan *service.WorkbenchCredential, attempts)
@@ -69,7 +87,7 @@ func TestWorkbenchRepositoryEnsureCredentialConcurrentFirstUseLeavesOneKey(t *te
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			credential, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, fmt.Sprintf("sk-workbench-race-%d", i))
+			credential, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, fmt.Sprintf("sk-workbench-race-%d", i), groupID)
 			results <- credential
 			errs <- err
 		}(i)
@@ -102,15 +120,16 @@ func TestWorkbenchRepositoryEnsureCredentialDisabledKeyReturnsConflict(t *testin
 	client := testEntClient(t)
 	repo := NewWorkbenchIntegrationRepository(client)
 	user := workbenchIntegrationUser(t, client)
+	groupID := workbenchIntegrationGroup(t, client)
 
-	credential, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-disabled")
+	credential, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-disabled", groupID)
 	require.NoError(t, err)
 	_, err = client.APIKey.UpdateOneID(credential.APIKeyID).
 		SetStatus(service.StatusAPIKeyDisabled).
 		Save(ctx)
 	require.NoError(t, err)
 
-	_, err = repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-not-reenabled")
+	_, err = repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-not-reenabled", groupID)
 	require.ErrorIs(t, err, service.ErrWorkbenchKeyDisabled)
 	keyCount, err := client.APIKey.Query().Where(
 		apikey.UserIDEQ(user.ID),
@@ -126,12 +145,13 @@ func TestWorkbenchRepositoryEnsureCredentialReplacesSoftDeletedKey(t *testing.T)
 	client := testEntClient(t)
 	repo := NewWorkbenchIntegrationRepository(client)
 	user := workbenchIntegrationUser(t, client)
+	groupID := workbenchIntegrationGroup(t, client)
 
-	first, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-deleted")
+	first, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-deleted", groupID)
 	require.NoError(t, err)
 	require.NoError(t, client.APIKey.DeleteOneID(first.APIKeyID).Exec(ctx))
 
-	replacement, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-replacement")
+	replacement, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-replacement", groupID)
 	require.NoError(t, err)
 	require.NotEqual(t, first.APIKeyID, replacement.APIKeyID)
 	keyCount, err := client.APIKey.Query().Where(
@@ -159,7 +179,8 @@ func TestWorkbenchRepositoryGrantExpiryAndAtomicConsume(t *testing.T) {
 	client := testEntClient(t)
 	repo := NewWorkbenchIntegrationRepository(client)
 	user := workbenchIntegrationUser(t, client)
-	credential, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-grants")
+	groupID := workbenchIntegrationGroup(t, client)
+	credential, err := repo.EnsureCredential(ctx, user.ID, service.WorkbenchHeliosGen, "sk-workbench-grants", groupID)
 	require.NoError(t, err)
 
 	now := time.Now().UTC()

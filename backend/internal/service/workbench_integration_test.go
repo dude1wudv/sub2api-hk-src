@@ -21,7 +21,7 @@ type workbenchRepositoryStub struct {
 	consumeHits int
 }
 
-func (r *workbenchRepositoryStub) EnsureCredential(context.Context, int64, string, string) (*WorkbenchCredential, error) {
+func (r *workbenchRepositoryStub) EnsureCredential(context.Context, int64, string, string, int64) (*WorkbenchCredential, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.credential == nil {
@@ -52,8 +52,8 @@ func workbenchTestConfig() *config.Config {
 	return &config.Config{HeliosWorkbench: config.HeliosWorkbenchConfig{
 		Enabled: true, PublicURL: "https://canvas.sub.sunmmyapi.xyz",
 		RedirectURI: "https://canvas.sub.sunmmyapi.xyz/bootstrap",
-		APIBaseURL: "https://sub.sunmmyapi.xyz/v1", ClientID: "heliosgen-web",
-		ClientSecret: strings.Repeat("s", 32), GrantTTLSeconds: 90,
+		APIBaseURL:  "https://sub.sunmmyapi.xyz/v1", ClientID: "heliosgen-web",
+		GroupID: 7, ClientSecret: strings.Repeat("s", 32), GrantTTLSeconds: 90,
 	}, Default: config.DefaultConfig{APIKeyPrefix: "sk-"}}
 }
 
@@ -93,7 +93,7 @@ func TestWorkbenchConsumeGrantConcurrentReplayOnlySucceedsOnce(t *testing.T) {
 	}
 	code := base64.RawURLEncoding.EncodeToString(codeBytes)
 	repo.resolution = &WorkbenchGrantResolution{
-		Grant: &WorkbenchLaunchGrant{UserID: 9, APIKeyID: 41, ClientID: cfg.HeliosWorkbench.ClientID, RedirectURI: cfg.HeliosWorkbench.RedirectURI},
+		Grant:      &WorkbenchLaunchGrant{UserID: 9, APIKeyID: 41, ClientID: cfg.HeliosWorkbench.ClientID, RedirectURI: cfg.HeliosWorkbench.RedirectURI},
 		Credential: &WorkbenchCredential{UserID: 9, APIKeyID: 41, Workbench: WorkbenchHeliosGen},
 		User:       &User{ID: 9, Status: StatusActive},
 		APIKey:     &APIKey{ID: 41, UserID: 9, Status: StatusActive},
