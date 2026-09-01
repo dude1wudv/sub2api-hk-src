@@ -1858,6 +1858,12 @@ func (h *GatewayHandler) handleConcurrencyError(c *gin.Context, err error, slotT
 }
 
 func (h *GatewayHandler) handleFailoverExhausted(c *gin.Context, failoverErr *service.UpstreamFailoverError, platform string, streamStarted bool) {
+	if service.IsUpstreamErrorProtectionEnabled(c) && failoverErr != nil {
+		service.SetOpsUpstreamError(c, failoverErr.StatusCode, "", "")
+		status, typ, msg := service.ProtectedUpstreamError(c, failoverErr.StatusCode)
+		h.handleStreamingAwareError(c, status, typ, msg, streamStarted)
+		return
+	}
 	statusCode := failoverErr.StatusCode
 	responseBody := failoverErr.ResponseBody
 	if service.IsOpenAISilentRefusalErrorBody(responseBody) {

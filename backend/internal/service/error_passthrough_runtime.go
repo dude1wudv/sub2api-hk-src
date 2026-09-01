@@ -37,6 +37,10 @@ func applyErrorPassthroughRule(
 	defaultErrType string,
 	defaultErrMsg string,
 ) (status int, errType string, errMsg string, matched bool) {
+	if IsUpstreamErrorProtectionEnabled(c) {
+		status, errType, errMsg = ProtectedUpstreamError(c, upstreamStatus)
+		return status, errType, errMsg, true
+	}
 	status = defaultStatus
 	errType = defaultErrType
 	errMsg = defaultErrMsg

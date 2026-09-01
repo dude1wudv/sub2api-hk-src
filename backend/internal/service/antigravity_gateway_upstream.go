@@ -96,6 +96,10 @@ func (s *AntigravityGatewayService) ForwardUpstream(ctx context.Context, c *gin.
 		}
 
 		// 透传上游错误
+		if IsUpstreamErrorProtectionEnabled(c) {
+			WriteProtectedUpstreamError(c, resp.StatusCode)
+			return &ForwardResult{Model: originalModel}, nil
+		}
 		c.Header("Content-Type", resp.Header.Get("Content-Type"))
 		c.Status(resp.StatusCode)
 		_, _ = c.Writer.Write(respBody)

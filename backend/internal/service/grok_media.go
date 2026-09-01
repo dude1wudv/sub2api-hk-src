@@ -1262,8 +1262,12 @@ func (s *OpenAIGatewayService) handleGrokMediaErrorResponse(
 		"upstream_error",
 		"Upstream request failed",
 	); matched {
-		MarkResponseCommitted(c)
-		writeGrokMediaErrorResponse(c, status, errType, errMsg)
+		if IsUpstreamErrorProtectionEnabled(c) {
+			WriteProtectedUpstreamError(c, resp.StatusCode)
+		} else {
+			MarkResponseCommitted(c)
+			writeGrokMediaErrorResponse(c, status, errType, errMsg)
+		}
 		return nil, fmt.Errorf("upstream error: %d (passthrough rule matched) message=%s", resp.StatusCode, upstreamMsg)
 	}
 

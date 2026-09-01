@@ -946,6 +946,9 @@ const (
 
 // GatewayConfig API网关相关配置
 type GatewayConfig struct {
+	// UpstreamErrorProtection hides provider error details from gateway clients.
+	// It is enabled by default; disabling restores legacy passthrough behavior.
+	UpstreamErrorProtection bool `mapstructure:"upstream_error_protection"`
 	// 等待上游响应头的超时时间（秒），0表示无超时
 	// 注意：这不影响流式数据传输，只控制等待响应头的时间
 	ResponseHeaderTimeout int `mapstructure:"response_header_timeout"`
@@ -2465,6 +2468,7 @@ func setDefaults() {
 	viper.SetDefault("gateway.max_body_size", int64(256*1024*1024))
 	viper.SetDefault("gateway.text_max_body_size", int64(32*1024*1024))
 	viper.SetDefault("gateway.upstream_response_read_max_bytes", DefaultUpstreamResponseReadMaxBytes)
+	viper.SetDefault("gateway.upstream_error_protection", true)
 	viper.SetDefault("gateway.models_list_read_max_bytes", DefaultModelsListReadMaxBytes)
 	viper.SetDefault("gateway.proxy_probe_response_read_max_bytes", int64(1024*1024))
 	viper.SetDefault("gateway.gemini_debug_response_headers", false)

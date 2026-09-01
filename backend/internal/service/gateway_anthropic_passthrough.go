@@ -857,6 +857,10 @@ func (s *GatewayService) handleNonStreamingResponseAnthropicAPIKeyPassthrough(
 			return nil, invalidNonStreamingJSONFailoverError(ctx, s.rateLimitService, resp, account, body, err)
 		}
 	}
+	if resp.StatusCode >= 400 && IsUpstreamErrorProtectionEnabled(c) {
+		WriteProtectedUpstreamError(c, resp.StatusCode)
+		return nil, fmt.Errorf("anthropic upstream error: %d", resp.StatusCode)
+	}
 
 	usage := parseClaudeUsageFromResponseBody(body)
 	if IsForceCacheBilling(ctx) && usage.InputTokens > 0 {

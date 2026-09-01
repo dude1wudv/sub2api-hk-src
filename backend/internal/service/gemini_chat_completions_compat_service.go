@@ -902,6 +902,10 @@ func (s *GeminiMessagesCompatService) writeGeminiChatCompletionsMappedError(
 }
 
 func (s *GeminiMessagesCompatService) writeChatCompletionsError(c *gin.Context, status int, errType, message string) error {
+	if IsUpstreamErrorProtectionEnabled(c) {
+		WriteProtectedUpstreamError(c, status)
+		return fmt.Errorf("%s", message)
+	}
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"type":    errType,

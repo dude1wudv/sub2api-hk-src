@@ -177,6 +177,10 @@ func writeOpenAIEmbeddingsUpstreamResponse(c *gin.Context, resp *http.Response, 
 	if c.Writer.Written() {
 		return
 	}
+	if resp.StatusCode >= 400 && IsUpstreamErrorProtectionEnabled(c) {
+		WriteProtectedUpstreamError(c, resp.StatusCode)
+		return
+	}
 	if resp.Header != nil {
 		responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, filter)
 	}

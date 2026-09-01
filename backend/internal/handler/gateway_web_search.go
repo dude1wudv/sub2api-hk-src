@@ -196,6 +196,10 @@ func (h *GatewayHandler) WebSearch(c *gin.Context) {
 		account = nil
 	}
 	if err != nil || nativeResp == nil {
+		if service.IsUpstreamErrorProtectionEnabled(c) {
+			service.WriteProtectedUpstreamError(c, http.StatusBadGateway)
+			return
+		}
 		msg := "web search failed"
 		if err != nil {
 			msg = err.Error()

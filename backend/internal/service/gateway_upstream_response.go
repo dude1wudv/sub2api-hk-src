@@ -444,13 +444,11 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 		"upstream_error",
 		"Upstream request failed",
 	); matched {
-		c.JSON(status, gin.H{
-			"type": "error",
-			"error": gin.H{
-				"type":    errType,
-				"message": errMsg,
-			},
-		})
+		if IsUpstreamErrorProtectionEnabled(c) {
+			WriteProtectedUpstreamError(c, resp.StatusCode)
+		} else {
+			c.JSON(status, gin.H{"type": "error", "error": gin.H{"type": errType, "message": errMsg}})
+		}
 
 		summary := upstreamMsg
 		if summary == "" {
@@ -468,7 +466,11 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 
 	switch resp.StatusCode {
 	case 400:
-		c.Data(http.StatusBadRequest, "application/json", body)
+		if IsUpstreamErrorProtectionEnabled(c) {
+			WriteProtectedUpstreamError(c, resp.StatusCode)
+		} else {
+			c.Data(http.StatusBadRequest, "application/json", body)
+		}
 		summary := upstreamMsg
 		if summary == "" {
 			summary = truncateForLog(body, 512)
@@ -607,13 +609,11 @@ func (s *GatewayService) handleRetryExhaustedError(ctx context.Context, resp *ht
 		"upstream_error",
 		"Upstream request failed after retries",
 	); matched {
-		c.JSON(status, gin.H{
-			"type": "error",
-			"error": gin.H{
-				"type":    errType,
-				"message": errMsg,
-			},
-		})
+		if IsUpstreamErrorProtectionEnabled(c) {
+			WriteProtectedUpstreamError(c, resp.StatusCode)
+		} else {
+			c.JSON(status, gin.H{"type": "error", "error": gin.H{"type": errType, "message": errMsg}})
+		}
 
 		summary := upstreamMsg
 		if summary == "" {

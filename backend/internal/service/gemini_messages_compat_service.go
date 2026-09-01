@@ -1758,6 +1758,10 @@ func (s *GeminiMessagesCompatService) writeGeminiNativeUpstreamError(c *gin.Cont
 	})
 
 	contentType := resp.Header.Get("Content-Type")
+	if IsUpstreamErrorProtectionEnabled(c) {
+		WriteProtectedUpstreamError(c, resp.StatusCode)
+		return fmt.Errorf("gemini upstream error: %d", resp.StatusCode)
+	}
 	if contentType == "" {
 		contentType = "application/json"
 	}
@@ -1834,10 +1838,11 @@ func (s *GeminiMessagesCompatService) writeGeminiMappedError(c *gin.Context, acc
 		"upstream_error",
 		"Upstream request failed",
 	); matched {
-		c.JSON(status, gin.H{
-			"type":  "error",
-			"error": gin.H{"type": errType, "message": errMsg},
-		})
+		if IsUpstreamErrorProtectionEnabled(c) {
+			WriteProtectedUpstreamError(c, upstreamStatus)
+		} else {
+			c.JSON(status, gin.H{"type": "error", "error": gin.H{"type": errType, "message": errMsg}})
+		}
 		if upstreamMsg == "" {
 			upstreamMsg = errMsg
 		}

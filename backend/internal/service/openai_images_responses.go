@@ -1105,6 +1105,10 @@ func writeOpenAIImagesUpstreamErrorResponse(c *gin.Context, err *OpenAIImagesUps
 		return false
 	}
 	StopOpenAIImagesJSONKeepaliveCommitted(c)
+	if IsUpstreamErrorProtectionEnabled(c) {
+		WriteProtectedUpstreamError(c, err.StatusCode)
+		return true
+	}
 	errorObj := gin.H{
 		"type":    err.clientErrorType(),
 		"message": err.clientMessage(),

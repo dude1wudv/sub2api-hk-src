@@ -3094,6 +3094,16 @@ func (h *OpenAIGatewayHandler) handleFailoverExhausted(c *gin.Context, failoverE
 		h.handleFailoverExhaustedSimple(c, http.StatusBadGateway, streamStarted)
 		return
 	}
+	if service.IsUpstreamErrorProtectionEnabled(c) && failoverErr.Reason != service.OpenAIHTTPContinuationUnsupportedReason {
+		service.SetOpsUpstreamError(c, failoverErr.StatusCode, "", "")
+		status, typ, msg := service.ProtectedUpstreamError(c, failoverErr.StatusCode)
+		if streamStarted {
+			h.handleStreamingAwareError(c, status, typ, msg, true)
+		} else {
+			service.WriteProtectedUpstreamError(c, failoverErr.StatusCode)
+		}
+		return
+	}
 	if failoverErr.IsOpenAIRequestBodyTooLarge() {
 		service.SetOpsUpstreamError(c, http.StatusRequestEntityTooLarge, service.OpenAIRequestBodyTooLargeClientMessage, "")
 		h.handleStreamingAwareError(
