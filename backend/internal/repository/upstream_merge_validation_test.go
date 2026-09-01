@@ -22,8 +22,8 @@ import (
 )
 
 const (
-	productionHistoryMigrationCount = 278
-	candidateMigrationCount         = 291
+	productionHistoryMigrationCount = 279
+	candidateMigrationCount         = 292
 )
 
 var candidateOnlyMigrations = []string{
