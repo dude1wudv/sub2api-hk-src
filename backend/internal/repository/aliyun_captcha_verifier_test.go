@@ -18,13 +18,18 @@ func newAliyunCaptchaTestTarget(t *testing.T, handler http.HandlerFunc) (*aliyun
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
+	endpoint := strings.TrimPrefix(server.URL, "http://")
+	// Tea SDK matches NO_PROXY entries against the exact host:port. Keep the
+	// in-process test endpoint off developer and CI proxies without changing
+	// the production verifier's proxy behavior.
+	t.Setenv("NO_PROXY", endpoint)
 
 	verifier := &aliyunCaptchaVerifier{protocol: "HTTP", timeoutMillis: 2_000}
 	cred := service.AliyunCaptchaCredentials{
 		AccessKeyID:     "test-ak-id",
 		AccessKeySecret: "test-ak-secret",
 		SceneID:         "scene-1",
-		Endpoint:        strings.TrimPrefix(server.URL, "http://"),
+		Endpoint:        endpoint,
 	}
 	return verifier, cred
 }
