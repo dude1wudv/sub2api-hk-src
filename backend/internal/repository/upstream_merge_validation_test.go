@@ -23,7 +23,7 @@ import (
 
 const (
 	productionHistoryMigrationCount = 279
-	candidateMigrationCount         = 292
+	candidateMigrationCount         = 297
 )
 
 var candidateOnlyMigrations = []string{
@@ -40,6 +40,11 @@ var candidateOnlyMigrations = []string{
 	"230_plugin_artifacts.sql",
 	"231_add_usage_log_requested_reasoning_effort.sql",
 	"231_user_restrict_public_groups.sql",
+	"232_channel_cache_write_1h_pricing.sql",
+	"232_group_force_openai_fast.sql",
+	"232_group_reasoning_effort_over_limit.sql",
+	"232_helios_workbench.sql",
+	"233_group_free_openai_fast.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {
