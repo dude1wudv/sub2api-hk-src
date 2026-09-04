@@ -30,8 +30,15 @@ func TestIsForcedUsageBillingRequestID(t *testing.T) {
 	require.True(t, isForcedUsageBillingRequestID("web_search:x"))
 	require.True(t, isForcedUsageBillingRequestID("grok-video:task-1"))
 	require.True(t, isForcedUsageBillingRequestID("grok_audio:up-1"))
+	require.True(t, isForcedUsageBillingRequestID("qwen_audio:up-1"))
 	require.True(t, isForcedUsageBillingRequestID("grok_realtime:sess-1"))
 	require.False(t, isForcedUsageBillingRequestID("resp_abc"))
+}
+
+func TestStableQwenAudioBillingRequestIDDoesNotUseClientRequestID(t *testing.T) {
+	require.Equal(t, "qwen_audio:task-1", StableQwenAudioBillingRequestID("task-1"))
+	require.Equal(t, "qwen_audio:task-2", StableQwenAudioBillingRequestID("task-2"))
+	require.NotEqual(t, StableQwenAudioBillingRequestID(""), StableQwenAudioBillingRequestID(""))
 }
 
 func TestStableGrokAudioBillingRequestID(t *testing.T) {

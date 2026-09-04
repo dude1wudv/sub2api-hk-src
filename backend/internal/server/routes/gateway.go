@@ -34,6 +34,7 @@ func RegisterGatewayRoutes(
 	cfg *config.Config,
 ) {
 	bodyLimit := middleware.RequestBodyLimit(cfg.Gateway.MaxBodySize)
+	qwenAudioBodyLimit := middleware.RequestBodyLimit(service.QwenAudioMaxRequestBodyBytes)
 	textBodyLimit := middleware.RequestBodyLimit(cfg.Gateway.TextMaxBodySize)
 	clientRequestID := middleware.ClientRequestID()
 	upstreamErrorProtection := middleware.UpstreamErrorProtection(cfg)
@@ -47,6 +48,7 @@ func RegisterGatewayRoutes(
 
 	// 未分组 Key 拦截中间件（按协议格式区分错误响应）
 	requireGroupAnthropic := middleware.RequireGroupAssignment(settingService, middleware.AnthropicErrorWriter)
+	requireGroupOpenAI := middleware.RequireGroupAssignment(settingService, middleware.OpenAIErrorWriter)
 	requireGroupGoogle := middleware.RequireGroupAssignment(settingService, middleware.GoogleErrorWriter)
 
 	isOpenAIResponsesCompatibleGatewayPlatform := func(c *gin.Context) bool {
@@ -183,6 +185,23 @@ func RegisterGatewayRoutes(
 			}
 			next(c)
 		}
+	}
+
+	// Native Qwen audio is an OpenAI-compatible surface but must not inherit the
+	// historical Anthropic-shaped group-assignment error of the broad /v1 group.
+	// Register it as a dedicated route group while preserving the same auth,
+	// request-id, body-limit, ops, and upstream-error-protection layers.
+	qwenAudio := r.Group("/v1/audio")
+	qwenAudio.Use(qwenAudioBodyLimit)
+	qwenAudio.Use(clientRequestID)
+	qwenAudio.Use(upstreamErrorProtection)
+	qwenAudio.Use(opsErrorLogger)
+	qwenAudio.Use(endpointNorm)
+	qwenAudio.Use(gin.HandlerFunc(apiKeyAuth))
+	qwenAudio.Use(requireGroupOpenAI)
+	{
+		qwenAudio.POST("/transcriptions", h.OpenAIGateway.QwenAudioTranscriptions)
+		qwenAudio.POST("/speech", h.OpenAIGateway.QwenAudioSpeech)
 	}
 
 	// API网关（Claude API兼容）

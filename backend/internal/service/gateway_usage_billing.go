@@ -230,7 +230,23 @@ func isForcedUsageBillingRequestID(requestID string) bool {
 	return strings.HasPrefix(id, "web_search:") ||
 		strings.HasPrefix(id, "grok-video:") ||
 		strings.HasPrefix(id, "grok_audio:") ||
+		strings.HasPrefix(id, "qwen_audio:") ||
 		strings.HasPrefix(id, "grok_realtime:")
+}
+
+// StableQwenAudioBillingRequestID is the durable usage/dedup key for one
+// completed native Qwen audio request.  Callers pass the provider request id
+// (ASR) or the client-generated DashScope task id (TTS), never a reusable
+// downstream client request id.
+func StableQwenAudioBillingRequestID(upstreamRequestID string) string {
+	upstreamRequestID = strings.TrimSpace(upstreamRequestID)
+	if strings.HasPrefix(upstreamRequestID, "qwen_audio:") {
+		return upstreamRequestID
+	}
+	if upstreamRequestID == "" {
+		upstreamRequestID = generateRequestID()
+	}
+	return "qwen_audio:" + upstreamRequestID
 }
 
 // StableGrokAudioBillingRequestID is the durable usage_logs / dedup key for one

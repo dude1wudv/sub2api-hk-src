@@ -1,7 +1,10 @@
 package routes
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,7 +16,44 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
+
+type qwenAudioRouteSettingRepo struct {
+	service.SettingRepository
+	allowUngrouped bool
+}
+
+func (r qwenAudioRouteSettingRepo) GetValue(_ context.Context, key string) (string, error) {
+	if key == service.SettingKeyAllowUngroupedKeyScheduling && r.allowUngrouped {
+		return "true", nil
+	}
+	return "false", nil
+}
+
+func newQwenAudioRoutePolicyTestRouter(auth servermiddleware.APIKeyAuthMiddleware, settingService *service.SettingService) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	RegisterGatewayRoutes(
+		router,
+		&handler.Handlers{
+			Gateway:       &handler.GatewayHandler{},
+			OpenAIGateway: &handler.OpenAIGatewayHandler{},
+			AsyncImage:    handler.NewAsyncImageHandler(nil, nil),
+		},
+		auth,
+		nil,
+		nil,
+		nil,
+		settingService,
+		nil,
+		&config.Config{Gateway: config.GatewayConfig{
+			MaxBodySize:     1024 * 1024,
+			TextMaxBodySize: 1024 * 1024,
+		}},
+	)
+	return router
+}
 
 func newGatewayRoutesTestRouter(platform ...string) *gin.Engine {
 	return newGatewayRoutesTestRouterWithConfig(&config.Config{
@@ -92,6 +132,111 @@ func TestGatewayRoutesOpenAIAlphaSearchPathsAreRegistered(t *testing.T) {
 	} {
 		require.True(t, registered[path], "POST %s should be registered", path)
 	}
+}
+
+func TestGatewayRoutesQwenAudioPathsAreRegistered(t *testing.T) {
+	router := newGatewayRoutesTestRouter()
+	registered := make(map[string]bool)
+	for _, route := range router.Routes() {
+		registered[route.Method+" "+route.Path] = true
+	}
+
+	require.True(t, registered["POST /v1/audio/transcriptions"])
+	require.True(t, registered["POST /v1/audio/speech"])
+}
+
+func TestGatewayRoutesQwenAudioUsesDedicatedHardBodyLimit(t *testing.T) {
+	router := newGatewayRoutesTestRouterWithConfig(&config.Config{
+		Gateway: config.GatewayConfig{
+			// A larger generic limit proves the audio route does not inherit it.
+			MaxBodySize:     service.QwenAudioMaxRequestBodyBytes * 2,
+			TextMaxBodySize: service.QwenAudioMaxRequestBodyBytes * 2,
+		},
+	})
+	body := bytes.Repeat([]byte("x"), int(service.QwenAudioMaxRequestBodyBytes)+1)
+	req := httptest.NewRequest(http.MethodPost, "/v1/audio/speech", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+	require.Contains(t, w.Body.String(), "invalid_request_error")
+	require.Contains(t, w.Body.String(), "8 MiB")
+}
+
+func TestGatewayRoutesQwenAudioRejectsOversizedMultipartBody(t *testing.T) {
+	router := newGatewayRoutesTestRouterWithConfig(&config.Config{
+		Gateway: config.GatewayConfig{
+			MaxBodySize:     service.QwenAudioMaxRequestBodyBytes * 2,
+			TextMaxBodySize: service.QwenAudioMaxRequestBodyBytes * 2,
+		},
+	})
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	require.NoError(t, writer.WriteField("model", "qwen-asr"))
+	file, err := writer.CreateFormFile("file", "oversized.wav")
+	require.NoError(t, err)
+	_, err = file.Write(bytes.Repeat([]byte("x"), int(service.QwenAudioMaxRequestBodyBytes)+1))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/audio/transcriptions", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+	require.Contains(t, w.Body.String(), "invalid_request_error")
+	require.Contains(t, w.Body.String(), "8 MiB")
+}
+
+func TestGatewayRoutesQwenAudioRunsAuthenticationBeforeHandler(t *testing.T) {
+	authCalled := false
+	router := newQwenAudioRoutePolicyTestRouter(func(c *gin.Context) {
+		authCalled = true
+		servermiddleware.OpenAIErrorWriter(c, http.StatusUnauthorized, "Invalid API key")
+		c.Abort()
+	}, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/audio/speech", strings.NewReader(`{"model":"qwen-tts","input":"hello","voice":"voice_1"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.True(t, authCalled)
+	require.Equal(t, http.StatusUnauthorized, w.Code)
+	require.Equal(t, "permission_error", gjson.Get(w.Body.String(), "error.type").String())
+}
+
+func TestGatewayRoutesQwenAudioRequiresGroupWithOpenAIErrorEnvelope(t *testing.T) {
+	settingService := service.NewSettingService(qwenAudioRouteSettingRepo{}, &config.Config{})
+	router := newQwenAudioRoutePolicyTestRouter(func(c *gin.Context) {
+		c.Set(string(servermiddleware.ContextKeyAPIKey), &service.APIKey{})
+		c.Next()
+	}, settingService)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/audio/speech", strings.NewReader(`{"model":"qwen-tts","input":"hello","voice":"voice_1"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusForbidden, w.Code)
+	require.Equal(t, "permission_error", gjson.Get(w.Body.String(), "error.type").String())
+	require.Contains(t, gjson.Get(w.Body.String(), "error.message").String(), "not assigned to any group")
+}
+
+func TestGatewayRoutesQwenAudioRejectsNonOpenAIPlatformBeforeScheduling(t *testing.T) {
+	router := newGatewayRoutesTestRouter(service.PlatformGrok)
+	req := httptest.NewRequest(http.MethodPost, "/v1/audio/speech", strings.NewReader(`{"model":"qwen-tts","input":"hello","voice":"voice_1"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusNotFound, w.Code)
+	require.Equal(t, "not_found_error", gjson.Get(w.Body.String(), "error.type").String())
+	require.Contains(t, gjson.Get(w.Body.String(), "error.message").String(), "not supported for this platform")
 }
 
 func TestGatewayRoutesAlphaSearchRejectsUnsupportedGroup(t *testing.T) {

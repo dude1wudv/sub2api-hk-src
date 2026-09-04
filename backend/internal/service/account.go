@@ -93,6 +93,11 @@ const (
 	OpenAIEndpointCapabilityEmbeddings      OpenAIEndpointCapability = "embeddings"
 	OpenAIEndpointCapabilityAlphaSearch     OpenAIEndpointCapability = "alpha_search"
 	OpenAIEndpointCapabilityLive            OpenAIEndpointCapability = "live"
+	// OpenAIEndpointCapabilityQwenAudio is an operator-configured native
+	// DashScope audio transport.  It is deliberately narrower than the generic
+	// API-key Chat Completions capability: both native endpoints and an explicit
+	// model mapping must be present before the scheduler may select the account.
+	OpenAIEndpointCapabilityQwenAudio OpenAIEndpointCapability = "qwen_audio"
 	// OpenAIEndpointCapabilityGrokMediaGeneration keeps image/video generation
 	// away from Grok accounts that are explicitly disabled or whose billing
 	// entitlement probe was forbidden. Video status lookups intentionally do not
@@ -1797,6 +1802,11 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 	}
 	switch capability {
 	case OpenAIEndpointCapabilityChatCompletions:
+	case OpenAIEndpointCapabilityQwenAudio:
+		if a.Platform != PlatformOpenAI || a.Type != AccountTypeAPIKey || !accountHasSupportedQwenAudioMapping(a) {
+			return false
+		}
+		return validateQwenAudioEndpointPair(a) == nil
 	case OpenAIEndpointCapabilityLive:
 		return a.Platform == PlatformOpenAI &&
 			a.Type == AccountTypeOAuth &&

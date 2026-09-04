@@ -119,6 +119,18 @@ func GoogleErrorWriter(c *gin.Context, status int, message string) {
 	})
 }
 
+// OpenAIErrorWriter emits the error envelope expected by OpenAI-compatible
+// clients.  Endpoint-specific route groups use this instead of inheriting the
+// repository's historical Anthropic-shaped /v1 group-assignment error.
+func OpenAIErrorWriter(c *gin.Context, status int, message string) {
+	c.JSON(status, gin.H{
+		"error": gin.H{
+			"type":    "permission_error",
+			"message": message,
+		},
+	})
+}
+
 // RequireGroupAssignment 检查 API Key 是否已分配到分组，
 // 如果未分组且系统设置不允许未分组 Key 调度则返回 403。
 func RequireGroupAssignment(settingService *service.SettingService, writeError GatewayErrorWriter) gin.HandlerFunc {
