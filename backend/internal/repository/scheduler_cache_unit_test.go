@@ -552,6 +552,23 @@ func TestBuildSchedulerMetadataAccount_KeepsModelRateLimits(t *testing.T) {
 	require.Nil(t, got.Extra["unused_large_field"])
 }
 
+func TestBuildSchedulerMetadataAccount_KeepsQwenAudioEndpoints(t *testing.T) {
+	account := service.Account{
+		ID:       970,
+		Platform: service.PlatformOpenAI,
+		Type:     service.AccountTypeAPIKey,
+		Extra: map[string]any{
+			service.QwenAudioHTTPBaseURLExtraKey: "https://token-plan.cn-beijing.maas.aliyuncs.com/api/v1",
+			service.QwenAudioWSBaseURLExtraKey:   "wss://token-plan.cn-beijing.maas.aliyuncs.com/api-ws/v1",
+			"unrelated":                          "drop-me",
+		},
+	}
+	got := buildSchedulerMetadataAccount(account)
+	require.Equal(t, "https://token-plan.cn-beijing.maas.aliyuncs.com/api/v1", got.Extra[service.QwenAudioHTTPBaseURLExtraKey])
+	require.Equal(t, "wss://token-plan.cn-beijing.maas.aliyuncs.com/api-ws/v1", got.Extra[service.QwenAudioWSBaseURLExtraKey])
+	require.Nil(t, got.Extra["unrelated"])
+}
+
 func TestBuildSchedulerMetadataAccount_KeepsSparkShadowRoutingIdentity(t *testing.T) {
 	parentID := int64(100)
 	account := service.Account{
