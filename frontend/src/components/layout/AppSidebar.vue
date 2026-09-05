@@ -1,6 +1,12 @@
 <template>
   <aside
     class="sidebar"
+    id="workspace-navigation"
+    ref="sidebarRef"
+    :data-mobile-open="!desktop && mobileOpen"
+    :inert="!desktop && !mobileOpen"
+    :aria-label="zh ? '工作区导航' : 'Workspace navigation'"
+    @keydown="handleDrawerKeydown"
     :class="[
       sidebarCollapsed ? 'w-[72px]' : 'w-64',
       { '-translate-x-full lg:translate-x-0': !mobileOpen }
@@ -28,14 +34,22 @@
         <VersionBadge :version="siteVersion" />
       </div>
     </div>
+    <div v-if="!sidebarCollapsed" class="px-4 pt-4">
+      <label class="sidebar-search">
+        <Icon name="search" size="sm" aria-hidden="true" />
+        <input v-model="navigationQuery" type="search" :placeholder="zh ? '查找功能…' : 'Find a page…'" :aria-label="zh ? '查找导航功能' : 'Search navigation'" />
+      </label>
+    </div>
 
     <!-- Navigation -->
     <nav ref="sidebarNavRef" class="sidebar-nav scrollbar-hide">
+      <div v-if="!sidebarCollapsed" class="workspace-label">{{ isAdmin ? 'OPERATIONS' : 'DEVELOPER' }} / {{ zh ? '工作区' : 'WORKSPACE' }}</div>
+      <p v-if="navigationQuery && !filteredAdminNav.length && !filteredUserNav.length && !filteredPersonalNav.length" class="px-3 text-xs text-gray-500" role="status">{{ zh ? '没有匹配的功能' : 'No matching pages' }}</p>
       <!-- Admin View: Admin menu first, then personal menu -->
       <template v-if="isAdmin">
         <!-- Admin Section -->
         <div class="sidebar-section">
-          <template v-for="item in adminNavItems" :key="item.path">
+          <template v-for="item in filteredAdminNav" :key="item.path">
             <!-- Collapsible group (has children) -->
             <template v-if="item.children?.length">
               <button
@@ -62,7 +76,7 @@
                 </span>
               </button>
               <!-- Children -->
-              <div v-if="!sidebarCollapsed && isGroupExpanded(item)" class="mb-1 ml-4 border-l border-gray-200 pl-2 dark:border-dark-600">
+              <div v-if="!sidebarCollapsed && (navigationQuery || isGroupExpanded(item))" class="mb-1 ml-4 border-l border-gray-200 pl-2 dark:border-dark-600">
                 <router-link
                   v-for="child in item.children"
                   :key="child.path"
@@ -110,14 +124,15 @@
           </div>
 
           <component
-            v-for="item in personalNavItems"
+            v-for="item in filteredPersonalNav"
             :key="item.path"
-            :is="item.launchAction ? 'a' : 'router-link'"
-            :to="item.launchAction ? undefined : item.externalHref || item.path"
-            :href="item.launchAction ? item.path : undefined"
+            :is="item.launchAction ? 'button' : item.externalHref ? 'a' : 'router-link'"
+            :type="item.launchAction ? 'button' : undefined"
+            :to="!item.launchAction && !item.externalHref ? item.path : undefined"
+            :href="item.externalHref || undefined"
             :target="item.externalHref ? '_blank' : undefined"
             :rel="item.externalHref ? 'noopener noreferrer' : undefined"
-            class="sidebar-link mb-1"
+            class="sidebar-link mb-1 w-full"
             :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
             :title="sidebarCollapsed ? item.label : undefined"
             :data-tour="item.path === '/keys' ? 'sidebar-my-keys' : undefined"
@@ -134,14 +149,15 @@
       <template v-else-if="!appStore.backendModeEnabled">
         <div class="sidebar-section">
           <component
-            v-for="item in userNavItems"
+            v-for="item in filteredUserNav"
             :key="item.path"
-            :is="item.launchAction ? 'a' : 'router-link'"
-            :to="item.launchAction ? undefined : item.externalHref || item.path"
-            :href="item.launchAction ? item.path : undefined"
+            :is="item.launchAction ? 'button' : item.externalHref ? 'a' : 'router-link'"
+            :type="item.launchAction ? 'button' : undefined"
+            :to="!item.launchAction && !item.externalHref ? item.path : undefined"
+            :href="item.externalHref || undefined"
             :target="item.externalHref ? '_blank' : undefined"
             :rel="item.externalHref ? 'noopener noreferrer' : undefined"
-            class="sidebar-link mb-1"
+            class="sidebar-link mb-1 w-full"
             :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
             :title="sidebarCollapsed ? item.label : undefined"
             :data-tour="item.path === '/keys' ? 'sidebar-my-keys' : undefined"
@@ -173,6 +189,7 @@
 
       <!-- Collapse Button -->
       <button
+        v-if="desktop"
         @click="toggleSidebar"
         class="sidebar-link w-full"
         :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -182,6 +199,7 @@
         <ChevronDoubleRightIcon v-else class="h-5 w-5 flex-shrink-0" />
         <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ t('nav.collapse') }}</span>
       </button>
+      <button v-if="!desktop" class="sidebar-link mt-2 w-full" @click="closeMobile"><Icon name="x" size="sm" />{{ t('common.close') }}</button>
     </div>
   </aside>
 
@@ -197,12 +215,14 @@
 
 <script setup lang="ts">
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useMediaQuery } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
+import { useAppearance } from '@/composables/useAppearance'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
 import { launchHeliosWorkbench } from '@/utils/heliosLaunch'
@@ -249,7 +269,8 @@ function applyFeatureFlags(items: NavItem[]): NavItem[] {
   return out
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const zh = computed(() => locale.value.startsWith('zh'))
 
 const route = useRoute()
 const router = useRouter()
@@ -259,11 +280,38 @@ const onboardingStore = useOnboardingStore()
 const adminSettingsStore = useAdminSettingsStore()
 const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
 
-const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
+const desktop = useMediaQuery('(min-width: 1024px)')
+const sidebarCollapsed = computed(() => desktop.value && appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
 const isAdmin = computed(() => authStore.isAdmin)
 const sidebarNavRef = ref<HTMLElement | null>(null)
-const isDark = ref(document.documentElement.classList.contains('dark'))
+const { isDark, toggleTheme } = useAppearance()
+const sidebarRef = ref<HTMLElement | null>(null)
+const navigationQuery = ref('')
+let drawerReturnFocus: HTMLElement | null = null
+
+watch(mobileOpen, async (open) => {
+  if (open && !desktop.value) {
+    drawerReturnFocus = document.activeElement as HTMLElement | null
+    await nextTick()
+    sidebarRef.value?.querySelector<HTMLElement>('input, a, button')?.focus()
+  } else if (!open) {
+    drawerReturnFocus?.focus()
+    drawerReturnFocus = null
+  }
+})
+watch(desktop, (value) => { if (value) closeMobile() })
+
+function handleDrawerKeydown(event: KeyboardEvent) {
+  if (desktop.value || !mobileOpen.value) return
+  if (event.key === 'Escape') { event.preventDefault(); closeMobile(); return }
+  if (event.key !== 'Tab') return
+  const controls = Array.from(sidebarRef.value?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input') || []).filter(el => el.getClientRects().length > 0)
+  const first = controls[0]
+  const last = controls[controls.length - 1]
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+}
 
 const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
 
@@ -863,15 +911,23 @@ const adminNavItems = computed((): NavItem[] => {
   return visible
 })
 
+function searchNavigation(items: NavItem[]): NavItem[] {
+  const query = navigationQuery.value.trim().toLocaleLowerCase()
+  if (!query) return items
+  return items.flatMap(item => {
+    if (`${item.label} ${item.path}`.toLocaleLowerCase().includes(query)) return [item]
+    const children = item.children ? searchNavigation(item.children) : []
+    return children.length ? [{ ...item, children }] : []
+  })
+}
+const filteredAdminNav = computed(() => isAdmin.value ? searchNavigation(adminNavItems.value) : [])
+const filteredPersonalNav = computed(() => isAdmin.value && !authStore.isSimpleMode ? searchNavigation(personalNavItems.value) : [])
+const filteredUserNav = computed(() => !isAdmin.value && !appStore.backendModeEnabled ? searchNavigation(userNavItems.value) : [])
+
 function toggleSidebar() {
   appStore.toggleSidebar()
 }
 
-function toggleTheme() {
-  isDark.value = !isDark.value
-  document.documentElement.classList.toggle('dark', isDark.value)
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
-}
 
 function closeMobile() {
   appStore.setMobileOpen(false)
@@ -952,15 +1008,6 @@ function handleGroupClick(item: NavItem) {
   }
 }
 
-// Initialize theme
-const savedTheme = localStorage.getItem('theme')
-if (
-  savedTheme === 'dark' ||
-  (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-) {
-  isDark.value = true
-  document.documentElement.classList.add('dark')
-}
 
 // Fetch admin settings (for feature-gated nav items like Ops).
 watch(

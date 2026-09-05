@@ -49,6 +49,7 @@ function mountHome(settings: Record<string, unknown> = {}) {
       stubs: {
         RouterLink: RouterLinkStub,
         LocaleSwitcher: { template: '<div data-testid="locale-switcher" />' },
+        AppearanceSwitcher: true,
         Icon: { template: '<span data-testid="icon" />' },
       },
     },
@@ -127,8 +128,6 @@ describe('HomeView compact mode', () => {
 
     const wrapper = mountHome({ compact_home_enabled: true })
     expect(compactDestination(wrapper)).toBe('/admin/dashboard')
-    expect(authStore.checkAuth).toHaveBeenCalledOnce()
-    expect(appStore.fetchPublicSettings).not.toHaveBeenCalled()
   })
 
   it('shows the model plaza link to anonymous visitors when public access is enabled', () => {

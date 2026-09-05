@@ -60,6 +60,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
+import { useAppearance } from '@/composables/useAppearance'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -98,9 +99,7 @@ const chartRef = ref<HTMLElement | null>(null)
 const zoom = ref<ZoomState>(resetZoom())
 const zoomed = computed(() => isZoomed(zoom.value))
 
-const isDark = computed(() =>
-  typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
-)
+const { isDark } = useAppearance()
 
 const bucketLabel = computed(() => {
   const seconds = props.coverage?.bucket_seconds || 60

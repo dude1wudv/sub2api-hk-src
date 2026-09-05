@@ -139,19 +139,8 @@ export default {
           900: '#831843',
           950: '#500724'
         },
-        dark: {
-          50: '#ece7dc',
-          100: '#d9d2c4',
-          200: '#b3ac9e',
-          300: '#8d8677',
-          400: '#6b6557',
-          500: '#524d41',
-          600: '#403b32',
-          700: '#2e2b25',
-          800: '#23201b',
-          900: '#1b1915',
-          950: '#13110e'
-        }
+        gray: varPalette('gray'),
+        dark: varPalette('dark')
       },
       fontFamily: {
         serif: ['Iowan Old Style', 'Palatino Linotype', 'Songti SC', 'STSong', 'Georgia', 'serif'],

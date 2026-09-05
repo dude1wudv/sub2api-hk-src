@@ -1,5 +1,5 @@
 <template>
-  <header class="glass sticky top-0 z-30 border-b">
+  <header class="workspace-header glass sticky top-0 z-30 border-b">
     <div class="flex h-16 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
       <div class="flex shrink-0 items-center gap-2 sm:gap-4">
@@ -7,6 +7,8 @@
           @click="toggleMobileSidebar"
           class="btn-ghost btn-icon lg:hidden"
           :aria-label="t('common.toggleMenu')"
+          :aria-expanded="appStore.mobileOpen"
+          aria-controls="workspace-navigation"
         >
           <Icon name="menu" size="md" />
         </button>
@@ -23,6 +25,7 @@
 
       <!-- Right: Announcements + Docs + Language + Subscriptions + Balance + User Dropdown -->
       <div class="flex min-w-0 items-center gap-1 sm:gap-3">
+        <AppearanceSwitcher />
         <!-- Announcement Bell -->
         <AnnouncementBell v-if="user" />
 
@@ -256,6 +259,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
+import AppearanceSwitcher from '@/components/common/AppearanceSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'

@@ -1,7 +1,8 @@
 <template>
-  <div class="app-shell min-h-screen">
+  <div class="app-shell min-h-screen" :data-workspace="isAdminRoute ? 'operations' : 'developer'">
     <!-- Background Decoration -->
     <div class="app-shell-bg pointer-events-none fixed inset-0"></div>
+    <a href="#workspace-content" class="skip-link">{{ zh ? '跳至主要内容' : 'Skip to content' }}</a>
 
     <!-- Sidebar -->
     <AppSidebar />
@@ -15,7 +16,7 @@
       <AppHeader />
 
       <!-- Main Content -->
-      <main class="p-4 md:p-6 lg:p-8">
+      <main id="workspace-content" tabindex="-1" class="workspace-content p-4 md:p-6 lg:p-8">
         <slot />
       </main>
     </div>
@@ -25,6 +26,8 @@
 <script setup lang="ts">
 import '@/styles/onboarding.css'
 import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import { useOnboardingTour } from '@/composables/useOnboardingTour'
@@ -34,6 +37,10 @@ import AppHeader from './AppHeader.vue'
 
 const appStore = useAppStore()
 const authStore = useAuthStore()
+const route = useRoute()
+const { locale } = useI18n()
+const zh = computed(() => locale.value.startsWith('zh'))
+const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const isAdmin = computed(() => authStore.user?.role === 'admin')
 

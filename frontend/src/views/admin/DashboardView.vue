@@ -1,6 +1,30 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <div class="operations-dashboard space-y-6">
+      <section class="workspace-hero">
+        <div>
+          <p class="hero-eyebrow">OPERATIONS WORKSPACE / COMMAND CENTER</p>
+          <h2>{{ zh ? '全局在眼前，运营有章法。' : 'A clear view. A confident operation.' }}</h2>
+          <p class="hero-description">{{ zh ? '聚合资源、流量与成本，从全局洞察到精细调度，让每一个运营决策有据可依。' : 'Resources, traffic and costs in one operational view. Move from insight to action with clarity.' }}</p>
+          <div class="hero-actions">
+            <router-link to="/admin/accounts" class="btn btn-primary"><Icon name="server" size="sm" />{{ t('nav.accounts') }}</router-link>
+            <button class="btn btn-secondary" :disabled="loading || chartsLoading" @click="loadDashboardStats"><Icon name="refresh" size="sm" />{{ t('common.refresh') }}</button>
+          </div>
+        </div>
+        <div class="hero-instrument">
+          <span>{{ t('admin.dashboard.performance') }}</span>
+          <strong>{{ stats ? formatTokens(stats.rpm) : '—' }}</strong>
+          <div class="instrument-rule"></div>
+          <span>RPM / {{ stats ? formatTokens(stats.tpm) : '—' }} TPM</span>
+        </div>
+      </section>
+      <nav class="operations-links" :aria-label="zh ? '运营快捷入口' : 'Operations shortcuts'">
+        <router-link to="/admin/users"><Icon name="users" size="sm" />{{ t('admin.users.title') }}</router-link>
+        <router-link to="/admin/groups"><Icon name="grid" size="sm" />{{ t('admin.groups.title') }}</router-link>
+        <router-link to="/admin/usage"><Icon name="chart" size="sm" />{{ t('admin.usage.title') }}</router-link>
+        <router-link to="/admin/audit-logs"><Icon name="shield" size="sm" />{{ t('admin.audit.title') }}</router-link>
+      </nav>
+      <div class="dashboard-section-heading"><h2>{{ zh ? '核心运营指标' : 'Core operational metrics' }}</h2><span>PLATFORM OVERVIEW</span></div>
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center py-12">
         <LoadingSpinner />
@@ -96,6 +120,7 @@
         </div>
 
         <!-- Row 2: Token Stats -->
+        <div class="dashboard-section-heading"><h2>{{ zh ? '消耗与性能' : 'Consumption & performance' }}</h2><span>COST & PERFORMANCE</span></div>
         <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
           <!-- Today Tokens -->
           <div class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
@@ -381,8 +406,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
+import { useAppearance } from '@/composables/useAppearance'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const zh = computed(() => locale.value.startsWith('zh'))
 import { adminAPI } from '@/api/admin'
 import type {
   DashboardStats,
@@ -484,9 +511,7 @@ const granularityOptions = computed(() => [
 ])
 
 // Dark mode detection
-const isDarkMode = computed(() => {
-  return document.documentElement.classList.contains('dark')
-})
+const { isDark: isDarkMode } = useAppearance()
 
 // Chart colors
 const chartColors = computed(() => ({

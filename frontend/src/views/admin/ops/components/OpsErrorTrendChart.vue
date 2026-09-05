@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAppearance } from '@/composables/useAppearance'
 import { useI18n } from 'vue-i18n'
 import {
   Chart as ChartJS,
@@ -34,7 +35,7 @@ const emit = defineEmits<{
 }>()
 const { t } = useI18n()
 
-const isDarkMode = computed(() => document.documentElement.classList.contains('dark'))
+const { isDark: isDarkMode } = useAppearance()
 const colors = computed(() => ({
   red: '#ef4444',
   redAlpha: '#ef444420',

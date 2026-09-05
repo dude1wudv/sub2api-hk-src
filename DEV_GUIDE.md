@@ -337,6 +337,15 @@ sub2api-bmai/
 └── AGENTS.md                # 仓库级 Agent 指令
 ```
 
+## 前端工作区主题（2026-09-05）
+
+- 用户端采用 API 驾驶舱，管理端采用运营指挥台；原有 API、路由守卫、功能开关、支付与 OAuth 流程保持不变。
+- 顶部 `AppearanceSwitcher.vue` 提供极光（Aurora）、海湾（Lagoon）、石墨（Graphite）三种风格及独立明暗切换。登录、首页和公开密钥查询也使用同一选择器。
+- `src/composables/useAppearance.ts` 是外观状态入口。风格保存为 `appearance-style`，明暗沿用 `theme`；首次访问遵循系统明暗设置。组件与图表必须订阅该状态，不能用无响应依赖的 `computed(() => document.documentElement.classList.contains('dark'))`。
+- `src/styles/themes/workspace.css` 定义完整色板、语义表面、控件与响应式工作区。`main.ts` 在 `style.css` 后加载它，避免 Tailwind 同级规则覆盖主题。`tailwind.config.js` 的 gray/dark/primary 色板读取 CSS 变量。固定表头、固定列和弹窗使用 surface/line 语义变量，不写死旧配色。
+- 侧栏搜索仅过滤已通过权限与功能开关的导航集合。移动抽屉支持 Esc、焦点回归、焦点循环、背景滚动锁定；桌面收起状态不会隐藏移动端导航标签。
+- 验证使用独立本地 PostgreSQL/Redis 与真实后端，不接入生产数据。已验证用户创建、密钥创建、权限拒绝、主题持久化、桌面与移动页面；支付结算及第三方 OAuth 仍需各自沙箱凭据，不能将路由呈现验证视为真实支付或上游调用成功。
+
 ## 七、参考资源
 
 - [上游仓库](https://github.com/Wei-Shaw/sub2api)
