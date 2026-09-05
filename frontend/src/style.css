@@ -77,7 +77,8 @@
     border-radius: var(--radius-control, 0.5rem);
     @apply transition-colors duration-150 ease-out;
     @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
-    --tw-ring-color: rgb(var(--focus-ring, var(--color-link-500)) / 0.4);
+    --tw-ring-color: rgb(var(--focus-ring, var(--color-link-500)));
+    --tw-ring-offset-color: rgb(var(--surface));
     @apply disabled:cursor-not-allowed disabled:opacity-50;
     @apply active:scale-[0.99];
   }
@@ -92,7 +93,7 @@
     @apply bg-primary-500;
     @apply text-white shadow-sm;
     @apply hover:bg-primary-600;
-    @apply dark:bg-primary-500 dark:hover:bg-primary-400;
+    @apply dark:bg-primary-500 dark:hover:bg-primary-600;
   }
 
   .btn-secondary {
@@ -129,8 +130,8 @@
   .btn-stripe {
     @apply bg-[#635bff] text-white shadow-md shadow-[#635bff]/25;
     @apply hover:bg-[#5851ea] hover:shadow-lg hover:shadow-[#635bff]/30;
-    @apply dark:bg-[#7a73ff] dark:shadow-[#7a73ff]/20;
-    @apply dark:hover:bg-[#635bff];
+    @apply dark:bg-[#5145cd] dark:shadow-[#5145cd]/20;
+    @apply dark:hover:bg-[#4338b0];
   }
 
   .btn-airwallex {
@@ -141,17 +142,17 @@
   }
 
   .btn-alipay {
-    @apply bg-[#00AEEF] text-white shadow-md shadow-[#00AEEF]/25;
-    @apply hover:bg-[#009dd6] hover:shadow-lg hover:shadow-[#00AEEF]/30;
-    @apply active:bg-[#008cbe];
-    @apply dark:shadow-[#00AEEF]/20;
+    @apply bg-[#006B99] text-white shadow-md shadow-[#006B99]/25;
+    @apply hover:bg-[#005C85] hover:shadow-lg hover:shadow-[#006B99]/30;
+    @apply active:bg-[#004E70];
+    @apply dark:shadow-[#006B99]/20;
   }
 
   .btn-wxpay {
-    @apply bg-[#2BB741] text-white shadow-md shadow-[#2BB741]/25;
-    @apply hover:bg-[#24a038] hover:shadow-lg hover:shadow-[#2BB741]/30;
-    @apply active:bg-[#1d8a2f];
-    @apply dark:shadow-[#2BB741]/20;
+    @apply bg-[#227138] text-white shadow-md shadow-[#227138]/25;
+    @apply hover:bg-[#1B6030] hover:shadow-lg hover:shadow-[#227138]/30;
+    @apply active:bg-[#164E27];
+    @apply dark:shadow-[#227138]/20;
   }
 
   .btn-sm {
@@ -204,7 +205,7 @@
   }
 
   .input-error {
-    @apply border-red-500 focus:border-red-500 focus:ring-red-500/30;
+    @apply border-red-500 focus:border-red-500 focus:ring-red-500;
   }
 
   .input-label {
@@ -216,7 +217,7 @@
   }
 
   .input-error-text {
-    @apply mt-1 text-xs text-red-500;
+    @apply mt-1 text-xs text-red-500 dark:text-red-300;
   }
 
   /* Hide number input spinner buttons for cleaner UI */
