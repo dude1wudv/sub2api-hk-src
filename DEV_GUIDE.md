@@ -334,8 +334,7 @@ sub2api-bmai/
 │   │   └── i18n/            # 国际化
 │   ├── package.json         # 依赖配置
 │   └── pnpm-lock.yaml       # pnpm 锁文件（必须提交）
-└── .claude/
-    └── CLAUDE.md            # 本文档
+└── AGENTS.md                # 仓库级 Agent 指令
 ```
 
 ## 七、参考资源
