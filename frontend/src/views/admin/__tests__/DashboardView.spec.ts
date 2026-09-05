@@ -5,10 +5,11 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { DashboardStats } from '@/types'
 import DashboardView from '../DashboardView.vue'
 
-const { getSnapshotV2, getUserUsageTrend, getUserSpendingRanking } = vi.hoisted(() => ({
+const { getSnapshotV2, getUserUsageTrend, getUserSpendingRanking, getUpstreamBalances } = vi.hoisted(() => ({
   getSnapshotV2: vi.fn(),
   getUserUsageTrend: vi.fn(),
-  getUserSpendingRanking: vi.fn()
+  getUserSpendingRanking: vi.fn(),
+  getUpstreamBalances: vi.fn()
 }))
 
 vi.mock('@/api/admin', () => ({
@@ -16,7 +17,8 @@ vi.mock('@/api/admin', () => ({
     dashboard: {
       getSnapshotV2,
       getUserUsageTrend,
-      getUserSpendingRanking
+      getUserSpendingRanking,
+      getUpstreamBalances
     }
   }
 }))
@@ -38,7 +40,8 @@ vi.mock('vue-i18n', async () => {
   return {
     ...actual,
     useI18n: () => ({
-      t: (key: string) => key
+      t: (key: string) => key,
+      locale: { value: 'en' }
     })
   }
 })
@@ -93,6 +96,7 @@ describe('admin DashboardView', () => {
     getSnapshotV2.mockReset()
     getUserUsageTrend.mockReset()
     getUserSpendingRanking.mockReset()
+    getUpstreamBalances.mockReset()
 
     getSnapshotV2.mockResolvedValue({
       stats: createDashboardStats(),
@@ -112,6 +116,11 @@ describe('admin DashboardView', () => {
       total_tokens: 0,
       start_date: '',
       end_date: ''
+    })
+    getUpstreamBalances.mockResolvedValue({
+      total_balance: 0,
+      available_balance: 0,
+      accounts: []
     })
   })
 

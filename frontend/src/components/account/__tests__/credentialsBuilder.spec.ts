@@ -240,8 +240,8 @@ describe('CN provider presets and usage visibility', () => {
     expect(defaultCNBaseUrl('deepseek', 'payg', 'responses')).toBe('https://api.deepseek.com')
   })
 
-  it('offers Responses only for DeepSeek and respects quota/balance capabilities', () => {
-    expect(CN_BASE_URL_PRESETS.kimi.some(preset => preset.protocol === 'responses')).toBe(false)
+  it('offers Responses for Kimi and DeepSeek and respects quota/balance capabilities', () => {
+    expect(CN_BASE_URL_PRESETS.kimi.some(preset => preset.protocol === 'responses')).toBe(true)
     expect(CN_BASE_URL_PRESETS.zhipu.some(preset => preset.protocol === 'responses')).toBe(false)
     expect(CN_BASE_URL_PRESETS.deepseek.some(preset => preset.protocol === 'responses')).toBe(true)
     expect(CN_BASE_URL_PRESETS.deepseek.every(preset => preset.mode === 'payg')).toBe(true)
