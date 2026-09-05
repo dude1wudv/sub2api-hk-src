@@ -129,6 +129,10 @@ export default {
     useKey: 'Use Key',
     useKeyModal: {
       title: 'Use API Key',
+      secretPlaceholderNotice: 'Examples use a placeholder to keep your key private. Use a copy button to copy the real value.',
+      copyApiKey: 'Copy API Key',
+      viewUsage: 'View usage',
+      skipForNow: 'Skip for now',
       description:
         'Add the following environment variables to your terminal profile or run directly in terminal to configure API access.',
       copy: 'Copy',
@@ -411,6 +415,9 @@ export default {
     billed: 'Billed',
     noRecords: 'No usage records found. Try adjusting your filters.',
     failedToLoad: 'Failed to load usage logs',
+    statsFailedToLoad: 'Failed to load usage statistics',
+    modelsFailedToLoad: 'Failed to load model distribution',
+    chartsFailedToLoad: 'Failed to load usage charts',
     noDataToExport: 'No data to export',
     exportSuccess: 'Usage data exported successfully',
     exportFailed: 'Failed to export usage data',

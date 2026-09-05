@@ -3,6 +3,31 @@
     <div class="space-y-5 sm:space-y-6">
       <UsageStatsCards :stats="usageStats" :show-account-cost="false" :strike-standard-cost="true" />
 
+      <div
+        v-if="statsLoadError || modelStatsLoadError || chartLoadError"
+        class="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:flex-wrap sm:items-center"
+        role="alert"
+      >
+        <template v-if="statsLoadError">
+          <span>{{ t('usage.statsFailedToLoad') }}</span>
+          <button type="button" class="btn btn-secondary btn-sm" @click="loadStats({ background: true })">
+            {{ t('common.retry') }}
+          </button>
+        </template>
+        <template v-if="modelStatsLoadError">
+          <span>{{ t('usage.modelsFailedToLoad') }}</span>
+          <button type="button" class="btn btn-secondary btn-sm" @click="loadModelStats({ background: true })">
+            {{ t('common.retry') }}
+          </button>
+        </template>
+        <template v-if="chartLoadError">
+          <span>{{ t('usage.chartsFailedToLoad') }}</span>
+          <button type="button" class="btn btn-secondary btn-sm" @click="loadChartData({ background: true })">
+            {{ t('common.retry') }}
+          </button>
+        </template>
+      </div>
+
       <div class="space-y-4">
         <div class="card p-4 sm:p-5">
           <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -17,7 +42,7 @@
             <div class="flex items-center gap-2 sm:ml-auto">
               <span class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('admin.dashboard.granularity') }}:</span>
               <div class="w-28">
-                <Select v-model="granularity" :options="granularityOptions" @change="loadChartData" />
+                <Select v-model="granularity" :options="granularityOptions" @change="onGranularityChange" />
               </div>
             </div>
           </div>
@@ -126,8 +151,8 @@
           </div>
 
           <div class="flex w-full flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-dark-700 sm:gap-3">
-            <button type="button" @click="refreshData" :disabled="activeTab === 'errors' ? errorLoading : loading" class="btn btn-secondary">
-              <Icon name="refresh" size="sm" :class="(activeTab === 'errors' ? errorLoading : loading) ? 'animate-spin' : ''" />
+            <button type="button" @click="refreshData()" :disabled="activeTab === 'errors' ? (errorLoading || errorRefreshing) : (loading || logsRefreshing)" class="btn btn-secondary">
+              <Icon name="refresh" size="sm" :class="(activeTab === 'errors' ? (errorLoading || errorRefreshing) : (loading || logsRefreshing)) ? 'animate-spin' : ''" />
               {{ t('common.refresh') }}
             </button>
             <button type="button" @click="resetFilters" class="btn btn-secondary">
@@ -178,9 +203,20 @@
       </div>
 
       <template v-if="activeTab === 'usage'">
+        <div
+          v-if="usageLoadError"
+          class="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
+          role="alert"
+        >
+          <span>{{ t('usage.failedToLoad') }}</span>
+          <button type="button" class="btn btn-secondary btn-sm" @click="loadLogs({ background: true })">
+            {{ t('common.retry') }}
+          </button>
+        </div>
         <UsageTable
           :data="usageLogs"
           :loading="loading"
+          :refreshing="logsRefreshing"
           :columns="visibleColumns"
           :server-side-sort="true"
           :show-account-billing="false"
@@ -201,8 +237,18 @@
         />
       </template>
 
+      <div
+        v-if="activeTab === 'errors' && errorLoadError"
+        class="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
+        role="alert"
+      >
+        <span>{{ t('usage.errors.failedToLoad') }}</span>
+        <button type="button" class="btn btn-secondary btn-sm" @click="loadErrors({ background: true })">
+          {{ t('common.retry') }}
+        </button>
+      </div>
       <UserErrorRequestsTable
-        v-else-if="errorViewEnabled"
+        v-if="activeTab === 'errors' && errorViewEnabled"
         :rows="errorRows"
         :total="errorTotal"
         :loading="errorLoading"
@@ -215,6 +261,14 @@
         @ipGeoBatchFailed="handleIpGeoBatchFailed"
       />
     </div>
+    <ExportProgressDialog
+      :show="exportProgress.show"
+      :progress="exportProgress.progress"
+      :current="exportProgress.current"
+      :total="exportProgress.total"
+      :estimated-time="exportProgress.estimatedTime"
+      @cancel="cancelExport"
+    />
   </AppLayout>
 
 </template>
@@ -236,6 +290,7 @@ import EndpointDistributionChart from '@/components/charts/EndpointDistributionC
 import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
 import Icon from '@/components/icons/Icon.vue'
 import UserErrorRequestsTable from '@/components/user/UserErrorRequestsTable.vue'
+import ExportProgressDialog from '@/components/common/ExportProgressDialog.vue'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { formatReasoningEffort } from '@/utils/format'
 import { getBillingModeLabel, getDisplayBillingMode as resolveDisplayBillingMode } from '@/utils/billingMode'
@@ -260,6 +315,28 @@ const appStore = useAppStore()
 
 type DistributionMetric = 'tokens' | 'actual_cost'
 type EndpointSource = 'inbound' | 'upstream' | 'path'
+type ErrorFilters = { model: string | null; category: string; api_key_id: number | null; status_code: number | null }
+
+interface UsageContext {
+  start_date?: string
+  end_date?: string
+  granularity?: 'day' | 'hour'
+  filters?: Partial<UsageQueryParams>
+  errorFilters?: Partial<ErrorFilters>
+}
+
+const USAGE_CONTEXT_STORAGE_KEY = 'user-usage-query-context'
+const readUsageContext = (): UsageContext => {
+  try {
+    const saved = localStorage.getItem(USAGE_CONTEXT_STORAGE_KEY)
+    if (!saved) return {}
+    const context = JSON.parse(saved)
+    return context && typeof context === 'object' ? context as UsageContext : {}
+  } catch {
+    return {}
+  }
+}
+const savedUsageContext = readUsageContext()
 
 const usageStats = ref<UsageStatsResponse | null>(null)
 const usageLogs = ref<UsageLog[]>([])
@@ -271,22 +348,30 @@ const upstreamEndpointStats = ref<EndpointStat[]>([])
 const endpointPathStats = ref<EndpointStat[]>([])
 
 const loading = ref(false)
+const logsRefreshing = ref(false)
 const chartsLoading = ref(false)
 const modelStatsLoading = ref(false)
 const endpointStatsLoading = ref(false)
 const exporting = ref(false)
+const exportProgress = reactive({ show: false, progress: 0, current: 0, total: 0, estimatedTime: '' })
+const usageLoadError = ref(false)
+const statsLoadError = ref(false)
+const modelStatsLoadError = ref(false)
+const chartLoadError = ref(false)
+const errorLoadError = ref(false)
 const errorRows = ref<UserErrorRequest[]>([])
 const errorLoading = ref(false)
+const errorRefreshing = ref(false)
 const errorPage = ref(1)
 const errorPageSize = ref(20)
 const errorSortBy = ref('created_at')
 const errorSortOrder = ref<'asc' | 'desc'>('desc')
 const errorTotal = ref(0)
-const errorFilter = ref<{ model: string | null; category: string; api_key_id: number | null; status_code: number | null }>({
-  model: '',
-  category: '',
-  api_key_id: null,
-  status_code: null,
+const errorFilter = ref<ErrorFilters>({
+  model: typeof savedUsageContext.errorFilters?.model === 'string' ? savedUsageContext.errorFilters.model : '',
+  category: typeof savedUsageContext.errorFilters?.category === 'string' ? savedUsageContext.errorFilters.category : '',
+  api_key_id: typeof savedUsageContext.errorFilters?.api_key_id === 'number' ? savedUsageContext.errorFilters.api_key_id : null,
+  status_code: typeof savedUsageContext.errorFilters?.status_code === 'number' ? savedUsageContext.errorFilters.status_code : null,
 })
 
 const errorKeyOptions = computed<SelectOption[]>(() => [
@@ -323,13 +408,20 @@ const errorStatusOptions = computed<SelectOption[]>(() => [
 
 const applyErrorFilters = () => {
   errorPage.value = 1
+  persistUsageContext()
   void loadErrors()
 }
 
 let abortController: AbortController | null = null
+let exportAbortController: AbortController | null = null
+let logsReqSeq = 0
 let chartReqSeq = 0
 let statsReqSeq = 0
 let modelStatsReqSeq = 0
+let errorReqSeq = 0
+let isUnmounted = false
+let lastLogsQueryKey = ''
+let lastErrorQueryKey = ''
 
 const formatLocalDate = (date: Date): string =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -347,9 +439,17 @@ const getGranularityForRange = (start: string, end: string): 'day' | 'hour' => {
 }
 
 const defaultRange = getLast24HoursRangeDates()
-const startDate = ref(defaultRange.start)
-const endDate = ref(defaultRange.end)
-const granularity = ref<'day' | 'hour'>(getGranularityForRange(startDate.value, endDate.value))
+const startDate = ref(
+  typeof savedUsageContext.start_date === 'string' ? savedUsageContext.start_date : defaultRange.start
+)
+const endDate = ref(
+  typeof savedUsageContext.end_date === 'string' ? savedUsageContext.end_date : defaultRange.end
+)
+const granularity = ref<'day' | 'hour'>(
+  savedUsageContext.granularity === 'day' || savedUsageContext.granularity === 'hour'
+    ? savedUsageContext.granularity
+    : getGranularityForRange(startDate.value, endDate.value)
+)
 
 const modelDistributionMetric = ref<DistributionMetric>('tokens')
 const groupDistributionMetric = ref<DistributionMetric>('tokens')
@@ -361,10 +461,10 @@ const errorViewEnabled = computed(() => appStore.cachedPublicSettings?.allow_use
 const filters = ref<UsageQueryParams>({
   start_date: startDate.value,
   end_date: endDate.value,
-  request_type: undefined,
   native_compaction_v2: null,
   billing_type: null,
   billing_mode: null,
+  ...savedUsageContext.filters,
 })
 
 const pagination = reactive({
@@ -441,72 +541,112 @@ const buildUsageListParams = (page: number, pageSize: number): UsageQueryParams 
   sort_order: sortState.sort_order,
 })
 
-const loadLogs = async () => {
-  abortController?.abort()
-  const controller = new AbortController()
-  abortController = controller
-  loading.value = true
+const persistUsageContext = () => {
   try {
-    const res = await usageAPI.query(buildUsageListParams(pagination.page, pagination.page_size), {
-      signal: controller.signal,
-    })
-    if (!controller.signal.aborted) {
-      usageLogs.value = res.items
-      pagination.total = res.total
-    }
-  } catch (error: any) {
-    if (error?.name !== 'AbortError' && error?.code !== 'ERR_CANCELED') {
-      appStore.showError(t('usage.failedToLoad'))
-    }
-  } finally {
-    if (abortController === controller) loading.value = false
+    localStorage.setItem(USAGE_CONTEXT_STORAGE_KEY, JSON.stringify({
+      start_date: startDate.value,
+      end_date: endDate.value,
+      granularity: granularity.value,
+      filters: filters.value,
+      errorFilters: errorFilter.value,
+    }))
+  } catch (error) {
+    console.error('Failed to save usage query context:', error)
   }
 }
 
-const loadStats = async () => {
-  const seq = ++statsReqSeq
-  endpointStatsLoading.value = true
+const requestKey = (params: object) => JSON.stringify(params)
+
+const buildErrorListParams = () => ({
+  page: errorPage.value,
+  page_size: errorPageSize.value,
+  start_date: startDate.value,
+  end_date: endDate.value,
+  model: (errorFilter.value.model ?? '').trim() || undefined,
+  category: errorFilter.value.category || undefined,
+  api_key_id: errorFilter.value.api_key_id ?? undefined,
+  status_code: errorFilter.value.status_code ?? undefined,
+  sort_by: errorSortBy.value,
+  sort_order: errorSortOrder.value,
+})
+
+const loadLogs = async ({ background = false }: { background?: boolean } = {}) => {
+  abortController?.abort()
+  const controller = new AbortController()
+  const seq = ++logsReqSeq
+  const params = buildUsageListParams(pagination.page, pagination.page_size)
+  const isBackgroundRefresh = background && lastLogsQueryKey === requestKey(params)
+  abortController = controller
+  loading.value = !isBackgroundRefresh
+  logsRefreshing.value = isBackgroundRefresh
   try {
-    const stats = await usageAPI.getStats(normalizedFilters.value)
-    if (seq !== statsReqSeq) return
+    const res = await usageAPI.query(params, { signal: controller.signal })
+    if (controller.signal.aborted || isUnmounted || seq !== logsReqSeq) return
+    usageLogs.value = res.items
+    pagination.total = res.total
+    lastLogsQueryKey = requestKey(params)
+    usageLoadError.value = false
+  } catch (error: any) {
+    if (controller.signal.aborted || isUnmounted || seq !== logsReqSeq) return
+    usageLoadError.value = true
+    appStore.showError(t('usage.failedToLoad'))
+  } finally {
+    if (!isUnmounted && seq === logsReqSeq) {
+      loading.value = false
+      logsRefreshing.value = false
+    }
+  }
+}
+
+const loadStats = async ({ background = false }: { background?: boolean } = {}) => {
+  const seq = ++statsReqSeq
+  const showLoading = !background || usageStats.value === null
+  if (showLoading) endpointStatsLoading.value = true
+  try {
+    const stats = await usageAPI.getStats({ ...normalizedFilters.value })
+    if (isUnmounted || seq !== statsReqSeq) return
     usageStats.value = stats
     inboundEndpointStats.value = stats.endpoints || []
     upstreamEndpointStats.value = []
     endpointPathStats.value = []
+    statsLoadError.value = false
   } catch (error) {
-    if (seq !== statsReqSeq) return
+    if (isUnmounted || seq !== statsReqSeq) return
     console.error('Failed to load usage stats:', error)
-    inboundEndpointStats.value = []
-    upstreamEndpointStats.value = []
-    endpointPathStats.value = []
+    statsLoadError.value = true
+    appStore.showError(t('usage.statsFailedToLoad'))
   } finally {
-    if (seq === statsReqSeq) endpointStatsLoading.value = false
+    if (!isUnmounted && seq === statsReqSeq && showLoading) endpointStatsLoading.value = false
   }
 }
 
-const loadModelStats = async () => {
+const loadModelStats = async ({ background = false }: { background?: boolean } = {}) => {
   const seq = ++modelStatsReqSeq
-  modelStatsLoading.value = true
+  const showLoading = !background || requestedModelStats.value.length === 0
+  if (showLoading) modelStatsLoading.value = true
   try {
     const response = await usageAPI.getDashboardModels({
       ...normalizedFilters.value,
       model_source: 'requested',
     })
-    if (seq !== modelStatsReqSeq) return
+    if (isUnmounted || seq !== modelStatsReqSeq) return
     requestedModelStats.value = response.models || []
     refreshModelOptions(response.models || [])
+    modelStatsLoadError.value = false
   } catch (error) {
-    if (seq !== modelStatsReqSeq) return
+    if (isUnmounted || seq !== modelStatsReqSeq) return
     console.error('Failed to load model stats:', error)
-    requestedModelStats.value = []
+    modelStatsLoadError.value = true
+    appStore.showError(t('usage.modelsFailedToLoad'))
   } finally {
-    if (seq === modelStatsReqSeq) modelStatsLoading.value = false
+    if (!isUnmounted && seq === modelStatsReqSeq && showLoading) modelStatsLoading.value = false
   }
 }
 
-const loadChartData = async () => {
+const loadChartData = async ({ background = false }: { background?: boolean } = {}) => {
   const seq = ++chartReqSeq
-  chartsLoading.value = true
+  const showLoading = !background || (trendData.value.length === 0 && groupStats.value.length === 0)
+  if (showLoading) chartsLoading.value = true
   try {
     const snapshot = await usageAPI.getDashboardSnapshotV2({
       ...normalizedFilters.value,
@@ -515,16 +655,17 @@ const loadChartData = async () => {
       include_model_stats: false,
       include_group_stats: true,
     })
-    if (seq !== chartReqSeq) return
+    if (isUnmounted || seq !== chartReqSeq) return
     trendData.value = snapshot.trend || []
     groupStats.value = snapshot.groups || []
+    chartLoadError.value = false
   } catch (error) {
-    if (seq !== chartReqSeq) return
+    if (isUnmounted || seq !== chartReqSeq) return
     console.error('Failed to load chart data:', error)
-    trendData.value = []
-    groupStats.value = []
+    chartLoadError.value = true
+    appStore.showError(t('usage.chartsFailedToLoad'))
   } finally {
-    if (seq === chartReqSeq) chartsLoading.value = false
+    if (!isUnmounted && seq === chartReqSeq && showLoading) chartsLoading.value = false
   }
 }
 
@@ -540,6 +681,7 @@ const refreshModelOptions = (models: ModelStat[]) => {
 
 const applyFilters = () => {
   pagination.page = 1
+  persistUsageContext()
   void loadLogs()
   void loadStats()
   void loadModelStats()
@@ -548,11 +690,16 @@ const applyFilters = () => {
 }
 
 const refreshData = () => {
-  void loadLogs()
-  void loadStats()
-  void loadModelStats()
+  void loadLogs({ background: true })
+  void loadStats({ background: true })
+  void loadModelStats({ background: true })
+  void loadChartData({ background: true })
+  if (activeTab.value === 'errors') void loadErrors({ background: true })
+}
+
+const onGranularityChange = () => {
+  persistUsageContext()
   void loadChartData()
-  if (activeTab.value === 'errors') void loadErrors()
 }
 
 const resetFilters = () => {
@@ -629,25 +776,63 @@ const escapeCSVValue = (value: unknown): string => {
   return str
 }
 
+const cancelExport = () => exportAbortController?.abort()
+
 const exportToCSV = async () => {
   if (pagination.total === 0) {
     appStore.showWarning(t('usage.noDataToExport'))
     return
   }
+
+  const controller = new AbortController()
+  const params = { ...buildUsageListParams(1, 100) }
+  const filenameStartDate = startDate.value
+  const filenameEndDate = endDate.value
+  const startedAt = Date.now()
+  exportAbortController = controller
   exporting.value = true
+  exportProgress.show = true
+  exportProgress.progress = 0
+  exportProgress.current = 0
+  exportProgress.total = pagination.total
+  exportProgress.estimatedTime = ''
   appStore.showInfo(t('usage.preparingExport'))
+
   try {
     const allLogs: UsageLog[] = []
-    const pageSize = 100
-    const totalPages = Math.ceil(pagination.total / pageSize)
-    for (let page = 1; page <= totalPages; page++) {
-      const response = await usageAPI.query(buildUsageListParams(page, pageSize))
+    let page = 1
+    let total = pagination.total
+    let exportedCount = 0
+
+    while (!controller.signal.aborted) {
+      const response = await usageAPI.query({ ...params, page, page_size: 100 }, { signal: controller.signal })
+      if (controller.signal.aborted) return
+
+      if (page === 1) {
+        total = response.total
+        exportProgress.total = total
+        if (total === 0) {
+          appStore.showWarning(t('usage.noDataToExport'))
+          return
+        }
+      }
+
       allLogs.push(...response.items)
+      exportedCount += response.items.length
+      exportProgress.current = exportedCount
+      exportProgress.progress = Math.min(100, Math.round(exportedCount / total * 100))
+      if (exportedCount > 0 && exportedCount < total) {
+        const elapsed = Math.max(Date.now() - startedAt, 1)
+        const remainingSeconds = Math.ceil(((total - exportedCount) * elapsed) / exportedCount / 1000)
+        exportProgress.estimatedTime = remainingSeconds > 0 ? `${remainingSeconds}s` : ''
+      }
+
+      if (exportedCount >= total || response.items.length < 100) break
+      page += 1
     }
-    if (allLogs.length === 0) {
-      appStore.showWarning(t('usage.noDataToExport'))
-      return
-    }
+
+    if (controller.signal.aborted || allLogs.length === 0) return
+
     const headers = [
       'Time',
       'API Key Name',
@@ -694,15 +879,20 @@ const exportToCSV = async () => {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `usage_${startDate.value}_to_${endDate.value}.csv`
+    link.download = `usage_${filenameStartDate}_to_${filenameEndDate}.csv`
     link.click()
     window.URL.revokeObjectURL(url)
     appStore.showSuccess(t('usage.exportSuccess'))
-  } catch (error) {
+  } catch (error: any) {
+    if (controller.signal.aborted || error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return
     console.error('CSV Export failed:', error)
     appStore.showError(t('usage.exportFailed'))
   } finally {
-    exporting.value = false
+    if (exportAbortController === controller) {
+      exportAbortController = null
+      exporting.value = false
+      exportProgress.show = false
+    }
   }
 }
 
@@ -835,28 +1025,29 @@ const resetErrorRows = () => {
   }
 }
 
-const loadErrors = async () => {
-  errorLoading.value = true
+const loadErrors = async ({ background = false }: { background?: boolean } = {}) => {
+  const seq = ++errorReqSeq
+  const params = buildErrorListParams()
+  const isBackgroundRefresh = background && lastErrorQueryKey === requestKey(params)
+  errorLoading.value = !isBackgroundRefresh
+  errorRefreshing.value = isBackgroundRefresh
   try {
-    const resp = await usageAPI.listMyErrorRequests({
-      page: errorPage.value,
-      page_size: errorPageSize.value,
-      start_date: startDate.value,
-      end_date: endDate.value,
-      model: (errorFilter.value.model ?? '').trim() || undefined,
-      category: errorFilter.value.category || undefined,
-      api_key_id: errorFilter.value.api_key_id ?? undefined,
-      status_code: errorFilter.value.status_code ?? undefined,
-      sort_by: errorSortBy.value,
-      sort_order: errorSortOrder.value,
-    })
+    const resp = await usageAPI.listMyErrorRequests(params)
+    if (isUnmounted || seq !== errorReqSeq) return
     errorRows.value = resp.items
     errorTotal.value = resp.total
+    lastErrorQueryKey = requestKey(params)
+    errorLoadError.value = false
   } catch (error) {
+    if (isUnmounted || seq !== errorReqSeq) return
     console.error('[UsageView] loadErrors failed:', error)
+    errorLoadError.value = true
     appStore.showError(t('usage.errors.failedToLoad'))
   } finally {
-    errorLoading.value = false
+    if (!isUnmounted && seq === errorReqSeq) {
+      errorLoading.value = false
+      errorRefreshing.value = false
+    }
   }
 }
 
@@ -892,7 +1083,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  isUnmounted = true
   abortController?.abort()
+  exportAbortController?.abort()
   document.removeEventListener('click', handleColumnClickOutside)
 })
 

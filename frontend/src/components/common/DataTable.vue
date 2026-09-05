@@ -1,6 +1,21 @@
 <template>
-  <div v-if="!isDesktopViewport" class="space-y-3">
-    <template v-if="loading">
+  <div
+    v-if="!isDesktopViewport"
+    class="relative space-y-3"
+    :aria-busy="loading || refreshing"
+  >
+    <div
+      v-if="refreshing"
+      role="status"
+      class="pointer-events-none absolute right-0 top-0 z-10 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/80 text-primary-600 shadow-sm dark:bg-dark-900/80 dark:text-primary-400"
+    >
+      <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+        <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
+        <path class="opacity-75" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3z" />
+      </svg>
+      <span class="sr-only">{{ t('common.refreshing') }}</span>
+    </div>
+    <template v-if="showLoadingState">
       <div v-for="i in 5" :key="i" class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900">
         <div class="space-y-3">
           <div v-for="column in dataColumns" :key="column.key" class="flex justify-between">
@@ -13,7 +28,6 @@
         </div>
       </div>
     </template>
-
     <template v-else-if="!data || data.length === 0">
       <div class="rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-dark-700 dark:bg-dark-900">
         <slot name="empty">
@@ -30,7 +44,6 @@
         </slot>
       </div>
     </template>
-
     <template v-else>
       <div v-if="selectable" class="flex items-center justify-end gap-2 px-1">
         <label class="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -98,7 +111,19 @@
       'actions-expanded': actionsExpanded,
       'is-scrollable': isScrollable
     }"
+    :aria-busy="loading || refreshing"
   >
+    <div
+      v-if="refreshing"
+      role="status"
+      class="pointer-events-none absolute right-2 top-2 z-[220] inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/80 text-primary-600 shadow-sm dark:bg-dark-900/80 dark:text-primary-400"
+    >
+      <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+        <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
+        <path class="opacity-75" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3z" />
+      </svg>
+      <span class="sr-only">{{ t('common.refreshing') }}</span>
+    </div>
     <table class="w-full min-w-max divide-y divide-gray-200 dark:divide-dark-700">
       <thead class="table-header bg-[#FBF9F5] dark:bg-[#25221D]">
         <tr>
@@ -168,7 +193,7 @@
       </thead>
       <tbody class="table-body divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-[#1C1A17]">
         <!-- Loading skeleton -->
-        <tr v-if="loading" v-for="i in 5" :key="i">
+        <tr v-if="showLoadingState" v-for="i in 5" :key="i">
           <td v-if="selectable" class="w-11 min-w-11 px-3 py-4">
             <div class="mx-auto h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-dark-700"></div>
           </td>
@@ -433,6 +458,8 @@ interface Props {
   columns: Column[]
   data: any[]
   loading?: boolean
+  /** Keeps existing rows visible during a same-query background refresh. */
+  refreshing?: boolean
   stickyFirstColumn?: boolean
   stickyActionsColumn?: boolean
   expandableActions?: boolean
@@ -475,6 +502,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
+  refreshing: false,
   stickyFirstColumn: true,
   stickyActionsColumn: true,
   expandableActions: true,
@@ -484,9 +512,10 @@ const props = withDefaults(defineProps<Props>(), {
   selectedKeys: () => []
 })
 
-const sortKey = ref<string>('')
+const sortKey = ref('')
 const sortOrder = ref<'asc' | 'desc'>('asc')
 const actionsExpanded = ref(false)
+const showLoadingState = computed(() => props.loading && !props.refreshing)
 
 type PersistedSortState = {
   key: string

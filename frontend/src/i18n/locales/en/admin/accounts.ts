@@ -499,6 +499,9 @@ export default {
       bulkActions: {
         selected: '{count} account(s) selected',
         selectedAll: 'All {count} account(s) selected',
+        selectAllProgress: 'Selecting all results: {loaded} of {total} pages',
+        selectedAllScope: 'All {count} accounts matching the current filters are selected.',
+        selectedPartialScope: '{count} individually selected account(s); this is not all results.',
         selectCurrentPage: 'Select this page',
         selectAllResults: 'Select all results ({count})',
         selectingAll: 'Selecting all results...',

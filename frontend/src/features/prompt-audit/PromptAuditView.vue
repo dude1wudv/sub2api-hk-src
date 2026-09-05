@@ -49,7 +49,10 @@
                 @update:endpoints="updateEndpoints"
                 @probe="runProbe"
               />
-              <div v-if="loadErrors.groups" role="alert" class="mt-5 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">{{ loadErrors.groups }}</div>
+              <div v-if="loadErrors.groups" role="alert" class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                <span>{{ loadErrors.groups }}</span>
+                <button type="button" class="btn btn-secondary btn-sm" @click="loadGroups">{{ t('admin.promptAudit.actions.retry') }}</button>
+              </div>
               <PolicyPanel :draft="draft" :groups="groups" @update:draft="replaceDraft" />
             </template>
           </div>
@@ -66,6 +69,14 @@
                 {{ t('admin.promptAudit.events.openConfiguration') }}
               </button>
             </div>
+            <div
+              v-if="loadErrors.events"
+              role="alert"
+              class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300"
+            >
+              <span>{{ loadErrors.events }}</span>
+              <button type="button" class="btn btn-secondary btn-sm" @click="loadEvents">{{ t('admin.promptAudit.actions.retry') }}</button>
+            </div>
             <EventWorkspace
               :events="events.items"
               :total="events.total"
@@ -74,7 +85,7 @@
               :filters="filters"
               :selected-ids="selectedEventIds"
               :loading="loading.events"
-              :error="loadErrors.events"
+              error=""
               @filters-change="handleFiltersChanged"
               @search="applyEventFilters"
               @selection="selectedEventIds = $event"
@@ -144,7 +155,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, onMounted, reactive, ref } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
@@ -200,6 +211,22 @@ const loading = reactive({ config: false, runtime: false, groups: false, events:
 const loadErrors = reactive<PromptLoadErrors>({ config: '', runtime: '', groups: '', events: '' })
 const dirty = computed(() => draftFingerprint(draft.value) !== draftFingerprint(serverConfig.value))
 
+type LoadKey = 'config' | 'runtime' | 'groups' | 'events' | 'detail' | 'preview'
+const requestSequences: Record<LoadKey, number> = { config: 0, runtime: 0, groups: 0, events: 0, detail: 0, preview: 0 }
+let disposed = false
+
+function beginRequest(key: LoadKey): number {
+  return ++requestSequences[key]
+}
+
+function isCurrentRequest(key: LoadKey, request: number): boolean {
+  return !disposed && requestSequences[key] === request
+}
+
+function invalidateRequest(key: LoadKey) {
+  requestSequences[key] += 1
+}
+
 const SaveToggle = defineComponent({
   inheritAttrs: false,
   props: { label: { type: String, required: true }, modelValue: { type: Boolean, required: true }, disabled: { type: Boolean, default: false } },
@@ -246,43 +273,68 @@ function errorMessage(error: unknown, fallbackKey: string): string {
 }
 
 async function loadConfig() {
+  const request = beginRequest('config')
   loading.config = true
   loadErrors.config = ''
   try {
     const config = await promptAuditAPI.getConfig()
+    if (!isCurrentRequest('config', request)) return
     serverConfig.value = configToDraft(config)
     draft.value = configToDraft(config)
   } catch (error) {
+    if (!isCurrentRequest('config', request)) return
     loadErrors.config = errorMessage(error, 'admin.promptAudit.errors.loadConfig')
   } finally {
-    loading.config = false
+    if (isCurrentRequest('config', request)) loading.config = false
   }
 }
 async function loadRuntime() {
+  const request = beginRequest('runtime')
   loading.runtime = true
   loadErrors.runtime = ''
-  try { runtime.value = await promptAuditAPI.getRuntime() }
-  catch (error) { loadErrors.runtime = errorMessage(error, 'admin.promptAudit.errors.loadRuntime') }
-  finally { loading.runtime = false }
+  try {
+    const nextRuntime = await promptAuditAPI.getRuntime()
+    if (!isCurrentRequest('runtime', request)) return
+    runtime.value = nextRuntime
+  } catch (error) {
+    if (!isCurrentRequest('runtime', request)) return
+    loadErrors.runtime = errorMessage(error, 'admin.promptAudit.errors.loadRuntime')
+  } finally {
+    if (isCurrentRequest('runtime', request)) loading.runtime = false
+  }
 }
 async function loadGroups() {
+  const request = beginRequest('groups')
   loading.groups = true
   loadErrors.groups = ''
-  try { groups.value = await promptAuditAPI.listGroups() }
-  catch (error) { loadErrors.groups = errorMessage(error, 'admin.promptAudit.errors.loadGroups') }
-  finally { loading.groups = false }
+  try {
+    const nextGroups = await promptAuditAPI.listGroups()
+    if (!isCurrentRequest('groups', request)) return
+    groups.value = nextGroups
+  } catch (error) {
+    if (!isCurrentRequest('groups', request)) return
+    loadErrors.groups = errorMessage(error, 'admin.promptAudit.errors.loadGroups')
+  } finally {
+    if (isCurrentRequest('groups', request)) loading.groups = false
+  }
 }
 async function loadEvents() {
+  const request = beginRequest('events')
+  const requestFilters = cloneData(appliedFilters.value)
+  const requestPage = events.page
+  const requestPageSize = events.page_size
   loading.events = true
   loadErrors.events = ''
   try {
-    const result = await promptAuditAPI.listEvents(appliedFilters.value, events.page, events.page_size)
+    const result = await promptAuditAPI.listEvents(requestFilters, requestPage, requestPageSize)
+    if (!isCurrentRequest('events', request)) return
     Object.assign(events, result)
     selectedEventIds.value = []
   } catch (error) {
+    if (!isCurrentRequest('events', request)) return
     loadErrors.events = errorMessage(error, 'admin.promptAudit.errors.loadEvents')
   } finally {
-    loading.events = false
+    if (isCurrentRequest('events', request)) loading.events = false
   }
 }
 async function loadInitial() {
@@ -355,14 +407,28 @@ function applyEventFilters(value: PromptEventFilters) {
 function changePage(value: number) { events.page = value; void loadEvents() }
 function changePageSize(value: number) { events.page_size = value; events.page = 1; void loadEvents() }
 async function openEvent(id: number) {
+  const request = beginRequest('detail')
   showEventDetail.value = true
   loading.detail = true
   activeEvent.value = null
-  try { activeEvent.value = await promptAuditAPI.getEvent(id) }
-  catch (error) { appStore.showError(errorMessage(error, 'admin.promptAudit.errors.loadDetail')); showEventDetail.value = false }
-  finally { loading.detail = false }
+  try {
+    const event = await promptAuditAPI.getEvent(id)
+    if (!isCurrentRequest('detail', request) || !showEventDetail.value) return
+    activeEvent.value = event
+  } catch (error) {
+    if (!isCurrentRequest('detail', request) || !showEventDetail.value) return
+    appStore.showError(errorMessage(error, 'admin.promptAudit.errors.loadDetail'))
+    showEventDetail.value = false
+  } finally {
+    if (isCurrentRequest('detail', request)) loading.detail = false
+  }
 }
-function closeEventDetail() { showEventDetail.value = false; activeEvent.value = null }
+function closeEventDetail() {
+  invalidateRequest('detail')
+  loading.detail = false
+  showEventDetail.value = false
+  activeEvent.value = null
+}
 function requestSingleDelete(id: number) { deleteRequest.mode = 'single'; deleteRequest.ids = [id] }
 function requestBatchDelete() { if (selectedEventIds.value.length) { deleteRequest.mode = 'batch'; deleteRequest.ids = [...selectedEventIds.value] } }
 function clearDeleteRequest() { deleteRequest.mode = ''; deleteRequest.ids = [] }
@@ -380,6 +446,8 @@ async function confirmIDDelete() {
   finally { loading.deleting = false }
 }
 function clearDeletePreview() {
+  invalidateRequest('preview')
+  loading.previewing = false
   deletePreview.value = null
   deletePreviewFilters.value = null
 }
@@ -392,14 +460,22 @@ function closeFilterDelete() {
   clearDeletePreview()
 }
 async function runFilterDeletePreview(value: PromptEventFilters) {
+  const request = beginRequest('preview')
+  const previewFilters = cloneData(value)
   loading.previewing = true
   try {
-    deletePreview.value = await promptAuditAPI.previewDelete(value)
-    deletePreviewFilters.value = cloneData(value)
+    const preview = await promptAuditAPI.previewDelete(previewFilters)
+    if (!isCurrentRequest('preview', request) || !showFilterDelete.value) return
+    deletePreview.value = preview
+    deletePreviewFilters.value = previewFilters
   } catch (error) {
-    clearDeletePreview()
+    if (!isCurrentRequest('preview', request) || !showFilterDelete.value) return
+    deletePreview.value = null
+    deletePreviewFilters.value = null
     appStore.showError(errorMessage(error, 'admin.promptAudit.errors.previewDelete'))
-  } finally { loading.previewing = false }
+  } finally {
+    if (isCurrentRequest('preview', request) && showFilterDelete.value) loading.previewing = false
+  }
 }
 async function confirmFilterDelete(filters?: PromptEventFilters) {
   if (loading.deleting) return
@@ -429,4 +505,8 @@ function formatDate(value: string): string {
 }
 
 onMounted(loadInitial)
+onBeforeUnmount(() => {
+  disposed = true
+  for (const key of ['config', 'runtime', 'groups', 'events', 'detail', 'preview'] as LoadKey[]) invalidateRequest(key)
+})
 </script>

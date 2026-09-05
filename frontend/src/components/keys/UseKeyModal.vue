@@ -134,9 +134,12 @@
         </div>
 
         <!-- Code Blocks (Stacked for multi-file platforms) -->
+        <p class="rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600 dark:bg-dark-800 dark:text-dark-300">
+          {{ t('keys.useKeyModal.secretPlaceholderNotice') }}
+        </p>
         <div class="space-y-4">
           <div
-            v-for="(file, index) in currentFiles"
+            v-for="(file, index) in displayFiles"
             :key="index"
             class="relative"
           >
@@ -151,7 +154,7 @@
                 <span class="min-w-0 truncate text-xs text-gray-400 font-mono">{{ file.path }}</span>
                 <button
                   type="button"
-                  @click="copyContent(file.content, index)"
+                  @click="copyContent(index)"
                   class="flex min-h-9 flex-shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50"
                   :class="copiedIndex === index
                     ? 'bg-green-500/20 text-green-400'
@@ -242,12 +245,29 @@
     </div>
 
     <template #footer>
-      <div class="flex justify-end">
+      <div class="flex flex-wrap justify-end gap-2">
         <button
+          type="button"
+          :disabled="!apiKey"
+          class="btn btn-secondary"
+          @click="copyApiKey"
+        >
+          <Icon name="clipboard" size="sm" class="mr-1.5" />
+          {{ copiedApiKey ? t('keys.useKeyModal.copied') : t('keys.useKeyModal.copyApiKey') }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          @click="emit('view-usage')"
+        >
+          {{ t('keys.useKeyModal.viewUsage') }}
+        </button>
+        <button
+          type="button"
           @click="emit('close')"
           class="btn btn-secondary"
         >
-          {{ t('common.close') }}
+          {{ t('keys.useKeyModal.skipForNow') }}
         </button>
       </div>
     </template>
@@ -280,6 +300,7 @@ interface Props {
 
 interface Emits {
   (e: 'close'): void
+  (e: 'view-usage'): void
 }
 
 interface TabConfig {
@@ -302,6 +323,8 @@ const { t } = useI18n()
 const { copyToClipboard: clipboardCopy } = useClipboard()
 
 const copiedIndex = ref<number | null>(null)
+
+const copiedApiKey = ref(false)
 const activeTab = ref<string>('unix')
 const activeClientTab = ref<string>('claude')
 type CodexAuthMode = 'legacy' | 'api-key'
@@ -683,9 +706,8 @@ const comment = (value: string) => wrapToken('text-slate-500', value)
 
 // Syntax highlighting helpers
 // Generate file configs based on platform and active tab
-const currentFiles = computed((): FileConfig[] => {
+function generateFiles(apiKey: string): FileConfig[] {
   const baseUrl = props.baseUrl || window.location.origin
-  const apiKey = props.apiKey
   const baseRoot = baseUrl.replace(/\/v1\/?$/, '').replace(/\/+$/, '')
   const ensureV1 = (value: string) => {
     const trimmed = value.replace(/\/+$/, '')
@@ -768,7 +790,12 @@ const currentFiles = computed((): FileConfig[] => {
       }
       return generateAnthropicFiles(baseUrl, apiKey)
   }
-})
+}
+
+const API_KEY_PLACEHOLDER = 'YOUR_API_KEY'
+
+// Generate previews without a secret, including escaped JSON/TOML and highlighted HTML.
+const displayFiles = computed(() => generateFiles(API_KEY_PLACEHOLDER))
 
 function generateAnthropicFiles(baseUrl: string, apiKey: string): FileConfig[] {
   let path: string
@@ -1855,12 +1882,25 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
   }
 }
 
-const copyContent = async (content: string, index: number) => {
+const copyContent = async (index: number) => {
+  const content = generateFiles(props.apiKey)[index]?.content
+  if (content === undefined) return
   const success = await clipboardCopy(content, t('keys.copied'))
   if (success) {
     copiedIndex.value = index
     setTimeout(() => {
       copiedIndex.value = null
+    }, 2000)
+  }
+}
+
+const copyApiKey = async () => {
+  if (!props.apiKey) return
+  const success = await clipboardCopy(props.apiKey, t('keys.copied'))
+  if (success) {
+    copiedApiKey.value = true
+    setTimeout(() => {
+      copiedApiKey.value = false
     }, 2000)
   }
 }

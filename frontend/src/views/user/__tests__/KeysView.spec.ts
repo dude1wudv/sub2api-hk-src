@@ -7,6 +7,7 @@ import KeysView from '../KeysView.vue'
 
 const {
   listKeys,
+  createKey,
   getPublicSettings,
   getDashboardApiKeysUsage,
   getAvailableGroups,
@@ -16,8 +17,10 @@ const {
   copyToClipboard,
   isCurrentStep,
   nextStep,
+  routerPush,
 } = vi.hoisted(() => ({
   listKeys: vi.fn(),
+  createKey: vi.fn(),
   getPublicSettings: vi.fn(),
   getDashboardApiKeysUsage: vi.fn(),
   getAvailableGroups: vi.fn(),
@@ -27,6 +30,7 @@ const {
   copyToClipboard: vi.fn(),
   isCurrentStep: vi.fn(),
   nextStep: vi.fn(),
+  routerPush: vi.fn(),
 }))
 
 const messages: Record<string, string> = {
@@ -58,7 +62,7 @@ const messages: Record<string, string> = {
 vi.mock('@/api', () => ({
   keysAPI: {
     list: listKeys,
-    create: vi.fn(),
+    create: createKey,
     update: vi.fn(),
     delete: vi.fn(),
     toggleStatus: vi.fn(),
@@ -92,6 +96,12 @@ vi.mock('@/stores/onboarding', () => ({
 vi.mock('@/composables/useClipboard', () => ({
   useClipboard: () => ({
     copyToClipboard,
+  }),
+}))
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    push: routerPush,
   }),
 }))
 
@@ -138,6 +148,11 @@ const createApiKey = (): ApiKey => ({
 
 const AppLayoutStub = {
   template: '<div><slot /></div>',
+}
+
+const BaseDialogStub = {
+  props: ['show'],
+  template: '<div v-if="show"><slot /><slot name="footer" /></div>',
 }
 
 const TablePageLayoutStub = {
@@ -215,6 +230,18 @@ const IconStub = {
   template: '<span data-test="icon">{{ name }}</span>',
 }
 
+const UseKeyModalStub = {
+  props: ['show'],
+  emits: ['close', 'view-usage'],
+  template: `
+    <div v-if="show" data-test="setup-modal">
+      <span>Setup ready</span>
+      <button type="button" @click="$emit('view-usage')">View usage</button>
+      <button type="button" @click="$emit('close')">Skip for now</button>
+    </div>
+  `,
+}
+
 const mountView = async () => {
   const wrapper = mount(KeysView, {
     global: {
@@ -223,13 +250,13 @@ const mountView = async () => {
         TablePageLayout: TablePageLayoutStub,
         DataTable: DataTableStub,
         Pagination: PaginationStub,
-        BaseDialog: true,
+        BaseDialog: BaseDialogStub,
         ConfirmDialog: true,
         EmptyState: true,
         Select: SelectStub,
         SearchInput: SearchInputStub,
         Icon: IconStub,
-        UseKeyModal: true,
+        UseKeyModal: UseKeyModalStub,
         EndpointPopover: true,
         GroupBadge: true,
         GroupOptionItem: true,
@@ -261,6 +288,8 @@ describe('user KeysView column settings', () => {
     localStorage.clear()
 
     listKeys.mockReset()
+    createKey.mockReset()
+    routerPush.mockReset()
     getPublicSettings.mockReset()
     getDashboardApiKeysUsage.mockReset()
     getAvailableGroups.mockReset()
@@ -283,6 +312,50 @@ describe('user KeysView column settings', () => {
     getAvailableGroups.mockResolvedValue([])
     getUserGroupRates.mockResolvedValue({})
     isCurrentStep.mockReturnValue(false)
+  })
+
+  it('waits for successful creation and tour completion before opening setup, then leaves for usage without a secret', async () => {
+    let finishTour!: () => void
+    nextStep.mockImplementation(() => new Promise<void>((resolve) => { finishTour = resolve }))
+    isCurrentStep.mockReturnValue(true)
+    createKey.mockResolvedValue(createApiKey())
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
+    await wrapper.get('[data-tour="key-form-name"]').setValue('New key')
+    wrapper.getComponent('[data-tour="key-form-group"]').vm.$emit('update:modelValue', 42)
+    await wrapper.get('#key-form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="setup-modal"]').exists()).toBe(false)
+    expect(wrapper.find('#key-form').exists()).toBe(true)
+    finishTour()
+    await flushPromises()
+
+    expect(wrapper.find('#key-form').exists()).toBe(false)
+    expect(wrapper.find('[data-test="setup-modal"]').exists()).toBe(true)
+    await getButtonByText(wrapper, 'View usage').trigger('click')
+    expect(wrapper.find('[data-test="setup-modal"]').exists()).toBe(false)
+    expect(routerPush).toHaveBeenCalledWith('/usage')
+    wrapper.unmount()
+  })
+
+  it('keeps a failed creation in the form without advancing the tour or opening setup', async () => {
+    createKey.mockRejectedValue({ response: { data: { detail: 'Creation failed' } } })
+    isCurrentStep.mockReturnValue(true)
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
+    await wrapper.get('[data-tour="key-form-name"]').setValue('New key')
+    wrapper.getComponent('[data-tour="key-form-group"]').vm.$emit('update:modelValue', 42)
+    await wrapper.get('#key-form').trigger('submit')
+    await flushPromises()
+
+    expect(showError).toHaveBeenCalledWith('Creation failed')
+    expect(nextStep).not.toHaveBeenCalled()
+    expect(wrapper.find('#key-form').exists()).toBe(true)
+    expect(wrapper.find('[data-test="setup-modal"]').exists()).toBe(false)
+    wrapper.unmount()
   })
 
   it('uses the default API key columns with low-frequency columns hidden', async () => {
