@@ -149,7 +149,7 @@ func resolveCodexOutboundIdentity(candidateUA string) codexOutboundIdentity {
 			originator, pairedUA = openai.CodexDefaultOriginator, codexCLIUserAgent
 		}
 	}
-	// 生效版本只有一个来源：规范身份（面板版本号 → 自动同步值 → 内置常量，见
+	// 生效版本只有一个来源：规范身份（面板版本号 → 自动同步值与内置版本中的较新者，见
 	// SettingService.GetOpenAICodexClientVersion）。UA 与 version 头由此同源派生。
 	version := codexClientVersionFromUA(canonical)
 	if rebuilt := openai.SetCodexUserAgentVersion(pairedUA, version); rebuilt != "" {

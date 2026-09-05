@@ -293,8 +293,9 @@ func (r *codexVersionSettingRepoStub) GetValue(_ context.Context, key string) (s
 	return r.values[key], nil
 }
 
-// 版本号优先级：管理员面板覆写 → 自动同步值 → 内置常量。
-// 管理员覆写必须压过同步值，否则「固定版本」的诉求会被 3 小时后的同步冲掉。
+// 版本号优先级：管理员面板覆写 → 自动同步值与内置版本中的较新者。
+// 管理员覆写必须压过两者，否则「固定版本」的诉求会被 6 小时后的同步冲掉；
+// 非覆写的陈旧同步值不能让刚发布的内置版本降级。
 func TestGetOpenAICodexClientVersionPriority(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -302,10 +303,11 @@ func TestGetOpenAICodexClientVersionPriority(t *testing.T) {
 		synced   string
 		want     string
 	}{
-		{name: "面板覆写优先", override: "0.150.0", synced: "0.146.0", want: "0.150.0"},
-		{name: "覆写为空时用同步值", synced: "0.146.0", want: "0.146.0"},
+		{name: "面板覆写优先", override: "0.150.0", synced: "0.200.0", want: "0.150.0"},
+		{name: "陈旧同步值回退内置新版", synced: "0.146.0", want: codexCLIVersion},
+		{name: "较新同步值继续向前推进", synced: "0.200.0", want: "0.200.0"},
 		{name: "两者皆空时用内置常量", want: codexCLIVersion},
-		{name: "非法覆写回退同步值", override: "latest", synced: "0.146.0", want: "0.146.0"},
+		{name: "非法覆写使用较新同步值", override: "latest", synced: "0.200.0", want: "0.200.0"},
 		{name: "非法同步值回退内置常量", synced: "not-a-version", want: codexCLIVersion},
 	}
 

@@ -656,7 +656,7 @@ const (
 	// 用于避免 Cloudflare 对浏览器型 UA 的质询拦截。
 	SettingKeyOpenAICodexUserAgent = "openai_codex_user_agent"
 	// SettingKeyOpenAICodexClientVersion 网关对 ChatGPT 上游声明的 Codex 客户端版本号（管理员覆写）。
-	// 空值表示跟随自动同步值；自动同步也没有结果时回退到内置常量。
+	// 空值表示使用自动同步值与内置版本中的较新者，避免陈旧同步记录导致版本降级。
 	// 上游在容量紧张时按客户端身份分优先级降载，陈旧版本会被优先丢弃，故该值需保持跟随官方发布。
 	SettingKeyOpenAICodexClientVersion = "openai_codex_client_version"
 	// SettingKeyOpenAICodexClientVersionSynced 自动同步任务写入的官方 Codex 最新稳定版版本号。
