@@ -82,7 +82,7 @@
               v-else
               class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/30"
             >
-              <Icon name="checkCircle" size="lg" class="text-[#00AEEF]" />
+              <Icon name="checkCircle" size="lg" class="text-[#006B99] dark:text-[#7DD3FC]" />
             </div>
             <p class="text-lg font-semibold text-gray-900 dark:text-white">
               {{ deepLinkState === 'backgrounded' ? t('payment.qr.alipayContinueInApp') : t('payment.qr.alipayOpening') }}
@@ -173,7 +173,7 @@
           <template v-if="isManualAlipay">
             <img :src="props.qrCode" :alt="t('payment.manual.qrAlt')" class="w-56 rounded-lg border-2 border-[#00AEEF] bg-white p-2" />
             <p class="text-center text-sm text-gray-500 dark:text-gray-400">{{ t('payment.manual.exactAmountHint') }}</p>
-            <p class="text-3xl font-bold tabular-nums text-[#00AEEF]">¥{{ (props.payAmount ?? 0).toFixed(2) }}</p>
+            <p class="text-3xl font-bold tabular-nums text-[#006B99] dark:text-[#7DD3FC]">¥{{ (props.payAmount ?? 0).toFixed(2) }}</p>
           </template>
           <div v-else :class="['relative rounded-lg border-2 p-4', qrBorderClass]">
             <canvas ref="qrCanvas" class="mx-auto"></canvas>

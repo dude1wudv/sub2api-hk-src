@@ -3,9 +3,9 @@
     <label class="appearance-select">
       <Icon name="sparkles" size="sm" aria-hidden="true" />
       <select :value="style" :aria-label="zh ? '主题风格' : 'Theme style'" @change="setStyle(($event.target as HTMLSelectElement).value as ThemeStyle)">
-        <option value="aurora">{{ zh ? '钴蓝' : 'Cobalt' }}</option>
-        <option value="lagoon">{{ zh ? '松绿' : 'Pine' }}</option>
-        <option value="graphite">{{ zh ? '赤铜' : 'Copper' }}</option>
+        <option value="aurora">{{ zh ? '星澜' : 'Astra' }}</option>
+        <option value="lagoon">{{ zh ? '苔砂' : 'Grove' }}</option>
+        <option value="graphite">{{ zh ? '墨铜' : 'Ember' }}</option>
       </select>
     </label>
     <button class="appearance-mode" :aria-label="isDark ? t('nav.lightMode') : t('nav.darkMode')" :title="isDark ? t('nav.lightMode') : t('nav.darkMode')" @click="toggleTheme">

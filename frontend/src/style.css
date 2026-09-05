@@ -575,7 +575,7 @@
   }
 
   .toast-info {
-    @apply border-l-primary-500;
+    @apply border-l-blue-500;
   }
 
   /* ============ 侧边栏 ============ */

@@ -14,6 +14,13 @@ const varPalette = (name) => ({
   950: `rgb(var(--color-${name}-950) / <alpha-value>)`
 })
 
+// Foregrounds adapt to the mode independently of solid button and badge fills.
+const textPalette = (name) => ({
+  400: `rgb(var(--text-${name}) / <alpha-value>)`,
+  500: `rgb(var(--text-${name}) / <alpha-value>)`,
+  600: `rgb(var(--text-${name}) / <alpha-value>)`
+})
+
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
   darkMode: 'class',
@@ -21,7 +28,7 @@ export default {
     extend: {
       colors: {
         primary: varPalette('primary'),
-        accent: varPalette('link'),
+        accent: varPalette('accent'),
         link: varPalette('link'),
         ok: varPalette('ok'),
         warn: varPalette('warn'),
@@ -39,12 +46,37 @@ export default {
         cyan: varPalette('link'),
         sky: varPalette('link'),
         blue: varPalette('link'),
-        purple: varPalette('link'),
-        violet: varPalette('link'),
+        purple: varPalette('accent'),
+        violet: varPalette('accent'),
         fuchsia: varPalette('err'),
         pink: varPalette('err'),
         gray: varPalette('gray'),
         dark: varPalette('dark')
+      },
+      textColor: {
+        primary: textPalette('primary'),
+        indigo: textPalette('primary'),
+        accent: textPalette('accent'),
+        purple: textPalette('accent'),
+        violet: textPalette('accent'),
+        link: textPalette('link'),
+        blue: textPalette('link'),
+        sky: textPalette('link'),
+        cyan: textPalette('link'),
+        ok: textPalette('ok'),
+        emerald: textPalette('ok'),
+        green: textPalette('ok'),
+        lime: textPalette('ok'),
+        teal: textPalette('ok'),
+        warn: textPalette('warn'),
+        amber: textPalette('warn'),
+        yellow: textPalette('warn'),
+        orange: textPalette('warn'),
+        err: textPalette('err'),
+        red: textPalette('err'),
+        rose: textPalette('err'),
+        pink: textPalette('err'),
+        fuchsia: textPalette('err')
       },
       fontFamily: {
         serif: ['Iowan Old Style', 'Palatino Linotype', 'Songti SC', 'STSong', 'Georgia', 'serif'],
