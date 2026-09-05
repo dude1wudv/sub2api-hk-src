@@ -995,10 +995,9 @@
       :show="showUseKeyModal"
       :api-key="selectedKey?.key || ''"
       :base-url="publicSettings?.api_base_url || ''"
-      :platform="selectedKeyGroup?.platform || null"
-      :allow-messages-dispatch="selectedKeyGroup?.allow_messages_dispatch || false"
+      :platform="selectedKey?.group?.platform || null"
+      :allow-messages-dispatch="selectedKey?.group?.allow_messages_dispatch || false"
       @close="closeUseKeyModal"
-      @view-usage="viewUsage"
     />
 
     <!-- CCS Client Selection Dialog for Antigravity -->
@@ -1118,17 +1117,16 @@
     </Teleport>
   </AppLayout>
 </template>
+
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
-import { useI18n } from 'vue-i18n'
-	import { useRouter } from 'vue-router'
+	import { ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
+	import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'
 	import { useOnboardingStore } from '@/stores/onboarding'
 	import { useClipboard } from '@/composables/useClipboard'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 
 const { t } = useI18n()
-const router = useRouter()
 import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
@@ -1317,10 +1315,6 @@ const dropdownPosition = ref<{ top?: number; bottom?: number; left: number } | n
 const groupButtonRefs = ref<Map<number, HTMLElement>>(new Map())
 let abortController: AbortController | null = null
 
-
-const selectedKeyGroup = computed(() =>
-  selectedKey.value?.group ?? groups.value.find((group) => group.id === selectedKey.value?.group_id) ?? null
-)
 // Get the currently selected key for group change
 const selectedKeyForGroup = computed(() => {
   if (groupSelectorKeyId.value === null) return null
@@ -1547,11 +1541,6 @@ const closeUseKeyModal = () => {
   selectedKey.value = null
 }
 
-const viewUsage = () => {
-  closeUseKeyModal()
-  void router.push('/usage')
-}
-
 const handlePageChange = (page: number) => {
   pagination.value.page = page
   loadApiKeys()
@@ -1749,7 +1738,7 @@ const handleSubmit = async () => {
       appStore.showSuccess(t('keys.keyUpdatedSuccess'))
     } else {
       const customKey = formData.value.use_custom_key ? formData.value.custom_key : undefined
-      const createdKey = await keysAPI.create(
+      await keysAPI.create(
         formData.value.name,
         formData.value.group_id,
         customKey,
@@ -1760,14 +1749,10 @@ const handleSubmit = async () => {
         rateLimitData
       )
       appStore.showSuccess(t('keys.keyCreatedSuccess'))
-      // Let the active tour finish before opening a dialog, so it never stacks above setup.
+      // Only advance tour if active, on submit step, and creation succeeded
       if (onboardingStore.isCurrentStep('[data-tour="key-form-submit"]')) {
-        await onboardingStore.nextStep(500)
+        onboardingStore.nextStep(500)
       }
-      closeModals()
-      openUseKeyModal(createdKey)
-      loadApiKeys()
-      return
     }
     closeModals()
     loadApiKeys()

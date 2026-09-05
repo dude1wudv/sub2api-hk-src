@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
@@ -28,25 +28,10 @@ const { t } = useI18n()
 
 
 const loading = ref(false)
-const loadError = ref('')
 const rows = ref<OpsErrorLog[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
-
-let requestSequence = 0
-let searchTimeout: number | null = null
-
-function cancelPendingSearch() {
-  if (searchTimeout === null) return
-  window.clearTimeout(searchTimeout)
-  searchTimeout = null
-}
-
-function invalidateRequest() {
-  requestSequence += 1
-  loading.value = false
-}
 
 const q = ref('')
 const statusCode = ref<number | 'other' | null>(null)
@@ -101,9 +86,6 @@ const phaseSelectOptions = computed(() => {
 })
 
 function close() {
-  invalidateRequest()
-  cancelPendingSearch()
-  loadError.value = ''
   emit('update:show', false)
 }
 
@@ -119,9 +101,8 @@ function onSort(nextSortBy: string, nextSortOrder: 'asc' | 'desc') {
 
 async function fetchErrorLogs() {
   if (!props.show) return
-  const request = ++requestSequence
+
   loading.value = true
-  loadError.value = ''
   try {
     const params: Record<string, any> = {
       page: page.value,
@@ -157,54 +138,42 @@ async function fetchErrorLogs() {
     const ownerVal = String(errorOwner.value || '').trim()
     if (ownerVal) params.error_owner = ownerVal
 
+
     const res = props.errorType === 'upstream'
       ? await opsAPI.listUpstreamErrors(params)
       : await opsAPI.listRequestErrors(params)
-    if (request !== requestSequence || !props.show) return
     rows.value = res.items || []
     total.value = res.total || 0
   } catch (err) {
-    if (request !== requestSequence || !props.show) return
     console.error('[OpsErrorDetailsModal] Failed to fetch error logs', err)
-    loadError.value = t('admin.ops.failedToLoadErrorDetail')
+    rows.value = []
+    total.value = 0
   } finally {
-    if (request === requestSequence && props.show) loading.value = false
+    loading.value = false
   }
 }
 
-function resetFilters() {
-  cancelPendingSearch()
-  q.value = ''
-  statusCode.value = null
-  phase.value = props.errorType === 'upstream' ? 'upstream' : ''
-  errorOwner.value = ''
-  viewMode.value = 'errors'
-  page.value = 1
-  fetchErrorLogs()
-}
+  function resetFilters() {
+    q.value = ''
+    statusCode.value = null
+    phase.value = props.errorType === 'upstream' ? 'upstream' : ''
+    errorOwner.value = ''
+    viewMode.value = 'errors'
+    page.value = 1
+    fetchErrorLogs()
+  }
 
 
 watch(
   () => props.show,
   (open) => {
-    if (!open) {
-      cancelPendingSearch()
-      invalidateRequest()
-      loadError.value = ''
-      return
-    }
+    if (!open) return
     if (props.resumeState) return
     page.value = 1
     pageSize.value = 10
     resetFilters()
   }
 )
-
-onBeforeUnmount(() => {
-  invalidateRequest()
-  cancelPendingSearch()
-})
-
 
 watch(
   () => [props.timeRange, props.customStartTime, props.customEndTime, props.platform, props.groupId] as const,
@@ -223,15 +192,15 @@ watch(
   }
 )
 
+let searchTimeout: number | null = null
 watch(
   () => q.value,
   () => {
     if (!props.show) return
-    cancelPendingSearch()
+    if (searchTimeout) window.clearTimeout(searchTimeout)
     searchTimeout = window.setTimeout(() => {
-      searchTimeout = null
       page.value = 1
-      void fetchErrorLogs()
+      fetchErrorLogs()
     }, 350)
   }
 )
@@ -297,11 +266,6 @@ watch(
             </button>
           </div>
         </div>
-      </div>
-
-      <div v-if="loadError" role="alert" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-        <span>{{ loadError }}</span>
-        <button type="button" class="btn btn-secondary btn-sm" @click="fetchErrorLogs">{{ t('common.refresh') }}</button>
       </div>
 
       <!-- Body -->

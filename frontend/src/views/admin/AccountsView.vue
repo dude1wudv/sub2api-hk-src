@@ -392,37 +392,12 @@
           @select-all-results="handleSelectAllResults"
           @toggle-schedulable="handleBulkToggleSchedulable"
         />
-        <div
-          v-if="selectingAllResults"
-          class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-900 dark:border-primary-800/70 dark:bg-primary-900/20 dark:text-primary-100"
-          role="status"
-          aria-live="polite"
-        >
-          <span class="tabular-nums">
-            {{ t('admin.accounts.bulkActions.selectAllProgress', { loaded: selectionProgress.completedPages, total: selectionProgress.totalPages }) }}
-          </span>
-          <button type="button" class="btn btn-secondary px-2 py-1 text-xs" @click="cancelSelectAllResults">
-            {{ t('common.cancel') }}
-          </button>
-        </div>
-        <p
-          v-else-if="selIds.length > 0"
-          class="mb-3 text-xs text-gray-600 dark:text-gray-300"
-          aria-live="polite"
-        >
-          {{
-            allResultsSelected
-              ? t('admin.accounts.bulkActions.selectedAllScope', { count: selIds.length })
-              : t('admin.accounts.bulkActions.selectedPartialScope', { count: selIds.length })
-          }}
-        </p>
         <div ref="accountTableRef" class="account-table-shell">
         <DataTable
           ref="dataTableRef"
           :columns="cols"
           :data="accounts"
           :loading="loading"
-          :refreshing="isRefreshingCurrentAccountTable"
           row-key="id"
           :server-side-sort="true"
           @sort="handleSort"
@@ -750,7 +725,7 @@ import PlatformTypeBadge from '@/components/common/PlatformTypeBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ErrorPassthroughRulesModal from '@/components/admin/ErrorPassthroughRulesModal.vue'
 import TLSFingerprintProfilesModal from '@/components/admin/TLSFingerprintProfilesModal.vue'
-import { AccountSelectionCancelledError, fetchAllAccountIds } from '@/utils/accountSelection'
+import { fetchAllAccountIds } from '@/utils/accountSelection'
 import { buildGrokUsageRefreshKey, buildOpenAIUsageRefreshKey } from '@/utils/accountUsageRefresh'
 import { formatDateTime, formatRelativeTime } from '@/utils/format'
 import { proxyExpiryBadgeClass, proxyExpiryLabelKey } from '@/utils/proxyExpiry'
@@ -1323,12 +1298,12 @@ const {
   allVisibleSelected,
   isSelected,
   setSelectedIds,
-  select: baseSelect,
-  deselect: baseDeselect,
-  toggle: baseToggleSel,
+  select,
+  deselect,
+  toggle: toggleSel,
   clear: clearSelectedIds,
   removeMany: removeSelectedAccounts,
-  toggleVisible: baseToggleVisible,
+  toggleVisible,
   selectVisible: selectCurrentPage,
   batchUpdate
 } = useTableSelection<Account>({
@@ -1337,95 +1312,24 @@ const {
 })
 
 const selectingAllResults = ref(false)
-const selectionProgress = ref({
-  completedPages: 0,
-  totalPages: 0,
-  selectedCount: 0
-})
-const selectionAbortController = ref<AbortController | null>(null)
 const selectedAllResultIDs = ref<Set<number> | null>(null)
 const selectionRequestVersion = ref(0)
-const selectionFilterKey = computed(() => JSON.stringify({
-  platform: params.platform,
-  type: params.type,
-  status: params.status,
-  privacy_mode: params.privacy_mode,
-  group: params.group,
-  search: params.search
-}))
-const accountListContextKey = computed(() => JSON.stringify({
-  page: pagination.page,
-  pageSize: pagination.page_size,
-  platform: params.platform,
-  type: params.type,
-  status: params.status,
-  privacy_mode: params.privacy_mode,
-  group: params.group,
-  search: params.search,
-  include_scheduler_score: params.include_scheduler_score,
-  sort_by: params.sort_by,
-  sort_order: params.sort_order
-}))
-const activeAutoRefreshContextKey = ref<string | null>(null)
-const isRefreshingCurrentAccountTable = computed(() => (
-  autoRefreshFetching.value && activeAutoRefreshContextKey.value === accountListContextKey.value
-))
 const allResultsSelected = computed(() => {
   const snapshot = selectedAllResultIDs.value
   if (!snapshot || snapshot.size === 0 || snapshot.size !== selectedSet.value.size) return false
   return Array.from(snapshot).every(id => selectedSet.value.has(id))
 })
 
-const cancelSelectAllResults = () => {
-  selectionRequestVersion.value++
-  selectionAbortController.value?.abort()
-  selectionAbortController.value = null
-  selectingAllResults.value = false
-  selectionProgress.value = {
-    completedPages: 0,
-    totalPages: 0,
-    selectedCount: 0
-  }
-}
-
 const clearSelection = () => {
-  cancelSelectAllResults()
+  selectionRequestVersion.value++
+  selectingAllResults.value = false
   selectedAllResultIDs.value = null
   clearSelectedIds()
 }
-const setSelectedFailureIds = (ids: number[]) => {
-  selectedAllResultIDs.value = null
-  setSelectedIds(ids)
-}
-
-const select = (id: number) => {
-  cancelSelectAllResults()
-  baseSelect(id)
-}
-
-const deselect = (id: number) => {
-  cancelSelectAllResults()
-  baseDeselect(id)
-}
-
-const toggleSel = (id: number) => {
-  cancelSelectAllResults()
-  baseToggleSel(id)
-}
-
-const toggleVisible = (selected: boolean) => {
-  cancelSelectAllResults()
-  baseToggleVisible(selected)
-}
 
 const selectPage = () => {
-  cancelSelectAllResults()
   selectCurrentPage()
 }
-
-watch(selectionFilterKey, () => {
-  clearSelection()
-}, { flush: 'sync' })
 
 const swipeVirtualContext: SwipeSelectVirtualContext = {
   getVirtualizer: () => dataTableRef.value?.virtualizer ?? null,
@@ -1873,29 +1777,25 @@ const mergeAccountsIncrementally = (nextRows: Account[]) => {
 const refreshAccountsIncrementally = async () => {
   if (autoRefreshFetching.value) return
   syncAccountListDerivedParams()
-  const refreshContextKey = accountListContextKey.value
-  const requestParams = { ...toRaw(params) } as {
-    platform?: string
-    type?: string
-    status?: string
-    privacy_mode?: string
-    group?: string
-    search?: string
-    include_scheduler_score?: string
-    sort_by?: string
-    sort_order?: AccountSortOrder
-  }
-  activeAutoRefreshContextKey.value = refreshContextKey
   autoRefreshFetching.value = true
   try {
     const result = await adminAPI.accounts.listWithEtag(
       pagination.page,
       pagination.page_size,
-      requestParams,
+      toRaw(params) as {
+        platform?: string
+        type?: string
+        status?: string
+        privacy_mode?: string
+        group?: string
+        search?: string
+        sort_by?: string
+        sort_order?: AccountSortOrder
+
+      },
       { etag: autoRefreshETag.value }
     )
 
-    if (refreshContextKey !== accountListContextKey.value) return
     if (result.etag) {
       autoRefreshETag.value = result.etag
     }
@@ -1911,9 +1811,6 @@ const refreshAccountsIncrementally = async () => {
   } catch (error) {
     console.error('Auto refresh failed:', error)
   } finally {
-    if (activeAutoRefreshContextKey.value === refreshContextKey) {
-      activeAutoRefreshContextKey.value = null
-    }
     autoRefreshFetching.value = false
   }
 }
@@ -2328,7 +2225,7 @@ const handleBulkDelete = async () => {
         success: result.success,
         failed: result.failed
       }))
-      setSelectedFailureIds(Array.isArray(result.failed_ids) ? result.failed_ids : [])
+      setSelectedIds(result.failed_ids?.length ? result.failed_ids : accountIds)
     } else {
       appStore.showSuccess(t('admin.accounts.bulkActions.deleteSuccess', { count: result.success }))
       clearSelection()
@@ -2341,12 +2238,10 @@ const handleBulkDelete = async () => {
 }
 const handleBulkResetStatus = async () => {
   if (!confirm(t('common.confirm'))) return
-  const accountIds = [...selIds.value]
   try {
-    const result = await adminAPI.accounts.batchClearError(accountIds)
+    const result = await adminAPI.accounts.batchClearError(selIds.value)
     if (result.failed > 0) {
       appStore.showError(t('admin.accounts.bulkActions.partialSuccess', { success: result.success, failed: result.failed }))
-      setSelectedFailureIds(Array.isArray(result.failed_ids) ? result.failed_ids : [])
     } else {
       appStore.showSuccess(t('admin.accounts.bulkActions.resetStatusSuccess', { count: result.success }))
       clearSelection()
@@ -2359,12 +2254,10 @@ const handleBulkResetStatus = async () => {
 }
 const handleBulkRefreshToken = async () => {
   if (!confirm(t('common.confirm'))) return
-  const accountIds = [...selIds.value]
   try {
-    const result = await adminAPI.accounts.batchRefresh(accountIds)
+    const result = await adminAPI.accounts.batchRefresh(selIds.value)
     if (result.failed > 0) {
       appStore.showError(t('admin.accounts.bulkActions.partialSuccess', { success: result.success, failed: result.failed }))
-      setSelectedFailureIds(Array.isArray(result.failed_ids) ? result.failed_ids : [])
     } else {
       appStore.showSuccess(t('admin.accounts.bulkActions.refreshTokenSuccess', { count: result.success }))
       clearSelection()
@@ -2481,7 +2374,7 @@ const handleBulkToggleSchedulable = async (schedulable: boolean) => {
     const { successIds, failedIds, successCount, failedCount, hasIds, hasCounts } = normalizeBulkSchedulableResult(result, accountIds)
     if (!hasIds && !hasCounts) {
       appStore.showError(t('admin.accounts.bulkSchedulableResultUnknown'))
-      clearSelection()
+      setSelectedIds(accountIds)
       load().catch((error) => {
         console.error('Failed to refresh accounts:', error)
       })
@@ -2501,9 +2394,10 @@ const handleBulkToggleSchedulable = async (schedulable: boolean) => {
         ? t('admin.accounts.bulkSchedulablePartial', { success: successCount, failed: failedCount })
         : t('admin.accounts.bulkSchedulableResultUnknown')
       appStore.showError(message)
-      setSelectedFailureIds(failedIds)
+      setSelectedIds(failedIds.length > 0 ? failedIds : accountIds)
     } else {
-      clearSelection()
+      if (hasIds) clearSelection()
+      else setSelectedIds(accountIds)
     }
   } catch (error) {
     console.error('Failed to bulk toggle schedulable:', error)
@@ -2529,45 +2423,24 @@ const handleSelectAllResults = async () => {
   if (selectingAllResults.value || pagination.total === 0) return
 
   const requestVersion = ++selectionRequestVersion.value
-  const filterKey = selectionFilterKey.value
   const filters = buildBulkEditFilterSnapshot()
-  const controller = new AbortController()
-  selectionAbortController.value = controller
-  selectionProgress.value = {
-    completedPages: 0,
-    totalPages: 0,
-    selectedCount: 0
-  }
   selectingAllResults.value = true
   try {
     const ids = await fetchAllAccountIds(
-      (page, pageSize, requestFilters, options) => adminAPI.accounts.list(page, pageSize, requestFilters, options),
-      filters,
-      {
-        signal: controller.signal,
-        onProgress: (progress) => {
-          if (requestVersion === selectionRequestVersion.value && filterKey === selectionFilterKey.value) {
-            selectionProgress.value = progress
-          }
-        }
-      }
+      (page, pageSize, requestFilters) => adminAPI.accounts.list(page, pageSize, requestFilters),
+      filters
     )
-    if (requestVersion !== selectionRequestVersion.value || filterKey !== selectionFilterKey.value) return
+    if (requestVersion !== selectionRequestVersion.value) return
 
     setSelectedIds(ids)
     selectedAllResultIDs.value = new Set(ids)
   } catch (error) {
-    if (
-      requestVersion !== selectionRequestVersion.value ||
-      filterKey !== selectionFilterKey.value ||
-      error instanceof AccountSelectionCancelledError
-    ) return
+    if (requestVersion !== selectionRequestVersion.value) return
     console.error('Failed to select all account results:', error)
     appStore.showError(t('admin.accounts.bulkActions.selectAllFailed'))
   } finally {
     if (requestVersion === selectionRequestVersion.value) {
       selectingAllResults.value = false
-      selectionAbortController.value = null
     }
   }
 }
@@ -3036,7 +2909,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  cancelSelectAllResults()
   upstreamBillingRateAbortController?.abort()
   if (usageBatchFlushTimer !== null) {
     clearTimeout(usageBatchFlushTimer)

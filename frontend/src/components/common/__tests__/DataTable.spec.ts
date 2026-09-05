@@ -83,28 +83,6 @@ describe('DataTable', () => {
     expect(nameHeader.findAll('svg')[1].classes()).toContain('text-primary-600')
   })
 
-  it('keeps rows visible during an explicit refresh while retaining replacement loading behavior', async () => {
-    const wrapper = mount(DataTable, {
-      props: {
-        columns: [{ key: 'name', label: 'Name' }],
-        data: [{ id: 1, name: 'Current row' }],
-        loading: true,
-        refreshing: true
-      }
-    })
-
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.attributes('aria-busy')).toBe('true')
-    expect(wrapper.find('[role="status"]').text()).toContain('common.refreshing')
-    expect(wrapper.findAll('tbody tr[data-index]')).toHaveLength(1)
-
-    await wrapper.setProps({ refreshing: false })
-
-    expect(wrapper.findAll('tbody tr[data-index]')).toHaveLength(0)
-    expect(wrapper.findAll('tbody tr')).toHaveLength(5)
-  })
-
   it('renders every row with no virtual padding spacer for small datasets (virtualization off)', async () => {
     const data = Array.from({ length: 8 }, (_, i) => ({ id: i + 1, name: `Row ${i + 1}` }))
     const wrapper = mount(DataTable, {

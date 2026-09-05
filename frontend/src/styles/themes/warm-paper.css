@@ -127,7 +127,7 @@ body {
   .card {
     background-color: rgb(var(--surface));
     border-color: rgb(var(--line));
-    box-shadow: 0 1px 2px rgb(38 36 31 / 0.03), 0 4px 16px -8px rgb(38 36 31 / 0.09);
+    box-shadow: 0 1px 2px 0 rgb(38 36 31 / 0.03);
   }
 
   .dark .card {
@@ -151,12 +151,12 @@ body {
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.06), 0 1px 3px 0 rgb(var(--color-primary-600) / 0.15);
   }
 
-  .btn-primary:hover:not(:disabled) {
+  .btn-primary:hover {
     background-color: rgb(var(--color-primary-600));
     box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.08), 0 2px 6px 0 rgb(var(--color-primary-600) / 0.2);
   }
 
-  .btn-primary:active:not(:disabled) {
+  .btn-primary:active {
     background-color: rgb(var(--color-primary-700));
   }
 
@@ -166,11 +166,11 @@ body {
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.2), 0 1px 3px 0 rgb(var(--color-primary-500) / 0.2);
   }
 
-  .dark .btn-primary:hover:not(:disabled) {
+  .dark .btn-primary:hover {
     background-color: rgb(var(--color-primary-600));
   }
 
-  .dark .btn-primary:active:not(:disabled) {
+  .dark .btn-primary:active {
     background-color: rgb(var(--color-primary-700));
   }
 
@@ -193,21 +193,4 @@ body {
 
 .dark .sidebar-link-active {
   color: rgb(var(--color-primary-400));
-}
-
-.input:not(:disabled) {
-  background-color: rgb(var(--surface));
-}
-
-.input:not(.input-error):not(:focus):not(:disabled) {
-  border-color: rgb(var(--line-strong));
-}
-
-.input::placeholder {
-  color: rgb(var(--ink-2) / 0.8);
-}
-
-.dropdown {
-  background-color: rgb(var(--surface-elevated));
-  border-color: rgb(var(--line));
 }

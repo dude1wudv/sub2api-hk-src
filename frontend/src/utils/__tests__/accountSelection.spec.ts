@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { AccountSelectionCancelledError, fetchAllAccountIds } from '../accountSelection'
+import { fetchAllAccountIds } from '../accountSelection'
 
 describe('fetchAllAccountIds', () => {
   it('loads every page with the same filter snapshot and returns unique account IDs', async () => {
@@ -64,23 +64,5 @@ describe('fetchAllAccountIds', () => {
       .mockRejectedValueOnce(new Error('page 2 failed'))
 
     await expect(fetchAllAccountIds(fetchPage, { group: '7' })).rejects.toThrow('page 2 failed')
-  })
-
-  it('reports page progress and never returns IDs collected before cancellation', async () => {
-    const controller = new AbortController()
-    const fetchPage = vi.fn().mockResolvedValue({
-      items: Array.from({ length: 1000 }, (_, index) => ({ id: index + 1 })),
-      total: 1001,
-      page: 1,
-      page_size: 1000,
-      pages: 2
-    })
-
-    await expect(fetchAllAccountIds(fetchPage, {}, {
-      signal: controller.signal,
-      onProgress: () => controller.abort()
-    })).rejects.toBeInstanceOf(AccountSelectionCancelledError)
-
-    expect(fetchPage).toHaveBeenCalledTimes(1)
   })
 })

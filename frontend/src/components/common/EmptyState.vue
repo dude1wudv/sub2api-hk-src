@@ -2,14 +2,13 @@
   <div class="empty-state">
     <!-- Icon -->
     <div
-      class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-gray-200/70 bg-gray-50 dark:border-dark-700 dark:bg-dark-800"
+      class="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gray-100 dark:bg-dark-800"
     >
       <slot name="icon">
-        <component v-if="icon" :is="icon" class="h-8 w-8 text-gray-400 dark:text-dark-300" aria-hidden="true" />
+        <component v-if="icon" :is="icon" class="empty-state-icon h-10 w-10" aria-hidden="true" />
         <svg
           v-else
-          class="h-8 w-8 text-gray-400 dark:text-dark-300"
-          aria-hidden="true"
+          class="empty-state-icon h-10 w-10"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -30,7 +29,7 @@
     </h3>
 
     <!-- Description -->
-    <p v-if="description" class="empty-state-description text-pretty leading-relaxed">
+    <p class="empty-state-description">
       {{ description }}
     </p>
 

@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { onUnmounted } from 'vue'
 import { useTableLoader } from '@/composables/useTableLoader'
 
 // Mock @vueuse/core 的 useDebounceFn
@@ -228,83 +227,6 @@ describe('useTableLoader', () => {
 
       // 第二次请求的结果生效
       expect(fetchFn).toHaveBeenCalledTimes(2)
-    })
-
-    it('ignores an older response that resolves after the latest request', async () => {
-      const requests: Array<PromiseWithResolvers<{
-        items: Array<{ id: string }>
-        total: number
-        pages: number
-      }>> = []
-      const fetchFn = vi.fn(() => {
-        const request = Promise.withResolvers<{
-          items: Array<{ id: string }>
-          total: number
-          pages: number
-        }>()
-        requests.push(request)
-        return request.promise
-      })
-      const { items, loading, pagination, load } = useTableLoader({ fetchFn })
-
-      const firstLoad = load()
-      const latestLoad = load()
-      requests[1].resolve({ items: [{ id: 'latest' }], total: 1, pages: 1 })
-      await latestLoad
-      requests[0].resolve({ items: [{ id: 'stale' }], total: 9, pages: 9 })
-      await firstLoad
-
-      expect(items.value).toEqual([{ id: 'latest' }])
-      expect(pagination.total).toBe(1)
-      expect(pagination.pages).toBe(1)
-      expect(loading.value).toBe(false)
-    })
-
-    it('suppresses an older non-abort failure after a newer request succeeds', async () => {
-      const requests: Array<PromiseWithResolvers<{
-        items: Array<{ id: string }>
-        total: number
-        pages: number
-      }>> = []
-      const fetchFn = vi.fn(() => {
-        const request = Promise.withResolvers<{
-          items: Array<{ id: string }>
-          total: number
-          pages: number
-        }>()
-        requests.push(request)
-        return request.promise
-      })
-      const { items, loading, load } = useTableLoader({ fetchFn })
-
-      const firstLoad = load()
-      const latestLoad = load()
-      requests[1].resolve({ items: [{ id: 'latest' }], total: 1, pages: 1 })
-      await latestLoad
-      requests[0].reject(new Error('stale failure'))
-
-      await expect(firstLoad).resolves.toBeUndefined()
-      expect(items.value).toEqual([{ id: 'latest' }])
-      expect(loading.value).toBe(false)
-    })
-
-    it('does not commit a response after unmount', async () => {
-      const request = Promise.withResolvers<{
-        items: Array<{ id: string }>
-        total: number
-        pages: number
-      }>()
-      const fetchFn = vi.fn(() => request.promise)
-      const { items, load } = useTableLoader({ fetchFn })
-
-      const pendingLoad = load()
-      const cleanup = vi.mocked(onUnmounted).mock.calls.at(-1)?.[0]
-      if (!cleanup) throw new Error('Expected an unmount cleanup callback')
-      cleanup()
-      request.resolve({ items: [{ id: 'stale' }], total: 1, pages: 1 })
-      await pendingLoad
-
-      expect(items.value).toEqual([])
     })
   })
 

@@ -506,10 +506,6 @@ export function useOnboardingTour(options: OnboardingOptions) {
     if (delay > 0) {
       await new Promise(resolve => setTimeout(resolve, delay))
     }
-    if (!driverInstance?.isActive()) return
-    if (!driverInstance.hasNextStep()) {
-      markAsSeen()
-    }
     driverInstance.moveNext()
   }
 

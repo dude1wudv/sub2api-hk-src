@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -40,24 +40,12 @@ const { copyToClipboard } = useClipboard()
 const isDesktopViewport = useMediaQuery('(min-width: 768px)')
 
 const loading = ref(false)
-const loadError = ref('')
 const items = ref<OpsRequestDetail[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
 
-let requestSequence = 0
-
-function invalidateRequest() {
-  requestSequence += 1
-  loading.value = false
-}
-
-const close = () => {
-  invalidateRequest()
-  loadError.value = ''
-  emit('update:modelValue', false)
-}
+const close = () => emit('update:modelValue', false)
 
 const rangeLabel = computed(() => {
   const minutes = parseTimeRangeMinutes(props.timeRange)
@@ -77,9 +65,7 @@ function buildTimeParams(): Pick<OpsRequestDetailsParams, 'start_time' | 'end_ti
 
 const fetchData = async () => {
   if (!props.modelValue) return
-  const request = ++requestSequence
   loading.value = true
-  loadError.value = ''
   try {
     const params: OpsRequestDetailsParams = {
       ...buildTimeParams(),
@@ -97,15 +83,15 @@ const fetchData = async () => {
     if (typeof props.preset.max_duration_ms === 'number') params.max_duration_ms = props.preset.max_duration_ms
 
     const res = await opsAPI.listRequestDetails(params)
-    if (request !== requestSequence || !props.modelValue) return
     items.value = res.items || []
     total.value = res.total || 0
   } catch (e: any) {
-    if (request !== requestSequence || !props.modelValue) return
     console.error('[OpsRequestDetailsModal] Failed to fetch request details', e)
-    loadError.value = e?.message || t('admin.ops.requestDetails.failedToLoad')
+    appStore.showError(e?.message || t('admin.ops.requestDetails.failedToLoad'))
+    items.value = []
+    total.value = 0
   } finally {
-    if (request === requestSequence && props.modelValue) loading.value = false
+    loading.value = false
   }
 }
 
@@ -117,14 +103,9 @@ watch(
       page.value = 1
       pageSize.value = 10
       fetchData()
-    } else {
-      invalidateRequest()
-      loadError.value = ''
     }
   }
 )
-
-onBeforeUnmount(invalidateRequest)
 
 watch(
   () => [
@@ -187,11 +168,6 @@ const kindBadgeClass = (kind: string) => {
           >
             {{ t('common.refresh') }}
           </button>
-        </div>
-
-        <div v-if="loadError" role="alert" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-          <span>{{ loadError }}</span>
-          <button type="button" class="btn btn-secondary btn-sm" @click="fetchData">{{ t('common.refresh') }}</button>
         </div>
 
         <!-- Loading -->

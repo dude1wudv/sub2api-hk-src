@@ -34,8 +34,6 @@ export function useTableLoader<T, P extends Record<string, any>>(options: TableL
     pages: 0
   })
 
-  let requestVersion = 0
-  let isUnmounted = false
   let abortController: AbortController | null = null
 
   const isAbortError = (error: any) => {
@@ -43,9 +41,10 @@ export function useTableLoader<T, P extends Record<string, any>>(options: TableL
   }
 
   const load = async () => {
-    abortController?.abort()
+    if (abortController) {
+      abortController.abort()
+    }
     const currentController = new AbortController()
-    const currentRequestVersion = ++requestVersion
     abortController = currentController
     loading.value = true
 
@@ -57,18 +56,16 @@ export function useTableLoader<T, P extends Record<string, any>>(options: TableL
         { signal: currentController.signal }
       )
 
-      if (isUnmounted || currentRequestVersion !== requestVersion) return
-
       items.value = response.items || []
       pagination.total = response.total || 0
       pagination.pages = response.pages || 0
     } catch (error) {
-      if (isUnmounted || currentRequestVersion !== requestVersion || isAbortError(error)) return
-
-      console.error('Table load error:', error)
-      throw error
+      if (!isAbortError(error)) {
+        console.error('Table load error:', error)
+        throw error
+      }
     } finally {
-      if (!isUnmounted && currentRequestVersion === requestVersion) {
+      if (abortController === currentController) {
         loading.value = false
       }
     }
@@ -96,8 +93,6 @@ export function useTableLoader<T, P extends Record<string, any>>(options: TableL
   }
 
   onUnmounted(() => {
-    isUnmounted = true
-    requestVersion++
     abortController?.abort()
   })
 

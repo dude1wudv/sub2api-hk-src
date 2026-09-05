@@ -126,35 +126,6 @@ describe('OpsSystemLogTable host support', () => {
     expect(mockCleanupSystemLogs).toHaveBeenCalledWith(expect.objectContaining({ host: 'api-node-2' }))
   })
 
-  it('keeps prior rows and filter values when a refreshed query fails', async () => {
-    const wrapper = mount(OpsSystemLogTable, {
-      global: {
-        stubs: {
-          Select: SelectStub,
-          Pagination: PaginationStub,
-        },
-      },
-    })
-    await flushPromises()
-
-    const hostLabel = wrapper.findAll('label').find((label) => label.text().includes('admin.ops.systemLogs.host'))
-    const hostInput = hostLabel!.get<HTMLInputElement>('input')
-    await hostInput.setValue(' api-node-2 ')
-    mockListSystemLogs.mockRejectedValueOnce(new Error('logs offline'))
-    const searchButton = wrapper.findAll('button').find((button) => button.text() === 'admin.ops.systemLogs.search')
-    await searchButton!.trigger('click')
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('api-node-1')
-    expect(hostInput.element.value).toBe(' api-node-2 ')
-    expect(wrapper.get('[role="alert"]').text()).toContain('admin.ops.systemLogs.loadFailed')
-
-    mockListSystemLogs.mockResolvedValueOnce({ items: [], total: 0, page: 1, page_size: 20 })
-    await wrapper.get('[role="alert"] button').trigger('click')
-    await flushPromises()
-    expect(mockListSystemLogs).toHaveBeenLastCalledWith(expect.objectContaining({ host: 'api-node-2' }))
-  })
-
   it.each([
     ['zh', zhLocale],
     ['en', enLocale],

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { opsAPI, type OpsRuntimeLogConfig, type OpsSystemLog, type OpsSystemLogSinkHealth } from '@/api/admin/ops'
@@ -23,21 +23,10 @@ const props = withDefaults(defineProps<{
 })
 
 const loading = ref(false)
-const loadError = ref('')
 const logs = ref<OpsSystemLog[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
-
-let disposed = false
-let logsRequestSequence = 0
-let healthRequestSequence = 0
-let runtimeConfigRequestSequence = 0
-
-function invalidateRuntimeConfigLoad() {
-  runtimeConfigRequestSequence += 1
-  runtimeLoading.value = false
-}
 
 const health = ref<OpsSystemLogSinkHealth>({
   queue_depth: 0,
@@ -216,40 +205,31 @@ const buildQuery = () => {
 }
 
 const fetchLogs = async () => {
-  const request = ++logsRequestSequence
   loading.value = true
-  loadError.value = ''
   try {
     const res = await opsAPI.listSystemLogs(buildQuery())
-    if (disposed || request !== logsRequestSequence) return
     logs.value = res.items || []
     total.value = res.total || 0
   } catch (err: any) {
-    if (disposed || request !== logsRequestSequence) return
     console.error('[OpsSystemLogTable] Failed to fetch logs', err)
-    loadError.value = err?.response?.data?.detail || t('admin.ops.systemLogs.loadFailed')
+    appStore.showError(err?.response?.data?.detail || t('admin.ops.systemLogs.loadFailed'))
   } finally {
-    if (!disposed && request === logsRequestSequence) loading.value = false
+    loading.value = false
   }
 }
 
 const fetchHealth = async () => {
-  const request = ++healthRequestSequence
   try {
-    const nextHealth = await opsAPI.getSystemLogSinkHealth()
-    if (disposed || request !== healthRequestSequence) return
-    health.value = nextHealth
+    health.value = await opsAPI.getSystemLogSinkHealth()
   } catch {
     // 忽略健康数据读取失败，不影响主流程。
   }
 }
 
 const loadRuntimeConfig = async () => {
-  const request = ++runtimeConfigRequestSequence
   runtimeLoading.value = true
   try {
     const cfg = await opsAPI.getRuntimeLogConfig()
-    if (disposed || request !== runtimeConfigRequestSequence) return
     runtimeConfig.level = cfg.level
     runtimeConfig.enable_sampling = cfg.enable_sampling
     runtimeConfig.sampling_initial = cfg.sampling_initial
@@ -258,15 +238,13 @@ const loadRuntimeConfig = async () => {
     runtimeConfig.stacktrace_level = cfg.stacktrace_level
     runtimeConfig.retention_days = cfg.retention_days
   } catch (err: any) {
-    if (disposed || request !== runtimeConfigRequestSequence) return
     console.error('[OpsSystemLogTable] Failed to load runtime log config', err)
   } finally {
-    if (!disposed && request === runtimeConfigRequestSequence) runtimeLoading.value = false
+    runtimeLoading.value = false
   }
 }
 
 const saveRuntimeConfig = async () => {
-  invalidateRuntimeConfigLoad()
   runtimeSaving.value = true
   try {
     const saved = await opsAPI.updateRuntimeLogConfig({ ...runtimeConfig })
@@ -289,7 +267,6 @@ const saveRuntimeConfig = async () => {
 const resetRuntimeConfig = async () => {
   const ok = window.confirm(t('admin.ops.systemLogs.resetRuntimeConfigConfirm'))
   if (!ok) return
-  invalidateRuntimeConfigLoad()
 
   runtimeSaving.value = true
   try {
@@ -399,13 +376,6 @@ onMounted(async () => {
     filters.platform = props.platformFilter
   }
   await Promise.all([fetchLogs(), fetchHealth(), loadRuntimeConfig()])
-})
-
-onBeforeUnmount(() => {
-  disposed = true
-  logsRequestSequence += 1
-  healthRequestSequence += 1
-  invalidateRuntimeConfigLoad()
 })
 </script>
 
@@ -540,11 +510,6 @@ onBeforeUnmount(() => {
       <button type="button" class="btn btn-secondary btn-sm" @click="resetFilters">{{ t('common.reset') }}</button>
       <button type="button" class="btn btn-danger btn-sm" @click="cleanupCurrentFilter">{{ t('admin.ops.systemLogs.cleanCurrentFilters') }}</button>
       <button type="button" class="btn btn-secondary btn-sm" @click="fetchHealth">{{ t('admin.ops.systemLogs.refreshHealth') }}</button>
-    </div>
-
-    <div v-if="loadError" role="alert" class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-      <span>{{ loadError }}</span>
-      <button type="button" class="btn btn-secondary btn-sm" @click="fetchLogs">{{ t('common.refresh') }}</button>
     </div>
 
     <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-dark-700">

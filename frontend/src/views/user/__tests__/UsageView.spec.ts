@@ -279,6 +279,12 @@ describe('user UsageView', () => {
     await (wrapper.vm as any).exportToCSV()
 
     expect(exportedBlob).not.toBeNull()
+    expect(query).toHaveBeenCalledWith(expect.objectContaining({
+      page_size: 100,
+      sort_by: 'created_at',
+      sort_order: 'desc',
+      native_compaction_v2: true,
+    }))
     expect(clickSpy).toHaveBeenCalled()
     expect(showSuccess).toHaveBeenCalled()
     expect(csvContent.startsWith('\uFEFF')).toBe(true)

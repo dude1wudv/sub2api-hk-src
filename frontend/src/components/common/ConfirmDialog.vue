@@ -61,6 +61,11 @@ const cancelText = computed(() => props.cancelText || t('common.cancel'))
 
 const emit = defineEmits<Emits>()
 
-const handleConfirm = () => emit('confirm')
-const handleCancel = () => emit('cancel')
+const handleConfirm = () => {
+  emit('confirm')
+}
+
+const handleCancel = () => {
+  emit('cancel')
+}
 </script>
