@@ -1,10 +1,6 @@
 <template>
   <Teleport to="body">
-    <div
-      class="pointer-events-none fixed right-4 top-4 z-[9999] space-y-3"
-      aria-live="polite"
-      aria-atomic="true"
-    >
+    <div class="pointer-events-none fixed right-4 top-4 z-[9999] w-[calc(100vw-2rem)] max-w-md space-y-3">
       <TransitionGroup
         enter-active-class="transition ease-out duration-300"
         enter-from-class="opacity-0 translate-x-full"
@@ -16,8 +12,11 @@
         <div
           v-for="toast in toasts"
           :key="toast.id"
+          :role="toast.type === 'error' ? 'alert' : 'status'"
+          :aria-live="toast.type === 'error' ? 'assertive' : 'polite'"
+          aria-atomic="true"
           :class="[
-            'pointer-events-auto min-w-[320px] max-w-md overflow-hidden rounded-lg shadow-lg',
+            'pointer-events-auto w-full overflow-hidden rounded-lg shadow-lg',
             'bg-white dark:bg-dark-800',
             'border-l-4',
             getBorderColor(toast.type)
@@ -42,7 +41,7 @@
                 </p>
                 <p
                   :class="[
-                    'text-sm leading-relaxed',
+                    'break-words text-sm leading-relaxed',
                     toast.title
                       ? 'mt-1 text-gray-600 dark:text-gray-300'
                       : 'text-gray-900 dark:text-white'
@@ -54,9 +53,10 @@
 
               <!-- Close button -->
               <button
+                type="button"
                 @click="removeToast(toast.id)"
-                class="-m-1 flex-shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-dark-700 dark:hover:text-gray-300"
-                aria-label="Close notification"
+                class="-m-1 flex-shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-2 dark:text-gray-500 dark:hover:bg-dark-700 dark:hover:text-gray-300 dark:focus-visible:ring-offset-dark-800"
+                :aria-label="t('common.close')"
               >
                 <Icon name="x" size="sm" />
               </button>
@@ -78,9 +78,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores/app'
 
+const { t } = useI18n()
 const appStore = useAppStore()
 
 const toasts = computed(() => appStore.toasts)

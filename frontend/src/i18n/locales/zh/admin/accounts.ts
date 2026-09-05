@@ -586,6 +586,9 @@ export default {
       bulkActions: {
         selected: '已选择 {count} 个账号',
         selectedAll: '已选择全部 {count} 个账号',
+        selectAllProgress: '正在选择全部结果：已加载 {loaded}/{total} 页',
+        selectedAllScope: '当前筛选结果中的全部 {count} 个账号已选中。',
+        selectedPartialScope: '已单独选择 {count} 个账号，并非全部结果。',
         selectCurrentPage: '本页全选',
         selectAllResults: '全选所有结果（{count}）',
         selectingAll: '正在选择全部结果...',
