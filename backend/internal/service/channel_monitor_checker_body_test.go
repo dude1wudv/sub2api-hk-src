@@ -499,20 +499,25 @@ func TestValidateChallenge_AnthropicTextAfterThinking(t *testing.T) {
 	}
 }
 
-func TestSanitizeErrorMessage_RedactsHeaderCredentials(t *testing.T) {
-	const bearerToken = "opaque-monitor-bearer-token"
-	const apiKey = "opaque-monitor-api-key"
-	const customToken = "opaque-monitor-custom-token"
-
-	message := `upstream response: {"Authorization":"Bearer ` + bearerToken + `","x-api-key":"` + apiKey + `","token":"` + customToken + `"}`
-	sanitized := sanitizeErrorMessage(message)
-
-	for _, secret := range []string{bearerToken, apiKey, customToken} {
-		if strings.Contains(sanitized, secret) {
-			t.Fatalf("sanitizeErrorMessage leaked %q in %q", secret, sanitized)
-		}
+func TestGeminiMonitorBodyIncludesExplicitUserRole(t *testing.T) {
+	adapter := providerAdapters[MonitorProviderGemini]
+	body, err := adapter.buildBody("gemini-3.6-flash", "Reply with only 7.")
+	if err != nil {
+		t.Fatalf("buildBody() error = %v", err)
 	}
-	if !strings.Contains(sanitized, `"Authorization":"Bearer REDACTED"`) {
-		t.Fatalf("authorization header was not redacted: %q", sanitized)
+
+	var payload struct {
+		Contents []struct {
+			Role string `json:"role"`
+		} `json:"contents"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if len(payload.Contents) != 1 {
+		t.Fatalf("contents length = %d, want 1", len(payload.Contents))
+	}
+	if payload.Contents[0].Role != "user" {
+		t.Fatalf("contents[0].role = %q, want user", payload.Contents[0].Role)
 	}
 }

@@ -100,11 +100,19 @@ func abortWithOpenAIQuotaError(c *gin.Context, statusCode int, message string) {
 // GatewayErrorWriter 定义网关错误响应格式（不同协议使用不同格式）
 type GatewayErrorWriter func(c *gin.Context, status int, message string)
 
-// AnthropicErrorWriter 按 Anthropic API 规范输出错误
+// AnthropicErrorWriter 按 Anthropic API 规范输出错误；error.type 随状态码映射
+// （404 -> not_found_error，403 -> permission_error，其余 api_error）。
 func AnthropicErrorWriter(c *gin.Context, status int, message string) {
+	errorType := "api_error"
+	switch status {
+	case http.StatusNotFound:
+		errorType = "not_found_error"
+	case http.StatusForbidden:
+		errorType = "permission_error"
+	}
 	c.JSON(status, gin.H{
 		"type":  "error",
-		"error": gin.H{"type": "permission_error", "message": message},
+		"error": gin.H{"type": errorType, "message": message},
 	})
 }
 
@@ -119,9 +127,7 @@ func GoogleErrorWriter(c *gin.Context, status int, message string) {
 	})
 }
 
-// OpenAIErrorWriter emits the error envelope expected by OpenAI-compatible
-// clients.  Endpoint-specific route groups use this instead of inheriting the
-// repository's historical Anthropic-shaped /v1 group-assignment error.
+// OpenAIErrorWriter emits the OpenAI-compatible group-assignment error envelope.
 func OpenAIErrorWriter(c *gin.Context, status int, message string) {
 	c.JSON(status, gin.H{
 		"error": gin.H{
@@ -129,6 +135,16 @@ func OpenAIErrorWriter(c *gin.Context, status int, message string) {
 			"message": message,
 		},
 	})
+}
+
+// OpenAIModelNotFoundErrorWriter emits the model-level error envelope used by
+// group model allowlist rejections.
+func OpenAIModelNotFoundErrorWriter(c *gin.Context, status int, message string) {
+	c.JSON(status, gin.H{"error": gin.H{
+		"message": message,
+		"type":    "invalid_request_error",
+		"code":    "model_not_found",
+	}})
 }
 
 // RequireGroupAssignment 检查 API Key 是否已分配到分组，
