@@ -3,11 +3,9 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { opsAPI, type OpsRuntimeLogConfig, type OpsSystemLog, type OpsSystemLogSinkHealth } from '@/api/admin/ops'
-import Drawer from '@/components/common/Drawer.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select from '@/components/common/Select.vue'
 import { useAppStore } from '@/stores'
-import { usePersistedTableQuery } from '@/composables/useTablePreferences'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
 const appStore = useAppStore()
@@ -29,8 +27,6 @@ const logs = ref<OpsSystemLog[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
-const selectedLog = ref<OpsSystemLog | null>(null)
-const showLogDrawer = ref(false)
 
 const health = ref<OpsSystemLogSinkHealth>({
   queue_depth: 0,
@@ -68,30 +64,6 @@ const filters = reactive({
   platform: '',
   model: '',
   q: ''
-})
-
-const tableQuery = usePersistedTableQuery({
-  routeId: 'admin-ops',
-  tableId: 'system-logs',
-  filters,
-  filterKeys: [
-    'time_range',
-    'start_time',
-    'end_time',
-    'host',
-    'level',
-    'component',
-    'request_id',
-    'client_request_id',
-    'user_id',
-    'api_key_id',
-    'account_id',
-    'platform',
-    'model',
-    'q'
-  ],
-  page,
-  pageSize
 })
 
 const runtimeLevelOptions = [
@@ -188,64 +160,6 @@ const formatSystemLogDetail = (row: OpsSystemLog) => {
 
   // 用空格拼接，交给 CSS 自动换行，尽量“填满再换行”。
   return parts.join('  ')
-}
-
-const detailFields = (row: OpsSystemLog) => ({
-  ...row,
-  extra: row.extra || {}
-})
-
-const selectedLogJson = computed(() => {
-  if (!selectedLog.value) return ''
-  try {
-    return JSON.stringify(detailFields(selectedLog.value), null, 2)
-  } catch {
-    return String(selectedLog.value.message || '')
-  }
-})
-
-type JsonToken = { value: string; kind: 'key' | 'string' | 'number' | 'boolean' | 'null' | 'plain' }
-
-const selectedLogJsonTokens = computed<JsonToken[]>(() => {
-  const json = selectedLogJson.value
-  const tokenPattern = /("(?:\\.|[^"\\])*")(?=\s*:)|("(?:\\.|[^"\\])*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false)\b|\b(null)\b/g
-  const tokens: JsonToken[] = []
-  let cursor = 0
-  for (const match of json.matchAll(tokenPattern)) {
-    const index = match.index ?? cursor
-    if (index > cursor) tokens.push({ value: json.slice(cursor, index), kind: 'plain' })
-    const value = match[0]
-    const kind: JsonToken['kind'] = match[1]
-      ? 'key'
-      : match[2]
-        ? 'string'
-        : match[3]
-          ? 'number'
-          : match[4]
-            ? 'boolean'
-            : 'null'
-    tokens.push({ value, kind })
-    cursor = index + value.length
-  }
-  if (cursor < json.length) tokens.push({ value: json.slice(cursor), kind: 'plain' })
-  return tokens
-})
-
-const requestMethod = (row: OpsSystemLog) => getExtraString(row.extra, 'method')
-const requestEndpoint = (row: OpsSystemLog) =>
-  getExtraString(row.extra, 'path') || getExtraString(row.extra, 'endpoint')
-const requestStatus = (row: OpsSystemLog) => getExtraString(row.extra, 'status_code')
-const requestLatency = (row: OpsSystemLog) => getExtraString(row.extra, 'latency_ms')
-const requestTokens = (row: OpsSystemLog) =>
-  getExtraString(row.extra, 'total_tokens') ||
-  getExtraString(row.extra, 'token_count') ||
-  getExtraString(row.extra, 'tokens')
-const requestCost = (row: OpsSystemLog) =>
-  getExtraString(row.extra, 'cost') || getExtraString(row.extra, 'cost_usd')
-
-function openLogDetail(row: OpsSystemLog): void {
-  selectedLog.value = row
-  showLogDrawer.value = true
 }
 
 const toRFC3339 = (value: string) => {
@@ -423,7 +337,6 @@ const resetFilters = () => {
   filters.model = ''
   filters.q = ''
   page.value = 1
-  tableQuery.reset()
   fetchLogs()
 }
 
@@ -439,8 +352,6 @@ watch(() => props.refreshToken, () => {
   fetchLogs()
   fetchHealth()
 })
-
-watch([filters, page, pageSize], () => tableQuery.persist(), { deep: true })
 
 const onPageChange = (next: number) => {
   page.value = next
@@ -461,7 +372,6 @@ const applyFilters = () => {
 const hasData = computed(() => logs.value.length > 0)
 
 onMounted(async () => {
-  tableQuery.restore()
   if (props.platformFilter) {
     filters.platform = props.platformFilter
   }
@@ -470,7 +380,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900/60">
+  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-dark-700 dark:bg-dark-900/60">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div>
         <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ t('admin.ops.systemLogs.title') }}</h3>
@@ -606,73 +516,44 @@ onMounted(async () => {
       <div v-if="loading" class="px-4 py-8 text-center text-sm text-gray-500">{{ t('common.loading') }}</div>
       <div v-else-if="!hasData" class="px-4 py-8 text-center text-sm text-gray-500">{{ t('admin.ops.systemLogs.empty') }}</div>
       <div v-else-if="!isDesktopViewport" class="divide-y divide-gray-100 dark:divide-dark-800">
-        <button
-          v-for="row in logs"
-          :key="row.id"
-          type="button"
-          class="block w-full space-y-2 p-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-dark-800/70"
-          @click="openLogDetail(row)"
-        >
+        <div v-for="row in logs" :key="row.id" class="space-y-1.5 p-3">
           <div class="flex items-center justify-between gap-2">
             <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold" :class="levelBadgeClass(row.level)">
               {{ row.level }}
             </span>
             <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatTime(row.created_at) }}</span>
           </div>
-          <div class="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px] text-gray-500 dark:text-gray-400">
-            <span v-if="requestMethod(row)">{{ requestMethod(row) }}</span>
-            <span v-if="requestEndpoint(row)" class="break-all">{{ requestEndpoint(row) }}</span>
-            <span v-if="row.model">{{ row.model }}</span>
-            <span v-if="requestStatus(row)">{{ requestStatus(row) }}</span>
+          <div v-if="row.host" class="truncate text-xs text-gray-500 dark:text-gray-400" :title="row.host">
+            {{ row.host }}
           </div>
           <div class="whitespace-normal break-all text-xs text-gray-700 dark:text-gray-300">
             {{ formatSystemLogDetail(row) }}
           </div>
-        </button>
+        </div>
       </div>
       <div v-else class="overflow-auto">
-        <table class="min-w-[1180px] divide-y divide-gray-200 dark:divide-dark-700">
+        <table class="min-w-full table-fixed divide-y divide-gray-200 dark:divide-dark-700">
           <thead class="bg-gray-50 dark:bg-dark-900">
             <tr>
-              <th class="w-[164px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('admin.ops.systemLogs.time') }}</th>
-              <th class="w-[66px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('console.logs.method') }}</th>
-              <th class="w-[220px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('console.logs.endpoint') }}</th>
-              <th class="w-[150px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('admin.ops.systemLogs.model') }}</th>
-              <th class="w-[110px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('admin.ops.systemLogs.platform') }}</th>
-              <th class="w-[82px] px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('console.logs.latency') }}</th>
-              <th class="w-[82px] px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('console.logs.tokens') }}</th>
-              <th class="w-[82px] px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('console.logs.cost') }}</th>
-              <th class="w-[70px] px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('console.logs.status') }}</th>
-              <th class="w-[76px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('admin.ops.systemLogs.level') }}</th>
-              <th class="min-w-[260px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ t('admin.ops.systemLogs.logDetails') }}</th>
+              <th class="w-[170px] px-3 py-2 text-left text-[11px] font-semibold text-gray-500">{{ t('admin.ops.systemLogs.time') }}</th>
+              <th class="w-[160px] px-3 py-2 text-left text-[11px] font-semibold text-gray-500">{{ t('admin.ops.systemLogs.host') }}</th>
+              <th class="w-[80px] px-3 py-2 text-left text-[11px] font-semibold text-gray-500">{{ t('admin.ops.systemLogs.level') }}</th>
+              <th class="px-3 py-2 text-left text-[11px] font-semibold text-gray-500">{{ t('admin.ops.systemLogs.logDetails') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-dark-800">
-            <tr
-              v-for="row in logs"
-              :key="row.id"
-              class="cursor-pointer align-top transition-colors hover:bg-gray-50 dark:hover:bg-dark-800/70"
-              tabindex="0"
-              @click="openLogDetail(row)"
-              @keydown.enter="openLogDetail(row)"
-              @keydown.space.prevent="openLogDetail(row)"
-            >
-              <td class="whitespace-nowrap px-3 py-2 font-mono text-[11px] text-gray-600 dark:text-gray-300">{{ formatTime(row.created_at) }}</td>
-              <td class="px-3 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ requestMethod(row) || '—' }}</td>
-              <td class="max-w-[220px] truncate px-3 py-2 font-mono text-xs text-gray-700 dark:text-gray-200" :title="requestEndpoint(row)">{{ requestEndpoint(row) || '—' }}</td>
-              <td class="max-w-[150px] truncate px-3 py-2 font-mono text-xs text-gray-700 dark:text-gray-200" :title="row.model || ''">{{ row.model || '—' }}</td>
-              <td class="max-w-[110px] truncate px-3 py-2 font-mono text-xs text-gray-700 dark:text-gray-200" :title="row.platform || ''">{{ row.platform || '—' }}</td>
-              <td class="whitespace-nowrap px-3 py-2 text-right font-mono text-xs text-gray-700 dark:text-gray-200">{{ requestLatency(row) ? `${requestLatency(row)} ms` : '—' }}</td>
-              <td class="whitespace-nowrap px-3 py-2 text-right font-mono text-xs text-gray-700 dark:text-gray-200">{{ requestTokens(row) || '—' }}</td>
-              <td class="whitespace-nowrap px-3 py-2 text-right font-mono text-xs text-gray-700 dark:text-gray-200">{{ requestCost(row) || '—' }}</td>
-              <td class="whitespace-nowrap px-3 py-2 text-right font-mono text-xs text-gray-700 dark:text-gray-200">{{ requestStatus(row) || '—' }}</td>
+            <tr v-for="row in logs" :key="row.id" class="align-top">
+              <td class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300">{{ formatTime(row.created_at) }}</td>
+              <td class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300">
+                <span class="block truncate" :title="row.host || '-'">{{ row.host || '-' }}</span>
+              </td>
               <td class="px-3 py-2 text-xs">
                 <span class="inline-flex rounded-full px-2 py-0.5 font-semibold" :class="levelBadgeClass(row.level)">
                   {{ row.level }}
                 </span>
               </td>
-              <td class="max-w-[420px] px-3 py-2 text-xs text-gray-700 dark:text-gray-300">
-                <span class="line-clamp-2">{{ formatSystemLogDetail(row) }}</span>
+              <td class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-normal break-all">
+                {{ formatSystemLogDetail(row) }}
               </td>
             </tr>
           </tbody>
@@ -686,57 +567,5 @@ onMounted(async () => {
         @update:page-size="onPageSizeChange"
       />
     </div>
-  <Drawer
-    v-model:show="showLogDrawer"
-    :title="selectedLog?.request_id || `#${selectedLog?.id ?? ''}`"
-    :width="560"
-    :close-label="t('common.close')"
-  >
-    <div v-if="selectedLog" class="space-y-5">
-      <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
-        <div>
-          <dt class="font-medium text-gray-500 dark:text-gray-400">{{ t('admin.ops.systemLogs.time') }}</dt>
-          <dd class="mt-1 font-mono text-gray-900 dark:text-white">{{ formatTime(selectedLog.created_at) }}</dd>
-        </div>
-        <div>
-          <dt class="font-medium text-gray-500 dark:text-gray-400">{{ t('admin.ops.systemLogs.level') }}</dt>
-          <dd class="mt-1">
-            <span class="inline-flex rounded-full px-2 py-0.5 font-semibold" :class="levelBadgeClass(selectedLog.level)">
-              {{ selectedLog.level }}
-            </span>
-          </dd>
-        </div>
-        <div v-if="selectedLog.component">
-          <dt class="font-medium text-gray-500 dark:text-gray-400">{{ t('admin.ops.systemLogs.component') }}</dt>
-          <dd class="mt-1 font-mono text-gray-900 dark:text-white">{{ selectedLog.component }}</dd>
-        </div>
-        <div v-if="selectedLog.host">
-          <dt class="font-medium text-gray-500 dark:text-gray-400">{{ t('admin.ops.systemLogs.host') }}</dt>
-          <dd class="mt-1 font-mono text-gray-900 dark:text-white">{{ selectedLog.host }}</dd>
-        </div>
-      </dl>
-
-      <div>
-        <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ t('admin.ops.systemLogs.logDetails') }}</h4>
-        <p class="mt-2 whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-100">{{ selectedLog.message }}</p>
-      </div>
-
-      <div>
-        <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ t('console.logs.json') }}</h4>
-        <pre class="mt-2 max-h-[60vh] overflow-auto rounded-lg border border-gray-200 bg-gray-950 p-4 font-mono text-xs leading-5 dark:border-dark-700"><code><span
-          v-for="(token, index) in selectedLogJsonTokens"
-          :key="index"
-          :class="{
-            'text-indigo-300': token.kind === 'key',
-            'text-emerald-300': token.kind === 'string',
-            'text-amber-300': token.kind === 'number',
-            'text-sky-300': token.kind === 'boolean' || token.kind === 'null',
-            'text-gray-300': token.kind === 'plain'
-          }"
-        >{{ token.value }}</span></code></pre>
-      </div>
-    </div>
-  </Drawer>
   </section>
 </template>
-

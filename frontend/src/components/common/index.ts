@@ -9,9 +9,6 @@ export { default as LoadingSpinner } from './LoadingSpinner.vue'
 export { default as EmptyState } from './EmptyState.vue'
 export { default as LocaleSwitcher } from './LocaleSwitcher.vue'
 export { default as ExportProgressDialog } from './ExportProgressDialog.vue'
-export { default as Drawer } from './Drawer.vue'
-export { default as MoreMenu } from './MoreMenu.vue'
-export { default as SavedFilters } from './SavedFilters.vue'
 
 // Export types
 export type { Column } from './types'

@@ -1,8 +1,8 @@
 <template>
-  <header class="workspace-header sticky top-0 z-30 border-b">
-    <div class="flex h-[60px] items-center justify-between gap-2 px-3 md:px-6">
+  <header class="workspace-header glass sticky top-0 z-30 border-b">
+    <div class="flex h-16 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
-      <div class="flex min-w-0 items-center gap-2 sm:gap-4">
+      <div class="flex shrink-0 items-center gap-2 sm:gap-4">
         <button
           @click="toggleMobileSidebar"
           class="btn-ghost btn-icon lg:hidden"
@@ -13,20 +13,18 @@
           <Icon name="menu" size="md" />
         </button>
 
-        <nav class="header-page-title flex min-w-0 items-center gap-2 text-[13px]" :aria-label="t('console.breadcrumb')">
-          <router-link :to="authStore.isAdmin ? '/admin/dashboard' : '/dashboard'" class="hidden shrink-0 text-gray-500 hover:text-gray-900 dark:hover:text-white xl:block">{{ appStore.siteName }}</router-link>
-          <span class="hidden text-gray-400 xl:block" aria-hidden="true">/</span>
-          <h1 class="truncate font-medium text-gray-900 dark:text-white">{{ pageTitle }}</h1>
-        </nav>
+        <div class="hidden lg:block">
+          <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
+            {{ pageTitle }}
+          </h1>
+          <p v-if="pageDescription" class="text-xs text-gray-500 dark:text-dark-300">
+            {{ pageDescription }}
+          </p>
+        </div>
       </div>
 
       <!-- Right: Announcements + Docs + Language + Subscriptions + Balance + User Dropdown -->
       <div class="flex min-w-0 items-center gap-1 sm:gap-3">
-        <button type="button" class="command-trigger btn-ghost flex items-center gap-2 rounded-md px-2 py-1.5" :aria-label="t('console.searchPages')" aria-haspopup="dialog" aria-keyshortcuts="Control+k Meta+k" @click="emit('openCommand')">
-          <Icon name="search" size="sm" />
-          <span class="hidden text-xs 2xl:inline">{{ t('console.searchPages') }}</span>
-          <kbd class="hidden rounded border border-gray-200 px-1 text-[11px] text-gray-500 dark:border-dark-600 xl:inline">{{ commandShortcut }}</kbd>
-        </button>
         <AppearanceSwitcher />
         <!-- Announcement Bell -->
         <AnnouncementBell v-if="user" />
@@ -62,7 +60,7 @@
         <!-- Balance Display -->
         <div
           v-if="user"
-          class="header-balance group relative hidden items-center gap-2 rounded-md border border-gray-200 px-2.5 py-1.5 dark:border-dark-700 sm:flex"
+          class="group relative hidden items-center gap-2 rounded-xl bg-primary-50 px-3 py-1.5 dark:bg-primary-900/20 sm:flex"
         >
           <svg
             class="h-4 w-4 text-primary-600 dark:text-primary-400"
@@ -77,7 +75,7 @@
               d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"
             />
           </svg>
-          <span class="font-mono text-[13px] font-medium text-gray-700 dark:text-gray-200">
+          <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">
             {{ formatHeaderMoney(availableBalance) }}
           </span>
           <span
@@ -110,13 +108,10 @@
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
-            class="header-account flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
+            class="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
             :aria-label="t('common.userMenu')"
-            :aria-expanded="dropdownOpen"
-            aria-controls="header-user-dropdown"
-            @keydown.esc="closeDropdown"
           >
-            <div class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-gray-200 text-xs font-semibold text-gray-700 dark:bg-dark-700 dark:text-gray-200">
+            <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-sm font-medium text-white shadow-sm">
               <img
                 v-if="avatarUrl"
                 :src="avatarUrl"
@@ -125,7 +120,7 @@
               >
               <span v-else>{{ userInitials }}</span>
             </div>
-            <div class="hidden text-left 2xl:block">
+            <div class="hidden text-left md:block">
               <div class="text-sm font-medium text-gray-900 dark:text-white">
                 {{ displayName }}
               </div>
@@ -138,7 +133,7 @@
 
           <!-- Dropdown Menu -->
           <transition name="dropdown">
-            <div v-if="dropdownOpen" id="header-user-dropdown" class="dropdown right-0 mt-2 w-56" @keydown.esc="closeDropdown">
+            <div v-if="dropdownOpen" class="dropdown right-0 mt-2 w-56">
               <!-- User Info -->
               <div class="border-b border-gray-100 px-4 py-3 dark:border-dark-700">
                 <div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -271,8 +266,6 @@ import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 
-const emit = defineEmits<{ openCommand: [] }>()
-const commandShortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
@@ -336,6 +329,13 @@ const pageTitle = computed(() => {
   return (route.meta.title as string) || ''
 })
 
+const pageDescription = computed(() => {
+  const descKey = route.meta.descriptionKey as string
+  if (descKey) {
+    return t(descKey)
+  }
+  return (route.meta.description as string) || ''
+})
 
 function toggleMobileSidebar() {
   appStore.toggleMobileSidebar()
@@ -388,15 +388,12 @@ onBeforeUnmount(() => {
 <style scoped>
 .dropdown-enter-active,
 .dropdown-leave-active {
-  transition: opacity 160ms ease-out, transform 160ms ease-out;
+  transition: all 0.2s ease;
 }
 
 .dropdown-enter-from,
 .dropdown-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
-}
-@media (prefers-reduced-motion: reduce) {
-  .dropdown-enter-active, .dropdown-leave-active { transition: none; }
+  transform: scale(0.95) translateY(-4px);
 }
 </style>

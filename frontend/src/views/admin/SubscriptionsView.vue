@@ -176,8 +176,6 @@
           :server-side-sort="true"
           default-sort-key="created_at"
           default-sort-order="desc"
-          preference-route="admin-billing"
-          preference-table="subscriptions"
           @sort="handleSort"
         >
           <template #cell-user="{ row }">
@@ -333,7 +331,7 @@
                   !row.group?.weekly_limit_usd &&
                   !row.group?.monthly_limit_usd
                 "
-                class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-900/60 dark:bg-emerald-950/20"
+                class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 px-3 py-2 dark:from-emerald-900/20 dark:to-teal-900/20"
               >
                 <span class="text-lg text-emerald-600 dark:text-emerald-400">∞</span>
                 <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">

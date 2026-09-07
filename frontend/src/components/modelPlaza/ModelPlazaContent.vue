@@ -2,14 +2,14 @@
   <div class="space-y-5">
     <!-- 页头(独立形态下展示标题;后台形态 AppHeader 已有页面标题) -->
     <div v-if="!embedded">
-      <h1 class="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white sm:text-[28px]">{{ t('modelPlaza.title') }}</h1>
-      <p class="mt-1.5 max-w-2xl text-sm text-gray-500 dark:text-dark-400">{{ t('modelPlaza.description') }}</p>
+      <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">{{ t('modelPlaza.title') }}</h1>
+      <p class="mt-1.5 text-sm text-gray-500 dark:text-dark-400">{{ t('modelPlaza.description') }}</p>
     </div>
 
     <!-- 全局价格说明(管理员配置,Markdown) -->
     <div
       v-if="descriptionHtml"
-      class="plaza-description rounded-lg border border-gray-200 bg-white px-5 py-4 text-sm shadow-sm dark:border-dark-700 dark:bg-dark-900/45"
+      class="plaza-description rounded-2xl border border-gray-100 bg-white px-5 py-4 text-sm shadow-card dark:border-dark-700/50 dark:bg-dark-800/50"
       v-html="descriptionHtml"
     ></div>
 
@@ -54,7 +54,7 @@
       </div>
       <div
         v-else
-        class="rounded-lg border border-dashed border-gray-300 px-5 py-12 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400"
+        class="rounded-2xl border border-dashed border-gray-300 px-5 py-12 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400"
       >
         {{ searchActive ? t('modelPlaza.noSearchResult') : t('modelPlaza.empty') }}
       </div>

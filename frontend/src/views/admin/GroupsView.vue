@@ -49,12 +49,6 @@
             <div
               class="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3 lg:w-auto"
             >
-              <SavedFilters
-                :items="groupSavedFilters.savedFilters.value"
-                @save="name => groupSavedFilters.save(name, filters)"
-                @apply="applySavedGroupFilters"
-                @remove="groupSavedFilters.remove"
-              />
               <button
                 @click="loadGroups"
                 :disabled="loading"
@@ -68,6 +62,38 @@
                   :class="loading ? 'animate-spin' : ''"
                 />
               </button>
+              <div class="relative" ref="columnDropdownRef">
+                <button
+                  @click="showColumnDropdown = !showColumnDropdown"
+                  class="btn btn-secondary px-3"
+                  :title="t('admin.groups.columnSettings')"
+                >
+                  <Icon name="grid" size="md" class="mr-2" />
+                  <span class="hidden md:inline">{{
+                    t("admin.groups.columnSettings")
+                  }}</span>
+                </button>
+                <div
+                  v-if="showColumnDropdown"
+                  class="absolute right-0 top-full z-50 mt-2 max-h-80 w-52 overflow-y-auto rounded-xl border border-gray-200 bg-white/95 py-1.5 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-800/95"
+                >
+                  <button
+                    v-for="col in toggleableColumns"
+                    :key="col.key"
+                    @click="toggleColumn(col.key)"
+                    class="flex min-h-10 w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
+                  >
+                    <span>{{ col.label }}</span>
+                    <Icon
+                      v-if="isColumnVisible(col.key)"
+                      name="check"
+                      size="sm"
+                      class="text-primary-600 dark:text-primary-400"
+                      :stroke-width="2"
+                    />
+                  </button>
+                </div>
+              </div>
               <button
                 @click="openSortModal"
                 class="btn btn-secondary"
@@ -91,30 +117,18 @@
 
       <template #table>
         <DataTable
-          :columns="allColumns"
+          :columns="columns"
           :data="groups"
           :loading="loading"
           :server-side-sort="true"
           default-sort-key="sort_order"
           default-sort-order="asc"
           @sort="handleSort"
-          preference-route="admin"
-          preference-table="groups"
-          :default-hidden-columns="DEFAULT_HIDDEN_COLUMNS"
-          @visible-columns-change="handleVisibleColumnsChange"
         >
-          <template #cell-name="{ row, value }">
-            <div class="flex min-w-0 items-center gap-2">
-              <span class="truncate font-medium text-gray-900 dark:text-white">{{ value }}</span>
-              <button
-                type="button"
-                class="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-dark-700 dark:hover:text-primary-300"
-                :title="t('admin.groups.modelRouting.title')"
-                @click="openRoutingDiagram(row)"
-              >
-                <Icon name="arrowRight" size="xs" />
-              </button>
-            </div>
+          <template #cell-name="{ value }">
+            <span class="font-medium text-gray-900 dark:text-white">{{
+              value
+            }}</span>
           </template>
 
           <template #cell-id="{ value }">
@@ -451,14 +465,6 @@
         />
       </template>
     </TablePageLayout>
-    <BaseDialog
-      :show="showRoutingDiagram"
-      :title="t('admin.groups.modelRouting.title')"
-      width="wide"
-      @close="showRoutingDiagram = false"
-    >
-      <GroupRoutingDiagram v-if="routingDiagramGroup" :group="routingDiagramGroup" />
-    </BaseDialog>
 
     <!-- Create Group Modal -->
     <BaseDialog
@@ -4564,7 +4570,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { createStableObjectKeyResolver } from "@/utils/stableObjectKey";
 import { useAppStore } from "@/stores/app";
 import { useOnboardingStore } from "@/stores/onboarding";
 import { adminAPI } from "@/api/admin";
@@ -4596,7 +4601,6 @@ import PlatformIcon from "@/components/common/PlatformIcon.vue";
 import Icon from "@/components/icons/Icon.vue";
 import GroupRateMultipliersModal from "@/components/admin/group/GroupRateMultipliersModal.vue";
 import GroupRPMOverridesModal from "@/components/admin/group/GroupRPMOverridesModal.vue";
-import GroupRoutingDiagram from "@/components/admin/group/GroupRoutingDiagram.vue";
 import GroupCapacityBadge from "@/components/common/GroupCapacityBadge.vue";
 import ReasoningEffortPolicyFields from "@/components/admin/group/ReasoningEffortPolicyFields.vue";
 import CodexManifestAccountsField from "@/components/admin/group/CodexManifestAccountsField.vue";
@@ -4612,7 +4616,7 @@ import {
 } from "@/components/admin/channel/types";
 import type { ChannelModelPricing } from "@/api/admin/channels";
 import { VueDraggable } from "vue-draggable-plus";
-import { usePersistedTableQuery, useSavedTableFilters } from "@/composables/useTablePreferences";
+import { createStableObjectKeyResolver } from "@/utils/stableObjectKey";
 import { extractApiErrorMessage } from "@/utils/apiError";
 import { useKeyedDebouncedSearch } from "@/composables/useKeyedDebouncedSearch";
 import { getPersistedPageSize } from "@/composables/usePersistedPageSize";
@@ -4628,7 +4632,6 @@ import {
   normalizeGroupOpenAIFast,
   supportsGroupOpenAIFast,
 } from "./groupsOpenAIFast";
-import SavedFilters from "@/components/common/SavedFilters.vue";
 import {
   buildModelsListConfig,
   createModelsListState as createInitialModelsListState,
@@ -4740,13 +4743,20 @@ const { t } = useI18n();
 const appStore = useAppStore();
 const onboardingStore = useOnboardingStore();
 
+const ALWAYS_VISIBLE_COLUMNS = new Set(["name", "actions"]);
+// Default hidden columns (hidden on first load / after schema bumps).
 const DEFAULT_HIDDEN_COLUMNS = ["id"];
-const hiddenColumns = reactive<Set<string>>(new Set(DEFAULT_HIDDEN_COLUMNS));
-let receivedColumnVisibility = false;
+const HIDDEN_COLUMNS_KEY = "group-hidden-columns";
+// Bump when adding new default-hidden columns so existing admins pick them up once.
+const COLUMN_SETTINGS_VERSION_KEY = "group-column-settings-version";
+const COLUMN_SETTINGS_VERSION = 2;
+const VERSION_NEW_HIDDEN_COLUMNS: Record<number, string[]> = {
+  2: ["id"],
+};
 
 const allColumns = computed<Column[]>(() => [
-  { key: "name", label: t("admin.groups.columns.name"), sortable: true, hideable: false },
-  { key: "id", label: t("admin.groups.columns.id"), sortable: true, mono: true },
+  { key: "name", label: t("admin.groups.columns.name"), sortable: true },
+  { key: "id", label: t("admin.groups.columns.id"), sortable: true },
   {
     key: "platform",
     label: t("admin.groups.columns.platform"),
@@ -4779,33 +4789,120 @@ const allColumns = computed<Column[]>(() => [
   },
   { key: "usage", label: t("admin.groups.columns.usage"), sortable: false },
   { key: "status", label: t("admin.groups.columns.status"), sortable: true },
-  { key: "actions", label: t("admin.groups.columns.actions"), sortable: false, hideable: false },
+  { key: "actions", label: t("admin.groups.columns.actions"), sortable: false },
 ]);
+
+const toggleableColumns = computed(() =>
+  allColumns.value.filter((col) => !ALWAYS_VISIBLE_COLUMNS.has(col.key)),
+);
+const hiddenColumns = reactive<Set<string>>(new Set());
+const showColumnDropdown = ref(false);
+const columnDropdownRef = ref<HTMLElement | null>(null);
+
+const getValidHiddenColumnKeys = () =>
+  new Set(toggleableColumns.value.map((col) => col.key));
+
+const loadSavedColumns = () => {
+  hiddenColumns.clear();
+  try {
+    const saved = localStorage.getItem(HIDDEN_COLUMNS_KEY);
+    const validKeys = getValidHiddenColumnKeys();
+
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        parsed
+          .filter(
+            (key): key is string =>
+              typeof key === "string" && validKeys.has(key),
+          )
+          .forEach((key) => hiddenColumns.add(key));
+      }
+
+      // Existing admins: auto-hide columns newly added as default-hidden.
+      const storedVersion = Number(
+        localStorage.getItem(COLUMN_SETTINGS_VERSION_KEY) ?? "1",
+      );
+      if (storedVersion < COLUMN_SETTINGS_VERSION) {
+        let mutated = false;
+        for (let v = storedVersion + 1; v <= COLUMN_SETTINGS_VERSION; v++) {
+          for (const key of VERSION_NEW_HIDDEN_COLUMNS[v] ?? []) {
+            if (validKeys.has(key) && !hiddenColumns.has(key)) {
+              hiddenColumns.add(key);
+              mutated = true;
+            }
+          }
+        }
+        if (mutated) {
+          saveColumnsToStorage();
+        } else {
+          localStorage.setItem(
+            COLUMN_SETTINGS_VERSION_KEY,
+            String(COLUMN_SETTINGS_VERSION),
+          );
+        }
+      }
+    } else {
+      DEFAULT_HIDDEN_COLUMNS.forEach((key) => {
+        if (validKeys.has(key)) hiddenColumns.add(key);
+      });
+      saveColumnsToStorage();
+    }
+  } catch (error) {
+    console.error("Failed to load group column settings:", error);
+    DEFAULT_HIDDEN_COLUMNS.forEach((key) => hiddenColumns.add(key));
+  }
+};
+
+const saveColumnsToStorage = () => {
+  try {
+    const validKeys = getValidHiddenColumnKeys();
+    const keys = [...hiddenColumns].filter((key) => validKeys.has(key));
+    localStorage.setItem(HIDDEN_COLUMNS_KEY, JSON.stringify(keys));
+    localStorage.setItem(
+      COLUMN_SETTINGS_VERSION_KEY,
+      String(COLUMN_SETTINGS_VERSION),
+    );
+  } catch (error) {
+    console.error("Failed to save group column settings:", error);
+  }
+};
+
 const isColumnVisible = (key: string) => !hiddenColumns.has(key);
 const hasVisibleUsageSummaryConsumer = computed(
   () => isColumnVisible("usage") || isColumnVisible("billing_type"),
 );
 const hasVisibleCapacityColumn = computed(() => isColumnVisible("capacity"));
-const handleVisibleColumnsChange = (visibleKeys: string[]) => {
-  const visible = new Set(visibleKeys);
-  const revealed = visibleKeys.filter((key) => hiddenColumns.has(key));
-  hiddenColumns.clear();
-  for (const column of allColumns.value) {
-    if (!visible.has(column.key)) hiddenColumns.add(column.key);
+
+const toggleColumn = (key: string) => {
+  const validKeys = getValidHiddenColumnKeys();
+  if (!validKeys.has(key)) return;
+
+  const wasHidden = hiddenColumns.has(key);
+  if (wasHidden) {
+    hiddenColumns.delete(key);
+  } else {
+    hiddenColumns.add(key);
   }
-  if (!receivedColumnVisibility) {
-    receivedColumnVisibility = true;
-    return;
+  saveColumnsToStorage();
+
+  if (wasHidden && (key === "usage" || key === "billing_type")) {
+    loadUsageSummary();
   }
-  if (revealed.some((key) => key === "usage" || key === "billing_type")) {
-    void loadUsageSummary();
-  }
-  if (revealed.includes("capacity")) {
-    void loadCapacitySummary();
+  if (wasHidden && key === "capacity") {
+    loadCapacitySummary();
   }
 };
 
+const columns = computed<Column[]>(() =>
+  allColumns.value.filter(
+    (col) => ALWAYS_VISIBLE_COLUMNS.has(col.key) || !hiddenColumns.has(col.key),
+  ),
+);
 
+if (typeof window !== "undefined") {
+  loadSavedColumns();
+}
 
 // Filter options
 const statusOptions = computed(() => [
@@ -5011,7 +5108,6 @@ const filters = reactive({
   platform: "",
   status: "",
   is_exclusive: "",
-  search: "",
 });
 const pagination = reactive({
   page: 1,
@@ -5023,15 +5119,6 @@ const sortState = reactive({
   sort_by: "sort_order",
   sort_order: "asc" as "asc" | "desc",
 });
-const groupTableQuery = usePersistedTableQuery({
-  routeId: "admin",
-  tableId: "groups",
-  filters,
-  filterKeys: ["platform", "status", "is_exclusive", "search"],
-  pagination,
-});
-watch(searchQuery, (value) => { filters.search = value; });
-watch(filters, () => groupTableQuery.persist(), { deep: true });
 
 let abortController: AbortController | null = null;
 
@@ -5047,25 +5134,10 @@ let liveCapabilityRequest: Promise<{
   supported: boolean;
   reason?: string;
 }> | null = null;
-const groupSavedFilters = useSavedTableFilters({
-  routeId: "admin",
-  tableId: "groups",
-  filterKeys: ["platform", "status", "is_exclusive", "search"] as const,
-});
-const applySavedGroupFilters = (id: string) => {
-  const saved = groupSavedFilters.apply(id);
-  if (!saved) return;
-  Object.assign(filters, saved);
-  searchQuery.value = filters.search;
-  pagination.page = 1;
-  loadGroups();
-}
 const showSortModal = ref(false);
 const submitting = ref(false);
 const sortSubmitting = ref(false);
 const editingGroup = ref<AdminGroup | null>(null);
-const showRoutingDiagram = ref(false);
-const routingDiagramGroup = ref<AdminGroup | null>(null);
 const deletingGroup = ref<AdminGroup | null>(null);
 const duplicatingGroupIds = reactive(new Set<number>());
 const showRateMultipliersModal = ref(false);
@@ -5939,21 +6011,18 @@ const handleSearch = () => {
   searchTimeout = setTimeout(() => {
     pagination.page = 1;
     loadGroups();
-    groupTableQuery.persist();
   }, 300);
 };
 
 const handlePageChange = (page: number) => {
   pagination.page = page;
   loadGroups();
-  groupTableQuery.persist();
 };
 
 const handlePageSizeChange = (pageSize: number) => {
   pagination.page_size = pageSize;
   pagination.page = 1;
   loadGroups();
-  groupTableQuery.persist();
 };
 
 const handleSort = (key: string, order: 'asc' | 'desc') => {
@@ -5961,7 +6030,6 @@ const handleSort = (key: string, order: 'asc' | 'desc') => {
   sortState.sort_order = order;
   pagination.page = 1;
   loadGroups();
-  groupTableQuery.persist();
 };
 
 const openCreateModal = () => {
@@ -6227,10 +6295,6 @@ const handleCreateGroup = async () => {
   }
 };
 
-const openRoutingDiagram = (group: AdminGroup) => {
-  routingDiagramGroup.value = group;
-  showRoutingDiagram.value = true;
-};
 const handleEdit = async (group: AdminGroup) => {
   editingGroup.value = group;
   editForm.name = group.name;
@@ -6988,6 +7052,9 @@ const handleClickOutside = (event: MouseEvent) => {
       showAccountDropdown.value[key] = false;
     });
   }
+  if (columnDropdownRef.value && !columnDropdownRef.value.contains(target)) {
+    showColumnDropdown.value = false;
+  }
 };
 
 // 打开排序弹窗
@@ -7035,11 +7102,9 @@ const saveSortOrder = async () => {
 };
 
 onMounted(() => {
-  if (typeof window === "undefined" || !window.location.search) {
-    groupTableQuery.restore();
-    searchQuery.value = filters.search;
-  }
   loadGroups();
+  void loadLiveCapability();
+  loadModelsListCandidates("create", 0, createForm.platform);
   document.addEventListener("click", handleClickOutside);
 });
 

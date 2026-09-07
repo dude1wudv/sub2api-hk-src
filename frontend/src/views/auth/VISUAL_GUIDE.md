@@ -1,6 +1,6 @@
 # Authentication Views Visual Guide
 
-This is a historical visual reference. The current implementation uses the shared Developer Console design system in `src/styles/themes/workspace.css` and `src/style.css`: compact centered authentication forms, neutral charcoal/light surfaces, restrained indigo actions, 6–8px controls, semantic states, and dark/light/system appearance. The gradient, large-radius, and decorative specifications below are superseded; authentication APIs, fields, and security flows remain unchanged.
+This document describes the visual design and layout of the authentication views.
 
 ## Layout Structure
 

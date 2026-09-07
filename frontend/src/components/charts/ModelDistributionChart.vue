@@ -96,22 +96,23 @@
       </div>
     </div>
 
-    <Skeleton v-if="activeView === 'model_distribution' && loading" height="224px" />
+    <div v-if="activeView === 'model_distribution' && loading" class="flex h-48 items-center justify-center">
+      <LoadingSpinner />
+    </div>
     <div
       v-else-if="activeView === 'model_distribution' && displayModelStats.length > 0 && chartData"
-      class="flex flex-col gap-4"
+      class="flex flex-col items-center gap-4 sm:flex-row sm:gap-6"
     >
-      <div class="h-24 w-24 self-center">
+      <div class="h-44 w-44 shrink-0 sm:h-48 sm:w-48">
         <Doughnut :data="chartData" :options="doughnutOptions" />
       </div>
-      <div class="max-h-64 w-full min-w-0 overflow-auto">
-        <table class="w-full text-[13px]">
+      <div class="max-h-48 w-full min-w-0 flex-1 overflow-auto">
+        <table class="w-full text-xs">
           <thead>
             <tr class="text-gray-400 dark:text-dark-400">
               <th class="pb-2 text-left font-medium">{{ t('admin.dashboard.model') }}</th>
               <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.requests') }}</th>
               <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.tokens') }}</th>
-              <th class="pb-2 text-right font-medium">{{ t('dashboard.cache') }}</th>
               <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.actual') }}</th>
               <th v-if="showAccountCost" class="pb-2 text-right font-medium">{{ t('admin.dashboard.accountCost') }}</th>
               <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.standard') }}</th>
@@ -132,9 +133,7 @@
                   <span class="inline-flex items-center gap-1">
                     <svg v-if="enableBreakdown && expandedKey === `model-${model.model}`" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     <svg v-else-if="enableBreakdown" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    <button v-if="drilldown" type="button" class="text-primary-600 hover:underline dark:text-primary-400" @click.stop="emit('model-click', model.model)">{{ model.model }}</button>
-                    <button v-else-if="enableBreakdown" type="button" :aria-expanded="expandedKey === `model-${model.model}`" @click.stop="toggleBreakdown('model', model.model)">{{ model.model }}</button>
-                    <template v-else>{{ model.model }}</template>
+                    {{ model.model }}
                   </span>
                 </td>
                 <td class="py-1.5 text-right font-mono tabular-nums text-gray-600 dark:text-dark-200">
@@ -143,7 +142,6 @@
                 <td class="py-1.5 text-right font-mono tabular-nums text-gray-600 dark:text-dark-200">
                   {{ formatTokens(model.total_tokens) }}
                 </td>
-                <td class="py-1.5 text-right font-mono tabular-nums text-gray-600 dark:text-dark-200" :title="`${t('usage.cacheCreationTokensLabel')}: ${model.cache_creation_tokens} / ${t('usage.cacheReadTokensLabel')}: ${model.cache_read_tokens}`">{{ formatTokens(model.cache_creation_tokens + model.cache_read_tokens) }}</td>
                 <td class="py-1.5 text-right font-mono font-medium tabular-nums text-primary-700 dark:text-primary-300">
                   ${{ formatCost(model.actual_cost) }}
                 </td>
@@ -250,7 +248,6 @@ import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Doughnut } from 'vue-chartjs'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import Skeleton from '@/components/common/Skeleton.vue'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
 import type { ModelStat, UserSpendingRankingItem, UserBreakdownItem } from '@/types'
 import { getUserBreakdown } from '@/api/admin/dashboard'
@@ -277,7 +274,6 @@ const props = withDefaults(defineProps<{
   showSourceToggle?: boolean
   showMetricToggle?: boolean
   enableBreakdown?: boolean
-  drilldown?: boolean
   showAccountCost?: boolean
   rankingLoading?: boolean
   rankingError?: boolean
@@ -335,16 +331,28 @@ const toggleBreakdown = async (type: string, id: string) => {
 const emit = defineEmits<{
   'update:metric': [value: DistributionMetric]
   'update:source': [value: ModelSource]
-  'model-click': [model: string]
   'ranking-click': [item: UserSpendingRankingItem]
 }>()
 
 const enableRankingView = computed(() => props.enableRankingView)
 const showAccountCost = computed(() => props.showAccountCost)
-const distributionColspan = computed(() => showAccountCost.value ? 7 : 6)
+const distributionColspan = computed(() => showAccountCost.value ? 6 : 5)
 const activeView = ref<'model_distribution' | 'spending_ranking'>('model_distribution')
 
-const chartColors = ['#6366F1', '#818CF8', '#A1A1AA', '#64748B', '#C7D2FE', '#71717A', '#94A3B8', '#52525B']
+const chartColors = [
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
+  '#14b8a6',
+  '#f97316',
+  '#6366f1',
+  '#84cc16',
+  '#06b6d4',
+  '#a855f7'
+]
 
 const displayModelStats = computed(() => {
   const sourceStats = props.source === 'upstream'

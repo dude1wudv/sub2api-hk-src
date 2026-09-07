@@ -63,8 +63,6 @@
           :server-side-sort="true"
           default-sort-key="id"
           default-sort-order="desc"
-          preference-route="admin-billing"
-          preference-table="redeem-codes"
           @sort="handleSort"
         >
           <template #header-select>

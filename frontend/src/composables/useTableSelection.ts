@@ -1,6 +1,5 @@
 import { computed, ref, type Ref } from 'vue'
 
-
 interface UseTableSelectionOptions<T> {
   rows: Ref<T[]>
   getId: (row: T) => number

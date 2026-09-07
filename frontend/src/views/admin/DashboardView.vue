@@ -1,16 +1,23 @@
 <template>
   <AppLayout>
     <div class="operations-dashboard space-y-6">
-      <header class="flex flex-wrap items-center justify-between gap-3">
+      <section class="workspace-hero">
         <div>
-          <h1 class="text-2xl font-semibold tracking-tight">{{ t('nav.dashboard') }}</h1>
-          <p class="mt-1 text-sm text-gray-500 dark:text-dark-300">{{ t('console.analytics.adminOverview') }}</p>
+          <p class="hero-eyebrow">OPERATIONS WORKSPACE / COMMAND CENTER</p>
+          <h2>{{ zh ? '全局在眼前，运营有章法。' : 'A clear view. A confident operation.' }}</h2>
+          <p class="hero-description">{{ zh ? '聚合资源、流量与成本，从全局洞察到精细调度，让每一个运营决策有据可依。' : 'Resources, traffic and costs in one operational view. Move from insight to action with clarity.' }}</p>
+          <div class="hero-actions">
+            <router-link to="/admin/accounts" class="btn btn-primary"><Icon name="server" size="sm" />{{ t('nav.accounts') }}</router-link>
+            <button class="btn btn-secondary" :disabled="loading || chartsLoading" @click="loadDashboardStats"><Icon name="refresh" size="sm" />{{ t('common.refresh') }}</button>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <router-link to="/admin/accounts" class="btn btn-primary"><Icon name="server" size="sm" />{{ t('nav.accounts') }}</router-link>
-          <button class="btn btn-secondary" :disabled="loading || chartsLoading" @click="loadDashboardStats"><Icon name="refresh" size="sm" />{{ t('common.refresh') }}</button>
+        <div class="hero-instrument">
+          <span>{{ t('admin.dashboard.performance') }}</span>
+          <strong>{{ stats ? formatTokens(stats.rpm) : '—' }}</strong>
+          <div class="instrument-rule"></div>
+          <span>RPM / {{ stats ? formatTokens(stats.tpm) : '—' }} TPM</span>
         </div>
-      </header>
+      </section>
       <nav class="operations-links" :aria-label="zh ? '运营快捷入口' : 'Operations shortcuts'">
         <router-link to="/admin/users"><Icon name="users" size="sm" />{{ t('admin.users.title') }}</router-link>
         <router-link to="/admin/groups"><Icon name="grid" size="sm" />{{ t('admin.groups.title') }}</router-link>
@@ -19,11 +26,11 @@
       </nav>
       <div class="dashboard-section-heading"><h2>{{ zh ? '核心运营指标' : 'Core operational metrics' }}</h2><span>PLATFORM OVERVIEW</span></div>
       <!-- Loading State -->
-      <div v-if="loading && !stats" class="grid grid-cols-2 gap-3 lg:grid-cols-4" role="status" :aria-label="t('common.loading')">
-        <Skeleton v-for="n in 8" :key="n" height="100px" />
+      <div v-if="loading" class="flex items-center justify-center py-12">
+        <LoadingSpinner />
       </div>
 
-      <template v-if="stats">
+      <template v-else-if="stats">
         <!-- Row 1: Core Stats -->
         <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
           <!-- Total API Keys -->
@@ -238,7 +245,7 @@
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
               <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('admin.dashboard.upstreamBalance.title') }}</p>
-              <p class="text-2xl font-semibold tracking-tight text-gray-900 font-mono tabular-nums dark:text-white">{{ upstreamBalances ? `$${formatCost(upstreamBalances.total)}` : '—' }}</p>
+              <p class="text-2xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-3xl">${{ formatCost(upstreamBalances?.total || 0) }}</p>
               <p class="mt-1 text-xs text-gray-400 dark:text-dark-400">{{ t('admin.dashboard.upstreamBalance.autoRefresh') }}</p>
             </div>
             <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-100/70 text-link-700 dark:bg-link-900/30 dark:text-link-300">
@@ -350,11 +357,9 @@
               </div>
             </div>
           </div>
-          <UsageQueryPresets route-id="admin.dashboard" :start-date="startDate" :end-date="endDate" @change="onDateRangeChange" />
-          <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
 
           <!-- Charts Grid -->
-          <div class="grid grid-cols-1 gap-4">
+          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <ModelDistributionChart
               :model-stats="modelStats"
               :enable-ranking-view="true"
@@ -369,6 +374,7 @@
               :end-date="endDate"
               @ranking-click="goToUserUsage"
             />
+            <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
           </div>
 
           <!-- User Usage Trend (Full Width) -->
@@ -397,7 +403,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import Skeleton from '@/components/common/Skeleton.vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
@@ -421,7 +426,6 @@ import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Select from '@/components/common/Select.vue'
 import ModelDistributionChart from '@/components/charts/ModelDistributionChart.vue'
 import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
-import UsageQueryPresets from '@/components/admin/usage/UsageQueryPresets.vue'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 
 import {
@@ -512,14 +516,13 @@ const { isDark: isDarkMode } = useAppearance()
 // Chart colors
 const chartColors = computed(() => ({
   text: isDarkMode.value ? '#e5e7eb' : '#374151',
-  grid: isDarkMode.value ? '#27272A' : '#E5E5E7'
+  grid: isDarkMode.value ? '#374151' : '#e5e7eb'
 }))
 
 // Line chart options (for user trend chart)
 const lineOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
-  animation: false as const,
   interaction: {
     intersect: false,
     mode: 'index' as const
@@ -630,10 +633,7 @@ const userTrendChartData = computed(() => {
     borderColor: colors[idx % colors.length],
     backgroundColor: `${colors[idx % colors.length]}20`,
     fill: false,
-    tension: 0.15,
-    borderWidth: 1.5,
-    pointRadius: 0,
-    pointHoverRadius: 3
+    tension: 0.3
   }))
 
   return {
@@ -700,8 +700,6 @@ const onDateRangeChange = (range: {
   endDate: string
   preset: string | null
 }) => {
-  startDate.value = range.startDate
-  endDate.value = range.endDate
   // Auto-select granularity based on date range
   const start = new Date(range.startDate)
   const end = new Date(range.endDate)
@@ -849,8 +847,4 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.operations-dashboard > .grid > .card { min-height: 100px; padding: 14px 16px; }
-.operations-dashboard > .grid > .card .h-10 { display: none; }
-.operations-dashboard > .grid > .card .text-xl { font-size: 24px; font-weight: 600; font-family: ui-monospace, monospace; }
-.operations-dashboard > .grid > .card .text-xs { line-height: 1.5; }
 </style>

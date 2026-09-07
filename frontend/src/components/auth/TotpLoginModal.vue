@@ -1,13 +1,13 @@
 <template>
   <div class="fixed inset-0 z-50 overflow-y-auto">
     <div class="flex min-h-full items-center justify-center p-4">
-      <div class="fixed inset-0 bg-gray-950/70 transition-opacity motion-reduce:transition-none"></div>
+      <div class="fixed inset-0 bg-black/50 transition-opacity"></div>
 
-      <div class="relative w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 sm:p-6 dark:border-dark-700 dark:bg-dark-800">
+      <div class="relative w-full max-w-md transform rounded-xl bg-white p-6 shadow-xl transition-all dark:bg-dark-800">
         <!-- Header -->
         <div class="mb-6 text-center">
-          <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 dark:border-dark-700 dark:bg-dark-900">
-            <svg class="h-5 w-5 text-gray-600 dark:text-dark-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30">
+            <svg class="h-6 w-6 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
             </svg>
           </div>
@@ -36,7 +36,7 @@
             tabindex="-1"
             @input="handleHiddenOtpInput"
           />
-          <div class="flex justify-center gap-1.5 sm:gap-2">
+          <div class="flex justify-center gap-2">
             <input
               v-for="(_, index) in 6"
               :key="index"
@@ -46,7 +46,7 @@
               inputmode="numeric"
               pattern="[0-9]"
               autocomplete="off"
-              class="h-12 w-9 rounded-md border border-gray-300 bg-white text-center font-mono text-xl font-medium text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 sm:w-11 dark:border-dark-600 dark:bg-dark-900 dark:text-white"
+              class="h-12 w-10 rounded-lg border border-gray-300 text-center text-lg font-semibold focus:border-primary-500 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-700"
               :disabled="verifying"
               @input="handleCodeInput($event, index)"
               @keydown="handleKeydown($event, index)"

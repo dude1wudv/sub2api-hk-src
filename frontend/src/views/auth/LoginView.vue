@@ -2,14 +2,11 @@
   <AuthLayout>
     <div class="space-y-6">
       <!-- Title -->
-      <div class="border-b border-gray-200 pb-5 text-left dark:border-dark-700">
-        <div class="mb-4 flex items-center gap-3 text-gray-500 dark:text-dark-400" aria-hidden="true">
-          <span class="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-gray-50 dark:border-dark-700 dark:bg-dark-800"><Icon name="login" size="md" /></span>
-        </div>
-        <h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+      <div class="text-center">
+        <h2 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
           {{ t('auth.welcomeBack') }}
         </h2>
-        <p class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-dark-300">
+        <p class="mt-1 text-xs text-gray-500 dark:text-dark-300">
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
@@ -741,11 +738,12 @@ function handle2FACancel(): void {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 180ms ease-out;
+  transition: all 0.3s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+  transform: translateY(-8px);
 }
 </style>

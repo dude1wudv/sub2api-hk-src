@@ -134,18 +134,32 @@
                         <span class="flex-1 text-left">{{ t('admin.tlsFingerprintProfiles.title') }}</span>
                       </button>
 
+                      <div class="my-1.5 border-t border-gray-100 dark:border-dark-700"></div>
+                      <div class="px-2 py-1.5">
+                        <div class="flex items-center justify-between gap-3">
+                          <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400">
+                            {{ t('admin.accounts.viewColumns') }}
+                          </span>
+                          <Icon name="grid" size="sm" class="text-gray-400" />
+                        </div>
+                      </div>
+                      <div class="grid grid-cols-1 gap-0.5">
+                        <button
+                          v-for="col in toggleableColumns"
+                          :key="col.key"
+                          @click="toggleColumn(col.key)"
+                          class="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs sm:text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-dark-700"
+                        >
+                          <span class="truncate">{{ col.label }}</span>
+                          <Icon v-if="isColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </Teleport>
               </div>
             </template>
           </AccountTableActions>
-          <SavedFilters
-            :items="accountSavedFilters.savedFilters.value"
-            @save="name => accountSavedFilters.save(name, params)"
-            @apply="applySavedAccountFilters"
-            @remove="accountSavedFilters.remove"
-          />
         </div>
         <div
           v-if="hasPendingListSync"
@@ -381,7 +395,7 @@
         <div ref="accountTableRef" class="account-table-shell">
         <DataTable
           ref="dataTableRef"
-          :columns="allColumns"
+          :columns="cols"
           :data="accounts"
           :loading="loading"
           row-key="id"
@@ -393,10 +407,6 @@
           :estimate-row-height="156"
           :overscan="5"
           :virtualize-threshold="50"
-          preference-route="admin"
-          preference-table="accounts"
-          :default-hidden-columns="DEFAULT_HIDDEN_COLUMNS"
-          @visible-columns-change="handleVisibleColumnsChange"
         >
           <template #header-select>
             <input
@@ -414,42 +424,32 @@
             <span class="font-mono text-xs text-gray-500 dark:text-gray-400">#{{ value }}</span>
           </template>
           <template #cell-name="{ row, value }">
-            <div class="flex min-w-0 items-start justify-between gap-2">
-              <div class="flex min-w-0 flex-col">
-                <HelpTooltip
-                  v-if="accountHomepageUrl(row)"
-                  :content="accountHomepageUrl(row)"
-                  width-class="w-max max-w-sm break-all"
-                  class="-ml-1 self-start"
-                >
-                  <template #trigger>
-                    <a
-                      :href="accountHomepageUrl(row)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="border-b border-dotted border-gray-300 font-medium text-gray-900 dark:border-dark-600 dark:text-white"
-                    >
-                      {{ value }}
-                    </a>
-                  </template>
-                </HelpTooltip>
-                <span v-else class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
-                <span
-                  v-if="accountDisplayEmail(row)"
-                  class="max-w-[200px] truncate text-xs text-gray-500 dark:text-gray-400"
-                  :title="accountDisplayEmail(row) + (row.parent_chatgpt_account_id ? ' · ' + row.parent_chatgpt_account_id : '')"
-                >
-                  {{ accountDisplayEmail(row) }}
-                </span>
-              </div>
-              <button
-                type="button"
-                class="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-dark-700 dark:hover:text-primary-300"
-                :aria-label="t('common.edit')"
-                @click="openAccountDetail(row)"
+            <div class="flex flex-col">
+              <HelpTooltip
+                v-if="accountHomepageUrl(row)"
+                :content="accountHomepageUrl(row)"
+                width-class="w-max max-w-sm break-all"
+                class="-ml-1 self-start"
               >
-                <Icon name="chevronRight" size="sm" />
-              </button>
+                <template #trigger>
+                  <a
+                    :href="accountHomepageUrl(row)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="border-b border-dotted border-gray-300 font-medium text-gray-900 dark:border-dark-600 dark:text-white"
+                  >
+                    {{ value }}
+                  </a>
+                </template>
+              </HelpTooltip>
+              <span v-else class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+              <span
+                v-if="accountDisplayEmail(row)"
+                class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]"
+                :title="accountDisplayEmail(row) + (row.parent_chatgpt_account_id ? ' · ' + row.parent_chatgpt_account_id : '')"
+              >
+                {{ accountDisplayEmail(row) }}
+              </span>
             </div>
           </template>
           <template #cell-notes="{ value }">
@@ -658,7 +658,6 @@
     <AccountStatsModal :show="showStats" :account="statsAcc" @close="closeStatsModal" />
     <ScheduledTestsPanel :show="showSchedulePanel" :account-id="scheduleAcc?.id ?? null" :model-options="scheduleModelOptions" @close="closeSchedulePanel" />
     <AccountActionMenu :show="menu.show" :account="menu.acc" :position="menu.pos" @close="menu.show = false" @test="handleTest" @stats="handleViewStats" @schedule="handleSchedule" @duplicate="handleDuplicateAccount" @reauth="handleReAuth" @refresh-token="handleRefresh" @recover-state="handleRecoverState" @reset-quota="handleResetQuota" @set-privacy="handleSetPrivacy" @create-spark-shadow="handleCreateSparkShadow" />
-    <AccountDetailDrawer :show="showAccountDetail" :account="detailAcc" :today-stats="detailAcc ? todayStatsByAccountId[String(detailAcc.id)] ?? null : null" @close="showAccountDetail = false" @edit="openAccountDetailEdit" />
     <SyncFromCrsModal :show="showSync" @close="showSync = false" @synced="reload" />
     <ImportDataModal :show="showImportData" @close="showImportData = false" @imported="handleDataImported" />
     <BulkEditAccountModal
@@ -695,10 +694,8 @@ import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { adminAPI } from '@/api/admin'
 import { useTableLoader } from '@/composables/useTableLoader'
-import { usePersistedTableQuery, useSavedTableFilters } from '@/composables/useTablePreferences'
 import { useSwipeSelect, type SwipeSelectVirtualContext } from '@/composables/useSwipeSelect'
 import { useTableSelection } from '@/composables/useTableSelection'
-import type { Column } from '@/components/common/types'
 import { useStepUp, isStepUpBlocked, isStepUpCancelled, stepUpBlockReason } from '@/composables/useStepUp'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -712,7 +709,6 @@ import AccountTableActions from '@/components/admin/account/AccountTableActions.
 import AccountTableFilters from '@/components/admin/account/AccountTableFilters.vue'
 import AccountBulkActionsBar from '@/components/admin/account/AccountBulkActionsBar.vue'
 import AccountActionMenu from '@/components/admin/account/AccountActionMenu.vue'
-import AccountDetailDrawer from '@/components/admin/account/AccountDetailDrawer.vue'
 import ImportDataModal from '@/components/admin/account/ImportDataModal.vue'
 import ReAuthAccountModal from '@/components/admin/account/ReAuthAccountModal.vue'
 import AccountTestModal from '@/components/admin/account/AccountTestModal.vue'
@@ -727,7 +723,6 @@ import AccountCapacityCell from '@/components/account/AccountCapacityCell.vue'
 import UpstreamBillingRateCell from '@/components/account/UpstreamBillingRateCell.vue'
 import PlatformTypeBadge from '@/components/common/PlatformTypeBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
-import SavedFilters from '@/components/common/SavedFilters.vue'
 import ErrorPassthroughRulesModal from '@/components/admin/ErrorPassthroughRulesModal.vue'
 import TLSFingerprintProfilesModal from '@/components/admin/TLSFingerprintProfilesModal.vue'
 import { fetchAllAccountIds } from '@/utils/accountSelection'
@@ -816,8 +811,6 @@ const showStats = ref(false)
 const showErrorPassthrough = ref(false)
 const showTLSFingerprintProfiles = ref(false)
 const edAcc = ref<Account | null>(null)
-const showAccountDetail = ref(false)
-const detailAcc = ref<Account | null>(null)
 const tempUnschedAcc = ref<Account | null>(null)
 const deletingAcc = ref<Account | null>(null)
 const creatingShadowAcc = ref<Account | null>(null)
@@ -855,9 +848,12 @@ const accountToolsDropdownStyle = computed(() => ({
   left: `${accountToolsDropdownPosition.left}px`,
   width: `${accountToolsDropdownPosition.width}px`
 }))
+const hiddenColumns = reactive<Set<string>>(new Set())
 const DEFAULT_HIDDEN_COLUMNS = ['today_stats', 'proxy', 'notes', 'scheduler_score', 'rate_multiplier']
-const hiddenColumns = reactive<Set<string>>(new Set(DEFAULT_HIDDEN_COLUMNS))
-let receivedColumnVisibility = false
+const HIDDEN_COLUMNS_KEY = 'account-hidden-columns'
+// One-time migration: hide scheduler score for existing admins too, because showing it opt-ins to heavy backend scoring.
+const HIDDEN_COLUMNS_VERSION_KEY = 'account-hidden-columns-version'
+const HIDDEN_COLUMNS_CURRENT_VERSION = 'scheduler-score-hidden-by-default'
 
 // Sorting settings
 const ACCOUNT_SORT_STORAGE_KEY = 'account-table-sort'
@@ -1156,6 +1152,42 @@ const formatSchedulerScoreGroup = (score: AccountSchedulerGroupScore): string =>
   return t('admin.accounts.schedulerScore.ungrouped')
 }
 
+const loadSavedColumns = () => {
+  try {
+    const saved = localStorage.getItem(HIDDEN_COLUMNS_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as string[]
+      parsed.forEach(key => {
+        hiddenColumns.add(key)
+      })
+      // Older saved column layouts may have scheduler_score visible; migrate them to the new safe default once.
+      if (localStorage.getItem(HIDDEN_COLUMNS_VERSION_KEY) !== HIDDEN_COLUMNS_CURRENT_VERSION) {
+        hiddenColumns.add('scheduler_score')
+        localStorage.setItem(HIDDEN_COLUMNS_KEY, JSON.stringify([...hiddenColumns]))
+        localStorage.setItem(HIDDEN_COLUMNS_VERSION_KEY, HIDDEN_COLUMNS_CURRENT_VERSION)
+      }
+    } else {
+      DEFAULT_HIDDEN_COLUMNS.forEach(key => {
+        hiddenColumns.add(key)
+      })
+      localStorage.setItem(HIDDEN_COLUMNS_VERSION_KEY, HIDDEN_COLUMNS_CURRENT_VERSION)
+    }
+  } catch (e) {
+    console.error('Failed to load saved columns:', e)
+    DEFAULT_HIDDEN_COLUMNS.forEach(key => {
+      hiddenColumns.add(key)
+    })
+  }
+}
+
+const saveColumnsToStorage = () => {
+  try {
+    localStorage.setItem(HIDDEN_COLUMNS_KEY, JSON.stringify([...hiddenColumns]))
+    localStorage.setItem(HIDDEN_COLUMNS_VERSION_KEY, HIDDEN_COLUMNS_CURRENT_VERSION)
+  } catch (e) {
+    console.error('Failed to save columns:', e)
+  }
+}
 
 const loadSavedAutoRefresh = () => {
   try {
@@ -1187,6 +1219,7 @@ const saveAutoRefreshToStorage = () => {
 }
 
 if (typeof window !== 'undefined') {
+  loadSavedColumns()
   loadSavedAutoRefresh()
 }
 
@@ -1210,27 +1243,24 @@ const setAutoRefreshInterval = (seconds: (typeof autoRefreshIntervals)[number]) 
   }
 }
 
-const handleVisibleColumnsChange = (visibleKeys: string[]) => {
-  const visible = new Set(visibleKeys)
-  const revealed = visibleKeys.filter(key => hiddenColumns.has(key))
-  const schedulerVisibilityChanged = visible.has('scheduler_score') === hiddenColumns.has('scheduler_score')
-  hiddenColumns.clear()
-  for (const column of allColumns.value) {
-    if (!visible.has(column.key)) hiddenColumns.add(column.key)
+const toggleColumn = (key: string) => {
+  const wasHidden = hiddenColumns.has(key)
+  if (hiddenColumns.has(key)) {
+    hiddenColumns.delete(key)
+  } else {
+    hiddenColumns.add(key)
   }
-  if (!receivedColumnVisibility) {
-    receivedColumnVisibility = true
-    return
-  }
-  if (revealed.some(key => key === 'today_stats' || key === 'usage')) {
+  saveColumnsToStorage()
+  if ((key === 'today_stats' || key === 'usage') && wasHidden) {
     refreshTodayStatsBatch().catch((error) => {
       console.error('Failed to load account today stats after showing column:', error)
     })
   }
-  if (schedulerVisibilityChanged) {
+  if (key === 'scheduler_score') {
+    // The server only returns scheduler scores when this column is visible, so reload the current page immediately.
     syncAccountListDerivedParams()
     load().catch((error) => {
-      console.error('Failed to reload accounts after changing scheduler score visibility:', error)
+      console.error('Failed to reload accounts after toggling scheduler score column:', error)
     })
   }
 }
@@ -1268,25 +1298,6 @@ const {
     sort_order: sortState.sort_order
   }
 })
-const accountTableQuery = usePersistedTableQuery({
-  routeId: 'admin',
-  tableId: 'accounts',
-  filters: params,
-  filterKeys: ['platform', 'type', 'status', 'privacy_mode', 'group', 'search'],
-  pagination
-})
-const accountSavedFilters = useSavedTableFilters({
-  routeId: 'admin',
-  tableId: 'accounts',
-  filterKeys: ['platform', 'type', 'status', 'privacy_mode', 'group', 'search'] as const
-})
-const applySavedAccountFilters = (id: string) => {
-  const saved = accountSavedFilters.apply(id)
-  if (!saved) return
-  Object.assign(params, saved)
-  pagination.page = 1
-  debouncedReload()
-}
 
 const {
   selectedSet,
@@ -1619,7 +1630,6 @@ const debouncedReload = () => {
   resetAutoRefreshCache()
   pendingTodayStatsRefresh.value = true
   baseDebouncedReload()
-  accountTableQuery.persist()
 }
 
 const handlePageChange = (page: number) => {
@@ -1628,7 +1638,6 @@ const handlePageChange = (page: number) => {
   resetAutoRefreshCache()
   pendingTodayStatsRefresh.value = true
   baseHandlePageChange(page)
-  accountTableQuery.persist()
 }
 
 const handlePageSizeChange = (size: number) => {
@@ -1637,7 +1646,6 @@ const handlePageSizeChange = (size: number) => {
   resetAutoRefreshCache()
   pendingTodayStatsRefresh.value = true
   baseHandlePageSizeChange(size)
-  accountTableQuery.persist()
 }
 
 const handleSort = (key: string, order: AccountSortOrder) => {
@@ -1652,7 +1660,6 @@ const handleSort = (key: string, order: AccountSortOrder) => {
   resetAutoRefreshCache()
   pendingTodayStatsRefresh.value = true
   load()
-  accountTableQuery.persist()
 }
 
 watch(loading, (isLoading, wasLoading) => {
@@ -2109,10 +2116,10 @@ function getAntigravityTierClass(row: any): string {
 
 // All available columns
 const allColumns = computed(() => {
-  const c: Column[] = [
-    { key: 'select', label: '', sortable: false, hideable: false },
-    { key: 'name', label: t('admin.accounts.columns.name'), sortable: true, hideable: false },
-    { key: 'id', label: t('admin.accounts.columns.id'), sortable: true, mono: true },
+  const c = [
+    { key: 'select', label: '', sortable: false },
+    { key: 'name', label: t('admin.accounts.columns.name'), sortable: true },
+    { key: 'id', label: t('admin.accounts.columns.id'), sortable: true },
     { key: 'platform_type', label: t('admin.accounts.columns.platformType'), sortable: false },
     { key: 'capacity', label: t('admin.accounts.columns.capacity'), sortable: false },
     { key: 'status', label: t('admin.accounts.columns.status'), sortable: true },
@@ -2133,11 +2140,22 @@ const allColumns = computed(() => {
     { key: 'created_at', label: t('admin.accounts.columns.createdAt'), sortable: true },
     { key: 'expires_at', label: t('admin.accounts.columns.expiresAt'), sortable: true },
     { key: 'notes', label: t('admin.accounts.columns.notes'), sortable: false },
-    { key: 'actions', label: t('admin.accounts.columns.actions'), sortable: false, hideable: false }
+    { key: 'actions', label: t('admin.accounts.columns.actions'), sortable: false }
   )
   return c
 })
 
+// Columns that can be toggled (exclude select, name, and actions)
+const toggleableColumns = computed(() =>
+  allColumns.value.filter(col => col.key !== 'select' && col.key !== 'name' && col.key !== 'actions')
+)
+
+// Filtered columns based on visibility
+const cols = computed(() =>
+  allColumns.value.filter(col =>
+    col.key === 'select' || col.key === 'name' || col.key === 'actions' || !hiddenColumns.has(col.key)
+  )
+)
 
 const accountDetailLoading = new Set<number>()
 const loadAccountDetails = async (account: Pick<AccountListItem, 'id'>): Promise<Account | null> => {
@@ -2157,17 +2175,6 @@ const loadAccountDetails = async (account: Pick<AccountListItem, 'id'>): Promise
 const handleEdit = async (a: AccountListItem) => {
   const account = await loadAccountDetails(a)
   if (!account) return
-  edAcc.value = account
-  showEdit.value = true
-}
-const openAccountDetail = async (account: AccountListItem) => {
-  const detail = await loadAccountDetails(account)
-  if (!detail) return
-  detailAcc.value = detail
-  showAccountDetail.value = true
-}
-const openAccountDetailEdit = (account: Account) => {
-  showAccountDetail.value = false
   edAcc.value = account
   showEdit.value = true
 }
@@ -2901,7 +2908,6 @@ onMounted(async () => {
     }
   }
 
-  if (typeof window === 'undefined' || !window.location.search) accountTableQuery.restore()
   load()
   loadUpstreamBillingProbeGlobalState()
   const [proxiesResult, groupsResult] = await Promise.allSettled([

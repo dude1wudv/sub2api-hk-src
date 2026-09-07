@@ -1,82 +1,97 @@
 <template>
-
-  <div v-if="hasTablePreferences" class="mb-2 flex justify-end">
-    <div ref="preferencesMenuRef" class="relative">
-      <button
-        type="button"
-        class="inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200 dark:hover:bg-dark-800"
-        :aria-expanded="preferencesOpen"
-        aria-haspopup="dialog"
-        :aria-label="t('console.table.settings')"
-        @click="togglePreferences"
-        @keydown.down.prevent="openPreferences"
-      >
-        <Icon name="cog" size="sm" aria-hidden="true" />
-        <span>{{ t('console.table.settings') }}</span>
-      </button>
-      <div
-        v-if="preferencesOpen"
-        class="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-dark-700 dark:bg-dark-900"
-        role="dialog"
-        :aria-label="t('console.table.settings')"
-        @keydown.esc.prevent="closePreferences"
-      >
-        <p class="px-2 pb-1 pt-0.5 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-dark-400">
-          {{ t('console.table.columns') }}
-        </p>
-        <label
-          v-for="column in columns"
-          :key="column.key"
-          class="flex min-h-8 cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm text-gray-700 hover:bg-gray-50 dark:text-dark-200 dark:hover:bg-dark-800"
-          :class="{ 'cursor-not-allowed opacity-50': isColumnAlwaysVisible(column) }"
-        >
-          <input
-            type="checkbox"
-            class="h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            :checked="visibleColumnKeys.includes(column.key)"
-            :disabled="isColumnAlwaysVisible(column)"
-            @change="toggleColumnVisibility(column.key, ($event.target as HTMLInputElement).checked)"
-          />
-          <span class="min-w-0 flex-1 truncate">{{ column.label }}</span>
-          <span v-if="isColumnAlwaysVisible(column)" class="text-[11px] text-gray-400 dark:text-dark-400">
-            {{ t('console.table.alwaysVisible') }}
-          </span>
-        </label>
-        <div class="mt-2 border-t border-gray-100 px-2 pt-2 dark:border-dark-700">
-          <p class="pb-1 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-dark-400">
-            {{ t('console.table.density') }}
-          </p>
-          <div class="grid grid-cols-2 gap-1">
-            <button
-              type="button"
-              class="rounded px-2 py-1.5 text-xs font-medium transition-colors"
-              :class="density === 'compact' ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300' : 'text-gray-600 hover:bg-gray-50 dark:text-dark-300 dark:hover:bg-dark-800'"
-              @click="setDensity('compact')"
-            >
-              {{ t('console.table.compact') }}
-            </button>
-            <button
-              type="button"
-              class="rounded px-2 py-1.5 text-xs font-medium transition-colors"
-              :class="density === 'comfortable' ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300' : 'text-gray-600 hover:bg-gray-50 dark:text-dark-300 dark:hover:bg-dark-800'"
-              @click="setDensity('comfortable')"
-            >
-              {{ t('console.table.comfortable') }}
-            </button>
+  <div v-if="!isDesktopViewport" class="space-y-3">
+    <template v-if="loading">
+      <div v-for="i in 5" :key="i" class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900">
+        <div class="space-y-3">
+          <div v-for="column in dataColumns" :key="column.key" class="flex justify-between">
+            <div class="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-dark-700"></div>
+            <div class="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-dark-700"></div>
           </div>
-          <button
-            type="button"
-            class="mt-2 w-full rounded px-2 py-1.5 text-left text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:text-dark-300 dark:hover:bg-dark-800"
-            @click="resetTableView"
-          >
-            {{ t('console.table.resetView') }}
-          </button>
+          <div v-if="hasActionsColumn" class="border-t border-gray-200 pt-3 dark:border-dark-700">
+            <div class="h-8 w-full animate-pulse rounded bg-gray-200 dark:bg-dark-700"></div>
+          </div>
         </div>
       </div>
-    </div>
+    </template>
+
+    <template v-else-if="!data || data.length === 0">
+      <div class="rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-dark-700 dark:bg-dark-900">
+        <slot name="empty">
+          <div class="flex flex-col items-center">
+            <Icon
+              name="inbox"
+              size="xl"
+              class="mb-4 h-12 w-12 text-gray-400 dark:text-dark-300"
+            />
+            <p class="text-lg font-medium text-gray-900 dark:text-gray-100">
+              {{ t('empty.noData') }}
+            </p>
+          </div>
+        </slot>
+      </div>
+    </template>
+
+    <template v-else>
+      <div v-if="selectable" class="flex items-center justify-end gap-2 px-1">
+        <label class="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+          <input
+            type="checkbox"
+            class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
+            :checked="allVisibleSelected"
+            :indeterminate="someVisibleSelected"
+            data-test="select-all-mobile"
+            @change="toggleAllVisible(($event.target as HTMLInputElement).checked)"
+          />
+          <span>{{ t('common.selectAll') }}</span>
+        </label>
+      </div>
+      <div
+        v-for="(row, index) in sortedData"
+        :key="resolveRowKey(row, index)"
+        class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
+        :class="{
+          'cursor-pointer': clickableRows,
+          'border-primary-300 bg-primary-50/40 dark:border-primary-700 dark:bg-primary-900/10': selectable && isRowSelected(row, index)
+        }"
+        @click="clickableRows && emit('rowClick', row)"
+      >
+        <div class="space-y-3">
+          <div v-if="selectable" class="flex justify-end">
+            <input
+              type="checkbox"
+              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
+              :checked="isRowSelected(row, index)"
+              :aria-label="getRowSelectionLabel(row, index)"
+              data-test="select-row"
+              @click.stop
+              @change="toggleRowSelection(row, index, ($event.target as HTMLInputElement).checked)"
+            />
+          </div>
+          <div
+            v-for="column in dataColumns"
+            :key="column.key"
+            :data-field="column.key"
+            class="flex min-w-0 items-start justify-between gap-4"
+          >
+            <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-dark-300">
+              {{ column.label }}
+            </span>
+            <div class="min-w-0 max-w-full text-right text-sm text-gray-900 dark:text-gray-100">
+              <slot :name="`cell-${column.key}`" :row="row" :value="row[column.key]" :expanded="actionsExpanded">
+                {{ column.formatter ? column.formatter(row[column.key], row) : row[column.key] }}
+              </slot>
+            </div>
+          </div>
+          <div v-if="hasActionsColumn" class="border-t border-gray-200 pt-3 dark:border-dark-700">
+            <slot name="cell-actions" :row="row" :value="row['actions']" :expanded="actionsExpanded"></slot>
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 
   <div
+    v-else
     ref="tableWrapperRef"
     class="table-wrapper"
     :class="{
@@ -85,12 +100,12 @@
     }"
   >
     <table class="w-full min-w-max divide-y divide-gray-200 dark:divide-dark-700">
-      <thead class="table-header">
+      <thead class="table-header bg-[#FBF9F5] dark:bg-[#25221D]">
         <tr>
           <th
             v-if="selectable"
             scope="col"
-            class="sticky-header-cell w-11 min-w-11 px-3 py-2.5 text-center"
+            class="sticky-header-cell w-11 min-w-11 px-3 py-3 text-center"
           >
             <input
               type="checkbox"
@@ -103,12 +118,12 @@
             />
           </th>
           <th
-            v-for="(column, index) in visibleColumns"
+            v-for="(column, index) in columns"
             :key="column.key"
             scope="col"
             :aria-sort="column.sortable ? getColumnAriaSort(column.key) : undefined"
             :class="[
-              'sticky-header-cell py-2.5 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-dark-300',
+              'sticky-header-cell py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-dark-300',
               getAdaptivePaddingClass(),
               { 'cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-700': column.sortable },
               getStickyColumnClass(column, index),
@@ -151,13 +166,13 @@
           </th>
         </tr>
       </thead>
-      <tbody class="table-body divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
+      <tbody class="table-body divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-[#1C1A17]">
         <!-- Loading skeleton -->
         <tr v-if="loading" v-for="i in 5" :key="i">
-          <td v-if="selectable" :class="['w-11 min-w-11 px-3 text-center', getRowPaddingClass()]">
+          <td v-if="selectable" class="w-11 min-w-11 px-3 py-4">
             <div class="mx-auto h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-dark-700"></div>
           </td>
-          <td v-for="column in visibleColumns" :key="column.key" :class="['whitespace-nowrap', getRowPaddingClass(), getAdaptivePaddingClass()]">
+          <td v-for="column in columns" :key="column.key" :class="['whitespace-nowrap py-4', getAdaptivePaddingClass()]">
             <div class="animate-pulse">
               <div class="h-4 w-3/4 rounded bg-gray-200 dark:bg-dark-700"></div>
             </div>
@@ -172,8 +187,14 @@
           >
             <slot name="empty">
               <div class="flex flex-col items-center">
-                <Icon name="inbox" size="lg" class="mb-2 text-gray-400 dark:text-dark-500" />
-                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ t('empty.noData') }}</p>
+                <Icon
+                  name="inbox"
+                  size="xl"
+                  class="mb-4 h-12 w-12 text-gray-400 dark:text-dark-500"
+                />
+                <p class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                  {{ t('empty.noData') }}
+                </p>
               </div>
             </slot>
           </td>
@@ -192,14 +213,14 @@
             :data-row-id="resolveRowKey(item.row, item.index)"
             :data-index="item.index"
             :ref="item.measure ? measureElement : undefined"
-            class="transition-colors hover:bg-gray-50 dark:hover:bg-dark-800"
+            class="hover:bg-[#F6F3EE] dark:hover:bg-[#272420]"
             :class="{
               'cursor-pointer': clickableRows,
               'bg-primary-50/40 dark:bg-primary-900/10': selectable && isRowSelected(item.row, item.index)
             }"
             @click="clickableRows && emit('rowClick', item.row)"
           >
-            <td v-if="selectable" :class="['w-11 min-w-11 px-3 text-center', getRowPaddingClass()]">
+            <td v-if="selectable" class="w-11 min-w-11 px-3 py-4 text-center">
               <input
                 type="checkbox"
                 class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
@@ -211,13 +232,11 @@
               />
             </td>
             <td
-              v-for="(column, colIndex) in visibleColumns"
+              v-for="(column, colIndex) in columns"
               :key="column.key"
               :class="[
-                'whitespace-nowrap text-sm text-gray-900 dark:text-gray-100',
-                getRowPaddingClass(),
+                'whitespace-nowrap py-4 text-sm text-gray-900 dark:text-gray-100',
                 getAdaptivePaddingClass(),
-                getColumnCellClass(column),
                 getStickyColumnClass(column, colIndex),
                 column.class
               ]"
@@ -248,7 +267,6 @@ import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useVirtualizer, observeElementRect as observeElementRectDefault } from '@tanstack/vue-virtual'
 import { useI18n } from 'vue-i18n'
 import type { Column } from './types'
-import { usePersistedTableView, type TableDensity } from '@/composables/useTablePreferences'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
@@ -263,7 +281,6 @@ const emit = defineEmits<{
   rowClick: [row: any]
   'update:selectedKeys': [keys: Array<string | number>]
   selectionChange: [keys: Array<string | number>]
-  visibleColumnsChange: [keys: string[]]
 }>()
 
 // 表格容器引用
@@ -396,12 +413,10 @@ onMounted(() => {
     } else {
       desktopViewportMediaQuery.addListener(desktopViewportListener)
     }
-    document.addEventListener('pointerdown', handleDocumentPointerDown)
   }
 })
 
 onUnmounted(() => {
-  document.removeEventListener('pointerdown', handleDocumentPointerDown)
   detachDesktopTableTracking()
   if (desktopViewportMediaQuery && desktopViewportListener) {
     if (typeof desktopViewportMediaQuery.removeEventListener === 'function') {
@@ -456,14 +471,6 @@ interface Props {
   selectedKeys?: Array<string | number>
   /** Accessible label for a row selection checkbox. */
   selectionLabel?: string | ((row: any) => string)
-  /**
-   * Stable route/table identity for saved view preferences. Existing consumers
-   * receive a route-plus-column fallback; explicit values prevent collisions.
-   */
-  preferenceRoute?: string
-  preferenceTable?: string
-  /** Columns hidden until a user chooses to reveal them. */
-  defaultHiddenColumns?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -476,84 +483,15 @@ const props = withDefaults(defineProps<Props>(), {
   selectable: false,
   selectedKeys: () => []
 })
-const fallbackPreferenceRoute = typeof window === 'undefined' ? 'server' : window.location.pathname
-const fallbackPreferenceTable = props.columns
-  .map((column) => `${column.key}:${column.label}`)
-  .join('|')
-const tableView = usePersistedTableView({
-  routeId: props.preferenceRoute?.trim() || fallbackPreferenceRoute,
-  tableId: props.preferenceTable?.trim() || props.sortStorageKey || fallbackPreferenceTable,
-  columnKeys: props.columns.map((column) => column.key),
-  nonHideableColumnKeys: props.columns
-    .filter((column) => column.hideable === false || column.key === 'actions')
-    .map((column) => column.key),
-  defaultHiddenColumnKeys: props.defaultHiddenColumns
-})
-const {
-  density,
-  visibleColumnKeys,
-  setDensity: saveDensity,
-  syncColumns,
-  toggleColumn,
-  reset: resetViewPreferences
-} = tableView
-const hasTablePreferences = computed(() => props.columns.length > 0)
-const visibleColumns = computed(() => {
-  const selectedColumns = new Set(visibleColumnKeys.value)
-  return props.columns.filter(
-    (column) => selectedColumns.has(column.key) || column.hideable === false || column.key === 'actions'
-  )
-})
-const preferencesMenuRef = ref<HTMLElement | null>(null)
-const preferencesOpen = ref(false)
-
-const isColumnAlwaysVisible = (column: Column) => column.hideable === false || column.key === 'actions'
-
-const closePreferences = () => {
-  preferencesOpen.value = false
-}
-
-const openPreferences = async () => {
-  preferencesOpen.value = true
-  await nextTick()
-  preferencesMenuRef.value
-    ?.querySelector<HTMLElement>('[role=\"dialog\"] input:not(:disabled), [role=\"dialog\"] button')
-    ?.focus()
-}
-
-const togglePreferences = () => {
-  if (preferencesOpen.value) {
-    closePreferences()
-    return
-  }
-  void openPreferences()
-}
-
-const toggleColumnVisibility = (column: string, visible: boolean) => {
-  toggleColumn(column, visible)
-}
-
-const setDensity = (nextDensity: TableDensity) => {
-  saveDensity(nextDensity)
-}
-
-const resetTableView = () => {
-  resetViewPreferences()
-}
-
-const handleDocumentPointerDown = (event: PointerEvent) => {
-  if (preferencesMenuRef.value?.contains(event.target as Node)) return
-  closePreferences()
-}
 
 const sortKey = ref<string>('')
 const sortOrder = ref<'asc' | 'desc'>('asc')
+const actionsExpanded = ref(false)
 
 type PersistedSortState = {
   key: string
   order: 'asc' | 'desc'
 }
-const actionsExpanded = ref(false)
 
 const collator = new Intl.Collator(undefined, {
   numeric: true,
@@ -562,7 +500,7 @@ const collator = new Intl.Collator(undefined, {
 
 const getSortableKeys = () => {
   const keys = new Set<string>()
-  for (const col of visibleColumns.value) {
+  for (const col of props.columns) {
     if (col.sortable) keys.add(col.key)
   }
   return keys
@@ -629,23 +567,11 @@ const getColumnAriaSort = (key: string) => {
 }
 
 const getHeaderContentAlignmentClass = (column: Column) => {
-  if (column.numeric || column.align === 'right') return 'justify-end'
-  if (column.align === 'center') return 'justify-center'
   const className = column.class || ''
   if (className.includes('text-center')) return 'justify-center'
   if (className.includes('text-right')) return 'justify-end'
   return 'justify-start'
 }
-
-const getColumnCellClass = (column: Column) => {
-  const classes: string[] = []
-  if (column.numeric || column.mono) classes.push('font-mono')
-  if (column.numeric || column.align === 'right') classes.push('text-right tabular-nums')
-  else if (column.align === 'center') classes.push('text-center')
-  return classes.join(' ')
-}
-
-const getRowPaddingClass = () => density.value === 'comfortable' ? 'py-3' : 'py-2.5'
 
 const isNullishOrEmpty = (value: any) => value === null || value === undefined || value === ''
 
@@ -708,33 +634,16 @@ const resolveStableRowKey = (row: any): string | number | undefined => {
 
 const resolveRowKey = (row: any, index: number) => resolveStableRowKey(row) ?? index
 
+const dataColumns = computed(() => props.columns.filter((column) => column.key !== 'actions'))
 const columnsSignature = computed(() =>
-  visibleColumns.value.map((column) => `${column.key}:${column.sortable ? '1' : '0'}`).join('|')
-)
-
-watch(
-  () => props.columns.map((column) => `${column.key}:${column.hideable === false ? '0' : '1'}`),
-  () => {
-    syncColumns(
-      props.columns.map((column) => column.key),
-      props.columns
-        .filter((column) => column.hideable === false || column.key === 'actions')
-        .map((column) => column.key)
-    )
-  },
-  { flush: 'post' }
-)
-
-watch(
-  visibleColumnKeys,
-  (keys) => emit('visibleColumnsChange', [...keys]),
-  { immediate: true }
+  props.columns.map((column) => `${column.key}:${column.sortable ? '1' : '0'}`).join('|')
 )
 
 watch(
   isDesktopViewport,
-  async () => {
+  async (isDesktop) => {
     detachDesktopTableTracking()
+    if (!isDesktop) return
     await nextTick()
     attachDesktopTableTracking()
   },
@@ -795,7 +704,7 @@ const sortedData = computed(() => {
     .map(item => item.row)
 })
 
-const tableColumnCount = computed(() => visibleColumns.value.length + (props.selectable ? 1 : 0))
+const tableColumnCount = computed(() => props.columns.length + (props.selectable ? 1 : 0))
 const selectedKeySet = computed(() => new Set(props.selectedKeys))
 const visibleRowKeys = computed(() =>
   (sortedData.value ?? []).map((row, index) => resolveRowKey(row, index))
@@ -935,11 +844,15 @@ const renderRows = computed<Array<{ index: number; row: any; measure: boolean }>
   return data.map((row, index) => ({ index, row, measure: false }))
 })
 
-
-const hasSelectColumn = computed(() => {
-  return visibleColumns.value.length > 0 && visibleColumns.value[0].key === 'select'
+const hasActionsColumn = computed(() => {
+  return props.columns.some(column => column.key === 'actions')
 })
 
+const hasSelectColumn = computed(() => {
+  return props.columns.length > 0 && props.columns[0].key === 'select'
+})
+
+// 生成固定列的 CSS 类
 const getStickyColumnClass = (column: Column, index: number) => {
   const classes: string[] = []
 
@@ -969,10 +882,18 @@ const getStickyColumnClass = (column: Column, index: number) => {
 
 // 根据列数自适应调整内边距
 const getAdaptivePaddingClass = () => {
-  const columnCount = visibleColumns.value.length
-  if (columnCount >= 10) return 'px-2'
-  if (columnCount >= 7) return 'px-3'
-  return 'px-4'
+  const columnCount = props.columns.length
+
+  // 列数越多，内边距越小
+  if (columnCount >= 10) {
+    return 'px-2' // 8px
+  } else if (columnCount >= 7) {
+    return 'px-3' // 12px
+  } else if (columnCount >= 5) {
+    return 'px-4' // 16px
+  } else {
+    return 'px-6' // 24px (原始值)
+  }
 }
 
 // Init + keep persisted sort state consistent with current columns
@@ -982,7 +903,6 @@ onMounted(() => {
   const initial = resolveInitialSortState()
   applySortState(initial)
   didInitSort.value = true
-  if (props.serverSideSort && initial) emit('sort', initial.key, initial.order)
 })
 
 watch(

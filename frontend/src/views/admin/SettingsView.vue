@@ -1,38 +1,16 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-[1440px] space-y-5">
+    <div class="mx-auto max-w-6xl space-y-6">
       <!-- Loading State -->
-      <div v-if="loading" class="space-y-5" role="status" :aria-label="t('common.loading')" aria-busy="true">
-        <Skeleton width="12rem" height="1.75rem" />
-        <div class="grid gap-6 md:grid-cols-[200px_1fr]">
-          <div class="space-y-3">
-            <Skeleton v-for="item in 6" :key="item" height="2rem" />
-          </div>
-          <div class="space-y-5 rounded-lg border border-gray-200 p-5 dark:border-dark-700">
-            <Skeleton width="40%" height="1.25rem" />
-            <Skeleton v-for="item in 5" :key="item" height="2.5rem" />
-          </div>
-        </div>
+      <div v-if="loading" class="flex items-center justify-center py-12">
+        <div
+          class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"
+        ></div>
       </div>
 
       <!-- Settings Form -->
-      <form v-else @submit.prevent="saveSettings" class="space-y-5" novalidate>
-        <header class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 class="text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
-              {{ t('admin.settings.title') }}
-            </h1>
-          </div>
-          <div
-            v-if="hasUnsavedChanges"
-            class="inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200"
-            role="status"
-          >
-            <span class="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true"></span>
-            {{ t('console.settings.unsavedChanges') }}
-          </div>
-        </header>
-
+      <form v-else @submit.prevent="saveSettings" class="space-y-6" novalidate>
+        <!-- Tab Navigation -->
         <div class="settings-tabs-shell">
           <nav
             class="settings-tabs-scroll"
@@ -40,33 +18,28 @@
             :aria-label="t('admin.settings.title')"
           >
             <div class="settings-tabs">
-              <div v-for="group in settingsTabGroups" :key="group.key" class="settings-tab-group">
-                <span class="settings-tab-group-label">{{ t(group.label) }}</span>
-                <div class="settings-tab-group-items">
-                  <button
-                    v-for="tab in group.tabs"
-                    :key="tab.key"
-                    :id="`settings-tab-${tab.key}`"
-                    type="button"
-                    role="tab"
-                    :aria-selected="activeTab === tab.key"
-                    :tabindex="activeTab === tab.key ? 0 : -1"
-                    :class="[
-                      'settings-tab',
-                      activeTab === tab.key && 'settings-tab-active',
-                    ]"
-                    @click="selectSettingsTab(tab.key)"
-                    @keydown="handleSettingsTabKeydown($event, tab.key)"
-                  >
-                    <span class="settings-tab-icon">
-                      <Icon :name="tab.icon" size="sm" />
-                    </span>
-                    <span class="settings-tab-label">{{
-                      t(`admin.settings.tabs.${tab.key}`)
-                    }}</span>
-                  </button>
-                </div>
-              </div>
+              <button
+                v-for="tab in settingsTabs"
+                :key="tab.key"
+                :id="`settings-tab-${tab.key}`"
+                type="button"
+                role="tab"
+                :aria-selected="activeTab === tab.key"
+                :tabindex="activeTab === tab.key ? 0 : -1"
+                :class="[
+                  'settings-tab',
+                  activeTab === tab.key && 'settings-tab-active',
+                ]"
+                @click="selectSettingsTab(tab.key)"
+                @keydown="handleSettingsTabKeydown($event, tab.key)"
+              >
+                <span class="settings-tab-icon">
+                  <Icon :name="tab.icon" size="sm" />
+                </span>
+                <span class="settings-tab-label">{{
+                  t(`admin.settings.tabs.${tab.key}`)
+                }}</span>
+              </button>
             </div>
           </nav>
         </div>
@@ -8716,22 +8689,11 @@
           <BackupSettings />
         </div>
 
-        <div
-          v-show="activeTab !== 'backup'"
-          class="settings-save-bar"
-          :class="{ 'settings-save-bar-dirty': hasUnsavedChanges }"
-        >
-          <div class="min-w-0 text-sm">
-            <span v-if="hasUnsavedChanges" class="font-medium text-gray-900 dark:text-white">
-              {{ t('console.settings.unsavedChanges') }}
-            </span>
-            <span v-else class="text-gray-500 dark:text-gray-400">
-              {{ t('common.saved') }}
-            </span>
-          </div>
+        <!-- Save Button -->
+        <div v-show="activeTab !== 'backup'" class="flex justify-end">
           <button
             type="submit"
-            :disabled="saving || loadFailed || !hasUnsavedChanges"
+            :disabled="saving || loadFailed"
             class="btn btn-primary"
           >
             <svg
@@ -8757,7 +8719,7 @@
             {{
               saving
                 ? t("admin.settings.saving")
-                : t("console.settings.saveChanges")
+                : t("admin.settings.saveSettings")
             }}
           </button>
         </div>
@@ -8801,8 +8763,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from "vue";
-import { onBeforeRouteLeave } from "vue-router";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";
 import {
@@ -8840,7 +8801,6 @@ import type {
 import type { ProviderInstance } from "@/types/payment";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import Icon from "@/components/icons/Icon.vue";
-import Skeleton from "@/components/common/Skeleton.vue";
 import Select from "@/components/common/Select.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import PaymentProviderList from "@/components/payment/PaymentProviderList.vue";
@@ -8924,37 +8884,6 @@ const settingsTabs = [
   { key: "email" as SettingsTab, icon: "mail" as const },
   { key: "backup" as SettingsTab, icon: "database" as const },
 ];
-const settingsTabGroups = [
-  {
-    key: "general",
-    label: "console.settings.section.general",
-    tabs: settingsTabs.filter((tab) =>
-      ["general", "agreement", "users"].includes(tab.key),
-    ),
-  },
-  {
-    key: "gateway",
-    label: "console.settings.section.gateway",
-    tabs: settingsTabs.filter((tab) => tab.key === "gateway"),
-  },
-  {
-    key: "security",
-    label: "console.settings.section.security",
-    tabs: settingsTabs.filter((tab) => tab.key === "security"),
-  },
-  {
-    key: "payments",
-    label: "console.settings.section.payments",
-    tabs: settingsTabs.filter((tab) => tab.key === "payment"),
-  },
-  {
-    key: "system",
-    label: "console.settings.section.system",
-    tabs: settingsTabs.filter((tab) =>
-      ["features", "email", "backup"].includes(tab.key),
-    ),
-  },
-];
 
 const settingsTabKeyboardActions = {
   ArrowLeft: -1,
@@ -8996,7 +8925,6 @@ function handleSettingsTabKeydown(event: KeyboardEvent, tab: SettingsTab): void 
     nextIndex =
       (nextIndex + action + settingsTabs.length) % settingsTabs.length;
   }
-
 
   const nextTab = settingsTabs[nextIndex]?.key;
   if (!nextTab) {
@@ -10761,43 +10689,6 @@ const codexFingerprintRows = ref<FingerprintSignalRow[]>([]);
 const codexFingerprintNoRequired = computed(
   () => !codexFingerprintRows.value.some((r) => r.required),
 );
-
-const settingsBaseline = ref("");
-const settingsFingerprint = computed(() =>
-  JSON.stringify({
-    form,
-    authSourceDefaults,
-    openaiFastPolicy: openaiFastPolicyForm.rules,
-    webSearchConfig,
-    claudeOAuthSystemPromptBlocks: claudeOAuthSystemPromptBlocks.value,
-    codexBlacklistRows: codexBlacklistRows.value,
-    codexWhitelistRows: codexWhitelistRows.value,
-    codexFingerprintRows: codexFingerprintRows.value,
-    registrationEmailSuffixWhitelistTags: registrationEmailSuffixWhitelistTags.value,
-    tablePageSizeOptions: tablePageSizeOptionsInput.value,
-  }),
-);
-const hasUnsavedChanges = computed(
-  () =>
-    !loading.value &&
-    !loadFailed.value &&
-    settingsBaseline.value !== "" &&
-    settingsFingerprint.value !== settingsBaseline.value,
-);
-
-function captureSettingsBaseline(): void {
-  settingsBaseline.value = settingsFingerprint.value;
-}
-
-function confirmDiscardUnsavedChanges(): boolean {
-  return !hasUnsavedChanges.value || window.confirm(t("console.settings.leaveWarning"));
-}
-
-function handleBeforeUnload(event: BeforeUnloadEvent): void {
-  if (!hasUnsavedChanges.value) return;
-  event.preventDefault();
-  event.returnValue = "";
-}
 function addCodexFingerprintRow(): void {
   codexFingerprintRows.value.push({ type: "header_exact", match: "", required: false });
 }
@@ -11034,7 +10925,6 @@ async function loadSettings() {
 
     // Load web search emulation config separately
     await loadWebSearchConfig();
-    captureSettingsBaseline();
   } catch (error: unknown) {
     loadFailed.value = true;
     appStore.showError(
@@ -11698,7 +11588,6 @@ async function saveSettings() {
     await appStore.fetchPublicSettings(true);
     await adminSettingsStore.fetch(true);
     if (wsOk) {
-      captureSettingsBaseline();
       appStore.showSuccess(t("admin.settings.settingsSaved"));
     }
   } catch (error: unknown) {
@@ -12672,16 +12561,6 @@ onMounted(() => {
   loadProviders();
 });
 
-onMounted(() => {
-  window.addEventListener("beforeunload", handleBeforeUnload);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("beforeunload", handleBeforeUnload);
-});
-
-onBeforeRouteLeave(() => confirmDiscardUnsavedChanges());
-
 // =========================
 // Affiliate (邀请返利) 专属用户管理
 // =========================
@@ -13060,9 +12939,10 @@ watch(
   @apply h-[42px];
 }
 
+/* ============ 系统设置 Tab 导航 ============ */
 .settings-tabs-shell {
-  @apply sticky z-20 border-y border-gray-200/80 bg-white/95 px-1 py-2 backdrop-blur dark:border-dark-700/80 dark:bg-dark-950/95;
-  top: 4rem;
+  @apply sticky z-20 -mx-1 rounded-2xl border border-gray-200/80 bg-white/90 p-1.5 shadow-sm backdrop-blur-xl dark:border-dark-700/80 dark:bg-dark-900/90;
+  top: 4.75rem;
 }
 
 .settings-tabs-scroll {
@@ -13076,55 +12956,76 @@ watch(
 }
 
 .settings-tabs {
-  @apply flex min-w-max items-stretch gap-4;
-}
-
-.settings-tab-group {
-  @apply flex shrink-0 items-center gap-1.5 border-r border-gray-200 pr-4 last:border-r-0 dark:border-dark-700;
-}
-
-.settings-tab-group-label {
-  @apply hidden text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400 xl:block dark:text-gray-500;
-}
-
-.settings-tab-group-items {
-  @apply flex items-center gap-1;
+  @apply flex min-w-max items-center gap-1;
 }
 
 .settings-tab {
-  @apply relative flex h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-[13px] font-medium text-gray-600 outline-none transition-colors duration-150 ease-out dark:text-gray-300;
+  @apply relative isolate flex h-10 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-all duration-150 ease-out dark:text-gray-300;
 }
 
-.settings-tab:hover {
-  @apply bg-gray-100 text-gray-950 dark:bg-dark-800 dark:text-white;
+@media (min-width: 768px) {
+  .settings-tabs {
+    @apply min-w-full;
+  }
+
+  .settings-tab {
+    @apply min-w-0 flex-1 basis-0 overflow-hidden px-2 text-[13px];
+  }
+
+  .settings-tab-icon {
+    @apply h-6 w-6;
+  }
+}
+
+.settings-tab::before {
+  @apply absolute inset-0 -z-10 rounded-xl opacity-0 transition-opacity duration-150;
+  content: "";
+  background: rgb(var(--color-primary-500) / 0.08);
+}
+
+.settings-tab:hover::before,
+.settings-tab:focus-visible::before {
+  opacity: 1;
 }
 
 .settings-tab:focus-visible {
-  @apply ring-2 ring-primary-500/50 ring-offset-2 ring-offset-white dark:ring-offset-dark-950;
+  @apply ring-2 ring-primary-500/40 ring-offset-2 ring-offset-white dark:ring-offset-dark-900;
 }
 
 .settings-tab-active {
-  @apply bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300;
+  @apply border-primary-300/70 bg-white text-primary-700 shadow-sm dark:border-primary-500/40 dark:bg-dark-800/95 dark:text-primary-300;
+}
+
+.settings-tab-active::before {
+  opacity: 0;
+}
+
+.settings-tab-active::after {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.25rem;
+  left: 0.75rem;
+  height: 2px;
+  border-radius: 9999px;
+  content: "";
+  background: rgb(var(--color-primary-500));
 }
 
 .settings-tab-icon {
-  @apply flex h-4 w-4 shrink-0 items-center justify-center text-gray-500 dark:text-gray-400;
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-150 dark:text-gray-400;
+}
+
+.settings-tab:hover .settings-tab-icon,
+.settings-tab:focus-visible .settings-tab-icon {
+  @apply text-gray-700 dark:text-gray-200;
 }
 
 .settings-tab-active .settings-tab-icon {
-  @apply text-primary-600 dark:text-primary-300;
+  @apply bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-primary-300;
 }
 
 .settings-tab-label {
   @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap leading-none;
-}
-
-.settings-save-bar {
-  @apply sticky bottom-4 z-20 flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur dark:border-dark-700 dark:bg-dark-900/95;
-}
-
-.settings-save-bar-dirty {
-  @apply border-primary-200 dark:border-primary-500/40;
 }
 </style>
 

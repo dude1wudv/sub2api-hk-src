@@ -68,13 +68,15 @@
         </div>
       </div>
     </div>
-    <Skeleton v-if="loading" height="224px" />
-    <div v-else-if="displayEndpointStats.length > 0 && chartData" class="flex flex-col gap-4">
-      <div class="h-24 w-24 self-center">
+    <div v-if="loading" class="flex h-48 items-center justify-center">
+      <LoadingSpinner />
+    </div>
+    <div v-else-if="displayEndpointStats.length > 0 && chartData" class="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+      <div class="h-44 w-44 shrink-0 sm:h-48 sm:w-48">
         <Doughnut :data="chartData" :options="doughnutOptions" />
       </div>
-      <div class="max-h-64 w-full min-w-0 overflow-auto">
-        <table class="w-full text-[13px]">
+      <div class="max-h-48 w-full min-w-0 flex-1 overflow-auto">
+        <table class="w-full text-xs">
           <thead>
             <tr class="text-gray-400 dark:text-dark-400">
               <th class="pb-2 text-left font-medium">{{ t('usage.endpoint') }}</th>
@@ -135,7 +137,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Doughnut } from 'vue-chartjs'
-import Skeleton from '@/components/common/Skeleton.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
 import type { EndpointStat, UserBreakdownItem } from '@/types'
 import { getUserBreakdown } from '@/api/admin/dashboard'
@@ -209,7 +211,20 @@ const toggleBreakdown = async (endpoint: string) => {
   }
 }
 
-const chartColors = ['#6366F1', '#818CF8', '#A1A1AA', '#64748B', '#C7D2FE', '#71717A', '#94A3B8', '#52525B']
+const chartColors = [
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
+  '#14b8a6',
+  '#f97316',
+  '#6366f1',
+  '#84cc16',
+  '#06b6d4',
+  '#a855f7'
+]
 
 const displayEndpointStats = computed(() => {
   const sourceStats = props.source === 'upstream'

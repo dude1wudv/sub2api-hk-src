@@ -11,8 +11,6 @@
         server-side-sort
         default-sort-key="created_at"
         default-sort-order="desc"
-        preference-route="admin-ops"
-        preference-table="error-logs"
         @sort="onSort"
         @rowClick="(row) => emit('openErrorDetail', row.id)"
       >
