@@ -32,7 +32,7 @@ function activate(value: Record<string, unknown>) {
   const start = value.start_date
   const end = value.end_date
   if (typeof start !== 'string' || typeof end !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || start > end) return
-  const { start_date, end_date, sort_by, sort_order, page, page_size, granularity, ...filters } = value
+  const { start_date: _startDate, end_date: _endDate, sort_by: _sortBy, sort_order: _sortOrder, page: _page, page_size: _pageSize, granularity: _granularity, ...filters } = value
   if (props.queryState) emit('restore', value)
   else emit('filters', filters)
   emit('change', { startDate: start, endDate: end, preset: null })

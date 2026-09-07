@@ -63,7 +63,7 @@ interface Props {
   items: SavedTableFilter[]
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<{ save: [name: string]; apply: [id: string]; remove: [id: string] }>()
 const { t } = useI18n()
 const rootRef = ref<HTMLElement | null>(null)

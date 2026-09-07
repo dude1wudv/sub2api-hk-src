@@ -8803,6 +8803,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";
 import {
   appendAuthSourceDefaultsToUpdateRequest,

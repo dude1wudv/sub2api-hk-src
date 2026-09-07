@@ -37,7 +37,7 @@ interface Props {
   align?: 'left' | 'right'
 }
 
-const props = withDefaults(defineProps<Props>(), { align: 'right' })
+withDefaults(defineProps<Props>(), { align: 'right' })
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const rootRef = ref<HTMLElement | null>(null)
 const triggerRef = ref<HTMLButtonElement | null>(null)

@@ -548,6 +548,11 @@ const handleDocumentPointerDown = (event: PointerEvent) => {
 
 const sortKey = ref<string>('')
 const sortOrder = ref<'asc' | 'desc'>('asc')
+
+type PersistedSortState = {
+  key: string
+  order: 'asc' | 'desc'
+}
 const actionsExpanded = ref(false)
 
 const collator = new Intl.Collator(undefined, {

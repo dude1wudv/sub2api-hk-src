@@ -309,7 +309,7 @@ const sortState = reactive({
 })
 
 function restoreUsageQuery(value: Record<string, unknown>) {
-  const { start_date, end_date, sort_by, sort_order, page, page_size, granularity: savedGranularity, error_page, error_page_size, error_sort_by, error_sort_order, error_model, error_api_key_id, ...savedFilters } = value
+  const { start_date, end_date, sort_by, sort_order, page, page_size, granularity: savedGranularity, error_page, error_page_size, error_sort_by, error_sort_order, error_model: _errorModel, error_api_key_id: _errorApiKeyId, ...savedFilters } = value
   Object.assign(filters.value, savedFilters)
   if (typeof start_date === 'string') startDate.value = start_date
   if (typeof end_date === 'string') endDate.value = end_date
