@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
+      <header><h1 class="text-2xl font-semibold tracking-tight">{{ t('admin.usage.title') }}</h1><p class="mt-1 text-sm text-gray-500 dark:text-dark-300">{{ t('console.analytics.usageOverview') }}</p></header>
       <UsageStatsCards :stats="usageStats" />
       <!-- Charts Section -->
       <div class="space-y-4">
@@ -22,6 +23,8 @@
             </div>
           </div>
         </div>
+        <UsageQueryPresets route-id="admin.usage" :start-date="startDate" :end-date="endDate" :filters="filters" :query-state="{ ...sortState, page: pagination.page, page_size: pagination.page_size, granularity, error_page: errPage, error_page_size: errPageSize, error_sort_by: errSortBy, error_sort_order: errSortOrder }" @restore="restoreUsageQuery" @filters="value => Object.assign(filters, value)" @change="onDateRangeChange" />
+        <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <ModelDistributionChart
             v-model:source="modelDistributionSource"
@@ -61,7 +64,6 @@
             :end-date="endDate"
             :filters="breakdownFilters"
           />
-          <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
         </div>
       </div>
       <!-- 明细区：tab 栏 + 筛选 + 内容收进同一张卡片，消除割裂感 -->
@@ -194,6 +196,7 @@ import { formatReasoningEffort } from '@/utils/format'
 import { resolveUsageRequestType, requestTypeToLegacyStream } from '@/utils/usageRequestType'
 import AppLayout from '@/components/layout/AppLayout.vue'; import Pagination from '@/components/common/Pagination.vue'; import Select from '@/components/common/Select.vue'; import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import UsageStatsCards from '@/components/admin/usage/UsageStatsCards.vue'; import UsageFilters from '@/components/admin/usage/UsageFilters.vue'
+import UsageQueryPresets from '@/components/admin/usage/UsageQueryPresets.vue'
 import UsageTable from '@/components/admin/usage/UsageTable.vue'; import UsageExportProgress from '@/components/admin/usage/UsageExportProgress.vue'
 import UserTokenRanking from '@/components/admin/usage/UserTokenRanking.vue'
 import UsageCleanupDialog from '@/components/admin/usage/UsageCleanupDialog.vue'
@@ -305,6 +308,24 @@ const sortState = reactive({
   sort_order: 'desc' as 'asc' | 'desc'
 })
 
+function restoreUsageQuery(value: Record<string, unknown>) {
+  const { start_date, end_date, sort_by, sort_order, page, page_size, granularity: savedGranularity, error_page, error_page_size, error_sort_by, error_sort_order, error_model, error_api_key_id, ...savedFilters } = value
+  Object.assign(filters.value, savedFilters)
+  if (typeof start_date === 'string') startDate.value = start_date
+  if (typeof end_date === 'string') endDate.value = end_date
+  filters.value.start_date = startDate.value
+  filters.value.end_date = endDate.value
+  if (typeof sort_by === 'string') sortState.sort_by = sort_by
+  if (sort_order === 'asc' || sort_order === 'desc') sortState.sort_order = sort_order
+  if (typeof page === 'number' && page > 0) pagination.page = page
+  if (typeof page_size === 'number' && page_size > 0) pagination.page_size = page_size
+  if (savedGranularity === 'hour' || savedGranularity === 'day') granularity.value = savedGranularity
+  if (typeof error_page === 'number' && error_page > 0) errPage.value = error_page
+  if (typeof error_page_size === 'number' && error_page_size > 0) errPageSize.value = error_page_size
+  if (typeof error_sort_by === 'string') errSortBy.value = error_sort_by
+  if (error_sort_order === 'asc' || error_sort_order === 'desc') errSortOrder.value = error_sort_order
+}
+
 const getSingleQueryValue = (value: string | null | Array<string | null> | undefined): string | undefined => {
   if (Array.isArray(value)) return value.find((item): item is string => typeof item === 'string' && item.length > 0)
   return typeof value === 'string' && value.length > 0 ? value : undefined
@@ -331,11 +352,12 @@ const applyRouteQueryFilters = () => {
 
   filters.value = {
     ...filters.value,
-    user_id: queryUserId,
+    ...(queryUserId !== undefined ? { user_id: queryUserId } : {}),
     start_date: startDate.value,
     end_date: endDate.value
   }
-  granularity.value = getGranularityForRange(startDate.value, endDate.value)
+  if (queryStartDate || queryEndDate) granularity.value = getGranularityForRange(startDate.value, endDate.value)
+  if (queryStartDate || queryEndDate || queryUserId !== undefined) pagination.page = 1
 }
 
 const loadRouteUserFilterLabel = async () => {

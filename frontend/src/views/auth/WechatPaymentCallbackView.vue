@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 px-4 py-10 dark:bg-dark-900">
+  <div class="payment-callback-surface min-h-screen bg-[rgb(var(--canvas))] px-4 py-16 text-[rgb(var(--ink))] sm:py-24">
     <div class="mx-auto max-w-2xl">
       <div class="card p-6">
         <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -148,3 +148,22 @@ onMounted(async () => {
   })
 })
 </script>
+
+<style scoped>
+.payment-callback-surface {
+  background: rgb(var(--canvas));
+}
+
+.card {
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-card);
+  padding: 24px;
+}
+
+h1 { letter-spacing: -0.035em; font-size: 1.5rem; }
+.btn { border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>

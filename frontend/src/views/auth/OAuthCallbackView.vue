@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 px-4 py-10 dark:bg-dark-900">
+  <div class="oauth-callback-surface min-h-screen bg-[rgb(var(--canvas))] px-4 py-16 text-[rgb(var(--ink))] sm:py-24">
     <div class="mx-auto max-w-2xl">
       <div v-if="isProcessing" class="card p-6 text-center">
         <div class="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></div>
@@ -411,3 +411,23 @@ const copy = (value: string) => {
   copyToClipboard(value)
 }
 </script>
+
+<style scoped>
+.oauth-callback-surface {
+  background: rgb(var(--canvas));
+}
+
+.card {
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-card);
+  padding: 24px;
+}
+
+h1 { letter-spacing: -0.035em; font-size: 1.5rem; }
+.input { min-width: 0; border-radius: 6px; }
+.btn { border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>

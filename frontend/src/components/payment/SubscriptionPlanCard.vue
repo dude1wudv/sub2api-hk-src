@@ -1,8 +1,8 @@
 <template>
   <div
     :class="[
-      'group relative flex flex-col overflow-hidden rounded-2xl border transition-all',
-      'hover:shadow-xl hover:-translate-y-0.5',
+      'group relative flex flex-col overflow-hidden rounded-lg border transition-colors duration-150',
+      'hover:border-primary-300 dark:hover:border-primary-700',
       borderClass,
       'bg-white dark:bg-dark-800',
     ]"
@@ -112,7 +112,7 @@
         type="button"
         :disabled="isPurchased"
         :class="[
-          'w-full rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-[0.98]',
+          'w-full rounded-md py-2.5 text-sm font-semibold transition-colors',
           isPurchased ? 'cursor-not-allowed bg-gray-200 text-gray-500 dark:bg-dark-600 dark:text-gray-400' : btnClass,
         ]"
         @click="selectPlan"

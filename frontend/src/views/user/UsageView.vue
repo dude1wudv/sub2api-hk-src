@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
     <div class="space-y-5 sm:space-y-6">
+      <header><h1 class="text-2xl font-semibold tracking-tight">{{ t('nav.usage') }}</h1><p class="mt-1 text-sm text-gray-500 dark:text-dark-300">{{ t('console.analytics.usageOverview') }}</p></header>
       <UsageStatsCards :stats="usageStats" :show-account-cost="false" :strike-standard-cost="true" />
 
       <div class="space-y-4">
@@ -22,6 +23,8 @@
             </div>
           </div>
         </div>
+        <UsageQueryPresets route-id="user.usage" :start-date="startDate" :end-date="endDate" :filters="filters" :query-state="{ ...sortState, page: pagination.page, page_size: pagination.page_size, granularity, error_model: errorFilter.model, error_category: errorFilter.category, error_api_key_id: errorFilter.api_key_id, status_code: errorFilter.status_code, error_page: errorPage, error_page_size: errorPageSize, error_sort_by: errorSortBy, error_sort_order: errorSortOrder }" @restore="restoreUsageQuery" @filters="value => Object.assign(filters, value)" @change="onDateRangeChange" />
+        <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <ModelDistributionChart
@@ -34,6 +37,8 @@
             :show-account-cost="false"
             :start-date="startDate"
             :end-date="endDate"
+            drilldown
+            @model-click="model => { filters.model = model; activeTab = 'usage'; applyFilters() }"
           />
           <GroupDistributionChart
             v-model:metric="groupDistributionMetric"
@@ -62,7 +67,6 @@
             :start-date="startDate"
             :end-date="endDate"
           />
-          <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
         </div>
       </div>
 
@@ -222,6 +226,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { keysAPI, usageAPI, userGroupsAPI } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -229,6 +234,7 @@ import Pagination from '@/components/common/Pagination.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import UsageStatsCards from '@/components/admin/usage/UsageStatsCards.vue'
+import UsageQueryPresets from '@/components/admin/usage/UsageQueryPresets.vue'
 import UsageTable from '@/components/admin/usage/UsageTable.vue'
 import ModelDistributionChart from '@/components/charts/ModelDistributionChart.vue'
 import GroupDistributionChart from '@/components/charts/GroupDistributionChart.vue'
@@ -256,6 +262,7 @@ import type { Column } from '@/components/common/types'
 import { COMMON_ERROR_STATUS_CODES } from '@/utils/errorBadges'
 
 const { t } = useI18n()
+const route = useRoute()
 const appStore = useAppStore()
 
 type DistributionMetric = 'tokens' | 'actual_cost'
@@ -376,6 +383,30 @@ const sortState = reactive({
   sort_by: 'created_at',
   sort_order: 'desc' as 'asc' | 'desc',
 })
+
+function restoreUsageQuery(value: Record<string, unknown>) {
+  const { start_date, end_date, sort_by, sort_order, page, page_size, granularity: savedGranularity, error_page, error_page_size, error_sort_by, error_sort_order, error_model, error_category, error_api_key_id, status_code, error_phase, ...savedFilters } = value
+  Object.assign(filters.value, savedFilters)
+  if (typeof start_date === 'string') startDate.value = start_date
+  if (typeof end_date === 'string') endDate.value = end_date
+  filters.value.start_date = startDate.value
+  filters.value.end_date = endDate.value
+  if (typeof sort_by === 'string') sortState.sort_by = sort_by
+  if (sort_order === 'asc' || sort_order === 'desc') sortState.sort_order = sort_order
+  if (typeof page === 'number' && page > 0) pagination.page = page
+  if (typeof page_size === 'number' && page_size > 0) pagination.page_size = page_size
+  if (savedGranularity === 'hour' || savedGranularity === 'day') granularity.value = savedGranularity
+  if (typeof error_page === 'number' && error_page > 0) errorPage.value = error_page
+  if (typeof error_page_size === 'number' && error_page_size > 0) errorPageSize.value = error_page_size
+  if (typeof error_sort_by === 'string') errorSortBy.value = error_sort_by
+  if (error_sort_order === 'asc' || error_sort_order === 'desc') errorSortOrder.value = error_sort_order
+  errorFilter.value = {
+    model: typeof error_model === 'string' ? error_model : '',
+    category: typeof error_category === 'string' ? error_category : '',
+    api_key_id: typeof error_api_key_id === 'number' ? error_api_key_id : null,
+    status_code: typeof status_code === 'number' ? status_code : null,
+  }
+}
 
 const granularityOptions = computed<SelectOption[]>(() => [
   { value: 'day', label: t('admin.dashboard.day') },
@@ -884,6 +915,15 @@ const switchToErrors = () => {
 }
 
 onMounted(() => {
+  if (route.query.model || route.query.start_date || route.query.end_date) pagination.page = 1
+  if (typeof route.query.model === 'string') filters.value.model = route.query.model
+  if (typeof route.query.start_date === 'string' && typeof route.query.end_date === 'string') {
+    startDate.value = route.query.start_date
+    endDate.value = route.query.end_date
+    filters.value.start_date = startDate.value
+    filters.value.end_date = endDate.value
+    granularity.value = getGranularityForRange(startDate.value, endDate.value)
+  }
   loadSavedColumns()
   loadSavedErrColumns()
   document.addEventListener('click', handleColumnClickOutside)

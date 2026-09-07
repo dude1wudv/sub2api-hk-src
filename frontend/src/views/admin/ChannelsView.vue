@@ -2,7 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+        <div class="flex flex-col justify-between gap-4 rounded-lg border border-gray-200/80 bg-white/70 p-3 shadow-sm backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/45 lg:flex-row lg:items-start">
           <!-- Left: Search + Filters -->
           <div class="flex flex-1 flex-wrap items-center gap-3">
             <div class="relative w-full sm:w-64">
@@ -56,20 +56,35 @@
           default-sort-key="created_at"
           default-sort-order="desc"
           @sort="handleSort"
+          preference-route="admin"
+          preference-table="channels"
         >
-          <template #cell-name="{ value }">
-            <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+          <template #cell-name="{ row, value }">
+            <button
+              type="button"
+              class="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              @click="openEditDialog(row)"
+            >
+              <span class="font-mono text-sm font-medium text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-300">{{ value }}</span>
+              <span v-if="row.description" class="mt-0.5 block max-w-sm truncate text-xs text-gray-500 dark:text-dark-400">{{ row.description }}</span>
+            </button>
           </template>
 
           <template #cell-description="{ value }">
-            <span class="text-sm text-gray-600 dark:text-gray-400">{{ value || '-' }}</span>
+            <span class="block max-w-sm truncate text-sm text-gray-600 dark:text-gray-400">{{ value || '—' }}</span>
           </template>
 
           <template #cell-status="{ row }">
-            <Toggle
-              :modelValue="row.status === 'active'"
-              @update:modelValue="toggleChannelStatus(row)"
-            />
+            <div class="flex items-center gap-2">
+              <Toggle
+                :modelValue="row.status === 'active'"
+                @update:modelValue="toggleChannelStatus(row)"
+              />
+              <span :class="['inline-flex items-center gap-1.5 text-xs font-medium', row.status === 'active' ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-500 dark:text-dark-400']">
+                <span :class="['h-1.5 w-1.5 rounded-full', row.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400']" />
+                {{ row.status === 'active' ? t('admin.channels.statusActive', 'Active') : t('admin.channels.statusDisabled', 'Disabled') }}
+              </span>
+            </div>
           </template>
 
           <template #cell-group_count="{ row }">
@@ -627,7 +642,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -638,6 +653,7 @@ import { apiIntervalsToForm, apiTimePricingToForm, createDefaultTimePricingForm,
 import type { AdminGroup, GroupPlatform } from '@/types'
 import type { Column } from '@/components/common/types'
 import { platformTextClass, platformBadgeLightClass } from '@/utils/platformColors'
+import { usePersistedTableQuery } from '@/composables/useTablePreferences'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
@@ -723,7 +739,7 @@ const billingModelSourceOptions = computed(() => [
 const channels = ref<Channel[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
-const filters = reactive({ status: '' })
+const filters = reactive({ status: '', search: '' })
 const pagination = reactive({
   page: 1,
   page_size: getPersistedPageSize(),
@@ -733,6 +749,15 @@ const sortState = reactive({
   sort_by: 'created_at',
   sort_order: 'desc' as 'asc' | 'desc'
 })
+const channelTableQuery = usePersistedTableQuery({
+  routeId: 'admin',
+  tableId: 'channels',
+  filters,
+  filterKeys: ['status', 'search'],
+  pagination
+})
+watch(searchQuery, (value) => { filters.search = value })
+watch(filters, () => channelTableQuery.persist(), { deep: true })
 
 // Dialog state
 const showDialog = ref(false)
@@ -1327,18 +1352,21 @@ function handleSearch() {
   searchTimeout = setTimeout(() => {
     pagination.page = 1
     loadChannels()
+    channelTableQuery.persist()
   }, 300)
 }
 
 function handlePageChange(page: number) {
   pagination.page = page
   loadChannels()
+  channelTableQuery.persist()
 }
 
 function handlePageSizeChange(pageSize: number) {
   pagination.page_size = pageSize
   pagination.page = 1
   loadChannels()
+  channelTableQuery.persist()
 }
 
 function handleSort(key: string, order: 'asc' | 'desc') {
@@ -1346,6 +1374,7 @@ function handleSort(key: string, order: 'asc' | 'desc') {
   sortState.sort_order = order
   pagination.page = 1
   loadChannels()
+  channelTableQuery.persist()
 }
 
 // ── Dialog ──
@@ -1665,6 +1694,10 @@ async function confirmDelete() {
 
 // ── Lifecycle ──
 onMounted(() => {
+  if (typeof window === 'undefined' || !window.location.search) {
+    channelTableQuery.restore()
+    searchQuery.value = filters.search
+  }
   loadChannels()
   loadGroups()
   loadWebSearchGlobalState()

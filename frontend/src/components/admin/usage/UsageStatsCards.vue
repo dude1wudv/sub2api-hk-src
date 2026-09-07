@@ -1,5 +1,6 @@
 <template>
-  <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
+  <div v-if="!stats" class="grid grid-cols-2 gap-3 lg:grid-cols-4" role="status" :aria-label="t('common.loading')"><Skeleton v-for="n in 4" :key="n" height="100px" /></div>
+  <div v-else class="metric-grid grid grid-cols-2 gap-3 lg:grid-cols-4">
     <div class="card flex min-w-0 items-center gap-3 p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
       <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
         <Icon name="document" size="md" />
@@ -68,6 +69,7 @@ import { useI18n } from 'vue-i18n'
 import type { AdminUsageStatsResponse } from '@/api/admin/usage'
 import type { UsageStatsResponse } from '@/types'
 import Icon from '@/components/icons/Icon.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
 
 const props = withDefaults(defineProps<{
   stats: (AdminUsageStatsResponse | UsageStatsResponse) | null
@@ -100,3 +102,10 @@ const formatTokens = (value: number) => {
 const cacheLabel = () => t('usage.cacheTotal')
 const cacheDetailLabel = () => t('usage.cacheBreakdown')
 </script>
+
+<style scoped>
+.metric-grid > .card { min-height: 100px; padding: 14px 16px; }
+.metric-grid > .card > .h-10 { display: none; }
+.metric-grid .text-xl { font-family: ui-monospace, monospace; font-size: 24px; font-weight: 600; }
+.metric-grid .text-xs { line-height: 1.5; }
+</style>

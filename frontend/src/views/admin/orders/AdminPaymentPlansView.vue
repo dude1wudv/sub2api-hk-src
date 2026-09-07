@@ -10,7 +10,13 @@
       </div>
 
       <!-- Plans Table -->
-      <DataTable :columns="planColumns" :data="plans" :loading="plansLoading">
+      <DataTable
+        :columns="planColumns"
+        :data="plans"
+        :loading="plansLoading"
+        preference-route="admin-billing"
+        preference-table="payment-plans"
+      >
         <template #cell-name="{ value, row }">
           <span class="text-sm font-medium" :class="getPlanNameClass(row.group_id)">{{ value }}</span>
         </template>
