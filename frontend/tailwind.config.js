@@ -96,13 +96,13 @@ export default {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
       },
       boxShadow: {
-        glass: '0 8px 32px rgba(0, 0, 0, 0.08)',
-        'glass-sm': '0 4px 16px rgba(0, 0, 0, 0.06)',
-        glow: '0 0 20px rgb(var(--color-primary-500) / 0.25)',
-        'glow-lg': '0 0 40px rgb(var(--color-primary-500) / 0.35)',
-        card: '0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06)',
-        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
-        'inner-glow': 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+        glass: '0 12px 36px -12px rgb(5 24 54 / 0.18)',
+        'glass-sm': '0 6px 20px -8px rgb(5 24 54 / 0.14)',
+        glow: '0 0 18px rgb(var(--color-primary-500) / 0.2)',
+        'glow-lg': '0 0 44px rgb(var(--color-primary-500) / 0.28)',
+        card: '0 8px 28px -20px rgb(5 24 54 / 0.3), inset 0 1px 0 rgb(var(--color-primary-200) / 0.13)',
+        'card-hover': '0 12px 32px -18px rgb(var(--color-primary-500) / 0.3)',
+        'inner-glow': 'inset 0 1px 0 rgb(var(--color-primary-200) / 0.15)'
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
@@ -111,7 +111,7 @@ export default {
         'gradient-glass':
           'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
         'mesh-gradient':
-          'radial-gradient(at 78% 8%, rgb(var(--color-primary-500) / 0.05) 0px, transparent 50%), radial-gradient(at 12% 88%, rgb(var(--color-link-500) / 0.04) 0px, transparent 50%)'
+          'radial-gradient(at 78% 8%, rgb(var(--color-primary-500) / 0.12) 0px, transparent 50%), radial-gradient(at 12% 88%, rgb(var(--color-accent-400) / 0.07) 0px, transparent 50%)'
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',

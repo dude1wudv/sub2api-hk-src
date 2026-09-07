@@ -16,7 +16,7 @@
   <div
     v-else-if="compactHomeEnabled"
     data-testid="compact-home"
-    class="flex min-h-screen flex-col bg-[rgb(var(--canvas))] text-[rgb(var(--ink))]"
+    class="home-surface compact-surface flex min-h-screen flex-col bg-[rgb(var(--canvas))] text-[rgb(var(--ink))]"
   >
     <header class="border-b border-gray-200/80 bg-white/80 px-4 py-3.5 backdrop-blur-md sm:px-6 dark:border-dark-800 dark:bg-dark-900/80">
       <nav class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 sm:gap-4">
@@ -61,7 +61,7 @@
     </header>
 
     <main class="flex min-w-0 flex-1 items-center justify-center px-4 py-16 sm:px-6">
-      <div class="min-w-0 max-w-2xl text-center">
+      <div class="compact-hero relative min-w-0 max-w-2xl text-center">
         <img
           :src="siteLogo || '/logo.svg'"
           alt="Logo"
@@ -86,26 +86,20 @@
   <!-- Default Home Page -->
   <div
     v-else
-    class="relative flex min-h-screen flex-col overflow-hidden bg-[rgb(var(--canvas))] text-[rgb(var(--ink))]"
+    class="home-surface relative flex min-h-screen flex-col overflow-hidden bg-[rgb(var(--canvas))] text-[rgb(var(--ink))]"
   >
-    <!-- Background Decorations: Restrained Warm Paper Ambient Backdrop -->
-    <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <div
-        class="absolute -top-32 left-1/2 h-96 w-full max-w-7xl -translate-x-1/2 bg-gradient-to-b from-primary-500/[0.07] via-primary-500/[0.02] to-transparent dark:from-primary-500/[0.05] dark:via-transparent"
-      ></div>
-      <div
-        class="absolute -bottom-48 -right-24 h-96 w-96 rounded-full bg-primary-500/[0.03] blur-3xl dark:bg-primary-500/[0.02]"
-      ></div>
-    </div>
+    <!-- Decorative technical grid, not operational status -->
+    <div class="home-grid pointer-events-none absolute inset-0" aria-hidden="true"></div>
 
     <!-- Header -->
     <header class="relative z-20 border-b border-gray-200/60 bg-white/70 px-4 py-3.5 backdrop-blur-md sm:px-6 dark:border-dark-800/80 dark:bg-dark-900/70">
       <nav class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
         <!-- Logo -->
-        <div class="flex items-center">
+        <div class="flex min-w-0 items-center gap-3">
           <div class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-gray-200/80 dark:bg-dark-800 dark:ring-dark-700/80">
             <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
           </div>
+          <span class="max-w-48 truncate text-sm font-bold tracking-tight text-gray-950 dark:text-white">{{ siteName }}</span>
         </div>
 
         <!-- Nav Actions -->
@@ -180,11 +174,15 @@
     <main class="relative z-10 flex-1 px-4 py-12 sm:px-6 sm:py-16">
       <div class="mx-auto max-w-6xl">
         <!-- Hero Section - Left/Right Layout -->
-        <div class="mb-14 flex flex-col items-center justify-between gap-10 lg:flex-row lg:gap-16">
+        <div class="hero-composition mb-14 flex flex-col items-center justify-between gap-10 lg:flex-row lg:gap-16">
           <!-- Left: Text Content -->
-          <div class="flex-1 text-center lg:text-left">
+          <div class="hero-copy min-w-0 flex-1 text-center lg:text-left">
+            <div class="home-eyebrow mb-6 inline-flex items-center gap-2 border border-primary-500/25 bg-primary-500/5 px-3 py-2 text-xs font-semibold text-primary-700 dark:text-primary-300">
+              <Icon name="server" size="sm" />
+              {{ t('home.features.unifiedGateway') }}
+            </div>
             <h1
-              class="mb-4 [overflow-wrap:anywhere] text-4xl font-bold tracking-tight text-gray-950 dark:text-white md:text-5xl lg:text-6xl"
+              class="hero-title mb-5 [overflow-wrap:anywhere] text-5xl font-bold tracking-tight md:text-6xl lg:text-7xl"
             >
               {{ siteName }}
             </h1>
@@ -196,7 +194,7 @@
             <div>
               <router-link
                 :to="isAuthenticated ? dashboardPath : '/login'"
-                class="btn btn-primary btn-lg shadow-sm transition-shadow hover:shadow"
+                class="hero-cta btn btn-primary btn-lg"
               >
                 {{ isAuthenticated ? t('home.goToDashboard') : t('home.getStarted') }}
                 <Icon name="arrowRight" size="md" class="ml-1" :stroke-width="2" />
@@ -204,38 +202,34 @@
             </div>
           </div>
 
-          <!-- Right: Terminal Animation -->
-          <div class="flex w-full flex-1 justify-center lg:justify-end">
+          <!-- Decorative API request composition; no simulated live response -->
+          <div class="hero-visual flex w-full min-w-0 flex-1 justify-center lg:justify-end">
+            <div class="orbital-field" aria-hidden="true">
+              <div class="orbit orbit-outer"></div>
+              <div class="orbit orbit-inner"></div>
+              <div class="orbit-axis"></div>
+              <div class="orbit-node orbit-node-one"></div>
+              <div class="orbit-node orbit-node-two"></div>
+            </div>
             <div class="terminal-container">
               <div class="terminal-window">
-                <!-- Window header -->
                 <div class="terminal-header">
-                  <div class="terminal-buttons">
-                    <span class="btn-close"></span>
-                    <span class="btn-minimize"></span>
-                    <span class="btn-maximize"></span>
-                  </div>
-                  <span class="terminal-title">terminal</span>
+                  <Icon name="server" size="sm" class="text-primary-300" />
+                  <span class="terminal-title">{{ t('home.features.unifiedGateway') }}</span>
+                  <span class="terminal-protocol">API</span>
                 </div>
-                <!-- Terminal content -->
                 <div class="terminal-body">
-                  <div class="code-line line-1">
-                    <span class="code-prompt">$</span>
-                    <span class="code-cmd">curl</span>
-                    <span class="code-flag">-X POST</span>
+                  <div class="code-line"><span class="code-comment">// {{ t('home.tags.subscriptionToApi') }}</span></div>
+                  <div class="code-line code-request">
+                    <span class="code-method">POST</span>
                     <span class="code-url">/v1/messages</span>
                   </div>
-                  <div class="code-line line-2">
-                    <span class="code-comment"># Routing to upstream...</span>
-                  </div>
-                  <div class="code-line line-3">
-                    <span class="code-success">200 OK</span>
-                    <span class="code-response">{ "content": "Hello!" }</span>
-                  </div>
-                  <div class="code-line line-4">
-                    <span class="code-prompt">$</span>
-                    <span class="cursor"></span>
-                  </div>
+                  <div class="code-line"><span class="code-key">Content-Type</span><span class="code-value">application/json</span></div>
+                  <div class="code-line"><span class="code-key">Authorization</span><span class="code-value">Bearer &lt;API_KEY&gt;</span></div>
+                </div>
+                <div class="terminal-footer">
+                  <span>HTTPS / JSON</span>
+                  <span aria-hidden="true">↗</span>
                 </div>
               </div>
             </div>
@@ -243,7 +237,7 @@
         </div>
 
         <!-- Feature Tags - Centered -->
-        <div class="mb-14 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+        <div class="feature-tags mb-14 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
           <div
             class="inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/90 px-4 py-2 text-xs font-medium text-gray-700 shadow-sm backdrop-blur-sm transition-colors dark:border-dark-700 dark:bg-dark-800/90 dark:text-dark-200 sm:text-sm"
           >
@@ -265,7 +259,7 @@
         </div>
 
         <!-- Features Grid -->
-        <div class="mb-14 grid gap-6 md:grid-cols-3">
+        <div class="feature-grid mb-14 grid gap-4 md:grid-cols-3">
           <!-- Feature 1: Unified Gateway -->
           <div
             class="rounded-xl border border-gray-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm transition-colors hover:border-gray-300 dark:border-dark-700 dark:bg-dark-800/90 dark:hover:border-dark-600"
@@ -352,7 +346,7 @@
           </p>
         </div>
 
-        <div class="mb-16 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+        <div class="provider-grid mb-16 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
           <!-- Claude - Supported -->
           <div
             class="flex items-center gap-2.5 rounded-xl border border-gray-200/80 bg-white/90 px-4 py-2.5 shadow-sm backdrop-blur-sm transition-colors hover:border-gray-300 dark:border-dark-700 dark:bg-dark-800/90 dark:hover:border-dark-600"
@@ -532,181 +526,221 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Terminal Container */
+.home-surface {
+  --home-line: rgb(59 130 246 / 0.14);
+  background-image: radial-gradient(ellipse at 78% 18%, rgb(56 189 248 / 0.13), transparent 42%);
+}
+
+.home-grid {
+  background-image: linear-gradient(var(--home-line) 1px, transparent 1px), linear-gradient(90deg, var(--home-line) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to bottom, transparent, #000 12%, transparent 75%);
+  opacity: 0.45;
+}
+
+.hero-composition {
+  min-height: 440px;
+  padding-block: 2rem;
+}
+
+.home-eyebrow {
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+
+.hero-title {
+  color: #102f62;
+  line-height: 1.06;
+  letter-spacing: -0.065em;
+}
+
+:global(.dark .home-surface .hero-title) {
+  color: #e5f4ff;
+  text-shadow: 0 0 48px rgb(56 189 248 / 0.2);
+}
+
+.hero-cta {
+  min-height: 52px;
+  border-radius: 6px;
+  box-shadow: 0 8px 30px -8px rgb(37 99 235 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.2);
+}
+
+.hero-visual {
+  position: relative;
+  padding-block: 3rem;
+  isolation: isolate;
+}
+
+.orbital-field {
+  position: absolute;
+  inset: -12% -4%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.orbit {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgb(14 165 233 / 0.35);
+  border-radius: 50%;
+  transform: rotate(-28deg);
+}
+
+.orbit-outer {
+  box-shadow: 0 0 50px rgb(14 165 233 / 0.08), inset 0 0 40px rgb(14 165 233 / 0.04);
+}
+
+.orbit-inner {
+  inset: 13% -6%;
+  transform: rotate(28deg);
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.orbit-axis {
+  position: absolute;
+  inset: 50% -6% auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+  transform: rotate(-28deg);
+}
+
+.orbit-node {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #38bdf8;
+  box-shadow: 0 0 0 5px rgb(56 189 248 / 0.12), 0 0 22px #38bdf8;
+  transform: rotate(45deg);
+}
+
+.orbit-node-one { top: 12%; left: 24%; }
+.orbit-node-two { bottom: 13%; right: 19%; }
+
 .terminal-container {
   position: relative;
-  display: inline-block;
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
 }
 
-/* Terminal Window */
 .terminal-window {
-  width: 100%;
-  background: #141311;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  box-shadow:
-    0 20px 40px -15px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(0, 0, 0, 0.2);
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: linear-gradient(135deg, #101e35, #080f20);
+  border: 1px solid rgb(125 211 252 / 0.35);
+  border-radius: 10px;
+  box-shadow: 0 30px 65px -24px rgb(2 14 37 / 0.65), 0 0 35px rgb(14 165 233 / 0.1), inset 0 1px 0 rgb(255 255 255 / 0.05);
 }
 
-.terminal-window:hover {
-  box-shadow:
-    0 24px 48px -12px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-
-/* Terminal Header */
 .terminal-header {
   display: flex;
   align-items: center;
-  padding: 10px 14px;
-  background: #1c1a17;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.terminal-buttons {
-  display: flex;
-  gap: 6px;
-}
-
-.terminal-buttons span {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.btn-close {
-  background: #e05252;
-}
-.btn-minimize {
-  background: #e5a13b;
-}
-.btn-maximize {
-  background: #3eb36a;
+  gap: 10px;
+  padding: 16px 20px;
+  background: rgb(125 211 252 / 0.04);
+  border-bottom: 1px solid rgb(125 211 252 / 0.13);
 }
 
 .terminal-title {
   flex: 1;
-  text-align: center;
-  font-size: 11px;
-  font-family: ui-monospace, 'Fira Code', monospace;
-  color: #8c8273;
-  margin-right: 36px;
+  color: #c0d4ed;
+  font-size: 12px;
 }
 
-/* Terminal Body */
+.terminal-protocol, .terminal-body, .terminal-footer {
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+}
+
+.terminal-protocol {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #7dd3fc;
+}
+
 .terminal-body {
-  padding: 18px 20px;
-  font-family: ui-monospace, 'Fira Code', 'Cascadia Code', monospace;
-  font-size: 13px;
-  line-height: 1.8;
-  color: #e6e0d4;
+  padding: 26px 22px 30px;
+  font-size: 12px;
+  line-height: 2;
 }
 
 .code-line {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 12px;
   flex-wrap: wrap;
-  opacity: 0;
-  animation: line-appear 0.4s ease forwards;
+  overflow-wrap: anywhere;
 }
 
-.line-1 {
-  animation-delay: 0.2s;
-}
-.line-2 {
-  animation-delay: 0.8s;
-}
-.line-3 {
-  animation-delay: 1.5s;
-}
-.line-4 {
-  animation-delay: 2.2s;
+.code-request { margin-block: 16px 22px; font-size: 17px; }
+.code-comment { color: #8ea8c7; }
+.code-method { color: #67e8f9; font-size: 11px; border: 1px solid rgb(103 232 249 / 0.3); padding: 0 8px; border-radius: 3px; }
+.code-url { color: #e0f2fe; }
+.code-key { color: #7dd3fc; }
+.code-value { color: #b7c8e1; }
+
+.terminal-footer {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid rgb(125 211 252 / 0.13);
+  padding: 11px 20px;
+  color: #90a8c6;
+  font-size: 10px;
+  letter-spacing: 0.1em;
 }
 
-@keyframes line-appear {
-  from {
-    opacity: 0;
-    transform: translateY(3px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.feature-tags > div, .provider-grid > div {
+  border-radius: 6px;
 }
 
-.code-prompt {
-  color: #4ade80;
-  font-weight: 600;
-}
-.code-cmd {
-  color: #38bdf8;
-  font-weight: 500;
-}
-.code-flag {
-  color: #fcd34d;
-}
-.code-url {
-  color: #fb923c;
-}
-.code-comment {
-  color: #78716c;
-  font-style: italic;
-}
-.code-success {
-  color: #4ade80;
-  background: rgba(74, 222, 128, 0.12);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 12px;
-}
-.code-response {
-  color: #fef08a;
+.feature-grid > div {
+  position: relative;
+  border-radius: 8px;
+  border-color: var(--home-line);
+  box-shadow: 0 10px 30px -20px rgb(30 64 175 / 0.2);
 }
 
-/* Blinking Cursor */
-.cursor {
-  display: inline-block;
-  width: 7px;
-  height: 15px;
-  background: #4ade80;
-  animation: blink 1s step-end infinite;
+.feature-grid > div::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 24px;
+  width: 38px;
+  height: 2px;
+  background: linear-gradient(90deg, #2563eb, #22d3ee);
 }
 
-@keyframes blink {
-  0%,
-  50% {
-    opacity: 1;
-  }
-  51%,
-  100% {
-    opacity: 0;
-  }
+.feature-grid > div:hover { border-color: rgb(56 189 248 / 0.55); }
+
+.compact-surface {
+  overflow: hidden;
+  background-image: radial-gradient(ellipse at center, rgb(56 189 248 / 0.13), transparent 65%);
+}
+
+.compact-hero::before, .compact-hero::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  inset: -30% -18%;
+  border: 1px solid var(--home-line);
+  border-radius: 50%;
+  transform: rotate(-24deg);
+}
+
+.compact-hero::after { inset: -20% -28%; transform: rotate(24deg); }
+.compact-hero > * { position: relative; z-index: 1; }
+
+@media (max-width: 639px) {
+  .hero-composition { padding-block: 0.5rem; gap: 2rem; }
+  .hero-title { font-size: clamp(2.8rem, 12vw, 4rem); }
+  .hero-visual { padding-block: 2rem; }
+  .terminal-body { padding: 20px 16px; font-size: 11px; }
+  .code-request { font-size: 15px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .terminal-window {
+  .home-surface *, .home-surface *::before, .home-surface *::after {
     transition: none !important;
-  }
-  .code-line {
     animation: none !important;
-    opacity: 1 !important;
   }
-  .cursor {
-    animation: none !important;
-    opacity: 1 !important;
-  }
-}
-
-/* Dark mode adjustments */
-:deep(.dark) .terminal-window {
-  background: #0f0e0c;
-  border-color: rgba(255, 255, 255, 0.08);
 }
 </style>
