@@ -1,7 +1,7 @@
 <template>
   <div class="app-shell min-h-screen" :data-workspace="isAdminRoute ? 'operations' : 'developer'">
     <!-- Background Decoration -->
-    <div class="app-shell-bg pointer-events-none fixed inset-0" aria-hidden="true"></div>
+    <div class="app-shell-bg pointer-events-none fixed inset-0"></div>
     <a href="#workspace-content" class="skip-link">{{ zh ? '跳至主要内容' : 'Skip to content' }}</a>
 
     <!-- Sidebar -->

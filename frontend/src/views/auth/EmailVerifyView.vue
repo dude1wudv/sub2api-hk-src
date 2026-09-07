@@ -2,12 +2,8 @@
   <AuthLayout>
     <div class="space-y-6">
       <!-- Title -->
-      <div class="border-b border-primary-500/15 pb-6 text-left">
-        <div class="mb-5 flex items-center gap-3 text-primary-600 dark:text-primary-300" aria-hidden="true">
-          <span class="flex h-10 w-10 items-center justify-center rounded-lg border border-primary-500/25 bg-primary-500/10"><Icon name="mail" size="md" /></span>
-          <span class="h-px flex-1 bg-gradient-to-r from-primary-500/40 to-transparent"></span>
-        </div>
-        <h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+      <div class="text-center">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
           {{ t('auth.verifyYourEmail') }}
         </h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">

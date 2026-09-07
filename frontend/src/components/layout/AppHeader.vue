@@ -13,7 +13,7 @@
           <Icon name="menu" size="md" />
         </button>
 
-        <div class="header-page-title hidden lg:block">
+        <div class="hidden lg:block">
           <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
             {{ pageTitle }}
           </h1>
@@ -60,7 +60,7 @@
         <!-- Balance Display -->
         <div
           v-if="user"
-          class="header-balance group relative hidden items-center gap-2 rounded-lg bg-primary-50 px-3 py-1.5 dark:bg-primary-900/20 sm:flex"
+          class="group relative hidden items-center gap-2 rounded-xl bg-primary-50 px-3 py-1.5 dark:bg-primary-900/20 sm:flex"
         >
           <svg
             class="h-4 w-4 text-primary-600 dark:text-primary-400"
@@ -108,10 +108,10 @@
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
-            class="header-account flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
+            class="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
             :aria-label="t('common.userMenu')"
           >
-            <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-semibold text-white shadow-glow">
+            <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-sm font-medium text-white shadow-sm">
               <img
                 v-if="avatarUrl"
                 :src="avatarUrl"

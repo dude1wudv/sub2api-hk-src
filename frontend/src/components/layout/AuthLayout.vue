@@ -14,7 +14,7 @@
       <div class="auth-appearance"><AppearanceSwitcher /></div>
       <div class="auth-form-inner">
         <div v-if="settingsLoaded" class="mb-7 flex items-center gap-3">
-          <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-10 w-10 rounded-lg object-contain ring-1 ring-primary-400/25 shadow-glow" />
+          <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-10 w-10 rounded-xl object-contain" />
           <div>
             <h1 class="text-lg font-semibold tracking-tight text-gray-900 dark:text-white">{{ siteName }}</h1>
             <p class="text-xs text-gray-500 dark:text-dark-300">{{ siteSubtitle }}</p>
@@ -44,23 +44,3 @@ const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 const currentYear = computed(() => new Date().getFullYear())
 onMounted(() => { appStore.fetchPublicSettings() })
 </script>
-
-<style scoped>
-.auth-form-inner :deep(.input) {
-  min-height: 46px;
-}
-
-.auth-form-inner :deep(.btn) {
-  min-height: 44px;
-  font-weight: 600;
-}
-
-.auth-form-inner :deep(h2) {
-  letter-spacing: -.035em;
-}
-
-.auth-form-inner :deep(.input-label) {
-  font-size: 12px;
-  letter-spacing: .02em;
-}
-</style>

@@ -17,7 +17,7 @@
       <!-- Custom Logo or Default Logo -->
       <router-link
         :to="homePath"
-        class="sidebar-logo flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg ring-1 ring-primary-400/25 shadow-glow transition-opacity hover:opacity-80"
+        class="sidebar-logo flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-glow transition-opacity hover:opacity-80"
         @click="handleMenuItemClick(homePath)"
       >
         <img v-if="settingsLoaded" :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
@@ -172,7 +172,7 @@
     </nav>
 
     <!-- Bottom Section -->
-    <div class="sidebar-footer mt-auto border-t border-gray-200 p-3 dark:border-dark-700">
+    <div class="mt-auto border-t border-gray-100 p-3 dark:border-dark-800">
       <!-- Theme Toggle -->
       <button
         @click="toggleTheme"
@@ -207,7 +207,7 @@
   <transition name="fade">
     <div
       v-if="mobileOpen"
-      class="fixed inset-0 z-30 bg-dark-950/60 backdrop-blur-sm lg:hidden"
+      class="fixed inset-0 z-30 bg-black/50 lg:hidden"
       @click="closeMobile"
     ></div>
   </transition>
@@ -1081,8 +1081,8 @@ onBeforeUnmount(() => {
 
 .sidebar-link-collapsed {
   gap: 0;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
+  padding-left: 0.875rem;
+  padding-right: 0.875rem;
 }
 
 .sidebar-section-title {
@@ -1111,12 +1111,15 @@ onBeforeUnmount(() => {
   right: 0.75rem;
   top: 50%;
   height: 1px;
-  background: rgb(var(--line));
+  background: rgb(229 231 235);
   opacity: 0;
   transform: translateY(-50%);
   transition: opacity 0.18s ease;
 }
 
+.dark .sidebar-section-title::after {
+  background: rgb(55 65 81);
+}
 
 .sidebar-section-title-text-collapsed {
   opacity: 0;

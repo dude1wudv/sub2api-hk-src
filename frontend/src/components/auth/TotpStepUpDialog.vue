@@ -1,11 +1,11 @@
 <template>
   <div v-if="controller.visible.value" class="fixed inset-0 z-[60] overflow-y-auto">
     <div class="flex min-h-full items-center justify-center p-4">
-      <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity motion-reduce:transition-none" @click="handleCancel"></div>
+      <div class="fixed inset-0 bg-black/50 transition-opacity" @click="handleCancel"></div>
 
-      <div class="relative w-full max-w-md rounded-xl border border-primary-500/30 bg-white p-5 shadow-2xl shadow-primary-950/30 sm:p-8 dark:bg-dark-900">
+      <div class="relative w-full max-w-md transform rounded-xl bg-white p-6 shadow-xl transition-all dark:bg-dark-800">
         <div class="mb-6 text-center">
-          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-xl border border-primary-500/30 bg-primary-500/10 ring-4 ring-primary-500/5">
+          <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30">
             <svg class="h-6 w-6 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
             </svg>
@@ -30,7 +30,7 @@
             tabindex="-1"
             @input="handleHiddenOtpInput"
           />
-          <div class="flex justify-center gap-1.5 sm:gap-2">
+          <div class="flex justify-center gap-2">
             <input
               v-for="(_, index) in 6"
               :key="index"
@@ -40,7 +40,7 @@
               inputmode="numeric"
               pattern="[0-9]"
               autocomplete="off"
-              class="h-14 w-9 rounded-md border border-primary-500/25 bg-primary-50/40 text-center font-mono text-xl font-semibold text-gray-900 shadow-inner focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 disabled:opacity-50 sm:w-11 dark:bg-dark-950 dark:text-white"
+              class="h-12 w-10 rounded-lg border border-gray-300 text-center text-lg font-semibold focus:border-primary-500 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-700"
               :disabled="verifying"
               @input="handleCodeInput($event, index)"
               @keydown="handleKeydown($event, index)"
