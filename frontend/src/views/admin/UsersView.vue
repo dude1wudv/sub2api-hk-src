@@ -15,7 +15,7 @@
                   class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-400"
                 />
                 <input
-                  v-model="searchQuery"
+                  v-model="filters.search"
                   type="text"
                   :placeholder="t('admin.users.searchUsers')"
                   class="input pl-10"
@@ -126,6 +126,12 @@
 
             <!-- Right: Actions and Settings -->
             <div class="flex flex-wrap items-center justify-end gap-2">
+              <SavedFilters
+                :items="userSavedFilters.savedFilters.value"
+                @save="name => userSavedFilters.save(name, filters)"
+                @apply="applySavedUserFilters"
+                @remove="userSavedFilters.remove"
+              />
               <!-- Mobile: Secondary buttons (icon only) -->
               <div class="flex items-center gap-2 md:contents">
                 <!-- Refresh Button -->
@@ -192,47 +198,6 @@
                     </button>
                   </div>
                 </div>
-                <!-- Column Settings Dropdown -->
-                <div class="relative" ref="columnDropdownRef">
-                  <button
-                    @click="showColumnDropdown = !showColumnDropdown"
-                    class="btn btn-secondary px-2 md:px-3"
-                    :title="t('admin.users.columnSettings')"
-                  >
-                    <svg class="h-4 w-4 md:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" />
-                    </svg>
-                    <span class="hidden md:inline">{{ t('admin.users.columnSettings') }}</span>
-                  </button>
-                  <!-- Dropdown menu -->
-                  <div
-                    v-if="showColumnDropdown"
-                    class="absolute right-0 top-full z-50 mt-2 max-h-80 w-52 overflow-y-auto rounded-xl border border-gray-200 bg-white/95 py-1.5 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-800/95"
-                  >
-                    <button
-                      v-for="col in toggleableColumns"
-                      :key="col.key"
-                      :disabled="isForcedVisibleColumn(col.key)"
-                      @click="toggleColumn(col.key)"
-                      :class="[
-                        'flex min-h-10 w-full items-center justify-between px-4 py-2 text-left text-sm transition-colors',
-                        isForcedVisibleColumn(col.key)
-                          ? 'cursor-not-allowed text-gray-400 dark:text-dark-500'
-                          : 'text-gray-700 hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30'
-                      ]"
-                      :title="isForcedVisibleColumn(col.key) ? t('admin.users.columnAlwaysVisible') : ''"
-                    >
-                      <span>{{ col.label }}</span>
-                      <Icon
-                        v-if="isColumnVisible(col.key)"
-                        name="check"
-                        size="sm"
-                        :class="isForcedVisibleColumn(col.key) ? 'text-gray-400 dark:text-dark-500' : 'text-primary-600 dark:text-primary-400'"
-                        :stroke-width="2"
-                      />
-                    </button>
-                  </div>
-                </div>
                 <!-- Attributes Config Button -->
                 <button
                   @click="showAttributesModal = true"
@@ -276,22 +241,32 @@
           :selection-label="getUserSelectionLabel"
           :actions-count="7"
           :server-side-sort="true"
-          default-sort-key="created_at"
-          default-sort-order="desc"
-          :sort-storage-key="USER_SORT_STORAGE_KEY"
+          :default-sort-key="sortState.key"
+          :default-sort-order="sortState.order"
+          preference-route="admin-users"
+          preference-table="users"
+          :default-hidden-columns="DEFAULT_HIDDEN_COLUMNS"
+          @visible-columns-change="handleVisibleColumnsChange"
           @sort="handleSort"
           @update:selected-keys="handleSelectedKeysUpdate"
         >
-          <template #cell-email="{ value }">
-            <div class="flex items-center gap-2">
+          <template #cell-email="{ value, row }">
+            <div class="flex min-w-0 items-center gap-2">
+              <img
+                v-if="row.avatar_url"
+                :src="row.avatar_url"
+                :alt="value"
+                class="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-dark-600"
+              />
               <div
-                class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30"
+                v-else
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30"
               >
                 <span class="text-sm font-medium text-primary-700 dark:text-primary-300">
                   {{ value.charAt(0).toUpperCase() }}
                 </span>
               </div>
-              <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+              <span class="truncate font-medium text-gray-900 dark:text-white">{{ value }}</span>
             </div>
           </template>
 
@@ -629,15 +604,67 @@
                 <span class="text-xs">{{ row.status === 'active' ? t('admin.users.disable') : t('admin.users.enable') }}</span>
               </button>
 
-              <!-- More Actions Menu Trigger -->
-              <button
-                @click="openActionMenu(row, $event)"
-                class="action-menu-trigger flex min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex-col items-center justify-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:hover:bg-dark-700 dark:hover:text-white"
-                :class="{ 'bg-gray-100 text-gray-900 dark:bg-dark-700 dark:text-white': activeMenuId === row.id }"
-              >
-                <Icon name="more" size="sm" />
-                <span class="text-xs">{{ t('common.more') }}</span>
-              </button>
+              <MoreMenu :ariaLabel="t('common.more')">
+                <button
+                  role="menuitem"
+                  class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
+                  @click="handleViewApiKeys(row)"
+                >
+                  <Icon name="key" size="sm" class="text-gray-400" :stroke-width="2" />
+                  {{ t('admin.users.apiKeys') }}
+                </button>
+                <button
+                  role="menuitem"
+                  class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
+                  @click="handleAllowedGroups(row)"
+                >
+                  <Icon name="users" size="sm" class="text-gray-400" :stroke-width="2" />
+                  {{ t('admin.users.groups') }}
+                </button>
+                <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
+                <button
+                  role="menuitem"
+                  class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
+                  @click="handleDeposit(row)"
+                >
+                  <Icon name="plus" size="sm" class="text-emerald-500" :stroke-width="2" />
+                  {{ t('admin.users.deposit') }}
+                </button>
+                <button
+                  role="menuitem"
+                  class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
+                  @click="handleWithdraw(row)"
+                >
+                  <Icon name="dollar" size="sm" class="text-amber-500" :stroke-width="2" />
+                  {{ t('admin.users.withdraw') }}
+                </button>
+                <button
+                  role="menuitem"
+                  class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
+                  @click="handlePlatformQuota(row)"
+                >
+                  <Icon name="chartBar" size="sm" class="text-gray-400" :stroke-width="2" />
+                  {{ t('admin.users.platformQuota.menuItem') }}
+                </button>
+                <button
+                  role="menuitem"
+                  class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
+                  @click="handleBalanceHistory(row)"
+                >
+                  <Icon name="dollar" size="sm" class="text-gray-400" :stroke-width="2" />
+                  {{ t('admin.users.balanceHistory') }}
+                </button>
+                <div v-if="row.role !== 'admin'" class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
+                <button
+                  v-if="row.role !== 'admin'"
+                  role="menuitem"
+                  class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-err-600 transition-colors hover:bg-err-50 focus-visible:bg-err-100 focus-visible:outline-none dark:text-err-400 dark:hover:bg-err-950/30 dark:focus-visible:bg-err-950/50"
+                  @click="handleDelete(row)"
+                >
+                  <Icon name="trash" size="sm" :stroke-width="2" />
+                  {{ t('common.delete') }}
+                </button>
+              </MoreMenu>
             </div>
           </template>
 
@@ -665,90 +692,7 @@
       </template>
     </TablePageLayout>
 
-    <!-- Action Menu (Teleported) -->
-    <Teleport to="body">
-      <div
-        v-if="activeMenuId !== null && menuPosition"
-        class="action-menu-content fixed z-[9999] w-52 overflow-hidden rounded-xl border border-gray-200/80 bg-white/95 py-1.5 shadow-xl ring-1 ring-black/5 backdrop-blur dark:border-dark-600 dark:bg-dark-800/95 dark:ring-white/10"
-        :style="{ top: menuPosition.top + 'px', left: menuPosition.left + 'px' }"
-      >
-        <div class="py-0.5">
-          <template v-for="user in users" :key="user.id">
-            <template v-if="user.id === activeMenuId">
-              <!-- View API Keys -->
-              <button
-                @click="handleViewApiKeys(user); closeActionMenu()"
-                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
-              >
-                <Icon name="key" size="sm" class="text-gray-400" :stroke-width="2" />
-                {{ t('admin.users.apiKeys') }}
-              </button>
 
-              <!-- Allowed Groups -->
-              <button
-                @click="handleAllowedGroups(user); closeActionMenu()"
-                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
-              >
-                <Icon name="users" size="sm" class="text-gray-400" :stroke-width="2" />
-                {{ t('admin.users.groups') }}
-              </button>
-
-              <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
-
-              <!-- Deposit -->
-              <button
-                @click="handleDeposit(user); closeActionMenu()"
-                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
-              >
-                <Icon name="plus" size="sm" class="text-emerald-500" :stroke-width="2" />
-                {{ t('admin.users.deposit') }}
-              </button>
-
-              <!-- Withdraw -->
-              <button
-                @click="handleWithdraw(user); closeActionMenu()"
-                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
-              >
-                <svg class="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                </svg>
-                {{ t('admin.users.withdraw') }}
-              </button>
-
-              <!-- Platform Quotas -->
-              <button
-                @click="handlePlatformQuota(user); closeActionMenu()"
-                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
-              >
-                <Icon name="chartBar" size="sm" class="text-gray-400" :stroke-width="2" />
-                {{ t('admin.users.platformQuota.menuItem') }}
-              </button>
-
-              <!-- Balance History -->
-              <button
-                @click="handleBalanceHistory(user); closeActionMenu()"
-                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
-              >
-                <Icon name="dollar" size="sm" class="text-gray-400" :stroke-width="2" />
-                {{ t('admin.users.balanceHistory') }}
-              </button>
-
-              <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
-
-              <!-- Delete (not for admin) -->
-              <button
-                v-if="user.role !== 'admin'"
-                @click="handleDelete(user); closeActionMenu()"
-                class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-sm text-err-600 transition-colors hover:bg-err-50 focus-visible:bg-err-100 focus-visible:outline-none dark:text-err-400 dark:hover:bg-err-950/30 dark:focus-visible:bg-err-950/50"
-              >
-                <Icon name="trash" size="sm" :stroke-width="2" />
-                {{ t('common.delete') }}
-              </button>
-            </template>
-          </template>
-        </div>
-      </div>
-    </Teleport>
 
     <ConfirmDialog :show="showDeleteDialog" :title="t('admin.users.deleteUser')" :message="t('admin.users.deleteConfirm', { email: deletingUser?.email })" :danger="true" @confirm="confirmDelete" @cancel="showDeleteDialog = false" />
     <UserCreateModal :show="showCreateModal" @close="showCreateModal = false" @success="loadUsers" />
@@ -780,6 +724,8 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { useTableSelection } from '@/composables/useTableSelection'
+import { usePersistedTableQuery, useSavedTableFilters } from '@/composables/useTablePreferences'
+import SavedFilters from '@/components/common/SavedFilters.vue'
 import { formatDateTime } from '@/utils/format'
 import Icon from '@/components/icons/Icon.vue'
 
@@ -813,6 +759,7 @@ import UserAllowedGroupsModal from '@/components/admin/user/UserAllowedGroupsMod
 import UserBalanceModal from '@/components/admin/user/UserBalanceModal.vue'
 import UserBalanceHistoryModal from '@/components/admin/user/UserBalanceHistoryModal.vue'
 import GroupReplaceModal from '@/components/admin/user/GroupReplaceModal.vue'
+import MoreMenu from '@/components/common/MoreMenu.vue'
 
 const appStore = useAppStore()
 
@@ -862,10 +809,10 @@ const getAttributeValue = (userId: number, attrId: number): string => {
   return value
 }
 
-// All possible columns (for column settings)
-const allColumns = computed<Column[]>(() => [
-  { key: 'email', label: t('admin.users.columns.user'), sortable: true },
-  { key: 'id', label: t('admin.users.columns.id'), sortable: true },
+// Shared DataTable owns visibility; page state only gates existing lazy data loads.
+const columns = computed<Column[]>(() => [
+  { key: 'email', label: t('admin.users.columns.user'), sortable: true, hideable: false },
+  { key: 'id', label: t('admin.users.columns.id'), sortable: true, numeric: true },
   { key: 'username', label: t('admin.users.columns.username'), sortable: true },
   { key: 'notes', label: t('admin.users.columns.notes'), sortable: false },
   // Dynamic attribute columns
@@ -873,14 +820,14 @@ const allColumns = computed<Column[]>(() => [
   { key: 'role', label: t('admin.users.columns.role'), sortable: true },
   { key: 'groups', label: t('admin.users.columns.groups'), sortable: false },
   { key: 'subscriptions', label: t('admin.users.columns.subscriptions'), sortable: false },
-  { key: 'balance', label: t('admin.users.columns.balance'), sortable: true },
+  { key: 'balance', label: t('admin.users.columns.balance'), sortable: true, numeric: true },
   { key: 'balance_platform_quota', label: t('admin.users.columns.balancePlatformQuota'), sortable: false },
   { key: 'usage', label: t('admin.users.columns.usage'), sortable: false },
   { key: 'usage_anthropic', label: t('admin.users.columns.usageAnthropic'), sortable: false },
   { key: 'usage_openai', label: t('admin.users.columns.usageOpenAI'), sortable: false },
   { key: 'usage_gemini', label: t('admin.users.columns.usageGemini'), sortable: false },
   { key: 'usage_antigravity', label: t('admin.users.columns.usageAntigravity'), sortable: false },
-  { key: 'concurrency', label: t('admin.users.columns.concurrency'), sortable: true },
+  { key: 'concurrency', label: t('admin.users.columns.concurrency'), sortable: true, numeric: true },
   { key: 'status', label: t('admin.users.columns.status'), sortable: true },
   { key: 'last_active_at', label: t('admin.users.columns.lastActive'), sortable: true },
   { key: 'last_used_at', label: t('admin.users.columns.lastUsed'), sortable: true },
@@ -888,111 +835,32 @@ const allColumns = computed<Column[]>(() => [
   { key: 'actions', label: t('admin.users.columns.actions'), sortable: false }
 ])
 
-// Columns that can be toggled (exclude email and actions which are always visible)
-const toggleableColumns = computed(() =>
-  allColumns.value.filter(col => col.key !== 'email' && col.key !== 'actions')
-)
-
-// Hidden columns (stored in Set - columns NOT in this set are visible)
-// This way, new columns are visible by default
-const hiddenColumns = reactive<Set<string>>(new Set())
-
 // Default hidden columns (columns hidden by default on first load)
 const DEFAULT_HIDDEN_COLUMNS = [
   'notes', 'groups', 'subscriptions', 'usage', 'concurrency',
   'usage_anthropic', 'usage_openai', 'usage_gemini', 'usage_antigravity',
   'balance_platform_quota'
 ]
-const REMOVED_COLUMNS = new Set(['last_login_at'])
-// 强制可见列：加载时会被强制移出 hiddenColumns，并在列设置 UI 上 disabled。
-// 当前没有列需要强制可见 —— last_active_at 已改为可被用户隐藏。
-const FORCED_VISIBLE_COLUMNS = new Set<string>()
-
-// localStorage keys for column settings
-const HIDDEN_COLUMNS_KEY = 'user-hidden-columns'
-// 列设置 schema 版本号。每次给 DEFAULT_HIDDEN_COLUMNS 新增列时 bump 一次，
-// 并在 VERSION_NEW_HIDDEN_COLUMNS 中登记该版本新增的 key。
-// 这样老用户升级后这些新列会被自动隐藏一次，而不会影响他们对其它老列的偏好。
-const COLUMN_SETTINGS_VERSION_KEY = 'user-column-settings-version'
-const COLUMN_SETTINGS_VERSION = 3
-const VERSION_NEW_HIDDEN_COLUMNS: Record<number, string[]> = {
-  2: ['usage_anthropic', 'usage_openai', 'usage_gemini', 'usage_antigravity'],
-  3: ['balance_platform_quota']
-}
-
-// Load saved column settings
-const loadSavedColumns = () => {
-  try {
-    const saved = localStorage.getItem(HIDDEN_COLUMNS_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved) as string[]
-      parsed
-        .filter(key => !REMOVED_COLUMNS.has(key) && !FORCED_VISIBLE_COLUMNS.has(key))
-        .forEach(key => hiddenColumns.add(key))
-
-      // 老用户升级：把每个未应用过的版本里新增的默认隐藏列自动追加到 hiddenColumns。
-      const storedVersion = Number(localStorage.getItem(COLUMN_SETTINGS_VERSION_KEY) ?? '1')
-      if (storedVersion < COLUMN_SETTINGS_VERSION) {
-        let mutated = false
-        for (let v = storedVersion + 1; v <= COLUMN_SETTINGS_VERSION; v++) {
-          for (const key of VERSION_NEW_HIDDEN_COLUMNS[v] ?? []) {
-            if (REMOVED_COLUMNS.has(key) || FORCED_VISIBLE_COLUMNS.has(key)) continue
-            if (!hiddenColumns.has(key)) {
-              hiddenColumns.add(key)
-              mutated = true
-            }
-          }
-        }
-        if (mutated) saveColumnsToStorage()
-        else localStorage.setItem(COLUMN_SETTINGS_VERSION_KEY, String(COLUMN_SETTINGS_VERSION))
-      }
-    } else {
-      // Use default hidden columns on first load
-      DEFAULT_HIDDEN_COLUMNS.forEach(key => hiddenColumns.add(key))
-      localStorage.setItem(COLUMN_SETTINGS_VERSION_KEY, String(COLUMN_SETTINGS_VERSION))
-    }
-  } catch (e) {
-    console.error('Failed to load saved columns:', e)
-    DEFAULT_HIDDEN_COLUMNS.forEach(key => hiddenColumns.add(key))
+const hiddenColumns = reactive<Set<string>>(new Set(DEFAULT_HIDDEN_COLUMNS))
+let receivedColumnVisibility = false
+const handleVisibleColumnsChange = (visibleKeys: string[]) => {
+  const visible = new Set(visibleKeys)
+  const revealed = visibleKeys.filter(key => hiddenColumns.has(key))
+  const subscriptionsChanged = visible.has('subscriptions') === hiddenColumns.has('subscriptions')
+  hiddenColumns.clear()
+  for (const column of columns.value) {
+    if (!visible.has(column.key)) hiddenColumns.add(column.key)
   }
-}
-
-// Save column settings to localStorage
-const saveColumnsToStorage = () => {
-  try {
-    localStorage.setItem(HIDDEN_COLUMNS_KEY, JSON.stringify([...hiddenColumns]))
-    localStorage.setItem(COLUMN_SETTINGS_VERSION_KEY, String(COLUMN_SETTINGS_VERSION))
-  } catch (e) {
-    console.error('Failed to save columns:', e)
+  if (!receivedColumnVisibility) {
+    receivedColumnVisibility = true
+    return
   }
-}
-
-// Toggle column visibility
-const isForcedVisibleColumn = (key: string) => FORCED_VISIBLE_COLUMNS.has(key)
-const toggleColumn = (key: string) => {
-  // 强制可见列(如 last_active_at)在加载时会被恢复成可见，
-  // 这里阻止用户在当前会话隐藏它，避免"取消勾选 → 刷新又恢复"的反直觉行为。
-  if (FORCED_VISIBLE_COLUMNS.has(key)) return
-  const wasHidden = hiddenColumns.has(key)
-  if (hiddenColumns.has(key)) {
-    hiddenColumns.delete(key)
-  } else {
-    hiddenColumns.add(key)
-  }
-  saveColumnsToStorage()
-  if (wasHidden && (key === 'usage' || key.startsWith('usage_') || key.startsWith('attr_') || key === 'balance_platform_quota')) {
+  if (revealed.some(key => key === 'usage' || key.startsWith('usage_') || key.startsWith('attr_') || key === 'balance_platform_quota')) {
     refreshCurrentPageSecondaryData()
   }
-  if (key === 'subscriptions') {
-    loadUsers()
-  }
-  if (wasHidden && key === 'groups') {
-    loadAllGroups()
-  }
+  if (subscriptionsChanged) loadUsers()
+  if (revealed.includes('groups')) loadAllGroups()
 }
-
-// Check if column is visible (not in hidden set)
-const isColumnVisible = (key: string) => !hiddenColumns.has(key)
 // usage 主列或任意 usage_<platform> 子列可见时都需要批量拉取用量数据
 // 列 key → 平台名（'usage' 主列汇总所有平台时为 null）
 // 显式数组取代 Object.keys()：保证迭代顺序（决定列头排序按钮渲染顺序）
@@ -1015,35 +883,13 @@ const hasVisibleAttributeColumns = computed(() =>
   attributeDefinitions.value.some((def) => def.enabled && !hiddenColumns.has(`attr_${def.id}`))
 )
 
-// Filtered columns based on visibility
-const columns = computed<Column[]>(() =>
-  allColumns.value.filter(col =>
-    col.key === 'email' || col.key === 'actions' || !hiddenColumns.has(col.key)
-  )
-)
 
 const users = ref<AdminUser[]>([])
 const loading = ref(false)
-const searchQuery = ref('')
-const USER_SORT_STORAGE_KEY = 'admin-users-table-sort'
-const loadInitialSortState = (): { sort_by: string; sort_order: 'asc' | 'desc' } => {
-  const fallback = { sort_by: 'created_at', sort_order: 'desc' as 'asc' | 'desc' }
-  const sortable = new Set(['email', 'id', 'username', 'role', 'balance', 'concurrency', 'status', 'last_used_at', 'last_active_at', 'created_at'])
-  try {
-    const raw = localStorage.getItem(USER_SORT_STORAGE_KEY)
-    if (!raw) return fallback
-    const parsed = JSON.parse(raw) as { key?: string; order?: string }
-    const key = typeof parsed.key === 'string' ? parsed.key : ''
-    if (!sortable.has(key)) return fallback
-    return {
-      sort_by: key,
-      sort_order: parsed.order === 'asc' ? 'asc' : 'desc'
-    }
-  } catch {
-    return fallback
-  }
-}
-const sortState = reactive(loadInitialSortState())
+const sortState = reactive({
+  key: 'created_at',
+  order: 'desc' as 'asc' | 'desc'
+})
 
 // Groups data for the groups column and the existing "authorised group" filter (active only)
 const allGroups = ref<AdminGroup[]>([])
@@ -1110,6 +956,7 @@ const apiKeyGroupFilterOptions = computed(() =>
 
 // Filter values (role, status, and custom attributes)
 const filters = reactive({
+  search: '',
   role: '',
   status: '',
   group: '',  // group name for fuzzy match, '' = all
@@ -1123,11 +970,9 @@ const visibleFilters = reactive<Set<string>>(new Set())
 
 // Dropdown states
 const showFilterDropdown = ref(false)
-const showColumnDropdown = ref(false)
 
 // Dropdown refs for click outside detection
 const filterDropdownRef = ref<HTMLElement | null>(null)
-const columnDropdownRef = ref<HTMLElement | null>(null)
 
 // localStorage keys
 const FILTER_VALUES_KEY = 'user-filter-values'
@@ -1146,49 +991,33 @@ const builtInFilters = computed(() => [
   { key: 'apiKeyGroup', name: t('admin.users.apiKeyGroupFilter'), type: 'select' as const }
 ])
 
-// Load saved filters from localStorage
+// Visible filter controls and dynamic attribute filter values use their existing
+// storage; endpoint-supported primitive query values use the shared table helper.
 const loadSavedFilters = () => {
   try {
-    // Load visible filters
     const savedVisible = localStorage.getItem(VISIBLE_FILTERS_KEY)
     if (savedVisible) {
       const parsed = JSON.parse(savedVisible) as string[]
       parsed.forEach(key => visibleFilters.add(key))
     }
-    // Load filter values
     const savedValues = localStorage.getItem(FILTER_VALUES_KEY)
     if (savedValues) {
       const parsed = JSON.parse(savedValues)
-      if (parsed.role) filters.role = parsed.role
-      if (parsed.status) filters.status = parsed.status
-      if (parsed.group) filters.group = parsed.group
-      if (typeof parsed.apiKeyGroup === 'number') filters.apiKeyGroup = parsed.apiKeyGroup
-      if (parsed.attributes) {
-        Object.assign(activeAttributeFilters, parsed.attributes)
-      }
+      if (parsed.attributes) Object.assign(activeAttributeFilters, parsed.attributes)
     }
   } catch (e) {
-    console.error('Failed to load saved filters:', e)
+    console.error('Failed to load user filter controls:', e)
   }
 }
 
-// Save filters to localStorage
 const saveFiltersToStorage = () => {
   try {
-    // Save visible filters
     localStorage.setItem(VISIBLE_FILTERS_KEY, JSON.stringify([...visibleFilters]))
-    // Save filter values
-    const values = {
-      role: filters.role,
-      status: filters.status,
-      group: filters.group,
-      apiKeyGroup: filters.apiKeyGroup,
-      attributes: activeAttributeFilters
-    }
-    localStorage.setItem(FILTER_VALUES_KEY, JSON.stringify(values))
+    localStorage.setItem(FILTER_VALUES_KEY, JSON.stringify({ attributes: activeAttributeFilters }))
   } catch (e) {
-    console.error('Failed to save filters:', e)
+    console.error('Failed to save user filter controls:', e)
   }
+  userTableQuery.persist()
 }
 
 // Get attribute definition by ID
@@ -1321,6 +1150,27 @@ const pagination = reactive({
   pages: 0
 })
 
+const userTableQuery = usePersistedTableQuery({
+  routeId: 'admin-users',
+  tableId: 'users',
+  filters,
+  filterKeys: ['search', 'role', 'status', 'group', 'apiKeyGroup'] as const,
+  sort: sortState,
+  pagination
+})
+const userSavedFilters = useSavedTableFilters<typeof filters>({
+  routeId: 'admin-users',
+  tableId: 'users',
+  filterKeys: ['search', 'role', 'status', 'group', 'apiKeyGroup'],
+})
+const applySavedUserFilters = (id: string) => {
+  const saved = userSavedFilters.apply(id)
+  if (!saved) return
+  Object.assign(filters, saved)
+  pagination.page = 1
+  applyFilter()
+}
+
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showBulkEditModal = ref(false)
@@ -1429,87 +1279,15 @@ const refreshCurrentPageSecondaryData = () => {
   void loadUsersSecondaryData(userIds, undefined, seq)
 }
 
-// Action Menu State
-const activeMenuId = ref<number | null>(null)
-const menuPosition = ref<{ top: number; left: number } | null>(null)
-
-const openActionMenu = (user: AdminUser, e: MouseEvent) => {
-  if (activeMenuId.value === user.id) {
-    closeActionMenu()
-  } else {
-    const target = e.currentTarget as HTMLElement
-    if (!target) {
-      closeActionMenu()
-      return
-    }
-
-    const rect = target.getBoundingClientRect()
-    const menuWidth = 200
-    const menuHeight = 240
-    const padding = 8
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-
-    let left, top
-
-    if (viewportWidth < 768) {
-      // 居中显示,水平位置
-      left = Math.max(padding, Math.min(
-        rect.left + rect.width / 2 - menuWidth / 2,
-        viewportWidth - menuWidth - padding
-      ))
-
-      // 优先显示在按钮下方
-      top = rect.bottom + 4
-
-      // 如果下方空间不够,显示在上方
-      if (top + menuHeight > viewportHeight - padding) {
-        top = rect.top - menuHeight - 4
-        // 如果上方也不够,就贴在视口顶部
-        if (top < padding) {
-          top = padding
-        }
-      }
-    } else {
-      left = Math.max(padding, Math.min(
-        e.clientX - menuWidth,
-        viewportWidth - menuWidth - padding
-      ))
-      top = e.clientY
-      if (top + menuHeight > viewportHeight - padding) {
-        top = viewportHeight - menuHeight - padding
-      }
-    }
-
-    menuPosition.value = { top, left }
-    activeMenuId.value = user.id
-  }
-}
-
-const closeActionMenu = () => {
-  activeMenuId.value = null
-  menuPosition.value = null
-}
-
-// Close menu when clicking outside
+// Close local filter, column, usage-sort, and group popovers when clicking outside.
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement
-  if (!target.closest('.action-menu-trigger') && !target.closest('.action-menu-content')) {
-    closeActionMenu()
-  }
-  // Close filter dropdown when clicking outside
   if (filterDropdownRef.value && !filterDropdownRef.value.contains(target)) {
     showFilterDropdown.value = false
   }
-  // Close column dropdown when clicking outside
-  if (columnDropdownRef.value && !columnDropdownRef.value.contains(target)) {
-    showColumnDropdown.value = false
-  }
-  // Close usage sort dropdown when clicking outside any usage-sort-trigger
   if (openUsageSortMenu.value !== null && !target.closest('.usage-sort-trigger')) {
     openUsageSortMenu.value = null
   }
-  // Close expanded group dropdown when clicking outside
   if (expandedGroupUserId.value !== null) {
     expandedGroupUserId.value = null
   }
@@ -1583,14 +1361,14 @@ const loadUsers = async () => {
       {
         role: filters.role as any,
         status: filters.status as any,
-        search: searchQuery.value || undefined,
+        search: filters.search || undefined,
         group_name: filters.group || undefined,
         api_key_group_id: filters.apiKeyGroup ?? undefined,
         attributes: Object.keys(attrFilters).length > 0 ? attrFilters : undefined,
         // 始终请求 subscriptions：列隐藏时仍需用于 UserPlatformQuotaModal 的 active-subscription 警示 banner
         include_subscriptions: true,
-        sort_by: sortState.sort_by,
-        sort_order: sortState.sort_order
+        sort_by: sortState.key,
+        sort_order: sortState.order
       },
       { signal }
     )
@@ -1638,28 +1416,31 @@ const handleSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
     pagination.page = 1
+    userTableQuery.persist()
     loadUsers()
   }, 300)
 }
 
 const handlePageChange = (page: number) => {
-  // 确保页码在有效范围内
   const validPage = Math.max(1, Math.min(page, pagination.pages || 1))
   pagination.page = validPage
+  userTableQuery.persist()
   loadUsers()
 }
 
 const handlePageSizeChange = (pageSize: number) => {
   pagination.page_size = pageSize
   pagination.page = 1
+  userTableQuery.persist()
   loadUsers()
 }
 
 const handleSort = (key: string, order: 'asc' | 'desc') => {
   clearUsageSort()
-  sortState.sort_by = key
-  sortState.sort_order = order
+  sortState.key = key
+  sortState.order = order
   pagination.page = 1
+  userTableQuery.persist()
   loadUsers()
 }
 
@@ -1822,22 +1603,16 @@ const handleDepositFromHistory = () => {
   }
 }
 
-// Handle withdraw from balance history modal
 const handleWithdrawFromHistory = () => {
   if (balanceHistoryUser.value) {
     handleWithdraw(balanceHistoryUser.value)
   }
 }
 
-// 滚动时关闭菜单
-const handleScroll = () => {
-  closeActionMenu()
-}
-
 onMounted(async () => {
   await loadAttributeDefinitions()
   loadSavedFilters()
-  loadSavedColumns()
+  userTableQuery.restore()
   loadUsers()
   if (hasVisibleGroupsColumn.value || visibleFilters.has('group')) {
     loadAllGroups()
@@ -1846,12 +1621,10 @@ onMounted(async () => {
     loadAllGroupsForApiKeyFilter()
   }
   document.addEventListener('click', handleClickOutside)
-  window.addEventListener('scroll', handleScroll, true)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
-  window.removeEventListener('scroll', handleScroll, true)
   clearTimeout(searchTimeout)
   abortController?.abort()
 })

@@ -5,9 +5,7 @@
       <span class="badge badge-gray text-xs">{{ t('dashboard.last7Days') }}</span>
     </div>
     <div class="p-4 sm:p-6">
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <LoadingSpinner size="lg" />
-      </div>
+      <div v-if="loading" class="space-y-3 py-3" role="status" :aria-label="t('common.loading')"><Skeleton v-for="n in 5" :key="n" height="48px" /></div>
       <div v-else-if="data.length === 0" class="py-8">
         <EmptyState :title="t('dashboard.noUsageRecords')" :description="t('dashboard.startUsingApi')" />
       </div>
@@ -42,7 +40,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateTime } from '@/utils/format'

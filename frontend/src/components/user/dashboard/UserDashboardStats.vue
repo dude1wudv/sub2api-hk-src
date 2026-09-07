@@ -1,6 +1,6 @@
 <template>
   <!-- Row 1: Core Stats -->
-  <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
+  <div class="metric-grid grid grid-cols-2 gap-3 lg:grid-cols-4">
     <!-- Balance -->
     <div v-if="!isSimple" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
       <div class="flex items-center gap-3">
@@ -68,7 +68,7 @@
   </div>
 
   <!-- Row 2: Token Stats -->
-  <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
+  <div class="metric-grid grid grid-cols-2 gap-3 lg:grid-cols-4">
     <!-- Today Tokens -->
     <div class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
       <div class="flex items-center gap-3">
@@ -397,3 +397,10 @@ const formatTokens = (t: number) => {
 }
 const formatDuration = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms.toFixed(0)}ms`
 </script>
+
+<style scoped>
+.metric-grid > .card { min-height: 100px; padding: 14px 16px; }
+.metric-grid > .card .h-10 { display: none; }
+.metric-grid .text-xl { font-family: ui-monospace, monospace; font-size: 24px; font-weight: 600; }
+.metric-grid .text-xs { line-height: 1.5; }
+</style>

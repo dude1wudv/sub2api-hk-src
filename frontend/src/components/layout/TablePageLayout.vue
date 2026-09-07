@@ -58,8 +58,8 @@ onUnmounted(() => {
 <style scoped>
 /* 桌面端：Flexbox 布局 */
 .table-page-layout {
-  @apply flex flex-col gap-6;
-  height: calc(100vh - 64px - 4rem); /* 减去 header + lg:p-8 的上下padding */
+  @apply flex flex-col gap-4;
+  height: calc(100dvh - 60px - 3rem);
 }
 
 .layout-section-fixed {
@@ -73,7 +73,7 @@ onUnmounted(() => {
 /* page-scroll 模式：整页滚动，卡片区完整展开，表格保留横向滚动 */
 .table-page-layout.page-scroll-mode {
   height: auto;
-  min-height: calc(100vh - 64px - 4rem);
+  min-height: calc(100dvh - 60px - 3rem);
 }
 
 .table-page-layout.page-scroll-mode .layout-section-scrollable {
@@ -90,7 +90,7 @@ onUnmounted(() => {
 
 /* 表格滚动容器 - 保留表体滚动、sticky 与横向滚动行为，仅替换视觉 */
 .table-scroll-container {
-  @apply flex flex-col overflow-hidden h-full rounded-xl border;
+  @apply flex flex-col overflow-hidden h-full rounded-lg border;
   border-color: rgb(var(--line));
   background: rgb(var(--surface));
   box-shadow: 0 1px 2px 0 rgb(38 36 31 / 0.03);
@@ -122,18 +122,19 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  @apply px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider;
+  @apply px-4 py-2.5 text-left text-xs font-medium;
   color: rgb(var(--ink-2));
   border-bottom: 1px solid rgb(var(--line));
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-4 py-2.5 text-sm;
+  @apply px-4 py-2.5 text-[13px];
   color: rgb(var(--ink));
   border-bottom: 1px solid rgb(var(--line));
 }
 
 /* 移动端：恢复正常滚动 */
+.table-page-layout.mobile-mode { height: auto; min-height: 0; }
 .table-page-layout.mobile-mode .table-scroll-container {
   @apply h-auto overflow-visible border-none shadow-none bg-transparent;
 }

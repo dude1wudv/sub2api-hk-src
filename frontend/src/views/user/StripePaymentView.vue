@@ -14,12 +14,15 @@
       </div>
       <template v-else>
         <!-- 金额头部 -->
-        <div v-if="order" class="card overflow-hidden">
-          <div class="bg-gradient-to-br from-[#635bff] to-[#4f46e5] px-6 py-6 text-center">
-            <p class="text-sm font-medium text-indigo-200">{{ t('payment.actualPay') }}</p>
-            <p class="mt-1 text-3xl font-bold text-white">{{ formatGatewayAmount(order.pay_amount) }}</p>
+        <section v-if="order" class="card flex items-center justify-between border border-gray-200 px-5 py-4 dark:border-dark-700">
+          <div>
+            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-dark-400">{{ t('payment.actualPay') }}</p>
+            <p class="mt-1 font-mono text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">{{ formatGatewayAmount(order.pay_amount) }}</p>
           </div>
-        </div>
+          <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-300">
+            <Icon name="creditCard" size="sm" />
+          </div>
+        </section>
 
         <!-- 微信二维码展示 -->
         <template v-if="wechatQrUrl">

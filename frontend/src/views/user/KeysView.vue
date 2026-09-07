@@ -2,25 +2,31 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="rounded-2xl border border-gray-200/80 bg-white/70 p-3 shadow-sm backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/45 sm:p-4">
+        <div class="rounded-lg border border-gray-200 bg-white p-3 dark:border-dark-700 dark:bg-dark-900">
           <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <SearchInput
-              v-model="filterSearch"
+              v-model="keyFilters.search"
               :placeholder="t('keys.searchPlaceholder')"
               class="w-full sm:min-w-64 sm:flex-1 lg:max-w-sm"
               @search="onFilterChange"
             />
             <Select
-              :model-value="filterGroupId"
+              :model-value="keyFilters.group_id"
               class="w-full sm:w-44"
               :options="groupFilterOptions"
               @update:model-value="onGroupFilterChange"
             />
             <Select
-              :model-value="filterStatus"
+              :model-value="keyFilters.status"
               class="w-full sm:w-44"
               :options="statusFilterOptions"
               @update:model-value="onStatusFilterChange"
+            />
+            <SavedFilters
+              :items="keySavedFilters.savedFilters.value"
+              @save="name => keySavedFilters.save(name, keyFilters)"
+              @apply="applySavedKeyFilters"
+              @remove="keySavedFilters.remove"
             />
           </div>
           <EndpointPopover
@@ -43,38 +49,6 @@
           >
             <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
           </button>
-          <div class="relative" ref="columnDropdownRef">
-            <button
-              @click="showColumnDropdown = !showColumnDropdown"
-              class="btn btn-secondary px-2 md:px-3"
-              :title="t('keys.columnSettings')"
-            >
-              <svg class="h-4 w-4 md:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" />
-              </svg>
-              <span class="hidden md:inline">{{ t('keys.columnSettings') }}</span>
-            </button>
-            <div
-              v-if="showColumnDropdown"
-              class="absolute right-0 top-full z-50 mt-2 max-h-80 w-56 overflow-y-auto rounded-xl border border-gray-200 bg-white/95 py-1.5 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-800/95"
-            >
-              <button
-                v-for="col in toggleableColumns"
-                :key="col.key"
-                @click="toggleColumn(col.key)"
-                class="flex min-h-10 w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"
-              >
-                <span>{{ col.label }}</span>
-                <Icon
-                  v-if="isColumnVisible(col.key)"
-                  name="check"
-                  size="sm"
-                  class="text-primary-500"
-                  :stroke-width="2"
-                />
-              </button>
-            </div>
-          </div>
           <button @click="showCreateModal = true" class="btn btn-primary" data-tour="keys-create-btn">
             <Icon name="plus" size="md" class="mr-2" />
             {{ t('keys.createKey') }}
@@ -88,9 +62,12 @@
           :data="apiKeys"
           :loading="loading"
           :server-side-sort="true"
-          default-sort-key="created_at"
-          default-sort-order="desc"
+          :default-sort-key="sortState.key"
+          :default-sort-order="sortState.order"
           @sort="handleSort"
+          preference-route="user-keys"
+          preference-table="api-keys"
+          :default-hidden-columns="['id', 'last_used_ip']"
         >
           <template #cell-id="{ value }">
             <span class="font-mono text-xs text-gray-500 dark:text-gray-400">#{{ value }}</span>
@@ -954,6 +931,36 @@
       </template>
     </BaseDialog>
 
+    <!-- The only opportunity to save a generated key. The value is kept in memory
+         only while this dialog is open and is never written to local storage. -->
+    <BaseDialog
+      :show="showCreatedKeyDialog"
+      :title="t('console.apiKeys.createdTitle')"
+      width="normal"
+      @close="closeCreatedKeyDialog"
+    >
+      <div class="space-y-4">
+        <div class="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+          <Icon name="shield" size="sm" class="mt-0.5 shrink-0" />
+          <p>{{ t('console.apiKeys.createdWarning') }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-dark-600 dark:bg-dark-800">
+          <code class="block break-all font-mono text-sm text-gray-900 dark:text-white">{{ createdKeyValue }}</code>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <button type="button" class="btn btn-secondary" @click="copyCreatedKey">
+            <Icon :name="createdKeyCopied ? 'check' : 'clipboard'" size="sm" class="mr-2" />
+            {{ t('console.apiKeys.copyKey') }}
+          </button>
+          <button type="button" class="btn btn-primary" @click="closeCreatedKeyDialog">
+            {{ t('console.apiKeys.close') }}
+          </button>
+        </div>
+      </template>
+    </BaseDialog>
+
     <!-- Delete Confirmation Dialog -->
     <ConfirmDialog
       :show="showDeleteDialog"
@@ -1125,6 +1132,8 @@
 	import { useOnboardingStore } from '@/stores/onboarding'
 	import { useClipboard } from '@/composables/useClipboard'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
+import { usePersistedTableQuery, useSavedTableFilters } from '@/composables/useTablePreferences'
+import SavedFilters from '@/components/common/SavedFilters.vue'
 
 const { t } = useI18n()
 import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
@@ -1177,12 +1186,12 @@ const appStore = useAppStore()
 const onboardingStore = useOnboardingStore()
 const { copyToClipboard: clipboardCopy } = useClipboard()
 
-const allColumns = computed<Column[]>(() => [
-  { key: 'name', label: t('common.name'), sortable: true },
-  { key: 'id', label: t('keys.id'), sortable: true },
-  { key: 'key', label: t('keys.apiKey'), sortable: false },
+const columns = computed<Column[]>(() => [
+  { key: 'name', label: t('common.name'), sortable: true, hideable: false },
+  { key: 'id', label: t('keys.id'), sortable: true, numeric: true },
+  { key: 'key', label: t('keys.apiKey'), sortable: false, mono: true },
   { key: 'group', label: t('keys.group'), sortable: false },
-  { key: 'current_concurrency', label: t('keys.currentConcurrency'), sortable: true },
+  { key: 'current_concurrency', label: t('keys.currentConcurrency'), sortable: true, numeric: true },
   { key: 'usage', label: t('keys.usage'), sortable: false },
   { key: 'rate_limit', label: t('keys.rateLimitColumn'), sortable: false },
   { key: 'expires_at', label: t('keys.expiresAt'), sortable: true },
@@ -1193,88 +1202,14 @@ const allColumns = computed<Column[]>(() => [
   { key: 'actions', label: t('common.actions'), sortable: false }
 ])
 
-const ALWAYS_VISIBLE_COLUMNS = new Set(['name', 'actions'])
-const DEFAULT_HIDDEN_COLUMNS = ['id', 'rate_limit', 'last_used_at', 'last_used_ip']
-const HIDDEN_COLUMNS_KEY = 'api-key-hidden-columns'
-const COLUMN_SETTINGS_VERSION_KEY = 'api-key-column-settings-version'
-const COLUMN_SETTINGS_VERSION = 3
-const VERSION_NEW_HIDDEN_COLUMNS: Record<number, string[]> = {
-  2: ['last_used_ip'],
-  3: ['id']
-}
-
-const toggleableColumns = computed(() =>
-  allColumns.value.filter((col) => !ALWAYS_VISIBLE_COLUMNS.has(col.key))
-)
-
-const hiddenColumns = reactive<Set<string>>(new Set())
-
-const saveColumnsToStorage = () => {
-  try {
-    localStorage.setItem(HIDDEN_COLUMNS_KEY, JSON.stringify([...hiddenColumns]))
-    localStorage.setItem(COLUMN_SETTINGS_VERSION_KEY, String(COLUMN_SETTINGS_VERSION))
-  } catch (error) {
-    console.error('Failed to save API key table columns:', error)
-  }
-}
-
-const loadSavedColumns = () => {
-  hiddenColumns.clear()
-  try {
-    const saved = localStorage.getItem(HIDDEN_COLUMNS_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved) as string[]
-      const validColumnKeys = new Set(allColumns.value.map((col) => col.key))
-      parsed
-        .filter((key) =>
-          typeof key === 'string' &&
-          validColumnKeys.has(key) &&
-          !ALWAYS_VISIBLE_COLUMNS.has(key)
-        )
-        .forEach((key) => hiddenColumns.add(key))
-      const storedVersion = Number(localStorage.getItem(COLUMN_SETTINGS_VERSION_KEY) ?? '1')
-      if (storedVersion < COLUMN_SETTINGS_VERSION) {
-        for (let v = storedVersion + 1; v <= COLUMN_SETTINGS_VERSION; v++) {
-          for (const key of VERSION_NEW_HIDDEN_COLUMNS[v] ?? []) {
-            if (validColumnKeys.has(key) && !ALWAYS_VISIBLE_COLUMNS.has(key)) {
-              hiddenColumns.add(key)
-            }
-          }
-        }
-        saveColumnsToStorage()
-      } else {
-        localStorage.setItem(COLUMN_SETTINGS_VERSION_KEY, String(COLUMN_SETTINGS_VERSION))
-      }
-    } else {
-      DEFAULT_HIDDEN_COLUMNS.forEach((key) => hiddenColumns.add(key))
-      localStorage.setItem(COLUMN_SETTINGS_VERSION_KEY, String(COLUMN_SETTINGS_VERSION))
-    }
-  } catch (error) {
-    console.error('Failed to load API key table columns:', error)
-    DEFAULT_HIDDEN_COLUMNS.forEach((key) => hiddenColumns.add(key))
-  }
-}
-
-const toggleColumn = (key: string) => {
-  if (ALWAYS_VISIBLE_COLUMNS.has(key)) return
-  if (hiddenColumns.has(key)) {
-    hiddenColumns.delete(key)
-  } else {
-    hiddenColumns.add(key)
-  }
-  saveColumnsToStorage()
-}
-
-const isColumnVisible = (key: string) => !hiddenColumns.has(key)
-
-const columns = computed<Column[]>(() =>
-  allColumns.value.filter((col) => ALWAYS_VISIBLE_COLUMNS.has(col.key) || !hiddenColumns.has(col.key))
-)
 
 const apiKeys = ref<ApiKey[]>([])
 const groups = ref<Group[]>([])
 const loading = ref(false)
 const submitting = ref(false)
+const showCreatedKeyDialog = ref(false)
+const createdKeyValue = ref('')
+const createdKeyCopied = ref(false)
 const now = ref(new Date())
 let resetTimer: ReturnType<typeof setInterval> | null = null
 const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
@@ -1286,15 +1221,37 @@ const pagination = ref({
   total: 0,
   pages: 0
 })
-const sortState = ref({
-  sort_by: 'created_at',
-  sort_order: 'desc' as 'asc' | 'desc'
+const sortState = reactive({
+  key: 'created_at',
+  order: 'desc' as 'asc' | 'desc'
 })
 
-// Filter state
-const filterSearch = ref('')
-const filterStatus = ref('')
-const filterGroupId = ref<string | number>('')
+// Only endpoint-supported, non-sensitive filter fields are persisted.
+const keyFilters = reactive({
+  search: '',
+  status: '',
+  group_id: '' as string | number
+})
+const keyTableQuery = usePersistedTableQuery({
+  routeId: 'user-keys',
+  tableId: 'api-keys',
+  filters: keyFilters,
+  filterKeys: ['search', 'status', 'group_id'] as const,
+  sort: sortState,
+  pagination: pagination.value
+})
+keyTableQuery.restore()
+const keySavedFilters = useSavedTableFilters<typeof keyFilters>({
+  routeId: 'user-keys',
+  tableId: 'api-keys',
+  filterKeys: ['search', 'status', 'group_id'],
+})
+const applySavedKeyFilters = (id: string) => {
+  const saved = keySavedFilters.apply(id)
+  if (!saved) return
+  Object.assign(keyFilters, saved)
+  onFilterChange()
+}
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
@@ -1303,14 +1260,12 @@ const showResetQuotaDialog = ref(false)
 const showResetRateLimitDialog = ref(false)
 const showUseKeyModal = ref(false)
 const showCcsClientSelect = ref(false)
-const showColumnDropdown = ref(false)
 const pendingCcsRow = ref<ApiKey | null>(null)
 const selectedKey = ref<ApiKey | null>(null)
 const copiedKeyId = ref<number | null>(null)
 const groupSelectorKeyId = ref<number | null>(null)
 const publicSettings = ref<PublicSettings | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
-const columnDropdownRef = ref<HTMLElement | null>(null)
 const dropdownPosition = ref<{ top?: number; bottom?: number; left: number } | null>(null)
 const groupButtonRefs = ref<Map<number, HTMLElement>>(new Map())
 let abortController: AbortController | null = null
@@ -1396,16 +1351,17 @@ const statusFilterOptions = computed(() => [
 
 const onFilterChange = () => {
   pagination.value.page = 1
+  keyTableQuery.persist()
   loadApiKeys()
 }
 
 const onGroupFilterChange = (value: string | number | boolean | null) => {
-  filterGroupId.value = value as string | number
+  keyFilters.group_id = value as string | number
   onFilterChange()
 }
 
 const onStatusFilterChange = (value: string | number | boolean | null) => {
-  filterStatus.value = value as string
+  keyFilters.status = value as string
   onFilterChange()
 }
 
@@ -1468,11 +1424,11 @@ const loadApiKeys = async () => {
       sort_by?: string
       sort_order?: 'asc' | 'desc'
     } = {}
-    if (filterSearch.value) filters.search = filterSearch.value
-    if (filterStatus.value) filters.status = filterStatus.value
-    if (filterGroupId.value !== '') filters.group_id = filterGroupId.value
-    filters.sort_by = sortState.value.sort_by
-    filters.sort_order = sortState.value.sort_order
+    if (keyFilters.search) filters.search = keyFilters.search
+    if (keyFilters.status) filters.status = keyFilters.status
+    if (keyFilters.group_id !== '') filters.group_id = keyFilters.group_id
+    filters.sort_by = sortState.key
+    filters.sort_order = sortState.order
 
     const response = await keysAPI.list(pagination.value.page, pagination.value.page_size, filters, {
       signal
@@ -1543,19 +1499,22 @@ const closeUseKeyModal = () => {
 
 const handlePageChange = (page: number) => {
   pagination.value.page = page
+  keyTableQuery.persist()
   loadApiKeys()
 }
 
 const handlePageSizeChange = (pageSize: number) => {
   pagination.value.page_size = pageSize
   pagination.value.page = 1
+  keyTableQuery.persist()
   loadApiKeys()
 }
 
 const handleSort = (key: string, order: 'asc' | 'desc') => {
-  sortState.value.sort_by = key
-  sortState.value.sort_order = order
+  sortState.key = key
+  sortState.order = order
   pagination.value.page = 1
+  keyTableQuery.persist()
   loadApiKeys()
 }
 
@@ -1653,9 +1612,6 @@ const closeGroupSelector = (event: MouseEvent) => {
     groupSelectorKeyId.value = null
     dropdownPosition.value = null
   }
-  if (columnDropdownRef.value && !columnDropdownRef.value.contains(target)) {
-    showColumnDropdown.value = false
-  }
 }
 
 const confirmDelete = (key: ApiKey) => {
@@ -1738,7 +1694,7 @@ const handleSubmit = async () => {
       appStore.showSuccess(t('keys.keyUpdatedSuccess'))
     } else {
       const customKey = formData.value.use_custom_key ? formData.value.custom_key : undefined
-      await keysAPI.create(
+      const createdKey = await keysAPI.create(
         formData.value.name,
         formData.value.group_id,
         customKey,
@@ -1748,6 +1704,9 @@ const handleSubmit = async () => {
         expiresInDays,
         rateLimitData
       )
+      createdKeyValue.value = createdKey.key
+      createdKeyCopied.value = false
+      showCreatedKeyDialog.value = true
       appStore.showSuccess(t('keys.keyCreatedSuccess'))
       // Only advance tour if active, on submit step, and creation succeeded
       if (onboardingStore.isCurrentStep('[data-tour="key-form-submit"]')) {
@@ -1808,6 +1767,19 @@ const closeModals = () => {
     expiration_preset: '30',
     expiration_date: ''
   }
+}
+
+const copyCreatedKey = async () => {
+  if (!createdKeyValue.value) return
+  if (await clipboardCopy(createdKeyValue.value, t('keys.copied'))) {
+    createdKeyCopied.value = true
+  }
+}
+
+const closeCreatedKeyDialog = () => {
+  showCreatedKeyDialog.value = false
+  createdKeyValue.value = ''
+  createdKeyCopied.value = false
 }
 
 // Show reset quota confirmation dialog
@@ -1956,7 +1928,6 @@ function formatResetTime(resetAt: string | null): string {
 }
 
 onMounted(() => {
-  loadSavedColumns()
   loadApiKeys()
   loadGroups()
   loadUserGroupRates()

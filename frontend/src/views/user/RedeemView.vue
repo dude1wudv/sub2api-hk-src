@@ -2,22 +2,24 @@
   <AppLayout>
     <div class="mx-auto max-w-2xl space-y-6">
       <!-- Current Balance Card -->
-      <div class="card overflow-hidden">
-        <div class="bg-gradient-to-br from-primary-500 to-primary-600 px-6 py-8 text-center">
-          <div
-            class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm"
-          >
-            <Icon name="creditCard" size="xl" class="text-white" />
+      <section class="card border border-gray-200 bg-white p-6 dark:border-dark-700 dark:bg-dark-900">
+        <div class="flex items-center gap-4">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-300">
+            <Icon name="creditCard" size="md" />
           </div>
-          <p class="text-sm font-medium text-primary-100">{{ t('redeem.currentBalance') }}</p>
-          <p class="mt-2 text-4xl font-bold text-white">
-            ${{ user?.balance?.toFixed(2) || '0.00' }}
-          </p>
-          <p class="mt-2 text-sm text-primary-100">
-            {{ t('redeem.concurrency') }}: {{ user?.concurrency || 0 }} {{ t('redeem.requests') }}
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-dark-400">{{ t('redeem.currentBalance') }}</p>
+            <p class="mt-1 font-mono text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
+              ${{ user?.balance?.toFixed(2) || '0.00' }}
+            </p>
+          </div>
+          <p class="text-right text-xs text-gray-500 dark:text-dark-400">
+            {{ t('redeem.concurrency') }}<br />
+            <span class="font-mono text-sm font-medium tabular-nums text-gray-900 dark:text-white">{{ user?.concurrency || 0 }}</span>
+            {{ t('redeem.requests') }}
           </p>
         </div>
-      </div>
+      </section>
 
       <!-- Redeem Form -->
       <div class="card">

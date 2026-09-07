@@ -21,13 +21,15 @@
           :title="t('admin.accounts.status.viewTempUnschedDetails')"
           @click="handleTempUnschedClick"
         >
+          <Icon :name="statusIcon" size="xs" />
           {{ statusText }}
         </button>
         <span class="max-w-[180px] text-center text-[11px] leading-4 text-gray-500 dark:text-gray-400">
           {{ tempUnschedRecoveryText }}
         </span>
       </div>
-      <span v-else :class="['badge text-xs', statusClass]">
+      <span v-else :class="['badge inline-flex items-center gap-1 text-xs', statusClass]">
+        <Icon :name="statusIcon" size="xs" />
         {{ statusText }}
       </span>
     </template>
@@ -352,6 +354,11 @@ const statusText = computed(() => {
     return t('admin.accounts.status.paused')
   }
   return t(`admin.accounts.status.${props.account.status}`)
+})
+const statusIcon = computed(() => {
+  if (hasError.value || isTempUnschedulable.value || isQuotaExceeded.value) return 'exclamationTriangle'
+  if (!props.account.schedulable || props.account.status !== 'active') return 'ban'
+  return 'check'
 })
 
 const handleTempUnschedClick = () => {

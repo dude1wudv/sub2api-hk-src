@@ -1,23 +1,16 @@
 <template>
   <AppLayout>
     <div class="developer-dashboard space-y-6">
-      <section class="workspace-hero">
+      <header class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p class="hero-eyebrow">DEVELOPER WORKSPACE / API COCKPIT</p>
-          <h2>{{ zh ? '你的下一次创造，从这里开始。' : 'Your next idea starts here.' }}</h2>
-          <p class="hero-description">{{ zh ? '密钥、用量与模型，一目了然。把复杂留给平台，把专注留给创造。' : 'Your keys, usage and models, in one clear view. Less administration. More creation.' }}</p>
-          <div class="hero-actions">
-            <router-link to="/keys" class="btn btn-primary"><Icon name="key" size="sm" />{{ t('nav.apiKeys') }}</router-link>
-            <router-link to="/usage" class="btn btn-secondary"><Icon name="chart" size="sm" />{{ t('dashboard.viewUsage') }}</router-link>
-          </div>
+          <h1 class="text-2xl font-semibold tracking-tight">{{ t('nav.dashboard') }}</h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-dark-300">{{ t('console.analytics.userOverview') }}</p>
         </div>
-        <div class="hero-instrument">
-          <span>{{ t('dashboard.todayRequests') }}</span>
-          <strong>{{ stats ? stats.today_requests.toLocaleString() : '—' }}</strong>
-          <div class="instrument-rule"></div>
-          <span>{{ zh ? '每一次调用，都是新的可能' : 'Every call, a new possibility' }}</span>
+        <div class="flex gap-2">
+          <router-link to="/keys" class="btn btn-primary"><Icon name="key" size="sm" />{{ t('nav.apiKeys') }}</router-link>
+          <router-link to="/usage" class="btn btn-secondary">{{ t('dashboard.viewUsage') }}</router-link>
         </div>
-      </section>
+      </header>
       <div class="dashboard-section-heading">
         <h2>{{ zh ? '账户与用量概览' : 'Account & usage overview' }}</h2>
         <button class="btn btn-ghost btn-sm" :disabled="loading" @click="refreshAll"><Icon name="refresh" size="sm" :class="{ 'animate-spin': loading }" />{{ t('common.refresh') }}</button>
@@ -26,11 +19,11 @@
         <p class="text-sm text-err-600 dark:text-err-300">{{ error }}</p>
         <button class="btn btn-secondary" :disabled="loading" @click="refreshAll">{{ zh ? '重试' : 'Retry' }}</button>
       </div>
-      <div v-if="loading && !stats" class="card flex items-center justify-center py-12" role="status"><LoadingSpinner /></div>
+      <div v-if="loading && !stats" class="grid grid-cols-2 gap-3 lg:grid-cols-4" role="status" :aria-label="t('common.loading')"><Skeleton v-for="n in 8" :key="n" height="100px" /></div>
       <template v-if="stats">
         <UserDashboardStats :stats="stats" :balance="user?.balance || 0" :is-simple="authStore.isSimpleMode" :platform-quotas="platformQuotas" />
-        <div class="dashboard-section-heading"><h2>{{ zh ? '了解你的 API 活动' : 'Understand your API activity' }}</h2><span>USAGE ANALYTICS</span></div>
-        <UserDashboardCharts v-model:startDate="startDate" v-model:endDate="endDate" v-model:granularity="granularity" :loading="loadingCharts" :trend="trendData" :models="modelStats" @dateRangeChange="loadCharts" @granularityChange="loadCharts" @refresh="refreshAll" />
+        <div class="dashboard-section-heading"><h2>{{ t('console.analytics.activity') }}</h2></div>
+        <UserDashboardCharts v-model:startDate="startDate" v-model:endDate="endDate" v-model:granularity="granularity" :loading="loadingCharts" :trend="trendData" :models="modelStats" @dateRangeChange="refreshRange" @granularityChange="loadCharts" @refresh="refreshAll" />
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div class="min-w-0 lg:col-span-2"><UserDashboardRecentUsage :data="recentUsage" :loading="loadingUsage" /></div>
           <div class="min-w-0 lg:col-span-1"><UserDashboardQuickActions /></div>
@@ -46,7 +39,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { usageAPI, type UserDashboardStats as UserStatsType } from '@/api/usage'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
 import Icon from '@/components/icons/Icon.vue'
 import UserDashboardStats from '@/components/user/dashboard/UserDashboardStats.vue'
 import UserDashboardCharts from '@/components/user/dashboard/UserDashboardCharts.vue'
@@ -124,4 +117,8 @@ function refreshAll() {
   void loadPlatformQuotas()
 }
 onMounted(refreshAll)
+function refreshRange() {
+  void loadCharts()
+  void loadRecent()
+}
 </script>

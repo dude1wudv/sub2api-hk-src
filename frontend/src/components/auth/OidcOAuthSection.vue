@@ -2,7 +2,7 @@
   <div class="space-y-4">
     <button type="button" :disabled="disabled" class="btn btn-secondary w-full" @click="startLogin">
       <span
-        class="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+        class="mr-2 inline-flex h-5 w-5 items-center justify-center rounded border border-gray-200 bg-gray-100 text-xs font-medium text-gray-700 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300"
       >
         {{ providerInitial }}
       </span>
