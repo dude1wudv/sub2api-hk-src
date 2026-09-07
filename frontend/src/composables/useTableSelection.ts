@@ -1,43 +1,42 @@
 import { computed, ref, type Ref } from 'vue'
 
-type TableRowKey = string | number
 
 interface UseTableSelectionOptions<T> {
   rows: Ref<T[]>
-  getId: (row: T) => TableRowKey
+  getId: (row: T) => number
 }
 
 export function useTableSelection<T>({ rows, getId }: UseTableSelectionOptions<T>) {
-  const selectedSet = ref<Set<TableRowKey>>(new Set())
+  const selectedSet = ref<Set<number>>(new Set())
 
   const selectedIds = computed(() => Array.from(selectedSet.value))
   const selectedCount = computed(() => selectedSet.value.size)
 
-  const isSelected = (id: TableRowKey) => selectedSet.value.has(id)
+  const isSelected = (id: number) => selectedSet.value.has(id)
 
-  const replaceSelectedSet = (next: Set<TableRowKey>) => {
+  const replaceSelectedSet = (next: Set<number>) => {
     selectedSet.value = next
   }
 
-  const setSelectedIds = (ids: TableRowKey[]) => {
+  const setSelectedIds = (ids: number[]) => {
     selectedSet.value = new Set(ids)
   }
 
-  const select = (id: TableRowKey) => {
+  const select = (id: number) => {
     if (selectedSet.value.has(id)) return
     const next = new Set(selectedSet.value)
     next.add(id)
     replaceSelectedSet(next)
   }
 
-  const deselect = (id: TableRowKey) => {
+  const deselect = (id: number) => {
     if (!selectedSet.value.has(id)) return
     const next = new Set(selectedSet.value)
     next.delete(id)
     replaceSelectedSet(next)
   }
 
-  const toggle = (id: TableRowKey) => {
+  const toggle = (id: number) => {
     if (selectedSet.value.has(id)) {
       deselect(id)
       return
@@ -50,7 +49,7 @@ export function useTableSelection<T>({ rows, getId }: UseTableSelectionOptions<T
     replaceSelectedSet(new Set())
   }
 
-  const removeMany = (ids: TableRowKey[]) => {
+  const removeMany = (ids: number[]) => {
     if (ids.length === 0 || selectedSet.value.size === 0) return
     const next = new Set(selectedSet.value)
     let changed = false
@@ -78,7 +77,7 @@ export function useTableSelection<T>({ rows, getId }: UseTableSelectionOptions<T
     replaceSelectedSet(next)
   }
 
-  const batchUpdate = (updater: (draft: Set<TableRowKey>) => void) => {
+  const batchUpdate = (updater: (draft: Set<number>) => void) => {
     const draft = new Set(selectedSet.value)
     updater(draft)
     replaceSelectedSet(draft)

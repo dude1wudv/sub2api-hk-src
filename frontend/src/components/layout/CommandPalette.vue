@@ -58,8 +58,9 @@ function handleClosed() {
   returnFocus = null
 }
 function handleBackdrop(event: MouseEvent) {
-  if (event.target !== dialogRef.value) return
-  const bounds = dialogRef.value.getBoundingClientRect()
+  const dialog = dialogRef.value
+  if (!dialog || event.target !== dialog) return
+  const bounds = dialog.getBoundingClientRect()
   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close()
 }
 function activate(item: NavigationCommand) {

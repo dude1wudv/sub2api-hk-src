@@ -604,7 +604,7 @@
                 <span class="text-xs">{{ row.status === 'active' ? t('admin.users.disable') : t('admin.users.enable') }}</span>
               </button>
 
-              <MoreMenu :aria-label="t('common.more')">
+              <MoreMenu :ariaLabel="t('common.more')">
                 <button
                   role="menuitem"
                   class="flex min-h-10 w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus-visible:bg-primary-50 focus-visible:outline-none dark:text-dark-200 dark:hover:bg-dark-700 dark:focus-visible:bg-primary-950/30"

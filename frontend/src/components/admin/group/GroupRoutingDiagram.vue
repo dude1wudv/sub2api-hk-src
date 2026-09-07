@@ -1,7 +1,7 @@
 <template>
   <div class="routing-diagram" role="img" :aria-label="t('admin.groups.modelRouting.title')">
     <div class="route-node route-request">
-      <Icon name="send" size="sm" />
+      <Icon name="arrowRight" size="sm" />
       <span>{{ t('console.routing.request', 'Request') }}</span>
     </div>
     <span class="route-line" aria-hidden="true"></span>

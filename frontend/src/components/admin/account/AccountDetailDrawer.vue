@@ -80,7 +80,7 @@
             <h3>{{ t('common.settings') }}</h3>
             <div class="detail-grid">
               <div v-if="account.proxy"><dt>{{ t('admin.accounts.columns.proxy') }}</dt><dd>{{ account.proxy.name }}</dd></div>
-              <div v-if="account.expires_at"><dt>{{ t('admin.accounts.columns.expiresAt') }}</dt><dd>{{ formatDateTime(account.expires_at) }}</dd></div>
+              <div v-if="account.expires_at"><dt>{{ t('admin.accounts.columns.expiresAt') }}</dt><dd>{{ formatDateTime(new Date(account.expires_at * 1000)) }}</dd></div>
               <div v-if="account.custom_base_url_enabled"><dt>{{ t('admin.accounts.quotaControl.customBaseUrl.label') }}</dt><dd class="break-all font-mono text-xs">{{ account.custom_base_url }}</dd></div>
               <div v-if="account.notes" class="col-span-full"><dt>{{ t('admin.accounts.columns.notes') }}</dt><dd>{{ account.notes }}</dd></div>
             </div>
@@ -89,7 +89,7 @@
 
         <footer class="flex justify-end gap-2 border-t border-gray-200 px-5 py-4 dark:border-dark-700">
           <button type="button" class="btn btn-secondary" @click="emit('close')">{{ t('common.close') }}</button>
-          <button type="button" class="btn btn-primary" @click="emit('edit', account)">{{ t('common.edit') }}</button>
+          <button type="button" class="btn btn-primary" :disabled="!account" @click="account && emit('edit', account)">{{ t('common.edit') }}</button>
         </footer>
       </aside>
     </div>
