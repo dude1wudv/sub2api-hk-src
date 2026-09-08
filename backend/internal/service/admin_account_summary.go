@@ -109,7 +109,18 @@ func (a accountUsageAccumulator) summary() AccountUsageWindowSummary {
 }
 
 func (s *adminServiceImpl) GetAccountSummary(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) (*AccountSummary, error) {
-	accounts, err := s.accountRepo.ListAllWithFilters(ctx, platform, accountType, status, search, groupID, privacyMode)
+	type summaryAccountRepository interface {
+		ListForSummaryWithFilters(context.Context, string, string, string, string, int64, string) ([]Account, error)
+	}
+	var accounts []Account
+	var err error
+	if repository, ok := s.accountRepo.(summaryAccountRepository); ok {
+		accounts, err = repository.ListForSummaryWithFilters(ctx, platform, accountType, status, search, groupID, privacyMode)
+	} else {
+		// Keep lightweight test repositories and alternate implementations
+		// compatible with the existing interface.
+		accounts, err = s.accountRepo.ListAllWithFilters(ctx, platform, accountType, status, search, groupID, privacyMode)
+	}
 	if err != nil {
 		return nil, err
 	}

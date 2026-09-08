@@ -1,9 +1,34 @@
 package service
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
+
+type summaryAccountRepositorySpy struct {
+	AccountRepository
+	used bool
+}
+
+func (repository *summaryAccountRepositorySpy) ListForSummaryWithFilters(
+	context.Context, string, string, string, string, int64, string,
+) ([]Account, error) {
+	repository.used = true
+	return []Account{{Platform: PlatformOpenAI, Type: AccountTypeOAuth, Status: StatusActive, Schedulable: true}}, nil
+}
+
+func TestGetAccountSummaryUsesLightweightRepositoryWhenAvailable(t *testing.T) {
+	repository := &summaryAccountRepositorySpy{}
+	service := &adminServiceImpl{accountRepo: repository}
+	summary, err := service.GetAccountSummary(context.Background(), "", "", "", "", 0, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !repository.used || summary.Total != 1 || summary.OpenAI != 1 {
+		t.Fatalf("lightweight summary path not used: used=%v summary=%#v", repository.used, summary)
+	}
+}
 
 func TestOpenAIOAuthUsageSummaryQueryUsesResetBaseline(t *testing.T) {
 	query := openAIOAuthUsageSummaryQuery()

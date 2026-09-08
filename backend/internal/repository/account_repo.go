@@ -1048,6 +1048,55 @@ func (r *accountRepository) ListAllWithFilters(ctx context.Context, platform, ac
 	return r.accountsToService(ctx, accounts)
 }
 
+// ListForSummaryWithFilters avoids loading credentials, account-group objects,
+// and unrelated account columns for the admin summary endpoint. Extra remains
+// selected because quota and Codex-window calculations depend on it.
+func (r *accountRepository) ListForSummaryWithFilters(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) ([]service.Account, error) {
+	accounts, err := r.accountListFilteredQuery(platform, accountType, status, search, groupID, privacyMode).
+		Select(
+			dbaccount.FieldID,
+			dbaccount.FieldPlatform,
+			dbaccount.FieldType,
+			dbaccount.FieldExtra,
+			dbaccount.FieldProxyID,
+			dbaccount.FieldStatus,
+			dbaccount.FieldLastUsedAt,
+			dbaccount.FieldExpiresAt,
+			dbaccount.FieldAutoPauseOnExpired,
+			dbaccount.FieldSchedulable,
+			dbaccount.FieldRateLimitResetAt,
+			dbaccount.FieldOverloadUntil,
+			dbaccount.FieldTempUnschedulableUntil,
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	proxyIDs := make([]int64, 0, len(accounts))
+	for _, account := range accounts {
+		if account.ProxyID != nil {
+			proxyIDs = append(proxyIDs, *account.ProxyID)
+		}
+	}
+	proxyMap, err := r.loadProxies(ctx, proxyIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]service.Account, 0, len(accounts))
+	for _, account := range accounts {
+		converted := accountEntityToService(account)
+		if converted == nil {
+			continue
+		}
+		if account.ProxyID != nil {
+			converted.Proxy = proxyMap[*account.ProxyID]
+		}
+		out = append(out, *converted)
+	}
+	return out, nil
+}
+
 func (r *accountRepository) ListOpsAccountsForStats(ctx context.Context, platformFilter string, groupIDFilter *int64) ([]service.Account, error) {
 	if r == nil || r.client == nil {
 		return []service.Account{}, nil
