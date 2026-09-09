@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref, useTemplateRef, nextTick } from 'vue'
 
 const props = withDefaults(defineProps<{
   content?: string
+  id?: string
   trigger?: 'hover' | 'click'
   widthClass?: string
 }>(), {
@@ -37,12 +38,24 @@ function isInside(container: HTMLElement | null, target: EventTarget | null): bo
 function onLeave(event: MouseEvent) {
   if (props.trigger !== 'hover') return
   if (isInside(tooltipRef.value, event.relatedTarget)) return
+  if (isInside(triggerRef.value, document.activeElement) || isInside(tooltipRef.value, document.activeElement)) return
   closeTooltip()
 }
 
 function onTooltipLeave(event: MouseEvent) {
   if (props.trigger !== 'hover') return
   if (isInside(triggerRef.value, event.relatedTarget)) return
+  if (isInside(triggerRef.value, document.activeElement) || isInside(tooltipRef.value, document.activeElement)) return
+  closeTooltip()
+}
+
+function onFocusIn() {
+  if (props.trigger === 'hover') openTooltip()
+}
+
+function onFocusOut(event: FocusEvent) {
+  if (props.trigger !== 'hover') return
+  if (isInside(triggerRef.value, event.relatedTarget) || isInside(tooltipRef.value, event.relatedTarget)) return
   closeTooltip()
 }
 
@@ -65,7 +78,6 @@ function onDocumentClick(event: MouseEvent) {
 }
 
 function onDocumentKeydown(event: KeyboardEvent) {
-  if (props.trigger !== 'click') return
   if (event.key === 'Escape') {
     closeTooltip()
   }
@@ -108,6 +120,8 @@ onBeforeUnmount(() => {
     @mouseenter="onEnter"
     @mouseleave="onLeave"
     @click="onClick"
+    @focusin="onFocusIn"
+    @focusout="onFocusOut"
   >
     <!-- Trigger Icon -->
     <slot name="trigger">
@@ -133,12 +147,15 @@ onBeforeUnmount(() => {
         ref="tooltip"
         v-show="show"
         role="tooltip"
+        :id="props.id"
         :class="[
           'fixed z-[99999] -translate-x-1/2 -translate-y-full rounded-lg bg-gray-900 p-3 text-xs leading-relaxed text-white shadow-xl ring-1 ring-white/10 selection:bg-primary-200 selection:text-gray-900 before:absolute before:inset-x-0 before:top-full before:h-3 dark:bg-gray-800 dark:selection:bg-primary-200 dark:selection:text-gray-900',
           props.widthClass,
         ]"
         :style="{ top: `calc(${tooltipStyle.top} - 8px)`, left: tooltipStyle.left }"
         @mouseleave="onTooltipLeave"
+        @focusin="onFocusIn"
+        @focusout="onFocusOut"
       >
         <button
           v-if="props.trigger === 'click'"

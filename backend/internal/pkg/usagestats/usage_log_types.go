@@ -287,6 +287,8 @@ type UsageLogFilters struct {
 	EndTime               *time.Time
 	// ExactTotal requests exact COUNT(*) for pagination. Default false for fast large-table paging.
 	ExactTotal bool
+	// IncludeSessionTransitions hydrates derived predecessor data for admin lists only.
+	IncludeSessionTransitions bool
 }
 
 // UsageStats represents usage statistics

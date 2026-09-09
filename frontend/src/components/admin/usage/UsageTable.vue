@@ -27,10 +27,29 @@
         @sort="(key, order) => $emit('sort', key, order)"
       >
         <template #cell-user="{ row }">
-          <div class="text-sm">
+          <div class="flex min-w-0 items-center gap-1 text-sm">
+            <HelpTooltip
+              v-if="row.session_account_switched"
+              :id="`usage-session-switch-${row.id}`"
+              :content="accountSwitchWarning(row)"
+              class="!ml-0 shrink-0"
+            >
+              <template #trigger>
+                <button
+                  type="button"
+                  data-testid="session-switch-warning"
+                  class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warn-100 text-warn-700 ring-1 ring-inset ring-warn-200 transition-colors hover:bg-warn-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warn-500 dark:bg-warn-900/40 dark:text-warn-200 dark:ring-warn-700/60"
+                  :aria-label="accountSwitchWarning(row)"
+                  :title="accountSwitchWarning(row)"
+                  :aria-describedby="`usage-session-switch-${row.id}`"
+                >
+                  <Icon name="exclamationTriangle" size="xs" />
+                </button>
+              </template>
+            </HelpTooltip>
             <button
               v-if="row.user?.email"
-              class="font-medium text-primary-600 underline decoration-dashed underline-offset-2 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+              class="min-w-0 break-all font-medium text-primary-600 underline decoration-dashed underline-offset-2 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
               @click="$emit('userClick', row.user_id, row.user?.email)"
               :title="t('admin.usage.clickToViewBalance')"
             >
@@ -270,11 +289,19 @@
         </template>
 
         <template #cell-request_id="{ row }">
-          <div v-if="row.request_id" class="flex max-w-[160px] items-center gap-1.5">
+          <div v-if="row.request_id || sessionVisuals.has(row.id)" class="flex max-w-[200px] items-center gap-1.5">
+            <span
+              v-if="sessionVisuals.has(row.id)"
+              data-testid="session-marker"
+              class="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md px-1.5 font-mono text-[11px] font-semibold tabular-nums"
+              :class="sessionVisuals.get(row.id)!.className"
+              :aria-label="t('admin.usage.sessionMarkerAriaLabel', { number: sessionVisuals.get(row.id)!.number })"
+            >{{ sessionVisuals.get(row.id)!.number }}</span>
             <span class="truncate font-mono text-xs text-gray-500 dark:text-gray-400" :title="row.request_id">
               {{ row.request_id }}
             </span>
             <button
+              v-if="row.request_id"
               type="button"
               class="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:hover:bg-dark-700 dark:hover:text-dark-200"
               :class="copiedRequestId === row.request_id ? 'text-green-500 hover:text-green-500' : ''"
@@ -611,6 +638,7 @@ function accountBilled(row: { total_cost?: number | null; account_stats_cost?: n
 import DataTable from '@/components/common/DataTable.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import IpGeoCell from '@/components/common/IpGeoCell.vue'
+import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { fetchBatch, getEntry } from '@/utils/ipGeoLookup'
 import type { AdminUsageLog } from '@/types'
@@ -650,6 +678,43 @@ const showAccountBilling = props.showAccountBilling
 const showUpstreamEndpoint = props.showUpstreamEndpoint
 const ipGeoBatchLoading = ref(false)
 
+
+const sessionColorClasses = [
+  'bg-primary-100 text-primary-700 ring-1 ring-inset ring-primary-200 dark:bg-primary-900/40 dark:text-primary-200 dark:ring-primary-700/60',
+  'bg-accent-100 text-accent-700 ring-1 ring-inset ring-accent-200 dark:bg-accent-900/40 dark:text-accent-200 dark:ring-accent-700/60',
+  'bg-link-100 text-link-700 ring-1 ring-inset ring-link-200 dark:bg-link-900/40 dark:text-link-200 dark:ring-link-700/60',
+  'bg-ok-100 text-ok-700 ring-1 ring-inset ring-ok-200 dark:bg-ok-900/40 dark:text-ok-200 dark:ring-ok-700/60',
+  'bg-warn-100 text-warn-700 ring-1 ring-inset ring-warn-200 dark:bg-warn-900/40 dark:text-warn-200 dark:ring-warn-700/60',
+  'bg-err-100 text-err-700 ring-1 ring-inset ring-err-200 dark:bg-err-900/40 dark:text-err-200 dark:ring-err-700/60',
+] as const
+
+const sessionVisuals = computed(() => {
+  const bySession = new Map<string, { number: number; className: string }>()
+  const byRow = new Map<number, { number: number; className: string }>()
+  for (const row of props.data) {
+    if (!row.session_id) continue
+    const key = `${row.user_id}\u0000${row.session_id}`
+    let visual = bySession.get(key)
+    if (!visual) {
+      let hash = 2166136261
+      for (let i = 0; i < key.length; i++) {
+        hash = Math.imul(hash ^ key.charCodeAt(i), 16777619) >>> 0
+      }
+      visual = {
+        number: hash % 99 + 1,
+        className: sessionColorClasses[Math.floor(hash / 99) % 6]!,
+      }
+      bySession.set(key, visual)
+    }
+    byRow.set(row.id, visual)
+  }
+  return byRow
+})
+
+const accountSwitchWarning = (row: AdminUsageLog): string => t('admin.usage.accountSwitchWarning', {
+  previous: row.previous_account?.name || `#${row.previous_account_id}`,
+  current: row.account?.name || `#${row.account_id}`,
+})
 const showIpGeoToolbar = computed(() => props.columns.some((col) => col.key === 'ip_address'))
 
 const hasReasoningEffortMapping = (row: AdminUsageLog): boolean => {

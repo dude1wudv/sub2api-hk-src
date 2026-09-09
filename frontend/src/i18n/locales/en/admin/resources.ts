@@ -521,6 +521,8 @@ export default {
       account: 'Account',
       group: 'Group',
       requestId: 'Request ID',
+      sessionMarkerAriaLabel: 'Session marker {number}',
+      accountSwitchWarning: 'Upstream account switched in the same session: {previous} → {current}',
       upstreamRequestId: 'Upstream ID',
       requestIdCopied: 'Request ID copied',
       upstreamRequestIdCopied: 'Upstream ID copied',

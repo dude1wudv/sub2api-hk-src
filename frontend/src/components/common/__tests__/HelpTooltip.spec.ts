@@ -107,4 +107,67 @@ describe('HelpTooltip', () => {
 
     wrapper.unmount()
   })
+
+  it('opens hover tooltips on focus, exposes the linked ARIA target, and closes on focusout or Escape', async () => {
+    const tooltipId = 'help-tooltip-focus'
+    const wrapper = mount(HelpTooltip, {
+      attachTo: document.body,
+      props: {
+        content: 'focus details',
+        id: tooltipId,
+      },
+      slots: {
+        trigger: '<button type="button" aria-describedby="help-tooltip-focus">Focus help</button>',
+      },
+    })
+
+    const trigger = wrapper.get('.group')
+    const button = wrapper.get('button')
+    const tooltip = getTooltipElement()
+    expect(button.attributes('aria-describedby')).toBe(tooltipId)
+    expect(tooltip.id).toBe(tooltipId)
+    expect(tooltip.getAttribute('role')).toBe('tooltip')
+    expect(document.getElementById(button.attributes('aria-describedby')!)).toBe(tooltip)
+    expect(tooltip.style.display).toBe('none')
+
+    await button.trigger('focusin')
+    await nextTick()
+    expect(tooltip.style.display).not.toBe('none')
+    expect(tooltip.textContent).toContain('focus details')
+
+    await button.trigger('focusout', { relatedTarget: document.body })
+    await nextTick()
+    expect(tooltip.style.display).toBe('none')
+
+    await trigger.trigger('focusin')
+    await nextTick()
+    expect(tooltip.style.display).not.toBe('none')
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+    expect(tooltip.style.display).toBe('none')
+
+    wrapper.unmount()
+  })
+
+  it('closes click-triggered tooltips on Escape', async () => {
+    const wrapper = mount(HelpTooltip, {
+      attachTo: document.body,
+      props: {
+        content: 'escape details',
+        trigger: 'click',
+      },
+    })
+    const trigger = wrapper.get('.group')
+    const tooltip = getTooltipElement()
+
+    await trigger.trigger('click')
+    await nextTick()
+    expect(tooltip.style.display).not.toBe('none')
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+    expect(tooltip.style.display).toBe('none')
+
+    wrapper.unmount()
+  })
 })

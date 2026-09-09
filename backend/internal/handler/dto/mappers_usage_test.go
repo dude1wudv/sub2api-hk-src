@@ -332,3 +332,70 @@ func TestUsageLogFromService_PreservesHistoricalMissingImageSize(t *testing.T) {
 func f64Ptr(value float64) *float64 {
 	return &value
 }
+
+func TestUsageLogFromServiceAdmin_SessionTransitionFields(t *testing.T) {
+	t.Parallel()
+
+	sessionID := "session-admin"
+	previousAccountID := int64(41)
+	previous := &service.Account{
+		ID:   previousAccountID,
+		Name: "previous-account",
+		Credentials: map[string]any{
+			"access_token": "previous-secret",
+		},
+		Proxy: &service.Proxy{ID: 7, Name: "private-proxy"},
+	}
+	current := &service.Account{
+		ID:   42,
+		Name: "current-account",
+		Credentials: map[string]any{
+			"api_key": "current-secret",
+		},
+		Proxy: &service.Proxy{ID: 8, Name: "private-proxy"},
+	}
+	log := &service.UsageLog{
+		ID:                     123,
+		UserID:                 9,
+		AccountID:              current.ID,
+		RequestID:              "req_session_admin",
+		Model:                  "gpt-5.4",
+		SessionID:              &sessionID,
+		Account:                current,
+		SessionAccountSwitched: true,
+		PreviousAccountID:      &previousAccountID,
+		PreviousAccount:        previous,
+	}
+
+	adminDTO := UsageLogFromServiceAdmin(log)
+	require.Equal(t, &sessionID, adminDTO.SessionID)
+	require.True(t, adminDTO.SessionAccountSwitched)
+	require.NotNil(t, adminDTO.PreviousAccountID)
+	require.Equal(t, previousAccountID, *adminDTO.PreviousAccountID)
+	require.Equal(t, &AccountSummary{ID: previousAccountID, Name: previous.Name}, adminDTO.PreviousAccount)
+	require.Equal(t, &AccountSummary{ID: current.ID, Name: current.Name}, adminDTO.Account)
+
+	adminBody, err := json.Marshal(adminDTO)
+	require.NoError(t, err)
+	var adminPayload map[string]any
+	require.NoError(t, json.Unmarshal(adminBody, &adminPayload))
+	require.Equal(t, sessionID, adminPayload["session_id"])
+	require.Equal(t, true, adminPayload["session_account_switched"])
+	require.Equal(t, float64(previousAccountID), adminPayload["previous_account_id"])
+	previousPayload, ok := adminPayload["previous_account"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, float64(previousAccountID), previousPayload["id"])
+	require.Equal(t, previous.Name, previousPayload["name"])
+	require.NotContains(t, previousPayload, "credentials")
+	require.NotContains(t, previousPayload, "proxy")
+
+	userDTO := UsageLogFromService(log)
+	userBody, err := json.Marshal(userDTO)
+	require.NoError(t, err)
+	var userPayload map[string]any
+	require.NoError(t, json.Unmarshal(userBody, &userPayload))
+	require.Equal(t, sessionID, userPayload["session_id"])
+	require.NotContains(t, userPayload, "session_account_switched")
+	require.NotContains(t, userPayload, "previous_account_id")
+	require.NotContains(t, userPayload, "previous_account")
+}

@@ -1693,6 +1693,7 @@ export interface UsageLog {
   api_key_id: number
   account_id: number | null
   request_id: string
+  session_id?: string | null
   model: string
   service_tier?: string | null
   reasoning_effort?: string | null
@@ -1762,6 +1763,9 @@ export interface UsageLogAccountSummary {
 }
 
 export interface AdminUsageLog extends UsageLog {
+  session_account_switched?: boolean
+  previous_account_id?: number | null
+  previous_account?: UsageLogAccountSummary | null
   upstream_model?: string | null
   upstream_reasoning_effort?: string | null
   upstream_response_model?: string | null

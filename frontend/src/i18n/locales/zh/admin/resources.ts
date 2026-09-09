@@ -518,6 +518,8 @@ export default {
       account: '账户',
       group: '分组',
       requestId: '请求ID',
+      sessionMarkerAriaLabel: '会话标识 {number}',
+      accountSwitchWarning: '检测到同一会话切换上游账号：{previous} → {current}',
       upstreamRequestId: '上游ID',
       requestIdCopied: '请求ID已复制',
       upstreamRequestIdCopied: '上游ID已复制',

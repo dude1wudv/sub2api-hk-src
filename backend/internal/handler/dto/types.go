@@ -701,7 +701,10 @@ type AdminUsageLog struct {
 	IPAddress *string `json:"ip_address,omitempty"`
 
 	// Account 最小账号信息（避免泄露敏感字段）
-	Account *AccountSummary `json:"account,omitempty"`
+	Account                *AccountSummary `json:"account,omitempty"`
+	SessionAccountSwitched bool            `json:"session_account_switched"`
+	PreviousAccountID      *int64          `json:"previous_account_id,omitempty"`
+	PreviousAccount        *AccountSummary `json:"previous_account,omitempty"`
 }
 
 type UsageCleanupFilters struct {

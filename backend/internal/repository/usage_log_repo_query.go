@@ -17,6 +17,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/usagestats"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/lib/pq"
 )
 
 const usageLogSelectColumns = "id, user_id, api_key_id, account_id, request_id, model, requested_model, upstream_model, upstream_response_model, upstream_model_mismatch, group_id, subscription_id, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cache_creation_5m_tokens, cache_creation_1h_tokens, image_output_tokens, image_output_cost, image_input_tokens, image_input_cost, input_cost, output_cost, cache_creation_cost, cache_read_cost, total_cost, actual_cost, rate_multiplier, account_rate_multiplier, billing_type, request_type, stream, openai_ws_mode, duration_ms, first_token_ms, user_agent, ip_address, image_count, image_size, image_input_size, image_output_size, image_size_source, image_size_breakdown, video_count, video_resolution, video_duration_seconds, service_tier, reasoning_effort, requested_reasoning_effort, inbound_endpoint, upstream_endpoint, cache_ttl_overridden, long_context_billing_applied, channel_id, model_mapping_chain, billing_tier, billing_mode, account_stats_cost, upstream_request_id, session_id, native_compaction_v2, created_at"
@@ -155,6 +156,12 @@ func (r *usageLogRepository) ListWithFilters(ctx context.Context, params paginat
 		return nil, nil, err
 	}
 
+	if filters.IncludeSessionTransitions {
+		if err := r.hydrateUsageLogSessionTransitions(ctx, logs); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	if err := r.hydrateUsageLogAssociations(ctx, logs); err != nil {
 		return nil, nil, err
 	}
@@ -272,6 +279,59 @@ func (r *usageLogRepository) queryUsageLogs(ctx context.Context, query string, a
 	return logs, nil
 }
 
+func (r *usageLogRepository) hydrateUsageLogSessionTransitions(ctx context.Context, logs []service.UsageLog) (err error) {
+	var ids []int64
+	for i := range logs {
+		if logs[i].SessionID != nil && *logs[i].SessionID != "" {
+			ids = append(ids, logs[i].ID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	rows, err := r.sql.QueryContext(ctx, `
+		SELECT current.id, previous.account_id
+		FROM usage_logs current
+		JOIN LATERAL (
+			SELECT older.account_id
+			FROM usage_logs older
+			WHERE older.user_id = current.user_id
+			  AND older.session_id = current.session_id
+			  AND (older.created_at, older.id) < (current.created_at, current.id)
+			ORDER BY older.created_at DESC, older.id DESC
+			LIMIT 1
+		) previous ON TRUE
+		WHERE current.id = ANY($1::bigint[])
+		  AND current.session_id IS NOT NULL
+		  AND current.account_id IS DISTINCT FROM previous.account_id
+	`, pq.Array(ids))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+	byID := make(map[int64]*service.UsageLog, len(ids))
+	for i := range logs {
+		if logs[i].SessionID != nil && *logs[i].SessionID != "" {
+			byID[logs[i].ID] = &logs[i]
+		}
+	}
+	for rows.Next() {
+		var id, previousAccountID int64
+		if err := rows.Scan(&id, &previousAccountID); err != nil {
+			return err
+		}
+		if log := byID[id]; log != nil {
+			log.SessionAccountSwitched = true
+			log.PreviousAccountID = &previousAccountID
+		}
+	}
+	return rows.Err()
+}
+
 func (r *usageLogRepository) hydrateUsageLogAssociations(ctx context.Context, logs []service.UsageLog) error {
 	// 关联数据使用 Ent 批量加载，避免把复杂 SQL 继续膨胀。
 	if len(logs) == 0 {
@@ -310,6 +370,9 @@ func (r *usageLogRepository) hydrateUsageLogAssociations(ctx context.Context, lo
 		if acc, ok := accounts[logs[i].AccountID]; ok {
 			logs[i].Account = acc
 		}
+		if logs[i].PreviousAccountID != nil {
+			logs[i].PreviousAccount = accounts[*logs[i].PreviousAccountID]
+		}
 		if logs[i].GroupID != nil {
 			if group, ok := groups[*logs[i].GroupID]; ok {
 				logs[i].Group = group
@@ -345,6 +408,9 @@ func collectUsageLogIDs(logs []service.UsageLog) usageLogIDs {
 		userIDs[logs[i].UserID] = struct{}{}
 		apiKeyIDs[logs[i].APIKeyID] = struct{}{}
 		accountIDs[logs[i].AccountID] = struct{}{}
+		if logs[i].PreviousAccountID != nil {
+			accountIDs[*logs[i].PreviousAccountID] = struct{}{}
+		}
 		if logs[i].GroupID != nil {
 			groupIDs[*logs[i].GroupID] = struct{}{}
 		}

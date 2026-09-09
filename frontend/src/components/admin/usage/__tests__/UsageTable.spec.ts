@@ -13,13 +13,14 @@ vi.mock('@/utils/ipGeoLookup', () => ipGeoMocks)
 vi.mock('@/stores/app', () => ({ useAppStore: () => appStoreMocks }))
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 import UsageTable from '../UsageTable.vue'
 
 const messages: Record<string, string> = {
-  'admin.usage.userDeletedBadge': 'Deleted',
+  'admin.usage.sessionMarkerAriaLabel': 'Session marker {number}',
+  'admin.usage.accountSwitchWarning': 'Upstream account switched in the same session: {previous} → {current}',
   'usage.costDetails': 'Cost Breakdown',
   'admin.usage.inputCost': 'Input Cost',
   'admin.usage.outputCost': 'Output Cost',
@@ -82,7 +83,13 @@ vi.mock('vue-i18n', async () => {
   return {
     ...actual,
     useI18n: () => ({
-      t: (key: string) => messages[key] ?? key,
+      t: (key: string, params?: Record<string, unknown>) => {
+        let message = messages[key] ?? key
+        for (const [name, value] of Object.entries(params ?? {})) {
+          message = message.replace(`{${name}}`, String(value))
+        }
+        return message
+      },
     }),
   }
 })
@@ -131,6 +138,7 @@ const baseImageRow = {
   image_output_size: null,
   image_size_source: null,
   image_size_breakdown: null,
+  session_account_switched: false,
 }
 
 describe('admin UsageTable TPS metrics', () => {
@@ -139,6 +147,7 @@ describe('admin UsageTable TPS metrics', () => {
       props: {
         data: [{
           request_id: 'req-tps',
+          session_account_switched: false,
           input_tokens: 3951,
           output_tokens: 1604,
           cache_creation_tokens: 0,
@@ -172,6 +181,7 @@ describe('admin UsageTable TPS metrics', () => {
       props: {
         data: [{
           request_id: 'req-tps-no-first-token',
+          session_account_switched: false,
           input_tokens: 1,
           output_tokens: 100,
           cache_creation_tokens: 0,
@@ -299,6 +309,7 @@ describe('admin UsageTable tooltip', () => {
   it('shows service tier and billing breakdown in cost tooltip', async () => {
     const row = {
       request_id: 'req-admin-1',
+      session_account_switched: false,
       actual_cost: 0.092883,
       total_cost: 0.092883,
       account_rate_multiplier: 1,
@@ -349,6 +360,7 @@ describe('admin UsageTable tooltip', () => {
   it('shows requested and upstream models separately for admin rows', () => {
     const row = {
       request_id: 'req-admin-model-1',
+      session_account_switched: false,
       model: 'claude-sonnet-4',
       upstream_model: 'claude-sonnet-4-20250514',
       actual_cost: 0,
@@ -389,6 +401,7 @@ describe('admin UsageTable tooltip', () => {
       props: {
         data: [{
           request_id: 'req-admin-effort-1',
+          session_account_switched: false,
           model: 'gpt-5.4',
           reasoning_effort: 'max',
           upstream_reasoning_effort: 'xhigh',
@@ -417,6 +430,7 @@ describe('admin UsageTable tooltip', () => {
       props: {
         data: [{
           request_id: 'req-admin-effort-2',
+          session_account_switched: false,
           model: 'gpt-5.6-sol',
           reasoning_effort: 'max',
         }],
@@ -443,6 +457,7 @@ describe('admin UsageTable tooltip', () => {
       props: {
         data: [{
           request_id: 'req-user-effort-1',
+          session_account_switched: false,
           model: 'gpt-5.4',
           reasoning_effort: 'max',
         }],
@@ -480,6 +495,7 @@ describe('admin UsageTable tooltip', () => {
 			props: {
 				data: [{
 					request_id: `req-${responseModel}`,
+					session_account_switched: false,
 					model: 'gpt-5.6-sol',
 					upstream_model: 'gpt-5.5',
 					model_mapping_chain: 'gpt-5.6-sol→gpt-5.5',
@@ -714,7 +730,7 @@ describe('admin UsageTable IP geolocation batch toolbar', () => {
   it('does not render the batch toolbar when the ip_address column is not visible', () => {
     const wrapper = mount(UsageTable, {
       props: {
-        data: [{ request_id: 'r1', ip_address: '8.8.8.8' }],
+        data: [{ request_id: 'r1', ip_address: '8.8.8.8', session_account_switched: false }],
         loading: false,
         columns: [],
       },
@@ -727,9 +743,9 @@ describe('admin UsageTable IP geolocation batch toolbar', () => {
     const wrapper = mount(UsageTable, {
       props: {
         data: [
-          { request_id: 'r1', ip_address: '8.8.8.8' },
-          { request_id: 'r2', ip_address: '8.8.8.8' },
-          { request_id: 'r3', ip_address: '1.1.1.1' },
+          { request_id: 'r1', ip_address: '8.8.8.8', session_account_switched: false },
+          { request_id: 'r2', ip_address: '8.8.8.8', session_account_switched: false },
+          { request_id: 'r3', ip_address: '1.1.1.1', session_account_switched: false },
         ],
         loading: false,
         columns: [{ key: 'ip_address', label: 'IP' }],
@@ -747,9 +763,9 @@ describe('admin UsageTable IP geolocation batch toolbar', () => {
     const wrapper = mount(UsageTable, {
       props: {
         data: [
-          { request_id: 'r1', ip_address: '8.8.8.8' },
-          { request_id: 'r2', ip_address: '8.8.8.8' },
-          { request_id: 'r3', ip_address: '1.1.1.1' },
+          { request_id: 'r1', ip_address: '8.8.8.8', session_account_switched: false },
+          { request_id: 'r2', ip_address: '8.8.8.8', session_account_switched: false },
+          { request_id: 'r3', ip_address: '1.1.1.1', session_account_switched: false },
         ],
         loading: false,
         columns: [{ key: 'ip_address', label: 'IP' }],
@@ -765,7 +781,7 @@ describe('admin UsageTable IP geolocation batch toolbar', () => {
     ipGeoMocks.fetchBatch.mockResolvedValue(false)
     const wrapper = mount(UsageTable, {
       props: {
-        data: [{ request_id: 'r1', ip_address: '8.8.8.8' }],
+        data: [{ request_id: 'r1', ip_address: '8.8.8.8', session_account_switched: false }],
         loading: false,
         columns: [{ key: 'ip_address', label: 'IP' }],
       },
@@ -779,7 +795,7 @@ describe('admin UsageTable IP geolocation batch toolbar', () => {
     ipGeoMocks.getEntry.mockReturnValue({ status: 'success', label: 'CN · Guangdong · Shenzhen', detail: {} })
     const wrapper = mount(UsageTable, {
       props: {
-        data: [{ request_id: 'r1', ip_address: '121.35.47.43' }],
+        data: [{ request_id: 'r1', ip_address: '121.35.47.43', session_account_switched: false }],
         loading: false,
         columns: [{ key: 'ip_address', label: 'IP' }],
       },
@@ -812,6 +828,7 @@ describe('admin UsageTable deleted-user badge', () => {
   it('renders deleted badge for a soft-deleted user row', () => {
     const row = {
       request_id: 'req-deleted-user-1',
+      session_account_switched: false,
       model: 'claude-3',
       user_id: 2,
       user: { id: 2, email: 'd@test.com', deleted_at: '2026-05-28T00:00:00Z' },
@@ -847,6 +864,7 @@ describe('admin UsageTable deleted-user badge', () => {
   it('does NOT render deleted badge for an active user row', () => {
     const row = {
       request_id: 'req-active-user-1',
+      session_account_switched: false,
       model: 'claude-3',
       user_id: 3,
       user: { id: 3, email: 'active@test.com', deleted_at: null },
@@ -877,5 +895,197 @@ describe('admin UsageTable deleted-user badge', () => {
 
     expect(wrapper.text()).not.toContain('Deleted')
     expect(wrapper.text()).toContain('active@test.com')
+  })
+})
+
+const DataTableStubWithSession = {
+  props: ['data'],
+  template: `
+    <div>
+      <div v-for="row in data" :key="row.id" :data-request-id="row.request_id">
+        <slot name="cell-user" :row="row" />
+        <slot name="cell-request_id" :row="row" />
+      </div>
+    </div>
+  `,
+}
+type SessionRow = typeof baseImageRow & {
+  id: number
+  user_id: number
+  session_id: string | null
+  account_id: number | null
+  session_account_switched: boolean
+  account?: { id: number; name: string } | null
+  previous_account_id?: number | null
+  previous_account?: { id: number; name: string } | null
+}
+
+const sessionRow = (overrides: Partial<SessionRow> = {}): SessionRow => ({
+  ...baseImageRow,
+  id: 1,
+  user_id: 1,
+  session_id: 'a',
+  request_id: 'req-session-a',
+  account_id: 10,
+  session_account_switched: false,
+  ...overrides,
+})
+
+describe('admin UsageTable session markers and account switch warnings', () => {
+  const mountSessionTable = (data: SessionRow[]) => mount(UsageTable, {
+    attachTo: document.body,
+    props: {
+      data,
+      loading: false,
+      columns: [
+        { key: 'user', label: 'User' },
+        { key: 'request_id', label: 'Request ID' },
+      ],
+    },
+    global: {
+      stubs: {
+        DataTable: DataTableStubWithSession,
+        EmptyState: true,
+        Icon: true,
+      },
+    },
+  })
+
+  const markerFor = (wrapper: VueWrapper, requestId: string) =>
+    wrapper.get(`[data-request-id="${requestId}"] [data-testid="session-marker"]`)
+
+  it('uses the fixed FNV vectors and assigns their documented color slots', () => {
+    const wrapper = mountSessionTable([
+      sessionRow({ id: 101, request_id: 'vector-a', session_id: 'a' }),
+      sessionRow({ id: 102, request_id: 'vector-b', session_id: 'b' }),
+    ])
+
+    const markerA = markerFor(wrapper, 'vector-a')
+    const markerB = markerFor(wrapper, 'vector-b')
+    expect(markerA.text()).toBe('68')
+    expect(markerA.attributes('aria-label')).toBe('Session marker 68')
+    expect(markerA.classes()).toContain('bg-link-100')
+    expect(markerB.text()).toBe('58')
+    expect(markerB.attributes('aria-label')).toBe('Session marker 58')
+    expect(markerB.classes()).toContain('bg-ok-100')
+
+    wrapper.unmount()
+  })
+
+  it('keeps each session visual stable when rows are reordered without requiring unique values', async () => {
+    const rows = [
+      sessionRow({ id: 111, request_id: 'stable-a', session_id: 'stable-a' }),
+      sessionRow({ id: 112, request_id: 'stable-b', session_id: 'stable-b' }),
+      sessionRow({ id: 113, request_id: 'stable-a-duplicate', session_id: 'stable-a' }),
+    ]
+    const wrapper = mountSessionTable(rows)
+    const firstValues = new Map(rows.map((row) => [row.request_id, markerFor(wrapper, row.request_id).text()]))
+    await wrapper.setProps({ data: [...rows].reverse() })
+    for (const row of rows) {
+      expect(markerFor(wrapper, row.request_id).text()).toBe(firstValues.get(row.request_id))
+    }
+    expect(markerFor(wrapper, 'stable-a').text()).toBe(
+      markerFor(wrapper, 'stable-a-duplicate').text(),
+    )
+
+    wrapper.unmount()
+  })
+
+  it('keeps marker numbers within 1..99 and omits markers for empty sessions', () => {
+    const sessionRows = Array.from({ length: 24 }, (_, index) =>
+      sessionRow({
+        id: 200 + index,
+        request_id: `range-${index}`,
+        session_id: `range-session-${index}`,
+      }),
+    )
+    const emptyRows = [
+      sessionRow({ id: 300, request_id: 'empty-null', session_id: null }),
+      sessionRow({ id: 301, request_id: 'empty-string', session_id: '' }),
+    ]
+    const wrapper = mountSessionTable([...sessionRows, ...emptyRows])
+
+    expect(wrapper.findAll('[data-testid="session-marker"]')).toHaveLength(sessionRows.length)
+    for (const marker of wrapper.findAll('[data-testid="session-marker"]')) {
+      const number = Number(marker.text())
+      expect(number).toBeGreaterThanOrEqual(1)
+      expect(number).toBeLessThanOrEqual(99)
+    }
+    expect(wrapper.find('[data-request-id="empty-null"] [data-testid="session-marker"]').exists()).toBe(false)
+    expect(wrapper.find('[data-request-id="empty-string"] [data-testid="session-marker"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('shows only switched rows and opens their named warning with mouse and keyboard focus', async () => {
+    const row = sessionRow({
+      id: 401,
+      request_id: 'switch-named',
+      account_id: 20,
+      account: { id: 20, name: 'B' },
+      previous_account_id: 10,
+      previous_account: { id: 10, name: 'A' },
+      session_account_switched: true,
+    })
+    const wrapper = mountSessionTable([
+      row,
+      sessionRow({ id: 402, request_id: 'switch-unchanged', session_account_switched: false }),
+    ])
+    const warnings = wrapper.findAll('[data-testid="session-switch-warning"]')
+    expect(warnings).toHaveLength(1)
+    const warning = warnings[0]
+    const warningTrigger = wrapper.findAll('.group').find((group) => group.find('[data-testid="session-switch-warning"]').exists())
+    if (!warningTrigger) {
+      throw new Error('session warning trigger not found')
+    }
+    const expectedMessage = 'Upstream account switched in the same session: A → B'
+    expect(warning.attributes('aria-label')).toBe(expectedMessage)
+    expect(warning.attributes('title')).toBe(expectedMessage)
+    expect(warning.attributes('aria-describedby')).toBe('usage-session-switch-401')
+
+    const tooltip = document.getElementById('usage-session-switch-401')
+    expect(tooltip).not.toBeNull()
+    expect(tooltip?.getAttribute('role')).toBe('tooltip')
+
+    await warningTrigger.trigger('mouseenter')
+    await nextTick()
+    expect(tooltip?.style.display).not.toBe('none')
+    expect(tooltip?.textContent).toContain('A → B')
+
+    await warning.trigger('focusin')
+    await nextTick()
+    expect(tooltip?.style.display).not.toBe('none')
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+    expect(tooltip?.style.display).toBe('none')
+
+    wrapper.unmount()
+  })
+
+  it('falls back to persisted account IDs when either account summary is missing', async () => {
+    const wrapper = mountSessionTable([
+      sessionRow({
+        id: 403,
+        request_id: 'switch-fallback',
+        account_id: 22,
+        previous_account_id: 11,
+        account: null,
+        previous_account: null,
+        session_account_switched: true,
+      }),
+    ])
+    const warning = wrapper.get('[data-testid="session-switch-warning"]')
+    const expectedMessage = 'Upstream account switched in the same session: #11 → #22'
+    expect(warning.attributes('aria-label')).toBe(expectedMessage)
+    expect(warning.attributes('title')).toBe(expectedMessage)
+    expect(warning.attributes('aria-describedby')).toBe('usage-session-switch-403')
+
+    await warning.trigger('focusin')
+    await nextTick()
+    const tooltip = document.getElementById('usage-session-switch-403')
+    expect(tooltip?.textContent).toContain('#11 → #22')
+
+    wrapper.unmount()
   })
 })
