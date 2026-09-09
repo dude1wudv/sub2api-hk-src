@@ -18,6 +18,13 @@
 
 </div>
 
+## 香港生产发行版
+
+本仓库是基于 [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api) 的 **HK 生产发行版 fork**，保留上游归属并持续同步上游；当前发行版本为 **v0.2.4-hk.1**。
+
+- **香港定制增量：** 生产部署安全边界、HeliosGen 与供应商适配，以及计费、会话和运维增强。
+- **源码与发行：** [HK 源码](https://github.com/dude1wudv/sub2api-hk-src) · [Releases](https://github.com/dude1wudv/sub2api-hk-src/releases)
+- **部署入口：** [deploy/README.md](deploy/README.md) 区分**全新部署**（使用部署模板/脚本创建新的自管整套服务）与**托管共享服务器更新**（仅更新应用，保留运营方管理的 PostgreSQL、Redis 及运行时配置）。在托管共享服务器上不要执行全新整栈脚本，也不要替换 Compose/env 文件。
 
 ## ⚠️ 重要提醒
 
@@ -245,7 +252,7 @@ Nginx 默认会丢弃名称中含下划线的请求头（如 `session_id`），�
 #### 安装步骤
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/dude1wudv/sub2api-hk-src/main/deploy/install.sh | sudo bash
 ```
 
 脚本会自动：
@@ -295,7 +302,7 @@ sudo journalctl -u sub2api -f
 sudo systemctl restart sub2api
 
 # 卸载
-curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/install.sh | sudo bash -s -- uninstall -y
+curl -sSL https://raw.githubusercontent.com/dude1wudv/sub2api-hk-src/main/deploy/install.sh | sudo bash -s -- uninstall -y
 ```
 
 ---
@@ -318,7 +325,7 @@ curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/install
 mkdir -p sub2api-deploy && cd sub2api-deploy
 
 # 下载并运行部署准备脚本
-curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/docker-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/dude1wudv/sub2api-hk-src/main/deploy/docker-deploy.sh | bash
 
 # 启动服务
 docker compose up -d
@@ -340,8 +347,8 @@ docker compose logs -f sub2api
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/Wei-Shaw/sub2api.git
-cd sub2api/deploy
+git clone https://github.com/dude1wudv/sub2api-hk-src.git
+cd sub2api-hk-src/deploy
 
 # 2. 复制环境配置文件
 cp .env.example .env
@@ -470,8 +477,8 @@ rm -rf data/ postgres_data/ redis_data/
 Apple 芯片 Mac 在 macOS 26 上可使用 Apple `container` 1.1.0 或更高版本运行完整的 Sub2API、PostgreSQL 和 Redis：
 
 ```bash
-git clone https://github.com/Wei-Shaw/sub2api.git
-cd sub2api/deploy
+git clone https://github.com/dude1wudv/sub2api-hk-src.git
+cd sub2api-hk-src/deploy
 ./apple-container.sh init
 ./apple-container.sh up
 ./apple-container.sh status
@@ -496,8 +503,8 @@ cd sub2api/deploy
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/Wei-Shaw/sub2api.git
-cd sub2api
+git clone https://github.com/dude1wudv/sub2api-hk-src.git
+cd sub2api-hk-src
 
 # 2. 安装 pnpm（如果还没有安装）
 npm install -g pnpm

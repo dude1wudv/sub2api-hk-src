@@ -18,6 +18,14 @@ English | [中文](README_CN.md) | [日本語](README_JA.md)
 
 </div>
 
+## HK Edition
+
+This repository is the **HK production edition**, a fork based on [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api), with upstream attribution and ongoing synchronization. The current release is **v0.2.4-hk.1**.
+
+- **HK-focused changes:** Production deployment safety boundaries; HeliosGen and vendor adapters; billing, session, and operations enhancements.
+- **Source and releases:** [HK source](https://github.com/dude1wudv/sub2api-hk-src) · [Releases](https://github.com/dude1wudv/sub2api-hk-src/releases)
+- **Deployment path:** [deploy/README.md](deploy/README.md) distinguishes a **fresh deployment** (create a new, self-managed stack with the deployment templates/scripts) from a **managed shared-server update** (application-only update that preserves operator-managed PostgreSQL, Redis, and runtime configuration). Do not use fresh-stack scripts or replace the Compose/env files on a managed shared server.
+
 ## ⚠️ Important Notice
 
 Please read the following carefully before using this project:
@@ -243,7 +251,7 @@ One-click installation script that downloads pre-built binaries from GitHub Rele
 #### Installation Steps
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/dude1wudv/sub2api-hk-src/main/deploy/install.sh | sudo bash
 ```
 
 The script will:
@@ -293,7 +301,7 @@ sudo journalctl -u sub2api -f
 sudo systemctl restart sub2api
 
 # Uninstall
-curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/install.sh | sudo bash -s -- uninstall -y
+curl -sSL https://raw.githubusercontent.com/dude1wudv/sub2api-hk-src/main/deploy/install.sh | sudo bash -s -- uninstall -y
 ```
 
 ---
@@ -316,7 +324,7 @@ Use the automated deployment script for easy setup:
 mkdir -p sub2api-deploy && cd sub2api-deploy
 
 # Download and run deployment preparation script
-curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/docker-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/dude1wudv/sub2api-hk-src/main/deploy/docker-deploy.sh | bash
 
 # Start services
 docker compose up -d
@@ -338,8 +346,8 @@ If you prefer manual setup:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Wei-Shaw/sub2api.git
-cd sub2api/deploy
+git clone https://github.com/dude1wudv/sub2api-hk-src.git
+cd sub2api-hk-src/deploy
 
 # 2. Copy environment configuration
 cp .env.example .env
@@ -468,8 +476,8 @@ rm -rf data/ postgres_data/ redis_data/
 Apple-silicon Macs running macOS 26 can run the full Sub2API, PostgreSQL, and Redis stack with Apple `container` 1.1.0 or newer:
 
 ```bash
-git clone https://github.com/Wei-Shaw/sub2api.git
-cd sub2api/deploy
+git clone https://github.com/dude1wudv/sub2api-hk-src.git
+cd sub2api-hk-src/deploy
 ./apple-container.sh init
 ./apple-container.sh up
 ./apple-container.sh status
@@ -494,8 +502,8 @@ Build and run from source code for development or customization.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Wei-Shaw/sub2api.git
-cd sub2api
+git clone https://github.com/dude1wudv/sub2api-hk-src.git
+cd sub2api-hk-src
 
 # 2. Install pnpm (if not already installed)
 npm install -g pnpm
