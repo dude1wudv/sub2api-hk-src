@@ -136,7 +136,17 @@
           </template>
 
           <template #cell-group="{ row }">
-            <div class="group/dropdown relative">
+            <button v-if="row.routing_group_ids?.length" type="button" @click="editKey(row)"
+              class="group flex max-w-64 flex-col gap-1 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-primary-950/30"
+              :title="t('keys.smartRouting.edit')">
+              <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-700 dark:text-primary-300">
+                <Icon name="sparkles" size="sm" />
+                {{ t('keys.smartRouting.title') }}
+                <span class="rounded bg-primary-100 px-1.5 text-[10px] tabular-nums dark:bg-primary-900">{{ row.routing_group_ids.length }}</span>
+              </span>
+              <span class="max-w-full truncate text-xs text-gray-500 dark:text-gray-400">{{ row.routing_group_ids.map((id: number) => groups.find(g => g.id === id)?.name ?? `#${id}`).join(' → ') }}</span>
+            </button>
+            <div v-else class="group/dropdown relative">
               <button
                 :ref="(el) => setGroupButtonRef(row.id, el)"
                 @click="openGroupSelector(row)"
@@ -468,7 +478,16 @@
 
         <div>
           <label class="input-label">{{ t('keys.groupLabel') }}</label>
+          <SmartRoutingEditor
+            v-model="formData.routing_group_ids"
+            v-model:enabled="formData.smart_routing"
+            :groups="groups"
+            :rates="userGroupRates"
+            :fixed-group-id="formData.group_id"
+            class="mb-3"
+          />
           <Select
+            v-if="!formData.smart_routing"
             v-model="formData.group_id"
             :options="groupOptions"
             :placeholder="t('keys.selectGroup')"
@@ -1128,6 +1147,7 @@ import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 
 const { t } = useI18n()
 import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
+import SmartRoutingEditor from '@/components/keys/SmartRoutingEditor.vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import DataTable from '@/components/common/DataTable.vue'
@@ -1332,6 +1352,8 @@ const setGroupButtonRef = (keyId: number, el: Element | ComponentPublicInstance 
 const formData = ref({
   name: '',
   group_id: null as number | null,
+  smart_routing: false,
+  routing_group_ids: [] as number[],
   status: 'active' as 'active' | 'inactive',
   use_custom_key: false,
   custom_key: '',
@@ -1566,6 +1588,8 @@ const editKey = (key: ApiKey) => {
   formData.value = {
     name: key.name,
     group_id: key.group_id,
+    smart_routing: !!key.routing_group_ids?.length,
+    routing_group_ids: [...(key.routing_group_ids ?? [])],
     status: key.status === 'quota_exhausted' || key.status === 'expired' ? 'inactive' : key.status,
     use_custom_key: false,
     custom_key: '',
@@ -1599,6 +1623,7 @@ const toggleKeyStatus = async (key: ApiKey) => {
 }
 
 const openGroupSelector = (key: ApiKey) => {
+  if (key.routing_group_ids?.length) { editKey(key); return }
   if (groupSelectorKeyId.value === key.id) {
     groupSelectorKeyId.value = null
     dropdownPosition.value = null
@@ -1664,8 +1689,13 @@ const confirmDelete = (key: ApiKey) => {
 }
 
 const handleSubmit = async () => {
-  // Validate group_id is required
-  if (formData.value.group_id === null) {
+  const routingGroupIds = formData.value.smart_routing ? [...formData.value.routing_group_ids] : []
+  if (formData.value.smart_routing && (!routingGroupIds.length || routingGroupIds.length > 10 || routingGroupIds.some(id => !groups.value.some(g => g.id === id && g.status === 'active' && ['openai', 'grok', 'kimi', 'zhipu', 'deepseek', 'minimax'].includes(g.platform))))) {
+    appStore.showError(t('keys.smartRouting.required'))
+    return
+  }
+  const groupId = routingGroupIds[0] ?? formData.value.group_id
+  if (groupId === null) {
     appStore.showError(t('keys.groupRequired'))
     return
   }
@@ -1722,7 +1752,8 @@ const handleSubmit = async () => {
     if (showEditModal.value && selectedKey.value) {
       const updates: UpdateApiKeyRequest = {
         name: formData.value.name,
-        group_id: formData.value.group_id,
+        group_id: groupId,
+        routing_group_ids: routingGroupIds,
         ip_whitelist: ipWhitelist,
         ip_blacklist: ipBlacklist,
         quota: quota,
@@ -1740,13 +1771,14 @@ const handleSubmit = async () => {
       const customKey = formData.value.use_custom_key ? formData.value.custom_key : undefined
       await keysAPI.create(
         formData.value.name,
-        formData.value.group_id,
+        groupId,
         customKey,
         ipWhitelist,
         ipBlacklist,
         quota,
         expiresInDays,
-        rateLimitData
+        rateLimitData,
+        routingGroupIds
       )
       appStore.showSuccess(t('keys.keyCreatedSuccess'))
       // Only advance tour if active, on submit step, and creation succeeded
@@ -1792,6 +1824,8 @@ const closeModals = () => {
   formData.value = {
     name: '',
     group_id: null,
+    smart_routing: false,
+    routing_group_ids: [],
     status: 'active',
     use_custom_key: false,
     custom_key: '',

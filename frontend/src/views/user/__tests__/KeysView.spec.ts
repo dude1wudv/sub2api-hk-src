@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
-import type { ApiKey } from '@/types'
+import type { ApiKey, Group } from '@/types'
 import KeysView from '../KeysView.vue'
 
 const {
   listKeys,
+  createKey,
+  updateKey,
   getPublicSettings,
   getDashboardApiKeysUsage,
   getAvailableGroups,
@@ -18,6 +20,8 @@ const {
   nextStep,
 } = vi.hoisted(() => ({
   listKeys: vi.fn(),
+  createKey: vi.fn(),
+  updateKey: vi.fn(),
   getPublicSettings: vi.fn(),
   getDashboardApiKeysUsage: vi.fn(),
   getAvailableGroups: vi.fn(),
@@ -58,8 +62,8 @@ const messages: Record<string, string> = {
 vi.mock('@/api', () => ({
   keysAPI: {
     list: listKeys,
-    create: vi.fn(),
-    update: vi.fn(),
+    create: createKey,
+    update: updateKey,
     delete: vi.fn(),
     toggleStatus: vi.fn(),
   },
@@ -136,6 +140,52 @@ const createApiKey = (): ApiKey => ({
   reset_7d_at: null,
 })
 
+const createGroup = (id: number, name = `Group ${id}`): Group => ({
+  id,
+  name,
+  description: null,
+  platform: 'openai',
+  status: 'active',
+  subscription_type: 'free',
+  rate_multiplier: 1,
+  is_exclusive: false,
+  daily_limit_usd: null,
+  weekly_limit_usd: null,
+  monthly_limit_usd: null,
+  long_context_pricing_enabled: false,
+  allow_image_generation: false,
+  allow_batch_image_generation: false,
+  image_rate_independent: false,
+  image_rate_multiplier: 1,
+  batch_image_discount_multiplier: 1,
+  batch_image_hold_multiplier: 1,
+  image_price_1k: null,
+  image_price_2k: null,
+  image_price_4k: null,
+  video_rate_independent: false,
+  video_rate_multiplier: 1,
+  video_price_480p: null,
+  video_price_720p: null,
+  video_price_1080p: null,
+  web_search_price_per_call: null,
+  search_price_per_1k: null,
+  audio_realtime_price_per_min: null,
+  audio_tts_price_per_million_chars: null,
+  audio_stt_price_per_hour: null,
+  peak_rate_enabled: false,
+  peak_start: '',
+  peak_end: '',
+  peak_rate_multiplier: 1,
+  claude_code_only: false,
+  fallback_group_id: null,
+  fallback_group_id_on_invalid_request: null,
+  allow_live: false,
+  require_oauth_only: false,
+  require_privacy_set: false,
+  created_at: '',
+  updated_at: '',
+})
+
 const AppLayoutStub = {
   template: '<div><slot /></div>',
 }
@@ -170,6 +220,9 @@ const DataTableStub = {
           <slot name="cell-id" :value="row.id" :row="row" />
         </div>
         <slot name="cell-name" :value="row.name" :row="row" />
+        <div data-test="group-cell">
+          <slot name="cell-group" :value="row.group" :row="row" />
+        </div>
         <div data-test="current-concurrency">
           <slot name="cell-current_concurrency" :value="row.current_concurrency" :row="row" />
         </div>
@@ -178,6 +231,9 @@ const DataTableStub = {
           data-test="last-used-ip"
         >
           <slot name="cell-last_used_ip" :value="row.last_used_ip" :row="row" />
+        </div>
+        <div data-test="actions-cell">
+          <slot name="cell-actions" :row="row" />
         </div>
       </div>
       <slot name="empty" />
@@ -210,6 +266,11 @@ const PaginationStub = {
   `,
 }
 
+const BaseDialogStub = {
+  props: ['show', 'title'],
+  template: '<div v-if="show" data-test="base-dialog"><h2>{{ title }}</h2><slot /></div>',
+}
+
 const IconStub = {
   props: ['name'],
   template: '<span data-test="icon">{{ name }}</span>',
@@ -223,7 +284,7 @@ const mountView = async () => {
         TablePageLayout: TablePageLayoutStub,
         DataTable: DataTableStub,
         Pagination: PaginationStub,
-        BaseDialog: true,
+        BaseDialog: BaseDialogStub,
         ConfirmDialog: true,
         EmptyState: true,
         Select: SelectStub,
@@ -261,6 +322,8 @@ describe('user KeysView column settings', () => {
     localStorage.clear()
 
     listKeys.mockReset()
+    createKey.mockReset()
+    updateKey.mockReset()
     getPublicSettings.mockReset()
     getDashboardApiKeysUsage.mockReset()
     getAvailableGroups.mockReset()
@@ -278,6 +341,8 @@ describe('user KeysView column settings', () => {
       page_size: 20,
       pages: 1,
     })
+    createKey.mockResolvedValue(createApiKey())
+    updateKey.mockResolvedValue(createApiKey())
     getPublicSettings.mockResolvedValue({})
     getDashboardApiKeysUsage.mockResolvedValue({ stats: {} })
     getAvailableGroups.mockResolvedValue([])
@@ -437,5 +502,59 @@ describe('user KeysView column settings', () => {
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     )
+  })
+
+  it('passes ordered routing groups and the first group as the create payload', async () => {
+    getAvailableGroups.mockResolvedValue([createGroup(42), createGroup(7)])
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.get('form#key-form input[required]').setValue('smart-key')
+
+    const editor = wrapper.findComponent({ name: 'SmartRoutingEditor' })
+    await editor.vm.$emit('update:modelValue', [42, 7])
+    await editor.vm.$emit('update:enabled', true)
+    await nextTick()
+    await wrapper.get('form#key-form').trigger('submit')
+    await flushPromises()
+
+    expect(createKey).toHaveBeenCalledWith(
+      'smart-key',
+      42,
+      undefined,
+      [],
+      [],
+      0,
+      undefined,
+      { rate_limit_5h: 0, rate_limit_1d: 0, rate_limit_7d: 0 },
+      [42, 7],
+    )
+  })
+
+  it('hydrates the editor with ordered groups when editing a smart routing key', async () => {
+    const key = {
+      ...createApiKey(),
+      name: 'existing-smart-key',
+      group_id: 42,
+      routing_group_ids: [42, 7],
+    }
+    listKeys.mockResolvedValueOnce({
+      items: [key],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    })
+    getAvailableGroups.mockResolvedValue([createGroup(42), createGroup(7)])
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-test="group-cell"] button').trigger('click')
+    await nextTick()
+
+    const editor = wrapper.findComponent({ name: 'SmartRoutingEditor' })
+    expect(editor.props('enabled')).toBe(true)
+    expect(editor.props('modelValue')).toEqual([42, 7])
+    expect(wrapper.get('form#key-form input[required]').element.value).toBe('existing-smart-key')
   })
 })
