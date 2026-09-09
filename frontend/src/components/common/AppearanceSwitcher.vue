@@ -6,6 +6,7 @@
         <option value="aurora">{{ zh ? '星澜' : 'Astra' }}</option>
         <option value="lagoon">{{ zh ? '苔砂' : 'Grove' }}</option>
         <option value="graphite">{{ zh ? '墨铜' : 'Ember' }}</option>
+        <option value="glacier">{{ zh ? '冰川' : 'Glacier' }}</option>
       </select>
     </label>
     <button class="appearance-mode" :aria-label="isDark ? t('nav.lightMode') : t('nav.darkMode')" :title="isDark ? t('nav.lightMode') : t('nav.darkMode')" @click="toggleTheme">

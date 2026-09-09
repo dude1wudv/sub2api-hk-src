@@ -1,0 +1,138 @@
+/* Opt-in surface layer: never change the three existing palettes or status colors. */
+:root[data-style='glacier'] {
+  --color-primary-50: 240 249 255; --color-primary-100: 224 242 254; --color-primary-200: 186 230 253; --color-primary-300: 125 211 252; --color-primary-400: 56 189 248; --color-primary-500: 3 105 161; --color-primary-600: 3 86 135; --color-primary-700: 7 70 110; --color-primary-800: 12 58 88; --color-primary-900: 14 47 71; --color-primary-950: 8 30 49;
+  --color-accent-50: 240 253 250; --color-accent-100: 204 251 241; --color-accent-200: 153 246 228; --color-accent-300: 94 234 212; --color-accent-400: 45 212 191; --color-accent-500: 15 118 110; --color-accent-600: 17 94 89; --color-accent-700: 19 78 74; --color-accent-800: 18 64 62; --color-accent-900: 17 52 51; --color-accent-950: 8 34 34;
+  --canvas: 243 248 252; --surface: 255 255 255; --surface-2: 232 242 249; --surface-elevated: 255 255 255; --surface-sidebar: 240 247 252; --surface-header: 249 252 255;
+  --ink: 23 43 63; --ink-2: 56 79 99; --ink-3: 79 105 124; --line: 204 222 235; --line-strong: 116 148 172;
+  --color-gray-50: 243 248 252; --color-gray-100: 232 242 249; --color-gray-200: 204 222 235; --color-gray-300: 116 148 172; --color-gray-400: 79 105 124; --color-gray-500: 79 105 124; --color-gray-600: 56 79 99; --color-gray-700: 56 79 99; --color-gray-800: 23 43 63; --color-gray-900: 23 43 63; --color-gray-950: 11 23 37;
+  --color-dark-50: 232 243 252; --color-dark-100: 232 243 252; --color-dark-200: 195 216 234; --color-dark-300: 195 216 234; --color-dark-400: 156 182 204; --color-dark-500: 113 147 174; --color-dark-600: 113 147 174; --color-dark-700: 48 76 99; --color-dark-800: 19 38 56; --color-dark-900: 14 29 45; --color-dark-950: 11 23 37;
+  --hero-start: #eaf6ff; --hero-end: #f7fcff;
+  --radius-card: 1.25rem; --radius-control: .75rem; --radius-overlay: 1.25rem;
+  --selection-bg: var(--color-primary-100); --selection-ink: var(--color-primary-700); --selection-edge: var(--color-primary-500);
+  --glacier-glow: 137 205 248; --glacier-planet-opacity: .18;
+  --glacier-shadow: 0 12px 36px -24px rgb(32 88 130 / .28), inset 0 1px 0 rgb(255 255 255 / .85);
+  color-scheme: light;
+}
+
+:root.dark[data-style='glacier'] {
+  --canvas: 11 23 37; --surface: 19 38 56; --surface-2: 26 49 69; --surface-elevated: 29 51 72; --surface-sidebar: 14 29 45; --surface-header: 17 34 51;
+  --ink: 232 243 252; --ink-2: 195 216 234; --ink-3: 156 182 204; --line: 48 76 99; --line-strong: 113 147 174;
+  --hero-start: #132f48; --hero-end: #102437;
+  --selection-bg: var(--color-primary-900); --selection-ink: var(--color-primary-200); --selection-edge: var(--color-primary-300);
+  --glacier-glow: 46 125 181; --glacier-planet-opacity: .12;
+  --glacier-shadow: 0 16px 40px -24px rgb(0 8 18 / .7), inset 0 1px 0 rgb(172 221 255 / .07);
+  color-scheme: dark;
+}
+
+:root[data-style='glacier'] .app-shell-bg {
+  background: radial-gradient(ellipse at 78% 0%, rgb(var(--glacier-glow) / .24), transparent 52%), radial-gradient(ellipse at 15% 75%, rgb(var(--glacier-glow) / .09), transparent 48%);
+}
+
+/* Static, local vector: no animation, remote assets, canvas, or interactive overlay. */
+:root[data-style='glacier'] .workspace-hero::before {
+  width: clamp(240px, 35vw, 460px);
+  height: auto;
+  aspect-ratio: 1;
+  top: -70px;
+  right: -70px;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+  background: url('./glacier-orbit.svg') center / contain no-repeat;
+  opacity: var(--glacier-planet-opacity);
+  pointer-events: none;
+}
+
+:root[data-style='glacier'] :is(.card, .card-glass, .glass-card) {
+  background: linear-gradient(145deg, rgb(var(--surface)), rgb(var(--surface-header) / .96));
+  border-color: rgb(var(--line));
+  box-shadow: var(--glacier-shadow);
+}
+
+:root[data-style='glacier'] .card-hover:hover {
+  border-color: rgb(var(--line-strong));
+  box-shadow: var(--glacier-shadow), 0 8px 24px -18px rgb(var(--glacier-glow) / .5);
+}
+
+:root[data-style='glacier'] .app-shell .sidebar {
+  background: linear-gradient(180deg, rgb(var(--surface-header)), rgb(var(--surface-sidebar)));
+  border-right-color: rgb(var(--line));
+}
+
+:root[data-style='glacier'] .workspace-header {
+  background: rgb(var(--surface-header));
+  border-bottom: 1px solid rgb(var(--line));
+  box-shadow: 0 4px 24px -20px rgb(var(--glacier-glow) / .3);
+}
+
+/* Blur is limited to the header, never every data card or scrolling table. */
+@supports (backdrop-filter: blur(12px)) {
+  :root[data-style='glacier'] .workspace-header {
+    background: rgb(var(--surface-header) / .92);
+    backdrop-filter: blur(12px);
+  }
+}
+
+:root[data-style='glacier'] .workspace-hero {
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--line));
+  background: radial-gradient(ellipse at 70% 0%, rgb(var(--glacier-glow) / .24), transparent 65%), linear-gradient(120deg, var(--hero-start), var(--hero-end));
+  box-shadow: var(--glacier-shadow);
+}
+
+:root[data-style='glacier'] .hero-eyebrow { color: rgb(var(--text-primary)); }
+:root[data-style='glacier'] :is(.hero-description, .hero-instrument span) { color: rgb(var(--ink-2)); }
+:root[data-style='glacier'] .hero-instrument {
+  background: rgb(var(--surface) / .8);
+  border-color: rgb(var(--line));
+  box-shadow: inset 0 1px 0 rgb(var(--glacier-glow) / .15);
+}
+:root[data-style='glacier'] .hero-instrument .instrument-rule { background: rgb(var(--line)); }
+:root[data-style='glacier'] .hero-instrument .instrument-rule::before { background: rgb(var(--text-primary)); }
+:root[data-style='glacier'] .hero-actions .btn-primary {
+  background: rgb(var(--color-primary-500));
+  color: var(--action-contrast);
+  box-shadow: 0 5px 16px -10px rgb(var(--color-primary-500) / .7);
+}
+:root[data-style='glacier'] .hero-actions .btn-primary:hover { background: rgb(var(--color-primary-600)); }
+:root[data-style='glacier'] .hero-actions .btn-secondary {
+  background: rgb(var(--surface));
+  border-color: rgb(var(--line-strong));
+  color: rgb(var(--ink-2));
+}
+:root[data-style='glacier'] .hero-actions .btn-secondary:hover { background: rgb(var(--surface-2)); color: rgb(var(--ink)); }
+:root[data-style='glacier'] :is(.hero-actions .btn, .auth-story a):focus-visible { outline-color: rgb(var(--focus-ring)); }
+:root[data-style='glacier'] [data-workspace='operations'] { --radius-card: 1rem; }
+:root[data-style='glacier'] .operations-dashboard > .grid > .card { border-top: 1px solid rgb(var(--line)); }
+:root[data-style='glacier'] .dashboard-section-heading h2 { color: rgb(var(--ink)); }
+:root[data-style='glacier'] .dashboard-section-heading span { color: rgb(var(--ink-3)); }
+:root[data-style='glacier'] .table th { background: rgb(var(--surface-2)); color: rgb(var(--ink-2)); }
+:root[data-style='glacier'] .table tbody tr:hover { background-color: rgb(var(--surface-2) / .65); }
+:root[data-style='glacier'] :is(.hero-instrument strong, .dashboard-section-heading, .table) { font-variant-numeric: tabular-nums; }
+
+:root[data-style='glacier'] .auth-story {
+  background: radial-gradient(ellipse at 20% 20%, rgb(var(--glacier-glow) / .3), transparent 60%), linear-gradient(140deg, var(--hero-start), var(--hero-end));
+  color: rgb(var(--ink));
+  border-right: 1px solid rgb(var(--line));
+}
+:root[data-style='glacier'] .auth-story :is(p, .auth-story-features, .auth-story-features b) { color: rgb(var(--ink-2)); }
+:root[data-style='glacier'] .auth-story-features { border-top-color: rgb(var(--line)); }
+:root[data-style='glacier'] .auth-story::after {
+  background: url('./glacier-orbit.svg') center / contain no-repeat;
+  border: 0;
+  box-shadow: none;
+  opacity: var(--glacier-planet-opacity);
+}
+
+@media (max-width: 639px) {
+  :root[data-style='glacier'] .workspace-hero::before { width: 240px; right: -100px; top: -80px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-style='glacier'] .workspace-header { background: rgb(var(--surface-header)); backdrop-filter: none; }
+  :root[data-style='glacier'] .hero-instrument { background: rgb(var(--surface)); }
+  :root[data-style='glacier'] :is(.workspace-hero::before, .auth-story::after) { display: none; }
+}
+@media (forced-colors: active) {
+  :root[data-style='glacier'] :is(.workspace-hero::before, .auth-story::after, .app-shell-bg) { display: none; }
+  :root[data-style='glacier'] :is(.workspace-hero, .hero-instrument, .card, .workspace-header, .auth-story) { background: Canvas; color: CanvasText; box-shadow: none; }
+}

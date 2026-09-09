@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 
-export type ThemeStyle = 'aurora' | 'lagoon' | 'graphite'
-const styles: ThemeStyle[] = ['aurora', 'lagoon', 'graphite']
+export type ThemeStyle = 'aurora' | 'lagoon' | 'graphite' | 'glacier'
+const styles: ThemeStyle[] = ['aurora', 'lagoon', 'graphite', 'glacier']
 const style = ref<ThemeStyle>('aurora')
 const dark = ref(false)
 
