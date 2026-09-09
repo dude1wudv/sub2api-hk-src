@@ -107,7 +107,15 @@ func (i *PluginPackageInstaller) Install(ctx context.Context, reader io.Reader, 
 	if err != nil {
 		return nil, fmt.Errorf("插件包不是有效的 ZIP: %w", err)
 	}
-	defer func() { _ = archive.Close() }()
+	archiveClosed := false
+	closeArchive := func() error {
+		if archiveClosed {
+			return nil
+		}
+		archiveClosed = true
+		return archive.Close()
+	}
+	defer func() { _ = closeArchive() }()
 	manifest, _, signatureStatus, err := i.inspectArchive(&archive.Reader)
 	if err != nil {
 		return nil, err
@@ -137,18 +145,15 @@ func (i *PluginPackageInstaller) Install(ctx context.Context, reader io.Reader, 
 	if err := i.extractArchive(ctx, &archive.Reader, manifest, extractPath); err != nil {
 		return nil, err
 	}
+	// Windows denies renaming an archive while zip.OpenReader still owns an
+	// open handle. Extraction is complete, so release it before committing.
+	if err := closeArchive(); err != nil {
+		return nil, fmt.Errorf("关闭插件包归档: %w", err)
+	}
 	if err := os.Rename(extractPath, installPath); err != nil {
 		return nil, fmt.Errorf("提交插件安装目录: %w", err)
 	}
 	extracted = true
-
-	// Windows denies renaming an archive while zip.OpenReader still owns an
-	// open handle. Extraction is complete, so release it before committing the
-	// uploaded artifact; the deferred Close remains a harmless fallback.
-	if err := archive.Close(); err != nil {
-		_ = os.RemoveAll(installPath)
-		return nil, fmt.Errorf("关闭插件包归档: %w", err)
-	}
 	artifactPath := filepath.Join(packagesDir, manifest.ID+"-"+manifest.Version+"-"+artifactSHA[:12]+"-"+installNonce+".s2plugin")
 	if err := os.Rename(tempPath, artifactPath); err != nil {
 		_ = os.RemoveAll(installPath)

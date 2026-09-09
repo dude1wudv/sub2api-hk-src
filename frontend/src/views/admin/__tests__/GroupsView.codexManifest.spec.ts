@@ -1,9 +1,11 @@
 import { defineComponent, h, type PropType } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
+import { createPinia, setActivePinia, type Pinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AdminGroup, CodexModelsManifestConfig } from "@/types";
 import GroupsView from "@/views/admin/GroupsView.vue";
+let pinia: Pinia;
 
 const {
   listGroups,
@@ -204,6 +206,7 @@ const CodexManifestAccountsFieldStub = defineComponent({
 const mountView = () =>
   mount(GroupsView, {
     global: {
+      plugins: [pinia],
       stubs: {
         AppLayout: AppLayoutStub,
         TablePageLayout: TablePageLayoutStub,
@@ -228,7 +231,8 @@ const mountView = () =>
 
 describe("GroupsView Codex manifest binding", () => {
   beforeEach(() => {
-    localStorage.clear();
+    pinia = createPinia();
+    setActivePinia(pinia);
     listGroups.mockReset();
     getModelsListCandidates.mockReset();
     getUsageSummary.mockReset();
