@@ -241,4 +241,4 @@
   :root[data-style='glacier'] .app-shell .sidebar[data-mobile-open='false'] { transform: translateX(-100%) !important; }
 }
 /* Scrolling table headers stay crisp; only the workspace header uses blur. */
-:root[data-style='glacier'] .table-scroll-container :deep(thead) { background: rgb(var(--surface-2)); backdrop-filter: none; }
+:root[data-style='glacier'] .table-scroll-container thead { background: rgb(var(--surface-2)); backdrop-filter: none !important; }
