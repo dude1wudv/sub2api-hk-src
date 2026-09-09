@@ -5,6 +5,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/tidwall/gjson"
 )
 
 // maxPersistedSessionIDLength bounds the persisted client session identifier to the
@@ -51,6 +53,34 @@ func ExtractClientSessionID(c *gin.Context) string {
 	}
 	if isGrokRequestContext(c) {
 		if sessionID := sanitizeSessionID(c.GetHeader(grokConversationIDHeader)); sessionID != "" {
+			return sessionID
+		}
+	}
+	return ""
+}
+
+// ExtractResponsesUsageSessionID returns an explicit session header when present,
+// then checks common Responses body correlation fields. prompt_cache_key is the
+// final fallback because OpenAI-compatible clients commonly carry their stable
+// conversation ID there when custom providers do not receive a session header.
+// Every candidate uses the same persistence safety checks as header values.
+func ExtractResponsesUsageSessionID(c *gin.Context, body []byte) string {
+	if sessionID := ExtractClientSessionID(c); sessionID != "" {
+		return sessionID
+	}
+	for _, path := range []string{
+		"session_id",
+		"conversation_id",
+		"metadata.session_id",
+		"metadata.conversation_id",
+		"prompt_cache_key",
+		"metadata.prompt_cache_key",
+	} {
+		result := gjson.GetBytes(body, path)
+		if result.Type != gjson.String {
+			continue
+		}
+		if sessionID := sanitizeSessionID(result.String()); sessionID != "" {
 			return sessionID
 		}
 	}

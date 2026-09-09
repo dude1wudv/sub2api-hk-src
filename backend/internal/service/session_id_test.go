@@ -153,3 +153,37 @@ func TestExtractClientSessionID_InjectionHeaderDropped(t *testing.T) {
 	c.Request.Header.Set("session_id", "abc\r\nX-Injected: 1")
 	require.Equal(t, "", ExtractClientSessionID(c))
 }
+
+func TestExtractResponsesUsageSessionID(t *testing.T) {
+	c := newSessionHeaderContext(t, nil)
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"top-level session", `{"session_id":"session-1"}`, "session-1"},
+		{"top-level conversation", `{"conversation_id":"conversation-1"}`, "conversation-1"},
+		{"metadata session", `{"metadata":{"session_id":"session-2"}}`, "session-2"},
+		{"metadata conversation", `{"metadata":{"conversation_id":"conversation-2"}}`, "conversation-2"},
+		{"prompt cache fallback", `{"prompt_cache_key":"  cache-session  "}`, "cache-session"},
+		{"metadata prompt cache fallback", `{"metadata":{"prompt_cache_key":"meta-cache-session"}}`, "meta-cache-session"},
+		{"missing correlation", `{}`, ""},
+		{"non-string correlation", `{"session_id":42,"prompt_cache_key":false}`, ""},
+		{"invalid correlation", `{"prompt_cache_key":"bad\nvalue"}`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, ExtractResponsesUsageSessionID(c, []byte(tc.body)))
+		})
+	}
+
+	t.Run("explicit header wins over every body field", func(t *testing.T) {
+		withHeader := newSessionHeaderContext(t, map[string]string{"session_id": "header-session"})
+		body := []byte(`{"session_id":"body-session","prompt_cache_key":"cache-session"}`)
+		require.Equal(t, "header-session", ExtractResponsesUsageSessionID(withHeader, body))
+	})
+
+	t.Run("invalid higher priority candidate falls through", func(t *testing.T) {
+		body := []byte(`{"session_id":"bad\nvalue","prompt_cache_key":"valid-fallback"}`)
+		require.Equal(t, "valid-fallback", ExtractResponsesUsageSessionID(c, body))
+	})
+}
