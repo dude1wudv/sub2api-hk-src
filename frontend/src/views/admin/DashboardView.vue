@@ -34,16 +34,16 @@
         <!-- Row 1: Core Stats -->
         <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
           <!-- Total API Keys -->
-          <div class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
+          <div data-metric="keys" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-100/70 text-link-700 dark:bg-link-900/30 dark:text-link-300">
+              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-100/70 text-link-700 dark:bg-link-900/30 dark:text-link-300">
                 <Icon name="key" size="md" :stroke-width="2" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.apiKeys') }}
                 </p>
-                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ stats.total_api_keys }}
                 </p>
                 <p class="text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -54,16 +54,16 @@
           </div>
 
           <!-- Service Accounts -->
-          <div class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
+          <div data-metric="accounts" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
                 <Icon name="server" size="md" :stroke-width="2" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.accounts') }}
                 </p>
-                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ stats.total_accounts }}
                 </p>
                 <p class="truncate text-xs">
@@ -79,16 +79,16 @@
           </div>
 
           <!-- Today Requests -->
-          <div class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
+          <div data-metric="requests" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
                 <Icon name="chart" size="md" :stroke-width="2" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.todayRequests') }}
                 </p>
-                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ stats.today_requests }}
                 </p>
                 <p class="truncate text-xs text-gray-400 dark:text-dark-400">
@@ -99,16 +99,16 @@
           </div>
 
           <!-- New Users Today -->
-          <div class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
+          <div data-metric="users" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                 <Icon name="userPlus" size="md" :stroke-width="2" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.users') }}
                 </p>
-                <p class="text-xl font-bold tracking-tight text-emerald-600 tabular-nums dark:text-emerald-400 sm:text-2xl">
+                <p class="metric-value text-xl font-bold tracking-tight text-emerald-600 tabular-nums dark:text-emerald-400 sm:text-2xl">
                   +{{ stats.today_new_users }}
                 </p>
                 <p class="truncate text-xs text-gray-400 dark:text-dark-400">
@@ -123,16 +123,16 @@
         <div class="dashboard-section-heading"><h2>{{ zh ? '消耗与性能' : 'Consumption & performance' }}</h2><span>COST & PERFORMANCE</span></div>
         <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
           <!-- Today Tokens -->
-          <div class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
+          <div data-metric="tokens" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
                 <Icon name="cube" size="md" :stroke-width="2" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.todayTokens') }}
                 </p>
-                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ formatTokens(stats.today_tokens) }}
                 </p>
                 <p class="truncate text-xs">
@@ -159,16 +159,16 @@
           </div>
 
           <!-- Total Tokens -->
-          <div class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
+          <div data-metric="tokens" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
                 <Icon name="database" size="md" :stroke-width="2" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.totalTokens') }}
                 </p>
-                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ formatTokens(stats.total_tokens) }}
                 </p>
                 <p class="truncate text-xs">
@@ -195,9 +195,9 @@
           </div>
 
           <!-- Performance (RPM/TPM) -->
-          <div class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
+          <div data-metric="performance" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-50 text-link-700 dark:bg-link-950/30 dark:text-link-300">
+              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-50 text-link-700 dark:bg-link-950/30 dark:text-link-300">
                 <Icon name="bolt" size="md" :stroke-width="2" />
               </div>
               <div class="min-w-0 flex-1">
@@ -205,7 +205,7 @@
                   {{ t('admin.dashboard.performance') }}
                 </p>
                 <div class="flex items-baseline gap-1.5">
-                  <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                  <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                     {{ formatTokens(stats.rpm) }}
                   </p>
                   <span class="text-xs font-semibold uppercase text-gray-400 dark:text-dark-400">RPM</span>
@@ -221,16 +221,16 @@
           </div>
 
           <!-- Avg Response Time -->
-          <div class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
+          <div data-metric="latency" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
                 <Icon name="clock" size="md" :stroke-width="2" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.avgResponse') }}
                 </p>
-                <p class="text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
                   {{ formatDuration(stats.average_duration_ms) }}
                 </p>
                 <p class="truncate text-xs text-gray-400 dark:text-dark-400">

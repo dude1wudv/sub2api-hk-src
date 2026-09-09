@@ -1,138 +1,244 @@
-/* Opt-in surface layer: never change the three existing palettes or status colors. */
+/* Glacier alone owns this layer. Shared routes, status colors and other palettes stay unchanged. */
 :root[data-style='glacier'] {
-  --color-primary-50: 240 249 255; --color-primary-100: 224 242 254; --color-primary-200: 186 230 253; --color-primary-300: 125 211 252; --color-primary-400: 56 189 248; --color-primary-500: 3 105 161; --color-primary-600: 3 86 135; --color-primary-700: 7 70 110; --color-primary-800: 12 58 88; --color-primary-900: 14 47 71; --color-primary-950: 8 30 49;
+  --color-primary-50: 239 246 255; --color-primary-100: 219 234 254; --color-primary-200: 191 219 254; --color-primary-300: 147 197 253; --color-primary-400: 96 165 250; --color-primary-500: 29 78 216; --color-primary-600: 30 64 175; --color-primary-700: 30 58 138; --color-primary-800: 27 49 112; --color-primary-900: 23 42 87; --color-primary-950: 13 26 57;
   --color-accent-50: 240 253 250; --color-accent-100: 204 251 241; --color-accent-200: 153 246 228; --color-accent-300: 94 234 212; --color-accent-400: 45 212 191; --color-accent-500: 15 118 110; --color-accent-600: 17 94 89; --color-accent-700: 19 78 74; --color-accent-800: 18 64 62; --color-accent-900: 17 52 51; --color-accent-950: 8 34 34;
-  --canvas: 243 248 252; --surface: 255 255 255; --surface-2: 232 242 249; --surface-elevated: 255 255 255; --surface-sidebar: 240 247 252; --surface-header: 249 252 255;
-  --ink: 23 43 63; --ink-2: 56 79 99; --ink-3: 79 105 124; --line: 204 222 235; --line-strong: 116 148 172;
-  --color-gray-50: 243 248 252; --color-gray-100: 232 242 249; --color-gray-200: 204 222 235; --color-gray-300: 116 148 172; --color-gray-400: 79 105 124; --color-gray-500: 79 105 124; --color-gray-600: 56 79 99; --color-gray-700: 56 79 99; --color-gray-800: 23 43 63; --color-gray-900: 23 43 63; --color-gray-950: 11 23 37;
-  --color-dark-50: 232 243 252; --color-dark-100: 232 243 252; --color-dark-200: 195 216 234; --color-dark-300: 195 216 234; --color-dark-400: 156 182 204; --color-dark-500: 113 147 174; --color-dark-600: 113 147 174; --color-dark-700: 48 76 99; --color-dark-800: 19 38 56; --color-dark-900: 14 29 45; --color-dark-950: 11 23 37;
-  --hero-start: #eaf6ff; --hero-end: #f7fcff;
-  --radius-card: 1.25rem; --radius-control: .75rem; --radius-overlay: 1.25rem;
+  --canvas: 235 245 255; --surface: 255 255 255; --surface-2: 231 242 255; --surface-elevated: 255 255 255; --surface-sidebar: 237 247 255; --surface-header: 246 251 255;
+  --ink: 17 35 65; --ink-2: 51 73 103; --ink-3: 76 101 131; --line: 199 221 244; --line-strong: 110 143 183;
+  --color-gray-50: 235 245 255; --color-gray-100: 231 242 255; --color-gray-200: 199 221 244; --color-gray-300: 110 143 183; --color-gray-400: 76 101 131; --color-gray-500: 76 101 131; --color-gray-600: 51 73 103; --color-gray-700: 51 73 103; --color-gray-800: 17 35 65; --color-gray-900: 17 35 65; --color-gray-950: 9 19 38;
+  --color-dark-50: 232 243 255; --color-dark-100: 232 243 255; --color-dark-200: 193 214 240; --color-dark-300: 193 214 240; --color-dark-400: 154 180 211; --color-dark-500: 113 145 183; --color-dark-600: 113 145 183; --color-dark-700: 44 71 109; --color-dark-800: 17 34 58; --color-dark-900: 12 25 45; --color-dark-950: 9 19 38;
+  --hero-start: #e0f1ff; --hero-end: #f5fbff;
+  --radius-card: 1.125rem; --radius-control: .75rem; --radius-overlay: 1.25rem;
   --selection-bg: var(--color-primary-100); --selection-ink: var(--color-primary-700); --selection-edge: var(--color-primary-500);
-  --glacier-glow: 137 205 248; --glacier-planet-opacity: .18;
-  --glacier-shadow: 0 12px 36px -24px rgb(32 88 130 / .28), inset 0 1px 0 rgb(255 255 255 / .85);
+  --glacier-glow: 96 181 255; --glacier-planet-opacity: .64;
+  --glacier-shadow: 0 10px 32px -18px rgb(48 105 176 / .3), 0 2px 6px -3px rgb(85 143 214 / .15), inset 0 1px 0 rgb(255 255 255 / .95);
+  --glacier-edge: 255 255 255;
+  --glacier-blue: 66 153 255; --glacier-cyan: 20 194 193; --glacier-gold: 246 187 64; --glacier-violet: 155 120 247;
+  --glacier-blue-ink: 29 78 216; --glacier-cyan-ink: 15 105 108; --glacier-gold-ink: 137 85 15; --glacier-violet-ink: 109 55 181;
+  --glacier-tint-alpha: .13;
   color-scheme: light;
 }
 
 :root.dark[data-style='glacier'] {
-  --canvas: 11 23 37; --surface: 19 38 56; --surface-2: 26 49 69; --surface-elevated: 29 51 72; --surface-sidebar: 14 29 45; --surface-header: 17 34 51;
-  --ink: 232 243 252; --ink-2: 195 216 234; --ink-3: 156 182 204; --line: 48 76 99; --line-strong: 113 147 174;
-  --hero-start: #132f48; --hero-end: #102437;
+  --canvas: 9 19 38; --surface: 17 34 58; --surface-2: 24 46 76; --surface-elevated: 27 47 76; --surface-sidebar: 12 25 45; --surface-header: 14 29 51;
+  --ink: 232 243 255; --ink-2: 193 214 240; --ink-3: 154 180 211; --line: 44 71 109; --line-strong: 113 145 183;
+  --hero-start: #142e53; --hero-end: #102139;
   --selection-bg: var(--color-primary-900); --selection-ink: var(--color-primary-200); --selection-edge: var(--color-primary-300);
-  --glacier-glow: 46 125 181; --glacier-planet-opacity: .12;
-  --glacier-shadow: 0 16px 40px -24px rgb(0 8 18 / .7), inset 0 1px 0 rgb(172 221 255 / .07);
+  --glacier-glow: 53 119 239; --glacier-planet-opacity: .36;
+  --glacier-shadow: 0 14px 36px -20px rgb(0 6 24 / .75), inset 0 1px 0 rgb(153 207 255 / .12);
+  --glacier-edge: 106 164 231;
+  --glacier-blue-ink: 147 197 253; --glacier-cyan-ink: 94 234 212; --glacier-gold-ink: 252 211 125; --glacier-violet-ink: 216 180 254;
+  --glacier-tint-alpha: .12;
   color-scheme: dark;
 }
 
+/* One static panorama behind every workspace, including table-only pages. */
 :root[data-style='glacier'] .app-shell-bg {
-  background: radial-gradient(ellipse at 78% 0%, rgb(var(--glacier-glow) / .24), transparent 52%), radial-gradient(ellipse at 15% 75%, rgb(var(--glacier-glow) / .09), transparent 48%);
+  overflow: hidden;
+  background: radial-gradient(ellipse at 74% 0%, rgb(var(--glacier-glow) / .32), transparent 58%), radial-gradient(ellipse at 0% 78%, rgb(var(--glacier-cyan) / .1), transparent 50%), linear-gradient(155deg, rgb(var(--surface-header) / .65), transparent 60%);
 }
-
-/* Static, local vector: no animation, remote assets, canvas, or interactive overlay. */
-:root[data-style='glacier'] .workspace-hero::before {
-  width: clamp(240px, 35vw, 460px);
-  height: auto;
+:root[data-style='glacier'] .app-shell-bg::before {
+  content: '';
+  position: absolute;
+  width: clamp(560px, 66vw, 1080px);
   aspect-ratio: 1;
-  top: -70px;
-  right: -70px;
-  border: 0;
-  border-radius: 50%;
-  box-shadow: none;
+  top: -190px;
+  right: -110px;
   background: url('./glacier-orbit.svg') center / contain no-repeat;
   opacity: var(--glacier-planet-opacity);
+  mask-image: linear-gradient(#000 30%, transparent 86%);
+  pointer-events: none;
+}
+:root[data-style='glacier'] .app-shell-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(125deg, transparent 35%, rgb(var(--glacier-edge) / .32) 35.1%, transparent 35.5%), linear-gradient(155deg, transparent 44%, rgb(var(--glacier-edge) / .22) 44.1%, transparent 44.5%);
   pointer-events: none;
 }
 
-:root[data-style='glacier'] :is(.card, .card-glass, .glass-card) {
-  background: linear-gradient(145deg, rgb(var(--surface)), rgb(var(--surface-header) / .96));
-  border-color: rgb(var(--line));
+/* Data surfaces remain nearly opaque: the atmosphere belongs behind the data. */
+:root[data-style='glacier'] :is(.card, .card-glass, .glass-card, .stat-card) {
+  background: linear-gradient(145deg, rgb(var(--surface) / .98), rgb(var(--surface-header) / .96));
+  border-color: rgb(var(--line) / .75);
+  border-radius: var(--radius-card);
   box-shadow: var(--glacier-shadow);
+  backdrop-filter: none;
 }
-
 :root[data-style='glacier'] .card-hover:hover {
   border-color: rgb(var(--line-strong));
-  box-shadow: var(--glacier-shadow), 0 8px 24px -18px rgb(var(--glacier-glow) / .5);
+  box-shadow: var(--glacier-shadow), 0 8px 24px -18px rgb(var(--glacier-glow) / .6);
+}
+:root[data-style='glacier'] :is(.modal-content, .dropdown) {
+  background: rgb(var(--surface-elevated));
+  border: 1px solid rgb(var(--line));
+  box-shadow: 0 22px 60px -22px rgb(8 32 74 / .4), inset 0 1px 0 rgb(var(--glacier-edge) / .35);
 }
 
+/* Preserve sidebar geometry and drawer focus/scroll behavior. */
 :root[data-style='glacier'] .app-shell .sidebar {
-  background: linear-gradient(180deg, rgb(var(--surface-header)), rgb(var(--surface-sidebar)));
-  border-right-color: rgb(var(--line));
+  background: linear-gradient(170deg, rgb(var(--surface-header)), rgb(var(--surface-sidebar)));
+  border-color: rgb(var(--line));
+  box-shadow: 8px 0 36px -22px rgb(var(--glacier-glow) / .4), inset 0 1px 0 rgb(var(--glacier-edge) / .7);
 }
+:root[data-style='glacier'] .app-shell .sidebar-header { border-bottom-color: rgb(var(--line) / .65); }
+:root[data-style='glacier'] .sidebar-logo {
+  box-shadow: 0 5px 18px -5px rgb(var(--glacier-blue) / .55);
+  outline: 1px solid rgb(var(--glacier-edge) / .65);
+  outline-offset: 3px;
+}
+:root[data-style='glacier'] .app-shell .sidebar-link {
+  border: 1px solid transparent;
+  font-weight: 550;
+}
+:root[data-style='glacier'] .app-shell .sidebar-link:hover { background: rgb(var(--surface-2)); border-color: rgb(var(--line)); }
+:root[data-style='glacier'] .app-shell .sidebar-link-active,
+:root[data-style='glacier'] .app-shell .sidebar-link-active:hover {
+  background: linear-gradient(110deg, rgb(var(--selection-bg)), rgb(var(--glacier-blue) / .24));
+  color: rgb(var(--selection-ink));
+  border-color: rgb(var(--glacier-blue) / .25);
+  box-shadow: inset 3px 0 rgb(var(--selection-edge)), 0 4px 12px -8px rgb(var(--glacier-blue) / .6);
+}
+:root[data-style='glacier'] .workspace-label { color: rgb(var(--ink-3)); letter-spacing: .18em; }
+:root[data-style='glacier'] .sidebar-search { background: rgb(var(--surface) / .8); border-color: rgb(var(--line-strong)); }
 
 :root[data-style='glacier'] .workspace-header {
   background: rgb(var(--surface-header));
-  border-bottom: 1px solid rgb(var(--line));
-  box-shadow: 0 4px 24px -20px rgb(var(--glacier-glow) / .3);
-}
-
-/* Blur is limited to the header, never every data card or scrolling table. */
-@supports (backdrop-filter: blur(12px)) {
-  :root[data-style='glacier'] .workspace-header {
-    background: rgb(var(--surface-header) / .92);
-    backdrop-filter: blur(12px);
-  }
-}
-
-:root[data-style='glacier'] .workspace-hero {
-  color: rgb(var(--ink));
-  border: 1px solid rgb(var(--line));
-  background: radial-gradient(ellipse at 70% 0%, rgb(var(--glacier-glow) / .24), transparent 65%), linear-gradient(120deg, var(--hero-start), var(--hero-end));
+  border: 1px solid rgb(var(--line) / .8);
   box-shadow: var(--glacier-shadow);
 }
+:root[data-style='glacier'] .workspace-header h1 { font-weight: 750; letter-spacing: -.035em; }
+:root[data-style='glacier'] .appearance-controls {
+  background: linear-gradient(135deg, rgb(var(--surface)), rgb(var(--surface-2)));
+  border-color: rgb(var(--line-strong));
+  box-shadow: inset 0 1px 0 rgb(var(--glacier-edge) / .65), 0 3px 10px -7px rgb(var(--glacier-glow) / .4);
+}
+/* Only the header blurs. Never blur chart canvases or the scrolling data layer. */
+@supports (backdrop-filter: blur(16px)) {
+  :root[data-style='glacier'] .workspace-header { background: rgb(var(--surface-header) / .88); backdrop-filter: blur(16px); }
+}
 
-:root[data-style='glacier'] .hero-eyebrow { color: rgb(var(--text-primary)); }
+/* An open command deck instead of a dark marketing banner; no new labels or fake metrics. */
+:root[data-style='glacier'] .workspace-hero {
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--glacier-edge) / .6);
+  background: linear-gradient(105deg, rgb(var(--surface-header) / .97) 20%, rgb(var(--surface-header) / .78) 62%, rgb(var(--surface-header) / .48)), radial-gradient(ellipse at 90% 0%, rgb(var(--glacier-glow) / .3), transparent 75%);
+  box-shadow: var(--glacier-shadow);
+  padding: clamp(24px, 3vw, 40px);
+}
+:root[data-style='glacier'] .workspace-hero::before {
+  width: 460px;
+  height: 460px;
+  top: -330px;
+  right: 12%;
+  border: 1px solid rgb(var(--glacier-edge) / .6);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 0 0 50px rgb(var(--glacier-edge) / .1), 0 0 0 100px rgb(var(--glacier-edge) / .07);
+  pointer-events: none;
+}
+:root[data-style='glacier'] .workspace-hero h2 { font-size: clamp(26px, 2.7vw, 40px); font-weight: 750; letter-spacing: -.045em; }
+:root[data-style='glacier'] .hero-eyebrow { color: rgb(var(--text-primary)); letter-spacing: .2em; }
 :root[data-style='glacier'] :is(.hero-description, .hero-instrument span) { color: rgb(var(--ink-2)); }
 :root[data-style='glacier'] .hero-instrument {
-  background: rgb(var(--surface) / .8);
-  border-color: rgb(var(--line));
-  box-shadow: inset 0 1px 0 rgb(var(--glacier-glow) / .15);
+  width: 190px;
+  background: linear-gradient(145deg, rgb(var(--surface)), rgb(var(--surface-2) / .92));
+  border: 1px solid rgb(var(--glacier-blue) / .25);
+  box-shadow: var(--glacier-shadow), 0 0 28px -12px rgb(var(--glacier-glow) / .3);
 }
+:root[data-style='glacier'] .hero-instrument strong { color: rgb(var(--text-primary)); font-size: 42px; font-weight: 700; }
 :root[data-style='glacier'] .hero-instrument .instrument-rule { background: rgb(var(--line)); }
 :root[data-style='glacier'] .hero-instrument .instrument-rule::before { background: rgb(var(--text-primary)); }
+:root[data-style='glacier'] .btn-primary,
 :root[data-style='glacier'] .hero-actions .btn-primary {
-  background: rgb(var(--color-primary-500));
+  background: linear-gradient(125deg, rgb(var(--color-primary-500)), rgb(var(--color-primary-600)));
   color: var(--action-contrast);
-  box-shadow: 0 5px 16px -10px rgb(var(--color-primary-500) / .7);
+  box-shadow: 0 5px 14px -7px rgb(var(--glacier-blue) / .65), inset 0 1px 0 rgb(255 255 255 / .18);
 }
+:root[data-style='glacier'] .btn-primary:hover,
 :root[data-style='glacier'] .hero-actions .btn-primary:hover { background: rgb(var(--color-primary-600)); }
-:root[data-style='glacier'] .hero-actions .btn-secondary {
-  background: rgb(var(--surface));
-  border-color: rgb(var(--line-strong));
-  color: rgb(var(--ink-2));
-}
+:root[data-style='glacier'] .hero-actions .btn-secondary { background: rgb(var(--surface)); border-color: rgb(var(--line-strong)); color: rgb(var(--ink-2)); }
 :root[data-style='glacier'] .hero-actions .btn-secondary:hover { background: rgb(var(--surface-2)); color: rgb(var(--ink)); }
 :root[data-style='glacier'] :is(.hero-actions .btn, .auth-story a):focus-visible { outline-color: rgb(var(--focus-ring)); }
-:root[data-style='glacier'] [data-workspace='operations'] { --radius-card: 1rem; }
-:root[data-style='glacier'] .operations-dashboard > .grid > .card { border-top: 1px solid rgb(var(--line)); }
-:root[data-style='glacier'] .dashboard-section-heading h2 { color: rgb(var(--ink)); }
+:root[data-style='glacier'] [data-workspace='operations'] { --radius-card: 1.125rem; }
+:root[data-style='glacier'] .operations-links a { background: rgb(var(--surface) / .9); box-shadow: var(--glacier-shadow); }
+:root[data-style='glacier'] .dashboard-section-heading h2 { color: rgb(var(--ink)); font-weight: 750; }
 :root[data-style='glacier'] .dashboard-section-heading span { color: rgb(var(--ink-3)); }
-:root[data-style='glacier'] .table th { background: rgb(var(--surface-2)); color: rgb(var(--ink-2)); }
-:root[data-style='glacier'] .table tbody tr:hover { background-color: rgb(var(--surface-2) / .65); }
-:root[data-style='glacier'] :is(.hero-instrument strong, .dashboard-section-heading, .table) { font-variant-numeric: tabular-nums; }
+
+/* Stable metric hooks, not nth-child palettes: hidden cards never shift another metric's color. */
+:root[data-style='glacier'] [data-metric] { --metric-tint: var(--glacier-blue); --metric-ink: var(--glacier-blue-ink); }
+:root[data-style='glacier'] :is([data-metric='tokens'], [data-metric='users']) { --metric-tint: var(--glacier-gold); --metric-ink: var(--glacier-gold-ink); }
+:root[data-style='glacier'] :is([data-metric='cost'], [data-metric='balance']) { --metric-tint: var(--glacier-cyan); --metric-ink: var(--glacier-cyan-ink); }
+:root[data-style='glacier'] :is([data-metric='latency'], [data-metric='accounts']) { --metric-tint: var(--glacier-violet); --metric-ink: var(--glacier-violet-ink); }
+:root[data-style='glacier'] .card[data-metric] {
+  min-width: 0;
+  border: 1px solid rgb(var(--metric-tint) / .22);
+  background: linear-gradient(120deg, rgb(var(--metric-tint) / var(--glacier-tint-alpha)), transparent 72%), rgb(var(--surface));
+  box-shadow: var(--glacier-shadow), 0 5px 20px -15px rgb(var(--metric-tint) / .3);
+}
+:root[data-style='glacier'] [data-metric] .metric-icon {
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgb(var(--metric-tint) / .18);
+  border-radius: 15px;
+  color: rgb(var(--metric-ink));
+  background: linear-gradient(140deg, rgb(var(--metric-tint) / .25), rgb(var(--metric-tint) / .08));
+  box-shadow: inset 0 1px 0 rgb(var(--glacier-edge) / .6), 0 6px 16px -9px rgb(var(--metric-tint) / .5);
+}
+:root[data-style='glacier'] [data-metric] .metric-value { font-size: clamp(22px, 1.8vw, 30px); font-weight: 750; line-height: 1.3; letter-spacing: -.035em; overflow-wrap: anywhere; }
+:root[data-style='glacier'] :is(.hero-instrument strong, .metric-value, .table) { font-variant-numeric: tabular-nums; }
+
+/* Dedicated chart panels retain native Chart.js colors, legends, tooltips and real data. */
+:root[data-style='glacier'] .chart-panel { border-color: rgb(var(--line) / .65); box-shadow: var(--glacier-shadow); }
+:root[data-style='glacier'] .chart-panel h3 { font-size: 15px; font-weight: 750; letter-spacing: -.02em; }
+:root[data-style='glacier'] .table-page-layout .layout-section-fixed:has(input) { background: rgb(var(--surface) / .96); box-shadow: var(--glacier-shadow); border-color: rgb(var(--line) / .8); }
+:root[data-style='glacier'] .table th { background: rgb(var(--surface-2)); color: rgb(var(--ink-2)); border-bottom-color: rgb(var(--line)); }
+:root[data-style='glacier'] .table tbody tr:hover { background-color: rgb(var(--surface-2) / .7); }
 
 :root[data-style='glacier'] .auth-story {
   background: radial-gradient(ellipse at 20% 20%, rgb(var(--glacier-glow) / .3), transparent 60%), linear-gradient(140deg, var(--hero-start), var(--hero-end));
   color: rgb(var(--ink));
   border-right: 1px solid rgb(var(--line));
+  isolation: isolate;
 }
 :root[data-style='glacier'] .auth-story :is(p, .auth-story-features, .auth-story-features b) { color: rgb(var(--ink-2)); }
 :root[data-style='glacier'] .auth-story-features { border-top-color: rgb(var(--line)); }
 :root[data-style='glacier'] .auth-story::after {
+  width: 800px;
+  height: 800px;
+  right: -350px;
+  bottom: -420px;
+  z-index: -1;
   background: url('./glacier-orbit.svg') center / contain no-repeat;
   border: 0;
   box-shadow: none;
   opacity: var(--glacier-planet-opacity);
 }
 
+@media (min-width: 1024px) {
+  :root[data-style='glacier'] .app-shell .sidebar { top: 12px; bottom: 12px; left: 12px; height: calc(100dvh - 24px); border: 1px solid rgb(var(--line)); border-radius: 22px; }
+  :root[data-style='glacier'] .workspace-header { margin-inline: 24px; border-top: 0; border-radius: 0 0 18px 18px; }
+}
 @media (max-width: 639px) {
-  :root[data-style='glacier'] .workspace-hero::before { width: 240px; right: -100px; top: -80px; }
+  :root[data-style='glacier'] .app-shell-bg::before { width: 560px; top: -140px; right: -270px; opacity: calc(var(--glacier-planet-opacity) * .6); }
+  :root[data-style='glacier'] .workspace-hero { padding: 24px; }
+  :root[data-style='glacier'] [data-metric] .metric-icon { width: 38px; height: 38px; border-radius: 12px; }
+  :root[data-style='glacier'] .card[data-metric] { padding: 14px; }
+  :root[data-style='glacier'] .usage-metrics > [data-metric] { flex-direction: column; align-items: flex-start; }
+  :root[data-style='glacier'] .usage-metrics > [data-metric] > .min-w-0 { width: 100%; }
 }
 @media (prefers-reduced-transparency: reduce) {
-  :root[data-style='glacier'] .workspace-header { background: rgb(var(--surface-header)); backdrop-filter: none; }
-  :root[data-style='glacier'] .hero-instrument { background: rgb(var(--surface)); }
-  :root[data-style='glacier'] :is(.workspace-hero::before, .auth-story::after) { display: none; }
+  :root[data-style='glacier'] :is(.workspace-header, .workspace-hero, .hero-instrument, .card, .card-glass, .glass-card, .stat-card, .card[data-metric], .sidebar-search, .operations-links a) { background: rgb(var(--surface)); backdrop-filter: none; }
+  :root[data-style='glacier'] :is(.workspace-hero::before, .auth-story::after, .app-shell-bg::before, .app-shell-bg::after) { display: none; }
 }
-@media (forced-colors: active) {
-  :root[data-style='glacier'] :is(.workspace-hero::before, .auth-story::after, .app-shell-bg) { display: none; }
-  :root[data-style='glacier'] :is(.workspace-hero, .hero-instrument, .card, .workspace-header, .auth-story) { background: Canvas; color: CanvasText; box-shadow: none; }
+@media (min-width: 1024px) {
+  :root[data-style='glacier'] .app-shell .sidebar.w-\[72px\] { width: 72px !important; }
+  :root[data-style='glacier'] .app-shell .sidebar.w-64 { width: 256px !important; }
+  :root[data-style='glacier'] .app-main-content.lg\:ml-\[72px\] { margin-left: 72px !important; }
+  :root[data-style='glacier'] .app-main-content.lg\:ml-64 { margin-left: 256px !important; }
 }
+@media (max-width: 1023px) {
+  :root[data-style='glacier'] .app-shell .sidebar[data-mobile-open='true'] { transform: translateX(0) !important; }
+  :root[data-style='glacier'] .app-shell .sidebar[data-mobile-open='false'] { transform: translateX(-100%) !important; }
+}
+/* Scrolling table headers stay crisp; only the workspace header uses blur. */
+:root[data-style='glacier'] .table-scroll-container :deep(thead) { background: rgb(var(--surface-2)); backdrop-filter: none; }

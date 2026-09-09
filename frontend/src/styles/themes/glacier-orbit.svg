@@ -1,21 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960" fill="none">
   <defs>
-    <radialGradient id="atmosphere"><stop stop-color="#7dd3fc" stop-opacity=".4"/><stop offset="1" stop-color="#38bdf8" stop-opacity="0"/></radialGradient>
-    <pattern id="nodes" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="9" cy="9" r="1" fill="#0284c7"/></pattern>
-    <clipPath id="sphere"><circle cx="240" cy="240" r="170"/></clipPath>
+    <radialGradient id="halo"><stop offset=".56" stop-color="#67cbff" stop-opacity=".32"/><stop offset=".78" stop-color="#8cdeff" stop-opacity=".12"/><stop offset="1" stop-color="#8cdeff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="ocean" cx=".32" cy=".2" r=".85"><stop stop-color="#f0fcff"/><stop offset=".3" stop-color="#a2e4ff"/><stop offset=".62" stop-color="#60aef5"/><stop offset=".86" stop-color="#5683de"/><stop offset="1" stop-color="#294f9d"/></radialGradient>
+    <radialGradient id="rim" cx=".4" cy=".35" r=".65"><stop offset=".72" stop-color="#c7f6ff" stop-opacity="0"/><stop offset=".94" stop-color="#d7f9ff" stop-opacity=".3"/><stop offset="1" stop-color="#f2fdff" stop-opacity=".95"/></radialGradient>
+    <linearGradient id="land" x1="220" y1="170" x2="640" y2="740" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" stop-opacity=".94"/><stop offset=".6" stop-color="#d2edff" stop-opacity=".75"/><stop offset="1" stop-color="#98c7ff" stop-opacity=".4"/></linearGradient>
+    <linearGradient id="orbit" x1="120" y1="700" x2="800" y2="260" gradientUnits="userSpaceOnUse"><stop stop-color="#6daaff" stop-opacity="0"/><stop offset=".35" stop-color="#92e6ff" stop-opacity=".8"/><stop offset=".65" stop-color="#fff"/><stop offset="1" stop-color="#74d4ff" stop-opacity="0"/></linearGradient>
+    <radialGradient id="beacon"><stop stop-color="#fff"/><stop offset=".15" stop-color="#fff" stop-opacity=".95"/><stop offset=".35" stop-color="#b4f3ff" stop-opacity=".7"/><stop offset="1" stop-color="#7de0ff" stop-opacity="0"/></radialGradient>
+    <clipPath id="sphere"><circle cx="480" cy="480" r="340"/></clipPath>
+    <pattern id="nodes" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="11" cy="11" r="1.2" fill="#e7faff" fill-opacity=".65"/></pattern>
   </defs>
-  <circle cx="240" cy="240" r="236" fill="url(#atmosphere)"/>
-  <g stroke="#0284c7" stroke-width="1">
-    <circle cx="240" cy="240" r="170"/>
-    <g clip-path="url(#sphere)">
-      <path d="M70 240h340M70 182h340M70 298h340M70 130h340M70 350h340"/>
-      <ellipse cx="240" cy="240" rx="62" ry="170"/>
-      <ellipse cx="240" cy="240" rx="125" ry="170"/>
-      <path d="M240 70v340"/>
-      <circle cx="240" cy="240" r="170" fill="url(#nodes)" stroke="none"/>
+  <circle cx="480" cy="480" r="470" fill="url(#halo)"/>
+  <ellipse cx="480" cy="480" rx="445" ry="166" transform="rotate(-27 480 480)" stroke="#96dbff" stroke-opacity=".35" stroke-dasharray="3 12"/>
+  <circle cx="480" cy="480" r="341" fill="url(#ocean)" stroke="#d3f5ff" stroke-width="2"/>
+  <g clip-path="url(#sphere)">
+    <!-- Abstract continental facets: decorative geometry, never a data visualization. -->
+    <g fill="url(#land)" stroke="#effbff" stroke-opacity=".55" stroke-width="1.4">
+      <path d="m173 311 61-63 75-25 60 24 34 48-29 37-57 6-18 46-45 14-31-45Z"/>
+      <path d="m234 248 24 76 51-101 8 115 52-91 5 85-75 52-45 14 4-74-85-13Z" fill-opacity=".55"/>
+      <path d="m299 384 39 25 17 59 51 24 21 55-30 62-28 93-31 44-13-80 12-66-29-60-6-55-27-51Z"/>
+      <path d="m338 409-1 74 69 9-69 34 60 83-60-9 32 102-44-36 12-66-29-60-6-55Z" fill-opacity=".55"/>
+      <path d="m367 170 47-16 43 31-15 51-43 24-37-43Z"/>
+      <path d="m466 281 37-50 56-1 42 26 78-5 78 58 41 70-37 29-50-27-27 42-39-16-23-54-55-11-36 27-33-18-21 25-29-24Z"/>
+      <path d="m503 231 26 79 30-80 30 63 12-37 44 70 34-75 18 99 60-41-46 72 50 27-64-58-13 73-39-16-56-114-60 76Z" fill-opacity=".45"/>
+      <path d="m480 383 53-14 61 47 18 65-39 60-27 89-38 21-25-81-39-40-12-66 24-53Z"/>
+      <path d="m480 383 21 72 32-86 16 80 45-33-21 125-24-92-66 121 25 81 38-21 27-89-72-86-57 75-12-66Z" fill-opacity=".5"/>
+      <path d="m622 433 26 14 18 54 38 29 4 30-23-5-27-45-21-21Z"/>
+      <path d="m691 608 57-20 51 32 13 46-47 35-70-10-27-40Z"/>
+      <path d="m691 608 43 38 14-58 17 113-31-55-39 45-27-40Z" fill-opacity=".45"/>
+      <path d="m765 447 12 22-6 38-13-27Z"/>
     </g>
-    <ellipse cx="240" cy="240" rx="222" ry="74" transform="rotate(-28 240 240)"/>
-    <circle cx="240" cy="240" r="200" stroke-dasharray="2 12" stroke-opacity=".5"/>
+    <circle cx="480" cy="480" r="340" fill="url(#nodes)"/>
+    <g stroke="#effbff" stroke-opacity=".32" stroke-width="1">
+      <ellipse cx="480" cy="480" rx="115" ry="340"/>
+      <ellipse cx="480" cy="480" rx="225" ry="340"/>
+      <ellipse cx="480" cy="480" rx="306" ry="340"/>
+      <ellipse cx="480" cy="480" rx="340" ry="94"/>
+      <ellipse cx="480" cy="480" rx="340" ry="218"/>
+      <path d="M140 480h680M480 140v680M193 298q287 142 574 0M193 662q287-142 574 0M272 211q208 98 416 0M272 749q208-98 416 0"/>
+    </g>
+    <g stroke="#e3faff" stroke-width="1.5" stroke-opacity=".85">
+      <path d="M280 335Q420 150 548 314M280 335Q431 314 521 444M548 314Q700 276 732 378M521 444Q650 354 732 378M521 444Q561 545 732 642M280 335Q456 422 356 538"/>
+    </g>
+    <circle cx="480" cy="480" r="340" fill="url(#rim)"/>
   </g>
-  <g fill="#0284c7"><circle cx="80" cy="325" r="4"/><circle cx="399" cy="154" r="4"/><circle cx="302" cy="83" r="3"/></g>
+  <ellipse cx="480" cy="480" rx="445" ry="166" transform="rotate(-27 480 480)" stroke="url(#orbit)" stroke-width="2"/>
+  <path d="M129 687Q491 783 832 261" stroke="url(#orbit)" stroke-width="1.5"/>
+  <g fill="url(#beacon)"><circle cx="280" cy="335" r="26"/><circle cx="548" cy="314" r="30"/><circle cx="521" cy="444" r="22"/><circle cx="732" cy="378" r="27"/><circle cx="356" cy="538" r="18"/><circle cx="732" cy="642" r="20"/></g>
+  <g fill="#f1fcff"><circle cx="280" cy="335" r="3"/><circle cx="548" cy="314" r="3"/><circle cx="521" cy="444" r="2.5"/><circle cx="732" cy="378" r="3"/><circle cx="356" cy="538" r="2"/><circle cx="732" cy="642" r="2.5"/></g>
+  <g fill="#86cfff"><circle cx="156" cy="183" r="2"/><circle cx="802" cy="165" r="3"/><circle cx="857" cy="582" r="2"/><circle cx="100" cy="507" r="2"/><circle cx="383" cy="91" r="2.5"/></g>
 </svg>

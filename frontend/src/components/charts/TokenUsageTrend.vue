@@ -1,5 +1,5 @@
 <template>
-  <div class="card p-4 sm:p-5">
+  <div class="chart-panel card p-4 sm:p-5">
     <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
       {{ t('admin.dashboard.tokenUsageTrend') }}
     </h3>
