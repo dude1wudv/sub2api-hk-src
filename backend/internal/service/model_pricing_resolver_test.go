@@ -57,7 +57,7 @@ func TestResolve_UnknownModel(t *testing.T) {
 	require.Equal(t, "fallback", resolved.Source)
 }
 
-func TestResolve_UnknownDeepSeekRejectsConfiguredGroupPricing(t *testing.T) {
+func TestResolve_UnknownDeepSeekAllowsConfiguredGroupPricing(t *testing.T) {
 	bs := newTestBillingServiceForResolver()
 	r := NewModelPricingResolver(nil, bs)
 	group := &Group{ModelPricing: []ChannelModelPricing{{
@@ -70,7 +70,10 @@ func TestResolve_UnknownDeepSeekRejectsConfiguredGroupPricing(t *testing.T) {
 	resolved := r.Resolve(context.Background(), PricingInput{Model: "deepseek-unreviewed", Group: group})
 	require.NotNil(t, resolved)
 	require.Equal(t, BillingModeToken, resolved.Mode)
-	require.Nil(t, resolved.BasePricing)
+	require.NotNil(t, resolved.BasePricing)
+	require.InDelta(t, 1e-9, resolved.BasePricing.InputPricePerToken, 1e-15)
+	require.InDelta(t, 2e-9, resolved.BasePricing.OutputPricePerToken, 1e-15)
+	require.Equal(t, PricingSourceGroup, resolved.Source)
 	require.Empty(t, resolved.Intervals)
 	require.Empty(t, resolved.RequestTiers)
 }
