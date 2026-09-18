@@ -145,6 +145,21 @@ const mountEditor = (props: Record<string, unknown> = {}) => mount(SmartRoutingE
 })
 
 describe('SmartRoutingEditor', () => {
+  it('offers active compatible groups across providers while excluding Claude and inactive groups', () => {
+    const wrapper = mountEditor({
+      groups: [
+        makeGroup(1, 'Claude', 'anthropic'),
+        makeGroup(2, 'OpenAI', 'openai'),
+        makeGroup(3, 'DeepSeek', 'deepseek'),
+        makeGroup(4, 'Grok', 'grok'),
+        makeGroup(5, 'Inactive', 'kimi', 'inactive'),
+      ],
+    })
+
+    expect(wrapper.findAll('[data-testid="route-option"]').map(option => option.text()))
+      .toEqual(['OpenAI', 'DeepSeek', 'Grok'])
+  })
+
   it('renders an empty state and disables the picker when no groups are available', () => {
     const wrapper = mountEditor()
 

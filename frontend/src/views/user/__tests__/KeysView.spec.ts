@@ -608,7 +608,7 @@ describe('user KeysView column settings', () => {
   })
 
   it('passes ordered routing groups and the first group as the create payload', async () => {
-    getAvailableGroups.mockResolvedValue([createGroup(42), createGroup(7)])
+    getAvailableGroups.mockResolvedValue([createGroup(42), { ...createGroup(7), platform: 'deepseek' }])
     const wrapper = await mountView()
 
     await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
@@ -697,19 +697,27 @@ describe('user KeysView column settings', () => {
       expect(wrapper.findAllComponents({ name: 'Select' })[0].props('options')).toHaveLength(13)
     })
 
-    it('filters smart routing groups by provider and clears previous routes on change', async () => {
+    it('keeps smart routing independent of provider filters and preserves routes across mode changes', async () => {
       const wrapper = await openCreate()
       await chooseProvider(wrapper, 'domestic')
 
       const editor = wrapper.findComponent({ name: 'SmartRoutingEditor' })
-      expect(editor.props('groups').map((group: Group) => group.id)).toEqual([3, 4, 5, 6])
+      expect(editor.props('groups').map((group: Group) => group.id)).toEqual(availableGroups.map(group => group.id))
 
-      await editor.vm.$emit('update:modelValue', [3, 4])
+      await editor.vm.$emit('update:modelValue', [3, 2, 8])
       await editor.vm.$emit('update:enabled', true)
-      await chooseProvider(wrapper, 'other')
+      await nextTick()
+      expect(wrapper.find('[data-tour="key-form-provider"]').exists()).toBe(false)
 
-      expect(editor.props('groups').map((group: Group) => group.id)).toEqual([7, 8, 9, 10, 11])
-      expect(editor.props('modelValue')).toEqual([])
+      await editor.vm.$emit('update:enabled', false)
+      await nextTick()
+      await chooseProvider(wrapper, 'other')
+      expect(optionIds(wrapper)).toEqual([7, 8, 9, 10, 11])
+      await editor.vm.$emit('update:enabled', true)
+      await nextTick()
+
+      expect(editor.props('groups').map((group: Group) => group.id)).toEqual(availableGroups.map(group => group.id))
+      expect(editor.props('modelValue')).toEqual([3, 2, 8])
     })
 
     it('clears the previous group on provider change and submits only the newly selected group', async () => {

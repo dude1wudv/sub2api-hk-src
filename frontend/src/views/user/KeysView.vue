@@ -497,7 +497,7 @@
           />
         </div>
 
-        <fieldset v-if="!showEditModal" data-tour="key-form-provider">
+        <fieldset v-if="!showEditModal && !formData.smart_routing" data-tour="key-form-provider">
           <legend class="input-label">{{ t('keys.providerLabel') }}</legend>
           <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label
@@ -550,7 +550,7 @@
           <SmartRoutingEditor
             v-model="formData.routing_group_ids"
             v-model:enabled="formData.smart_routing"
-            :groups="formGroups"
+            :groups="groups"
             :rates="userGroupRates"
             :fixed-group-id="formData.group_id"
             class="mb-3"
@@ -1556,11 +1556,6 @@ const createProviderOptions = computed(() => KEY_GROUP_PROVIDERS.map((value) => 
   count: groups.value.filter((group) => getKeyGroupProvider(group.platform) === value).length
 })))
 
-const formGroups = computed(() => showEditModal.value
-  ? groups.value
-  : groups.value.filter((group) => getKeyGroupProvider(group.platform) === createProvider.value)
-)
-
 const formGroupOptions = computed(() => showEditModal.value
   ? groupOptions.value
   : groupOptions.value.filter((group) => getKeyGroupProvider(group.platform) === createProvider.value)
@@ -1570,7 +1565,7 @@ const selectCreateProvider = (provider: KeyGroupProvider) => {
   if (createProvider.value === provider) return
   createProvider.value = provider
   formData.value.group_id = null
-  formData.value.routing_group_ids = []
+  // Provider categories only scope fixed groups; smart routes span providers.
 }
 
 // Also handles groups arriving after the create dialog has already opened.
