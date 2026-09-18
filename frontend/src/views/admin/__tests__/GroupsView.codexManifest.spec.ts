@@ -233,6 +233,7 @@ describe("GroupsView Codex manifest binding", () => {
   beforeEach(() => {
     pinia = createPinia();
     setActivePinia(pinia);
+    localStorage.clear();
     listGroups.mockReset();
     getModelsListCandidates.mockReset();
     getUsageSummary.mockReset();
