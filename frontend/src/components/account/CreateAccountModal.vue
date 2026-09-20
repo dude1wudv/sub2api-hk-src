@@ -217,6 +217,19 @@
           </button>
           <button
             type="button"
+            @click="selectCNPlatform('stepfun')"
+            :class="[
+              'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
+              form.platform === 'stepfun'
+                ? 'bg-white text-violet-600 shadow-sm dark:bg-dark-600 dark:text-violet-400'
+                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+            ]"
+          >
+            <PlatformIcon platform="stepfun" size="sm" />
+            StepFun
+          </button>
+          <button
+            type="button"
             @click="selectOpenCodeGoPlatform()"
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
@@ -566,10 +579,10 @@
           <button
             v-if="form.platform !== 'deepseek'"
             type="button"
-            @click="accountMode = 'coding'"
+            @click="accountMode = form.platform === 'stepfun' ? 'step_plan' : 'coding'"
             :class="[
               'flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-all',
-              accountMode === 'coding'
+              accountMode === (form.platform === 'stepfun' ? 'step_plan' : 'coding')
                 ? cnAccentActiveClass
                 : 'border-gray-200 hover:border-gray-400 dark:border-dark-600 dark:hover:border-gray-600'
             ]"
@@ -577,7 +590,7 @@
             <div
               :class="[
                 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                accountMode === 'coding'
+                accountMode === (form.platform === 'stepfun' ? 'step_plan' : 'coding')
                   ? cnAccentIconClass
                   : 'bg-gray-100 text-gray-500 dark:bg-dark-600 dark:text-gray-400'
               ]"
@@ -585,8 +598,8 @@
               <Icon name="bolt" size="sm" />
             </div>
             <div>
-              <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.accounts.cnProviders.accountMode.coding') }}</span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.cnProviders.accountMode.codingDesc') }}</span>
+              <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ form.platform === 'stepfun' ? 'Step Plan' : t('admin.accounts.cnProviders.accountMode.coding') }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ form.platform === 'stepfun' ? '订阅通道，支持 step-router-v1 与图示全模型' : t('admin.accounts.cnProviders.accountMode.codingDesc') }}</span>
             </div>
           </button>
         </div>
@@ -4065,6 +4078,8 @@ const apiKeyValuePlaceholder = computed(() => {
     case 'minimax':
     case 'opencode_go':
       return 'sk-...'
+    case 'stepfun':
+      return 'sk-...'
     default:
       return 'sk-ant-...'
   }
@@ -4226,6 +4241,8 @@ const cnAccentActiveClass = computed(() => {
       return 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
     case 'minimax':
       return 'border-rose-500 bg-rose-50 dark:bg-rose-900/20'
+    case 'stepfun':
+      return 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
     case 'opencode_go':
       return 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
     default:
@@ -4242,6 +4259,8 @@ const cnAccentIconClass = computed(() => {
       return 'bg-teal-500 text-white'
     case 'minimax':
       return 'bg-rose-500 text-white'
+    case 'stepfun':
+      return 'bg-violet-500 text-white'
     case 'opencode_go':
       return 'bg-amber-500 text-white'
     default:
@@ -4257,6 +4276,8 @@ function selectCNPlatform(platform: CnProviderPlatform) {
   apiProtocol.value = 'adaptive'
   if (platform === 'deepseek') {
     accountMode.value = 'payg'
+  } else if (platform === 'stepfun') {
+    accountMode.value = 'step_plan'
   }
   apiKeyBaseUrl.value = defaultCNBaseUrl(platform, accountMode.value, apiProtocol.value)
   resetAdaptiveBaseUrls(platform, accountMode.value)

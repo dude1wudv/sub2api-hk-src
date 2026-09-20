@@ -144,6 +144,98 @@ func (h *OpenAIGatewayHandler) GrokRealtime(c *gin.Context) {
 	}
 }
 
+// StepFunRealtime exposes StepFun's native OpenAI-compatible realtime WebSocket.
+func (h *OpenAIGatewayHandler) StepFunRealtime(c *gin.Context) {
+	if c == nil || c.Request == nil || !isOpenAIWSUpgradeRequest(c.Request) {
+		h.errorResponse(c, http.StatusUpgradeRequired, "invalid_request_error", "WebSocket upgrade required (Upgrade: websocket)")
+		return
+	}
+	apiKey, ok := middleware2.GetAPIKeyFromContext(c)
+	if !ok || apiKey.Group == nil || apiKey.Group.Platform != service.PlatformStepFun {
+		h.errorResponse(c, http.StatusNotFound, "not_found_error", "Realtime API is not supported for this platform")
+		return
+	}
+	subscription, _ := middleware2.GetSubscriptionFromContext(c)
+	if err := h.billingCacheService.CheckBillingEligibility(c.Request.Context(), apiKey.User, apiKey, apiKey.Group, subscription, service.QuotaPlatform(c.Request.Context(), apiKey)); err != nil {
+		status, code, message, retryAfter := billingErrorDetails(err)
+		if retryAfter > 0 {
+			c.Header("Retry-After", strconv.Itoa(retryAfter))
+		}
+		h.errorResponse(c, status, code, message)
+		return
+	}
+	model := strings.TrimSpace(c.Query("model"))
+	if model == "" {
+		model = "stepaudio-2.5-realtime"
+	}
+	if model != "stepaudio-2.5-realtime" {
+		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "model must be stepaudio-2.5-realtime")
+		return
+	}
+	failed := map[int64]struct{}{}
+	var selection *service.AccountSelectionResult
+	var release func()
+	var upstream *service.GrokRealtimeUpstream
+	for attempts := 0; attempts < 4; attempts++ {
+		candidate, _, selectErr := h.gatewayService.SelectAccountWithSchedulerForCapability(
+			c.Request.Context(), apiKey.GroupID, "", "", model, failed,
+			service.OpenAIUpstreamTransportHTTPSSE, service.OpenAIEndpointCapabilityChatCompletions,
+			false, false, false, service.PlatformStepFun,
+		)
+		if selectErr != nil || candidate == nil || candidate.Account == nil {
+			break
+		}
+		var streamStarted bool
+		var slotStatus openAISlotAcquireResult
+		release, slotStatus = h.acquireResponsesAccountSlot(c, apiKey.GroupID, "", candidate, false, &streamStarted, nil)
+		if slotStatus != openAISlotAcquireOK {
+			return
+		}
+		token, _, credErr := h.gatewayService.GetRequestCredential(c.Request.Context(), c, candidate.Account)
+		if credErr != nil {
+			release()
+			release = nil
+			failed[candidate.Account.ID] = struct{}{}
+			continue
+		}
+		probeCtx, cancel := context.WithTimeout(c.Request.Context(), service.DefaultGrokRealtimeDialTimeout)
+		candidateUpstream, openErr := h.gatewayService.OpenStepFunRealtime(probeCtx, candidate.Account, token, model)
+		cancel()
+		if openErr != nil {
+			release()
+			release = nil
+			failed[candidate.Account.ID] = struct{}{}
+			continue
+		}
+		selection, upstream = candidate, candidateUpstream
+		break
+	}
+	if selection == nil || selection.Account == nil || release == nil || upstream == nil {
+		h.errorResponse(c, http.StatusBadGateway, "upstream_error", "StepFun realtime upstream unavailable")
+		return
+	}
+	defer release()
+	defer func() { _ = upstream.Close() }()
+	conn, err := coderws.Accept(c.Writer, c.Request, &coderws.AcceptOptions{CompressionMode: coderws.CompressionContextTakeover})
+	if err != nil {
+		return
+	}
+	defer func() { _ = conn.CloseNow() }()
+	usage, proxyErr := h.gatewayService.ProxyStepFunRealtimeConn(c.Request.Context(), conn, upstream)
+	if proxyErr != nil && !isExpectedGrokRealtimeClose(proxyErr) {
+		_ = conn.Close(coderws.StatusInternalError, "upstream realtime websocket failed")
+		return
+	}
+	if usage.InputTokens > 0 || usage.OutputTokens > 0 || usage.CacheReadInputTokens > 0 || usage.CacheCreationInputTokens > 0 {
+		result := &service.OpenAIForwardResult{
+			RequestID: service.StableGrokRealtimeBillingRequestID(""),
+			Model:     model,
+			Usage:     usage,
+		}
+		h.recordGrokVoiceUsage(c, apiKey, selection.Account, subscription, "realtime", nil, result)
+	}
+}
+
 func grokRealtimeBillingResult(model string, elapsed time.Duration, audioObserved bool) *service.OpenAIForwardResult {
 	if !audioObserved || elapsed <= 0 {
 		return nil
@@ -283,7 +375,8 @@ func (h *OpenAIGatewayHandler) GrokVoice(c *gin.Context, endpoint string) {
 	}
 }
 
-// recordGrokVoiceUsage bills TTS/STT/realtime via group audio prices when AudioUsage is set.
+// recordGrokVoiceUsage records media usage. Grok audio endpoints use AudioUsage;
+// StepFun Realtime uses provider-reported token usage.
 func (h *OpenAIGatewayHandler) recordGrokVoiceUsage(
 	c *gin.Context,
 	apiKey *service.APIKey,
@@ -296,14 +389,15 @@ func (h *OpenAIGatewayHandler) recordGrokVoiceUsage(
 	if h == nil || c == nil || apiKey == nil || account == nil || result == nil {
 		return
 	}
-	if result.AudioUsage == nil {
-		return
-	}
 	// Ensure forced durable request ids even if callers forget (realtime/tts/stt money path).
-	if mode := strings.TrimSpace(result.AudioUsage.Mode); mode == "realtime" {
-		result.RequestID = service.StableGrokRealtimeBillingRequestID(result.RequestID)
+	if result.AudioUsage != nil {
+		if mode := strings.TrimSpace(result.AudioUsage.Mode); mode == "realtime" {
+			result.RequestID = service.StableGrokRealtimeBillingRequestID(result.RequestID)
+		} else {
+			result.RequestID = service.StableGrokAudioBillingRequestID(result.RequestID)
+		}
 	} else {
-		result.RequestID = service.StableGrokAudioBillingRequestID(result.RequestID)
+		result.RequestID = service.StableGrokRealtimeBillingRequestID(result.RequestID)
 	}
 	userAgent := c.GetHeader("User-Agent")
 	clientIP := ip.GetClientIP(c)

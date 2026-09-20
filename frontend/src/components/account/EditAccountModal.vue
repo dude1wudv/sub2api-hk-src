@@ -3224,11 +3224,17 @@ const editAdaptiveBaseUrls = ref<Record<CnNativeApiProtocol, string>>({
 // 存储版 base_url（可能是用户自定义/中转地址）覆盖为官方预设并在下次保存时持久化。
 // nextTick 后解除，此后用户主动切换模式/协议仍正常联动重置。
 const syncingForm = ref(false)
-const cnAccountModeOptions = computed<Array<{ value: CnAccountMode; labelKey: 'payg' | 'coding' }>>(
+const cnAccountModeOptions = computed<Array<{ value: CnAccountMode; labelKey: 'payg' | 'coding' | 'step_plan' }>>(
   () => {
     // DeepSeek 无 coding 套餐（与创建弹窗一致），仅保留按量付费。
     if (props.account?.platform === 'deepseek') {
       return [{ value: 'payg', labelKey: 'payg' }]
+    }
+    if (props.account?.platform === 'stepfun') {
+      return [
+        { value: 'payg', labelKey: 'payg' },
+        { value: 'step_plan', labelKey: 'step_plan' }
+      ]
     }
     return [
       { value: 'payg', labelKey: 'payg' },
@@ -4208,7 +4214,11 @@ const syncFormFromAccount = (newAccount: Account | null) => {
       if (newAccount.platform === 'opencode_go') {
         editOpenCodeAccountMode.value = resolveOpenCodeAccountMode(credentials.account_mode)
       } else {
-        editAccountMode.value = credentials.account_mode === 'coding' ? 'coding' : 'payg'
+        if (newAccount.platform === 'stepfun') {
+          editAccountMode.value = credentials.account_mode === 'step_plan' ? 'step_plan' : 'payg'
+        } else {
+          editAccountMode.value = credentials.account_mode === 'coding' ? 'coding' : 'payg'
+        }
       }
       const storedProtocol = credentials.api_protocol
       editApiProtocol.value =

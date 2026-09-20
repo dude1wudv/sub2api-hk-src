@@ -467,7 +467,7 @@ func applyOpenAIImagesDefaults(req *OpenAIImagesRequest) {
 }
 
 func isOpenAIImageGenerationModel(model string) bool {
-	return IsGPTImageGenerationModel(model) || isGrokImageGenerationModel(model)
+	return IsGPTImageGenerationModel(model) || isGrokImageGenerationModel(model) || strings.EqualFold(strings.TrimSpace(model), "step-image-edit-2")
 }
 
 // IsGPTImageGenerationModel identifies the GPT native image-generation model family.

@@ -294,6 +294,10 @@ func (a *Account) IsMiniMax() bool {
 	return a.Platform == PlatformMiniMax
 }
 
+func (a *Account) IsStepFun() bool {
+	return a.Platform == PlatformStepFun
+}
+
 // IsCNProvider 报告是否为国产 OpenAI 兼容供应商（kimi/zhipu/deepseek/minimax）。
 func (a *Account) IsCNProvider() bool {
 	return a != nil && IsCNProvider(a.Platform)
@@ -1389,6 +1393,11 @@ func (a *Account) GetOpenAIBaseURL() string {
 		return DefaultDeepseekBaseURL
 	case PlatformMiniMax:
 		return DefaultMiniMaxBaseURL
+	case PlatformStepFun:
+		if a.GetAccountMode() == AccountModeStepPlan {
+			return DefaultStepFunPlanBaseURL
+		}
+		return DefaultStepFunPayGBaseURL
 	case PlatformOpenCodeGo:
 		return a.openCodeDefaultChatBaseURL()
 	default:
@@ -1403,7 +1412,7 @@ func (a *Account) GetAccountMode() string {
 		return ""
 	}
 	mode := strings.TrimSpace(a.GetCredential("account_mode"))
-	if mode == AccountModePayG || mode == AccountModeCoding {
+	if mode == AccountModePayG || mode == AccountModeCoding || mode == AccountModeStepPlan {
 		return mode
 	}
 	return ""
@@ -1448,7 +1457,7 @@ func (a *Account) SupportsNativeCNResponses() bool {
 		return false
 	}
 	switch a.Platform {
-	case PlatformDeepseek, PlatformKimi, PlatformMiniMax, PlatformOpenCodeGo:
+	case PlatformDeepseek, PlatformKimi, PlatformMiniMax, PlatformStepFun, PlatformOpenCodeGo:
 		return true
 	default:
 		return false
@@ -1511,6 +1520,11 @@ func (a *Account) defaultCNProtocolBaseURL(protocol string) string {
 			return DefaultDeepseekAnthropicBaseURL
 		case PlatformMiniMax:
 			return DefaultMiniMaxAnthropicBaseURL
+		case PlatformStepFun:
+			if a.GetAccountMode() == AccountModeStepPlan {
+				return DefaultStepFunPlanAnthropicBaseURL
+			}
+			return DefaultStepFunPayGAnthropicBaseURL
 		case PlatformOpenCodeGo:
 			return a.openCodeDefaultAnthropicBaseURL()
 		}
@@ -1530,6 +1544,11 @@ func (a *Account) defaultCNProtocolBaseURL(protocol string) string {
 			return DefaultDeepseekBaseURL
 		case PlatformMiniMax:
 			return DefaultMiniMaxBaseURL
+		case PlatformStepFun:
+			if a.GetAccountMode() == AccountModeStepPlan {
+				return DefaultStepFunPlanBaseURL
+			}
+			return DefaultStepFunPayGBaseURL
 		case PlatformOpenCodeGo:
 			return a.openCodeDefaultChatBaseURL()
 		}
@@ -1570,6 +1589,11 @@ func (a *Account) GetAnthropicProtocolBaseURL() string {
 		return DefaultDeepseekAnthropicBaseURL
 	case PlatformMiniMax:
 		return DefaultMiniMaxAnthropicBaseURL
+	case PlatformStepFun:
+		if a.GetAccountMode() == AccountModeStepPlan {
+			return DefaultStepFunPlanAnthropicBaseURL
+		}
+		return DefaultStepFunPayGAnthropicBaseURL
 	case PlatformOpenCodeGo:
 		return a.openCodeDefaultAnthropicBaseURL()
 	default:
@@ -1601,6 +1625,11 @@ func (a *Account) GetOpenAIFormatBaseURL() string {
 		return DefaultDeepseekBaseURL
 	case PlatformMiniMax:
 		return DefaultMiniMaxBaseURL
+	case PlatformStepFun:
+		if a.GetAccountMode() == AccountModeStepPlan {
+			return DefaultStepFunPlanBaseURL
+		}
+		return DefaultStepFunPayGBaseURL
 	case PlatformOpenCodeGo:
 		return a.openCodeDefaultChatBaseURL()
 	default:

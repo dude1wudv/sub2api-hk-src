@@ -258,21 +258,21 @@ export const GROK_BASE_URL_PRESETS: GrokBaseUrlPreset[] = [
 // API 协议（chat_completions / anthropic / responses）决定转发端点与格式，
 // 两者正交。同协议请求零转换直通，跨协议组合才走转换链。
 
-export type CnAccountMode = 'payg' | 'coding'
+export type CnAccountMode = 'payg' | 'coding' | 'step_plan'
 export type OpenCodeAccountMode = 'zen' | 'go'
-export type CnProviderPlatform = 'kimi' | 'zhipu' | 'deepseek' | 'minimax'
+export type CnProviderPlatform = 'kimi' | 'zhipu' | 'deepseek' | 'minimax' | 'stepfun'
 
 /** deepseek / kimi / minimax 支持原生 responses；adaptive 会按入站协议选择原生端点。 */
 export type CnApiProtocol = 'adaptive' | 'chat_completions' | 'anthropic' | 'responses'
 export type CnNativeApiProtocol = Exclude<CnApiProtocol, 'adaptive'>
 
 export function isCNProviderPlatform(platform: string): platform is CnProviderPlatform {
-  return platform === 'kimi' || platform === 'zhipu' || platform === 'deepseek' || platform === 'minimax'
+  return platform === 'kimi' || platform === 'zhipu' || platform === 'deepseek' || platform === 'minimax' || platform === 'stepfun'
 }
 
 /** DeepSeek、Kimi 与 MiniMax 提供原生 Responses 端点。 */
 export function cnSupportsNativeResponses(platform: string): boolean {
-  return platform === 'deepseek' || platform === 'kimi' || platform === 'minimax' || platform === 'opencode_go'
+  return platform === 'deepseek' || platform === 'kimi' || platform === 'minimax' || platform === 'stepfun' || platform === 'opencode_go'
 }
 
 export const OPENCODE_GO_BASE_URL = 'https://opencode.ai/zen/go/v1'
@@ -358,7 +358,7 @@ export function applyOpenCodeGoProtocolRules(
 }
 
 export function isMultiProtocolApiKeyPlatform(platform: string): boolean {
-  return platform === 'kimi' || platform === 'zhipu' || platform === 'deepseek' || platform === 'minimax' || platform === 'opencode_go'
+  return platform === 'kimi' || platform === 'zhipu' || platform === 'deepseek' || platform === 'minimax' || platform === 'stepfun' || platform === 'opencode_go'
 }
 
 export interface CnBaseUrlPreset {
@@ -403,6 +403,14 @@ export const CN_BASE_URL_PRESETS: Record<CnProviderPlatform, CnBaseUrlPreset[]> 
     { mode: 'coding', protocol: 'chat_completions', label: 'MiniMax Coding Intl', url: 'https://api.minimax.io/v1' },
     { mode: 'coding', protocol: 'anthropic', label: 'MiniMax Coding Intl Anthropic', url: 'https://api.minimax.io/anthropic' },
     { mode: 'coding', protocol: 'responses', label: 'MiniMax Coding Intl Responses', url: 'https://api.minimax.io/v1' }
+  ],
+  stepfun: [
+    { mode: 'payg', protocol: 'chat_completions', label: 'StepFun Open Platform', url: 'https://api.stepfun.com/v1' },
+    { mode: 'payg', protocol: 'anthropic', label: 'StepFun Messages', url: 'https://api.stepfun.com' },
+    { mode: 'payg', protocol: 'responses', label: 'StepFun Responses', url: 'https://api.stepfun.com/v1' },
+    { mode: 'step_plan', protocol: 'chat_completions', label: 'Step Plan', url: 'https://api.stepfun.com/step_plan/v1' },
+    { mode: 'step_plan', protocol: 'anthropic', label: 'Step Plan Messages', url: 'https://api.stepfun.com/step_plan' },
+    { mode: 'step_plan', protocol: 'responses', label: 'Step Plan Responses', url: 'https://api.stepfun.com/step_plan/v1' }
   ]
 }
 
@@ -422,6 +430,8 @@ export function defaultCNBaseUrl(
         return 'https://api.deepseek.com/anthropic'
       case 'minimax':
         return 'https://api.minimaxi.com/anthropic'
+      case 'stepfun':
+        return mode === 'step_plan' ? 'https://api.stepfun.com/step_plan' : 'https://api.stepfun.com'
       case 'opencode_go':
         return mode === 'zen' ? OPENCODE_ZEN_ANTHROPIC_BASE_URL : OPENCODE_GO_ANTHROPIC_BASE_URL
       default:
@@ -440,6 +450,8 @@ export function defaultCNBaseUrl(
       return 'https://api.deepseek.com'
     case 'minimax':
       return 'https://api.minimaxi.com/v1'
+    case 'stepfun':
+      return mode === 'step_plan' ? 'https://api.stepfun.com/step_plan/v1' : 'https://api.stepfun.com/v1'
     case 'opencode_go':
       return mode === 'zen' ? OPENCODE_ZEN_BASE_URL : OPENCODE_GO_BASE_URL
     default:

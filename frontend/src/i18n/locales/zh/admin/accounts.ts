@@ -356,6 +356,7 @@ export default {
         zhipu: 'Zhipu GLM',
         deepseek: 'DeepSeek',
         minimax: 'MiniMax',
+        stepfun: 'StepFun',
         opencode_go: 'OpenCode',
       },
       cnProviders: {
@@ -365,6 +366,8 @@ export default {
           paygDesc: '消耗账户余额，按 Token 计费。余额不足自动冷却，充值后恢复。',
           coding: 'Coding Plan',
           codingDesc: '订阅制编程套餐，按 5 小时 / 每周滚动用量窗口限流。',
+          step_plan: 'Step Plan',
+          step_planDesc: '阶跃星辰订阅通道，支持 step-router-v1 与语音、图像模型。',
         },
         apiProtocol: {
           title: 'API 协议',

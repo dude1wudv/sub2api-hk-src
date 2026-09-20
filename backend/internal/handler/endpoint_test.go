@@ -136,6 +136,11 @@ func TestDeriveUpstreamEndpoint(t *testing.T) {
 		{"grok video generations", EndpointVideosGenerations, "/v1/videos/generations", service.PlatformGrok, EndpointVideosGenerations},
 		{"grok video status", EndpointVideos, "/videos/req_123", service.PlatformGrok, EndpointVideos},
 
+		// StepFun preserves the requested OpenAI-compatible endpoint exactly.
+		{"stepfun chat completions", EndpointChatCompletions, "/v1/chat/completions", service.PlatformStepFun, EndpointChatCompletions},
+		{"stepfun messages", EndpointMessages, "/v1/messages", service.PlatformStepFun, EndpointMessages},
+		{"stepfun responses", EndpointResponses, "/v1/responses", service.PlatformStepFun, EndpointResponses},
+
 		// Antigravity — uses inbound to pick Claude vs Gemini upstream.
 		{"antigravity claude", EndpointMessages, "/antigravity/v1/messages", service.PlatformAntigravity, EndpointMessages},
 		{"antigravity gemini", EndpointGeminiModels, "/antigravity/v1beta/models", service.PlatformAntigravity, EndpointGeminiModels},

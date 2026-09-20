@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -189,6 +190,36 @@ func (s *OpenAIGatewayService) OpenGrokRealtime(ctx context.Context, account *Ac
 	return &GrokRealtimeUpstream{conn: conn}, nil
 }
 
+// OpenStepFunRealtime opens StepFun's OpenAI-compatible realtime endpoint.
+func (s *OpenAIGatewayService) OpenStepFunRealtime(ctx context.Context, account *Account, token, model string) (*GrokRealtimeUpstream, error) {
+	if s == nil || account == nil || !account.IsStepFun() {
+		return nil, fmt.Errorf("StepFun realtime account is required")
+	}
+	base, err := s.validateUpstreamBaseURL(account.GetOpenAIBaseURL())
+	if err != nil {
+		return nil, err
+	}
+	u, err := url.Parse(buildOpenAIEndpointURL(base, "/v1/realtime"))
+	if err != nil {
+		return nil, err
+	}
+	u.Scheme = "wss"
+	q := u.Query()
+	q.Set("model", firstNonEmpty(model, "stepaudio-2.5-realtime"))
+	u.RawQuery = q.Encode()
+	headers := http.Header{"Authorization": []string{"Bearer " + token}}
+	account.ApplyHeaderOverrides(headers)
+	proxyURL := ""
+	if account.ProxyID != nil && account.Proxy != nil {
+		proxyURL = account.Proxy.URL()
+	}
+	conn, status, _, err := s.getOpenAIWSPassthroughDialer().Dial(ctx, u.String(), headers, proxyURL)
+	if err != nil {
+		return nil, &GrokRealtimeDialError{StatusCode: status, Err: err}
+	}
+	return &GrokRealtimeUpstream{conn: conn}, nil
+}
+
 // HandleGrokRealtimeUpstreamError applies the shared Grok account policy to a
 // failed pre-accept WebSocket handshake.
 func (s *OpenAIGatewayService) HandleGrokRealtimeUpstreamError(ctx context.Context, account *Account, statusCode int, body []byte) {
@@ -254,6 +285,68 @@ func (s *OpenAIGatewayService) ProxyGrokRealtimeConn(ctx context.Context, c *gin
 	}()
 
 	return awaitGrokRealtimeAudioObserved(errCh, &audioObserved)
+}
+
+// ProxyStepFunRealtimeConn relays StepFun Realtime events and retains the
+// provider-reported token usage. StepFun bills this model by tokens, not by
+// connected minutes, so using the Grok audio-duration observer would produce
+// incorrect charges.
+func (s *OpenAIGatewayService) ProxyStepFunRealtimeConn(ctx context.Context, client *coderws.Conn, upstream *GrokRealtimeUpstream) (OpenAIUsage, error) {
+	if s == nil || client == nil || upstream == nil || upstream.conn == nil {
+		return OpenAIUsage{}, fmt.Errorf("realtime connection is required")
+	}
+	conn := upstream.conn
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	errCh := make(chan error, 2)
+	var usageMu sync.Mutex
+	var usage OpenAIUsage
+
+	go func() {
+		for {
+			msg, readErr := conn.ReadMessage(ctx)
+			if readErr != nil {
+				errCh <- readErr
+				return
+			}
+			usageMu.Lock()
+			parseOpenAIWSResponseUsageFromCompletedEvent(msg, &usage)
+			usageMu.Unlock()
+			if writeErr := client.Write(ctx, coderws.MessageText, msg); writeErr != nil {
+				errCh <- writeErr
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			kind, msg, readErr := client.Read(ctx)
+			if readErr != nil {
+				errCh <- readErr
+				return
+			}
+			if kind != coderws.MessageText && kind != coderws.MessageBinary {
+				continue
+			}
+			var raw json.RawMessage
+			if unmarshalErr := json.Unmarshal(msg, &raw); unmarshalErr != nil {
+				errCh <- fmt.Errorf("invalid realtime event: %w", unmarshalErr)
+				return
+			}
+			if writeErr := conn.WriteJSON(ctx, raw); writeErr != nil {
+				errCh <- writeErr
+				return
+			}
+		}
+	}()
+
+	err := <-errCh
+	cancel()
+	usageMu.Lock()
+	observed := usage
+	usageMu.Unlock()
+	return observed, err
 }
 
 // ProbeGrokRealtime performs the upstream WebSocket handshake without sending

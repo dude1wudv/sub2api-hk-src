@@ -210,6 +210,7 @@ const upstreamSyncPlatforms = new Set([
   'zhipu',
   'deepseek',
   'minimax',
+  'stepfun',
   'opencode_go'
 ])
 const canSyncUpstream = computed(() => {

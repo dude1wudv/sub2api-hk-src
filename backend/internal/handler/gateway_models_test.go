@@ -916,6 +916,11 @@ func TestDefaultModelIDsForPlatform_CNProvidersKeepClaudeDefaults(t *testing.T) 
 func TestDefaultCodexModelIDsForPlatform_DeepSeekUsesDeepSeekModels(t *testing.T) {
 	require.Equal(t, []string{"deepseek-v4-pro", "deepseek-v4-flash", "deepseek-flash"}, defaultCodexModelIDsForPlatform(service.PlatformDeepseek))
 	require.Equal(t, []string{"MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.5"}, defaultCodexModelIDsForPlatform(service.PlatformMiniMax))
+	require.Equal(t, []string{
+		"step-3.5-flash", "step-3.5-flash-2603", "step-3.7-flash", "step-5-preview",
+		"step-image-edit-2", "step-router-v1", "stepaudio-2.5-asr", "stepaudio-2.5-chat",
+		"stepaudio-2.5-realtime", "stepaudio-2.5-tts",
+	}, defaultCodexModelIDsForPlatform(service.PlatformStepFun))
 	require.Equal(t, defaultModelIDsForPlatform(service.PlatformAnthropic), defaultCodexModelIDsForPlatform(service.PlatformAnthropic))
 }
 

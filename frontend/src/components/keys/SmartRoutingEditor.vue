@@ -18,7 +18,7 @@ const emit = defineEmits<{
 }>()
 const { t } = useI18n()
 const announcement = ref('')
-const platforms = new Set(['openai', 'grok', 'kimi', 'zhipu', 'deepseek', 'minimax'])
+const platforms = new Set(['openai', 'grok', 'kimi', 'zhipu', 'deepseek', 'minimax', 'stepfun'])
 const eligible = computed(() => props.groups.filter(g => platforms.has(g.platform) && g.status === 'active'))
 const options = computed(() => eligible.value.filter(g => !props.modelValue.includes(g.id)).map(g => ({ value: g.id, label: g.name })))
 const routes = computed(() => props.modelValue.map(id => ({ id, group: eligible.value.find(g => g.id === id) })))

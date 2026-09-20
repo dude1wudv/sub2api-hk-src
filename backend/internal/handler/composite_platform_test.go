@@ -36,6 +36,8 @@ func TestOpenAICompatibleTextTargetAllowsCompositeProviders(t *testing.T) {
 		{model: "glm-5.2", platform: service.PlatformZhipu},
 		{model: "deepseek-v3.2", platform: service.PlatformDeepseek},
 		{model: "MiniMax-M3", platform: service.PlatformMiniMax},
+		{model: "step-3.5-flash", platform: service.PlatformStepFun},
+		{model: "stepaudio-2.5-asr", platform: service.PlatformStepFun},
 	}
 	for _, path := range []string{"/v1/messages", "/v1/chat/completions", "/v1/responses", "/v1/responses/input_tokens", "/v1/messages/count_tokens"} {
 		for _, provider := range providers {
@@ -49,6 +51,18 @@ func TestOpenAICompatibleTextTargetAllowsCompositeProviders(t *testing.T) {
 			require.Equal(t, provider.platform, platform, "path=%s model=%s", path, provider.model)
 		}
 	}
+}
+
+func TestCompositeImageTargetResolvesStepFun(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("POST", "/v1/images/edits", nil)
+	apiKey := &service.APIKey{Group: &service.Group{Platform: service.PlatformComposite}}
+
+	require.True(t, compositeTargetPlatformAllowed(c, apiKey, "step-image-edit-2", service.PlatformOpenAI, service.PlatformStepFun))
+	platform, ok := service.ResolvedTargetPlatformFromContext(c.Request.Context())
+	require.True(t, ok)
+	require.Equal(t, service.PlatformStepFun, platform)
 }
 
 // WS ingress 对 CN 账号既过不了 transport 过滤、HTTP 桥也没有 Responses 转换，

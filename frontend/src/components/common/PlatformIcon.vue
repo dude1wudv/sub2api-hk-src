@@ -45,6 +45,10 @@
     />
   </svg>
   <!-- OpenCode official mark -->
+  <svg v-else-if="platform === 'stepfun'" :class="sizeClass" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2 4 6.5v4.25L12 6l8 4.75V6.5L12 2Zm-8 11.1v4.4L12 22l8-4.5v-4.4L12 18l-8-4.9Zm8-4.7-5.6 3.2L12 14.8l5.6-3.2L12 8.4Z" />
+  </svg>
+  <!-- OpenCode official mark -->
   <svg v-else-if="platform === 'opencode_go'" :class="sizeClass" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
     <path d="M16 6H8v12h8V6zm4 16H4V2h16v20z" />
   </svg>

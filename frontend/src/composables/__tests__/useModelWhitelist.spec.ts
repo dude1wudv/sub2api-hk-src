@@ -37,6 +37,21 @@ describe('useModelWhitelist', () => {
     expect(models).not.toContain('gpt-5.2-codex')
   })
 
+  it('StepFun 模型白名单包含文本、图片和音频模型', () => {
+    expect(getModelsByPlatform('stepfun')).toEqual([
+      'step-3.5-flash',
+      'step-3.5-flash-2603',
+      'step-3.7-flash',
+      'step-5-preview',
+      'step-image-edit-2',
+      'step-router-v1',
+      'stepaudio-2.5-asr',
+      'stepaudio-2.5-chat',
+      'stepaudio-2.5-realtime',
+      'stepaudio-2.5-tts'
+    ])
+  })
+
   it('antigravity 模型列表包含图片模型兼容项', () => {
     const models = getModelsByPlatform('antigravity')
 

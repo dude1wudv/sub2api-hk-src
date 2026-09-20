@@ -1825,7 +1825,7 @@ const confirmDelete = (key: ApiKey) => {
 
 const handleSubmit = async () => {
   const routingGroupIds = formData.value.smart_routing ? [...formData.value.routing_group_ids] : []
-  if (formData.value.smart_routing && (!routingGroupIds.length || routingGroupIds.length > 10 || routingGroupIds.some(id => !groups.value.some(g => g.id === id && g.status === 'active' && ['openai', 'grok', 'kimi', 'zhipu', 'deepseek', 'minimax'].includes(g.platform))))) {
+  if (formData.value.smart_routing && (!routingGroupIds.length || routingGroupIds.length > 10 || routingGroupIds.some(id => !groups.value.some(g => g.id === id && g.status === 'active' && ['openai', 'grok', 'kimi', 'zhipu', 'deepseek', 'minimax', 'stepfun'].includes(g.platform))))) {
     appStore.showError(t('keys.smartRouting.required'))
     return
   }

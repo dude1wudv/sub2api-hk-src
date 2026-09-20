@@ -535,6 +535,7 @@ export default {
       zhipu: 'Zhipu GLM',
       deepseek: 'DeepSeek',
       minimax: 'MiniMax',
+      stepfun: 'StepFun',
       opencode_go: 'OpenCode'
     },
     // Check modes (how a monitor performs its checks)

@@ -465,6 +465,18 @@ export function getModelsByPlatform(platform: string): string[] {
       'qwen3.8-max', 'qwen3.8-flash', 'qwen3.7-max', 'qwen3.7-plus', 'qwen3.6-plus',
       'hy4-preview', 'hy3', 'omen-alpha'
     ]
+    case 'stepfun': return [
+      'step-3.5-flash',
+      'step-3.5-flash-2603',
+      'step-3.7-flash',
+      'step-5-preview',
+      'step-image-edit-2',
+      'step-router-v1',
+      'stepaudio-2.5-asr',
+      'stepaudio-2.5-chat',
+      'stepaudio-2.5-realtime',
+      'stepaudio-2.5-tts'
+    ]
     case 'doubao': return doubaoModels
     case 'minimax': return minimaxModels
     case 'baidu': return baiduModels

@@ -51,6 +51,19 @@ func TestParseOpenAIWSResponseUsageFromCompletedEvent(t *testing.T) {
 	require.Equal(t, OpenAIUsage{InputTokens: 3}, *usage)
 }
 
+func TestStepFunRealtimeCompletedEventPreservesProviderTokenUsage(t *testing.T) {
+	usage := &OpenAIUsage{}
+	parseOpenAIWSResponseUsageFromCompletedEvent(
+		[]byte(`{"type":"response.completed","response":{"usage":{"input_tokens":120,"output_tokens":33,"input_tokens_details":{"cached_tokens":11,"cache_write_tokens":5}}}}`),
+		usage,
+	)
+
+	require.Equal(t, 120, usage.InputTokens)
+	require.Equal(t, 33, usage.OutputTokens)
+	require.Equal(t, 11, usage.CacheReadInputTokens)
+	require.Equal(t, 5, usage.CacheCreationInputTokens)
+}
+
 func TestOpenAIWSEventShouldParseUsageTerminalEvents(t *testing.T) {
 	t.Parallel()
 

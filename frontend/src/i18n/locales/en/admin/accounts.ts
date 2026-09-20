@@ -153,6 +153,7 @@ export default {
         zhipu: 'Zhipu GLM',
         deepseek: 'DeepSeek',
         minimax: 'MiniMax',
+        stepfun: 'StepFun',
         opencode_go: 'OpenCode',
       },
       cnProviders: {
@@ -162,6 +163,8 @@ export default {
           paygDesc: 'Consumes account balance, billed per token. Auto-cools down on low balance and recovers after top-up.',
           coding: 'Coding Plan',
           codingDesc: 'Subscription coding package, rate-limited by 5-hour / weekly rolling usage windows.',
+          step_plan: 'Step Plan',
+          step_planDesc: 'StepFun subscription channel with step-router-v1, audio, and image models.',
         },
         apiProtocol: {
           title: 'API Protocol',
