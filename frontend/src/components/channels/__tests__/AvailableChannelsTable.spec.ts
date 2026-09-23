@@ -4,15 +4,16 @@ import { fileURLToPath } from 'node:url'
 
 import { createPinia } from 'pinia'
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AvailableChannelsTable from '../AvailableChannelsTable.vue'
 import type { UserAvailableChannel } from '@/api/channels'
+import { useAppearance } from '@/composables/useAppearance'
 
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   return {
     ...actual,
-    useI18n: () => ({ t: (key: string) => key }),
+    useI18n: () => ({ t: (key: string) => key, locale: { value: 'zh-CN' } }),
   }
 })
 
@@ -102,7 +103,7 @@ function mountTable(props = {}) {
         },
         SupportedModelChip: {
           props: ['model', 'noPricingLabel'],
-          template: '<span data-model-chip>{{ model.name }}:{{ noPricingLabel }}</span>',
+          template: '<span data-model-chip>{{ model.name }}:{{ model.pricing?.marker || noPricingLabel }}</span>',
         },
       },
     },
@@ -110,27 +111,23 @@ function mountTable(props = {}) {
 }
 
 describe('AvailableChannelsTable responsive surfaces', () => {
-  it('keeps the five-column table as the desktop-only surface', () => {
+  it.each(['aurora', 'lagoon', 'graphite', 'glacier'] as const)('shares complete channel cards in %s', theme => {
+    useAppearance().setStyle(theme)
     const wrapper = mountTable()
-    const desktop = wrapper.get('[data-testid="desktop-channels"]')
-
-    // TablePageLayout has a more-specific `display: table` rule for descendants,
-    // so these display utilities must remain important at both breakpoints.
-    expect(desktop.classes()).toContain('!hidden')
-    expect(desktop.classes()).toContain('lg:!table')
-    expect(desktop.findAll('thead th')).toHaveLength(5)
-    expect(desktop.text()).toContain('Primary channel')
-    expect(desktop.text()).toContain('Fast and reliable access')
-    expect(desktop.findAll('[data-group-badge]')).toHaveLength(2)
-    expect(desktop.get('[data-model-chip]').text()).toContain('claude-test:No pricing')
+    expect(wrapper.find('[data-testid="desktop-channels"]').exists()).toBe(false)
+    const cards = wrapper.get('[data-testid="glacier-channels"]')
+    expect(cards.text()).toContain('Primary channel')
+    expect(cards.text()).toContain('Fast and reliable access')
+    expect(cards.findAll('[data-group-badge]')).toHaveLength(2)
+    expect(cards.get('[data-model-chip]').text()).toContain('claude-test:No pricing')
+    wrapper.unmount()
   })
 
   it('renders a mobile-only readable surface with groups, rates, peaks, and model pricing chips', () => {
     const wrapper = mountTable()
-    const mobile = wrapper.get('[data-testid="mobile-channels"]')
+    const mobile = wrapper.get('[data-testid="glacier-channels"]')
 
-    expect(mobile.classes()).toContain('lg:hidden')
-    expect(mobile.classes()).toContain('overflow-x-hidden')
+    expect(mobile.classes()).toContain('glacier-channel-list')
     expect(mobile.text()).toContain('Primary channel')
     expect(mobile.text()).toContain('Fast and reliable access')
     expect(mobile.text()).toContain('Groups and rates')
@@ -157,7 +154,7 @@ describe('AvailableChannelsTable responsive surfaces', () => {
         },
       ],
     })
-    const mobile = wrapper.get('[data-testid="mobile-channels"]')
+    const mobile = wrapper.get('[data-testid="glacier-channels"]')
 
     expect(mobile.text()).toContain('Fallback channel')
     expect(mobile.text()).toContain('openai')
@@ -168,12 +165,48 @@ describe('AvailableChannelsTable responsive surfaces', () => {
   it('provides loading and empty states on both responsive surfaces', async () => {
     const wrapper = mountTable({ loading: true, rows: [] })
 
-    expect(wrapper.get('[data-testid="desktop-channels"] [data-icon="refresh"]')).toBeTruthy()
     expect(wrapper.get('[data-testid="mobile-loading"] [data-icon="refresh"]')).toBeTruthy()
 
     await wrapper.setProps({ loading: false })
 
-    expect(wrapper.get('[data-testid="desktop-channels"]').text()).toContain('No channels')
     expect(wrapper.get('[data-testid="mobile-empty"]').text()).toContain('No channels')
+  })
+})
+
+describe('AvailableChannelsTable Glacier model discovery', () => {
+  const sevenModels = Array.from({ length: 7 }, (_, index) => ({
+    name: `model-${index + 1}`,
+    platform: 'anthropic',
+    pricing: index === 6 ? { marker: 'priced' } : null,
+  }))
+
+  beforeEach(() => useAppearance().setStyle('glacier'))
+  afterEach(() => useAppearance().setStyle('aurora'))
+
+  it('shows six models by default and reveals the rest with their pricing when expanded', async () => {
+    const wrapper = mountTable({
+      rows: [{ ...rows[0], platforms: [{ ...rows[0].platforms[0], supported_models: sevenModels }] }],
+    })
+    const list = wrapper.get('[data-testid="glacier-channels"]')
+    expect(list.findAll('[data-model-chip]')).toHaveLength(6)
+    expect(list.text()).toContain('7')
+
+    await list.get('.glacier-row-action').trigger('click')
+    expect(list.findAll('[data-model-chip]')).toHaveLength(7)
+    expect(list.text()).toContain('model-7:priced')
+    expect(list.get('.glacier-row-action').attributes('aria-expanded')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('searches the full model list and keeps group multipliers and prices visible', () => {
+    const wrapper = mountTable({
+      searchQuery: 'model-7',
+      rows: [{ ...rows[0], platforms: [{ ...rows[0].platforms[0], supported_models: sevenModels }] }],
+    })
+    const list = wrapper.get('[data-testid="glacier-channels"]')
+    expect(list.findAll('[data-model-chip]')).toHaveLength(1)
+    expect(list.get('[data-model-chip]').text()).toBe('model-7:priced')
+    expect(list.get('[data-group-badge]').text()).toBe('Exclusive Pro:1.2:0.8')
+    wrapper.unmount()
   })
 })

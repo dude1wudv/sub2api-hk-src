@@ -3,6 +3,7 @@
        负责卡片外观并 overflow-hidden，本层接收 overflow-y-auto 才能在内容超高时滚动。 -->
   <div class="table-wrapper">
     <table
+      v-if="!isGlassLayout"
       data-testid="desktop-channels"
       class="!hidden w-full table-fixed border-collapse text-sm lg:!table"
     >
@@ -172,7 +173,7 @@
       </tbody>
     </table>
 
-    <div data-testid="mobile-channels" class="w-full min-w-0 overflow-x-hidden lg:hidden">
+    <div :data-testid="isGlassLayout ? 'glacier-channels' : 'mobile-channels'" :data-density="isGlassLayout ? density : undefined" :class="isGlassLayout ? 'glacier-channel-list' : 'w-full min-w-0 overflow-x-hidden lg:hidden'">
       <div v-if="loading" data-testid="mobile-loading" class="py-10 text-center">
         <Icon name="refresh" size="lg" class="inline-block animate-spin text-gray-400" />
       </div>
@@ -184,7 +185,7 @@
         v-else
         v-for="(channel, chIdx) in rows"
         :key="`mobile-${channel.name}-${chIdx}`"
-        class="border-b-2 border-gray-200 px-4 py-4 last:border-b-0 dark:border-dark-600"
+        :class="isGlassLayout ? 'glacier-channel-card' : 'border-b-2 border-gray-200 px-4 py-4 last:border-b-0 dark:border-dark-600'"
       >
         <header class="mb-3 min-w-0">
           <h3 class="break-words text-sm font-semibold text-gray-900 dark:text-white">
@@ -211,7 +212,7 @@
               {{ section.platform }}
             </span>
 
-            <dl class="mt-3 space-y-3">
+            <dl :class="isGlassLayout ? 'glacier-channel-section' : 'mt-3 space-y-3'">
               <div class="min-w-0">
                 <dt class="mb-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400">
                   {{ columns.groups }}
@@ -293,11 +294,11 @@
 
               <div class="min-w-0">
                 <dt class="mb-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                  {{ columns.supportedModels }}
+                  {{ columns.supportedModels }} <span v-if="isGlassLayout" class="ml-1 tabular-nums">{{ section.supported_models.length }}</span>
                 </dt>
                 <dd class="flex min-w-0 flex-wrap gap-1">
                   <SupportedModelChip
-                    v-for="m in section.supported_models"
+                    v-for="m in visibleModels(channel, section)"
                     :key="`mobile-${section.platform}-${m.name}`"
                     class="max-w-full [&>span]:max-w-full [&>span]:truncate"
                     :model="m"
@@ -306,6 +307,10 @@
                     :show-platform="false"
                     :platform-hint="section.platform"
                   />
+                  <button v-if="isGlassLayout && section.supported_models.length > 6 && !searchQuery.trim()" type="button" class="glacier-row-action" :aria-expanded="expandedSections.has(sectionKey(channel, section))" @click="toggleModels(channel, section)">
+                    {{ expandedSections.has(sectionKey(channel, section)) ? (zh ? '收起' : 'Show less') : (zh ? '查看全部 ' : 'Show all ') + section.supported_models.length }}
+                    <Icon :name="expandedSections.has(sectionKey(channel, section)) ? 'chevronDown' : 'chevronRight'" size="xs" />
+                  </button>
                   <span v-if="section.supported_models.length === 0" class="text-xs text-gray-400">
                     {{ noModelsLabel }}
                   </span>
@@ -320,6 +325,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue'
+import { useGlacierPreferences } from '@/composables/useGlacierPreferences'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
@@ -339,6 +346,7 @@ const props = defineProps<{
     groups: string
     supportedModels: string
   }
+  searchQuery?: string
   rows: UserAvailableChannel[]
   loading: boolean
   pricingKeyPrefix: string
@@ -353,7 +361,27 @@ const props = defineProps<{
 // the explicit reference here keeps the linter from flagging userGroupRates.
 void props.userGroupRates
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const zh = computed(() => locale.value.startsWith('zh'))
+const { isGlassLayout, density } = useGlacierPreferences()
+const searchQuery = computed(() => props.searchQuery ?? '')
+const expandedSections = ref(new Set<string>())
+function sectionKey(channel: UserAvailableChannel, section: UserChannelPlatformSection) { return JSON.stringify([channel.name, section.platform]) }
+function toggleModels(channel: UserAvailableChannel, section: UserChannelPlatformSection) {
+  const key = sectionKey(channel, section)
+  const next = new Set(expandedSections.value)
+  if (next.has(key)) next.delete(key); else next.add(key)
+  expandedSections.value = next
+}
+function visibleModels(channel: UserAvailableChannel, section: UserChannelPlatformSection) {
+  if (!isGlassLayout.value) return section.supported_models
+  const query = searchQuery.value.trim().toLowerCase()
+  if (query) {
+    const matches = section.supported_models.filter(model => model.name.toLowerCase().includes(query))
+    return matches.length ? matches : section.supported_models
+  }
+  return expandedSections.value.has(sectionKey(channel, section)) ? section.supported_models : section.supported_models.slice(0, 6)
+}
 
 function exclusiveGroups(section: UserChannelPlatformSection): UserAvailableGroup[] {
   return section.groups.filter((g) => g.is_exclusive)

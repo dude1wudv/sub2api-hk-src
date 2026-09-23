@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!isDesktopViewport" class="space-y-3">
+  <div v-if="!isDesktopViewport" class="table-cards space-y-3">
     <template v-if="loading">
       <div v-for="i in 5" :key="i" class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900">
         <div class="space-y-3">
@@ -94,6 +94,7 @@
     v-else
     ref="tableWrapperRef"
     class="table-wrapper"
+    :data-density="effectiveDensity"
     :class="{
       'actions-expanded': actionsExpanded,
       'is-scrollable': isScrollable
@@ -263,7 +264,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, nextTick, inject } from 'vue'
+import { tableDensityKey, type TableDensity } from '@/composables/useGlacierPreferences'
+import { useGlacierTableSurface } from '@/composables/useGlacierTableSurface'
 import { useVirtualizer, observeElementRect as observeElementRectDefault } from '@tanstack/vue-virtual'
 import { useI18n } from 'vue-i18n'
 import type { Column } from './types'
@@ -285,6 +288,7 @@ const emit = defineEmits<{
 
 // 表格容器引用
 const tableWrapperRef = ref<HTMLElement | null>(null)
+useGlacierTableSurface(tableWrapperRef)
 const isScrollable = ref(false)
 const actionsColumnNeedsExpanding = ref(false)
 
@@ -457,6 +461,8 @@ interface Props {
   clickableRows?: boolean
   /** Estimated row height in px for the virtualizer (default 56) */
   estimateRowHeight?: number
+  /** Optional presentation density; an enclosing Glacier workspace may provide a default. */
+  density?: TableDensity
   /** Number of rows to render beyond the visible area (default 5) */
   overscan?: number
   /**
@@ -485,6 +491,8 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const sortKey = ref<string>('')
+const inheritedDensity = inject(tableDensityKey, undefined)
+const effectiveDensity = computed(() => props.density ?? inheritedDensity?.value)
 const sortOrder = ref<'asc' | 'desc'>('asc')
 const actionsExpanded = ref(false)
 
@@ -766,7 +774,7 @@ const rowVirtualizer = useVirtualizer(computed(() => ({
     const row = sortedData.value?.[index]
     return row != null ? resolveRowKey(row, index) : index
   },
-  estimateSize: () => props.estimateRowHeight ?? 56,
+  estimateSize: () => props.estimateRowHeight ?? (effectiveDensity.value === 'compact' ? 44 : 56),
   overscan: props.overscan ?? 5,
   // 兜底高度:首个有效高度读数到来前,先按一屏渲染,避免空白帧
   initialRect: { width: 0, height: estimatedViewportHeight() },
@@ -777,6 +785,10 @@ const rowVirtualizer = useVirtualizer(computed(() => ({
 })))
 
 const virtualItems = computed(() => rowVirtualizer.value.getVirtualItems())
+watch(effectiveDensity, () => {
+  rowVirtualizer.value.measure()
+  checkScrollable()
+}, { flush: 'post' })
 
 const virtualPaddingTop = computed(() => {
   const items = virtualItems.value
@@ -951,6 +963,9 @@ defineExpose({
 </script>
 
 <style scoped>
+.table-wrapper[data-density='comfortable'] :deep(tbody td) { padding-block: 14px; }
+.table-wrapper[data-density='compact'] :deep(tbody td) { padding-block: 8px; }
+
 /* 表格横向滚动 */
 .table-wrapper {
   --select-col-width: 52px; /* 勾选列宽度：px-6 (24px*2) + checkbox (16px) */

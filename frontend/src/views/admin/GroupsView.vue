@@ -380,7 +380,19 @@
           </template>
 
           <template #cell-actions="{ row }">
-            <div class="flex items-center gap-1">
+            <div v-if="isGlassLayout" class="flex items-center gap-2">
+              <button type="button" class="glacier-row-action" @click="handleEdit(row)"><Icon name="edit" size="sm" />{{ t('common.edit') }}</button>
+              <GlacierActionMenu :label="row.name + ' · ' + t('common.actions')">
+                <template #default="{ close }">
+                  <button v-if="!authStore.isSimpleMode" type="button" data-testid="group-duplicate" :disabled="duplicatingGroupIds.has(row.id)" @click="close(); handleDuplicate(row)"><Icon name="copy" size="sm" />{{ duplicatingGroupIds.has(row.id) ? t('admin.groups.duplicating') : t('admin.groups.duplicate') }}</button>
+                  <button v-if="!authStore.isSimpleMode && row.platform === 'composite'" type="button" data-testid="group-composite-routes" @click="close(); handleCompositeRoutes(row)"><Icon name="swap" size="sm" />{{ t('admin.groups.compositeRoutes.action') }}</button>
+                  <button v-if="!authStore.isSimpleMode" type="button" data-testid="group-rate-multipliers" @click="close(); handleRateMultipliers(row)"><Icon name="dollar" size="sm" />{{ t('admin.groups.rateMultipliers') }}</button>
+                  <button v-if="!authStore.isSimpleMode" type="button" data-testid="group-rpm-overrides" @click="close(); handleRPMOverrides(row)"><Icon name="bolt" size="sm" />{{ t('admin.groups.rpmOverrides') }}</button>
+                  <button type="button" data-danger="true" @click="close(); handleDelete(row)"><Icon name="trash" size="sm" />{{ t('common.delete') }}</button>
+                </template>
+              </GlacierActionMenu>
+            </div>
+            <div v-else class="flex items-center gap-1">
               <button
                 @click="handleEdit(row)"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
@@ -4265,6 +4277,10 @@
 </template>
 
 <script setup lang="ts">
+import GlacierActionMenu from '@/components/common/GlacierActionMenu.vue'
+import { useGlacierPreferences } from '@/composables/useGlacierPreferences'
+const { isGlassLayout } = useGlacierPreferences()
+
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";

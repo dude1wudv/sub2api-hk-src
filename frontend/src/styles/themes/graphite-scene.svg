@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="941" viewBox="0 0 1672 941" fill="none">
+  <defs>
+    <linearGradient id="stone" x1="132" y1="36" x2="1500" y2="977" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f3eee4"/><stop offset=".43" stop-color="#e5ddd0"/><stop offset="1" stop-color="#bdb7ac"/>
+    </linearGradient>
+    <radialGradient id="light" cx="0" cy="0" r="1" gradientTransform="translate(668 169) rotate(30) scale(991 560)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffdf5" stop-opacity=".92"/><stop offset="1" stop-color="#fffdf5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mineral" x1="1087" y1="86" x2="1516" y2="838" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d7d5ca"/><stop offset=".35" stop-color="#bebdb3"/><stop offset=".7" stop-color="#93968c"/><stop offset="1" stop-color="#555c55"/>
+    </linearGradient>
+    <linearGradient id="silk" x1="734" y1="134" x2="1422" y2="831" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff9e9"/><stop offset=".31" stop-color="#d6bd95"/><stop offset=".56" stop-color="#b69771"/><stop offset=".75" stop-color="#e8d7b9"/><stop offset="1" stop-color="#886443"/>
+    </linearGradient>
+    <linearGradient id="copper" x1="1614" y1="-25" x2="495" y2="894" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f7e1b6"/><stop offset=".22" stop-color="#aa7448"/><stop offset=".4" stop-color="#f2d5a3"/><stop offset=".62" stop-color="#b0875e"/><stop offset=".8" stop-color="#fff1d0"/><stop offset="1" stop-color="#9b7652"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="1436" y1="47" x2="690" y2="794" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffcec" stop-opacity=".92"/><stop offset=".55" stop-color="#ffefce" stop-opacity=".8"/><stop offset="1" stop-color="#fcf4df" stop-opacity=".04"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-50%" width="160%" height="200%"><feGaussianBlur stdDeviation="33"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".53" numOctaves="3" seed="17" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".032"/></feComponentTransfer>
+      <feBlend in="SourceGraphic" mode="multiply"/>
+    </filter>
+  </defs>
+  <g filter="url(#grain)">
+    <path fill="url(#stone)" d="M0 0h1672v941H0z"/>
+    <path fill="url(#light)" d="M0 0h1672v941H0z"/>
+    <!-- Offset mineral orbit: broad, quiet planes beneath the data surface. -->
+    <path d="M1781-133C1392-67 1049 149 1018 403c-32 265 273 453 716 432l121 210H563c-139-76-185-185-123-303C541 550 829 538 929 346 1047 122 1337-35 1781-133Z" fill="#8c826f" opacity=".12" filter="url(#soft)"/>
+    <path d="M1701-128c-379 85-678 266-712 510-38 272 270 456 754 424V-128Z" fill="url(#mineral)"/>
+    <path d="M1697-78c-358 83-626 250-654 473-32 245 245 411 699 382" stroke="#ece5d6" stroke-opacity=".53" stroke-width="2"/>
+    <path d="M1742 66c-285 72-493 202-501 365-8 177 212 282 514 241" stroke="#515b52" stroke-opacity=".13" stroke-width="96"/>
+    <!-- A continuous poured-metal ribbon, narrowing toward the lower left. -->
+    <path d="M1602-80c-285 95-489 238-604 418-91 142-141 267-302 338-185 81-335 124-528 321h-43c168-231 343-290 522-376 155-75 204-195 291-332C1063 94 1310-43 1590-109Z" fill="url(#silk)" opacity=".76"/>
+    <path d="M1607-77c-301 99-522 266-620 426-81 132-142 267-302 337-181 80-343 135-518 313" stroke="url(#copper)" stroke-width="11"/>
+    <path d="M1608-77c-301 99-522 266-620 426-81 132-142 267-302 337-181 80-343 135-518 313" stroke="url(#edge)" stroke-width="2"/>
+    <path d="M1583-91c-320 86-552 254-660 415-94 141-131 251-299 330-174 81-341 146-510 343" stroke="#fdf4e1" stroke-opacity=".65" stroke-width="1.5"/>
+    <path d="M1665-68c-250 92-458 239-551 402-82 146-93 274-275 361-188 90-368 140-512 301" stroke="url(#copper)" stroke-opacity=".45" stroke-width="1.5"/>
+    <path d="M1685-58c-230 86-432 238-520 403-74 138-87 276-262 364-180 91-329 127-484 287" stroke="#fff8e8" stroke-opacity=".35"/>
+    <!-- Light skims the left stone field without competing with navigation. -->
+    <path d="M-165 323C118 163 343 233 513 148 652 79 759-9 784-117" stroke="#fffef6" stroke-opacity=".44" stroke-width="56" filter="url(#soft)"/>
+    <path d="M-129 716C86 568 217 497 396 470 560 446 628 341 710 292" stroke="#fffdf3" stroke-opacity=".21" stroke-width="2"/>
+  </g>
+</svg>

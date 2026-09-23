@@ -36,6 +36,7 @@
         <AvailableChannelsTable
           :columns="columnLabels"
           :rows="filteredChannels"
+          :search-query="searchQuery"
           :loading="loading"
           :user-group-rates="userGroupRates"
           pricing-key-prefix="availableChannels.pricing"

@@ -1,0 +1,43 @@
+/* Aurora: violet-blue light suspended in pearl glass. Layout lives in glacier.css. */
+:root[data-style='aurora'] {
+  --color-primary-50: 241 242 255; --color-primary-100: 228 230 255; --color-primary-200: 208 211 254; --color-primary-300: 178 183 250; --color-primary-400: 139 145 239; --color-primary-500: 94 96 205; --color-primary-600: 75 76 179; --color-primary-700: 62 62 149; --color-primary-800: 52 53 121; --color-primary-900: 44 45 99; --color-primary-950: 27 29 65;
+  --color-accent-50: 248 243 255; --color-accent-100: 240 228 253; --color-accent-200: 226 205 247; --color-accent-300: 206 175 238; --color-accent-400: 178 139 221; --color-accent-500: 132 89 184; --color-accent-600: 111 69 160; --color-accent-700: 91 57 132; --color-accent-800: 76 49 108; --color-accent-900: 64 43 89; --color-accent-950: 40 26 60;
+  --canvas: 231 234 249; --surface: 249 249 255; --surface-2: 233 235 249; --surface-elevated: 253 252 255; --surface-sidebar: 241 241 254; --surface-header: 245 246 255;
+  --ink: 31 34 64; --ink-2: 66 71 106; --ink-3: 93 98 131; --line: 207 210 233; --line-strong: 139 144 180;
+  --color-gray-50: 244 245 253; --color-gray-100: 233 235 249; --color-gray-200: 207 210 233; --color-gray-300: 139 144 180; --color-gray-400: 93 98 131; --color-gray-500: 93 98 131; --color-gray-600: 66 71 106; --color-gray-700: 66 71 106; --color-gray-800: 31 34 64; --color-gray-900: 31 34 64; --color-gray-950: 18 21 43;
+  --color-dark-50: 242 243 255; --color-dark-100: 242 243 255; --color-dark-200: 217 222 249; --color-dark-300: 195 204 238; --color-dark-400: 171 181 217; --color-dark-500: 126 139 179; --color-dark-600: 104 116 153; --color-dark-700: 65 74 110; --color-dark-800: 32 39 69; --color-dark-900: 22 29 54; --color-dark-950: 13 18 38;
+  --focus-ring: var(--color-primary-500); --action-contrast: #fff;
+  --text-primary: var(--color-primary-600); --text-accent: var(--color-accent-600);
+  --text-link: var(--color-link-600); --text-ok: var(--color-ok-600); --text-warn: var(--color-warn-600); --text-err: var(--color-err-600);
+  --selection-bg: 227 228 251; --selection-ink: 65 64 155; --selection-edge: 114 111 218;
+  --glacier-wallpaper: url('./aurora-scene.svg');
+  --glacier-wallpaper-shade: linear-gradient(135deg, rgb(246 247 255 / .07), rgb(240 242 255 / .04));
+  --glacier-fixed-tint: linear-gradient(rgb(244 244 255 / .68), rgb(244 244 255 / .68));
+  --glacier-fixed-base: 225 229 248;
+  --glacier-rim: 255 255 255; --glacier-lens: 242 238 255; --glacier-lens-alpha: .74;
+  --glacier-frame: linear-gradient(140deg, rgb(255 255 255 / .34), rgb(237 239 255 / .16) 55%, rgb(252 246 255 / .24));
+  --glacier-control: linear-gradient(155deg, rgb(255 255 255 / .88), rgb(247 245 255 / .5) 58%, rgb(218 227 255 / .58));
+  --glacier-shadow: 0 14px 38px -24px rgb(61 63 120 / .35), 0 2px 6px rgb(78 70 126 / .05);
+  --glacier-control-shadow: inset 0 1px 1px rgb(255 255 255 / .98), inset 0 -1px 1px rgb(133 128 184 / .14), 0 3px 9px -5px rgb(62 69 132 / .32);
+  --hero-start: #eef0ff; --hero-end: #eee5f8;
+  color-scheme: light;
+}
+
+:root.dark[data-style='aurora'] {
+  --canvas: 13 18 38; --surface: 27 34 61; --surface-2: 39 47 79; --surface-elevated: 38 46 76; --surface-sidebar: 28 35 64; --surface-header: 28 36 63;
+  --ink: 242 243 255; --ink-2: 214 221 246; --ink-3: 171 183 219; --line: 65 76 111; --line-strong: 113 128 167;
+  --focus-ring: var(--color-primary-300);
+  --text-primary: var(--color-primary-300); --text-accent: var(--color-accent-300);
+  --text-link: var(--color-link-300); --text-ok: var(--color-ok-300); --text-warn: var(--color-warn-300); --text-err: var(--color-err-300);
+  --selection-bg: 55 57 102; --selection-ink: 218 215 255; --selection-edge: 172 168 249;
+  --glacier-wallpaper-shade: linear-gradient(135deg, rgb(8 14 40 / .86), rgb(17 18 48 / .73) 52%, rgb(11 19 44 / .8));
+  --glacier-fixed-tint: linear-gradient(rgb(27 34 61 / .57), rgb(27 34 61 / .57));
+  --glacier-fixed-base: 26 32 61;
+  --glacier-rim: 181 191 238; --glacier-lens: 198 190 255; --glacier-lens-alpha: .18;
+  --glacier-frame: linear-gradient(140deg, rgb(47 53 94 / .42), rgb(23 30 57 / .22) 55%, rgb(56 43 87 / .3));
+  --glacier-control: linear-gradient(155deg, rgb(77 82 127 / .76), rgb(44 51 87 / .84) 60%, rgb(34 43 76 / .93));
+  --glacier-shadow: 0 16px 40px -24px rgb(2 5 22 / .78), 0 2px 7px rgb(4 6 22 / .2);
+  --glacier-control-shadow: inset 0 1px 1px rgb(216 219 255 / .24), inset 0 -1px 1px rgb(9 12 34 / .5), 0 3px 10px -4px rgb(2 5 22 / .66);
+  --hero-start: #303858; --hero-end: #403154;
+  color-scheme: dark;
+}

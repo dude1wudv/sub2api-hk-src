@@ -25,7 +25,9 @@
 
 <script setup lang="ts">
 import '@/styles/onboarding.css'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, provide } from 'vue'
+import { tableDensityKey, useGlacierPreferences } from '@/composables/useGlacierPreferences'
+import { useGlacierInteraction } from '@/composables/useGlacierInteraction'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
@@ -36,6 +38,9 @@ import AppSidebar from './AppSidebar.vue'
 import AppHeader from './AppHeader.vue'
 
 const appStore = useAppStore()
+const { isGlassLayout, effectiveDensity } = useGlacierPreferences()
+provide(tableDensityKey, effectiveDensity)
+useGlacierInteraction(isGlassLayout)
 const authStore = useAuthStore()
 const route = useRoute()
 const { locale } = useI18n()

@@ -1,7 +1,9 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { computed, ref } from 'vue'
 
 import DataTable from '../DataTable.vue'
+import { tableDensityKey, type TableDensity } from '@/composables/useGlacierPreferences'
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
@@ -120,6 +122,42 @@ describe('DataTable', () => {
     const exposed = (wrapper.vm as any).virtualizer
     const instance = exposed?.value ?? exposed
     expect(instance.options.count).toBe(data.length)
+  })
+
+  it('keeps the legacy density when no preference is provided', () => {
+    const wrapper = mount(DataTable, {
+      props: {
+        columns: [{ key: 'name', label: 'Name' }],
+        data: [{ id: 1, name: 'One' }]
+      }
+    })
+    expect(wrapper.get('.table-wrapper').attributes('data-density')).toBeUndefined()
+  })
+
+  it('updates the inherited density and remeasures virtual rows', async () => {
+    const density = ref<TableDensity>('comfortable')
+    const data = Array.from({ length: 12 }, (_, id) => ({ id, name: `Row ${id}` }))
+    const wrapper = mount(DataTable, {
+      props: {
+        columns: [{ key: 'name', label: 'Name' }],
+        data,
+        rowKey: 'id',
+        virtualizeThreshold: 3
+      },
+      global: { provide: { [tableDensityKey as symbol]: computed(() => density.value) } }
+    })
+    await wrapper.vm.$nextTick()
+    const table = wrapper
+    const exposed = (wrapper.vm as any).virtualizer
+    const virtualizer = exposed?.value ?? exposed
+    const measure = vi.spyOn(virtualizer, 'measure')
+
+    expect(table.get('.table-wrapper').attributes('data-density')).toBe('comfortable')
+    density.value = 'compact'
+    await wrapper.vm.$nextTick()
+    expect(table.get('.table-wrapper').attributes('data-density')).toBe('compact')
+    expect(measure).toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it('keys the virtualizer size cache by row identity, not index (avoids stale heights on sort/filter)', async () => {

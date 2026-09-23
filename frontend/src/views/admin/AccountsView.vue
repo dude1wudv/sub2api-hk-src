@@ -173,7 +173,7 @@
             {{ t('admin.accounts.listPendingSyncAction') }}
           </button>
         </div>
-        <div class="mt-3 grid gap-3 lg:grid-cols-4">
+        <div class="mt-3 grid gap-3 lg:grid-cols-4 glacier-account-summary">
           <div class="account-summary-panel">
             <div class="flex items-center justify-between gap-3">
               <div>
@@ -276,7 +276,7 @@
             </div>
           </div>
 
-          <div class="account-summary-panel lg:col-span-4">
+          <GlacierDisclosure class="lg:col-span-4" :label="`${t('admin.accounts.summary.proxyTitle')} · ${accountSummary?.openai ?? '—'}`"><div class="account-summary-panel lg:col-span-4">
             <div class="flex items-center justify-between gap-3">
               <div>
                 <p class="account-summary-label">{{ t('admin.accounts.summary.proxyTitle') }}</p>
@@ -321,9 +321,9 @@
               </div>
               <div v-if="tokyoProxyHealth.length === 0" class="text-xs text-gray-400 dark:text-gray-500">-</div>
             </div>
-          </div>
+          </div></GlacierDisclosure>
         </div>
-        <div class="mt-3 space-y-3">
+        <GlacierDisclosure :label="`${t('admin.accounts.quotaPools.oauthTitle')} · ${formatSummaryPercent(quotaPoolSummaryView?.oauth_pool?.remaining_percent)}`" :active="!!activeQuotaPool"><div class="mt-3 space-y-3">
           <div
             role="button"
             tabindex="0"
@@ -373,7 +373,7 @@
               {{ t('admin.accounts.quotaPools.exitPool') }}
             </button>
           </div>
-        </div>
+        </div></GlacierDisclosure>
       </template>
       <template #table>
         <AccountBulkActionsBar
@@ -687,6 +687,7 @@
 </template>
 
 <script setup lang="ts">
+import GlacierDisclosure from '@/components/common/GlacierDisclosure.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, toRaw, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'

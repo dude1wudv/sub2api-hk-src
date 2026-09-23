@@ -22,6 +22,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppearance } from '@/composables/useAppearance'
+import { useGlacierChartPalette } from '@/composables/useGlacierChartPalette'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -56,15 +57,15 @@ const props = defineProps<{
 }>()
 
 const { isDark: isDarkMode } = useAppearance()
-
+const palette = useGlacierChartPalette(['#2879df', '#169aaa', '#8c79bc'])
 const chartColors = computed(() => ({
-  text: isDarkMode.value ? '#e5e7eb' : '#374151',
-  grid: isDarkMode.value ? '#374151' : '#e5e7eb',
-  input: '#3b82f6',
+  text: isDarkMode.value ? '#d4d8e2' : '#4b5563',
+  grid: isDarkMode.value ? '#ffffff20' : '#24344718',
+  input: palette.value[0],
   output: '#10b981',
   cacheCreation: '#f59e0b',
-  cacheRead: '#06b6d4',
-  cacheHitRate: '#8b5cf6'
+  cacheRead: palette.value[1],
+  cacheHitRate: palette.value[2]
 }))
 
 const chartData = computed(() => {
@@ -125,6 +126,7 @@ const chartData = computed(() => {
 const lineOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
+  elements: { point: { radius: 1, hoverRadius: 5 }, line: { borderWidth: 2 } },
   interaction: {
     intersect: false,
     mode: 'index' as const

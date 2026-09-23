@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="941" viewBox="0 0 1672 941" fill="none">
+  <defs>
+    <linearGradient id="ground" x1="100" y1="50" x2="1480" y2="950" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f0d8bc"/><stop offset=".42" stop-color="#f4e8d6"/><stop offset=".74" stop-color="#e8e6ce"/><stop offset="1" stop-color="#cbd5b4"/>
+    </linearGradient>
+    <radialGradient id="daylight" cx="0" cy="0" r="1" gradientTransform="translate(705 265) rotate(40) scale(850 550)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffdf1" stop-opacity=".95"/><stop offset="1" stop-color="#fff9e8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="silk" x1="270" y1="175" x2="915" y2="845" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff7e2" stop-opacity=".16"/><stop offset=".37" stop-color="#fff9e8" stop-opacity=".79"/><stop offset=".57" stop-color="#e8bc95" stop-opacity=".55"/><stop offset=".78" stop-color="#f8d8b8" stop-opacity=".68"/><stop offset="1" stop-color="#fcebd2" stop-opacity=".1"/>
+    </linearGradient>
+    <linearGradient id="sage" x1="1572" y1="312" x2="1224" y2="859" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b2bf96" stop-opacity=".05"/><stop offset=".46" stop-color="#9eaf84" stop-opacity=".36"/><stop offset=".7" stop-color="#e4eacb" stop-opacity=".74"/><stop offset="1" stop-color="#f8f7dc" stop-opacity=".22"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="180" y1="275" x2="1404" y2="799" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffdf1" stop-opacity="0"/><stop offset=".37" stop-color="#fffdf1" stop-opacity=".78"/><stop offset=".7" stop-color="#fff8d8" stop-opacity=".65"/><stop offset="1" stop-color="#fffdf1" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="apricot" x1="-100" y1="691" x2="959" y2="799" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#cf9f79" stop-opacity=".29"/><stop offset=".35" stop-color="#f1c39b" stop-opacity=".52"/><stop offset="1" stop-color="#fff3d5" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft" x="-25%" y="-35%" width="150%" height="170%"><feGaussianBlur stdDeviation="28"/></filter>
+    <filter id="veil" x="-15%" y="-25%" width="130%" height="150%"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="glow" x="-15%" y="-25%" width="130%" height="150%"><feGaussianBlur stdDeviation="2"/></filter>
+  </defs>
+  <path fill="url(#ground)" d="M0 0h1672v941H0z"/>
+  <path fill="url(#daylight)" d="M0 0h1672v941H0z"/>
+  <!-- Broad voile folds leave a calm, luminous reading field in the center. -->
+  <path d="M-160 36C234 9 278 291 644 351c324 54 388-127 665-193 162-39 299-10 450 52v218c-260-149-448-71-692 63C645 723 318 582 68 338-43 230-122 180-160 181Z" fill="url(#silk)" filter="url(#veil)"/>
+  <path d="M-150 547C57 324 207 404 396 594c173 174 426 226 717 80 286-145 418-100 666 29v358H-150Z" fill="url(#apricot)" filter="url(#soft)"/>
+  <path d="M1799 75c-344 10-512 195-466 368 34 128 180 143 117 260-66 123-297 216-580 359h929Z" fill="url(#sage)" filter="url(#veil)"/>
+  <path d="M-113 26C277 65 308 323 662 369c310 40 407-173 721-198 143-12 278 22 373 77" stroke="url(#rim)" stroke-width="3" filter="url(#glow)"/>
+  <path d="M-115 70C263 90 301 340 650 389c326 45 435-173 743-195 142-10 273 31 377 95" stroke="url(#rim)" stroke-width="14" opacity=".19" filter="url(#veil)"/>
+  <path d="M1733 107c-276 36-418 164-383 309 33 137 186 158 115 296-77 150-315 231-571 348" stroke="url(#rim)" stroke-width="3" filter="url(#glow)"/>
+  <path d="M1717 130c-249 47-368 163-342 281 31 137 188 168 111 313-85 160-319 237-556 333" stroke="#ffffe7" stroke-opacity=".22" stroke-width="16" filter="url(#veil)"/>
+  <path d="M-103 625c234-180 396 22 598 119 276 132 478 42 689-51 194-86 330-34 557 98" stroke="url(#rim)" stroke-width="2" opacity=".62" filter="url(#glow)"/>
+</svg>

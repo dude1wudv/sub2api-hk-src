@@ -403,7 +403,18 @@
           </template>
 
           <template #cell-actions="{ row }">
-            <div class="flex items-center gap-1.5">
+            <div v-if="isGlassLayout" class="flex items-center gap-2">
+              <button type="button" class="glacier-row-action" @click="openUseKeyModal(row)"><Icon name="terminal" size="sm" />{{ t('keys.useKey') }}</button>
+              <button type="button" class="glacier-row-action" @click="editKey(row)"><Icon name="edit" size="sm" />{{ t('common.edit') }}</button>
+              <GlacierActionMenu :label="row.name + ' · ' + t('common.actions')">
+                <template #default="{ close }">
+                  <button v-if="!publicSettings?.hide_ccs_import_button" type="button" @click="close(); importToCcswitch(row)"><Icon name="upload" size="sm" />{{ t('keys.importToCcSwitch') }}</button>
+                  <button type="button" @click="close(); toggleKeyStatus(row)"><Icon :name="row.status === 'active' ? 'ban' : 'checkCircle'" size="sm" />{{ row.status === 'active' ? t('keys.disable') : t('keys.enable') }}</button>
+                  <button type="button" data-danger="true" @click="close(); confirmDelete(row)"><Icon name="trash" size="sm" />{{ t('common.delete') }}</button>
+                </template>
+              </GlacierActionMenu>
+            </div>
+            <div v-else class="flex items-center gap-1.5">
               <!-- Use Key Button -->
               <button
                 @click="openUseKeyModal(row)"
@@ -1219,6 +1230,10 @@
 </template>
 
 <script setup lang="ts">
+import GlacierActionMenu from '@/components/common/GlacierActionMenu.vue'
+import { useGlacierPreferences } from '@/composables/useGlacierPreferences'
+const { isGlassLayout } = useGlacierPreferences()
+
 	import { ref, reactive, computed, watch, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'

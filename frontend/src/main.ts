@@ -10,6 +10,9 @@ import { initAppearance } from '@/composables/useAppearance'
 import './style.css'
 import './styles/themes/workspace.css'
 import './styles/themes/glacier.css'
+import './styles/themes/aurora.css'
+import './styles/themes/lagoon.css'
+import './styles/themes/graphite.css'
 
 function initIOSViewportZoomFix() {
   // iOS Safari 在输入框字号小于 16px 时聚焦会自动放大页面，且失焦后不会恢复。

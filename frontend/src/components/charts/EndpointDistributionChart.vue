@@ -133,6 +133,7 @@
 </template>
 
 <script setup lang="ts">
+import { useGlacierChartPalette } from '@/composables/useGlacierChartPalette'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
@@ -211,7 +212,7 @@ const toggleBreakdown = async (endpoint: string) => {
   }
 }
 
-const chartColors = [
+const chartColors = useGlacierChartPalette([
   '#3b82f6',
   '#10b981',
   '#f59e0b',
@@ -224,7 +225,7 @@ const chartColors = [
   '#84cc16',
   '#06b6d4',
   '#a855f7'
-]
+])
 
 const displayEndpointStats = computed(() => {
   const sourceStats = props.source === 'upstream'
@@ -248,7 +249,7 @@ const chartData = computed(() => {
         data: displayEndpointStats.value.map((item) =>
           props.metric === 'actual_cost' ? item.actual_cost : item.total_tokens
         ),
-        backgroundColor: chartColors.slice(0, displayEndpointStats.value.length),
+        backgroundColor: chartColors.value.slice(0, displayEndpointStats.value.length),
         borderWidth: 0
       }
     ]

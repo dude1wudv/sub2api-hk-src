@@ -19,6 +19,7 @@
     <!-- 滚动区域：表格 -->
     <div class="layout-section-scrollable">
       <div class="card table-scroll-container">
+        <div v-if="isGlassLayout" class="glacier-table-tools"><GlacierDensityControl /></div>
         <slot name="table" />
       </div>
     </div>
@@ -32,6 +33,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import GlacierDensityControl from '@/components/common/GlacierDensityControl.vue'
+import { useGlacierPreferences } from '@/composables/useGlacierPreferences'
+const { isGlassLayout } = useGlacierPreferences()
 
 withDefaults(defineProps<{
   pageScroll?: boolean

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1200" fill="none">
+  <defs>
+    <linearGradient id="ice" x1="260" y1="60" x2="1200" y2="1140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity=".04"/><stop offset=".44" stop-color="#d4ebff" stop-opacity=".3"/><stop offset=".53" stop-color="#fff" stop-opacity=".85"/><stop offset=".6" stop-color="#d3eaff" stop-opacity=".04"/><stop offset="1" stop-color="#fff" stop-opacity=".14"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="30" y1="40" x2="1420" y2="1100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity="0"/><stop offset=".48" stop-color="#fff" stop-opacity=".78"/><stop offset=".74" stop-color="#c3e4ff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="12"/></filter>
+  </defs>
+  <path d="M-220 1030C200 270 640 1000 1100 500S1610-80 1940-240L2050 10C1570 90 1590 340 1230 660S380 480-80 1260Z" fill="url(#ice)"/>
+  <path d="M-160 1110C290 360 680 1080 1160 560S1630-50 1990-170" stroke="url(#rim)" stroke-width="4"/>
+  <path d="M-160 1110C290 360 680 1080 1160 560S1630-50 1990-170" stroke="url(#rim)" stroke-width="24" filter="url(#soft)"/>
+  <path d="M-230 60C230 140 240 590 810 540S1360 720 1880 1110L1850 1380C1210 860 1310 730 750 740S100 370-270 350Z" fill="url(#ice)" opacity=".7"/>
+  <path d="M-240 80C210 160 230 610 800 560S1370 740 1900 1140" stroke="url(#rim)" stroke-width="3"/>
+</svg>
