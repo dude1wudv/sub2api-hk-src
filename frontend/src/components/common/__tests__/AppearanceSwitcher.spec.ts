@@ -98,27 +98,28 @@ describe('AppearanceSwitcher appearance consumer behavior', () => {
     wrapper.unmount()
   })
 
-  it('keeps the legacy preferences instead of migrating them', () => {
+  it('forces legacy preferences to glacier in the theme selector', () => {
     for (const savedStyle of ['aurora', 'lagoon', 'graphite'] as const) {
+      localStorage.clear()
       localStorage.setItem('appearance-style', savedStyle)
       initAppearance()
       const wrapper = mountSwitcher()
 
-      expect(document.documentElement.dataset.style).toBe(savedStyle)
-      expect(selectedStyle(wrapper)).toBe(savedStyle)
-      expect(localStorage.getItem('appearance-style')).toBe(savedStyle)
+      expect(document.documentElement.dataset.style).toBe('glacier')
+      expect(selectedStyle(wrapper)).toBe('glacier')
+      expect(localStorage.getItem('appearance-style')).toBe('glacier')
 
       wrapper.unmount()
     }
   })
 
-  it('falls back to aurora for an invalid saved style', () => {
+  it('falls back to glacier for an invalid saved style', () => {
     localStorage.setItem('appearance-style', 'midnight')
     initAppearance()
     const wrapper = mountSwitcher()
 
-    expect(document.documentElement.dataset.style).toBe('aurora')
-    expect(selectedStyle(wrapper)).toBe('aurora')
+    expect(document.documentElement.dataset.style).toBe('glacier')
+    expect(selectedStyle(wrapper)).toBe('glacier')
 
     wrapper.unmount()
   })
