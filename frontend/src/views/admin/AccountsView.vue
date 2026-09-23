@@ -17,6 +17,13 @@
             @create="showCreate = true"
           >
             <template #after>
+              <button class="btn btn-secondary px-2 md:px-3" type="button" @click="startMirasimOAuth('github')" title="本地回调助手需在电脑上运行">
+                Mirasim GitHub OAuth
+              </button>
+              <button class="btn btn-secondary px-2 md:px-3" type="button" @click="startMirasimOAuth('google')" title="本地回调助手需在电脑上运行">
+                Mirasim Google OAuth
+              </button>
+              <a class="text-xs text-primary-600 hover:underline dark:text-primary-400" href="/tools/mirasim-oauth-helper.ps1" download="mirasim-oauth-helper.ps1" title="首次使用时下载并运行本地回调助手">回调助手</a>
               <!-- Auto Refresh Dropdown -->
               <div class="relative" ref="autoRefreshDropdownRef">
                 <button
@@ -694,6 +701,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { adminAPI } from '@/api/admin'
+import { createMirasimOAuthAccount } from '@/api/admin/accounts'
 import { useTableLoader } from '@/composables/useTableLoader'
 import { useSwipeSelect, type SwipeSelectVirtualContext } from '@/composables/useSwipeSelect'
 import { useTableSelection } from '@/composables/useTableSelection'
@@ -740,6 +748,33 @@ import type { Account, AccountListItem, AccountPlatform, AccountSchedulerGroupSc
 const { t } = useI18n()
 const appStore = useAppStore()
 const authStore = useAuthStore()
+
+let mirasimChannel: BroadcastChannel | null = null
+const startMirasimOAuth = (provider: 'github' | 'google') => {
+  const popup = window.open(`http://127.0.0.1:8788/start?provider=${provider}`, 'mirasim-oauth', 'width=560,height=720')
+  if (!popup) appStore.showError('浏览器拦截了 Mirasim 授权窗口，请允许弹窗后重试')
+}
+
+const completeMirasimOAuthFromCallback = async () => {
+  const hash = window.location.hash.replace(/^#/, '')
+  if (!hash.startsWith('mirasim_provider=')) return
+  window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
+  const params = new URLSearchParams(hash)
+  const provider = params.get('mirasim_provider')
+  const token = params.get('refresh_token')
+  if ((provider !== 'github' && provider !== 'google') || !token) {
+    appStore.showError('Mirasim 授权回调无效')
+    return
+  }
+  try {
+    await createMirasimOAuthAccount(token, provider)
+    appStore.showSuccess('Mirasim 账号已加入 Sub2API')
+    mirasimChannel?.postMessage('created')
+    await reload()
+  } catch (error) {
+    appStore.showError(extractApiErrorMessage(error, 'Mirasim 账号接入失败'))
+  }
+}
 
 const proxies = ref<AccountProxy[]>([])
 const groups = ref<AdminGroup[]>([])
@@ -2856,6 +2891,11 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 onMounted(async () => {
+  if (typeof BroadcastChannel !== 'undefined') {
+    mirasimChannel = new BroadcastChannel('sub2api-mirasim-oauth')
+    mirasimChannel.onmessage = () => { void reload() }
+  }
+  void completeMirasimOAuthFromCallback()
   if (typeof window !== 'undefined') {
     desktopViewportMediaQuery = window.matchMedia(desktopViewportQuery)
     isDesktopViewport.value = desktopViewportMediaQuery.matches
@@ -2898,6 +2938,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  mirasimChannel?.close()
+  mirasimChannel = null
   upstreamBillingRateAbortController?.abort()
   if (usageBatchFlushTimer !== null) {
     clearTimeout(usageBatchFlushTimer)

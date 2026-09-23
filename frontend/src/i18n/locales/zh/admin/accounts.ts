@@ -358,6 +358,7 @@ export default {
         minimax: 'MiniMax',
         stepfun: 'StepFun',
         opencode_go: 'OpenCode',
+        mirasim: 'Mirasim',
       },
       cnProviders: {
         accountMode: {

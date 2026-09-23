@@ -296,6 +296,8 @@ func defaultModelsListCandidateIDs(platform string) []string {
 		return xai.DefaultModelIDs()
 	case PlatformOpenCodeGo:
 		return DefaultOpenCodeGoModelIDs()
+	case PlatformMirasim:
+		return []string{"claude-opus-5", "claude-sonnet-5", "claude-fable-5", "claude-haiku-4-5", "claude-opus-4-8", "gpt-6-astra", "kimi-k3", "deepseek-flash", "deepseek-v4-flash", "glm-5.3-flash"}
 	case PlatformComposite:
 		return compositeDefaultModelsListCandidateIDs()
 	default:
@@ -316,7 +318,7 @@ func defaultAllowImageGenerationForPlatform(platform string) bool {
 func compositeDefaultModelsListCandidateIDs() []string {
 	seen := make(map[string]struct{})
 	ids := make([]string, 0)
-	for _, platform := range []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformStepFun, PlatformOpenCodeGo} {
+	for _, platform := range []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformStepFun, PlatformOpenCodeGo, PlatformMirasim} {
 		for _, id := range defaultModelsListCandidateIDs(platform) {
 			if _, ok := seen[id]; ok {
 				continue

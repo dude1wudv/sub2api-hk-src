@@ -1294,3 +1294,10 @@ export const accountsAPI = {
 }
 
 export default accountsAPI
+export async function createMirasimOAuthAccount(refreshToken: string, provider: 'github' | 'google'): Promise<{ id: number; name: string }> {
+  const { data } = await apiClient.post<{ id: number; name: string }>('/admin/accounts/mirasim/oauth', {
+    refresh_token: refreshToken,
+    provider
+  })
+  return data
+}

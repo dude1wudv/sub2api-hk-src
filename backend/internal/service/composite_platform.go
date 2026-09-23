@@ -116,6 +116,8 @@ func DetectModelPlatform(model string) (string, bool) {
 			return PlatformMiniMax, true
 		case "stepfun", "step":
 			return PlatformStepFun, true
+		case "mirasim":
+			return PlatformMirasim, true
 		}
 		if rest != "" {
 			normalized = strings.TrimPrefix(rest, "models/")
@@ -206,7 +208,7 @@ func (s *GatewayService) resolveCompositeRouteDecision(ctx context.Context, grou
 func isConcreteRequestPlatform(platform string) bool {
 	switch platform {
 	case PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity, PlatformGrok,
-		PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformStepFun, PlatformOpenCodeGo:
+		PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformStepFun, PlatformOpenCodeGo, PlatformMirasim:
 		return true
 	default:
 		return false

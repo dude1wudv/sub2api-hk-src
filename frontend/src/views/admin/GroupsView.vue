@@ -162,7 +162,7 @@
               ]"
             >
               <PlatformIcon :platform="value" size="xs" />
-              {{ t("admin.groups.platforms." + value) }}
+              {{ value === 'mirasim' ? 'Mirasim' : t("admin.groups.platforms." + value) }}
             </span>
           </template>
 
@@ -3850,7 +3850,7 @@
                                     : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
                   ]"
                 >
-                  {{ t("admin.groups.platforms." + group.platform) }}
+                  {{ group.platform === 'mirasim' ? 'Mirasim' : t("admin.groups.platforms." + group.platform) }}
                 </span>
               </div>
             </div>
@@ -4762,7 +4762,7 @@ const canCopyAccountsFromGroup = (targetPlatform: GroupPlatform, sourcePlatform:
 
 const copyAccountsGroupLabel = (g: AdminGroup) => {
   const count = g.account_count || 0;
-  const platform = t("admin.groups.platforms." + g.platform);
+  const platform = g.platform === 'mirasim' ? 'Mirasim' : t("admin.groups.platforms." + g.platform);
   return `${g.name} - ${platform} (${t("admin.groups.accountsCount", { count })})`;
 };
 
@@ -6468,7 +6468,7 @@ const formatCompositeEndpoint = (endpoint: CompositeRouteEndpoint) =>
 
 const formatCompositePlatform = (platform: string) => {
   if (!platform) return "—";
-  return t(`admin.groups.platforms.${platform}`);
+  return platform === 'mirasim' ? 'Mirasim' : t(`admin.groups.platforms.${platform}`);
 };
 
 const compositeRouteSourceLabel = (source: string) => {

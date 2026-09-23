@@ -307,7 +307,7 @@ func (a *Account) IsCNProvider() bool {
 // openai/grok 原生走 OpenAI 网关；国产供应商同为 OpenAI Chat Completions
 // 兼容上游，也经 OpenAI 网关转发。OpenCode 同样经 OpenAI 网关按模型分流。
 func (a *Account) IsOpenAICompatible() bool {
-	return a != nil && (a.Platform == PlatformOpenAI || a.Platform == PlatformGrok || a.IsCNProvider() || a.IsOpenCodeGo())
+	return a != nil && (a.Platform == PlatformOpenAI || a.Platform == PlatformGrok || a.IsCNProvider() || a.IsOpenCodeGo() || a.Platform == PlatformMirasim)
 }
 
 func (a *Account) GeminiOAuthType() string {
@@ -1362,7 +1362,7 @@ func (a *Account) IsOpenAIApiKey() bool {
 // 适用 openai、国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）与 OpenCode Go；
 // grok 走 GetGrokBaseURL，此处对 grok 返回 "" 以保持原有行为。
 func (a *Account) GetOpenAIBaseURL() string {
-	if !a.IsOpenAI() && !a.IsCNProvider() && !a.IsOpenCodeGo() {
+	if !a.IsOpenAI() && !a.IsCNProvider() && !a.IsOpenCodeGo() && a.Platform != PlatformMirasim {
 		return ""
 	}
 	if a.IsMultiProtocolAPIKey() && a.IsAdaptiveAPIProtocol() {
@@ -1400,6 +1400,8 @@ func (a *Account) GetOpenAIBaseURL() string {
 		return DefaultStepFunPayGBaseURL
 	case PlatformOpenCodeGo:
 		return a.openCodeDefaultChatBaseURL()
+	case PlatformMirasim:
+		return "https://relay.mirasim.ai/v1"
 	default:
 		return "https://api.openai.com"
 	}
@@ -1458,6 +1460,8 @@ func (a *Account) SupportsNativeCNResponses() bool {
 	}
 	switch a.Platform {
 	case PlatformDeepseek, PlatformKimi, PlatformMiniMax, PlatformStepFun, PlatformOpenCodeGo:
+		return true
+	case PlatformMirasim:
 		return true
 	default:
 		return false
@@ -1527,6 +1531,8 @@ func (a *Account) defaultCNProtocolBaseURL(protocol string) string {
 			return DefaultStepFunPayGAnthropicBaseURL
 		case PlatformOpenCodeGo:
 			return a.openCodeDefaultAnthropicBaseURL()
+		case PlatformMirasim:
+			return "https://relay.mirasim.ai"
 		}
 	case APIProtocolChatCompletions, APIProtocolResponses:
 		switch a.Platform {
@@ -1551,6 +1557,8 @@ func (a *Account) defaultCNProtocolBaseURL(protocol string) string {
 			return DefaultStepFunPayGBaseURL
 		case PlatformOpenCodeGo:
 			return a.openCodeDefaultChatBaseURL()
+		case PlatformMirasim:
+			return "https://relay.mirasim.ai/v1"
 		}
 	}
 	return ""
@@ -1596,6 +1604,8 @@ func (a *Account) GetAnthropicProtocolBaseURL() string {
 		return DefaultStepFunPayGAnthropicBaseURL
 	case PlatformOpenCodeGo:
 		return a.openCodeDefaultAnthropicBaseURL()
+	case PlatformMirasim:
+		return "https://relay.mirasim.ai"
 	default:
 		return ""
 	}
@@ -1796,6 +1806,10 @@ func (a *Account) GetOpenAIProtocolAPIKey() string {
 	if a.IsMultiProtocolAPIKey() {
 		if a.Type != AccountTypeAPIKey {
 			return ""
+		}
+		if a.Platform == PlatformMirasim {
+			// The real credential is a refresh token; the relay request is signed later.
+			return "mirasim-oauth"
 		}
 		return a.GetCredential("api_key")
 	}

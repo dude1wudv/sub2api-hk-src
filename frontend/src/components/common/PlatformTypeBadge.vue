@@ -9,7 +9,7 @@
       <span :class="['inline-flex items-center gap-1 px-1.5 py-1', typeClass]">
         <!-- OAuth icon -->
         <svg
-          v-if="type === 'oauth'"
+          v-if="type === 'oauth' || platform === 'mirasim'"
           class="h-3 w-3"
           fill="none"
           viewBox="0 0 24 24"
@@ -94,6 +94,7 @@ const normalizedAuthMode = computed(() =>
 )
 
 const typeLabel = computed(() => {
+  if (props.platform === 'mirasim') return 'OAuth'
   if (props.platform === 'openai' && props.type === 'oauth') {
     if (normalizedAuthMode.value === 'agentidentity') return 'Agent Identity'
     if (normalizedAuthMode.value === 'personalaccesstoken') return 'PAT'

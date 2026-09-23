@@ -1279,7 +1279,7 @@ func (h *GatewayHandler) compositeAvailableModels(ctx context.Context, groupID *
 	seen := make(map[string]struct{})
 	models := make([]string, 0)
 	schedulablePlatforms := h.gatewayService.GetSchedulablePlatforms(ctx, groupID)
-	for _, platform := range []string{service.PlatformAnthropic, service.PlatformGemini, service.PlatformOpenAI, service.PlatformAntigravity, service.PlatformGrok, service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek, service.PlatformMiniMax, service.PlatformStepFun, service.PlatformOpenCodeGo} {
+	for _, platform := range []string{service.PlatformAnthropic, service.PlatformGemini, service.PlatformOpenAI, service.PlatformAntigravity, service.PlatformGrok, service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek, service.PlatformMiniMax, service.PlatformStepFun, service.PlatformOpenCodeGo, service.PlatformMirasim} {
 		platformModels := h.gatewayService.GetAvailableModels(ctx, groupID, platform)
 		if len(platformModels) == 0 {
 			// CN 供应商没有静态默认模型列表（defaultModelIDsForPlatform 的
@@ -1465,10 +1465,12 @@ func defaultModelIDsForPlatform(platform string) []string {
 		return xai.DefaultModelIDs()
 	case service.PlatformOpenCodeGo:
 		return service.DefaultOpenCodeGoModelIDs()
+	case service.PlatformMirasim:
+		return []string{"claude-opus-5", "claude-sonnet-5", "claude-fable-5", "claude-haiku-4-5", "claude-opus-4-8", "gpt-6-astra", "kimi-k3", "deepseek-flash", "deepseek-v4-flash", "glm-5.3-flash"}
 	case service.PlatformComposite:
 		ids := make([]string, 0)
 		seen := make(map[string]struct{})
-		for _, concretePlatform := range []string{service.PlatformAnthropic, service.PlatformGemini, service.PlatformOpenAI, service.PlatformAntigravity, service.PlatformGrok, service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek, service.PlatformMiniMax, service.PlatformStepFun, service.PlatformOpenCodeGo} {
+		for _, concretePlatform := range []string{service.PlatformAnthropic, service.PlatformGemini, service.PlatformOpenAI, service.PlatformAntigravity, service.PlatformGrok, service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek, service.PlatformMiniMax, service.PlatformStepFun, service.PlatformOpenCodeGo, service.PlatformMirasim} {
 			for _, id := range defaultModelIDsForPlatform(concretePlatform) {
 				if _, ok := seen[id]; ok {
 					continue
