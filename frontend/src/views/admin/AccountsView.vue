@@ -23,7 +23,7 @@
               <button class="btn btn-secondary px-2 md:px-3" type="button" @click="startMirasimOAuth('google')" title="本地回调助手需在电脑上运行">
                 Mirasim Google OAuth
               </button>
-              <a class="text-xs text-primary-600 hover:underline dark:text-primary-400" href="/tools/mirasim-oauth-helper.ps1" download="mirasim-oauth-helper.ps1" title="首次使用时下载并运行本地回调助手">回调助手</a>
+              <a class="text-xs text-primary-600 hover:underline dark:text-primary-400" href="/mirasim-oauth-helper.ps1" download="mirasim-oauth-helper.ps1" title="首次使用时下载并运行本地回调助手">回调助手</a>
               <!-- Auto Refresh Dropdown -->
               <div class="relative" ref="autoRefreshDropdownRef">
                 <button
