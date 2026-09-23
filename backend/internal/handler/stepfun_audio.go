@@ -113,7 +113,7 @@ func parseStepFunAudioRequest(c *gin.Context, body []byte) (service.StepFunAudio
 		if formErr != nil {
 			return service.StepFunAudioRequest{}, errors.New("invalid multipart request")
 		}
-		defer form.RemoveAll()
+		defer func() { _ = form.RemoveAll() }()
 		if values := form.Value["model"]; len(values) > 0 {
 			model = strings.TrimSpace(values[0])
 		}

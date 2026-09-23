@@ -66,45 +66,47 @@ const DefaultUpstreamResponseReadMaxBytes int64 = 128 * 1024 * 1024
 const DefaultModelsListReadMaxBytes int64 = 8 * 1024 * 1024
 
 type Config struct {
-	Server                  ServerConfig                  `mapstructure:"server"`
-	Log                     LogConfig                     `mapstructure:"log"`
-	CORS                    CORSConfig                    `mapstructure:"cors"`
-	Security                SecurityConfig                `mapstructure:"security"`
-	Billing                 BillingConfig                 `mapstructure:"billing"`
-	Turnstile               TurnstileConfig               `mapstructure:"turnstile"`
-	Database                DatabaseConfig                `mapstructure:"database"`
-	Redis                   RedisConfig                   `mapstructure:"redis"`
-	Ops                     OpsConfig                     `mapstructure:"ops"`
-	JWT                     JWTConfig                     `mapstructure:"jwt"`
-	Totp                    TotpConfig                    `mapstructure:"totp"`
-	WebAuthn                WebAuthnConfig                `mapstructure:"webauthn"`
-	LinuxDo                 LinuxDoConnectConfig          `mapstructure:"linuxdo_connect"`
-	WeChat                  WeChatConnectConfig           `mapstructure:"wechat_connect"`
-	OIDC                    OIDCConnectConfig             `mapstructure:"oidc_connect"`
-	DingTalk                DingTalkConnectConfig         `mapstructure:"dingtalk_connect"`
-	GitHubOAuth             EmailOAuthProviderConfig      `mapstructure:"github_oauth"`
-	GoogleOAuth             EmailOAuthProviderConfig      `mapstructure:"google_oauth"`
-	Default                 DefaultConfig                 `mapstructure:"default"`
-	RateLimit               RateLimitConfig               `mapstructure:"rate_limit"`
-	Pricing                 PricingConfig                 `mapstructure:"pricing"`
-	Gateway                 GatewayConfig                 `mapstructure:"gateway"`
-	APIKeyAuth              APIKeyAuthCacheConfig         `mapstructure:"api_key_auth_cache"`
-	SubscriptionCache       SubscriptionCacheConfig       `mapstructure:"subscription_cache"`
-	SubscriptionMaintenance SubscriptionMaintenanceConfig `mapstructure:"subscription_maintenance"`
-	Dashboard               DashboardCacheConfig          `mapstructure:"dashboard_cache"`
-	DashboardAgg            DashboardAggregationConfig    `mapstructure:"dashboard_aggregation"`
-	UsageCleanup            UsageCleanupConfig            `mapstructure:"usage_cleanup"`
-	Concurrency             ConcurrencyConfig             `mapstructure:"concurrency"`
-	TokenRefresh            TokenRefreshConfig            `mapstructure:"token_refresh"`
-	RunMode                 string                        `mapstructure:"run_mode" yaml:"run_mode"`
-	Timezone                string                        `mapstructure:"timezone"` // e.g. "Asia/Shanghai", "UTC"
-	Gemini                  GeminiConfig                  `mapstructure:"gemini"`
-	Update                  UpdateConfig                  `mapstructure:"update"`
-	Idempotency             IdempotencyConfig             `mapstructure:"idempotency"`
-	BatchImage              BatchImageConfig              `mapstructure:"batch_image"`
-	ImageStorage            ImageStorageConfig            `mapstructure:"image_storage"`
-	Plugins                 PluginConfig                  `mapstructure:"plugins"`
-	HeliosWorkbench         HeliosWorkbenchConfig         `mapstructure:"helios_workbench"`
+	Server                        ServerConfig                  `mapstructure:"server"`
+	Log                           LogConfig                     `mapstructure:"log"`
+	CORS                          CORSConfig                    `mapstructure:"cors"`
+	Security                      SecurityConfig                `mapstructure:"security"`
+	Billing                       BillingConfig                 `mapstructure:"billing"`
+	Turnstile                     TurnstileConfig               `mapstructure:"turnstile"`
+	Database                      DatabaseConfig                `mapstructure:"database"`
+	Redis                         RedisConfig                   `mapstructure:"redis"`
+	Ops                           OpsConfig                     `mapstructure:"ops"`
+	JWT                           JWTConfig                     `mapstructure:"jwt"`
+	Totp                          TotpConfig                    `mapstructure:"totp"`
+	WebAuthn                      WebAuthnConfig                `mapstructure:"webauthn"`
+	LinuxDo                       LinuxDoConnectConfig          `mapstructure:"linuxdo_connect"`
+	WeChat                        WeChatConnectConfig           `mapstructure:"wechat_connect"`
+	OIDC                          OIDCConnectConfig             `mapstructure:"oidc_connect"`
+	DingTalk                      DingTalkConnectConfig         `mapstructure:"dingtalk_connect"`
+	GitHubOAuth                   EmailOAuthProviderConfig      `mapstructure:"github_oauth"`
+	GoogleOAuth                   EmailOAuthProviderConfig      `mapstructure:"google_oauth"`
+	Default                       DefaultConfig                 `mapstructure:"default"`
+	RateLimit                     RateLimitConfig               `mapstructure:"rate_limit"`
+	Pricing                       PricingConfig                 `mapstructure:"pricing"`
+	Gateway                       GatewayConfig                 `mapstructure:"gateway"`
+	APIKeyAuth                    APIKeyAuthCacheConfig         `mapstructure:"api_key_auth_cache"`
+	SubscriptionCache             SubscriptionCacheConfig       `mapstructure:"subscription_cache"`
+	SubscriptionMaintenance       SubscriptionMaintenanceConfig `mapstructure:"subscription_maintenance"`
+	Dashboard                     DashboardCacheConfig          `mapstructure:"dashboard_cache"`
+	DashboardAgg                  DashboardAggregationConfig    `mapstructure:"dashboard_aggregation"`
+	UsageCleanup                  UsageCleanupConfig            `mapstructure:"usage_cleanup"`
+	Concurrency                   ConcurrencyConfig             `mapstructure:"concurrency"`
+	TokenRefresh                  TokenRefreshConfig            `mapstructure:"token_refresh"`
+	SimpleMode                    SimpleModeConfig              `mapstructure:"simple_mode" yaml:"simple_mode"`
+	RunMode                       string                        `mapstructure:"run_mode" yaml:"run_mode"`
+	Timezone                      string                        `mapstructure:"timezone"` // e.g. "Asia/Shanghai", "UTC"
+	Gemini                        GeminiConfig                  `mapstructure:"gemini"`
+	Update                        UpdateConfig                  `mapstructure:"update"`
+	Idempotency                   IdempotencyConfig             `mapstructure:"idempotency"`
+	BatchImage                    BatchImageConfig              `mapstructure:"batch_image"`
+	ImageStorage                  ImageStorageConfig            `mapstructure:"image_storage"`
+	Plugins                       PluginConfig                  `mapstructure:"plugins"`
+	HeliosWorkbench               HeliosWorkbenchConfig         `mapstructure:"helios_workbench"`
+	SimpleModeKeyRateLimitEnabled bool                          `mapstructure:"simple_mode_key_rate_limit_enabled" yaml:"simple_mode_key_rate_limit_enabled"`
 }
 
 // HeliosWorkbenchConfig configures the confidential, one-time handoff to the
@@ -119,6 +121,11 @@ type HeliosWorkbenchConfig struct {
 	GroupID         int64  `mapstructure:"group_id"`
 	ClientSecret    string `mapstructure:"client_secret"`
 	GrantTTLSeconds int    `mapstructure:"grant_ttl_seconds"`
+}
+
+// SimpleModeConfig controls startup behavior in simple mode.
+type SimpleModeConfig struct {
+	AutoCreateDefaultGroups bool `mapstructure:"auto_create_default_groups" yaml:"auto_create_default_groups"`
 }
 
 // PluginConfig 控制管理员手动上传的本地进程插件。
@@ -2025,6 +2032,8 @@ func setDefaults() {
 	viper.SetDefault("helios_workbench.group_id", 0)
 	viper.SetDefault("helios_workbench.client_secret", "")
 	viper.SetDefault("helios_workbench.grant_ttl_seconds", 90)
+	viper.SetDefault("simple_mode.auto_create_default_groups", true)
+	viper.SetDefault("simple_mode_key_rate_limit_enabled", false)
 
 	// Server
 	viper.SetDefault("server.host", "0.0.0.0")
