@@ -26,8 +26,25 @@
         <p class="input-hint">{{ t('admin.accounts.notesHint') }}</p>
       </div>
 
-      <!-- API Key fields (only for apikey type) -->
-      <div v-if="account.type === 'apikey'" class="space-y-4">
+      <div v-if="account.platform === 'mirasim'" class="space-y-4">
+        <div>
+          <label class="input-label">Mirasim 请求地址</label>
+          <input class="input" type="text" readonly value="https://relay.mirasim.ai/v1" />
+          <p class="input-hint">Anthropic 协议使用 https://relay.mirasim.ai；Sub2API 按请求协议自动选择。</p>
+        </div>
+        <div>
+          <label class="input-label">授权凭据</label>
+          <input class="input" type="text" readonly value="OAuth 自动签名，无需 API Key" />
+          <p class="input-hint">刷新令牌与设备私钥保存在服务器，由 Sub2API 自动签名请求。</p>
+        </div>
+        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+          <label class="input-label">支持模型</label>
+          <ModelWhitelistSelector v-model="allowedModels" platform="mirasim" :account-id="account.id" />
+          <p class="text-xs text-gray-500 dark:text-gray-400">已选择 {{ allowedModels.length }} 个模型</p>
+        </div>
+      </div>
+      <!-- API Key fields (only for ordinary apikey type) -->
+      <div v-else-if="account.type === 'apikey'" class="space-y-4">
         <div v-if="!isCNApiKeyAccount || editApiProtocol !== 'adaptive'">
           <label class="input-label">{{ t('admin.accounts.baseUrl') }}</label>
           <input
@@ -3194,6 +3211,7 @@ import {
   resolveOpenAIWSModeFromExtra
 } from '@/utils/openaiWsMode'
 import {
+  getModelsByPlatform,
   getPresetMappingsByPlatform,
   commonErrorCodes,
   buildModelMappingObject,
@@ -4462,6 +4480,10 @@ const syncFormFromAccount = (newAccount: Account | null) => {
 
     // Load model mappings and detect mode
     loadModelRestrictionFromMapping(credentials.model_mapping as Record<string, unknown> | undefined)
+    if (newAccount.platform === 'mirasim' && allowedModels.value.length === 0) {
+      allowedModels.value = getModelsByPlatform('mirasim')
+      modelRestrictionMode.value = 'whitelist'
+    }
 
     // Load pool mode
     poolModeEnabled.value = credentials.pool_mode === true
@@ -5165,7 +5187,7 @@ const handleSubmit = async () => {
       updatePayload.load_factor = 0
     }
     updatePayload.auto_pause_on_expired = autoPauseOnExpired.value
-    if (props.account.type === 'apikey') {
+    if (props.account.type === 'apikey' && props.account.platform !== 'mirasim') {
       updatePayload.upstream_billing_probe_enabled = upstreamBillingAutoProbeEnabled.value
       updatePayload.upstream_billing_rate_sync_enabled = upstreamBillingRateSyncEnabled.value
       if (upstreamBillingRateSyncEnabled.value) {
@@ -5174,7 +5196,24 @@ const handleSubmit = async () => {
     }
 
     // For apikey type, handle credentials update
-    if (props.account.type === 'apikey') {
+    if (props.account.platform === 'mirasim') {
+      if (allowedModels.value.length === 0) {
+        appStore.showError('Mirasim 至少需要选择一个支持模型')
+        return
+      }
+      const currentCredentials = (props.account.credentials as Record<string, unknown>) || {}
+      updatePayload.credentials = {
+        ...currentCredentials,
+        base_url: 'https://relay.mirasim.ai/v1',
+        api_base_urls: {
+          chat_completions: 'https://relay.mirasim.ai/v1',
+          anthropic: 'https://relay.mirasim.ai',
+          responses: 'https://relay.mirasim.ai/v1'
+        },
+        api_protocol: 'adaptive',
+        model_mapping: Object.fromEntries(allowedModels.value.map(model => [model, model]))
+      }
+    } else if (props.account.type === 'apikey') {
       const currentCredentials = (props.account.credentials as Record<string, unknown>) || {}
       const newBaseUrl = editBaseUrl.value.trim() || defaultBaseUrl.value
       const shouldApplyModelMapping = !(props.account.platform === 'openai' && openaiPassthroughEnabled.value)

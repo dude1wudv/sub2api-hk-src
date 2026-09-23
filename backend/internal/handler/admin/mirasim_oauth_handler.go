@@ -101,6 +101,13 @@ func (h *AccountHandler) CreateMirasimOAuth(c *gin.Context) {
 			"private_key":    pem,
 			"oauth_provider": input.Provider,
 			"api_protocol":   service.APIProtocolAdaptive,
+			"base_url":       "https://relay.mirasim.ai/v1",
+			"api_base_urls": map[string]any{
+				"chat_completions": "https://relay.mirasim.ai/v1",
+				"anthropic":        "https://relay.mirasim.ai",
+				"responses":        "https://relay.mirasim.ai/v1",
+			},
+			"model_mapping": service.DefaultMirasimModelMapping(),
 		},
 	})
 	if err != nil {

@@ -1466,7 +1466,7 @@ func defaultModelIDsForPlatform(platform string) []string {
 	case service.PlatformOpenCodeGo:
 		return service.DefaultOpenCodeGoModelIDs()
 	case service.PlatformMirasim:
-		return []string{"claude-opus-5", "claude-sonnet-5", "claude-fable-5", "claude-haiku-4-5", "claude-opus-4-8", "gpt-6-astra", "kimi-k3", "deepseek-flash", "deepseek-v4-flash", "glm-5.3-flash"}
+		return service.DefaultMirasimModelIDs()
 	case service.PlatformComposite:
 		ids := make([]string, 0)
 		seen := make(map[string]struct{})

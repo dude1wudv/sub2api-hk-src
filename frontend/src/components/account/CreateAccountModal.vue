@@ -45,7 +45,7 @@
       @submit.prevent="handleSubmit"
       class="space-y-5"
     >
-      <div>
+      <div v-if="form.platform !== 'mirasim'">
         <label class="input-label">{{ t('admin.accounts.accountName') }}</label>
         <input
           v-model="form.name"
@@ -56,7 +56,7 @@
           data-tour="account-form-name"
         />
       </div>
-      <div>
+      <div v-if="form.platform !== 'mirasim'">
         <label class="input-label">{{ t('admin.accounts.notes') }}</label>
         <textarea
           v-model="form.notes"
@@ -241,8 +241,33 @@
             <PlatformIcon platform="opencode_go" size="sm" />
             OpenCode
           </button>
+          <button
+            type="button"
+            @click="selectMirasimPlatform()"
+            :class="[
+              'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
+              form.platform === 'mirasim'
+                ? 'bg-white text-blue-700 shadow-sm dark:bg-dark-600 dark:text-blue-300'
+                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+            ]"
+          >
+            <PlatformIcon platform="mirasim" size="sm" />
+            Mirasim
+          </button>
         </div>
       </div>
+
+      <div v-if="form.platform === 'mirasim'" class="space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+        <p class="text-sm text-gray-700 dark:text-gray-200">Mirasim 使用 OAuth 自动签名，请选择授权方式。账号会直接加入 Sub2API。</p>
+        <p class="text-xs text-gray-600 dark:text-gray-300">首次使用时，在浏览器所在电脑运行本地回调助手，再点击授权。Mirasim 要求 OAuth 回调到该电脑的 127.0.0.1。</p>
+        <a href="/mirasim-oauth-helper.ps1" download="mirasim-oauth-helper.ps1" class="text-sm text-primary-600 underline dark:text-primary-400">下载本地回调助手</a>
+        <p class="text-xs text-gray-600 dark:text-gray-300">下载后右键脚本，选择“使用 PowerShell 运行”，保持窗口打开。</p>
+        <div class="flex flex-wrap gap-3">
+          <button type="button" class="btn btn-primary" @click="beginMirasimOAuth('github')">GitHub OAuth</button>
+          <button type="button" class="btn btn-primary" @click="beginMirasimOAuth('google')">Google OAuth</button>
+        </div>
+      </div>
+      <template v-else>
 
       <!-- Account Type Selection (Anthropic) -->
       <div v-if="form.platform === 'anthropic'">
@@ -3545,6 +3570,7 @@
         />
       </div>
 
+      </template>
     </form>
 
     <!-- Step 2: OAuth Authorization -->
@@ -3592,6 +3618,7 @@
           {{ t('common.cancel') }}
         </button>
         <button
+          v-if="form.platform !== 'mirasim'"
           type="submit"
           form="create-account-form"
           :disabled="submitting"
@@ -4095,6 +4122,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   close: []
   created: []
+  'mirasim-oauth': [provider: 'github' | 'google']
 }>()
 
 const appStore = useAppStore()
@@ -4281,6 +4309,15 @@ function selectCNPlatform(platform: CnProviderPlatform) {
   }
   apiKeyBaseUrl.value = defaultCNBaseUrl(platform, accountMode.value, apiProtocol.value)
   resetAdaptiveBaseUrls(platform, accountMode.value)
+}
+function selectMirasimPlatform() {
+  form.platform = 'mirasim'
+  form.type = 'apikey'
+  accountCategory.value = 'apikey'
+}
+function beginMirasimOAuth(provider: 'github' | 'google') {
+  emit('mirasim-oauth', provider)
+  handleClose()
 }
 function selectOpenCodeGoPlatform() {
   form.platform = 'opencode_go'

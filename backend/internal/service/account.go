@@ -871,6 +871,14 @@ func (a *Account) IsModelSupported(requestedModel string) bool {
 	}
 	mapping := a.GetModelMapping()
 	if len(mapping) == 0 {
+		if a.Platform == PlatformMirasim {
+			for _, id := range DefaultMirasimModelIDs() {
+				if id == requestedModel {
+					return true
+				}
+			}
+			return false
+		}
 		if a.IsOpenAIOAuth() {
 			return isOpenAIOAuthServableModel(requestedModel)
 		}

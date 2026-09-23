@@ -251,6 +251,12 @@ const perplexityModels = [
   'llama-3-sonar-small-32k-chat', 'llama-3-sonar-large-32k-chat'
 ]
 
+const mirasimModels = [
+  'claude-opus-5', 'claude-sonnet-5', 'claude-fable-5', 'claude-haiku-4-5',
+  'claude-opus-4-8', 'gpt-6-astra', 'kimi-k3', 'deepseek-flash',
+  'deepseek-v4-flash', 'glm-5.3-flash'
+]
+
 // 所有模型（去重）
 const allModelsList: string[] = [
   ...openaiModels,
@@ -270,11 +276,12 @@ const allModelsList: string[] = [
   ...baiduModels,
   ...sparkModels,
   ...hunyuanModels,
-  ...perplexityModels
+  ...perplexityModels,
+  ...mirasimModels
 ]
 
 // 转换为下拉选项格式
-export const allModels = allModelsList.map(m => ({ value: m, label: m }))
+export const allModels = [...new Set(allModelsList)].map(m => ({ value: m, label: m }))
 
 // =====================
 // 预设映射
@@ -443,6 +450,7 @@ export const commonErrorCodes = [
 // 按平台获取模型
 export function getModelsByPlatform(platform: string): string[] {
   switch (platform) {
+    case 'mirasim': return mirasimModels
     case 'openai': return openaiModels
     case 'anthropic':
     case 'claude': return claudeModels

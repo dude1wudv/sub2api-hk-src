@@ -154,6 +154,18 @@ function mountModal(groups: any[] = []) {
   })
 }
 
+describe('Mirasim account authorization', () => {
+  it('starts OAuth from the Mirasim platform in the add account dialog', async () => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'Mirasim')
+    expect(wrapper.text()).toContain('下载本地回调助手')
+    expect(wrapper.find('form#create-account-form input[type="password"]').exists()).toBe(false)
+    await selectButtonByText(wrapper, 'GitHub OAuth')
+    expect(wrapper.emitted('mirasim-oauth')).toEqual([['github']])
+    expect(wrapper.emitted('close')).toBeTruthy()
+  })
+})
+
 async function selectButtonByText(wrapper: ReturnType<typeof mountModal>, text: string) {
   const button = wrapper.findAll('button').find((candidate) => candidate.text().includes(text))
   expect(button).toBeDefined()

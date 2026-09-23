@@ -17,13 +17,6 @@
             @create="showCreate = true"
           >
             <template #after>
-              <button class="btn btn-secondary px-2 md:px-3" type="button" @click="startMirasimOAuth('github')" title="本地回调助手需在电脑上运行">
-                Mirasim GitHub OAuth
-              </button>
-              <button class="btn btn-secondary px-2 md:px-3" type="button" @click="startMirasimOAuth('google')" title="本地回调助手需在电脑上运行">
-                Mirasim Google OAuth
-              </button>
-              <a class="text-xs text-primary-600 hover:underline dark:text-primary-400" href="/mirasim-oauth-helper.ps1" download="mirasim-oauth-helper.ps1" title="首次使用时下载并运行本地回调助手">回调助手</a>
               <!-- Auto Refresh Dropdown -->
               <div class="relative" ref="autoRefreshDropdownRef">
                 <button
@@ -658,7 +651,7 @@
       </template>
       <template #pagination><Pagination v-if="pagination.total > 0" :page="pagination.page" :total="pagination.total" :page-size="pagination.page_size" @update:page="handlePageChange" @update:pageSize="handlePageSizeChange" /></template>
     </TablePageLayout>
-    <CreateAccountModal :show="showCreate" :proxies="proxies" :groups="groups" @close="showCreate = false" @created="reload" />
+    <CreateAccountModal :show="showCreate" :proxies="proxies" :groups="groups" @close="showCreate = false" @created="reload" @mirasim-oauth="startMirasimOAuth" />
     <EditAccountModal :show="showEdit" :account="edAcc" :proxies="proxies" :groups="groups" @close="showEdit = false" @updated="handleAccountUpdated" />
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />

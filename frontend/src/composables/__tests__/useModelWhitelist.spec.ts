@@ -7,6 +7,13 @@ vi.mock('@/api/admin/accounts', () => ({
 import { buildModelMappingObject, getModelsByPlatform, getPresetMappingsByPlatform, splitModelMappingObject } from '../useModelWhitelist'
 
 describe('useModelWhitelist', () => {
+  it('Mirasim 模型列表与上游中转支持的模型一致', () => {
+    expect(getModelsByPlatform('mirasim')).toEqual([
+      'claude-opus-5', 'claude-sonnet-5', 'claude-fable-5', 'claude-haiku-4-5',
+      'claude-opus-4-8', 'gpt-6-astra', 'kimi-k3', 'deepseek-flash',
+      'deepseek-v4-flash', 'glm-5.3-flash'
+    ])
+  })
   it('openai 模型列表包含 GPT-5.4 官方快照', () => {
     const models = getModelsByPlatform('openai')
 
