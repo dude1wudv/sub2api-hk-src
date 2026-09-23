@@ -81,6 +81,13 @@
           </div>
         </div>
 
+        <div v-if="settingsFailed" role="alert" class="rounded-lg border border-red-200 p-3 text-sm dark:border-red-800">
+          <p>{{ t('auth.loginSettingsFailed') }}</p>
+          <button type="button" class="btn btn-secondary mt-2" @click="loadLoginSettings">
+            {{ t('auth.captchaRetry') }}
+          </button>
+        </div>
+
         <!-- Turnstile Widget -->
         <div v-if="captchaEnabled">
           <TurnstileWidget
@@ -225,7 +232,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, watch } from 'vue'
+import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'
@@ -252,7 +259,7 @@ import type {
   LoginAgreementDocument,
   TotpLoginResponse
 } from '@/types'
-import { extractI18nErrorMessage } from '@/utils/apiError'
+import { extractApiErrorCode, extractI18nErrorMessage } from '@/utils/apiError'
 import { clearAllAffiliateReferralCodes } from '@/utils/oauthAffiliate'
 
 const { t } = useI18n()
@@ -271,11 +278,13 @@ const passkeyLoading = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const showPassword = ref<boolean>(false)
 const publicSettingsLoaded = ref<boolean>(false)
+const settingsFailed = ref(false)
+let settingsRequest: Promise<void> | null = null
 
 // Public settings
 const registrationEnabled = ref<boolean>(false)
-const turnstileEnabled = ref<boolean>(false)
-const turnstileSiteKey = ref<string>('')
+const turnstileEnabled = ref(window.__APP_CONFIG__?.turnstile_enabled === true)
+const turnstileSiteKey = ref(window.__APP_CONFIG__?.turnstile_site_key || '')
 const tencentCaptchaEnabled = ref<boolean>(false)
 const tencentCaptchaAppId = ref<string>('')
 const tencentCaptchaRegion = ref<string>('cn')
@@ -374,7 +383,7 @@ watch(validationToastMessage, (value, previousValue) => {
 
 // ==================== Lifecycle ====================
 
-onMounted(async () => {
+onMounted(() => {
   const expiredFlag = sessionStorage.getItem('auth_expired')
   if (expiredFlag) {
     sessionStorage.removeItem('auth_expired')
@@ -383,6 +392,25 @@ onMounted(async () => {
     appStore.showWarning(message)
   }
 
+  void loadLoginSettings()
+  window.addEventListener('focus', refreshLoginSettings)
+})
+
+onUnmounted(() => window.removeEventListener('focus', refreshLoginSettings))
+
+function refreshLoginSettings(): void {
+  if (!isLoading.value && !passkeyLoading.value && !show2FAModal.value) void loadLoginSettings()
+}
+
+function loadLoginSettings(): Promise<void> {
+  if (settingsRequest) return settingsRequest
+  settingsRequest = fetchLoginSettings().finally(() => { settingsRequest = null })
+  return settingsRequest
+}
+
+async function fetchLoginSettings(): Promise<void> {
+  publicSettingsLoaded.value = false
+  settingsFailed.value = false
   try {
     const settings = await getPublicSettings()
     registrationEnabled.value = settings.registration_enabled === true
@@ -407,14 +435,12 @@ onMounted(async () => {
     passwordResetEnabled.value = settings.password_reset_enabled
     passkeyEnabled.value = settings.passkey_enabled === true
     applyLoginAgreementSettings(settings)
+    publicSettingsLoaded.value = true
   } catch (error) {
     console.error('Failed to load public settings:', error)
-    loginAgreementEnabled.value = false
-    agreementAccepted.value = true
-  } finally {
-    publicSettingsLoaded.value = true
+    settingsFailed.value = true
   }
-})
+}
 
 // ==================== Login Agreement ====================
 
@@ -564,6 +590,8 @@ function validateForm(): boolean {
 // ==================== Form Handlers ====================
 
 async function handleLogin(): Promise<void> {
+  // Guard programmatic/Enter submissions too, not just the disabled button.
+  if (isLoading.value || passkeyLoading.value || !publicSettingsLoaded.value) return
   // Clear previous error
   errorMessage.value = ''
 
@@ -609,6 +637,11 @@ async function handleLogin(): Promise<void> {
     const redirectTo = (router.currentRoute.value.query.redirect as string) || '/dashboard'
     await router.push(redirectTo)
   } catch (error: unknown) {
+    if (extractApiErrorCode(error) === 'TURNSTILE_VERIFICATION_FAILED') {
+      // The operator may have enabled verification while this login page was open.
+      // Refresh the widget settings, then require a new proof for the next attempt.
+      await loadLoginSettings()
+    }
     errorMessage.value = extractI18nErrorMessage(error, t, 'auth.errors', t('auth.loginFailed'))
 
     // Also show error toast

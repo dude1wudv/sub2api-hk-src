@@ -256,6 +256,8 @@ export default {
     loginFailed: 'Login failed. Please check your credentials and try again.',
     errors: {
       USER_NOT_ACTIVE: 'Account has been disabled.',
+      TURNSTILE_VERIFICATION_FAILED: 'Complete the Cloudflare verification below, then sign in again.',
+      TURNSTILE_NOT_CONFIGURED: 'Verification is not configured. Please contact the administrator.',
     },
     registrationFailed: 'Registration failed. Please try again.',
     emailDomainRegistrationLimit:
@@ -271,6 +273,9 @@ export default {
     turnstileFailed: 'Verification failed, please try again',
     captchaVerified: 'Verification completed',
     captchaLoading: 'Loading verification…',
+    captchaLoadFailed: 'Cloudflare verification could not load. Check your connection or browser blocking settings and retry.',
+    captchaRetry: 'Reload verification',
+    loginSettingsFailed: 'Login verification settings could not load. Reload them before signing in.',
     captchaClickToVerify: 'Click to complete verification',
     captchaVerifying: 'Verifying…',
     completeVerification: 'Please complete the verification',

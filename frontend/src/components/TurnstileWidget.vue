@@ -7,35 +7,20 @@
     >
       {{ t('auth.captchaLoading') }}
     </div>
+    <div v-if="failed" role="alert" class="rounded-lg border border-red-200 p-3 text-sm dark:border-red-800">
+      <p>{{ t('auth.captchaLoadFailed') }}</p>
+      <button type="button" class="btn btn-secondary mt-2" @click="initialize">
+        {{ t('auth.captchaRetry') }}
+      </button>
+    </div>
     <div ref="containerRef" class="turnstile-container"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-
-interface TurnstileRenderOptions {
-  sitekey: string
-  callback: (token: string) => void
-  'expired-callback'?: () => void
-  'error-callback'?: () => void
-  theme?: 'light' | 'dark' | 'auto'
-  size?: 'normal' | 'compact' | 'flexible'
-}
-
-interface TurnstileAPI {
-  render: (container: HTMLElement, options: TurnstileRenderOptions) => string
-  reset: (widgetId?: string) => void
-  remove: (widgetId?: string) => void
-}
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileAPI
-    onTurnstileLoad?: () => void
-  }
-}
+import { loadTurnstile } from '@/utils/turnstile'
 
 const props = withDefaults(
   defineProps<{
@@ -57,123 +42,95 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const loading = ref(true)
+const failed = ref(false)
 const containerRef = ref<HTMLElement | null>(null)
 const widgetId = ref<string | null>(null)
-const scriptLoaded = ref(false)
+let mounted = false
+let generation = 0
 
-const loadScript = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if (window.turnstile) {
-      scriptLoaded.value = true
-      resolve()
-      return
-    }
-
-    // Check if script is already loading
-    const existingScript = document.querySelector('script[src*="turnstile"]')
-    if (existingScript) {
-      window.onTurnstileLoad = () => {
-        scriptLoaded.value = true
-        resolve()
-      }
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad'
-    script.async = true
-    script.defer = true
-
-    window.onTurnstileLoad = () => {
-      scriptLoaded.value = true
-      resolve()
-    }
-
-    script.onerror = () => {
-      reject(new Error('Failed to load Turnstile script'))
-    }
-
-    document.head.appendChild(script)
-  })
-}
-
-const renderWidget = () => {
-  if (!window.turnstile || !containerRef.value || !props.siteKey) {
-    return
-  }
-
-  // Remove existing widget if any
+function removeWidget() {
   if (widgetId.value) {
     try {
-      window.turnstile.remove(widgetId.value)
+      window.turnstile?.remove(widgetId.value)
     } catch {
       // Ignore errors when removing
     }
     widgetId.value = null
   }
 
-  // Clear container
-  containerRef.value.innerHTML = ''
-
-  widgetId.value = window.turnstile.render(containerRef.value, {
-    sitekey: props.siteKey,
-    callback: (token: string) => {
-      emit('verify', token)
-    },
-    'expired-callback': () => {
-      emit('expire')
-    },
-    'error-callback': () => {
-      emit('error')
-    },
-    theme: props.theme,
-    size: props.size
-  })
 }
 
-const reset = () => {
+async function initialize() {
+  const current = ++generation
+  if (!mounted) return
+  if (widgetId.value) emit('expire')
+  removeWidget()
+  failed.value = false
+  loading.value = Boolean(props.siteKey)
+  if (!props.siteKey) return
+  try {
+    await loadTurnstile()
+    await nextTick()
+    if (!mounted || current !== generation || !containerRef.value || !window.turnstile) return
+    containerRef.value.innerHTML = ''
+    const active = () => mounted && current === generation
+    const onFailure = () => {
+      if (!active()) return true
+      failed.value = true
+      emit('error')
+      return true
+    }
+    widgetId.value = window.turnstile.render(containerRef.value, {
+      sitekey: props.siteKey,
+      callback: (token: string) => {
+        if (!active()) return
+        failed.value = false
+        emit('verify', token)
+      },
+      'expired-callback': () => { if (active()) emit('expire') },
+      'error-callback': onFailure,
+      'timeout-callback': onFailure,
+      theme: props.theme,
+      size: props.size
+    })
+  } catch {
+    if (mounted && current === generation) {
+      failed.value = true
+      emit('error')
+    }
+  } finally {
+    if (mounted && current === generation) loading.value = false
+  }
+}
+
+function reset() {
+  emit('expire')
   if (window.turnstile && widgetId.value) {
     window.turnstile.reset(widgetId.value)
+  } else {
+    void initialize()
   }
 }
 
 // Expose reset method to parent
 defineExpose({ reset })
 
-onMounted(async () => {
-  if (!props.siteKey) {
-    return
-  }
-
-  try {
-    await loadScript()
-    renderWidget()
-  } catch (error) {
-    console.error('Failed to initialize Turnstile:', error)
-    emit('error')
-  } finally {
-    loading.value = false
-  }
+onMounted(() => {
+  mounted = true
+  void initialize()
 })
 
 onUnmounted(() => {
-  if (window.turnstile && widgetId.value) {
-    try {
-      window.turnstile.remove(widgetId.value)
-    } catch {
-      // Ignore errors when removing
-    }
-  }
+  mounted = false
+  generation++
+  removeWidget()
 })
 
 // Re-render when siteKey changes
 watch(
-  () => props.siteKey,
-  (newKey) => {
-    if (newKey && scriptLoaded.value) {
-      renderWidget()
-    }
-  }
+  () => [props.siteKey, props.theme],
+  () => { void initialize() },
+  { flush: 'post' }
 )
 </script>
 

@@ -2,8 +2,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginView from '@/views/auth/LoginView.vue'
 
-const { getPublicSettingsMock, pushMock } = vi.hoisted(() => ({
+const { getPublicSettingsMock, loginMock, pushMock } = vi.hoisted(() => ({
   getPublicSettingsMock: vi.fn(),
+  loginMock: vi.fn(),
   pushMock: vi.fn()
 }))
 
@@ -50,7 +51,7 @@ vi.mock('vue-i18n', () => ({
 
 vi.mock('@/stores', () => ({
   useAuthStore: () => ({
-    login: vi.fn(),
+    login: loginMock,
     loginWithPasskey: vi.fn(),
     login2FA: vi.fn()
   }),
@@ -82,7 +83,14 @@ function mountLogin() {
         OidcOAuthSection: true,
         RouterLink: { template: '<a><slot /></a>' },
         TotpLoginModal: true,
-        TurnstileWidget: true,
+        TurnstileWidget: {
+          emits: ['verify', 'expire', 'error'],
+          setup(_props: unknown, { emit, expose }: { emit: (event: string, ...args: unknown[]) => void; expose: (value: object) => void }) {
+            expose({ reset: vi.fn(), verifyAction: vi.fn(async () => null) })
+            return { emitVerify: () => emit('verify', 'turnstile-token', '') }
+          },
+          template: '<button type="button" data-test="verify-captcha" @click="emitVerify">verify</button>'
+        },
         WechatOAuthSection: true,
         transition: false
       }
@@ -93,6 +101,7 @@ function mountLogin() {
 describe('LoginView registration entry', () => {
   beforeEach(() => {
     getPublicSettingsMock.mockReset()
+    loginMock.mockReset()
     pushMock.mockReset()
     getPublicSettingsMock.mockResolvedValue(publicSettings)
   })
@@ -114,5 +123,86 @@ describe('LoginView registration entry', () => {
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('auth.signUp')
+  })
+
+  it('does not submit by Enter while login settings are loading', async () => {
+    let resolveSettings!: (value: typeof publicSettings) => void
+    getPublicSettingsMock.mockReturnValueOnce(new Promise((resolve) => { resolveSettings = resolve }))
+    const wrapper = mountLogin()
+    await wrapper.get('#email').setValue('admin@example.com')
+    await wrapper.get('#password').setValue('password123')
+    await wrapper.get('form').trigger('submit')
+
+    expect(loginMock).not.toHaveBeenCalled()
+    resolveSettings(publicSettings)
+    await flushPromises()
+  })
+
+  it('does not submit by Enter while settings are unavailable, and permits retrying settings', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    getPublicSettingsMock.mockRejectedValueOnce(new Error('settings unavailable'))
+    const wrapper = mountLogin()
+    await flushPromises()
+    await wrapper.get('#email').setValue('admin@example.com')
+    await wrapper.get('#password').setValue('password123')
+    await wrapper.get('form').trigger('submit')
+
+    expect(loginMock).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="alert"]').text()).toContain('auth.loginSettingsFailed')
+
+    await wrapper.get('[role="alert"] button').trigger('click')
+    await flushPromises()
+    await wrapper.get('#email').setValue('admin@example.com')
+    await wrapper.get('#password').setValue('password123')
+    await wrapper.get('form').trigger('submit')
+    expect(loginMock).toHaveBeenCalledOnce()
+    consoleError.mockRestore()
+  })
+
+  it('requires a Turnstile token and submits after verification', async () => {
+    getPublicSettingsMock.mockResolvedValueOnce({
+      ...publicSettings,
+      turnstile_enabled: true,
+      turnstile_site_key: 'site-key'
+    })
+    const wrapper = mountLogin()
+    await flushPromises()
+    await wrapper.get('#email').setValue('admin@example.com')
+    await wrapper.get('#password').setValue('password123')
+    await wrapper.get('form').trigger('submit')
+    expect(loginMock).not.toHaveBeenCalled()
+
+    await wrapper.get('[data-test="verify-captcha"]').trigger('click')
+    await wrapper.get('form').trigger('submit')
+    expect(loginMock).toHaveBeenCalledOnce()
+    expect(loginMock).toHaveBeenCalledWith(expect.objectContaining({ turnstile_token: 'turnstile-token' }))
+  })
+
+  it('refreshes settings and shows Turnstile after the server requires verification', async () => {
+    loginMock.mockRejectedValueOnce({ reason: 'TURNSTILE_VERIFICATION_FAILED' })
+    getPublicSettingsMock
+      .mockResolvedValueOnce(publicSettings)
+      .mockResolvedValueOnce({
+        ...publicSettings,
+        turnstile_enabled: true,
+        turnstile_site_key: 'site-key'
+      })
+    const wrapper = mountLogin()
+    await flushPromises()
+    await wrapper.get('#email').setValue('admin@example.com')
+    await wrapper.get('#password').setValue('password123')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(getPublicSettingsMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-test="verify-captcha"]').exists()).toBe(true)
+    expect(loginMock).toHaveBeenCalledOnce()
+
+    await wrapper.get('form').trigger('submit')
+    expect(loginMock).toHaveBeenCalledOnce()
+    await wrapper.get('[data-test="verify-captcha"]').trigger('click')
+    await wrapper.get('form').trigger('submit')
+    expect(loginMock).toHaveBeenCalledTimes(2)
+    expect(loginMock.mock.calls[1]![0]).toMatchObject({ turnstile_token: 'turnstile-token' })
   })
 })

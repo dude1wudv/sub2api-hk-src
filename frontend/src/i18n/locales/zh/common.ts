@@ -256,6 +256,8 @@ export default {
     loginFailed: '登录失败，请检查您的凭据后重试。',
     errors: {
       USER_NOT_ACTIVE: '账号已被禁用',
+      TURNSTILE_VERIFICATION_FAILED: '请先完成下方 Cloudflare 人机验证，再重新登录。',
+      TURNSTILE_NOT_CONFIGURED: '人机验证配置暂不可用，请联系管理员。',
     },
     registrationFailed: '注册失败，请重试。',
     emailDomainRegistrationLimit:
@@ -270,6 +272,9 @@ export default {
     turnstileFailed: '验证失败，请重试',
     captchaVerified: '验证已完成',
     captchaLoading: '正在加载验证码…',
+    captchaLoadFailed: 'Cloudflare 人机验证加载失败，请检查网络或浏览器拦截设置后重试。',
+    captchaRetry: '重新加载验证',
+    loginSettingsFailed: '登录验证设置加载失败，请重新加载后再登录。',
     captchaClickToVerify: '点击完成人机验证',
     captchaVerifying: '验证中…',
     completeVerification: '请完成验证',
