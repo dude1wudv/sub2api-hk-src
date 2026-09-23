@@ -1,43 +1,55 @@
-/* Aurora: violet-blue light suspended in pearl glass. Layout lives in glacier.css. */
+/* 星澜 — coastal observatory. Matte mineral surfaces and a precise blue horizon. */
 :root[data-style='aurora'] {
-  --color-primary-50: 241 242 255; --color-primary-100: 228 230 255; --color-primary-200: 208 211 254; --color-primary-300: 178 183 250; --color-primary-400: 139 145 239; --color-primary-500: 94 96 205; --color-primary-600: 75 76 179; --color-primary-700: 62 62 149; --color-primary-800: 52 53 121; --color-primary-900: 44 45 99; --color-primary-950: 27 29 65;
-  --color-accent-50: 248 243 255; --color-accent-100: 240 228 253; --color-accent-200: 226 205 247; --color-accent-300: 206 175 238; --color-accent-400: 178 139 221; --color-accent-500: 132 89 184; --color-accent-600: 111 69 160; --color-accent-700: 91 57 132; --color-accent-800: 76 49 108; --color-accent-900: 64 43 89; --color-accent-950: 40 26 60;
-  --canvas: 231 234 249; --surface: 249 249 255; --surface-2: 233 235 249; --surface-elevated: 253 252 255; --surface-sidebar: 241 241 254; --surface-header: 245 246 255;
-  --ink: 31 34 64; --ink-2: 66 71 106; --ink-3: 93 98 131; --line: 207 210 233; --line-strong: 139 144 180;
-  --color-gray-50: 244 245 253; --color-gray-100: 233 235 249; --color-gray-200: 207 210 233; --color-gray-300: 139 144 180; --color-gray-400: 93 98 131; --color-gray-500: 93 98 131; --color-gray-600: 66 71 106; --color-gray-700: 66 71 106; --color-gray-800: 31 34 64; --color-gray-900: 31 34 64; --color-gray-950: 18 21 43;
-  --color-dark-50: 242 243 255; --color-dark-100: 242 243 255; --color-dark-200: 217 222 249; --color-dark-300: 195 204 238; --color-dark-400: 171 181 217; --color-dark-500: 126 139 179; --color-dark-600: 104 116 153; --color-dark-700: 65 74 110; --color-dark-800: 32 39 69; --color-dark-900: 22 29 54; --color-dark-950: 13 18 38;
-  --focus-ring: var(--color-primary-500); --action-contrast: #fff;
+  --color-primary-50: 238 244 251; --color-primary-100: 218 232 248; --color-primary-200: 187 211 238; --color-primary-300: 150 184 222; --color-primary-400: 99 147 203; --color-primary-500: 39 91 157; --color-primary-600: 30 73 132; --color-primary-700: 27 59 104; --color-primary-800: 26 49 84; --color-primary-900: 24 42 68; --color-primary-950: 14 27 46;
+  --color-accent-50: 237 246 246; --color-accent-100: 215 234 234; --color-accent-200: 180 215 215; --color-accent-300: 142 189 193; --color-accent-400: 103 159 165; --color-accent-500: 49 111 123; --color-accent-600: 39 90 102; --color-accent-700: 33 74 85; --color-accent-800: 30 62 72; --color-accent-900: 26 52 62; --color-accent-950: 16 34 42;
+  --canvas: 222 231 237; --surface: 248 251 253; --surface-2: 230 238 245; --surface-elevated: 252 253 254; --surface-sidebar: 229 237 243; --surface-header: 242 247 250;
+  --ink: 28 45 62; --ink-2: 63 82 101; --ink-3: 87 107 124; --line: 198 213 224; --line-strong: 135 159 179;
+  --color-gray-50: 244 248 251; --color-gray-100: 230 238 245; --color-gray-200: 198 213 224; --color-gray-300: 135 159 179; --color-gray-400: 87 107 124; --color-gray-500: 87 107 124; --color-gray-600: 63 82 101; --color-gray-700: 63 82 101; --color-gray-800: 28 45 62; --color-gray-900: 28 45 62; --color-gray-950: 14 27 42;
+  --color-dark-50: 229 239 248; --color-dark-100: 229 239 248; --color-dark-200: 194 212 229; --color-dark-300: 194 212 229; --color-dark-400: 155 177 196; --color-dark-500: 113 140 163; --color-dark-600: 113 140 163; --color-dark-700: 54 77 100; --color-dark-800: 26 43 62; --color-dark-900: 20 35 51; --color-dark-950: 13 25 39;
   --text-primary: var(--color-primary-600); --text-accent: var(--color-accent-600);
   --text-link: var(--color-link-600); --text-ok: var(--color-ok-600); --text-warn: var(--color-warn-600); --text-err: var(--color-err-600);
-  --selection-bg: 227 228 251; --selection-ink: 65 64 155; --selection-edge: 114 111 218;
-  --glacier-wallpaper: url('./aurora-scene.svg');
-  --glacier-wallpaper-shade: linear-gradient(135deg, rgb(246 247 255 / .07), rgb(240 242 255 / .04));
-  --glacier-fixed-tint: linear-gradient(rgb(244 244 255 / .68), rgb(244 244 255 / .68));
-  --glacier-fixed-base: 225 229 248;
-  --glacier-rim: 255 255 255; --glacier-lens: 242 238 255; --glacier-lens-alpha: .74;
-  --glacier-frame: linear-gradient(140deg, rgb(255 255 255 / .34), rgb(237 239 255 / .16) 55%, rgb(252 246 255 / .24));
-  --glacier-control: linear-gradient(155deg, rgb(255 255 255 / .88), rgb(247 245 255 / .5) 58%, rgb(218 227 255 / .58));
-  --glacier-shadow: 0 14px 38px -24px rgb(61 63 120 / .35), 0 2px 6px rgb(78 70 126 / .05);
-  --glacier-control-shadow: inset 0 1px 1px rgb(255 255 255 / .98), inset 0 -1px 1px rgb(133 128 184 / .14), 0 3px 9px -5px rgb(62 69 132 / .32);
-  --hero-start: #eef0ff; --hero-end: #eee5f8;
+  --selection-bg: 211 229 247; --selection-ink: 29 65 110; --selection-edge: 48 101 165;
+  --focus-ring: 39 91 157; --action-contrast: #fff;
+  --scene-image: url('./aurora/coastal-observatory-day.webp');
+  --scene-position: center; --scene-mobile-position: 75% center;
+  --material-frame: rgb(var(--surface) / .88); --material-sidebar: rgb(var(--surface-sidebar) / .97); --material-header: rgb(var(--surface-header) / .96);
+  --material-card: rgb(var(--surface)); --material-control: rgb(var(--surface-elevated)); --material-overlay: rgb(var(--surface-elevated));
+  --material-shadow: 0 3px 12px -9px rgb(30 57 82 / .22);
+  --material-hero: var(--scene-image) right 55% / cover no-repeat;
+  --table-surface: 248 251 253; --table-head: 228 237 244; --table-hover: 232 241 249;
+  --radius-frame: 16px; --radius-card: 10px; --radius-control: 6px; --radius-overlay: 12px;
+  --hero-start: #244e78; --hero-end: #336a82;
+  --chart-1: 39 91 157; --chart-2: 49 111 123; --chart-3: 107 87 149; --chart-4: 146 104 43; --chart-5: 55 121 90; --chart-6: 168 79 94; --chart-7: 85 111 153; --chart-8: 115 125 64; --chart-9: 147 101 127; --chart-10: 75 126 135;
   color-scheme: light;
 }
-
 :root.dark[data-style='aurora'] {
-  --canvas: 13 18 38; --surface: 27 34 61; --surface-2: 39 47 79; --surface-elevated: 38 46 76; --surface-sidebar: 28 35 64; --surface-header: 28 36 63;
-  --ink: 242 243 255; --ink-2: 214 221 246; --ink-3: 171 183 219; --line: 65 76 111; --line-strong: 113 128 167;
-  --focus-ring: var(--color-primary-300);
+  --canvas: 13 25 39; --surface: 26 43 62; --surface-2: 36 58 80; --surface-elevated: 32 51 72; --surface-sidebar: 19 34 50; --surface-header: 23 40 58;
+  --ink: 229 239 248; --ink-2: 194 212 229; --ink-3: 155 177 196; --line: 54 77 100; --line-strong: 96 126 153;
   --text-primary: var(--color-primary-300); --text-accent: var(--color-accent-300);
   --text-link: var(--color-link-300); --text-ok: var(--color-ok-300); --text-warn: var(--color-warn-300); --text-err: var(--color-err-300);
-  --selection-bg: 55 57 102; --selection-ink: 218 215 255; --selection-edge: 172 168 249;
-  --glacier-wallpaper-shade: linear-gradient(135deg, rgb(8 14 40 / .86), rgb(17 18 48 / .73) 52%, rgb(11 19 44 / .8));
-  --glacier-fixed-tint: linear-gradient(rgb(27 34 61 / .57), rgb(27 34 61 / .57));
-  --glacier-fixed-base: 26 32 61;
-  --glacier-rim: 181 191 238; --glacier-lens: 198 190 255; --glacier-lens-alpha: .18;
-  --glacier-frame: linear-gradient(140deg, rgb(47 53 94 / .42), rgb(23 30 57 / .22) 55%, rgb(56 43 87 / .3));
-  --glacier-control: linear-gradient(155deg, rgb(77 82 127 / .76), rgb(44 51 87 / .84) 60%, rgb(34 43 76 / .93));
-  --glacier-shadow: 0 16px 40px -24px rgb(2 5 22 / .78), 0 2px 7px rgb(4 6 22 / .2);
-  --glacier-control-shadow: inset 0 1px 1px rgb(216 219 255 / .24), inset 0 -1px 1px rgb(9 12 34 / .5), 0 3px 10px -4px rgb(2 5 22 / .66);
-  --hero-start: #303858; --hero-end: #403154;
+  --selection-bg: 37 66 99; --selection-ink: 209 231 251; --selection-edge: 135 178 224;
+  --focus-ring: 150 184 222;
+  --scene-image: url('./aurora/coastal-observatory-night.webp');
+  --material-frame: rgb(var(--surface) / .87); --material-sidebar: rgb(var(--surface-sidebar) / .98); --material-header: rgb(var(--surface-header) / .97);
+  --material-shadow: 0 3px 14px -9px rgb(3 10 18 / .5);
+  --table-surface: 26 43 62; --table-head: 32 52 74; --table-hover: 37 59 82;
+  --chart-1: 137 181 229; --chart-2: 128 191 197; --chart-3: 187 168 220; --chart-4: 217 178 116; --chart-5: 129 194 159; --chart-6: 224 148 162; --chart-7: 165 187 224; --chart-8: 185 198 133; --chart-9: 212 164 194; --chart-10: 146 205 213;
   color-scheme: dark;
+}
+/* Deliberate horizontal rhythm rather than floating glass capsules. */
+:root[data-style='aurora'] .workspace-hero { min-height: 200px; border: 1px solid rgb(var(--line)); border-bottom: 3px solid rgb(var(--selection-edge)); background-position: right center; }
+:root[data-style='aurora'] .workspace-hero > div:first-child { min-width: 0; }
+:root[data-style='aurora'] .workspace-hero h2 { letter-spacing: -.025em; font-weight: 620; }
+:root[data-style='aurora'] .hero-instrument { background: rgb(var(--surface) / .94); border: 1px solid rgb(var(--line)); border-radius: 6px; }
+:root[data-style='aurora'] .hero-eyebrow { letter-spacing: .2em; }
+:root[data-style='aurora'] .app-shell .sidebar-link { border-radius: 4px; }
+:root[data-style='aurora'] .app-shell .sidebar-link-active { box-shadow: inset 3px 0 rgb(var(--selection-edge)); }
+:root[data-style='aurora'] .dashboard-section-heading h2 { letter-spacing: .015em; }
+:root[data-style='aurora'] .operations-dashboard > .grid > .card { border-top: 2px solid rgb(var(--selection-edge)); }
+:root[data-style='aurora'] .metric-icon { border-radius: 6px; }
+:root[data-style='aurora'] .table th { letter-spacing: .065em; }
+:root[data-style='aurora'] .workspace-header { border-bottom: 1px solid rgb(var(--line)); }
+:root[data-style='aurora'] .hero-instrument { border-top: 2px solid rgb(var(--selection-edge)); }
+@media (max-width: 639px) {
+  :root[data-style='aurora'] .workspace-hero { min-height: 190px; background-position: 35% center; }
 }

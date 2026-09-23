@@ -407,6 +407,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { useAppearance } from '@/composables/useAppearance'
+import { useGlacierChartPalette } from '@/composables/useGlacierChartPalette'
 
 const { t, locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
@@ -511,7 +512,8 @@ const granularityOptions = computed(() => [
 ])
 
 // Dark mode detection
-const { isDark: isDarkMode } = useAppearance()
+const { isDark: isDarkMode, style } = useAppearance()
+const userTrendPalette = useGlacierChartPalette(['#3b82f6', '#10b981', '#f59e0b'])
 
 // Chart colors
 const chartColors = computed(() => ({
@@ -612,7 +614,7 @@ const userTrendChartData = computed(() => {
   })
 
   const sortedDates = Array.from(allDates).sort()
-  const colors = [
+  const colors = style.value === 'glacier' ? [
     '#3b82f6',
     '#10b981',
     '#f59e0b',
@@ -625,7 +627,7 @@ const userTrendChartData = computed(() => {
     '#84cc16',
     '#06b6d4',
     '#a855f7'
-  ]
+  ] : userTrendPalette.value
 
   const datasets = Array.from(userGroups.values()).map((group, idx) => ({
     label: group.name,

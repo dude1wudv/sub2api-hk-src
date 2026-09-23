@@ -1,40 +1,58 @@
-/* Warm limestone and brushed copper, sharing the liquid-glass component geometry. */
+/* 墨铜 · Precision archive. Solid mineral planes, recessed copper, no glass. */
 :root[data-style='graphite'] {
-  --color-primary-50: 253 245 237; --color-primary-100: 247 229 211; --color-primary-200: 236 204 175; --color-primary-300: 219 169 133; --color-primary-400: 193 130 91; --color-primary-500: 150 84 49; --color-primary-600: 127 65 36; --color-primary-700: 103 53 32; --color-primary-800: 84 46 31; --color-primary-900: 69 39 29; --color-primary-950: 42 23 17;
-  --color-accent-50: 239 245 244; --color-accent-100: 219 233 230; --color-accent-200: 185 211 205; --color-accent-300: 146 183 175; --color-accent-400: 105 153 144; --color-accent-500: 62 114 105; --color-accent-600: 44 92 85; --color-accent-700: 37 74 69; --color-accent-800: 33 60 56; --color-accent-900: 29 50 47; --color-accent-950: 16 31 29;
-  --canvas: 228 222 213; --surface: 252 249 243; --surface-2: 234 227 216; --surface-elevated: 253 250 245; --surface-sidebar: 244 238 228; --surface-header: 248 243 234;
-  --ink: 40 35 31; --ink-2: 74 62 52; --ink-3: 102 88 74; --line: 209 197 181; --line-strong: 151 128 107;
-  --color-gray-50: 248 245 239; --color-gray-100: 234 227 216; --color-gray-200: 209 197 181; --color-gray-300: 151 128 107; --color-gray-400: 102 88 74; --color-gray-500: 102 88 74; --color-gray-600: 74 62 52; --color-gray-700: 74 62 52; --color-gray-800: 40 35 31; --color-gray-900: 40 35 31; --color-gray-950: 23 21 19;
-  --color-dark-50: 249 242 233; --color-dark-100: 249 242 233; --color-dark-200: 226 214 198; --color-dark-300: 208 191 171; --color-dark-400: 184 161 138; --color-dark-500: 153 128 105; --color-dark-600: 127 105 86; --color-dark-700: 82 68 55; --color-dark-800: 45 39 33; --color-dark-900: 30 27 24; --color-dark-950: 20 19 17;
-  --radius-card: 24px; --radius-control: 999px; --radius-overlay: 24px;
-  --selection-bg: 244 223 201; --selection-ink: 111 54 29; --selection-edge: 169 99 59;
-  --focus-ring: 150 84 49; --action-contrast: #fff;
-  --text-primary: 127 65 36; --text-accent: 44 92 85; --text-link: var(--color-link-600); --text-ok: var(--color-ok-600); --text-warn: var(--color-warn-600); --text-err: var(--color-err-600);
-  --glacier-wallpaper: url('./graphite-scene.svg');
-  --glacier-wallpaper-shade: linear-gradient(135deg, rgb(253 246 235 / .12), rgb(240 230 213 / .06));
-  --glacier-fixed-tint: linear-gradient(rgb(252 249 243 / .56), rgb(252 249 243 / .56));
-  --glacier-fixed-base: 228 222 213;
-  --glacier-rim: 255 251 242; --glacier-lens: 255 249 229; --glacier-lens-alpha: .7;
-  --glacier-frame: linear-gradient(145deg, rgb(255 251 242 / .31), rgb(240 229 213 / .15) 58%, rgb(255 248 235 / .25));
-  --glacier-control: linear-gradient(155deg, rgb(255 253 246 / .9), rgb(252 244 230 / .5) 56%, rgb(224 204 177 / .51));
-  --glacier-shadow: 0 16px 36px -25px rgb(65 44 24 / .36), 0 2px 5px rgb(81 55 32 / .045);
-  --glacier-control-shadow: inset 0 1px 1px rgb(255 255 248 / .96), inset 0 -1px 1px rgb(157 112 67 / .15), 0 3px 9px -5px rgb(81 52 28 / .3);
-  --hero-start: #f5eee1; --hero-end: #dfcbb2;
+  --color-primary-50: 252 243 238; --color-primary-100: 246 226 213; --color-primary-200: 231 193 169; --color-primary-300: 212 152 120; --color-primary-400: 187 109 76; --color-primary-500: 145 65 40; --color-primary-600: 123 51 31; --color-primary-700: 104 43 28; --color-primary-800: 85 37 27; --color-primary-900: 67 32 25; --color-primary-950: 40 21 17;
+  --color-accent-50: 236 245 242; --color-accent-100: 213 232 226; --color-accent-200: 178 209 198; --color-accent-300: 133 179 166; --color-accent-400: 91 147 132; --color-accent-500: 47 108 93; --color-accent-600: 35 88 76; --color-accent-700: 28 72 62; --color-accent-800: 24 58 51; --color-accent-900: 22 48 43; --color-accent-950: 12 30 26;
+  --canvas: 229 227 221; --surface: 250 249 246; --surface-2: 236 234 228; --surface-elevated: 255 254 251; --surface-sidebar: 240 238 231; --surface-header: 247 246 242;
+  --ink: 38 39 36; --ink-2: 76 77 71; --ink-3: 101 102 94; --line: 203 202 192; --line-strong: 140 138 123;
+  --color-gray-50: 250 249 246; --color-gray-100: 236 234 228; --color-gray-200: 203 202 192; --color-gray-300: 140 138 123; --color-gray-400: 101 102 94; --color-gray-500: 101 102 94; --color-gray-600: 76 77 71; --color-gray-700: 76 77 71; --color-gray-800: 38 39 36; --color-gray-900: 38 39 36; --color-gray-950: 21 23 22;
+  --color-dark-50: 244 240 229; --color-dark-100: 244 240 229; --color-dark-200: 220 219 208; --color-dark-300: 201 201 189; --color-dark-400: 174 176 163; --color-dark-500: 133 138 123; --color-dark-600: 104 112 99; --color-dark-700: 70 76 68; --color-dark-800: 35 40 36; --color-dark-900: 26 30 27; --color-dark-950: 19 22 20;
+  --selection-bg: 240 218 202; --selection-ink: 109 46 27; --selection-edge: 153 75 43;
+  --focus-ring: 133 64 38; --action-contrast: #fff;
+  --text-primary: 123 51 31; --text-accent: 35 88 76; --text-link: var(--color-link-600); --text-ok: var(--color-ok-600); --text-warn: var(--color-warn-600); --text-err: var(--color-err-600);
+  --scene-image: url('./graphite/mineral-day.webp'); --scene-position: right center; --scene-mobile-position: 88% center;
+  --material-frame: rgb(250 249 246 / .91); --material-sidebar: rgb(240 238 231 / .97); --material-header: rgb(247 246 242 / .98);
+  --material-card: rgb(var(--surface)); --material-control: rgb(var(--surface-elevated)); --material-overlay: rgb(var(--surface-elevated)); --material-shadow: 0 2px 0 rgb(38 39 36 / .035); --material-hero: rgb(242 240 234 / .96);
+  --table-surface: var(--surface); --table-head: 232 229 220; --table-hover: 241 230 216;
+  --radius-frame: 7px; --radius-card: 5px; --radius-control: 4px; --radius-overlay: 7px;
+  --hero-start: #262724; --hero-end: #262724;
+  --chart-1: 145 65 40; --chart-2: 47 108 93; --chart-3: 123 105 59; --chart-4: 81 102 122; --chart-5: 132 78 99; --chart-6: 101 110 76; --chart-7: 156 111 48; --chart-8: 91 91 119; --chart-9: 118 83 63; --chart-10: 41 117 122;
   color-scheme: light;
 }
 :root.dark[data-style='graphite'] {
-  --canvas: 20 19 17; --surface: 37 33 28; --surface-2: 49 42 34; --surface-elevated: 47 40 33; --surface-sidebar: 34 30 25; --surface-header: 38 33 27;
-  --ink: 249 242 233; --ink-2: 226 214 198; --ink-3: 195 176 154; --line: 83 69 54; --line-strong: 148 121 94;
-  --selection-bg: 83 54 34; --selection-ink: 247 215 176; --selection-edge: 216 164 115;
-  --focus-ring: 227 178 132; --text-primary: 235 186 143; --text-accent: 162 207 194; --text-link: var(--color-link-300); --text-ok: var(--color-ok-300); --text-warn: var(--color-warn-300); --text-err: var(--color-err-300);
-  --glacier-wallpaper-shade: linear-gradient(125deg, rgb(14 16 16 / .88), rgb(24 20 15 / .79) 52%, rgb(19 18 16 / .72));
-  --glacier-fixed-tint: linear-gradient(rgb(37 33 28 / .56), rgb(37 33 28 / .56));
-  --glacier-fixed-base: 32 29 24;
-  --glacier-rim: 202 169 128; --glacier-lens: 255 205 143; --glacier-lens-alpha: .15;
-  --glacier-frame: linear-gradient(145deg, rgb(83 66 43 / .29), rgb(27 26 22 / .2) 55%, rgb(83 58 35 / .25));
-  --glacier-control: linear-gradient(155deg, rgb(102 80 55 / .62), rgb(61 49 37 / .81) 58%, rgb(39 34 27 / .92));
-  --glacier-shadow: 0 18px 40px -24px rgb(6 6 5 / .8), 0 2px 6px rgb(9 7 5 / .24);
-  --glacier-control-shadow: inset 0 1px 1px rgb(255 223 174 / .24), inset 0 -1px 1px rgb(12 10 7 / .58), 0 4px 10px -5px rgb(5 4 3 / .7);
-  --hero-start: #352e24; --hero-end: #503823;
+  --canvas: 19 22 20; --surface: 31 36 32; --surface-2: 42 48 42; --surface-elevated: 39 44 39; --surface-sidebar: 25 29 26; --surface-header: 28 32 29;
+  --ink: 244 240 229; --ink-2: 211 211 197; --ink-3: 173 179 162; --line: 65 73 63; --line-strong: 114 125 105;
+  --selection-bg: 70 47 34; --selection-ink: 246 199 158; --selection-edge: 214 154 110;
+  --focus-ring: 230 177 132; --text-primary: 237 181 137; --text-accent: 148 207 184; --text-link: var(--color-link-300); --text-ok: var(--color-ok-300); --text-warn: var(--color-warn-300); --text-err: var(--color-err-300);
+  --scene-image: url('./graphite/mineral-night.webp');
+  --material-frame: rgb(27 32 28 / .91); --material-sidebar: rgb(25 29 26 / .98); --material-header: rgb(28 32 29 / .98);
+  --material-card: rgb(var(--surface)); --material-control: rgb(25 29 26); --material-overlay: rgb(var(--surface-elevated)); --material-shadow: 0 2px 0 rgb(0 0 0 / .13); --material-hero: rgb(35 39 33 / .97);
+  --table-head: 41 46 39; --table-hover: 53 48 37;
+  --hero-start: #f4f0e5; --hero-end: #f4f0e5;
+  --chart-1: 226 168 123; --chart-2: 140 193 170; --chart-3: 203 187 124; --chart-4: 147 178 199; --chart-5: 205 154 177; --chart-6: 172 187 135; --chart-7: 229 180 99; --chart-8: 174 164 208; --chart-9: 192 160 135; --chart-10: 120 198 201;
   color-scheme: dark;
+}
+/* The workshop uses cut planes and fine index rules rather than rounded glass. */
+:root[data-style='graphite'] [data-workspace='operations'] { --radius-card: 5px; }
+:root[data-style='graphite'] .workspace-hero { border-left: 3px solid rgb(var(--selection-edge)); }
+:root[data-style='graphite'] .workspace-hero h2 { letter-spacing: -.035em; font-weight: 600; }
+:root[data-style='graphite'] .hero-instrument { border-radius: 2px; border-color: rgb(var(--line-strong)); border-left: 1px solid rgb(var(--selection-edge)); }
+:root[data-style='graphite'] .app-shell .sidebar-header { border-bottom-color: rgb(var(--line-strong)); }
+:root[data-style='graphite'] .app-shell .sidebar-link-active { box-shadow: inset 3px 0 rgb(var(--selection-edge)); font-weight: 650; }
+:root[data-style='graphite'] .workspace-label { letter-spacing: .19em; }
+:root[data-style='graphite'] :is(.btn, .input, .dropdown-item, .appearance-controls, .appearance-mode, .sidebar-search) { border-radius: var(--radius-control); }
+:root[data-style='graphite'] :is(.btn-primary, .btn-secondary) { box-shadow: none; }
+:root[data-style='graphite'] .btn-primary { border: 1px solid rgb(var(--color-primary-700)); }
+:root[data-style='graphite'] .dashboard-section-heading { border-bottom: 1px solid rgb(var(--line)); padding-bottom: 10px; }
+:root[data-style='graphite'] .chart-panel .inline-flex:has(> button) { border: 1px solid rgb(var(--line)); border-radius: 4px; }
+:root[data-style='graphite'] .chart-panel .inline-flex > button { border-radius: 2px; }
+:root[data-style='graphite'] .operations-dashboard > .grid > .card { border-top: 1px solid rgb(var(--line)); }
+:root[data-style='graphite'] .operations-dashboard > .grid > .card:first-child { border-top-color: rgb(var(--selection-edge)); }
+:root[data-style='graphite'] .table th { letter-spacing: .055em; font-weight: 600; }
+:root[data-style='graphite'] .table td { line-height: 1.55; }
+:root[data-style='graphite'] .stat-icon-primary { border: 1px solid rgb(var(--selection-edge) / .32); border-radius: 4px; }
+:root[data-style='graphite'] :is(.modal-content, .dropdown) { border-top: 2px solid rgb(var(--selection-edge)); }
+:root[data-style='graphite'] :is(.badge, [class*='badge-']) { border-radius: 3px; }
+@media (max-width: 639px) {
+  :root[data-style='graphite'] { --radius-frame: 5px; }
+  :root[data-style='graphite'] .workspace-hero { border-left-width: 2px; }
 }

@@ -1,7 +1,10 @@
 <template>
   <div class="relative" ref="containerRef">
     <button
+      ref="triggerRef"
       type="button"
+      aria-haspopup="dialog"
+      :aria-expanded="isOpen"
       @click="toggle"
       :class="['date-picker-trigger', isOpen && 'date-picker-trigger-open']"
     >
@@ -20,8 +23,9 @@
       </span>
     </button>
 
+    <Teleport to="body">
     <Transition name="date-picker-dropdown">
-      <div v-if="isOpen" class="date-picker-dropdown">
+      <div v-if="isOpen" ref="dropdownRef" class="date-picker-dropdown" :style="dropdownStyle" role="dialog" :aria-label="t('dates.selectDateRange')">
         <!-- Quick presets -->
         <div class="date-picker-presets">
           <button
@@ -72,11 +76,12 @@
         </div>
       </div>
     </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 
@@ -104,6 +109,48 @@ const { t, locale } = useI18n()
 
 const isOpen = ref(false)
 const containerRef = ref<HTMLElement | null>(null)
+const triggerRef = ref<HTMLButtonElement | null>(null)
+const dropdownRef = ref<HTMLElement | null>(null)
+const dropdownStyle = ref<Record<string, string>>({})
+let positionFrame = 0
+
+// Render outside filtered/contained chart cards, then constrain to the viewport.
+function positionDropdown() {
+  if (!isOpen.value || !triggerRef.value) return
+  const rect = triggerRef.value.getBoundingClientRect()
+  const padding = 8
+  const width = Math.min(320, window.innerWidth - padding * 2)
+  const below = window.innerHeight - rect.bottom - padding * 2
+  const above = rect.top - padding * 2
+  const height = dropdownRef.value?.scrollHeight || 310
+  const placeAbove = below < height && above > below
+  const available = Math.max(80, placeAbove ? above : below)
+  const top = placeAbove ? Math.max(padding, rect.top - Math.min(height, available) - padding) : Math.max(padding, rect.bottom + padding)
+  dropdownStyle.value = {
+    left: `${Math.max(padding, Math.min(rect.left, window.innerWidth - width - padding))}px`,
+    top: `${Math.min(top, window.innerHeight - 88)}px`,
+    width: `${width}px`, maxHeight: `${available}px`
+  }
+}
+function schedulePosition() {
+  if (!isOpen.value || positionFrame) return
+  positionFrame = requestAnimationFrame(() => { positionFrame = 0; positionDropdown() })
+}
+watch(isOpen, async (open) => {
+  if (open) {
+    positionDropdown()
+    window.addEventListener('scroll', schedulePosition, { capture: true, passive: true })
+    window.addEventListener('resize', schedulePosition)
+    await nextTick()
+    positionDropdown()
+    dropdownRef.value?.querySelector<HTMLButtonElement>('.date-picker-preset-active, .date-picker-preset')?.focus({ preventScroll: true })
+  } else {
+    window.removeEventListener('scroll', schedulePosition, true)
+    window.removeEventListener('resize', schedulePosition)
+    cancelAnimationFrame(positionFrame)
+    positionFrame = 0
+  }
+})
 const localStartDate = ref(props.startDate)
 const localEndDate = ref(props.endDate)
 const activePreset = ref<string | null>('last24Hours')
@@ -276,10 +323,11 @@ const apply = () => {
     preset: activePreset.value
   })
   isOpen.value = false
+  triggerRef.value?.focus({ preventScroll: true })
 }
 
 const handleClickOutside = (event: MouseEvent) => {
-  if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
+  if (containerRef.value && !containerRef.value.contains(event.target as Node) && !dropdownRef.value?.contains(event.target as Node)) {
     isOpen.value = false
   }
 }
@@ -287,6 +335,7 @@ const handleClickOutside = (event: MouseEvent) => {
 const handleEscape = (event: KeyboardEvent) => {
   if (event.key === 'Escape' && isOpen.value) {
     isOpen.value = false
+    triggerRef.value?.focus({ preventScroll: true })
   }
 }
 
@@ -315,6 +364,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('scroll', schedulePosition, true)
+  window.removeEventListener('resize', schedulePosition)
+  cancelAnimationFrame(positionFrame)
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('keydown', handleEscape)
 })
@@ -350,13 +402,12 @@ onUnmounted(() => {
 }
 
 .date-picker-dropdown {
-  @apply absolute left-0 z-[100] mt-2;
+  @apply fixed z-[10010];
   @apply bg-white dark:bg-dark-800;
   @apply rounded-xl;
   @apply border border-gray-200 dark:border-dark-700;
   @apply shadow-lg shadow-black/10 dark:shadow-black/30;
-  @apply overflow-hidden;
-  @apply min-w-[320px];
+  @apply overflow-y-auto;
 }
 
 .date-picker-presets {
@@ -384,7 +435,7 @@ onUnmounted(() => {
 }
 
 .date-picker-field {
-  @apply flex-1;
+  @apply min-w-0 flex-1;
 }
 
 .date-picker-label {

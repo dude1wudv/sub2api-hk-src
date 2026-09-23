@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { ref } from 'vue'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { nextTick, ref } from 'vue'
 
 import DateRangePicker from '../DateRangePicker.vue'
+enableAutoUnmount(afterEach)
 
 const messages: Record<string, string> = {
   'dates.today': 'Today',
@@ -45,7 +46,8 @@ describe('DateRangePicker', () => {
       },
       global: {
         stubs: {
-          Icon: true
+          Icon: true,
+          Teleport: true
         }
       }
     })
@@ -64,7 +66,8 @@ describe('DateRangePicker', () => {
       },
       global: {
         stubs: {
-          Icon: true
+          Icon: true,
+          Teleport: true
         }
       }
     })
@@ -92,5 +95,25 @@ describe('DateRangePicker', () => {
         preset: 'last24Hours'
       }
     ])
+  })
+  it('portals above chart ancestors, keeps inside clicks open and restores focus on Escape', async () => {
+    const wrapper = mount(DateRangePicker, {
+      attachTo: document.body,
+      props: { startDate: '2026-09-22', endDate: '2026-09-23' },
+      global: { stubs: { Icon: true } }
+    })
+    const trigger = wrapper.get('.date-picker-trigger')
+    await trigger.trigger('click')
+    await nextTick()
+    const popup = document.body.querySelector<HTMLElement>('.date-picker-dropdown')!
+    expect(popup.parentElement).toBe(document.body)
+    expect(wrapper.find('.date-picker-dropdown').exists()).toBe(false)
+    popup.querySelector<HTMLButtonElement>('.date-picker-preset')!.click()
+    await nextTick()
+    expect(trigger.attributes('aria-expanded')).toBe('true')
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+    expect(trigger.attributes('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(trigger.element)
   })
 })

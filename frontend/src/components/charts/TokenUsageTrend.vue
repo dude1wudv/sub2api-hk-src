@@ -56,14 +56,14 @@ const props = defineProps<{
   loading?: boolean
 }>()
 
-const { isDark: isDarkMode } = useAppearance()
+const { isDark: isDarkMode, style } = useAppearance()
 const palette = useGlacierChartPalette(['#2879df', '#169aaa', '#8c79bc'])
 const chartColors = computed(() => ({
   text: isDarkMode.value ? '#d4d8e2' : '#4b5563',
   grid: isDarkMode.value ? '#ffffff20' : '#24344718',
   input: palette.value[0],
-  output: '#10b981',
-  cacheCreation: '#f59e0b',
+  output: style.value === 'glacier' ? '#10b981' : palette.value[4],
+  cacheCreation: style.value === 'glacier' ? '#f59e0b' : palette.value[3],
   cacheRead: palette.value[1],
   cacheHitRate: palette.value[2]
 }))

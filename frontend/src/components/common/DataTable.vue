@@ -213,6 +213,7 @@
             :key="resolveRowKey(item.row, item.index)"
             :data-row-id="resolveRowKey(item.row, item.index)"
             :data-index="item.index"
+            :aria-selected="selectable ? isRowSelected(item.row, item.index) : undefined"
             :ref="item.measure ? measureElement : undefined"
             class="hover:bg-[#F6F3EE] dark:hover:bg-[#272420]"
             :class="{

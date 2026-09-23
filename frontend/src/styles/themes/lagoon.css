@@ -1,41 +1,59 @@
-/* Apricot voile: warm translucent silk with quiet sage reflections. */
+/* 杏纱 — cotton paper and a bookcloth binding; two independently lit photographs. */
 :root[data-style='lagoon'] {
-  --color-primary-50: 244 247 239; --color-primary-100: 227 235 214; --color-primary-200: 201 215 181; --color-primary-300: 173 193 148; --color-primary-400: 135 161 110; --color-primary-500: 79 111 67; --color-primary-600: 62 91 53; --color-primary-700: 50 74 45; --color-primary-800: 43 61 39; --color-primary-900: 36 51 34; --color-primary-950: 22 33 21;
-  --color-accent-50: 255 246 236; --color-accent-100: 252 231 208; --color-accent-200: 245 208 173; --color-accent-300: 229 178 136; --color-accent-400: 205 144 99; --color-accent-500: 157 94 54; --color-accent-600: 134 76 43; --color-accent-700: 110 62 37; --color-accent-800: 91 52 34; --color-accent-900: 76 45 31; --color-accent-950: 47 26 17;
-  --canvas: 238 226 211; --surface: 255 250 241; --surface-2: 238 232 217; --surface-elevated: 255 252 245; --surface-sidebar: 249 241 226; --surface-header: 252 246 234;
-  --ink: 48 43 35; --ink-2: 79 71 58; --ink-3: 105 94 79; --line: 216 202 182; --line-strong: 155 138 114;
-  --color-gray-50: 252 248 241; --color-gray-100: 241 234 222; --color-gray-200: 216 202 182; --color-gray-300: 155 138 114; --color-gray-400: 105 94 79; --color-gray-500: 105 94 79; --color-gray-600: 79 71 58; --color-gray-700: 79 71 58; --color-gray-800: 48 43 35; --color-gray-900: 48 43 35; --color-gray-950: 29 26 22;
-  --color-dark-50: 249 243 229; --color-dark-100: 249 243 229; --color-dark-200: 224 214 195; --color-dark-300: 224 214 195; --color-dark-400: 195 181 159; --color-dark-500: 154 138 115; --color-dark-600: 154 138 115; --color-dark-700: 91 79 63; --color-dark-800: 48 42 34; --color-dark-900: 36 32 26; --color-dark-950: 25 23 19;
-  --selection-bg: 225 234 209; --selection-ink: 50 74 45; --selection-edge: 101 130 77;
-  --focus-ring: 79 111 67; --text-primary: 62 91 53; --text-accent: 134 76 43; --action-contrast: #fff;
+  --color-primary-50: 255 246 240; --color-primary-100: 248 228 214; --color-primary-200: 236 200 178; --color-primary-300: 219 163 137; --color-primary-400: 189 119 95; --color-primary-500: 151 75 57; --color-primary-600: 132 61 46; --color-primary-700: 109 49 38; --color-primary-800: 88 42 34; --color-primary-900: 72 36 31; --color-primary-950: 44 21 18;
+  --color-accent-50: 247 240 246; --color-accent-100: 237 221 233; --color-accent-200: 216 191 209; --color-accent-300: 191 155 181; --color-accent-400: 159 117 147; --color-accent-500: 123 80 112; --color-accent-600: 106 65 95; --color-accent-700: 89 55 79; --color-accent-800: 74 46 65; --color-accent-900: 61 39 55; --color-accent-950: 38 23 34;
+  --canvas: 238 227 213; --surface: 253 249 242; --surface-2: 241 231 219; --surface-elevated: 255 252 247; --surface-sidebar: 245 233 219; --surface-header: 251 246 236;
+  --ink: 53 40 36; --ink-2: 86 68 60; --ink-3: 117 94 82; --line: 216 196 177; --line-strong: 167 137 116;
+  --color-gray-50: 253 249 242; --color-gray-100: 241 231 219; --color-gray-200: 216 196 177; --color-gray-300: 167 137 116; --color-gray-400: 117 94 82; --color-gray-500: 117 94 82; --color-gray-600: 86 68 60; --color-gray-700: 86 68 60; --color-gray-800: 53 40 36; --color-gray-900: 53 40 36; --color-gray-950: 31 22 22;
+  --color-dark-50: 250 236 226; --color-dark-100: 250 236 226; --color-dark-200: 223 198 188; --color-dark-300: 223 198 188; --color-dark-400: 191 162 154; --color-dark-500: 157 128 124; --color-dark-600: 157 128 124; --color-dark-700: 94 65 64; --color-dark-800: 54 37 39; --color-dark-900: 43 29 32; --color-dark-950: 31 22 25;
+  --selection-bg: 245 220 202; --selection-ink: 111 48 34; --selection-edge: 158 79 55;
+  --focus-ring: 151 75 57; --text-primary: 132 61 46; --text-accent: 106 65 95; --action-contrast: #fff9f3;
   --text-link: var(--color-link-600); --text-ok: var(--color-ok-600); --text-warn: var(--color-warn-600); --text-err: var(--color-err-600);
-  --radius-card: 24px; --radius-control: 999px; --radius-overlay: 24px;
-  --glacier-wallpaper: url('./lagoon-scene.svg');
-  --glacier-wallpaper-shade: linear-gradient(transparent, transparent);
-  --glacier-fixed-base: 238 226 211;
-  --glacier-fixed-tint: linear-gradient(rgb(255 250 241 / .56), rgb(255 250 241 / .56));
-  --glacier-frame: linear-gradient(140deg, rgb(255 253 243 / .36), rgb(255 244 224 / .12) 54%, rgb(243 246 224 / .23));
-  --glacier-control: linear-gradient(155deg, rgb(255 255 248 / .9), rgb(255 249 235 / .48) 55%, rgb(227 232 205 / .54));
-  --glacier-rim: 255 254 241; --glacier-lens: 255 255 244; --glacier-lens-alpha: .76;
-  --glacier-shadow: 0 15px 36px -25px rgb(100 74 38 / .35), 0 2px 6px rgb(102 79 45 / .04);
-  --glacier-control-shadow: inset 0 1px 1px rgb(255 255 247 / .98), inset 0 -1px 1px rgb(147 123 85 / .14), 0 3px 9px -5px rgb(100 78 47 / .3);
-  --hero-start: #f7ead4; --hero-end: #e4e9d2;
+  --scene-image: url('./lagoon/atelier-day.webp'); --scene-position: center; --scene-mobile-position: 77% center;
+  --material-frame: rgb(253 249 242 / .88); --material-sidebar: rgb(245 233 219 / .96); --material-header: rgb(251 246 236 / .97);
+  --material-card: rgb(var(--surface)); --material-control: rgb(var(--surface-elevated)); --material-overlay: rgb(var(--surface-elevated));
+  --material-hero: rgb(249 238 222); --material-shadow: 0 2px 0 rgb(101 65 44 / .06);
+  --table-surface: var(--surface); --table-head: 242 230 214; --table-hover: 248 236 223;
+  --radius-frame: 18px; --radius-card: 12px; --radius-control: 7px; --radius-overlay: 14px;
+  --hero-start: #6d3126; --hero-end: #795067;
+  --chart-1: 151 75 57; --chart-2: 119 81 123; --chart-3: 57 115 110; --chart-4: 166 111 40; --chart-5: 87 114 65; --chart-6: 75 107 153; --chart-7: 176 87 116; --chart-8: 117 102 62; --chart-9: 110 73 66; --chart-10: 99 107 119;
   color-scheme: light;
 }
 :root.dark[data-style='lagoon'] {
-  --canvas: 25 23 19; --surface: 48 42 34; --surface-2: 62 56 43; --surface-elevated: 57 50 40; --surface-sidebar: 45 42 32; --surface-header: 48 43 34;
-  --ink: 249 243 229; --ink-2: 224 214 195; --ink-3: 195 181 159; --line: 91 79 63; --line-strong: 154 138 115;
-  --selection-bg: 66 79 49; --selection-ink: 225 240 194; --selection-edge: 173 193 148;
-  --focus-ring: 192 210 167; --text-primary: 192 210 167; --text-accent: 245 208 173;
+  --canvas: 31 22 25; --surface: 54 37 39; --surface-2: 67 47 49; --surface-elevated: 65 44 47; --surface-sidebar: 41 28 32; --surface-header: 47 33 36;
+  --ink: 250 236 226; --ink-2: 223 198 188; --ink-3: 191 162 154; --line: 94 65 64; --line-strong: 157 128 124;
+  --selection-bg: 91 52 45; --selection-ink: 255 216 188; --selection-edge: 226 156 124;
+  --focus-ring: 239 179 143; --text-primary: 242 181 145; --text-accent: 221 177 210;
   --text-link: var(--color-link-300); --text-ok: var(--color-ok-300); --text-warn: var(--color-warn-300); --text-err: var(--color-err-300);
-  --glacier-wallpaper-shade: linear-gradient(130deg, rgb(34 25 16 / .83), rgb(30 32 21 / .78) 60%, rgb(25 30 19 / .83));
-  --glacier-fixed-base: 43 39 29;
-  --glacier-fixed-tint: linear-gradient(rgb(48 42 34 / .56), rgb(48 42 34 / .56));
-  --glacier-frame: linear-gradient(140deg, rgb(90 76 52 / .3), rgb(41 36 27 / .18) 52%, rgb(69 77 46 / .22));
-  --glacier-control: linear-gradient(155deg, rgb(108 94 68 / .67), rgb(65 57 42 / .79) 58%, rgb(54 61 39 / .85));
-  --glacier-rim: 225 207 168; --glacier-lens: 255 229 180; --glacier-lens-alpha: .17;
-  --glacier-shadow: 0 18px 40px -24px rgb(10 8 3 / .65), 0 2px 6px rgb(10 8 3 / .16);
-  --glacier-control-shadow: inset 0 1px 1px rgb(255 234 191 / .22), inset 0 -1px 1px rgb(16 14 7 / .48), 0 3px 9px -4px rgb(12 10 4 / .58);
-  --hero-start: #51432e; --hero-end: #39432b;
+  --scene-image: url('./lagoon/atelier-night.webp');
+  --material-frame: rgb(43 29 32 / .91); --material-sidebar: rgb(41 28 32 / .97); --material-header: rgb(47 33 36 / .97);
+  --material-hero: rgb(65 41 42); --material-shadow: 0 2px 0 rgb(12 6 9 / .2);
+  --table-head: 67 47 49; --table-hover: 71 47 46;
+  --hero-start: #f2b591; --hero-end: #ddb1d2;
+  --chart-1: 239 167 129; --chart-2: 207 166 214; --chart-3: 120 195 182; --chart-4: 229 183 107; --chart-5: 177 199 135; --chart-6: 142 183 227; --chart-7: 232 155 181; --chart-8: 207 197 155; --chart-9: 202 159 143; --chart-10: 186 188 206;
   color-scheme: dark;
+}
+/* Bound-paper geometry: quiet horizontal rules and a narrow cloth spine. */
+:root[data-style='lagoon'] [data-workspace='operations'] { --radius-card: 12px; }
+:root[data-style='lagoon'] .workspace-hero { border: 0; border-block: 3px double rgb(var(--line-strong)); border-radius: 0; padding-block: 30px; }
+:root[data-style='lagoon'] .app-main-content { border-radius: 5px 18px 18px 5px; }
+:root[data-style='lagoon'] .workspace-header { border-top-left-radius: 5px; }
+:root[data-style='lagoon'] .workspace-hero h2 { font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', Georgia, serif; font-weight: 600; letter-spacing: .015em; line-height: 1.45; }
+:root[data-style='lagoon'] .hero-eyebrow { letter-spacing: .15em; }
+:root[data-style='lagoon'] .hero-instrument { border: 0; border-left: 1px solid rgb(var(--line-strong)); border-radius: 0; background: transparent; padding-block: 12px; }
+:root[data-style='lagoon'] .app-shell .sidebar-header { border-bottom-style: double; border-bottom-width: 3px; }
+:root[data-style='lagoon'] .app-shell .sidebar-link-active { border-radius: 3px 8px 8px 3px; box-shadow: inset 3px 0 rgb(var(--selection-edge)); }
+:root[data-style='lagoon'] .dashboard-section-heading { border-bottom: 1px solid rgb(var(--line)); padding-bottom: 10px; }
+:root[data-style='lagoon'] .operations-dashboard > .grid > .card { border-top-width: 1px; }
+:root[data-style='lagoon'] .table th { letter-spacing: .035em; }
+:root[data-style='lagoon'] :is(.input, .btn-secondary) { box-shadow: none; }
+:root[data-style='lagoon'] .btn-primary { box-shadow: 0 2px 0 rgb(72 36 31 / .15); }
+:root[data-style='lagoon'] .btn-primary:disabled { box-shadow: none; }
+:root[data-style='lagoon'] .sidebar-search { border-radius: 5px; }
+:root[data-style='lagoon'] .sidebar-search:focus-within { box-shadow: 0 0 0 2px rgb(var(--focus-ring) / .24); }
+@media (max-width: 639px) {
+  :root[data-style='lagoon'] { --radius-frame: 12px; --radius-card: 10px; }
+  :root[data-style='lagoon'] .workspace-hero { padding-inline: 14px; }
+  :root[data-style='lagoon'] .workspace-hero h2 { font-size: 25px; }
+  :root[data-style='lagoon'] .app-main-content { border-radius: 4px 12px 12px 4px; }
 }
