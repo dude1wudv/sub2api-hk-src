@@ -22,8 +22,8 @@ import (
 )
 
 const (
-  productionHistoryMigrationCount = 286
-  candidateMigrationCount         = 308
+	productionHistoryMigrationCount = 286
+	candidateMigrationCount         = 312
 )
 
 var candidateOnlyMigrations = []string{
@@ -49,6 +49,10 @@ var candidateOnlyMigrations = []string{
 	"238_api_key_smart_routing.sql",
 	"238_opencode_go_platform.sql",
 	"238_purge_unlimited_user_platform_quotas.sql",
+	"238b_content_moderation_engine_meta.sql",
+	"239_channel_reasoning_effort_multipliers.sql",
+	"240_add_stepfun_platform.sql",
+	"240_affiliate_ledger_operation_id.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {
