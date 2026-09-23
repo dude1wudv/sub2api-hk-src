@@ -1,11 +1,11 @@
 package service
 
-// DefaultMirasimModelIDs is the model catalog exposed by Mirasim's relay.
+// DefaultMirasimModelIDs is the model catalog returned by Mirasim's relay.
 func DefaultMirasimModelIDs() []string {
 	return []string{
-		"claude-opus-5", "claude-sonnet-5", "claude-fable-5", "claude-haiku-4-5",
-		"claude-opus-4-8", "gpt-6-astra", "kimi-k3", "deepseek-flash",
-		"deepseek-v4-flash", "glm-5.3-flash",
+		"claude-opus-5-5", "deepseek-flash", "deepseek-v4-flash",
+		"deepseek-v4-flash-vision-exp", "glm-5.3-flash", "gpt-6-luna",
+		"gpt-6-sol", "kimi-k3",
 	}
 }
 

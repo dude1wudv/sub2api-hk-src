@@ -18,7 +18,7 @@ func (s *AccountTestService) testMirasimAccountConnection(c *gin.Context, accoun
 	}
 	model := strings.TrimSpace(modelID)
 	if model == "" {
-		model = "claude-sonnet-5"
+		model = "glm-5.3-flash"
 	}
 	model = account.GetMappedModel(model)
 	if prompt == "" {
