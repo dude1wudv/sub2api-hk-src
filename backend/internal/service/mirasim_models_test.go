@@ -8,7 +8,6 @@ func TestMirasimNativeProtocolByModel(t *testing.T) {
 		model string
 		want  string
 	}{
-		{model: "deepseek-v4.1-flash", want: APIProtocolChatCompletions},
 		{model: "mirasim/glm-5.3-flash", want: APIProtocolChatCompletions},
 		{model: "kimi-k3", want: APIProtocolChatCompletions},
 		{model: "claude-opus-5-5", want: APIProtocolAnthropic},
@@ -24,7 +23,7 @@ func TestMirasimNativeProtocolByModel(t *testing.T) {
 }
 
 func TestDefaultMirasimModelIDs(t *testing.T) {
-	want := []string{"deepseek-v4.1-flash", "glm-5.3-flash", "kimi-k3"}
+	want := []string{"glm-5.3-flash", "kimi-k3"}
 	got := DefaultMirasimModelIDs()
 	if len(got) != len(want) {
 		t.Fatalf("DefaultMirasimModelIDs() = %v, want %v", got, want)
@@ -51,7 +50,7 @@ func TestMirasimDefaultModelsRestrictImportedAndLegacyAccounts(t *testing.T) {
 				t.Errorf("Mirasim account should support %s", model)
 			}
 		}
-		for _, model := range []string{"claude-opus-5-5", "deepseek-v4-flash", "gpt-6-sol", "unsupported-model"} {
+		for _, model := range []string{"claude-opus-5-5", "deepseek-v4.1-flash", "deepseek-v4-flash", "gpt-6-sol", "unsupported-model"} {
 			if account.IsModelSupported(model) {
 				t.Errorf("Mirasim account accepted model outside the default catalog: %s", model)
 			}

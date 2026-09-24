@@ -65,9 +65,9 @@ func TestMirasimModelsRouteAllIngressesToChatCompletions(t *testing.T) {
 		wantTools bool
 	}{
 		{
-			name:  "chat ingress DeepSeek",
-			model: "deepseek-v4.1-flash", path: "/v1/chat/completions",
-			body: `{"model":"deepseek-v4.1-flash","messages":[{"role":"user","content":"hi"}],"tools":[{"type":"function","function":{"name":"lookup","parameters":{"type":"object"}}}],"stream":false}`,
+			name:  "chat ingress GLM",
+			model: "glm-5.3-flash", path: "/v1/chat/completions",
+			body: `{"model":"glm-5.3-flash","messages":[{"role":"user","content":"hi"}],"tools":[{"type":"function","function":{"name":"lookup","parameters":{"type":"object"}}}],"stream":false}`,
 			forward: func(s *OpenAIGatewayService, c *gin.Context, a *Account, b []byte) (*OpenAIForwardResult, error) {
 				return s.ForwardAsChatCompletions(context.Background(), c, a, b, "", "")
 			}, wantTools: true,

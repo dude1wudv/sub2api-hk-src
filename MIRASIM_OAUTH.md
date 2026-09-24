@@ -15,21 +15,20 @@ The helper uses 127.0.0.1:8788 only to start authorization. Each flow has a sepa
 
 The callback token is removed from the URL immediately and retained only in page memory until import or cancellation. Refreshing the page requires a new authorization. A failed import after upstream token rotation may also require reauthorization.
 
-When no group is selected, import explicitly binds the account to an active `mirasim-default`. If it does not exist, an exclusive group with the three-model allowlist is created. Review its prices and access before distributing API keys; an inactive default group must be re-enabled or a different group selected.
+When no group is selected, import explicitly binds the account to an active `mirasim-default`. If it does not exist, an exclusive group with the verified-model allowlist is created. Review its prices and access before distributing API keys; an inactive default group must be re-enabled or a different group selected.
 
 ## Models and protocols
 
-The conservative default catalog, confirmed by the administrator on 2026-09-24, is:
+The conservative default catalog, verified through the deployed gateway on 2026-09-24, is:
 
-- `deepseek-v4.1-flash`
 - `glm-5.3-flash`
 - `kimi-k3`
 
 Account-specific availability may change. These model IDs supersede the historical September 23 catalog for this deployment; historical catalog results are not a guarantee of current access.
 
-Sub2API selects the native upstream protocol by the mapped model: the three default models use Chat Completions; `claude-*` uses Messages; `gpt-*` uses Responses. Chat, Messages and Responses clients use the existing protocol converters where needed. Adding a model to the account does not prove upstream availability.
+Sub2API selects the native upstream protocol by the mapped model: the two default models use Chat Completions; `claude-*` uses Messages; `gpt-*` uses Responses. Chat, Messages and Responses clients use the existing protocol converters where needed. Adding a model to the account does not prove upstream availability.
 
-GPT's native upstream requires streaming. Direct non-streaming GPT Responses requests remain unsupported. Claude's relay-specific fingerprint and 200-byte system-prompt limit remain enforced, but oversized instructions now fail explicitly instead of being silently truncated. The three default models do not have this Claude-specific restriction.
+GPT's native upstream requires streaming. Direct non-streaming GPT Responses requests remain unsupported. Claude's relay-specific fingerprint and 200-byte system-prompt limit remain enforced, but oversized instructions now fail explicitly instead of being silently truncated. The two default models do not have this Claude-specific restriction.
 
 ## Credentials and pricing
 
@@ -38,3 +37,5 @@ Only official relay endpoints are accepted. Account clients serialize initializa
 Per-model group pricing already exists and should be used for Mirasim. Group倍率 multiplies the configured model unit prices; it is not a replacement for them. Keep the account and group model lists aligned. Do not infer upstream cost or margin from the account's default倍率.
 
 Account connection tests require actual text plus a terminal response. Deployment acceptance should additionally exercise the intended API-key group and check usage/pricing records. Browser OAuth requires an interactive upstream sign-in and is separate from local helper tests.
+
+On 2026-09-24 the relay returned 422 for `deepseek-v4.1-flash`. At the administrator's request it is disabled, with its group price retained. The account editor now supports **Sync upstream models** using the account's OAuth signer and proxy; no static API key is needed. Catalog sync lists availability and does not prove inference capacity or automatically change group pricing.

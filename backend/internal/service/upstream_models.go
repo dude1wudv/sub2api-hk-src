@@ -231,6 +231,11 @@ func (s *AccountTestService) SyncUpstreamModelCatalog(ctx context.Context, accou
 			catalog.Metadata = directMetadata
 		}
 	}
+	// Relay catalogs describe account availability. Do not infer capabilities
+	// from an unrelated provider registry for same-named models.
+	if account != nil && account.Platform == PlatformMirasim {
+		return catalog, nil
+	}
 
 	// Capability enrichment also covers concrete model_mapping targets. Admins may
 	// whitelist models that the live /models list omitted; those still need registry
@@ -788,6 +793,15 @@ func (s *AccountTestService) fetchUpstreamModelList(ctx context.Context, account
 
 func (s *AccountTestService) buildUpstreamModelsRequest(ctx context.Context, account *Account) (*http.Request, error) {
 	switch {
+	case account.Platform == PlatformMirasim:
+		if s.openaiGatewayService == nil {
+			return nil, newUpstreamModelSyncConfigError("Mirasim gateway is not configured", nil)
+		}
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://relay.mirasim.ai/v1/models", nil)
+		if err != nil {
+			return nil, err
+		}
+		return s.openaiGatewayService.signMirasimRequest(request, upstreamModelsProxyURL(account), account)
 	case account.Platform == PlatformAntigravity:
 		return s.buildAntigravityAPIKeyModelsRequest(ctx, account)
 	case account.IsGrok():

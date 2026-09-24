@@ -1527,7 +1527,6 @@ describe('EditAccountModal', () => {
         base_url: 'https://relay.mirasim.ai/v1',
         oauth_provider: 'github',
         model_mapping: {
-          'deepseek-v4.1-flash': 'deepseek-v4.1-flash',
           'glm-5.3-flash': 'glm-5.3-flash',
           'kimi-k3': 'kimi-k3'
         }
@@ -1551,7 +1550,6 @@ describe('EditAccountModal', () => {
       api_protocol: 'adaptive',
       oauth_provider: 'github',
       model_mapping: {
-        'deepseek-v4.1-flash': 'deepseek-v4.1-flash',
         'glm-5.3-flash': 'glm-5.3-flash',
         'kimi-k3': 'kimi-k3'
       }

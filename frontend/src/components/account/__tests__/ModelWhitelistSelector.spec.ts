@@ -237,4 +237,26 @@ describe('ModelWhitelistSelector', () => {
     expect(syncButton).toBeDefined()
     expect(syncButton?.exists()).toBe(true)
   })
+
+  it('shows Mirasim account models and syncs its live catalog', async () => {
+    syncUpstreamModels.mockResolvedValue({ models: ['glm-5.3-flash', 'kimi-k3'], warnings: [] })
+    const wrapper = mountSelector({ platform: 'mirasim', accountId: 73 })
+    const syncButton = wrapper
+      .findAll('button')
+      .find(button => button.text() === 'admin.accounts.syncUpstreamModels')
+
+    expect(syncButton).toBeDefined()
+    await syncButton!.trigger('click')
+    await flushPromises()
+
+    expect(syncUpstreamModels).toHaveBeenCalledOnce()
+    expect(syncUpstreamModels).toHaveBeenCalledWith(73)
+    expect(wrapper.emitted('update:modelValue')).toEqual([[['glm-5.3-flash', 'kimi-k3']]])
+
+    await wrapper.get('div.cursor-pointer').trigger('click')
+    const optionIDs = wrapper.findAll('[data-testid="model-option"]').map(option => option.text())
+    expect(optionIDs.some(id => id.includes('glm-5.3-flash'))).toBe(true)
+    expect(optionIDs.some(id => id.includes('kimi-k3'))).toBe(true)
+    expect(optionIDs.some(id => id.includes('deepseek-v4.1-flash'))).toBe(false)
+  })
 })

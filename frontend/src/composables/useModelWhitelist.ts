@@ -252,7 +252,7 @@ const perplexityModels = [
 ]
 
 const mirasimModels = [
-  'deepseek-v4.1-flash', 'glm-5.3-flash', 'kimi-k3'
+  'glm-5.3-flash', 'kimi-k3'
 ]
 
 // 所有模型（去重）

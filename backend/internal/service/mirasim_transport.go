@@ -37,7 +37,14 @@ func (s *OpenAIGatewayService) signMirasimRequest(request *http.Request, proxyUR
 	}
 	path := request.URL.EscapedPath()
 	switch path {
+	case "/v1/models":
+		if request.Method != http.MethodGet {
+			return nil, errors.New("Mirasim model catalog requires GET")
+		}
 	case "/v1/messages", "/v1/responses", "/v1/chat/completions":
+		if request.Method != http.MethodPost {
+			return nil, errors.New("Mirasim inference requires POST")
+		}
 	default:
 		return nil, fmt.Errorf("unsupported mirasim endpoint: %s", path)
 	}
@@ -81,16 +88,23 @@ func (s *OpenAIGatewayService) signMirasimRequest(request *http.Request, proxyUR
 			session.currentToken = newToken
 		}
 	}
-	body, err := io.ReadAll(io.LimitReader(request.Body, 8<<20+1))
-	if err != nil {
-		return nil, err
-	}
-	if len(body) > 8<<20 {
-		return nil, errors.New("mirasim request body too large")
-	}
-	body, err = normalizeMirasimBody(path, body)
-	if err != nil {
-		return nil, err
+	var body []byte
+	if path != "/v1/models" {
+		if request.Body == nil {
+			return nil, errors.New("Mirasim request body is required")
+		}
+		var err error
+		body, err = io.ReadAll(io.LimitReader(request.Body, 8<<20+1))
+		if err != nil {
+			return nil, err
+		}
+		if len(body) > 8<<20 {
+			return nil, errors.New("mirasim request body too large")
+		}
+		body, err = normalizeMirasimBody(path, body)
+		if err != nil {
+			return nil, err
+		}
 	}
 	// Retry a failed save before any subsequent refresh can advance the chain.
 	if session.currentToken != session.persistedToken {

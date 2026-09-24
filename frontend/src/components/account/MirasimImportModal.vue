@@ -12,7 +12,7 @@
         <p class="input-hint">授权验证和后续模型请求均使用此代理。留空表示直连。</p>
       </div>
       <GroupSelector v-model="groupIDs" :groups="activeGroups" platform="mirasim" />
-      <p class="input-hint">不选择时使用 mirasim-default；默认模型为 DeepSeek V4.1 Flash、GLM 5.3 Flash、Kimi K3。发布 API Key 前请核对分组价格。</p>
+      <p class="input-hint">不选择时使用 mirasim-default；默认模型为已验证的 GLM 5.3 Flash、Kimi K3。发布 API Key 前请核对分组价格。</p>
       <div>
         <label class="input-label">并发数</label>
         <input v-model.number="concurrency" class="input" type="number" min="1" max="100" required />

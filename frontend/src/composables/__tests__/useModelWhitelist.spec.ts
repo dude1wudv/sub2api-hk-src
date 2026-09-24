@@ -9,7 +9,7 @@ import { buildModelMappingObject, getModelsByPlatform, getPresetMappingsByPlatfo
 describe('useModelWhitelist', () => {
   it('Mirasim 模型列表与上游中转支持的模型一致', () => {
     expect(getModelsByPlatform('mirasim')).toEqual([
-      'deepseek-v4.1-flash', 'glm-5.3-flash', 'kimi-k3'
+      'glm-5.3-flash', 'kimi-k3'
     ])
   })
   it('openai 模型列表包含 GPT-5.4 官方快照', () => {

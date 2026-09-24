@@ -5,7 +5,7 @@ import "strings"
 // DefaultMirasimModelIDs is the conservative catalog enabled for new accounts.
 func DefaultMirasimModelIDs() []string {
 	return []string{
-		"deepseek-v4.1-flash", "glm-5.3-flash", "kimi-k3",
+		"glm-5.3-flash", "kimi-k3",
 	}
 }
 

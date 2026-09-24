@@ -28,6 +28,13 @@ func TestMirasimSignerRejectsNonOfficialRelayBeforeReadingCredentials(t *testing
 			t.Fatalf("target %s was not safely rejected: %v", target, err)
 		}
 	}
+	postModels, err := http.NewRequest(http.MethodPost, "https://relay.mirasim.ai/v1/models", strings.NewReader(`{"model":"glm-5.3-flash"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.signMirasimRequest(postModels, "", account); err == nil || !strings.Contains(err.Error(), "requires GET") {
+		t.Fatalf("POST /v1/models should be rejected with a method error, got %v", err)
+	}
 }
 
 type mirasimCredentialsPersistenceRepo struct {
