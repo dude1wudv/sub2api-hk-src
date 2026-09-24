@@ -653,6 +653,7 @@
     </TablePageLayout>
     <CreateAccountModal :show="showCreate" :proxies="proxies" :groups="groups" @close="showCreate = false" @created="reload" @mirasim-oauth="startMirasimOAuth" />
     <EditAccountModal :show="showEdit" :account="edAcc" :proxies="proxies" :groups="groups" @close="showEdit = false" @updated="handleAccountUpdated" />
+    <MirasimImportModal :show="pendingMirasimOAuth !== null" :submitting="mirasimImportSubmitting" :proxies="proxies" :groups="groups" @close="pendingMirasimOAuth = null" @submit="submitMirasimImport" />
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
     <AccountStatsModal :show="showStats" :account="statsAcc" @close="closeStatsModal" />
@@ -694,7 +695,8 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { adminAPI } from '@/api/admin'
-import { createMirasimOAuthAccount } from '@/api/admin/accounts'
+import { createMirasimOAuthAccount, type MirasimImportOptions } from '@/api/admin/accounts'
+import MirasimImportModal from '@/components/account/MirasimImportModal.vue'
 import { useTableLoader } from '@/composables/useTableLoader'
 import { useSwipeSelect, type SwipeSelectVirtualContext } from '@/composables/useSwipeSelect'
 import { useTableSelection } from '@/composables/useTableSelection'
@@ -743,6 +745,8 @@ const appStore = useAppStore()
 const authStore = useAuthStore()
 
 let mirasimChannel: BroadcastChannel | null = null
+const pendingMirasimOAuth = ref<{ token: string; provider: 'github' | 'google' } | null>(null)
+const mirasimImportSubmitting = ref(false)
 const startMirasimOAuth = (provider: 'github' | 'google') => {
   const popup = window.open(`http://127.0.0.1:8788/start?provider=${provider}`, 'mirasim-oauth', 'width=560,height=720')
   if (!popup) appStore.showError('浏览器拦截了 Mirasim 授权窗口，请允许弹窗后重试')
@@ -759,13 +763,23 @@ const completeMirasimOAuthFromCallback = async () => {
     appStore.showError('Mirasim 授权回调无效')
     return
   }
+  pendingMirasimOAuth.value = { token, provider }
+}
+
+const submitMirasimImport = async (options: MirasimImportOptions) => {
+  if (!pendingMirasimOAuth.value || mirasimImportSubmitting.value) return
+  mirasimImportSubmitting.value = true
+  const { token, provider } = pendingMirasimOAuth.value
   try {
-    await createMirasimOAuthAccount(token, provider)
+    await createMirasimOAuthAccount(token, provider, options)
+    pendingMirasimOAuth.value = null
     appStore.showSuccess('Mirasim 账号已加入 Sub2API')
     mirasimChannel?.postMessage('created')
     await reload()
   } catch (error) {
     appStore.showError(extractApiErrorMessage(error, 'Mirasim 账号接入失败'))
+  } finally {
+    mirasimImportSubmitting.value = false
   }
 }
 

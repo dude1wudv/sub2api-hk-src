@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/mirasim"
@@ -16,8 +17,12 @@ import (
 // native Sub2API account. The browser never receives the device private key.
 func (h *AccountHandler) CreateMirasimOAuth(c *gin.Context) {
 	var input struct {
-		RefreshToken string `json:"refresh_token" binding:"required"`
-		Provider     string `json:"provider" binding:"required"`
+		RefreshToken string  `json:"refresh_token" binding:"required"`
+		Provider     string  `json:"provider" binding:"required"`
+		Name         string  `json:"name" binding:"max=100"`
+		ProxyID      *int64  `json:"proxy_id" binding:"omitempty,gt=0"`
+		GroupIDs     []int64 `json:"group_ids" binding:"max=100,dive,gt=0"`
+		Concurrency  int     `json:"concurrency" binding:"omitempty,min=1,max=100"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		response.BadRequest(c, "invalid Mirasim OAuth payload")
@@ -45,6 +50,38 @@ func (h *AccountHandler) CreateMirasimOAuth(c *gin.Context) {
 		response.BadRequest(c, "Mirasim account identity is missing")
 		return
 	}
+	// Validate user-selected configuration before exchanging the rotating token.
+	proxyURL := ""
+	if input.ProxyID != nil {
+		proxy, err := h.adminService.GetProxy(c.Request.Context(), *input.ProxyID)
+		if err != nil || proxy == nil || !proxy.IsActive() || proxy.IsExpired(time.Now()) {
+			response.BadRequest(c, "Mirasim proxy is unavailable")
+			return
+		}
+		proxyURL = proxy.URL()
+	}
+	for _, id := range input.GroupIDs {
+		group, err := h.adminService.GetGroup(c.Request.Context(), id)
+		if err != nil || group == nil || group.Platform != service.PlatformMirasim || group.Status != service.StatusActive {
+			response.BadRequest(c, "select an active Mirasim group")
+			return
+		}
+	}
+	if input.Concurrency == 0 {
+		input.Concurrency = 5
+	}
+	input.Name = strings.TrimSpace(input.Name)
+	if input.Name == "" {
+		input.Name = "Mirasim " + email
+	}
+	if len(input.GroupIDs) == 0 {
+		id, err := h.ensureMirasimDefaultGroup(c.Request.Context())
+		if err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
+		input.GroupIDs = []int64{id}
+	}
 	privateKey, err := mirasim.GenerateDeviceKey()
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -55,7 +92,7 @@ func (h *AccountHandler) CreateMirasimOAuth(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	client, err := mirasim.NewClient(input.RefreshToken, privateKey, "", "", "", "", "")
+	client, err := mirasim.NewClient(input.RefreshToken, privateKey, "", "", "", "", proxyURL)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -68,34 +105,13 @@ func (h *AccountHandler) CreateMirasimOAuth(c *gin.Context) {
 		response.ErrorFrom(c, fmt.Errorf("Mirasim OAuth validation failed: %w", err))
 		return
 	}
-	groups, err := h.adminService.GetAllGroupsByPlatform(ctx, service.PlatformMirasim)
-	if err != nil {
-		response.ErrorFrom(c, fmt.Errorf("load Mirasim groups: %w", err))
-		return
-	}
-	defaultGroupExists := false
-	for _, group := range groups {
-		if group.Name == "mirasim-default" {
-			defaultGroupExists = true
-			break
-		}
-	}
-	if !defaultGroupExists {
-		if _, err := h.adminService.CreateGroup(ctx, &service.CreateGroupInput{
-			Name:             "mirasim-default",
-			Platform:         service.PlatformMirasim,
-			RateMultiplier:   1,
-			SubscriptionType: service.SubscriptionTypeStandard,
-		}); err != nil {
-			response.ErrorFrom(c, fmt.Errorf("create Mirasim default group: %w", err))
-			return
-		}
-	}
 	account, err := h.adminService.CreateAccount(ctx, &service.CreateAccountInput{
-		Name:        "Mirasim " + email,
+		Name:        input.Name,
 		Platform:    service.PlatformMirasim,
 		Type:        service.AccountTypeAPIKey,
-		Concurrency: 5,
+		Concurrency: input.Concurrency,
+		ProxyID:     input.ProxyID,
+		GroupIDs:    input.GroupIDs,
 		Credentials: map[string]any{
 			"refresh_token":  refreshToken,
 			"private_key":    pem,
@@ -116,4 +132,35 @@ func (h *AccountHandler) CreateMirasimOAuth(c *gin.Context) {
 	}
 	c.Header("Cache-Control", "no-store")
 	response.Success(c, gin.H{"id": account.ID, "name": account.Name})
+}
+
+// Serialize first-import default-group creation in this application instance.
+var mirasimDefaultGroupMu sync.Mutex
+
+func (h *AccountHandler) ensureMirasimDefaultGroup(ctx context.Context) (int64, error) {
+	mirasimDefaultGroupMu.Lock()
+	defer mirasimDefaultGroupMu.Unlock()
+	groups, err := h.adminService.GetAllGroupsByPlatform(ctx, service.PlatformMirasim)
+	if err != nil {
+		return 0, err
+	}
+	for _, group := range groups {
+		if group.Name == "mirasim-default" {
+			if group.Status != service.StatusActive {
+				return 0, fmt.Errorf("Mirasim default group is inactive; select an active group")
+			}
+			return group.ID, nil
+		}
+	}
+	group, err := h.adminService.CreateGroup(ctx, &service.CreateGroupInput{
+		Name: "mirasim-default", Platform: service.PlatformMirasim,
+		RateMultiplier: 1, IsExclusive: true,
+		Description:      "Mirasim OAuth; review per-model pricing before granting access",
+		SubscriptionType: service.SubscriptionTypeStandard,
+		ModelAllowlist:   service.GroupModelAllowlist{Enabled: true, Models: service.DefaultMirasimModelIDs()},
+	})
+	if err != nil {
+		return 0, err
+	}
+	return group.ID, nil
 }

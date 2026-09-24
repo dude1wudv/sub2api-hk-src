@@ -1517,6 +1517,51 @@ describe('EditAccountModal', () => {
     expect(updateAccountMock.mock.calls[0]?.[1]?.credentials).not.toHaveProperty('api_key')
   })
 
+  it('saves Mirasim public settings with redacted OAuth credentials and no API key', async () => {
+    const account = {
+      ...buildAccount(),
+      name: 'Mirasim account',
+      platform: 'mirasim',
+      type: 'apikey',
+      credentials: {
+        base_url: 'https://relay.mirasim.ai/v1',
+        oauth_provider: 'github',
+        model_mapping: {
+          'deepseek-v4.1-flash': 'deepseek-v4.1-flash',
+          'glm-5.3-flash': 'glm-5.3-flash',
+          'kimi-k3': 'kimi-k3'
+        }
+      },
+      credentials_status: { has_refresh_token: true, has_private_key: true },
+      concurrency: 5
+    } as any
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
+
+    const wrapper = mountModal(account)
+    await wrapper.get('[data-tour="edit-account-form-name"]').setValue('Renamed Mirasim')
+    await wrapper.get('input[type="number"][min="1"]').setValue('8')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+
+    expect(updateAccountMock).toHaveBeenCalledTimes(1)
+    const payload = updateAccountMock.mock.calls[0]?.[1]
+    expect(payload.name).toBe('Renamed Mirasim')
+    expect(payload.concurrency).toBe(8)
+    expect(payload.credentials).toMatchObject({
+      api_protocol: 'adaptive',
+      oauth_provider: 'github',
+      model_mapping: {
+        'deepseek-v4.1-flash': 'deepseek-v4.1-flash',
+        'glm-5.3-flash': 'glm-5.3-flash',
+        'kimi-k3': 'kimi-k3'
+      }
+    })
+    expect(payload.credentials).not.toHaveProperty('api_key')
+    expect(payload.credentials).not.toHaveProperty('refresh_token')
+    expect(payload.credentials).not.toHaveProperty('private_key')
+    wrapper.unmount()
+  })
+
   it('allows saving apikey account against legacy backend without credentials_status', async () => {
     // 新前端 + 旧后端：credentials_status 缺失，但 credentials.api_key 仍是明文，应允许保存
     const account = buildAccount()

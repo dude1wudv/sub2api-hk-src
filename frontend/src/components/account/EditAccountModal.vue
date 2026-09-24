@@ -30,7 +30,7 @@
         <div>
           <label class="input-label">Mirasim 请求地址</label>
           <input class="input" type="text" readonly value="https://relay.mirasim.ai/v1" />
-          <p class="input-hint">Anthropic 协议使用 https://relay.mirasim.ai；Sub2API 按请求协议自动选择。</p>
+          <p class="input-hint">Sub2API 按模型选择上游协议，并转换 Chat、Messages、Responses 请求。当前默认模型使用 Chat Completions。</p>
         </div>
         <div>
           <label class="input-label">授权凭据</label>
@@ -5201,9 +5201,9 @@ const handleSubmit = async () => {
         appStore.showError('Mirasim 至少需要选择一个支持模型')
         return
       }
-      const currentCredentials = (props.account.credentials as Record<string, unknown>) || {}
+      // Only patch public configuration. OAuth secrets stay on the server.
       updatePayload.credentials = {
-        ...currentCredentials,
+        oauth_provider: props.account.credentials?.oauth_provider,
         base_url: 'https://relay.mirasim.ai/v1',
         api_base_urls: {
           chat_completions: 'https://relay.mirasim.ai/v1',

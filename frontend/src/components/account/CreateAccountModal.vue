@@ -258,7 +258,7 @@
       </div>
 
       <div v-if="form.platform === 'mirasim'" class="space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
-        <p class="text-sm text-gray-700 dark:text-gray-200">Mirasim 使用 OAuth 自动签名，请选择授权方式。账号会直接加入 Sub2API。</p>
+        <p class="text-sm text-gray-700 dark:text-gray-200">Mirasim 使用 OAuth 自动签名。授权返回后可选择代理、分组和并发数，再导入账号。</p>
         <p class="text-xs text-gray-600 dark:text-gray-300">首次使用时，在浏览器所在电脑运行本地回调助手，再点击授权。Mirasim 要求 OAuth 回调到该电脑的 127.0.0.1。</p>
         <a href="/mirasim-oauth-helper.ps1" download="mirasim-oauth-helper.ps1" class="text-sm text-primary-600 underline dark:text-primary-400">下载本地回调助手</a>
         <p class="text-xs text-gray-600 dark:text-gray-300">下载后右键脚本，选择“使用 PowerShell 运行”，保持窗口打开。</p>

@@ -1,25 +1,40 @@
 # Mirasim OAuth accounts
 
-Mirasim is a native Sub2API platform. Its accounts appear in the admin account list, bind to `mirasim-default`, and use the usual Sub2API scheduler, API keys, usage logs, and billing. The first successful OAuth import creates the default group. Admins can edit group pricing and access before distributing keys.
+Mirasim is a native Sub2API platform. Accounts use the Sub2API scheduler, API keys, usage logs, and group pricing. The internal account type is `apikey` for gateway compatibility, but authentication uses OAuth refresh tokens and device signatures; there is no static upstream API key to enter.
 
-## Authorize from Windows
+## Import and edit
 
-1. Open `https://sub.sunmmyapi.xyz/admin/accounts` and sign in as an administrator.
-2. Click **添加账号 → Mirasim** and download **本地回调助手** there. Run the downloaded script in PowerShell on the computer running the browser:
+1. Open **Admin → Accounts → Add account → Mirasim**.
+2. Download the current **local callback helper** and run it on the browser's computer:
+   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\mirasim-oauth-helper.ps1`
+3. Click GitHub OAuth or Google OAuth. Keep the helper running.
+4. After authorization returns, choose the account name, proxy, active Mirasim groups and concurrency, then click **Import account**. The selected proxy is used for token validation and subsequent requests. Leaving it empty means direct access.
+5. Edit the account normally to change its name, proxy, concurrency, groups or model selection. Credentials remain on the server and are not required again.
 
-   ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\mirasim-oauth-helper.ps1
-   ```
+The helper uses 127.0.0.1:8788 only to start authorization. Each flow has a separate loopback callback port and a ten-minute deadline because Mirasim replaces the client's OAuth state. Callbacks on shared port 8788 are rejected. Close an older helper before starting the new version.
 
-   Keep that window open. The helper listens only on `127.0.0.1:8788` and does not store credentials.
-3. In the same **添加账号 → Mirasim** dialog, click **GitHub OAuth** or **Google OAuth**. After signing in, the callback returns to the Sub2API admin page; the account and default group are created automatically. Refresh the original account tab if it does not update.
+The callback token is removed from the URL immediately and retained only in page memory until import or cancellation. Refreshing the page requires a new authorization. A failed import after upstream token rotation may also require reauthorization.
 
-Mirasim only allows loopback OAuth callbacks. The helper sends the refresh token to the Sub2API page in the URL fragment, which is cleared before the admin API request. The server validates it with Mirasim, stores the rotated refresh token and device private key as account credentials, and signs requests to the official relay. Do not copy or share the callback URL.
+When no group is selected, import explicitly binds the account to an active `mirasim-default`. If it does not exist, an exclusive group with the three-model allowlist is created. Review its prices and access before distributing API keys; an inactive default group must be re-enabled or a different group selected.
 
-## Routing
+## Models and protocols
 
-- Claude models use `/v1/messages`. GPT models use `/v1/responses` with streaming. Other Mirasim models may use `/v1/chat/completions`.
-- On 2026-09-23, the live `/v1/models` catalog for the configured Mirasim account returned `claude-opus-5-5`, `deepseek-flash`, `deepseek-v4-flash`, `deepseek-v4-flash-vision-exp`, `glm-5.3-flash`, `gpt-6-luna`, `gpt-6-sol`, and `kimi-k3`. The built-in list mirrors that response; check the live catalog again if Mirasim changes it. `glm-5.3-flash` and `kimi-k3` both returned HTTP 200 and generated `OK` in live tests through the account's configured proxy. The upstream project leaves prices for GPT and several third-party models unset, so review Sub2API pricing before making the group available to users.
-- Custom base URLs are rejected by the Mirasim signer. The OAuth refresh token and device ticket are sent only to official Mirasim endpoints.
-- The account editor shows the official relay endpoints and supported models. Mirasim OAuth accounts have no static upstream API key; Sub2API signs requests with the stored OAuth credentials.
-- To test routing, create or update a Sub2API API key to use `mirasim-default`, then send a streaming request for a model in the group. The account connection test selects `glm-5.3-flash` by default and only reports success after receiving generated text and a terminal stream event. The end-to-end Sub2API API-key route still needs its own acceptance check with a key for the intended group.
+The conservative default catalog, confirmed by the administrator on 2026-09-24, is:
+
+- `deepseek-v4.1-flash`
+- `glm-5.3-flash`
+- `kimi-k3`
+
+Account-specific availability may change. These model IDs supersede the historical September 23 catalog for this deployment; historical catalog results are not a guarantee of current access.
+
+Sub2API selects the native upstream protocol by the mapped model: the three default models use Chat Completions; `claude-*` uses Messages; `gpt-*` uses Responses. Chat, Messages and Responses clients use the existing protocol converters where needed. Adding a model to the account does not prove upstream availability.
+
+GPT's native upstream requires streaming. Direct non-streaming GPT Responses requests remain unsupported. Claude's relay-specific fingerprint and 200-byte system-prompt limit remain enforced, but oversized instructions now fail explicitly instead of being silently truncated. The three default models do not have this Claude-specific restriction.
+
+## Credentials and pricing
+
+Only official relay endpoints are accepted. Account clients serialize initialization and token refresh, rebuild when the proxy or device key changes, and persist rotated tokens before sending inference requests. Failed persistence is reported and retried while the application remains running. A restart after an unsaved rotation can still require reauthorization; multiple application replicas require a shared rotation lock before horizontal scaling.
+
+Per-model group pricing already exists and should be used for Mirasim. Group倍率 multiplies the configured model unit prices; it is not a replacement for them. Keep the account and group model lists aligned. Do not infer upstream cost or margin from the account's default倍率.
+
+Account connection tests require actual text plus a terminal response. Deployment acceptance should additionally exercise the intended API-key group and check usage/pricing records. Browser OAuth requires an interactive upstream sign-in and is separate from local helper tests.

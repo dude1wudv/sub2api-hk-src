@@ -44,6 +44,7 @@ type Client struct {
 	http *http.Client
 
 	refreshMu    sync.Mutex
+	ticketMu     sync.Mutex
 	mu           sync.Mutex
 	refreshToken string
 	accessToken  string
@@ -88,7 +89,7 @@ func NewClientFunc(refreshToken string, devicePriv ed25519.PrivateKey, relayURL,
 			}
 			proxyURL, err := url.Parse(raw)
 			if err != nil {
-				return nil, nil
+				return nil, fmt.Errorf("mirasim: invalid proxy URL")
 			}
 			return proxyURL, nil
 		},
@@ -188,6 +189,8 @@ type sessionResponse struct {
 // Ticket 返回 device ticket，缓存至过期前 60s。
 // 申领走 POST {relay}/v1/device/session，Bearer access token + 明文签名头。
 func (c *Client) Ticket(ctx context.Context) (string, error) {
+	c.ticketMu.Lock()
+	defer c.ticketMu.Unlock()
 	c.mu.Lock()
 	if c.ticket != "" && time.Now().Before(c.ticketExp.Add(-ticketEarlyRefresh)) {
 		t := c.ticket

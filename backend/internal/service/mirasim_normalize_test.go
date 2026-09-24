@@ -7,7 +7,7 @@ import (
 )
 
 func TestMirasimNormalizeClaudeMessages(t *testing.T) {
-	body := []byte(`{"model":"mirasim/claude-sonnet-5","top_p":0.9,"system":"` + strings.Repeat("中", 100) + `","messages":[{"role":"system","content":"extra"},{"role":"user","content":"hi"}]}`)
+	body := []byte(`{"model":"mirasim/claude-sonnet-5","top_p":0.9,"metadata":{"user_id":"u1"},"system":"follow the user","messages":[{"role":"system","content":"be concise"},{"role":"user","content":"hi"}]}`)
 	encoded, err := normalizeMirasimBody("/v1/messages", body)
 	if err != nil {
 		t.Fatal(err)
@@ -16,8 +16,8 @@ func TestMirasimNormalizeClaudeMessages(t *testing.T) {
 	if err := json.Unmarshal(encoded, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got["model"] != "claude-sonnet-5" || got["top_p"] != nil {
-		t.Fatalf("model/top_p normalization failed: %s", encoded)
+	if got["model"] != "claude-sonnet-5" || got["top_p"] != nil || got["metadata"] == nil {
+		t.Fatalf("model/unsupported field/metadata normalization failed: %s", encoded)
 	}
 	msgs := got["messages"].([]any)
 	if len(msgs) != 1 || msgs[0].(map[string]any)["role"] != "user" {
@@ -28,8 +28,15 @@ func TestMirasimNormalizeClaudeMessages(t *testing.T) {
 	for _, block := range system {
 		total += len(block.(map[string]any)["text"].(string))
 	}
-	if total > 200 || !mirasimHasFingerprint(system) {
-		t.Fatalf("Claude fingerprint or byte limit failed: %s", encoded)
+	if total > 200 || !mirasimHasFingerprint(system) || !strings.Contains(string(encoded), "follow the user") || !strings.Contains(string(encoded), "be concise") {
+		t.Fatalf("Claude fingerprint, instructions, or byte limit failed: %s", encoded)
+	}
+}
+
+func TestMirasimNormalizeClaudeMessagesRejectsLongSystemWithoutTruncating(t *testing.T) {
+	body := []byte(`{"model":"claude-sonnet-5","system":"` + strings.Repeat("中", 100) + `","messages":[{"role":"user","content":"hi"}]}`)
+	if encoded, err := normalizeMirasimBody("/v1/messages", body); err == nil || encoded != nil || !strings.Contains(err.Error(), "not truncated") {
+		t.Fatalf("expected explicit long-system error with no rewritten body, got body=%s err=%v", encoded, err)
 	}
 }
 

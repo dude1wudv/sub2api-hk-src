@@ -159,9 +159,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		return s.forwardGrokResponses(ctx, c, account, body, originalModel, reqStream, startTime)
 	}
 
-	if account.IsOpenCodeGo() {
+	if account.IsOpenCodeGo() || account.Platform == PlatformMirasim {
 		mapped := resolveOpenCodeGoMappedModel(account, body, "")
-		switch openCodeGoNativeProtocol(account, mapped) {
+		switch modelRoutedNativeProtocol(account, mapped) {
 		case APIProtocolAnthropic:
 			return s.forwardResponsesViaNativeAnthropic(ctx, c, account, body, "")
 		case APIProtocolResponses:

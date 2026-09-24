@@ -54,9 +54,9 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	}
 
 	// OpenCode Go：按模型原生协议分流。规则未命中兜底 Chat Completions。
-	if account.IsOpenCodeGo() {
+	if account.IsOpenCodeGo() || account.Platform == PlatformMirasim {
 		mapped := resolveOpenCodeGoMappedModel(account, body, defaultMappedModel)
-		switch openCodeGoNativeProtocol(account, mapped) {
+		switch modelRoutedNativeProtocol(account, mapped) {
 		case APIProtocolAnthropic:
 			return s.forwardAnthropicViaNativeAnthropicEndpoint(ctx, c, account, body, defaultMappedModel)
 		case APIProtocolResponses:

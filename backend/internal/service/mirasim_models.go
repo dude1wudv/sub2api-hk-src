@@ -1,12 +1,27 @@
 package service
 
-// DefaultMirasimModelIDs is the model catalog returned by Mirasim's relay.
+import "strings"
+
+// DefaultMirasimModelIDs is the conservative catalog enabled for new accounts.
 func DefaultMirasimModelIDs() []string {
 	return []string{
-		"claude-opus-5-5", "deepseek-flash", "deepseek-v4-flash",
-		"deepseek-v4-flash-vision-exp", "glm-5.3-flash", "gpt-6-luna",
-		"gpt-6-sol", "kimi-k3",
+		"deepseek-v4.1-flash", "glm-5.3-flash", "kimi-k3",
 	}
+}
+
+// Native protocol selection is based on the mapped model, not the client URL.
+func modelRoutedNativeProtocol(account *Account, model string) string {
+	if account.Platform != PlatformMirasim {
+		return openCodeGoNativeProtocol(account, model)
+	}
+	model = strings.TrimPrefix(model, "mirasim/")
+	if strings.HasPrefix(model, "claude-") {
+		return APIProtocolAnthropic
+	}
+	if strings.HasPrefix(model, "gpt-") {
+		return APIProtocolResponses
+	}
+	return APIProtocolChatCompletions
 }
 
 func DefaultMirasimModelMapping() map[string]any {

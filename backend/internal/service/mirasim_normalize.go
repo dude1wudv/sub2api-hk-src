@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
-	"unicode/utf8"
 )
 
 const mirasimClaudeFingerprint = "You are a Claude agent, built on Anthropic's Claude Agent SDK."
@@ -52,7 +51,23 @@ func normalizeMirasimBody(path string, body []byte) ([]byte, error) {
 			if !mirasimHasFingerprint(system) {
 				system = append([]any{mirasimTextBlock(mirasimClaudeFingerprint)}, system...)
 			}
-			request["system"] = mirasimTruncateSystem(system, 200)
+			// Never silently remove the caller's instructions to satisfy the relay.
+			bytes := 0
+			for _, block := range system {
+				value, ok := block.(map[string]any)
+				if !ok {
+					return nil, errors.New("Mirasim Claude system blocks must contain text")
+				}
+				text, ok := value["text"].(string)
+				if !ok {
+					return nil, errors.New("Mirasim Claude system blocks must contain text")
+				}
+				bytes += len(text)
+			}
+			if bytes > 200 {
+				return nil, errors.New("Mirasim Claude system prompt exceeds the relay's 200-byte limit including its fingerprint; instructions were not truncated")
+			}
+			request["system"] = system
 		}
 	case "/v1/responses":
 		if input, ok := request["input"].(string); ok {
@@ -97,29 +112,4 @@ func mirasimHasFingerprint(blocks []any) bool {
 		}
 	}
 	return false
-}
-
-func mirasimTruncateSystem(blocks []any, limit int) []any {
-	result := make([]any, 0, len(blocks))
-	for _, block := range blocks {
-		if limit <= 0 {
-			break
-		}
-		value, ok := block.(map[string]any)
-		if !ok {
-			continue
-		}
-		text, _ := value["text"].(string)
-		if len(text) > limit {
-			text = text[:limit]
-			for !utf8.ValidString(text) {
-				text = text[:len(text)-1]
-			}
-		}
-		if text != "" {
-			result = append(result, mirasimTextBlock(text))
-			limit -= len(text)
-		}
-	}
-	return result
 }
