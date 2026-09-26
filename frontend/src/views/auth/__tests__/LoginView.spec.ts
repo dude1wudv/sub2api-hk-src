@@ -103,6 +103,7 @@ describe('LoginView registration entry', () => {
     getPublicSettingsMock.mockReset()
     loginMock.mockReset()
     pushMock.mockReset()
+    delete window.__APP_CONFIG__
     getPublicSettingsMock.mockResolvedValue(publicSettings)
   })
 
@@ -136,6 +137,55 @@ describe('LoginView registration entry', () => {
     expect(loginMock).not.toHaveBeenCalled()
     resolveSettings(publicSettings)
     await flushPromises()
+  })
+
+  it('uses injected settings with captcha disabled without requesting the rate-limited API', async () => {
+    window.__APP_CONFIG__ = publicSettings as NonNullable<Window['__APP_CONFIG__']>
+    getPublicSettingsMock.mockRejectedValue(new Error('RATE_LIMITED'))
+    const wrapper = mountLogin()
+    await flushPromises()
+    expect(getPublicSettingsMock).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="verify-captcha"]').exists()).toBe(false)
+    await wrapper.get('#email').setValue('admin@example.com')
+    await wrapper.get('#password').setValue('password123')
+    await wrapper.get('form').trigger('submit')
+    expect(loginMock).toHaveBeenCalledOnce()
+    wrapper.unmount()
+    delete window.__APP_CONFIG__
+  })
+
+  it('keeps loaded settings usable when a focus refresh is rate limited', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const wrapper = mountLogin()
+    await flushPromises()
+    getPublicSettingsMock.mockRejectedValue(new Error('RATE_LIMITED'))
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    await wrapper.get('#email').setValue('admin@example.com')
+    await wrapper.get('#password').setValue('password123')
+    await wrapper.get('form').trigger('submit')
+    expect(loginMock).toHaveBeenCalledOnce()
+    wrapper.unmount()
+    consoleError.mockRestore()
+  })
+
+  it('enforces captcha when the injected configuration enables it', async () => {
+    window.__APP_CONFIG__ = {
+      ...publicSettings,
+      turnstile_enabled: true,
+      turnstile_site_key: 'site-key'
+    } as NonNullable<Window['__APP_CONFIG__']>
+    const wrapper = mountLogin()
+    await flushPromises()
+    await wrapper.get('#email').setValue('admin@example.com')
+    await wrapper.get('#password').setValue('password123')
+    await wrapper.get('form').trigger('submit')
+    expect(loginMock).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-test="verify-captcha"]').exists()).toBe(true)
+    wrapper.unmount()
+    delete window.__APP_CONFIG__
   })
 
   it('does not submit by Enter while settings are unavailable, and permits retrying settings', async () => {

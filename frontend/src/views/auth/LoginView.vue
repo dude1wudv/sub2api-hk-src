@@ -83,7 +83,7 @@
 
         <div v-if="settingsFailed" role="alert" class="rounded-lg border border-red-200 p-3 text-sm dark:border-red-800">
           <p>{{ t('auth.loginSettingsFailed') }}</p>
-          <button type="button" class="btn btn-secondary mt-2" @click="loadLoginSettings">
+          <button type="button" class="btn btn-secondary mt-2" @click="loadLoginSettings()">
             {{ t('auth.captchaRetry') }}
           </button>
         </div>
@@ -392,7 +392,7 @@ onMounted(() => {
     appStore.showWarning(message)
   }
 
-  void loadLoginSettings()
+  void loadLoginSettings(true)
   window.addEventListener('focus', refreshLoginSettings)
 })
 
@@ -402,17 +402,18 @@ function refreshLoginSettings(): void {
   if (!isLoading.value && !passkeyLoading.value && !show2FAModal.value) void loadLoginSettings()
 }
 
-function loadLoginSettings(): Promise<void> {
+function loadLoginSettings(useInjectedSettings = false): Promise<void> {
   if (settingsRequest) return settingsRequest
-  settingsRequest = fetchLoginSettings().finally(() => { settingsRequest = null })
+  settingsRequest = fetchLoginSettings(useInjectedSettings).finally(() => { settingsRequest = null })
   return settingsRequest
 }
 
-async function fetchLoginSettings(): Promise<void> {
-  publicSettingsLoaded.value = false
+async function fetchLoginSettings(useInjectedSettings: boolean): Promise<void> {
   settingsFailed.value = false
   try {
-    const settings = await getPublicSettings()
+    // HTML already contains the current public settings; avoid an extra anonymous
+    // request on first load, which can be rate limited for shared client IPs.
+    const settings = (useInjectedSettings && window.__APP_CONFIG__) || await getPublicSettings()
     registrationEnabled.value = settings.registration_enabled === true
     turnstileEnabled.value = settings.turnstile_enabled
     turnstileSiteKey.value = settings.turnstile_site_key || ''
@@ -438,7 +439,9 @@ async function fetchLoginSettings(): Promise<void> {
     publicSettingsLoaded.value = true
   } catch (error) {
     console.error('Failed to load public settings:', error)
-    settingsFailed.value = true
+    // A failed background refresh must not discard a valid configuration.
+    // The login endpoint still enforces the current server-side captcha policy.
+    settingsFailed.value = !publicSettingsLoaded.value
   }
 }
 
@@ -640,6 +643,7 @@ async function handleLogin(): Promise<void> {
     if (extractApiErrorCode(error) === 'TURNSTILE_VERIFICATION_FAILED') {
       // The operator may have enabled verification while this login page was open.
       // Refresh the widget settings, then require a new proof for the next attempt.
+      publicSettingsLoaded.value = false
       await loadLoginSettings()
     }
     errorMessage.value = extractI18nErrorMessage(error, t, 'auth.errors', t('auth.loginFailed'))
