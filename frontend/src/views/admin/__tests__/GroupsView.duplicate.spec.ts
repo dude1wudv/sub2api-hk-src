@@ -1,8 +1,9 @@
-import { defineComponent } from 'vue'
+import { defineComponent, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AdminGroup } from '@/types'
+import type * as GlacierPreferencesModule from '@/composables/useGlacierPreferences'
 import GroupsView from '@/views/admin/GroupsView.vue'
 import { adminAPI } from '@/api/admin'
 
@@ -29,6 +30,17 @@ const {
 }))
 
 const authState = vi.hoisted(() => ({ isSimpleMode: false }))
+
+vi.mock('@/composables/useGlacierPreferences', async () => {
+  const actual = await vi.importActual<typeof GlacierPreferencesModule>('@/composables/useGlacierPreferences')
+  return {
+    ...actual,
+    useGlacierPreferences: () => ({
+      ...actual.useGlacierPreferences(),
+      isGlassLayout: ref(false)
+    })
+  }
+})
 
 vi.mock('@/api/admin', () => ({
   adminAPI: {

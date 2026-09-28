@@ -10,6 +10,7 @@ afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
 
 async function chooseDraft() {
   wrapper = mount(DateRangePicker, {
+    global: { stubs: { Teleport: true } },
     props: {
       startDate: '2026-09-13', endDate: '2026-09-13',
       'onUpdate:startDate': (startDate: string) => { void wrapper.setProps({ startDate }) },
