@@ -148,7 +148,7 @@ func (c *Client) AccessToken(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("mirasim: 刷新 access token 失败: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return "", err
@@ -228,7 +228,7 @@ func (c *Client) Ticket(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("mirasim: 申领 device ticket 失败: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return "", err

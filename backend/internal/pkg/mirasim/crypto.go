@@ -92,7 +92,10 @@ func GenerateDeviceKey() (ed25519.PrivateKey, error) {
 // publicKeyB64 = base64(SPKI/PKIX DER)；
 // deviceID = base64url(sha256(publicKeyB64 的 ASCII 字节))[0:22]。
 func DeviceIdentity(priv ed25519.PrivateKey) (deviceID string, publicKeyB64 string) {
-	pub := priv.Public().(ed25519.PublicKey)
+	pub, ok := priv.Public().(ed25519.PublicKey)
+	if !ok {
+		panic("mirasim: device public key is not Ed25519")
+	}
 	der, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
 		panic(err)
@@ -147,10 +150,10 @@ func CanonicalString(method, path string, ts int64, nonce, deviceID, clientVersi
 		sort.Strings(keys)
 		var sb strings.Builder
 		for _, k := range keys {
-			sb.WriteString(k)
-			sb.WriteByte(0)
-			sb.WriteString(meta[k])
-			sb.WriteByte(0)
+			_, _ = sb.WriteString(k)
+			_ = sb.WriteByte(0)
+			_, _ = sb.WriteString(meta[k])
+			_ = sb.WriteByte(0)
 		}
 		metaLine = sha256hex([]byte(sb.String()))
 	}

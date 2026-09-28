@@ -57,7 +57,7 @@ func (s *AccountTestService) testMirasimAccountConnection(c *gin.Context, accoun
 	if err != nil {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Mirasim request failed: %v", err))
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Mirasim returned HTTP %d: %s", resp.StatusCode, string(body)))
@@ -91,7 +91,7 @@ func (s *AccountTestService) processMirasimTestJSON(c *gin.Context, body io.Read
 			if choice, ok := item.(map[string]any); ok {
 				if message, ok := choice["message"].(map[string]any); ok {
 					if value, ok := message["content"].(string); ok {
-						text.WriteString(value)
+						_, _ = text.WriteString(value)
 					}
 				}
 			}
@@ -102,13 +102,13 @@ func (s *AccountTestService) processMirasimTestJSON(c *gin.Context, body io.Read
 			for _, item := range items {
 				if part, ok := item.(map[string]any); ok {
 					if value, ok := part["text"].(string); ok {
-						text.WriteString(value)
+						_, _ = text.WriteString(value)
 					}
 					if nested, ok := part["content"].([]any); ok {
 						for _, nestedItem := range nested {
 							if nestedPart, ok := nestedItem.(map[string]any); ok {
 								if value, ok := nestedPart["text"].(string); ok {
-									text.WriteString(value)
+									_, _ = text.WriteString(value)
 								}
 							}
 						}
@@ -215,9 +215,6 @@ func (s *AccountTestService) processMirasimTestStream(c *gin.Context, body io.Re
 		case line == "":
 			if err := processEvent(); err != nil {
 				return s.sendErrorAndEnd(c, err.Error())
-			}
-			if seenComplete {
-				break
 			}
 		case strings.HasPrefix(line, "data:"):
 			dataLines = append(dataLines, strings.TrimSpace(strings.TrimPrefix(line, "data:")))

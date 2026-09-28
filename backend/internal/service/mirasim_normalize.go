@@ -18,14 +18,14 @@ func normalizeMirasimBody(path string, body []byte) ([]byte, error) {
 	model, _ := request["model"].(string)
 	model = strings.TrimPrefix(model, "mirasim/")
 	if model == "" {
-		return nil, errors.New("Mirasim model is required")
+		return nil, errors.New("mirasim model is required")
 	}
 	request["model"] = model
 	if strings.HasPrefix(model, "claude-") && path != "/v1/messages" {
-		return nil, errors.New("Mirasim Claude models require /v1/messages")
+		return nil, errors.New("mirasim Claude models require /v1/messages")
 	}
 	if strings.HasPrefix(model, "gpt-") && path != "/v1/responses" {
-		return nil, errors.New("Mirasim GPT models require /v1/responses")
+		return nil, errors.New("mirasim GPT models require /v1/responses")
 	}
 	switch path {
 	case "/v1/messages":
@@ -56,16 +56,16 @@ func normalizeMirasimBody(path string, body []byte) ([]byte, error) {
 			for _, block := range system {
 				value, ok := block.(map[string]any)
 				if !ok {
-					return nil, errors.New("Mirasim Claude system blocks must contain text")
+					return nil, errors.New("mirasim Claude system blocks must contain text")
 				}
 				text, ok := value["text"].(string)
 				if !ok {
-					return nil, errors.New("Mirasim Claude system blocks must contain text")
+					return nil, errors.New("mirasim Claude system blocks must contain text")
 				}
 				bytes += len(text)
 			}
 			if bytes > 200 {
-				return nil, errors.New("Mirasim Claude system prompt exceeds the relay's 200-byte limit including its fingerprint; instructions were not truncated")
+				return nil, errors.New("mirasim Claude system prompt exceeds the relay's 200-byte limit including its fingerprint; instructions were not truncated")
 			}
 			request["system"] = system
 		}
@@ -74,7 +74,7 @@ func normalizeMirasimBody(path string, body []byte) ([]byte, error) {
 			request["input"] = []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "input_text", "text": input}}}}
 		}
 		if strings.HasPrefix(model, "gpt-") && request["stream"] != true {
-			return nil, errors.New("Mirasim GPT models require stream=true")
+			return nil, errors.New("mirasim GPT models require stream=true")
 		}
 	}
 	return json.Marshal(request)

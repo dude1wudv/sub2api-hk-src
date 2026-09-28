@@ -102,7 +102,7 @@ func (h *AccountHandler) CreateMirasimOAuth(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
 	defer cancel()
 	if _, err := client.AccessToken(ctx); err != nil {
-		response.ErrorFrom(c, fmt.Errorf("Mirasim OAuth validation failed: %w", err))
+		response.ErrorFrom(c, fmt.Errorf("mirasim OAuth validation failed: %w", err))
 		return
 	}
 	account, err := h.adminService.CreateAccount(ctx, &service.CreateAccountInput{
@@ -147,7 +147,7 @@ func (h *AccountHandler) ensureMirasimDefaultGroup(ctx context.Context) (int64, 
 	for _, group := range groups {
 		if group.Name == "mirasim-default" {
 			if group.Status != service.StatusActive {
-				return 0, fmt.Errorf("Mirasim default group is inactive; select an active group")
+				return 0, fmt.Errorf("mirasim default group is inactive; select an active group")
 			}
 			return group.ID, nil
 		}

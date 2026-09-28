@@ -19,14 +19,29 @@ func TestMirasimNormalizeClaudeMessages(t *testing.T) {
 	if got["model"] != "claude-sonnet-5" || got["top_p"] != nil || got["metadata"] == nil {
 		t.Fatalf("model/unsupported field/metadata normalization failed: %s", encoded)
 	}
-	msgs := got["messages"].([]any)
-	if len(msgs) != 1 || msgs[0].(map[string]any)["role"] != "user" {
+	msgs, ok := got["messages"].([]any)
+	if !ok || len(msgs) != 1 {
 		t.Fatalf("system message was not hoisted: %s", encoded)
 	}
-	system := got["system"].([]any)
+	first, ok := msgs[0].(map[string]any)
+	if !ok || first["role"] != "user" {
+		t.Fatalf("system message was not hoisted: %s", encoded)
+	}
+	system, ok := got["system"].([]any)
+	if !ok {
+		t.Fatalf("system blocks missing: %s", encoded)
+	}
 	total := 0
 	for _, block := range system {
-		total += len(block.(map[string]any)["text"].(string))
+		value, ok := block.(map[string]any)
+		if !ok {
+			t.Fatalf("system block is not an object: %s", encoded)
+		}
+		text, ok := value["text"].(string)
+		if !ok {
+			t.Fatalf("system block text missing: %s", encoded)
+		}
+		total += len(text)
 	}
 	if total > 200 || !mirasimHasFingerprint(system) || !strings.Contains(string(encoded), "follow the user") || !strings.Contains(string(encoded), "be concise") {
 		t.Fatalf("Claude fingerprint, instructions, or byte limit failed: %s", encoded)
@@ -49,7 +64,8 @@ func TestMirasimNormalizeResponses(t *testing.T) {
 	if err := json.Unmarshal(encoded, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got["model"] != "gpt-6-astra" || len(got["input"].([]any)) != 1 {
+	input, ok := got["input"].([]any)
+	if got["model"] != "gpt-6-astra" || !ok || len(input) != 1 {
 		t.Fatalf("Responses input was not wrapped: %s", encoded)
 	}
 	if _, err := normalizeMirasimBody("/v1/responses", []byte(`{"model":"gpt-6-astra","stream":false,"input":"hello"}`)); err == nil {

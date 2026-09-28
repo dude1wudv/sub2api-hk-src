@@ -170,7 +170,10 @@ func TestSignHeadersVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pub := priv.Public().(ed25519.PublicKey)
+	pub, ok := priv.Public().(ed25519.PublicKey)
+	if !ok {
+		t.Fatal("device public key is not Ed25519")
+	}
 	if !ed25519.Verify(pub, []byte(canonical), sig) {
 		t.Fatal("ed25519 验签失败")
 	}
@@ -266,7 +269,9 @@ func TestSealHeadersFieldOrder(t *testing.T) {
 	shared, _ := relayPriv.ECDH(ephPub)
 	hk := hkdf.New(sha256.New, shared, ephPubRaw, []byte("mrs-seal-v1"))
 	key := make([]byte, 32)
-	io.ReadFull(hk, key)
+	if _, err := io.ReadFull(hk, key); err != nil {
+		t.Fatal(err)
+	}
 	aead, _ := chacha20poly1305.New(key)
 	pt, err := aead.Open(nil, nonce, ctWithTag, []byte("mrs-seal-v1\nGET\n/v1/models"))
 	if err != nil {

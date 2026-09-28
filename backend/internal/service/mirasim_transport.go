@@ -39,11 +39,11 @@ func (s *OpenAIGatewayService) signMirasimRequest(request *http.Request, proxyUR
 	switch path {
 	case "/v1/models":
 		if request.Method != http.MethodGet {
-			return nil, errors.New("Mirasim model catalog requires GET")
+			return nil, errors.New("mirasim model catalog requires GET")
 		}
 	case "/v1/messages", "/v1/responses", "/v1/chat/completions":
 		if request.Method != http.MethodPost {
-			return nil, errors.New("Mirasim inference requires POST")
+			return nil, errors.New("mirasim inference requires POST")
 		}
 	default:
 		return nil, fmt.Errorf("unsupported mirasim endpoint: %s", path)
@@ -54,7 +54,10 @@ func (s *OpenAIGatewayService) signMirasimRequest(request *http.Request, proxyUR
 		return nil, errors.New("mirasim OAuth credentials are missing")
 	}
 	loaded, _ := mirasimSessions.LoadOrStore(account.ID, &mirasimSession{})
-	session := loaded.(*mirasimSession)
+	session, ok := loaded.(*mirasimSession)
+	if !ok || session == nil {
+		return nil, errors.New("mirasim session cache has an unexpected type")
+	}
 	// One client/rotation chain per account, including concurrent cold starts.
 	session.mu.Lock()
 	defer session.mu.Unlock()
@@ -91,7 +94,7 @@ func (s *OpenAIGatewayService) signMirasimRequest(request *http.Request, proxyUR
 	var body []byte
 	if path != "/v1/models" {
 		if request.Body == nil {
-			return nil, errors.New("Mirasim request body is required")
+			return nil, errors.New("mirasim request body is required")
 		}
 		var err error
 		body, err = io.ReadAll(io.LimitReader(request.Body, 8<<20+1))
@@ -142,24 +145,24 @@ func (s *OpenAIGatewayService) signMirasimRequest(request *http.Request, proxyUR
 func (s *OpenAIGatewayService) persistMirasimRefreshToken(ctx context.Context, accountID int64, oldToken, newToken string) error {
 	if s.accountRepo == nil {
 		slog.Error("mirasim refresh token rotation cannot be persisted", "account_id", accountID)
-		return errors.New("Mirasim credential persistence is unavailable")
+		return errors.New("mirasim credential persistence is unavailable")
 	}
 	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
 	account, err := s.accountRepo.GetByID(persistCtx, accountID)
 	if err != nil {
 		slog.Error("mirasim refresh token rotation lookup failed", "account_id", accountID, "error", err)
-		return errors.New("Mirasim credential lookup failed")
+		return errors.New("mirasim credential lookup failed")
 	}
 	if account.Platform != PlatformMirasim || account.GetCredential("refresh_token") != oldToken {
 		// Reauthorization may have replaced this account while a request was in flight.
-		return errors.New("Mirasim account was reauthorized; retry with current credentials")
+		return errors.New("mirasim account was reauthorized; retry with current credentials")
 	}
 	credentials := shallowCopyMap(account.Credentials)
 	credentials["refresh_token"] = newToken
 	if err := persistAccountCredentials(persistCtx, s.accountRepo, account, credentials); err != nil {
 		slog.Error("mirasim refresh token rotation save failed", "account_id", accountID, "error", err)
-		return errors.New("Mirasim credential rotation could not be saved; retry later")
+		return errors.New("mirasim credential rotation could not be saved; retry later")
 	}
 	return nil
 }

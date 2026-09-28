@@ -39,7 +39,9 @@ func TestClientCredentialChain(t *testing.T) {
 			return
 		}
 		var req map[string]string
-		json.NewDecoder(r.Body).Decode(&req)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("decode refresh body: %v", err)
+		}
 		if req["refresh_token"] == "" {
 			t.Error("refresh 请求缺少 refresh_token")
 		}
@@ -62,7 +64,9 @@ func TestClientCredentialChain(t *testing.T) {
 			}
 			sawPlainSig.Store(true)
 			var req map[string]string
-			json.NewDecoder(r.Body).Decode(&req)
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				t.Errorf("decode session body: %v", err)
+			}
 			if req["publicKey"] == "" || req["deviceId"] == "" {
 				t.Error("session 请求缺少 publicKey/deviceId")
 			}
@@ -124,7 +128,9 @@ func TestClientCredentialChain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if resp.StatusCode != 200 {
 		t.Fatalf("模型请求状态码: %d", resp.StatusCode)
 	}
@@ -223,7 +229,9 @@ func TestSignedRequestBodyAndHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if !relayRelayed.Load() {
 		t.Fatal("请求未到 relay")
 	}
