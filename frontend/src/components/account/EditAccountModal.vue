@@ -1674,6 +1674,7 @@
         :type="account.type"
       />
 
+      <SlowTTFTSettings v-model="form.slow_ttft" />
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div>
           <label class="input-label">{{ t('admin.accounts.concurrency') }}</label>
@@ -3121,6 +3122,8 @@
 </template>
 
 <script setup lang="ts">
+import SlowTTFTSettings from './SlowTTFTSettings.vue'
+import { defaultSlowTTFT, readSlowTTFT } from './slowTTFT'
 import { ref, reactive, computed, watch, nextTick, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -4040,6 +4043,7 @@ const form = reactive({
   notes: '',
   proxy_id: null as number | null,
   concurrency: 1,
+  slow_ttft: defaultSlowTTFT(),
   load_factor: null as number | null,
   priority: 1,
   rate_multiplier: 1,
@@ -4148,6 +4152,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   form.notes = newAccount.notes || ''
   form.proxy_id = newAccount.proxy_id
   form.concurrency = newAccount.concurrency
+  form.slow_ttft = readSlowTTFT(newAccount.extra)
   form.load_factor = newAccount.load_factor ?? null
   form.priority = newAccount.priority
   form.rate_multiplier = newAccount.rate_multiplier ?? 1
@@ -5902,6 +5907,9 @@ const handleSubmit = async () => {
       updatePayload.extra = newExtra
     }
 
+    if (JSON.stringify(form.slow_ttft) !== JSON.stringify(readSlowTTFT(props.account.extra))) {
+      updatePayload.extra = { ...(updatePayload.extra || props.account.extra || {}), slow_ttft_protection: form.slow_ttft }
+    }
     const canContinue = await ensureAntigravityMixedChannelConfirmed(async () => {
       await submitUpdateAccount(accountID, updatePayload)
     })

@@ -22,6 +22,12 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
 	FieldDeletedAt = "deleted_at"
+	// FieldSlowTtftExemptUntil holds the string denoting the slow_ttft_exempt_until field in the database.
+	FieldSlowTtftExemptUntil = "slow_ttft_exempt_until"
+	// FieldIndependentScheduling holds the string denoting the independent_scheduling field in the database.
+	FieldIndependentScheduling = "independent_scheduling"
+	// FieldSchedulingInitialized holds the string denoting the scheduling_initialized field in the database.
+	FieldSchedulingInitialized = "scheduling_initialized"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
@@ -226,6 +232,9 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldDeletedAt,
+	FieldSlowTtftExemptUntil,
+	FieldIndependentScheduling,
+	FieldSchedulingInitialized,
 	FieldName,
 	FieldDescription,
 	FieldRateMultiplier,
@@ -324,6 +333,10 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultIndependentScheduling holds the default value on creation for the "independent_scheduling" field.
+	DefaultIndependentScheduling bool
+	// DefaultSchedulingInitialized holds the default value on creation for the "scheduling_initialized" field.
+	DefaultSchedulingInitialized bool
 	// NameValidator is a validator for the "name" field. It is called by the builders before save.
 	NameValidator func(string) error
 	// DefaultRateMultiplier holds the default value on creation for the "rate_multiplier" field.
@@ -457,6 +470,21 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByDeletedAt orders the results by the deleted_at field.
 func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
+}
+
+// BySlowTtftExemptUntil orders the results by the slow_ttft_exempt_until field.
+func BySlowTtftExemptUntil(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSlowTtftExemptUntil, opts...).ToFunc()
+}
+
+// ByIndependentScheduling orders the results by the independent_scheduling field.
+func ByIndependentScheduling(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIndependentScheduling, opts...).ToFunc()
+}
+
+// BySchedulingInitialized orders the results by the scheduling_initialized field.
+func BySchedulingInitialized(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSchedulingInitialized, opts...).ToFunc()
 }
 
 // ByName orders the results by the name field.

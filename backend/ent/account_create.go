@@ -321,6 +321,34 @@ func (_c *AccountCreate) SetNillableOverloadUntil(v *time.Time) *AccountCreate {
 	return _c
 }
 
+// SetSlowTtftUntil sets the "slow_ttft_until" field.
+func (_c *AccountCreate) SetSlowTtftUntil(v time.Time) *AccountCreate {
+	_c.mutation.SetSlowTtftUntil(v)
+	return _c
+}
+
+// SetNillableSlowTtftUntil sets the "slow_ttft_until" field if the given value is not nil.
+func (_c *AccountCreate) SetNillableSlowTtftUntil(v *time.Time) *AccountCreate {
+	if v != nil {
+		_c.SetSlowTtftUntil(*v)
+	}
+	return _c
+}
+
+// SetSlowTtftReason sets the "slow_ttft_reason" field.
+func (_c *AccountCreate) SetSlowTtftReason(v string) *AccountCreate {
+	_c.mutation.SetSlowTtftReason(v)
+	return _c
+}
+
+// SetNillableSlowTtftReason sets the "slow_ttft_reason" field if the given value is not nil.
+func (_c *AccountCreate) SetNillableSlowTtftReason(v *string) *AccountCreate {
+	if v != nil {
+		_c.SetSlowTtftReason(*v)
+	}
+	return _c
+}
+
 // SetTempUnschedulableUntil sets the "temp_unschedulable_until" field.
 func (_c *AccountCreate) SetTempUnschedulableUntil(v time.Time) *AccountCreate {
 	_c.mutation.SetTempUnschedulableUntil(v)
@@ -577,6 +605,10 @@ func (_c *AccountCreate) defaults() error {
 		v := account.DefaultSchedulable
 		_c.mutation.SetSchedulable(v)
 	}
+	if _, ok := _c.mutation.SlowTtftReason(); !ok {
+		v := account.DefaultSlowTtftReason
+		_c.mutation.SetSlowTtftReason(v)
+	}
 	if _, ok := _c.mutation.QuotaDimension(); !ok {
 		v := account.DefaultQuotaDimension
 		_c.mutation.SetQuotaDimension(v)
@@ -644,6 +676,9 @@ func (_c *AccountCreate) check() error {
 	}
 	if _, ok := _c.mutation.Schedulable(); !ok {
 		return &ValidationError{Name: "schedulable", err: errors.New(`ent: missing required field "Account.schedulable"`)}
+	}
+	if _, ok := _c.mutation.SlowTtftReason(); !ok {
+		return &ValidationError{Name: "slow_ttft_reason", err: errors.New(`ent: missing required field "Account.slow_ttft_reason"`)}
 	}
 	if v, ok := _c.mutation.SessionWindowStatus(); ok {
 		if err := account.SessionWindowStatusValidator(v); err != nil {
@@ -776,6 +811,14 @@ func (_c *AccountCreate) createSpec() (*Account, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.OverloadUntil(); ok {
 		_spec.SetField(account.FieldOverloadUntil, field.TypeTime, value)
 		_node.OverloadUntil = &value
+	}
+	if value, ok := _c.mutation.SlowTtftUntil(); ok {
+		_spec.SetField(account.FieldSlowTtftUntil, field.TypeTime, value)
+		_node.SlowTtftUntil = &value
+	}
+	if value, ok := _c.mutation.SlowTtftReason(); ok {
+		_spec.SetField(account.FieldSlowTtftReason, field.TypeString, value)
+		_node.SlowTtftReason = value
 	}
 	if value, ok := _c.mutation.TempUnschedulableUntil(); ok {
 		_spec.SetField(account.FieldTempUnschedulableUntil, field.TypeTime, value)
@@ -1308,6 +1351,36 @@ func (u *AccountUpsert) UpdateOverloadUntil() *AccountUpsert {
 // ClearOverloadUntil clears the value of the "overload_until" field.
 func (u *AccountUpsert) ClearOverloadUntil() *AccountUpsert {
 	u.SetNull(account.FieldOverloadUntil)
+	return u
+}
+
+// SetSlowTtftUntil sets the "slow_ttft_until" field.
+func (u *AccountUpsert) SetSlowTtftUntil(v time.Time) *AccountUpsert {
+	u.Set(account.FieldSlowTtftUntil, v)
+	return u
+}
+
+// UpdateSlowTtftUntil sets the "slow_ttft_until" field to the value that was provided on create.
+func (u *AccountUpsert) UpdateSlowTtftUntil() *AccountUpsert {
+	u.SetExcluded(account.FieldSlowTtftUntil)
+	return u
+}
+
+// ClearSlowTtftUntil clears the value of the "slow_ttft_until" field.
+func (u *AccountUpsert) ClearSlowTtftUntil() *AccountUpsert {
+	u.SetNull(account.FieldSlowTtftUntil)
+	return u
+}
+
+// SetSlowTtftReason sets the "slow_ttft_reason" field.
+func (u *AccountUpsert) SetSlowTtftReason(v string) *AccountUpsert {
+	u.Set(account.FieldSlowTtftReason, v)
+	return u
+}
+
+// UpdateSlowTtftReason sets the "slow_ttft_reason" field to the value that was provided on create.
+func (u *AccountUpsert) UpdateSlowTtftReason() *AccountUpsert {
+	u.SetExcluded(account.FieldSlowTtftReason)
 	return u
 }
 
@@ -1907,6 +1980,41 @@ func (u *AccountUpsertOne) UpdateOverloadUntil() *AccountUpsertOne {
 func (u *AccountUpsertOne) ClearOverloadUntil() *AccountUpsertOne {
 	return u.Update(func(s *AccountUpsert) {
 		s.ClearOverloadUntil()
+	})
+}
+
+// SetSlowTtftUntil sets the "slow_ttft_until" field.
+func (u *AccountUpsertOne) SetSlowTtftUntil(v time.Time) *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.SetSlowTtftUntil(v)
+	})
+}
+
+// UpdateSlowTtftUntil sets the "slow_ttft_until" field to the value that was provided on create.
+func (u *AccountUpsertOne) UpdateSlowTtftUntil() *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.UpdateSlowTtftUntil()
+	})
+}
+
+// ClearSlowTtftUntil clears the value of the "slow_ttft_until" field.
+func (u *AccountUpsertOne) ClearSlowTtftUntil() *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.ClearSlowTtftUntil()
+	})
+}
+
+// SetSlowTtftReason sets the "slow_ttft_reason" field.
+func (u *AccountUpsertOne) SetSlowTtftReason(v string) *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.SetSlowTtftReason(v)
+	})
+}
+
+// UpdateSlowTtftReason sets the "slow_ttft_reason" field to the value that was provided on create.
+func (u *AccountUpsertOne) UpdateSlowTtftReason() *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.UpdateSlowTtftReason()
 	})
 }
 
@@ -2692,6 +2800,41 @@ func (u *AccountUpsertBulk) UpdateOverloadUntil() *AccountUpsertBulk {
 func (u *AccountUpsertBulk) ClearOverloadUntil() *AccountUpsertBulk {
 	return u.Update(func(s *AccountUpsert) {
 		s.ClearOverloadUntil()
+	})
+}
+
+// SetSlowTtftUntil sets the "slow_ttft_until" field.
+func (u *AccountUpsertBulk) SetSlowTtftUntil(v time.Time) *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.SetSlowTtftUntil(v)
+	})
+}
+
+// UpdateSlowTtftUntil sets the "slow_ttft_until" field to the value that was provided on create.
+func (u *AccountUpsertBulk) UpdateSlowTtftUntil() *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.UpdateSlowTtftUntil()
+	})
+}
+
+// ClearSlowTtftUntil clears the value of the "slow_ttft_until" field.
+func (u *AccountUpsertBulk) ClearSlowTtftUntil() *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.ClearSlowTtftUntil()
+	})
+}
+
+// SetSlowTtftReason sets the "slow_ttft_reason" field.
+func (u *AccountUpsertBulk) SetSlowTtftReason(v string) *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.SetSlowTtftReason(v)
+	})
+}
+
+// UpdateSlowTtftReason sets the "slow_ttft_reason" field to the value that was provided on create.
+func (u *AccountUpsertBulk) UpdateSlowTtftReason() *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.UpdateSlowTtftReason()
 	})
 }
 

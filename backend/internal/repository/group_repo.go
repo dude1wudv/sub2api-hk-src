@@ -1095,7 +1095,7 @@ func (r *groupRepository) BindAccountsToGroup(ctx context.Context, groupID int64
 	_, err = exec.ExecContext(
 		ctx,
 		`INSERT INTO account_groups (account_id, group_id, priority, created_at)
-		 SELECT unnest($1::bigint[]), $2, 50, NOW()
+		 SELECT id, $2, priority, NOW() FROM accounts WHERE id=ANY($1::bigint[]) AND deleted_at IS NULL
 		 ON CONFLICT (account_id, group_id) DO NOTHING`,
 		pq.Array(accountIDs),
 		groupID,

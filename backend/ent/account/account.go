@@ -64,6 +64,10 @@ const (
 	FieldRateLimitResetAt = "rate_limit_reset_at"
 	// FieldOverloadUntil holds the string denoting the overload_until field in the database.
 	FieldOverloadUntil = "overload_until"
+	// FieldSlowTtftUntil holds the string denoting the slow_ttft_until field in the database.
+	FieldSlowTtftUntil = "slow_ttft_until"
+	// FieldSlowTtftReason holds the string denoting the slow_ttft_reason field in the database.
+	FieldSlowTtftReason = "slow_ttft_reason"
 	// FieldTempUnschedulableUntil holds the string denoting the temp_unschedulable_until field in the database.
 	FieldTempUnschedulableUntil = "temp_unschedulable_until"
 	// FieldTempUnschedulableReason holds the string denoting the temp_unschedulable_reason field in the database.
@@ -155,6 +159,8 @@ var Columns = []string{
 	FieldRateLimitedAt,
 	FieldRateLimitResetAt,
 	FieldOverloadUntil,
+	FieldSlowTtftUntil,
+	FieldSlowTtftReason,
 	FieldTempUnschedulableUntil,
 	FieldTempUnschedulableReason,
 	FieldSessionWindowStart,
@@ -218,6 +224,8 @@ var (
 	DefaultAutoPauseOnExpired bool
 	// DefaultSchedulable holds the default value on creation for the "schedulable" field.
 	DefaultSchedulable bool
+	// DefaultSlowTtftReason holds the default value on creation for the "slow_ttft_reason" field.
+	DefaultSlowTtftReason string
 	// SessionWindowStatusValidator is a validator for the "session_window_status" field. It is called by the builders before save.
 	SessionWindowStatusValidator func(string) error
 )
@@ -364,6 +372,16 @@ func ByRateLimitResetAt(opts ...sql.OrderTermOption) OrderOption {
 // ByOverloadUntil orders the results by the overload_until field.
 func ByOverloadUntil(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldOverloadUntil, opts...).ToFunc()
+}
+
+// BySlowTtftUntil orders the results by the slow_ttft_until field.
+func BySlowTtftUntil(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSlowTtftUntil, opts...).ToFunc()
+}
+
+// BySlowTtftReason orders the results by the slow_ttft_reason field.
+func BySlowTtftReason(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSlowTtftReason, opts...).ToFunc()
 }
 
 // ByTempUnschedulableUntil orders the results by the temp_unschedulable_until field.

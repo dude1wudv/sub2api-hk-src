@@ -3050,6 +3050,7 @@
         :type="form.type"
       />
 
+      <SlowTTFTSettings v-model="form.slow_ttft" />
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div>
           <label class="input-label">{{ t('admin.accounts.concurrency') }}</label>
@@ -3926,6 +3927,8 @@
 </template>
 
 <script setup lang="ts">
+import SlowTTFTSettings from './SlowTTFTSettings.vue'
+import { defaultSlowTTFT } from './slowTTFT'
 import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -4050,7 +4053,8 @@ const oauthStepTitle = computed(() => {
 // Platform-specific hints for API Key type
 // 上游ID：直接上游声明请求标识的响应头名，留空不记录。
 const upstreamRequestIdHeader = ref('')
-const withUpstreamRequestIdHeader = <T extends Record<string, unknown> | undefined>(extra: T): T | Record<string, unknown> => {
+const withUpstreamRequestIdHeader = (extra: Record<string, unknown> | undefined): Record<string, unknown> => {
+  extra = { ...(extra || {}), slow_ttft_protection: form.slow_ttft }
   const name = upstreamRequestIdHeader.value.trim()
   if (!name) return extra
   return { ...(extra || {}), upstream_request_id_header: name }
@@ -4782,6 +4786,7 @@ const form = reactive({
   credentials: {} as Record<string, unknown>,
   proxy_id: null as number | null,
   concurrency: 10,
+  slow_ttft: defaultSlowTTFT(),
   load_factor: null as number | null,
   priority: 1,
   rate_multiplier: 1,
@@ -4929,7 +4934,8 @@ watch(
       addMethod.value = 'oauth'
       modelRestrictionMode.value = 'mapping'
       form.concurrency = 1
-      form.load_factor = null
+      form.slow_ttft = defaultSlowTTFT()
+  form.load_factor = null
     }
     if (newPlatform !== 'gemini' && newPlatform !== 'anthropic' && accountCategory.value === 'service_account') {
       accountCategory.value = 'oauth-based'
@@ -5359,6 +5365,7 @@ const resetForm = () => {
   form.credentials = {}
   form.proxy_id = null
   form.concurrency = 10
+  form.slow_ttft = defaultSlowTTFT()
   form.load_factor = null
   form.priority = 1
   form.rate_multiplier = 1

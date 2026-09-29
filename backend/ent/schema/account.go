@@ -171,6 +171,8 @@ func (Account) Fields() []ent.Field {
 
 		// temp_unschedulable_until: 临时不可调度状态解除时间
 		// 当命中临时不可调度规则时设置，在此时间前调度器应跳过该账号
+		field.Time("slow_ttft_until").Optional().Nillable().SchemaType(map[string]string{dialect.Postgres: "timestamptz"}),
+		field.String("slow_ttft_reason").Default(""),
 		field.Time("temp_unschedulable_until").
 			Optional().
 			Nillable().

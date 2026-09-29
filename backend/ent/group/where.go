@@ -70,6 +70,21 @@ func DeletedAt(v time.Time) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldDeletedAt, v))
 }
 
+// SlowTtftExemptUntil applies equality check predicate on the "slow_ttft_exempt_until" field. It's identical to SlowTtftExemptUntilEQ.
+func SlowTtftExemptUntil(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSlowTtftExemptUntil, v))
+}
+
+// IndependentScheduling applies equality check predicate on the "independent_scheduling" field. It's identical to IndependentSchedulingEQ.
+func IndependentScheduling(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldIndependentScheduling, v))
+}
+
+// SchedulingInitialized applies equality check predicate on the "scheduling_initialized" field. It's identical to SchedulingInitializedEQ.
+func SchedulingInitialized(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSchedulingInitialized, v))
+}
+
 // Name applies equality check predicate on the "name" field. It's identical to NameEQ.
 func Name(v string) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldName, v))
@@ -473,6 +488,76 @@ func DeletedAtIsNil() predicate.Group {
 // DeletedAtNotNil applies the NotNil predicate on the "deleted_at" field.
 func DeletedAtNotNil() predicate.Group {
 	return predicate.Group(sql.FieldNotNull(FieldDeletedAt))
+}
+
+// SlowTtftExemptUntilEQ applies the EQ predicate on the "slow_ttft_exempt_until" field.
+func SlowTtftExemptUntilEQ(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSlowTtftExemptUntil, v))
+}
+
+// SlowTtftExemptUntilNEQ applies the NEQ predicate on the "slow_ttft_exempt_until" field.
+func SlowTtftExemptUntilNEQ(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldSlowTtftExemptUntil, v))
+}
+
+// SlowTtftExemptUntilIn applies the In predicate on the "slow_ttft_exempt_until" field.
+func SlowTtftExemptUntilIn(vs ...time.Time) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldSlowTtftExemptUntil, vs...))
+}
+
+// SlowTtftExemptUntilNotIn applies the NotIn predicate on the "slow_ttft_exempt_until" field.
+func SlowTtftExemptUntilNotIn(vs ...time.Time) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldSlowTtftExemptUntil, vs...))
+}
+
+// SlowTtftExemptUntilGT applies the GT predicate on the "slow_ttft_exempt_until" field.
+func SlowTtftExemptUntilGT(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldSlowTtftExemptUntil, v))
+}
+
+// SlowTtftExemptUntilGTE applies the GTE predicate on the "slow_ttft_exempt_until" field.
+func SlowTtftExemptUntilGTE(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldSlowTtftExemptUntil, v))
+}
+
+// SlowTtftExemptUntilLT applies the LT predicate on the "slow_ttft_exempt_until" field.
+func SlowTtftExemptUntilLT(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldSlowTtftExemptUntil, v))
+}
+
+// SlowTtftExemptUntilLTE applies the LTE predicate on the "slow_ttft_exempt_until" field.
+func SlowTtftExemptUntilLTE(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldSlowTtftExemptUntil, v))
+}
+
+// SlowTtftExemptUntilIsNil applies the IsNil predicate on the "slow_ttft_exempt_until" field.
+func SlowTtftExemptUntilIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldSlowTtftExemptUntil))
+}
+
+// SlowTtftExemptUntilNotNil applies the NotNil predicate on the "slow_ttft_exempt_until" field.
+func SlowTtftExemptUntilNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldSlowTtftExemptUntil))
+}
+
+// IndependentSchedulingEQ applies the EQ predicate on the "independent_scheduling" field.
+func IndependentSchedulingEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldIndependentScheduling, v))
+}
+
+// IndependentSchedulingNEQ applies the NEQ predicate on the "independent_scheduling" field.
+func IndependentSchedulingNEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldIndependentScheduling, v))
+}
+
+// SchedulingInitializedEQ applies the EQ predicate on the "scheduling_initialized" field.
+func SchedulingInitializedEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSchedulingInitialized, v))
+}
+
+// SchedulingInitializedNEQ applies the NEQ predicate on the "scheduling_initialized" field.
+func SchedulingInitializedNEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldSchedulingInitialized, v))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.

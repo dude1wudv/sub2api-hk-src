@@ -95,7 +95,10 @@ type Group struct {
 	SupportedModelScopes []string
 
 	// 分组排序
-	SortOrder int
+	SlowTTFTExemptUntil   *time.Time
+	IndependentScheduling bool
+	SchedulingInitialized bool
+	SortOrder             int
 
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
 	AllowMessagesDispatch       bool

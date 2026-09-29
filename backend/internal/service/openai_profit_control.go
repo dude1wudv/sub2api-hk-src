@@ -277,6 +277,9 @@ func attachSelectionProfitGate(ctx context.Context, sel *AccountSelectionResult)
 	if sel == nil {
 		return nil
 	}
+	if state, ok := ctx.Value(slowTTFTGroupKey{}).(slowTTFTGroupState); ok {
+		sel.slowTTFTGroup = &state
+	}
 	if gate, ok := ctx.Value(openAIProfitControlGateCtxKey{}).(*openAIProfitControlGate); ok && gate != nil {
 		sel.profitGate = gate
 	}

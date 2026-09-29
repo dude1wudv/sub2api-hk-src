@@ -165,6 +165,16 @@ func OverloadUntil(v time.Time) predicate.Account {
 	return predicate.Account(sql.FieldEQ(FieldOverloadUntil, v))
 }
 
+// SlowTtftUntil applies equality check predicate on the "slow_ttft_until" field. It's identical to SlowTtftUntilEQ.
+func SlowTtftUntil(v time.Time) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldSlowTtftUntil, v))
+}
+
+// SlowTtftReason applies equality check predicate on the "slow_ttft_reason" field. It's identical to SlowTtftReasonEQ.
+func SlowTtftReason(v string) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldSlowTtftReason, v))
+}
+
 // TempUnschedulableUntil applies equality check predicate on the "temp_unschedulable_until" field. It's identical to TempUnschedulableUntilEQ.
 func TempUnschedulableUntil(v time.Time) predicate.Account {
 	return predicate.Account(sql.FieldEQ(FieldTempUnschedulableUntil, v))
@@ -1253,6 +1263,121 @@ func OverloadUntilIsNil() predicate.Account {
 // OverloadUntilNotNil applies the NotNil predicate on the "overload_until" field.
 func OverloadUntilNotNil() predicate.Account {
 	return predicate.Account(sql.FieldNotNull(FieldOverloadUntil))
+}
+
+// SlowTtftUntilEQ applies the EQ predicate on the "slow_ttft_until" field.
+func SlowTtftUntilEQ(v time.Time) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldSlowTtftUntil, v))
+}
+
+// SlowTtftUntilNEQ applies the NEQ predicate on the "slow_ttft_until" field.
+func SlowTtftUntilNEQ(v time.Time) predicate.Account {
+	return predicate.Account(sql.FieldNEQ(FieldSlowTtftUntil, v))
+}
+
+// SlowTtftUntilIn applies the In predicate on the "slow_ttft_until" field.
+func SlowTtftUntilIn(vs ...time.Time) predicate.Account {
+	return predicate.Account(sql.FieldIn(FieldSlowTtftUntil, vs...))
+}
+
+// SlowTtftUntilNotIn applies the NotIn predicate on the "slow_ttft_until" field.
+func SlowTtftUntilNotIn(vs ...time.Time) predicate.Account {
+	return predicate.Account(sql.FieldNotIn(FieldSlowTtftUntil, vs...))
+}
+
+// SlowTtftUntilGT applies the GT predicate on the "slow_ttft_until" field.
+func SlowTtftUntilGT(v time.Time) predicate.Account {
+	return predicate.Account(sql.FieldGT(FieldSlowTtftUntil, v))
+}
+
+// SlowTtftUntilGTE applies the GTE predicate on the "slow_ttft_until" field.
+func SlowTtftUntilGTE(v time.Time) predicate.Account {
+	return predicate.Account(sql.FieldGTE(FieldSlowTtftUntil, v))
+}
+
+// SlowTtftUntilLT applies the LT predicate on the "slow_ttft_until" field.
+func SlowTtftUntilLT(v time.Time) predicate.Account {
+	return predicate.Account(sql.FieldLT(FieldSlowTtftUntil, v))
+}
+
+// SlowTtftUntilLTE applies the LTE predicate on the "slow_ttft_until" field.
+func SlowTtftUntilLTE(v time.Time) predicate.Account {
+	return predicate.Account(sql.FieldLTE(FieldSlowTtftUntil, v))
+}
+
+// SlowTtftUntilIsNil applies the IsNil predicate on the "slow_ttft_until" field.
+func SlowTtftUntilIsNil() predicate.Account {
+	return predicate.Account(sql.FieldIsNull(FieldSlowTtftUntil))
+}
+
+// SlowTtftUntilNotNil applies the NotNil predicate on the "slow_ttft_until" field.
+func SlowTtftUntilNotNil() predicate.Account {
+	return predicate.Account(sql.FieldNotNull(FieldSlowTtftUntil))
+}
+
+// SlowTtftReasonEQ applies the EQ predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonEQ(v string) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldSlowTtftReason, v))
+}
+
+// SlowTtftReasonNEQ applies the NEQ predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonNEQ(v string) predicate.Account {
+	return predicate.Account(sql.FieldNEQ(FieldSlowTtftReason, v))
+}
+
+// SlowTtftReasonIn applies the In predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonIn(vs ...string) predicate.Account {
+	return predicate.Account(sql.FieldIn(FieldSlowTtftReason, vs...))
+}
+
+// SlowTtftReasonNotIn applies the NotIn predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonNotIn(vs ...string) predicate.Account {
+	return predicate.Account(sql.FieldNotIn(FieldSlowTtftReason, vs...))
+}
+
+// SlowTtftReasonGT applies the GT predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonGT(v string) predicate.Account {
+	return predicate.Account(sql.FieldGT(FieldSlowTtftReason, v))
+}
+
+// SlowTtftReasonGTE applies the GTE predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonGTE(v string) predicate.Account {
+	return predicate.Account(sql.FieldGTE(FieldSlowTtftReason, v))
+}
+
+// SlowTtftReasonLT applies the LT predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonLT(v string) predicate.Account {
+	return predicate.Account(sql.FieldLT(FieldSlowTtftReason, v))
+}
+
+// SlowTtftReasonLTE applies the LTE predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonLTE(v string) predicate.Account {
+	return predicate.Account(sql.FieldLTE(FieldSlowTtftReason, v))
+}
+
+// SlowTtftReasonContains applies the Contains predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonContains(v string) predicate.Account {
+	return predicate.Account(sql.FieldContains(FieldSlowTtftReason, v))
+}
+
+// SlowTtftReasonHasPrefix applies the HasPrefix predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonHasPrefix(v string) predicate.Account {
+	return predicate.Account(sql.FieldHasPrefix(FieldSlowTtftReason, v))
+}
+
+// SlowTtftReasonHasSuffix applies the HasSuffix predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonHasSuffix(v string) predicate.Account {
+	return predicate.Account(sql.FieldHasSuffix(FieldSlowTtftReason, v))
+}
+
+// SlowTtftReasonEqualFold applies the EqualFold predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonEqualFold(v string) predicate.Account {
+	return predicate.Account(sql.FieldEqualFold(FieldSlowTtftReason, v))
+}
+
+// SlowTtftReasonContainsFold applies the ContainsFold predicate on the "slow_ttft_reason" field.
+func SlowTtftReasonContainsFold(v string) predicate.Account {
+	return predicate.Account(sql.FieldContainsFold(FieldSlowTtftReason, v))
 }
 
 // TempUnschedulableUntilEQ applies the EQ predicate on the "temp_unschedulable_until" field.

@@ -1,5 +1,34 @@
 export default {
     accounts: {
+      "slowTTFT": {
+  "title": "慢首字保护",
+  "hint": "仅统计流式对话。连续慢请求或窗口内累计慢请求任一达标，即暂停此账号在所有分组的新调度；不会中断正在执行的请求。",
+  "threshold_seconds": "首字阈值（秒）",
+  "consecutive_count": "连续慢请求次数",
+  "window_seconds": "累计窗口（秒）",
+  "window_count": "窗口内慢请求次数",
+  "pause_seconds": "暂停时长（秒）",
+  "batch": "修改所选账号的慢首字保护（不勾选则不修改）",
+  "paused": "慢首字暂停",
+  "consecutive": "连续次数达标",
+  "window": "窗口累计达标",
+  "until": "恢复时间：{time}",
+  "clear": "解除慢首字暂停",
+  "failed": "解除失败，请重试"
+},
+      "groupScheduling": {
+  "title": "分组内调度",
+  "enable": "启用严格优先级与负载均衡",
+  "hint": "优先级数字越小越优先，填写相同数字可设为同一层。当前层无可用容量才调度下一层；同层按（当前并发＋1）÷负载因子最小者优先，并列随机。健康会话继续使用已绑定账号。",
+  "recoveryHint": "全组账号因慢首字暂停时，自动解除本轮慢首字暂停，从最高优先级重新尝试；仅此分组豁免慢首字保护 30 分钟。其他限流、配额及停用状态不解除。",
+  "exemptUntil": "本组慢首字保护豁免至：{time}",
+  "up": "上移优先级层",
+  "down": "下移优先级层",
+  "failed": "加载或保存失败，请重试",
+  "conflict": "分组成员或配置已变更，请关闭后重新打开再编辑",
+  "invalid": "优先级须为 0 至 1000000 的整数",
+  "exempt": "全组慢首字恢复：本分组豁免至 {time}"
+},
       title: '账号管理',
       description: '管理 AI 平台账号和 Cookie',
       createAccount: '添加账号',

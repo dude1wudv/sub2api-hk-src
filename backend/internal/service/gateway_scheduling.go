@@ -117,6 +117,18 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 		return nil, err
 	}
 	ctx = s.withGroupContext(ctx, group)
+	var recovered bool
+	ctx, recovered = withSlowTTFTGroup(ctx, s.accountRepo, groupID)
+	if group != nil {
+		copy := *group
+		if s.groupRepo != nil {
+			if current, err := s.groupRepo.GetByIDLite(ctx, group.ID); err == nil && current != nil {
+				copy.IndependentScheduling = current.IndependentScheduling
+			}
+		}
+		copy.IndependentScheduling = copy.IndependentScheduling || recovered
+		group = &copy
+	}
 	ctx = s.withGatewayProfitControlGate(ctx, groupID)
 
 	// Claude Code 限制可能已将 groupID 解析为 fallback group，
@@ -138,6 +150,9 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 			stickyAccountID = accountID
 			stickySource = "cache"
 		}
+	}
+	if recovered {
+		stickyAccountID = 0
 	}
 
 	// [DEBUG-STICKY] 调度器入口日志
@@ -161,7 +176,7 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 			derefGroupID(groupID), groupPlatform, requestedModel, shortSessionHash(sessionHash), stickyAccountID, cfg.LoadBatchEnabled, s.concurrencyService != nil)
 	}
 
-	if s.concurrencyService == nil || !cfg.LoadBatchEnabled {
+	if s.concurrencyService == nil || (!cfg.LoadBatchEnabled && (group == nil || !group.IndependentScheduling)) {
 		// 复制排除列表，用于会话限制拒绝时的重试
 		localExcluded := make(map[int64]struct{})
 		for k, v := range excludedIDs {
@@ -433,6 +448,9 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 				}
 			}
 
+			if group != nil && group.IndependentScheduling {
+				return s.selectIndependentGateway(ctx, groupID, sessionHash, routingCandidates, requestedModel, platform, useMixed)
+			}
 			// 2. 批量获取负载信息
 			routingLoads := make([]AccountWithConcurrency, 0, len(routingCandidates))
 			for _, acc := range routingCandidates {
@@ -705,6 +723,9 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 		return nil, ErrNoAvailableAccounts
 	}
 
+	if group != nil && group.IndependentScheduling {
+		return s.selectIndependentGateway(ctx, groupID, sessionHash, candidates, requestedModel, platform, useMixed)
+	}
 	accountLoads := make([]AccountWithConcurrency, 0, len(candidates))
 	for _, acc := range candidates {
 		accountLoads = append(accountLoads, AccountWithConcurrency{
@@ -1015,6 +1036,7 @@ func (s *GatewayService) listSchedulableAccounts(ctx context.Context, groupID *i
 	if s.schedulerSnapshot != nil {
 		accounts, useMixed, err := s.schedulerSnapshot.ListSchedulableAccounts(ctx, groupID, platform, hasForcePlatform)
 		if err == nil {
+			accounts = accountsForSlowTTFTContext(ctx, accounts)
 			accounts = s.filterAccountsBySchedulingThreshold(ctx, accounts)
 			if platform == PlatformGrok || strings.EqualFold(platform, PlatformGrok) {
 				accounts = s.filterGrokFreeQuotaAccountsForGateway(ctx, accounts)
@@ -1080,7 +1102,7 @@ func (s *GatewayService) listSchedulableAccounts(ctx context.Context, groupID *i
 					"tls_fingerprint", acc.IsTLSFingerprintEnabled())
 			}
 		}
-		return s.filterAccountsBySchedulingThreshold(ctx, filtered), useMixed, nil
+		return s.filterAccountsBySchedulingThreshold(ctx, accountsForSlowTTFTContext(ctx, filtered)), useMixed, nil
 	}
 
 	var accounts []Account
@@ -1115,6 +1137,7 @@ func (s *GatewayService) listSchedulableAccounts(ctx context.Context, groupID *i
 				"tls_fingerprint", acc.IsTLSFingerprintEnabled())
 		}
 	}
+	accounts = accountsForSlowTTFTContext(ctx, accounts)
 	accounts = s.filterAccountsBySchedulingThreshold(ctx, accounts)
 	if platform == PlatformGrok || strings.EqualFold(platform, PlatformGrok) {
 		accounts = s.filterGrokFreeQuotaAccountsForGateway(ctx, accounts)
@@ -1179,6 +1202,9 @@ func (s *GatewayService) isAccountInGroup(account *Account, groupID *int64) bool
 }
 
 func (s *GatewayService) tryAcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int) (*AcquireResult, error) {
+	if s.rateLimitService != nil && s.rateLimitService.SlowTTFTPaused(ctx, accountID) {
+		return &AcquireResult{}, nil
+	}
 	if s.concurrencyService == nil {
 		return &AcquireResult{Acquired: true, ReleaseFunc: func() {}}, nil
 	}
@@ -1524,6 +1550,7 @@ func (s *GatewayService) getSchedulableAccount(ctx context.Context, accountID in
 	if err != nil || account == nil {
 		return account, err
 	}
+	account = accountForSlowTTFTContext(ctx, account)
 	if s.isAccountBlockedBySchedulingThreshold(ctx, account) {
 		return nil, nil
 	}
@@ -1575,6 +1602,9 @@ func (s *GatewayService) hydrateSelectedAccount(ctx context.Context, account *Ac
 func (s *GatewayService) newSelectionResult(ctx context.Context, account *Account, acquired bool, release func(), waitPlan *AccountWaitPlan) (*AccountSelectionResult, error) {
 	hydrated, err := s.hydrateSelectedAccount(ctx, account)
 	if err != nil {
+		if release != nil {
+			release()
+		}
 		return nil, err
 	}
 	return attachSelectionProfitGate(ctx, &AccountSelectionResult{
@@ -2529,6 +2559,10 @@ func (s *GatewayService) diagnoseSelectionFailure(
 	}
 	if _, excluded := excludedIDs[acc.ID]; excluded {
 		return selectionFailureDiagnosis{Category: "excluded"}
+	}
+	acc = accountForSlowTTFTContext(ctx, acc)
+	if acc.SlowTTFTUntil != nil && time.Now().Before(*acc.SlowTTFTUntil) {
+		return selectionFailureDiagnosis{Category: "unschedulable", Detail: "slow_ttft_paused:" + acc.SlowTTFTReason}
 	}
 	if !s.isAccountSchedulableForSelection(acc) {
 		return selectionFailureDiagnosis{Category: "unschedulable", Detail: "generic_unschedulable"}

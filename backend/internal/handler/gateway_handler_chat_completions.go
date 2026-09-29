@@ -207,6 +207,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 			}
 		}
 		account := selection.Account
+		c.Request = c.Request.WithContext(selection.WithSlowTTFTContext(c.Request.Context()))
 		setOpsSelectedAccount(c, account.ID, account.Platform)
 
 		// 4. Acquire account concurrency slot

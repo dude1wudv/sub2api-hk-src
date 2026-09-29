@@ -72,6 +72,48 @@ func (_c *GroupCreate) SetNillableDeletedAt(v *time.Time) *GroupCreate {
 	return _c
 }
 
+// SetSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field.
+func (_c *GroupCreate) SetSlowTtftExemptUntil(v time.Time) *GroupCreate {
+	_c.mutation.SetSlowTtftExemptUntil(v)
+	return _c
+}
+
+// SetNillableSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableSlowTtftExemptUntil(v *time.Time) *GroupCreate {
+	if v != nil {
+		_c.SetSlowTtftExemptUntil(*v)
+	}
+	return _c
+}
+
+// SetIndependentScheduling sets the "independent_scheduling" field.
+func (_c *GroupCreate) SetIndependentScheduling(v bool) *GroupCreate {
+	_c.mutation.SetIndependentScheduling(v)
+	return _c
+}
+
+// SetNillableIndependentScheduling sets the "independent_scheduling" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableIndependentScheduling(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetIndependentScheduling(*v)
+	}
+	return _c
+}
+
+// SetSchedulingInitialized sets the "scheduling_initialized" field.
+func (_c *GroupCreate) SetSchedulingInitialized(v bool) *GroupCreate {
+	_c.mutation.SetSchedulingInitialized(v)
+	return _c
+}
+
+// SetNillableSchedulingInitialized sets the "scheduling_initialized" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableSchedulingInitialized(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetSchedulingInitialized(*v)
+	}
+	return _c
+}
+
 // SetName sets the "name" field.
 func (_c *GroupCreate) SetName(v string) *GroupCreate {
 	_c.mutation.SetName(v)
@@ -1047,6 +1089,14 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.IndependentScheduling(); !ok {
+		v := group.DefaultIndependentScheduling
+		_c.mutation.SetIndependentScheduling(v)
+	}
+	if _, ok := _c.mutation.SchedulingInitialized(); !ok {
+		v := group.DefaultSchedulingInitialized
+		_c.mutation.SetSchedulingInitialized(v)
+	}
 	if _, ok := _c.mutation.RateMultiplier(); !ok {
 		v := group.DefaultRateMultiplier
 		_c.mutation.SetRateMultiplier(v)
@@ -1221,6 +1271,12 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Group.updated_at"`)}
+	}
+	if _, ok := _c.mutation.IndependentScheduling(); !ok {
+		return &ValidationError{Name: "independent_scheduling", err: errors.New(`ent: missing required field "Group.independent_scheduling"`)}
+	}
+	if _, ok := _c.mutation.SchedulingInitialized(); !ok {
+		return &ValidationError{Name: "scheduling_initialized", err: errors.New(`ent: missing required field "Group.scheduling_initialized"`)}
 	}
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Group.name"`)}
@@ -1456,6 +1512,18 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(group.FieldDeletedAt, field.TypeTime, value)
 		_node.DeletedAt = &value
+	}
+	if value, ok := _c.mutation.SlowTtftExemptUntil(); ok {
+		_spec.SetField(group.FieldSlowTtftExemptUntil, field.TypeTime, value)
+		_node.SlowTtftExemptUntil = &value
+	}
+	if value, ok := _c.mutation.IndependentScheduling(); ok {
+		_spec.SetField(group.FieldIndependentScheduling, field.TypeBool, value)
+		_node.IndependentScheduling = value
+	}
+	if value, ok := _c.mutation.SchedulingInitialized(); ok {
+		_spec.SetField(group.FieldSchedulingInitialized, field.TypeBool, value)
+		_node.SchedulingInitialized = value
 	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(group.FieldName, field.TypeString, value)
@@ -1892,6 +1960,48 @@ func (u *GroupUpsert) UpdateDeletedAt() *GroupUpsert {
 // ClearDeletedAt clears the value of the "deleted_at" field.
 func (u *GroupUpsert) ClearDeletedAt() *GroupUpsert {
 	u.SetNull(group.FieldDeletedAt)
+	return u
+}
+
+// SetSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field.
+func (u *GroupUpsert) SetSlowTtftExemptUntil(v time.Time) *GroupUpsert {
+	u.Set(group.FieldSlowTtftExemptUntil, v)
+	return u
+}
+
+// UpdateSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateSlowTtftExemptUntil() *GroupUpsert {
+	u.SetExcluded(group.FieldSlowTtftExemptUntil)
+	return u
+}
+
+// ClearSlowTtftExemptUntil clears the value of the "slow_ttft_exempt_until" field.
+func (u *GroupUpsert) ClearSlowTtftExemptUntil() *GroupUpsert {
+	u.SetNull(group.FieldSlowTtftExemptUntil)
+	return u
+}
+
+// SetIndependentScheduling sets the "independent_scheduling" field.
+func (u *GroupUpsert) SetIndependentScheduling(v bool) *GroupUpsert {
+	u.Set(group.FieldIndependentScheduling, v)
+	return u
+}
+
+// UpdateIndependentScheduling sets the "independent_scheduling" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateIndependentScheduling() *GroupUpsert {
+	u.SetExcluded(group.FieldIndependentScheduling)
+	return u
+}
+
+// SetSchedulingInitialized sets the "scheduling_initialized" field.
+func (u *GroupUpsert) SetSchedulingInitialized(v bool) *GroupUpsert {
+	u.Set(group.FieldSchedulingInitialized, v)
+	return u
+}
+
+// UpdateSchedulingInitialized sets the "scheduling_initialized" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateSchedulingInitialized() *GroupUpsert {
+	u.SetExcluded(group.FieldSchedulingInitialized)
 	return u
 }
 
@@ -3001,6 +3111,55 @@ func (u *GroupUpsertOne) UpdateDeletedAt() *GroupUpsertOne {
 func (u *GroupUpsertOne) ClearDeletedAt() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.ClearDeletedAt()
+	})
+}
+
+// SetSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field.
+func (u *GroupUpsertOne) SetSlowTtftExemptUntil(v time.Time) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSlowTtftExemptUntil(v)
+	})
+}
+
+// UpdateSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateSlowTtftExemptUntil() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSlowTtftExemptUntil()
+	})
+}
+
+// ClearSlowTtftExemptUntil clears the value of the "slow_ttft_exempt_until" field.
+func (u *GroupUpsertOne) ClearSlowTtftExemptUntil() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearSlowTtftExemptUntil()
+	})
+}
+
+// SetIndependentScheduling sets the "independent_scheduling" field.
+func (u *GroupUpsertOne) SetIndependentScheduling(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetIndependentScheduling(v)
+	})
+}
+
+// UpdateIndependentScheduling sets the "independent_scheduling" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateIndependentScheduling() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateIndependentScheduling()
+	})
+}
+
+// SetSchedulingInitialized sets the "scheduling_initialized" field.
+func (u *GroupUpsertOne) SetSchedulingInitialized(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSchedulingInitialized(v)
+	})
+}
+
+// UpdateSchedulingInitialized sets the "scheduling_initialized" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateSchedulingInitialized() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSchedulingInitialized()
 	})
 }
 
@@ -4447,6 +4606,55 @@ func (u *GroupUpsertBulk) UpdateDeletedAt() *GroupUpsertBulk {
 func (u *GroupUpsertBulk) ClearDeletedAt() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.ClearDeletedAt()
+	})
+}
+
+// SetSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field.
+func (u *GroupUpsertBulk) SetSlowTtftExemptUntil(v time.Time) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSlowTtftExemptUntil(v)
+	})
+}
+
+// UpdateSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateSlowTtftExemptUntil() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSlowTtftExemptUntil()
+	})
+}
+
+// ClearSlowTtftExemptUntil clears the value of the "slow_ttft_exempt_until" field.
+func (u *GroupUpsertBulk) ClearSlowTtftExemptUntil() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearSlowTtftExemptUntil()
+	})
+}
+
+// SetIndependentScheduling sets the "independent_scheduling" field.
+func (u *GroupUpsertBulk) SetIndependentScheduling(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetIndependentScheduling(v)
+	})
+}
+
+// UpdateIndependentScheduling sets the "independent_scheduling" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateIndependentScheduling() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateIndependentScheduling()
+	})
+}
+
+// SetSchedulingInitialized sets the "scheduling_initialized" field.
+func (u *GroupUpsertBulk) SetSchedulingInitialized(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSchedulingInitialized(v)
+	})
+}
+
+// UpdateSchedulingInitialized sets the "scheduling_initialized" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateSchedulingInitialized() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSchedulingInitialized()
 	})
 }
 

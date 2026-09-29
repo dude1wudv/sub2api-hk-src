@@ -1244,6 +1244,8 @@ export interface Account {
   proxy_fallback_origin_id?: number | null
   proxy_fallback_origin_name?: string | null
   concurrency: number
+  slow_ttft_until?: string | null
+  slow_ttft_reason?: string
   load_factor?: number | null
   current_concurrency?: number // Real-time concurrency count from Redis
   scheduler_score?: {

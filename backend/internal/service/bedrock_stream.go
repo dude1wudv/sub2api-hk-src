@@ -136,6 +136,9 @@ func (s *GatewayService) handleBedrockStreamingResponse(
 
 			// 转换 Bedrock 特有的 amazon-bedrock-invocationMetrics 为标准 Anthropic usage 格式
 			// 同时移除该字段避免透传给客户端
+			if observer, ok := resp.Body.(interface{ ObserveOutput([]byte) }); ok {
+				observer.ObserveOutput(sseData)
+			}
 			sseData = transformBedrockInvocationMetrics(sseData)
 
 			// 解析 SSE 事件数据提取 usage

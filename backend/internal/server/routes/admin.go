@@ -337,6 +337,8 @@ func registerGroupRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		groups.POST("/:id/composite-routes/preview", h.Admin.Group.PreviewCompositeRoute)
 		groups.PUT("/:id/composite-routes/:route_id", h.Admin.Group.UpdateCompositeRoute)
 		groups.DELETE("/:id/composite-routes/:route_id", h.Admin.Group.DeleteCompositeRoute)
+		groups.GET("/:id/scheduling", h.Admin.Group.GetScheduling)
+		groups.PUT("/:id/scheduling", h.Admin.Group.SaveScheduling)
 		groups.GET("/:id", h.Admin.Group.GetByID)
 		groups.POST("", h.Admin.Group.Create)
 		groups.POST("/:id/duplicate", h.Admin.Group.Duplicate)
@@ -355,6 +357,7 @@ func registerGroupRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAuth middleware.StepUpAuthMiddleware) {
 	accounts := admin.Group("/accounts")
 	{
+		accounts.POST("/:id/slow-ttft/clear", h.Admin.Account.ClearSlowTTFT)
 		accounts.GET("", h.Admin.Account.List)
 		accounts.GET("/summary", h.Admin.Account.Summary)
 		accounts.GET("/oauth-usage-summary", h.Admin.Account.OAuthUsageSummary)

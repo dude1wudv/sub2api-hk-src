@@ -1944,20 +1944,22 @@ func (r *accountRepository) AddToGroup(ctx context.Context, accountID, groupID i
 }
 
 func (r *accountRepository) RemoveFromGroup(ctx context.Context, accountID, groupID int64) error {
-	_, err := r.client.AccountGroup.Delete().
-		Where(
-			dbaccountgroup.AccountIDEQ(accountID),
-			dbaccountgroup.GroupIDEQ(groupID),
-		).
-		Exec(ctx)
+	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return err
 	}
-	payload := buildSchedulerGroupPayload([]int64{groupID})
-	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventAccountGroupsChanged, &accountID, nil, payload); err != nil {
-		logger.LegacyPrintf("repository.account", "[SchedulerOutbox] enqueue remove from group failed: account=%d group=%d err=%v", accountID, groupID, err)
+	defer tx.Rollback()
+	if err := lockLiveGroups(ctx, tx.Client(), []int64{groupID}); err != nil {
+		return err
 	}
-	return nil
+	if _, err := tx.Client().AccountGroup.Delete().Where(dbaccountgroup.AccountIDEQ(accountID), dbaccountgroup.GroupIDEQ(groupID)).Exec(ctx); err != nil {
+		return err
+	}
+	payload := buildSchedulerGroupPayload([]int64{groupID})
+	if err := enqueueSchedulerOutbox(ctx, tx.Client(), service.SchedulerOutboxEventAccountGroupsChanged, &accountID, nil, payload); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *accountRepository) GetGroups(ctx context.Context, accountID int64) ([]service.Group, error) {
@@ -1978,6 +1980,9 @@ func (r *accountRepository) GetGroups(ctx context.Context, accountID int64) ([]s
 }
 
 func (r *accountRepository) BindGroups(ctx context.Context, accountID int64, groupIDs []int64) error {
+	if groupIDs == nil {
+		groupIDs = []int64{}
+	}
 	existingGroupIDs, err := r.loadAccountGroupIDs(ctx, accountID)
 	if err != nil {
 		return err
@@ -1996,31 +2001,20 @@ func (r *accountRepository) BindGroups(ctx context.Context, accountID int64, gro
 		// 已处于外部事务中（ErrTxStarted），复用当前 client
 		txClient = r.client
 	}
-	if err := lockLiveGroups(ctx, txClient, groupIDs); err != nil {
+	if err := lockLiveGroups(ctx, txClient, mergeGroupIDs(existingGroupIDs, groupIDs)); err != nil {
 		return err
 	}
 
-	if _, err := txClient.AccountGroup.Delete().Where(dbaccountgroup.AccountIDEQ(accountID)).Exec(ctx); err != nil {
+	if _, err := txClient.ExecContext(ctx, `DELETE FROM account_groups WHERE account_id=$1 AND NOT (group_id=ANY($2::bigint[]))`, accountID, pq.Array(groupIDs)); err != nil {
 		return err
 	}
-
-	if len(groupIDs) == 0 {
-		if tx != nil {
-			return tx.Commit()
+	if len(groupIDs) > 0 {
+		if _, err := txClient.ExecContext(ctx, `INSERT INTO account_groups(account_id,group_id,priority,created_at) SELECT a.id,g.id,a.priority,NOW() FROM accounts a CROSS JOIN unnest($2::bigint[]) AS g(id) WHERE a.id=$1 AND a.deleted_at IS NULL ON CONFLICT(account_id,group_id) DO NOTHING`, accountID, pq.Array(groupIDs)); err != nil {
+			return err
 		}
-		return nil
 	}
-
-	builders := make([]*dbent.AccountGroupCreate, 0, len(groupIDs))
-	for i, groupID := range groupIDs {
-		builders = append(builders, txClient.AccountGroup.Create().
-			SetAccountID(accountID).
-			SetGroupID(groupID).
-			SetPriority(i+1),
-		)
-	}
-
-	if _, err := txClient.AccountGroup.CreateBulk(builders...).Save(ctx); err != nil {
+	payload := buildSchedulerGroupPayload(mergeGroupIDs(existingGroupIDs, groupIDs))
+	if err := enqueueSchedulerOutbox(ctx, txClient, service.SchedulerOutboxEventAccountGroupsChanged, &accountID, nil, payload); err != nil {
 		return err
 	}
 
@@ -2028,10 +2022,6 @@ func (r *accountRepository) BindGroups(ctx context.Context, accountID int64, gro
 		if err := tx.Commit(); err != nil {
 			return err
 		}
-	}
-	payload := buildSchedulerGroupPayload(mergeGroupIDs(existingGroupIDs, groupIDs))
-	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventAccountGroupsChanged, &accountID, nil, payload); err != nil {
-		logger.LegacyPrintf("repository.account", "[SchedulerOutbox] enqueue bind groups failed: account=%d err=%v", accountID, err)
 	}
 	return nil
 }
@@ -3693,6 +3683,8 @@ func accountEntityToService(m *dbent.Account) *service.Account {
 		RateLimitedAt:           m.RateLimitedAt,
 		RateLimitResetAt:        m.RateLimitResetAt,
 		OverloadUntil:           m.OverloadUntil,
+		SlowTTFTUntil:           m.SlowTtftUntil,
+		SlowTTFTReason:          m.SlowTtftReason,
 		TempUnschedulableUntil:  m.TempUnschedulableUntil,
 		TempUnschedulableReason: derefString(m.TempUnschedulableReason),
 		SessionWindowStart:      m.SessionWindowStart,

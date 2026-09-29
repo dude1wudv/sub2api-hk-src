@@ -6,6 +6,7 @@
     @close="handleClose"
   >
     <form id="bulk-edit-account-form" class="space-y-5" @submit.prevent="() => handleSubmit()">
+      <div class="space-y-2"><label class="flex items-center gap-2"><input v-model="enableSlowTTFT" type="checkbox" />{{ t('admin.accounts.slowTTFT.batch') }}</label><SlowTTFTSettings v-if="enableSlowTTFT" v-model="slowTTFT" /></div>
       <!-- Info -->
       <div class="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
         <p class="text-sm text-blue-700 dark:text-blue-400">
@@ -1473,6 +1474,8 @@
 </template>
 
 <script setup lang="ts">
+import SlowTTFTSettings from './SlowTTFTSettings.vue'
+import { defaultSlowTTFT } from './slowTTFT'
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -1652,6 +1655,8 @@ const enableInterceptWarmup = ref(false)
 const enableHeaderOverride = ref(false)
 const enableProxy = ref(false)
 const enableConcurrency = ref(false)
+const enableSlowTTFT = ref(false)
+const slowTTFT = ref(defaultSlowTTFT())
 const enableLoadFactor = ref(false)
 const enablePriority = ref(false)
 const enableRateMultiplier = ref(false)
@@ -1946,6 +1951,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     updates.concurrency = concurrency.value
   }
 
+  if (enableSlowTTFT.value) ensureExtra().slow_ttft_protection = slowTTFT.value
   if (enableLoadFactor.value) {
     // 空值/NaN/0 时发送 0（后端约定 <= 0 表示清除）
     const lf = loadFactor.value
@@ -2213,6 +2219,7 @@ const handleSubmit = async () => {
     enableHeaderOverride.value ||
     enableProxy.value ||
     enableConcurrency.value ||
+    enableSlowTTFT.value ||
     enableLoadFactor.value ||
     enablePriority.value ||
     enableRateMultiplier.value ||
@@ -2359,6 +2366,8 @@ watch(
       enableHeaderOverride.value = false
       enableProxy.value = false
       enableConcurrency.value = false
+      enableSlowTTFT.value = false
+      slowTTFT.value = defaultSlowTTFT()
       enableLoadFactor.value = false
       enablePriority.value = false
       enableRateMultiplier.value = false

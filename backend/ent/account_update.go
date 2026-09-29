@@ -430,6 +430,40 @@ func (_u *AccountUpdate) ClearOverloadUntil() *AccountUpdate {
 	return _u
 }
 
+// SetSlowTtftUntil sets the "slow_ttft_until" field.
+func (_u *AccountUpdate) SetSlowTtftUntil(v time.Time) *AccountUpdate {
+	_u.mutation.SetSlowTtftUntil(v)
+	return _u
+}
+
+// SetNillableSlowTtftUntil sets the "slow_ttft_until" field if the given value is not nil.
+func (_u *AccountUpdate) SetNillableSlowTtftUntil(v *time.Time) *AccountUpdate {
+	if v != nil {
+		_u.SetSlowTtftUntil(*v)
+	}
+	return _u
+}
+
+// ClearSlowTtftUntil clears the value of the "slow_ttft_until" field.
+func (_u *AccountUpdate) ClearSlowTtftUntil() *AccountUpdate {
+	_u.mutation.ClearSlowTtftUntil()
+	return _u
+}
+
+// SetSlowTtftReason sets the "slow_ttft_reason" field.
+func (_u *AccountUpdate) SetSlowTtftReason(v string) *AccountUpdate {
+	_u.mutation.SetSlowTtftReason(v)
+	return _u
+}
+
+// SetNillableSlowTtftReason sets the "slow_ttft_reason" field if the given value is not nil.
+func (_u *AccountUpdate) SetNillableSlowTtftReason(v *string) *AccountUpdate {
+	if v != nil {
+		_u.SetSlowTtftReason(*v)
+	}
+	return _u
+}
+
 // SetTempUnschedulableUntil sets the "temp_unschedulable_until" field.
 func (_u *AccountUpdate) SetTempUnschedulableUntil(v time.Time) *AccountUpdate {
 	_u.mutation.SetTempUnschedulableUntil(v)
@@ -912,6 +946,15 @@ func (_u *AccountUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.OverloadUntilCleared() {
 		_spec.ClearField(account.FieldOverloadUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SlowTtftUntil(); ok {
+		_spec.SetField(account.FieldSlowTtftUntil, field.TypeTime, value)
+	}
+	if _u.mutation.SlowTtftUntilCleared() {
+		_spec.ClearField(account.FieldSlowTtftUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SlowTtftReason(); ok {
+		_spec.SetField(account.FieldSlowTtftReason, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.TempUnschedulableUntil(); ok {
 		_spec.SetField(account.FieldTempUnschedulableUntil, field.TypeTime, value)
@@ -1570,6 +1613,40 @@ func (_u *AccountUpdateOne) ClearOverloadUntil() *AccountUpdateOne {
 	return _u
 }
 
+// SetSlowTtftUntil sets the "slow_ttft_until" field.
+func (_u *AccountUpdateOne) SetSlowTtftUntil(v time.Time) *AccountUpdateOne {
+	_u.mutation.SetSlowTtftUntil(v)
+	return _u
+}
+
+// SetNillableSlowTtftUntil sets the "slow_ttft_until" field if the given value is not nil.
+func (_u *AccountUpdateOne) SetNillableSlowTtftUntil(v *time.Time) *AccountUpdateOne {
+	if v != nil {
+		_u.SetSlowTtftUntil(*v)
+	}
+	return _u
+}
+
+// ClearSlowTtftUntil clears the value of the "slow_ttft_until" field.
+func (_u *AccountUpdateOne) ClearSlowTtftUntil() *AccountUpdateOne {
+	_u.mutation.ClearSlowTtftUntil()
+	return _u
+}
+
+// SetSlowTtftReason sets the "slow_ttft_reason" field.
+func (_u *AccountUpdateOne) SetSlowTtftReason(v string) *AccountUpdateOne {
+	_u.mutation.SetSlowTtftReason(v)
+	return _u
+}
+
+// SetNillableSlowTtftReason sets the "slow_ttft_reason" field if the given value is not nil.
+func (_u *AccountUpdateOne) SetNillableSlowTtftReason(v *string) *AccountUpdateOne {
+	if v != nil {
+		_u.SetSlowTtftReason(*v)
+	}
+	return _u
+}
+
 // SetTempUnschedulableUntil sets the "temp_unschedulable_until" field.
 func (_u *AccountUpdateOne) SetTempUnschedulableUntil(v time.Time) *AccountUpdateOne {
 	_u.mutation.SetTempUnschedulableUntil(v)
@@ -2082,6 +2159,15 @@ func (_u *AccountUpdateOne) sqlSave(ctx context.Context) (_node *Account, err er
 	}
 	if _u.mutation.OverloadUntilCleared() {
 		_spec.ClearField(account.FieldOverloadUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SlowTtftUntil(); ok {
+		_spec.SetField(account.FieldSlowTtftUntil, field.TypeTime, value)
+	}
+	if _u.mutation.SlowTtftUntilCleared() {
+		_spec.ClearField(account.FieldSlowTtftUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SlowTtftReason(); ok {
+		_spec.SetField(account.FieldSlowTtftReason, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.TempUnschedulableUntil(); ok {
 		_spec.SetField(account.FieldTempUnschedulableUntil, field.TypeTime, value)

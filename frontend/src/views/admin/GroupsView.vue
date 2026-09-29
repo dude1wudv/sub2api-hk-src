@@ -1,5 +1,6 @@
 <template>
   <AppLayout>
+    <GroupSchedulingModal :group-id="schedulingGroupId" @close="schedulingGroupId = null" />
     <TablePageLayout>
       <template #filters>
         <div
@@ -380,6 +381,7 @@
           </template>
 
           <template #cell-actions="{ row }">
+            <button v-if="row.platform !== 'composite'" type="button" class="btn btn-secondary" @click="schedulingGroupId = row.id">{{ t('admin.accounts.groupScheduling.title') }}</button>
             <div v-if="isGlassLayout" class="flex items-center gap-2">
               <button type="button" class="glacier-row-action" @click="handleEdit(row)"><Icon name="edit" size="sm" />{{ t('common.edit') }}</button>
               <GlacierActionMenu :label="row.name + ' · ' + t('common.actions')">
@@ -4277,6 +4279,7 @@
 </template>
 
 <script setup lang="ts">
+import GroupSchedulingModal from '@/components/group/GroupSchedulingModal.vue'
 import GlacierActionMenu from '@/components/common/GlacierActionMenu.vue'
 import { useGlacierPreferences } from '@/composables/useGlacierPreferences'
 const { isGlassLayout } = useGlacierPreferences()
@@ -6895,4 +6898,5 @@ onUnmounted(() => {
   accountSearchRunner.clearAll();
   clearAllAccountSearchState();
 });
+const schedulingGroupId = ref<number | null>(null)
 </script>

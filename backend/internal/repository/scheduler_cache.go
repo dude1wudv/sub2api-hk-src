@@ -880,6 +880,8 @@ func buildSchedulerMetadataAccount(account service.Account) service.Account {
 		RateLimitedAt:           account.RateLimitedAt,
 		RateLimitResetAt:        account.RateLimitResetAt,
 		OverloadUntil:           account.OverloadUntil,
+		SlowTTFTUntil:           account.SlowTTFTUntil,
+		SlowTTFTReason:          account.SlowTTFTReason,
 		TempUnschedulableUntil:  account.TempUnschedulableUntil,
 		TempUnschedulableReason: account.TempUnschedulableReason,
 		SessionWindowStart:      account.SessionWindowStart,
@@ -974,6 +976,7 @@ func filterSchedulerExtra(extra map[string]any) map[string]any {
 		return nil
 	}
 	keys := []string{
+		service.SlowTTFTConfigKey,
 		// Anthropic shared-window and Fable-only threshold checks run on this
 		// projection. UpdateExtra refreshes both payloads without a bucket rebuild.
 		"session_window_utilization",

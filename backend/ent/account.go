@@ -67,6 +67,10 @@ type Account struct {
 	RateLimitResetAt *time.Time `json:"rate_limit_reset_at,omitempty"`
 	// OverloadUntil holds the value of the "overload_until" field.
 	OverloadUntil *time.Time `json:"overload_until,omitempty"`
+	// SlowTtftUntil holds the value of the "slow_ttft_until" field.
+	SlowTtftUntil *time.Time `json:"slow_ttft_until,omitempty"`
+	// SlowTtftReason holds the value of the "slow_ttft_reason" field.
+	SlowTtftReason string `json:"slow_ttft_reason,omitempty"`
 	// TempUnschedulableUntil holds the value of the "temp_unschedulable_until" field.
 	TempUnschedulableUntil *time.Time `json:"temp_unschedulable_until,omitempty"`
 	// TempUnschedulableReason holds the value of the "temp_unschedulable_reason" field.
@@ -177,9 +181,9 @@ func (*Account) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case account.FieldID, account.FieldProxyID, account.FieldProxyFallbackOriginID, account.FieldConcurrency, account.FieldLoadFactor, account.FieldPriority, account.FieldParentAccountID:
 			values[i] = new(sql.NullInt64)
-		case account.FieldName, account.FieldNotes, account.FieldPlatform, account.FieldType, account.FieldStatus, account.FieldErrorMessage, account.FieldTempUnschedulableReason, account.FieldSessionWindowStatus, account.FieldQuotaDimension:
+		case account.FieldName, account.FieldNotes, account.FieldPlatform, account.FieldType, account.FieldStatus, account.FieldErrorMessage, account.FieldSlowTtftReason, account.FieldTempUnschedulableReason, account.FieldSessionWindowStatus, account.FieldQuotaDimension:
 			values[i] = new(sql.NullString)
-		case account.FieldCreatedAt, account.FieldUpdatedAt, account.FieldDeletedAt, account.FieldLastUsedAt, account.FieldExpiresAt, account.FieldRateLimitedAt, account.FieldRateLimitResetAt, account.FieldOverloadUntil, account.FieldTempUnschedulableUntil, account.FieldSessionWindowStart, account.FieldSessionWindowEnd:
+		case account.FieldCreatedAt, account.FieldUpdatedAt, account.FieldDeletedAt, account.FieldLastUsedAt, account.FieldExpiresAt, account.FieldRateLimitedAt, account.FieldRateLimitResetAt, account.FieldOverloadUntil, account.FieldSlowTtftUntil, account.FieldTempUnschedulableUntil, account.FieldSessionWindowStart, account.FieldSessionWindowEnd:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -360,6 +364,19 @@ func (_m *Account) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.OverloadUntil = new(time.Time)
 				*_m.OverloadUntil = value.Time
+			}
+		case account.FieldSlowTtftUntil:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field slow_ttft_until", values[i])
+			} else if value.Valid {
+				_m.SlowTtftUntil = new(time.Time)
+				*_m.SlowTtftUntil = value.Time
+			}
+		case account.FieldSlowTtftReason:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field slow_ttft_reason", values[i])
+			} else if value.Valid {
+				_m.SlowTtftReason = value.String
 			}
 		case account.FieldTempUnschedulableUntil:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -568,6 +585,14 @@ func (_m *Account) String() string {
 		builder.WriteString("overload_until=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	builder.WriteString(", ")
+	if v := _m.SlowTtftUntil; v != nil {
+		builder.WriteString("slow_ttft_until=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("slow_ttft_reason=")
+	builder.WriteString(_m.SlowTtftReason)
 	builder.WriteString(", ")
 	if v := _m.TempUnschedulableUntil; v != nil {
 		builder.WriteString("temp_unschedulable_until=")

@@ -1,5 +1,34 @@
 export default {
     accounts: {
+      "slowTTFT": {
+  "title": "Slow first-output protection",
+  "hint": "Streaming dialogue only. Either consecutive slow requests or slow requests within the window pauses new scheduling across all groups. In-flight requests continue.",
+  "threshold_seconds": "First-output threshold (seconds)",
+  "consecutive_count": "Consecutive slow requests",
+  "window_seconds": "Rolling window (seconds)",
+  "window_count": "Slow requests in window",
+  "pause_seconds": "Pause duration (seconds)",
+  "batch": "Update protection for selected accounts (unchecked: unchanged)",
+  "paused": "Slow first-output pause",
+  "consecutive": "Consecutive threshold reached",
+  "window": "Window threshold reached",
+  "until": "Resumes: {time}",
+  "clear": "Clear first-output pause",
+  "failed": "Unable to clear pause. Retry."
+},
+      "groupScheduling": {
+  "title": "Group scheduling",
+  "enable": "Enable strict priority and load balancing",
+  "hint": "Lower numbers have higher priority. Equal numbers share a tier. Use the next tier only when the current one has no capacity. Within a tier, minimize (active requests + 1) / load factor; break ties randomly. Healthy sticky sessions retain their account.",
+  "recoveryHint": "When the entire group is paused for slow first output, clear that cooldown and retry from the highest priority. Only this group is exempt for 30 minutes. Other limits, quotas and disabled states remain in effect.",
+  "exemptUntil": "This group is exempt from slow first-output protection until: {time}",
+  "up": "Move tier up",
+  "down": "Move tier down",
+  "failed": "Unable to load or save. Retry.",
+  "conflict": "Group membership or settings changed. Close and reopen before editing.",
+  "invalid": "Priority must be an integer from 0 to 1000000",
+  "exempt": "Pool recovery: this group is exempt until {time}"
+},
       title: 'Account Management',
       description: 'Manage AI platform accounts and credentials',
       createAccount: 'Create Account',

@@ -51,6 +51,8 @@ type Account struct {
 	RateLimitResetAt *time.Time
 	OverloadUntil    *time.Time
 
+	SlowTTFTUntil           *time.Time
+	SlowTTFTReason          string
 	TempUnschedulableUntil  *time.Time
 	TempUnschedulableReason string
 
@@ -184,6 +186,9 @@ func (a *Account) EffectiveLoadFactor() int {
 }
 
 func (a *Account) IsSchedulable() bool {
+	if a.SlowTTFTUntil != nil && time.Now().Before(*a.SlowTTFTUntil) {
+		return false
+	}
 	if !a.IsActive() || !a.Schedulable {
 		return false
 	}

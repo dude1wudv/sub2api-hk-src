@@ -2575,6 +2575,8 @@ type AccountMutation struct {
 	rate_limited_at             *time.Time
 	rate_limit_reset_at         *time.Time
 	overload_until              *time.Time
+	slow_ttft_until             *time.Time
+	slow_ttft_reason            *string
 	temp_unschedulable_until    *time.Time
 	temp_unschedulable_reason   *string
 	session_window_start        *time.Time
@@ -3807,6 +3809,91 @@ func (m *AccountMutation) ResetOverloadUntil() {
 	delete(m.clearedFields, account.FieldOverloadUntil)
 }
 
+// SetSlowTtftUntil sets the "slow_ttft_until" field.
+func (m *AccountMutation) SetSlowTtftUntil(t time.Time) {
+	m.slow_ttft_until = &t
+}
+
+// SlowTtftUntil returns the value of the "slow_ttft_until" field in the mutation.
+func (m *AccountMutation) SlowTtftUntil() (r time.Time, exists bool) {
+	v := m.slow_ttft_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSlowTtftUntil returns the old "slow_ttft_until" field's value of the Account entity.
+// If the Account object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountMutation) OldSlowTtftUntil(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSlowTtftUntil is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSlowTtftUntil requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSlowTtftUntil: %w", err)
+	}
+	return oldValue.SlowTtftUntil, nil
+}
+
+// ClearSlowTtftUntil clears the value of the "slow_ttft_until" field.
+func (m *AccountMutation) ClearSlowTtftUntil() {
+	m.slow_ttft_until = nil
+	m.clearedFields[account.FieldSlowTtftUntil] = struct{}{}
+}
+
+// SlowTtftUntilCleared returns if the "slow_ttft_until" field was cleared in this mutation.
+func (m *AccountMutation) SlowTtftUntilCleared() bool {
+	_, ok := m.clearedFields[account.FieldSlowTtftUntil]
+	return ok
+}
+
+// ResetSlowTtftUntil resets all changes to the "slow_ttft_until" field.
+func (m *AccountMutation) ResetSlowTtftUntil() {
+	m.slow_ttft_until = nil
+	delete(m.clearedFields, account.FieldSlowTtftUntil)
+}
+
+// SetSlowTtftReason sets the "slow_ttft_reason" field.
+func (m *AccountMutation) SetSlowTtftReason(s string) {
+	m.slow_ttft_reason = &s
+}
+
+// SlowTtftReason returns the value of the "slow_ttft_reason" field in the mutation.
+func (m *AccountMutation) SlowTtftReason() (r string, exists bool) {
+	v := m.slow_ttft_reason
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSlowTtftReason returns the old "slow_ttft_reason" field's value of the Account entity.
+// If the Account object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountMutation) OldSlowTtftReason(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSlowTtftReason is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSlowTtftReason requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSlowTtftReason: %w", err)
+	}
+	return oldValue.SlowTtftReason, nil
+}
+
+// ResetSlowTtftReason resets all changes to the "slow_ttft_reason" field.
+func (m *AccountMutation) ResetSlowTtftReason() {
+	m.slow_ttft_reason = nil
+}
+
 // SetTempUnschedulableUntil sets the "temp_unschedulable_until" field.
 func (m *AccountMutation) SetTempUnschedulableUntil(t time.Time) {
 	m.temp_unschedulable_until = &t
@@ -4400,7 +4487,7 @@ func (m *AccountMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AccountMutation) Fields() []string {
-	fields := make([]string, 0, 31)
+	fields := make([]string, 0, 33)
 	if m.created_at != nil {
 		fields = append(fields, account.FieldCreatedAt)
 	}
@@ -4472,6 +4559,12 @@ func (m *AccountMutation) Fields() []string {
 	}
 	if m.overload_until != nil {
 		fields = append(fields, account.FieldOverloadUntil)
+	}
+	if m.slow_ttft_until != nil {
+		fields = append(fields, account.FieldSlowTtftUntil)
+	}
+	if m.slow_ttft_reason != nil {
+		fields = append(fields, account.FieldSlowTtftReason)
 	}
 	if m.temp_unschedulable_until != nil {
 		fields = append(fields, account.FieldTempUnschedulableUntil)
@@ -4550,6 +4643,10 @@ func (m *AccountMutation) Field(name string) (ent.Value, bool) {
 		return m.RateLimitResetAt()
 	case account.FieldOverloadUntil:
 		return m.OverloadUntil()
+	case account.FieldSlowTtftUntil:
+		return m.SlowTtftUntil()
+	case account.FieldSlowTtftReason:
+		return m.SlowTtftReason()
 	case account.FieldTempUnschedulableUntil:
 		return m.TempUnschedulableUntil()
 	case account.FieldTempUnschedulableReason:
@@ -4621,6 +4718,10 @@ func (m *AccountMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldRateLimitResetAt(ctx)
 	case account.FieldOverloadUntil:
 		return m.OldOverloadUntil(ctx)
+	case account.FieldSlowTtftUntil:
+		return m.OldSlowTtftUntil(ctx)
+	case account.FieldSlowTtftReason:
+		return m.OldSlowTtftReason(ctx)
 	case account.FieldTempUnschedulableUntil:
 		return m.OldTempUnschedulableUntil(ctx)
 	case account.FieldTempUnschedulableReason:
@@ -4812,6 +4913,20 @@ func (m *AccountMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetOverloadUntil(v)
 		return nil
+	case account.FieldSlowTtftUntil:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSlowTtftUntil(v)
+		return nil
+	case account.FieldSlowTtftReason:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSlowTtftReason(v)
+		return nil
 	case account.FieldTempUnschedulableUntil:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -4987,6 +5102,9 @@ func (m *AccountMutation) ClearedFields() []string {
 	if m.FieldCleared(account.FieldOverloadUntil) {
 		fields = append(fields, account.FieldOverloadUntil)
 	}
+	if m.FieldCleared(account.FieldSlowTtftUntil) {
+		fields = append(fields, account.FieldSlowTtftUntil)
+	}
 	if m.FieldCleared(account.FieldTempUnschedulableUntil) {
 		fields = append(fields, account.FieldTempUnschedulableUntil)
 	}
@@ -5051,6 +5169,9 @@ func (m *AccountMutation) ClearField(name string) error {
 		return nil
 	case account.FieldOverloadUntil:
 		m.ClearOverloadUntil()
+		return nil
+	case account.FieldSlowTtftUntil:
+		m.ClearSlowTtftUntil()
 		return nil
 	case account.FieldTempUnschedulableUntil:
 		m.ClearTempUnschedulableUntil()
@@ -5149,6 +5270,12 @@ func (m *AccountMutation) ResetField(name string) error {
 		return nil
 	case account.FieldOverloadUntil:
 		m.ResetOverloadUntil()
+		return nil
+	case account.FieldSlowTtftUntil:
+		m.ResetSlowTtftUntil()
+		return nil
+	case account.FieldSlowTtftReason:
+		m.ResetSlowTtftReason()
 		return nil
 	case account.FieldTempUnschedulableUntil:
 		m.ResetTempUnschedulableUntil()
@@ -22346,6 +22473,9 @@ type GroupMutation struct {
 	created_at                              *time.Time
 	updated_at                              *time.Time
 	deleted_at                              *time.Time
+	slow_ttft_exempt_until                  *time.Time
+	independent_scheduling                  *bool
+	scheduling_initialized                  *bool
 	name                                    *string
 	description                             *string
 	rate_multiplier                         *float64
@@ -22680,6 +22810,127 @@ func (m *GroupMutation) DeletedAtCleared() bool {
 func (m *GroupMutation) ResetDeletedAt() {
 	m.deleted_at = nil
 	delete(m.clearedFields, group.FieldDeletedAt)
+}
+
+// SetSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field.
+func (m *GroupMutation) SetSlowTtftExemptUntil(t time.Time) {
+	m.slow_ttft_exempt_until = &t
+}
+
+// SlowTtftExemptUntil returns the value of the "slow_ttft_exempt_until" field in the mutation.
+func (m *GroupMutation) SlowTtftExemptUntil() (r time.Time, exists bool) {
+	v := m.slow_ttft_exempt_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSlowTtftExemptUntil returns the old "slow_ttft_exempt_until" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldSlowTtftExemptUntil(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSlowTtftExemptUntil is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSlowTtftExemptUntil requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSlowTtftExemptUntil: %w", err)
+	}
+	return oldValue.SlowTtftExemptUntil, nil
+}
+
+// ClearSlowTtftExemptUntil clears the value of the "slow_ttft_exempt_until" field.
+func (m *GroupMutation) ClearSlowTtftExemptUntil() {
+	m.slow_ttft_exempt_until = nil
+	m.clearedFields[group.FieldSlowTtftExemptUntil] = struct{}{}
+}
+
+// SlowTtftExemptUntilCleared returns if the "slow_ttft_exempt_until" field was cleared in this mutation.
+func (m *GroupMutation) SlowTtftExemptUntilCleared() bool {
+	_, ok := m.clearedFields[group.FieldSlowTtftExemptUntil]
+	return ok
+}
+
+// ResetSlowTtftExemptUntil resets all changes to the "slow_ttft_exempt_until" field.
+func (m *GroupMutation) ResetSlowTtftExemptUntil() {
+	m.slow_ttft_exempt_until = nil
+	delete(m.clearedFields, group.FieldSlowTtftExemptUntil)
+}
+
+// SetIndependentScheduling sets the "independent_scheduling" field.
+func (m *GroupMutation) SetIndependentScheduling(b bool) {
+	m.independent_scheduling = &b
+}
+
+// IndependentScheduling returns the value of the "independent_scheduling" field in the mutation.
+func (m *GroupMutation) IndependentScheduling() (r bool, exists bool) {
+	v := m.independent_scheduling
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIndependentScheduling returns the old "independent_scheduling" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldIndependentScheduling(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIndependentScheduling is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIndependentScheduling requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIndependentScheduling: %w", err)
+	}
+	return oldValue.IndependentScheduling, nil
+}
+
+// ResetIndependentScheduling resets all changes to the "independent_scheduling" field.
+func (m *GroupMutation) ResetIndependentScheduling() {
+	m.independent_scheduling = nil
+}
+
+// SetSchedulingInitialized sets the "scheduling_initialized" field.
+func (m *GroupMutation) SetSchedulingInitialized(b bool) {
+	m.scheduling_initialized = &b
+}
+
+// SchedulingInitialized returns the value of the "scheduling_initialized" field in the mutation.
+func (m *GroupMutation) SchedulingInitialized() (r bool, exists bool) {
+	v := m.scheduling_initialized
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSchedulingInitialized returns the old "scheduling_initialized" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldSchedulingInitialized(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSchedulingInitialized is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSchedulingInitialized requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSchedulingInitialized: %w", err)
+	}
+	return oldValue.SchedulingInitialized, nil
+}
+
+// ResetSchedulingInitialized resets all changes to the "scheduling_initialized" field.
+func (m *GroupMutation) ResetSchedulingInitialized() {
+	m.scheduling_initialized = nil
 }
 
 // SetName sets the "name" field.
@@ -26183,7 +26434,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 66)
+	fields := make([]string, 0, 69)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -26192,6 +26443,15 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.deleted_at != nil {
 		fields = append(fields, group.FieldDeletedAt)
+	}
+	if m.slow_ttft_exempt_until != nil {
+		fields = append(fields, group.FieldSlowTtftExemptUntil)
+	}
+	if m.independent_scheduling != nil {
+		fields = append(fields, group.FieldIndependentScheduling)
+	}
+	if m.scheduling_initialized != nil {
+		fields = append(fields, group.FieldSchedulingInitialized)
 	}
 	if m.name != nil {
 		fields = append(fields, group.FieldName)
@@ -26396,6 +26656,12 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case group.FieldDeletedAt:
 		return m.DeletedAt()
+	case group.FieldSlowTtftExemptUntil:
+		return m.SlowTtftExemptUntil()
+	case group.FieldIndependentScheduling:
+		return m.IndependentScheduling()
+	case group.FieldSchedulingInitialized:
+		return m.SchedulingInitialized()
 	case group.FieldName:
 		return m.Name()
 	case group.FieldDescription:
@@ -26537,6 +26803,12 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldUpdatedAt(ctx)
 	case group.FieldDeletedAt:
 		return m.OldDeletedAt(ctx)
+	case group.FieldSlowTtftExemptUntil:
+		return m.OldSlowTtftExemptUntil(ctx)
+	case group.FieldIndependentScheduling:
+		return m.OldIndependentScheduling(ctx)
+	case group.FieldSchedulingInitialized:
+		return m.OldSchedulingInitialized(ctx)
 	case group.FieldName:
 		return m.OldName(ctx)
 	case group.FieldDescription:
@@ -26692,6 +26964,27 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDeletedAt(v)
+		return nil
+	case group.FieldSlowTtftExemptUntil:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSlowTtftExemptUntil(v)
+		return nil
+	case group.FieldIndependentScheduling:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIndependentScheduling(v)
+		return nil
+	case group.FieldSchedulingInitialized:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSchedulingInitialized(v)
 		return nil
 	case group.FieldName:
 		v, ok := value.(string)
@@ -27494,6 +27787,9 @@ func (m *GroupMutation) ClearedFields() []string {
 	if m.FieldCleared(group.FieldDeletedAt) {
 		fields = append(fields, group.FieldDeletedAt)
 	}
+	if m.FieldCleared(group.FieldSlowTtftExemptUntil) {
+		fields = append(fields, group.FieldSlowTtftExemptUntil)
+	}
 	if m.FieldCleared(group.FieldDescription) {
 		fields = append(fields, group.FieldDescription)
 	}
@@ -27574,6 +27870,9 @@ func (m *GroupMutation) ClearField(name string) error {
 	case group.FieldDeletedAt:
 		m.ClearDeletedAt()
 		return nil
+	case group.FieldSlowTtftExemptUntil:
+		m.ClearSlowTtftExemptUntil()
+		return nil
 	case group.FieldDescription:
 		m.ClearDescription()
 		return nil
@@ -27653,6 +27952,15 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldDeletedAt:
 		m.ResetDeletedAt()
+		return nil
+	case group.FieldSlowTtftExemptUntil:
+		m.ResetSlowTtftExemptUntil()
+		return nil
+	case group.FieldIndependentScheduling:
+		m.ResetIndependentScheduling()
+		return nil
+	case group.FieldSchedulingInitialized:
+		m.ResetSchedulingInitialized()
 		return nil
 	case group.FieldName:
 		m.ResetName()

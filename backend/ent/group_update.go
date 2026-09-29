@@ -63,6 +63,54 @@ func (_u *GroupUpdate) ClearDeletedAt() *GroupUpdate {
 	return _u
 }
 
+// SetSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field.
+func (_u *GroupUpdate) SetSlowTtftExemptUntil(v time.Time) *GroupUpdate {
+	_u.mutation.SetSlowTtftExemptUntil(v)
+	return _u
+}
+
+// SetNillableSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableSlowTtftExemptUntil(v *time.Time) *GroupUpdate {
+	if v != nil {
+		_u.SetSlowTtftExemptUntil(*v)
+	}
+	return _u
+}
+
+// ClearSlowTtftExemptUntil clears the value of the "slow_ttft_exempt_until" field.
+func (_u *GroupUpdate) ClearSlowTtftExemptUntil() *GroupUpdate {
+	_u.mutation.ClearSlowTtftExemptUntil()
+	return _u
+}
+
+// SetIndependentScheduling sets the "independent_scheduling" field.
+func (_u *GroupUpdate) SetIndependentScheduling(v bool) *GroupUpdate {
+	_u.mutation.SetIndependentScheduling(v)
+	return _u
+}
+
+// SetNillableIndependentScheduling sets the "independent_scheduling" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableIndependentScheduling(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetIndependentScheduling(*v)
+	}
+	return _u
+}
+
+// SetSchedulingInitialized sets the "scheduling_initialized" field.
+func (_u *GroupUpdate) SetSchedulingInitialized(v bool) *GroupUpdate {
+	_u.mutation.SetSchedulingInitialized(v)
+	return _u
+}
+
+// SetNillableSchedulingInitialized sets the "scheduling_initialized" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableSchedulingInitialized(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetSchedulingInitialized(*v)
+	}
+	return _u
+}
+
 // SetName sets the "name" field.
 func (_u *GroupUpdate) SetName(v string) *GroupUpdate {
 	_u.mutation.SetName(v)
@@ -1572,6 +1620,18 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DeletedAtCleared() {
 		_spec.ClearField(group.FieldDeletedAt, field.TypeTime)
 	}
+	if value, ok := _u.mutation.SlowTtftExemptUntil(); ok {
+		_spec.SetField(group.FieldSlowTtftExemptUntil, field.TypeTime, value)
+	}
+	if _u.mutation.SlowTtftExemptUntilCleared() {
+		_spec.ClearField(group.FieldSlowTtftExemptUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.IndependentScheduling(); ok {
+		_spec.SetField(group.FieldIndependentScheduling, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.SchedulingInitialized(); ok {
+		_spec.SetField(group.FieldSchedulingInitialized, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(group.FieldName, field.TypeString, value)
 	}
@@ -2254,6 +2314,54 @@ func (_u *GroupUpdateOne) SetNillableDeletedAt(v *time.Time) *GroupUpdateOne {
 // ClearDeletedAt clears the value of the "deleted_at" field.
 func (_u *GroupUpdateOne) ClearDeletedAt() *GroupUpdateOne {
 	_u.mutation.ClearDeletedAt()
+	return _u
+}
+
+// SetSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field.
+func (_u *GroupUpdateOne) SetSlowTtftExemptUntil(v time.Time) *GroupUpdateOne {
+	_u.mutation.SetSlowTtftExemptUntil(v)
+	return _u
+}
+
+// SetNillableSlowTtftExemptUntil sets the "slow_ttft_exempt_until" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableSlowTtftExemptUntil(v *time.Time) *GroupUpdateOne {
+	if v != nil {
+		_u.SetSlowTtftExemptUntil(*v)
+	}
+	return _u
+}
+
+// ClearSlowTtftExemptUntil clears the value of the "slow_ttft_exempt_until" field.
+func (_u *GroupUpdateOne) ClearSlowTtftExemptUntil() *GroupUpdateOne {
+	_u.mutation.ClearSlowTtftExemptUntil()
+	return _u
+}
+
+// SetIndependentScheduling sets the "independent_scheduling" field.
+func (_u *GroupUpdateOne) SetIndependentScheduling(v bool) *GroupUpdateOne {
+	_u.mutation.SetIndependentScheduling(v)
+	return _u
+}
+
+// SetNillableIndependentScheduling sets the "independent_scheduling" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableIndependentScheduling(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetIndependentScheduling(*v)
+	}
+	return _u
+}
+
+// SetSchedulingInitialized sets the "scheduling_initialized" field.
+func (_u *GroupUpdateOne) SetSchedulingInitialized(v bool) *GroupUpdateOne {
+	_u.mutation.SetSchedulingInitialized(v)
+	return _u
+}
+
+// SetNillableSchedulingInitialized sets the "scheduling_initialized" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableSchedulingInitialized(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetSchedulingInitialized(*v)
+	}
 	return _u
 }
 
@@ -3795,6 +3903,18 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if _u.mutation.DeletedAtCleared() {
 		_spec.ClearField(group.FieldDeletedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SlowTtftExemptUntil(); ok {
+		_spec.SetField(group.FieldSlowTtftExemptUntil, field.TypeTime, value)
+	}
+	if _u.mutation.SlowTtftExemptUntilCleared() {
+		_spec.ClearField(group.FieldSlowTtftExemptUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.IndependentScheduling(); ok {
+		_spec.SetField(group.FieldIndependentScheduling, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.SchedulingInitialized(); ok {
+		_spec.SetField(group.FieldSchedulingInitialized, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(group.FieldName, field.TypeString, value)

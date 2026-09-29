@@ -342,6 +342,14 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 		return nil, err
 	}
 
+	if s.rateLimitService != nil && s.rateLimitService.SlowTTFTPaused(ctx, account.ID) {
+		return nil, ErrNoAvailableAccounts
+	}
+	var slowObserver *SlowTTFTObserver
+	if s.rateLimitService != nil && reqStream && !slowTTFTImageTools(reqBody["tools"]) {
+		slowObserver = s.rateLimitService.BeginSlowTTFT(ctx, account)
+	}
+	defer slowObserver.Close()
 	if err := lease.WriteJSONWithContextTimeout(ctx, payload, s.openAIWSWriteTimeout()); err != nil {
 		lease.MarkBroken()
 		logOpenAIWSModeInfo(
@@ -624,6 +632,9 @@ readLoop:
 			responseID = eventResponseID
 		}
 
+		if SlowTTFTMeaningfulOutput(message) {
+			slowObserver.FirstOutput()
+		}
 		isTokenEvent := isOpenAIWSTokenEvent(eventType)
 		if isTokenEvent {
 			tokenEventCount++

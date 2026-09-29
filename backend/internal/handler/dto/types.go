@@ -239,8 +239,11 @@ type Account struct {
 	RateLimitResetAt *time.Time `json:"rate_limit_reset_at"`
 	OverloadUntil    *time.Time `json:"overload_until"`
 
-	TempUnschedulableUntil  *time.Time `json:"temp_unschedulable_until"`
-	TempUnschedulableReason string     `json:"temp_unschedulable_reason"`
+	SlowTTFTProtection      service.SlowTTFTConfig `json:"slow_ttft_protection"`
+	SlowTTFTUntil           *time.Time             `json:"slow_ttft_until"`
+	SlowTTFTReason          string                 `json:"slow_ttft_reason"`
+	TempUnschedulableUntil  *time.Time             `json:"temp_unschedulable_until"`
+	TempUnschedulableReason string                 `json:"temp_unschedulable_reason"`
 
 	SessionWindowStart  *time.Time `json:"session_window_start"`
 	SessionWindowEnd    *time.Time `json:"session_window_end"`
@@ -365,8 +368,11 @@ type AccountListItem struct {
 	RateLimitResetAt *time.Time `json:"rate_limit_reset_at"`
 	OverloadUntil    *time.Time `json:"overload_until"`
 
-	TempUnschedulableUntil  *time.Time `json:"temp_unschedulable_until"`
-	TempUnschedulableReason string     `json:"temp_unschedulable_reason"`
+	SlowTTFTProtection      service.SlowTTFTConfig `json:"slow_ttft_protection"`
+	SlowTTFTUntil           *time.Time             `json:"slow_ttft_until"`
+	SlowTTFTReason          string                 `json:"slow_ttft_reason"`
+	TempUnschedulableUntil  *time.Time             `json:"temp_unschedulable_until"`
+	TempUnschedulableReason string                 `json:"temp_unschedulable_reason"`
 
 	SessionWindowStart  *time.Time `json:"session_window_start"`
 	SessionWindowEnd    *time.Time `json:"session_window_end"`
