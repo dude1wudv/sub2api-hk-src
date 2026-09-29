@@ -113,8 +113,32 @@ func openAICompatAnthropicReasoningEffort(req *apicompat.AnthropicRequest, upstr
 	if req == nil || req.OutputConfig == nil || !strings.EqualFold(strings.TrimSpace(req.OutputConfig.Effort), "max") {
 		return convertedEffort
 	}
-	if normalized := normalizeOpenAIReasoningEffortForModel(req.OutputConfig.Effort, upstreamModel); normalized != "" {
-		return normalized
+	if supportsOpenAIReasoningEffortMax(upstreamModel) {
+		return "max"
 	}
 	return convertedEffort
+}
+
+// supportsOpenAIReasoningEffortMax reports model families whose upstream scale
+// has a distinct max level. Other models keep the legacy max -> xhigh behavior.
+func supportsOpenAIReasoningEffortMax(model string) bool {
+	if isOpenAIGPT6Model(model) || isOpenAIGPT56Model(model) {
+		return true
+	}
+
+	normalized := strings.ToLower(lastOpenAIModelSegment(model))
+	normalized = strings.ReplaceAll(normalized, "_", "-")
+	switch {
+	case strings.HasPrefix(normalized, "deepseek-v4"), strings.HasPrefix(normalized, "deepseek-flash"):
+		// deepseek-flash（= DeepSeek-V4.1-Flash）与 v4 系同为 low/high/max 档位。
+		return true
+	case strings.HasPrefix(normalized, "glm-"):
+		return true
+	case strings.HasPrefix(normalized, "kimi-"), strings.HasPrefix(normalized, "moonshot-"):
+		return true
+	case normalized == "k3" || strings.HasPrefix(normalized, "k3-"):
+		return true
+	default:
+		return false
+	}
 }

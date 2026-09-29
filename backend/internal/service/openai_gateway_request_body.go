@@ -72,16 +72,14 @@ func shouldPreserveOpenAIResponsesNoneReasoningEffort(account *Account) bool {
 	if account.IsOpenAIOAuthLike() {
 		return true
 	}
-	if !account.IsOpenAIApiKey() {
-		return false
-	}
-	baseURL := strings.TrimSpace(account.GetCredential("base_url"))
-	return baseURL == "" || isOfficialOpenAIModelsBaseURL(baseURL)
+	// Compatible API-key providers own their effort vocabulary, including none.
+	// A catalog placeholder cannot be distinguished from an explicit client choice.
+	return account.Type == AccountTypeAPIKey
 }
 
 // Codex 0.149.0 needs a single advertised effort to directly select a visible
 // non-reasoning model. Treat that catalog-only "none" value as omission for
-// compatible upstreams, while preserving official OpenAI request semantics.
+// legacy non-API-key upstreams; API-key requests preserve explicit efforts.
 func filterOpenAIResponsesNoneReasoningEffortForAccount(account *Account, body []byte) ([]byte, error) {
 	if len(body) == 0 || shouldPreserveOpenAIResponsesNoneReasoningEffort(account) {
 		return body, nil
@@ -1690,8 +1688,8 @@ func isOpenAICodexModel(model string) bool {
 }
 
 // extractOpenAIReasoningEffortFromBody 按优先级传入模型候选（如 upstreamModel,
-// billingModel, originalModel）：显式 effort 的模型归一化（max 保留判定）用第一个
-// 非空候选；body 未携带 effort 时的模型后缀推导依次尝试每个候选——OAuth 的
+// billingModel, originalModel）：显式 effort 保留原档位；
+// body 未携带 effort 时的模型后缀推导依次尝试每个候选——OAuth 的
 // normalizeCodexModel 会剥掉 upstreamModel 的 effort 后缀，只有原始模型名还留着。
 func extractOpenAIReasoningEffortFromBody(body []byte, modelCandidates ...string) *string {
 	reasoningEffort := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String())
@@ -1725,12 +1723,10 @@ func explicitRequestedReasoningEffortFromBody(body []byte) string {
 }
 
 // CanonicalRequestedReasoningEffort extracts the client-requested effort before
-// group policy rewriting and before model-family remapping (max -> xhigh).
-// Empty or unknown values return nil. "max" is preserved even for models that
-// later persist "xhigh".
+// group policy rewriting. Empty or unknown values return nil.
 func CanonicalRequestedReasoningEffort(body []byte, modelCandidates ...string) *string {
 	if raw := explicitRequestedReasoningEffortFromBody(body); raw != "" {
-		canonical := NormalizeMaxReasoningEffort(raw)
+		canonical := normalizeOpenAIReasoningEffort(raw)
 		if canonical == "" {
 			return nil
 		}
@@ -1769,7 +1765,7 @@ func canonicalReasoningEffortFromModelSuffix(model string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return NormalizeMaxReasoningEffort(parts[len(parts)-1])
+	return normalizeOpenAIReasoningEffort(parts[len(parts)-1])
 }
 
 func extractOpenAIServiceTier(reqBody map[string]any) *string {
@@ -2514,7 +2510,7 @@ func CanonicalRequestedReasoningEffortFromReqBody(reqBody map[string]any, modelC
 		}
 	}
 	if raw != "" {
-		canonical := NormalizeMaxReasoningEffort(raw)
+		canonical := normalizeOpenAIReasoningEffort(raw)
 		if canonical == "" {
 			return nil
 		}
@@ -2533,9 +2529,9 @@ func normalizeOpenAIReasoningEffort(raw string) string {
 	value = strings.NewReplacer("-", "", "_", "", " ", "").Replace(value)
 
 	switch value {
-	case "none", "minimal", "low", "medium", "high":
+	case "none", "minimal", "low", "medium", "high", "max", "ultra":
 		return value
-	case "xhigh", "extrahigh", "max":
+	case "xhigh", "extrahigh":
 		return "xhigh"
 	default:
 		// Only store known effort levels for now to keep UI consistent.
@@ -2543,36 +2539,8 @@ func normalizeOpenAIReasoningEffort(raw string) string {
 	}
 }
 
-func normalizeOpenAIReasoningEffortForModel(raw, model string) string {
-	if strings.EqualFold(strings.TrimSpace(raw), "none") && openai.IsGPT6SolOrLunaModelSpelling(model) {
-		return "none"
-	}
-	if strings.EqualFold(strings.TrimSpace(raw), "max") && supportsOpenAIReasoningEffortMax(model) {
-		return "max"
-	}
+func normalizeOpenAIReasoningEffortForModel(raw, _ string) string {
+	// Model aliases and third-party providers do not share a fixed effort scale.
+	// Record the forwarded level without silently folding max into xhigh.
 	return normalizeOpenAIReasoningEffort(raw)
-}
-
-// supportsOpenAIReasoningEffortMax reports model families whose upstream scale
-// has a distinct max level. Other models keep the legacy max -> xhigh behavior.
-func supportsOpenAIReasoningEffortMax(model string) bool {
-	if isOpenAIGPT6Model(model) || isOpenAIGPT56Model(model) {
-		return true
-	}
-
-	normalized := strings.ToLower(lastOpenAIModelSegment(model))
-	normalized = strings.ReplaceAll(normalized, "_", "-")
-	switch {
-	case strings.HasPrefix(normalized, "deepseek-v4"), strings.HasPrefix(normalized, "deepseek-flash"):
-		// deepseek-flash（= DeepSeek-V4.1-Flash）与 v4 系同为 low/high/max 档位。
-		return true
-	case strings.HasPrefix(normalized, "glm-"):
-		return true
-	case strings.HasPrefix(normalized, "kimi-"), strings.HasPrefix(normalized, "moonshot-"):
-		return true
-	case normalized == "k3" || strings.HasPrefix(normalized, "k3-"):
-		return true
-	default:
-		return false
-	}
 }
