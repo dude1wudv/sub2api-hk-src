@@ -128,6 +128,8 @@ func (b *slowTTFTBody) Read(p []byte) (int, error) {
 func (b *slowTTFTBody) Close() error { b.observer.Close(); return b.ReadCloser.Close() }
 
 // A protocol-independent semantic predicate shared with WS and Bedrock hooks.
+// Reasoning/thinking tokens are output too: waiting for final-answer text after
+// reasoning has already started would turn normal long reasoning into a timeout.
 // Metadata, heartbeat, role-only and image events deliberately do not count.
 func SlowTTFTMeaningfulOutput(data []byte) bool {
 	var m map[string]json.RawMessage
@@ -138,27 +140,34 @@ func SlowTTFTMeaningfulOutput(data []byte) bool {
 	_ = json.Unmarshal(m["type"], &typ)
 	nonempty := func(v json.RawMessage) bool { var s string; return json.Unmarshal(v, &s) == nil && s != "" }
 	switch typ {
-	case "response.output_text.delta", "response.function_call_arguments.delta":
+	case "response.output_text.delta", "response.function_call_arguments.delta",
+		"response.reasoning_summary_text.delta", "response.reasoning_text.delta",
+		"response.custom_tool_call_input.delta":
 		return nonempty(m["delta"])
 	case "content_block_delta":
 		var d map[string]json.RawMessage
 		_ = json.Unmarshal(m["delta"], &d)
-		return nonempty(d["text"]) || nonempty(d["partial_json"])
+		return nonempty(d["text"]) || nonempty(d["thinking"]) || nonempty(d["partial_json"])
 	case "content_block_start":
 		var d map[string]json.RawMessage
 		_ = json.Unmarshal(m["content_block"], &d)
-		return nonempty(d["text"]) || (string(d["type"]) == `"tool_use"` && nonempty(d["name"]))
-	case "response.output_text.done", "response.function_call_arguments.done":
+		return nonempty(d["text"]) || nonempty(d["thinking"]) || (string(d["type"]) == `"tool_use"` && nonempty(d["name"]))
+	case "response.output_text.done", "response.function_call_arguments.done",
+		"response.reasoning_summary_text.done", "response.reasoning_text.done":
 		return nonempty(m["text"]) || nonempty(m["arguments"])
+	case "response.custom_tool_call_input.done":
+		return nonempty(m["input"])
 	case "response.output_item.added":
 		var item map[string]json.RawMessage
 		_ = json.Unmarshal(m["item"], &item)
-		return string(item["type"]) == `"function_call"` && nonempty(item["name"])
+		return (string(item["type"]) == `"function_call"` || string(item["type"]) == `"custom_tool_call"`) && nonempty(item["name"])
 	}
 	var choices []struct {
 		Delta struct {
-			Content      string `json:"content"`
-			FunctionCall struct {
+			Content          string `json:"content"`
+			Reasoning        string `json:"reasoning"`
+			ReasoningContent string `json:"reasoning_content"`
+			FunctionCall     struct {
 				Name      string `json:"name"`
 				Arguments string `json:"arguments"`
 			} `json:"function_call"`
@@ -172,7 +181,7 @@ func SlowTTFTMeaningfulOutput(data []byte) bool {
 	}
 	if json.Unmarshal(m["choices"], &choices) == nil {
 		for _, c := range choices {
-			if c.Delta.Content != "" || c.Delta.FunctionCall.Name != "" || c.Delta.FunctionCall.Arguments != "" {
+			if c.Delta.Content != "" || c.Delta.Reasoning != "" || c.Delta.ReasoningContent != "" || c.Delta.FunctionCall.Name != "" || c.Delta.FunctionCall.Arguments != "" {
 				return true
 			}
 			for _, t := range c.Delta.ToolCalls {
@@ -186,7 +195,6 @@ func SlowTTFTMeaningfulOutput(data []byte) bool {
 		Content struct {
 			Parts []struct {
 				Text         string          `json:"text"`
-				Thought      bool            `json:"thought"`
 				FunctionCall json.RawMessage `json:"functionCall"`
 			} `json:"parts"`
 		} `json:"content"`
@@ -194,7 +202,7 @@ func SlowTTFTMeaningfulOutput(data []byte) bool {
 	if json.Unmarshal(m["candidates"], &candidates) == nil {
 		for _, c := range candidates {
 			for _, p := range c.Content.Parts {
-				if !p.Thought && p.Text != "" || len(p.FunctionCall) > 0 && string(p.FunctionCall) != "null" {
+				if p.Text != "" || len(p.FunctionCall) > 0 && string(p.FunctionCall) != "null" {
 					return true
 				}
 			}

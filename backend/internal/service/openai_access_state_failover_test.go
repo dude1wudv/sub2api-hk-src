@@ -19,6 +19,10 @@ type openAIStream403AccountRepo struct {
 	setErrorCalls int
 }
 
+func (*openAIStream403AccountRepo) GetByID(context.Context, int64) (*Account, error) {
+	return nil, nil
+}
+
 func (r *openAIStream403AccountRepo) SetError(context.Context, int64, string) error {
 	r.setErrorCalls++
 	return nil

@@ -14,6 +14,10 @@ type transientCooldownAccountRepo struct {
 	AccountRepository
 }
 
+func (transientCooldownAccountRepo) GetByID(context.Context, int64) (*Account, error) {
+	return nil, nil
+}
+
 func (transientCooldownAccountRepo) SetOverloaded(context.Context, int64, time.Time) error {
 	return nil
 }
