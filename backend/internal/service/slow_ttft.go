@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"sync"
+	"strconv"
 	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
@@ -75,103 +75,62 @@ type SlowTTFTRepository interface {
 	ClearSlowTTFTPause(context.Context, int64) error
 }
 
-func (s *RateLimitService) BeginSlowTTFT(ctx context.Context, account *Account) *SlowTTFTObserver {
-	if s == nil || account == nil {
-		return nil
+// ObserveUsageFirstToken samples the protection from the same first_token_ms
+// that the usage record shows. Only streamed dialogue with a measured first
+// token counts; non-stream, media and cyber-blocked records carry no sample.
+// ctx must keep the request values so the scheduling-group exemption applies.
+func (s *RateLimitService) ObserveUsageFirstToken(ctx context.Context, log *UsageLog) {
+	if s == nil || log == nil || log.FirstTokenMs == nil || log.AccountID <= 0 {
+		return
 	}
-	cfg := account.SlowTTFTConfig()
-	if !cfg.Enabled || cfg.ThresholdSeconds < 1 {
-		return nil
+	if !log.Stream && !log.OpenAIWSMode {
+		return
 	}
-	if s.slowTTFTGroupExempt(ctx) {
-		return nil
+	if log.ImageCount > 0 || log.VideoCount > 0 || log.RequestType == RequestTypeCyberBlocked {
+		return
 	}
 	cache, ok := s.tempUnschedCache.(SlowTTFTCache)
-	if !ok {
-		return nil
+	if !ok || s.accountRepo == nil {
+		return
 	}
 	repo, ok := s.accountRepo.(SlowTTFTRepository)
 	if !ok {
-		return nil
-	}
-	o := &SlowTTFTObserver{start: time.Now(), threshold: time.Duration(cfg.ThresholdSeconds) * time.Second}
-	attempt := generateRequestID()
-	o.report = func(slow bool) {
-		bg, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		if s.slowTTFTGroupExempt(bg) {
-			return
-		}
-		fresh, err := s.accountRepo.GetByID(bg, account.ID)
-		if err != nil || fresh == nil || fresh.SlowTTFTConfig() != cfg {
-			return
-		}
-		if fresh.SlowTTFTUntil != nil && time.Now().Before(*fresh.SlowTTFTUntil) {
-			return
-		}
-		result, err := cache.ObserveSlowTTFT(bg, account.ID, cfg, attempt, slow)
-		if err != nil {
-			slog.Warn("slow_ttft_observation_failed", "account_id", account.ID, "error", err)
-			return
-		}
-		if result.Tripped {
-			applied, err := repo.SetSlowTTFTPause(bg, account.ID, cfg, result.Until, result.Reason)
-			if err != nil {
-				slog.Error("slow_ttft_pause_persist_failed", "account_id", account.ID, "error", err)
-			} else if !applied {
-				slog.Debug("slow_ttft_observation_superseded", "account_id", account.ID)
-			}
-		}
-	}
-	o.mu.Lock()
-	o.timer = time.AfterFunc(o.threshold+time.Millisecond, func() { o.finish(true, true) })
-	o.stopCancel = context.AfterFunc(ctx, func() { o.Close() })
-	o.mu.Unlock()
-	return o
-}
-
-type SlowTTFTObserver struct {
-	mu         sync.Mutex
-	done       bool
-	start      time.Time
-	threshold  time.Duration
-	timer      *time.Timer
-	stopCancel func() bool
-	report     func(bool)
-}
-
-func (o *SlowTTFTObserver) finish(sample, slow bool) {
-	if o == nil {
 		return
 	}
-	o.mu.Lock()
-	if o.done {
-		o.mu.Unlock()
+	bg, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	account, err := s.accountRepo.GetByID(bg, log.AccountID)
+	if err != nil || account == nil {
 		return
 	}
-	o.done = true
-	if o.timer != nil {
-		o.timer.Stop()
+	cfg := account.SlowTTFTConfig()
+	if !cfg.Enabled || cfg.ThresholdSeconds < 1 {
+		return
 	}
-	if o.stopCancel != nil {
-		o.stopCancel()
+	if account.SlowTTFTUntil != nil && time.Now().Before(*account.SlowTTFTUntil) {
+		return
 	}
-	report := o.report
-	o.mu.Unlock()
-	// Report in the observing call instead of launching an unordered goroutine.
-	// Redis supplies the common observation order across concurrent instances.
-	if sample && report != nil {
-		report(slow)
+	if s.slowTTFTGroupExempt(bg) {
+		return
 	}
-}
-func (o *SlowTTFTObserver) FirstOutput() {
-	if o != nil {
-		o.finish(true, time.Since(o.start) > o.threshold)
+	attempt := strconv.FormatInt(log.APIKeyID, 10) + ":" + log.RequestID
+	if log.RequestID == "" {
+		attempt = generateRequestID()
 	}
-}
-func (o *SlowTTFTObserver) Close() {
-	if o != nil {
-		o.finish(time.Since(o.start) > o.threshold, true)
+	slow := *log.FirstTokenMs > cfg.ThresholdSeconds*1000
+	result, err := cache.ObserveSlowTTFT(bg, account.ID, cfg, attempt, slow)
+	if err != nil {
+		slog.Warn("slow_ttft_observation_failed", "account_id", account.ID, "error", err)
+		return
+	}
+	if !result.Tripped {
+		return
+	}
+	applied, err := repo.SetSlowTTFTPause(bg, account.ID, cfg, result.Until, result.Reason)
+	if err != nil {
+		slog.Error("slow_ttft_pause_persist_failed", "account_id", account.ID, "error", err)
+	} else if !applied {
+		slog.Debug("slow_ttft_observation_superseded", "account_id", account.ID)
 	}
 }
 

@@ -98,7 +98,7 @@ func NewGeminiMessagesCompatService(
 		schedulerSnapshot:         schedulerSnapshot,
 		tokenProvider:             tokenProvider,
 		rateLimitService:          rateLimitService,
-		httpUpstream:              WithSlowTTFTUpstream(httpUpstream, rateLimitService),
+		httpUpstream:              httpUpstream,
 		antigravityGatewayService: antigravityGatewayService,
 		cfg:                       cfg,
 		responseHeaderFilter:      compileResponseHeaderFilter(cfg),

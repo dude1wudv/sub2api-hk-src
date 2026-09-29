@@ -853,7 +853,7 @@ func NewGatewayService(
 		rateLimitService:      rateLimitService,
 		billingCacheService:   billingCacheService,
 		identityService:       identityService,
-		httpUpstream:          WithSlowTTFTUpstream(httpUpstream, rateLimitService),
+		httpUpstream:          httpUpstream,
 		deferredService:       deferredService,
 		claudeTokenProvider:   claudeTokenProvider,
 		sessionLimitCache:     sessionLimitCache,

@@ -3,20 +3,13 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
-	"net/http"
-	"strings"
 	"sync"
 	"testing"
-	"testing/synctest"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
-	openaiwsv2 "github.com/Wei-Shaw/sub2api/internal/service/openai_ws_v2"
 	coderws "github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 )
@@ -83,78 +76,76 @@ func slowTTFTTestService(enabled bool) (*RateLimitService, *slowTTFTTestRepo, *s
 	cache := &slowTTFTTestCache{}
 	return NewRateLimitService(repo, nil, nil, nil, cache), repo, cache
 }
-func TestSlowTTFTObserverTimingAndFencing(t *testing.T) {
+func slowTTFTUsageLog(requestID string, firstTokenMs int) *UsageLog {
+	return &UsageLog{AccountID: 71, APIKeyID: 5, RequestID: requestID, Stream: true, FirstTokenMs: &firstTokenMs}
+}
+
+func TestSlowTTFTUsageFirstTokenSampling(t *testing.T) {
 	t.Run("disabled by default", func(t *testing.T) {
-		s, repo, cache := slowTTFTTestService(false)
-		require.Nil(t, s.BeginSlowTTFT(context.Background(), repo.account))
-		gets, _ := repo.count()
+		s, _, cache := slowTTFTTestService(false)
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 60000))
 		attempts, _ := cache.snapshot()
-		require.Zero(t, gets)
 		require.Empty(t, attempts)
 	})
-	t.Run("strict threshold, expiry once, quick output, cancellation", func(t *testing.T) {
-		synctest.Test(t, func(t *testing.T) {
-			s, repo, cache := slowTTFTTestService(true)
-			ctx := context.Background()
-			o := s.BeginSlowTTFT(ctx, repo.account)
-			require.NotNil(t, o)
-			time.Sleep(15 * time.Second)
-			synctest.Wait()
-			o.FirstOutput()
-			attempts, slow := cache.snapshot()
-			require.Len(t, attempts, 1)
-			require.Equal(t, []bool{false}, slow)
-			o = s.BeginSlowTTFT(ctx, repo.account)
-			time.Sleep(15*time.Second + 2*time.Millisecond)
-			synctest.Wait()
-			attempts, slow = cache.snapshot()
-			require.Len(t, attempts, 2)
-			require.Equal(t, []bool{false, true}, slow)
-			o.FirstOutput()
-			attempts, _ = cache.snapshot()
-			require.Len(t, attempts, 2)
-			o = s.BeginSlowTTFT(ctx, repo.account)
-			o.FirstOutput()
-			attempts, slow = cache.snapshot()
-			require.Len(t, attempts, 3)
-			require.Equal(t, []bool{false, true, false}, slow)
-			cancelCtx, cancel := context.WithCancel(ctx)
-			o = s.BeginSlowTTFT(cancelCtx, repo.account)
-			cancel()
-			synctest.Wait()
-			attempts, _ = cache.snapshot()
-			require.Len(t, attempts, 3)
-			o.Close()
-			attempts, _ = cache.snapshot()
-			require.Len(t, attempts, 3)
-		})
+	t.Run("strict threshold on the recorded first token", func(t *testing.T) {
+		s, _, cache := slowTTFTTestService(true)
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 15000))
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r2", 15001))
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r3", 582))
+		attempts, slow := cache.snapshot()
+		require.Equal(t, []string{"5:r1", "5:r2", "5:r3"}, attempts)
+		require.Equal(t, []bool{false, true, false}, slow)
 	})
-	t.Run("group exemption suppresses observer without suppressing other group", func(t *testing.T) {
-		// An exempt context is obtained via the account group repository contract.
+	t.Run("records without a streamed first token carry no sample", func(t *testing.T) {
+		s, _, cache := slowTTFTTestService(true)
+		nonStream := slowTTFTUsageLog("a", 60000)
+		nonStream.Stream = false
+		missing := slowTTFTUsageLog("b", 0)
+		missing.FirstTokenMs = nil
+		image := slowTTFTUsageLog("c", 60000)
+		image.ImageCount = 1
+		cyber := slowTTFTUsageLog("d", 60000)
+		cyber.RequestType = RequestTypeCyberBlocked
+		for _, log := range []*UsageLog{nil, nonStream, missing, image, cyber} {
+			s.ObserveUsageFirstToken(context.Background(), log)
+		}
+		attempts, _ := cache.snapshot()
+		require.Empty(t, attempts)
+
+		ws := slowTTFTUsageLog("e", 60000)
+		ws.Stream = false
+		ws.OpenAIWSMode = true
+		s.ObserveUsageFirstToken(context.Background(), ws)
+		attempts, slow := cache.snapshot()
+		require.Equal(t, []string{"5:e"}, attempts)
+		require.Equal(t, []bool{true}, slow)
+	})
+	t.Run("paused account is not sampled again", func(t *testing.T) {
+		s, repo, cache := slowTTFTTestService(true)
+		until := time.Now().Add(time.Hour)
+		repo.account.SlowTTFTUntil = &until
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 60000))
+		attempts, _ := cache.snapshot()
+		require.Empty(t, attempts)
+	})
+	t.Run("tripped observation persists the pause", func(t *testing.T) {
+		s, repo, cache := slowTTFTTestService(true)
+		cache.result = SlowTTFTObservation{Tripped: true, Until: time.Now().Add(time.Hour), Reason: "consecutive"}
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 60000))
+		_, pauses := repo.count()
+		require.Equal(t, 1, pauses)
+	})
+	t.Run("group exemption suppresses sampling without suppressing other group", func(t *testing.T) {
 		groupRepo := &slowTTFTGroupTestRepo{slowTTFTTestRepo: slowTTFTTestRepo{account: &Account{ID: 71, Extra: map[string]any{SlowTTFTConfigKey: func() SlowTTFTConfig { c := DefaultSlowTTFTConfig(); c.Enabled = true; return c }()}}}}
 		cache := &slowTTFTTestCache{}
 		s := NewRateLimitService(groupRepo, nil, nil, nil, cache)
-		gid := int64(8)
-		ctx, _ := withSlowTTFTGroup(context.Background(), groupRepo, &gid)
-		require.Nil(t, s.BeginSlowTTFT(ctx, groupRepo.account))
+		exempt, _ := withSlowTTFTGroup(context.Background(), groupRepo, ptrInt64(8))
+		s.ObserveUsageFirstToken(exempt, slowTTFTUsageLog("r1", 60000))
 		other, _ := withSlowTTFTGroup(context.Background(), groupRepo, ptrInt64(9))
-		observer := s.BeginSlowTTFT(other, groupRepo.account)
-		require.NotNil(t, observer)
-		observer.FirstOutput()
-		observer.Close()
+		s.ObserveUsageFirstToken(other, slowTTFTUsageLog("r2", 60000))
 		attempts, slow := cache.snapshot()
-		require.Len(t, attempts, 1)
-		require.Equal(t, []bool{false}, slow)
-	})
-	t.Run("stale-generation output is discarded", func(t *testing.T) {
-		s, repo, cache := slowTTFTTestService(true)
-		o := s.BeginSlowTTFT(context.Background(), repo.account)
-		cfg := repo.account.SlowTTFTConfig()
-		cfg.Generation = "new-generation"
-		repo.account.Extra[SlowTTFTConfigKey] = cfg
-		o.FirstOutput()
-		attempts, _ := cache.snapshot()
-		require.Empty(t, attempts)
+		require.Equal(t, []string{"5:r2"}, attempts)
+		require.Equal(t, []bool{true}, slow)
 	})
 }
 
@@ -190,88 +181,29 @@ func (r *slowTTFTGroupRecoveryTestRepo) SlowTTFTGroupExemption(context.Context, 
 	return nil, nil
 }
 
-type slowTTFTTestUpstream struct {
-	HTTPUpstream
-	calls int
-	body  string
-}
-
-func (u *slowTTFTTestUpstream) Do(_ *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
-	u.calls++
-	return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(u.body))}, nil
-}
-func (u *slowTTFTTestUpstream) DoWithTLS(r *http.Request, p string, id int64, c int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return u.Do(r, p, id, c)
-}
-func TestSlowTTFTHTTPDecoratorScopesEachAttemptAndMeaningfulOutput(t *testing.T) {
-	s, repo, cache := slowTTFTTestService(true)
-	upstream := &slowTTFTTestUpstream{body: "data: {\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n\n"}
-	wrapped := WithSlowTTFTUpstream(upstream, s)
-	for i := 0; i < 2; i++ {
-		req, err := http.NewRequest(http.MethodPost, "http://example.com/v1/chat/completions", bytes.NewReader([]byte(`{"stream":true}`)))
-		require.NoError(t, err)
-		resp, err := wrapped.Do(req, "", repo.account.ID, 1)
-		require.NoError(t, err)
-		_, err = io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		require.NoError(t, resp.Body.Close())
-	}
-	attempts, slow := cache.snapshot()
-	require.Equal(t, 2, upstream.calls)
-	require.Len(t, attempts, 2)
-	require.Equal(t, []bool{false, false}, slow)
-}
-
-type slowTTFTFakeFrameConn struct {
-	messages [][]byte
-	writes   int
-}
+type slowTTFTFakeFrameConn struct{ writes int }
 
 func (c *slowTTFTFakeFrameConn) ReadFrame(context.Context) (coderws.MessageType, []byte, error) {
-	if len(c.messages) == 0 {
-		return 0, nil, io.EOF
-	}
-	p := c.messages[0]
-	c.messages = c.messages[1:]
-	return coderws.MessageText, p, nil
+	return 0, nil, errors.New("unused")
 }
 func (c *slowTTFTFakeFrameConn) WriteFrame(context.Context, coderws.MessageType, []byte) error {
 	c.writes++
 	return nil
 }
 func (c *slowTTFTFakeFrameConn) Close() error { return nil }
-func TestSlowTTFTWSDecoratorObservesEachResponseRound(t *testing.T) {
+func TestSlowTTFTWSDecoratorRefusesNewRoundWhilePaused(t *testing.T) {
 	s, repo, cache := slowTTFTTestService(true)
-	base := &slowTTFTFakeFrameConn{messages: [][]byte{[]byte(`{"type":"response.output_text.delta","delta":"a"}`), []byte(`{"type":"response.completed"}`), []byte(`{"type":"response.output_text.delta","delta":"b"}`), []byte(`{"type":"response.completed"}`)}}
+	base := &slowTTFTFakeFrameConn{}
 	conn := &slowTTFTFrameConn{FrameConn: base, ctx: context.Background(), protection: s, accountID: repo.account.ID}
-	for range 2 {
-		require.NoError(t, conn.WriteFrame(context.Background(), coderws.MessageText, []byte(`{"type":"response.create"}`)))
-		_, _, err := conn.ReadFrame(context.Background())
-		require.NoError(t, err)
-		_, _, err = conn.ReadFrame(context.Background())
-		require.NoError(t, err)
-	}
-	var frame openaiwsv2.FrameConn = base
-	require.NotNil(t, frame)
-	attempts, slow := cache.snapshot()
-	require.Len(t, attempts, 2)
-	require.Equal(t, []bool{false, false}, slow)
-}
-func TestSlowTTFTMeaningfulOutputExcludesMetadataAndAcceptsTools(t *testing.T) {
-	cases := []struct {
-		data       string
-		meaningful bool
-	}{
-		{`{"type":"response.created"}`, false},
-		{`{"type":"heartbeat"}`, false},
-		{`{"type":"response.output_text.delta","delta":""}`, false},
-		{`{"type":"response.function_call_arguments.delta","delta":"{\"x\":"}`, true},
-		{`{"type":"response.output_text.delta","delta":"hello"}`, true},
-		{`{"type":"content_block_delta","delta":{"partial_json":"{}"}}`, true},
-	}
-	for _, tc := range cases {
-		require.Equal(t, tc.meaningful, SlowTTFTMeaningfulOutput([]byte(tc.data)), tc.data)
-	}
+	create := []byte(`{"type":"response.create"}`)
+	require.NoError(t, conn.WriteFrame(context.Background(), coderws.MessageText, create))
+	until := time.Now().Add(time.Hour)
+	repo.account.SlowTTFTUntil = &until
+	require.ErrorIs(t, conn.WriteFrame(context.Background(), coderws.MessageText, create), ErrNoAvailableAccounts)
+	require.NoError(t, conn.WriteFrame(context.Background(), coderws.MessageText, []byte(`{"type":"response.cancel"}`)))
+	require.Equal(t, 2, base.writes)
+	attempts, _ := cache.snapshot()
+	require.Empty(t, attempts)
 }
 func TestAccountSelectionWithSlowTTFTContextScopesGroupWithoutReplacingBillingGroup(t *testing.T) {
 	const billingGroupID int64 = 10

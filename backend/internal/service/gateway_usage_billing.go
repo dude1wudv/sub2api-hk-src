@@ -889,6 +889,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 			accountStatsLongContextPricingEnabled(nil),
 		)
 	}
+	s.rateLimitService.ObserveUsageFirstToken(ctx, usageLog)
 
 	simpleModeKeyRateLimitOnly := simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
 	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly {

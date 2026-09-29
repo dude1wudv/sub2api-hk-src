@@ -561,7 +561,7 @@ func NewOpenAIGatewayService(
 			nil,
 			"service.openai_gateway",
 		),
-		httpUpstream:          WithSlowTTFTUpstream(httpUpstream, rateLimitService),
+		httpUpstream:          httpUpstream,
 		deferredService:       deferredService,
 		openAITokenProvider:   openAITokenProvider,
 		grokTokenProvider:     grokTokenProvider,

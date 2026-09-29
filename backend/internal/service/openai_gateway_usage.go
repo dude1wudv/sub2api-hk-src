@@ -487,6 +487,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 			accountStatsLongContextPricingEnabled(longContextBillingGate),
 		)
 	}
+	s.rateLimitService.ObserveUsageFirstToken(ctx, usageLog)
 
 	simpleModeKeyRateLimitOnly := simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
 	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly {
