@@ -43,6 +43,9 @@ type OpenAIRecordUsageInput struct {
 	// Responses handler from stream=true + compaction_trigger. It never stores
 	// the request payload and does not replace the transport request type.
 	NativeCompactionV2 bool
+	// WebSocket turns snapshot the policy independently of the connection account.
+	// HTTP requests use the immutable admitted Account snapshot when nil.
+	SlowTTFTConfig *SlowTTFTConfig
 	ChannelUsageFields
 }
 
@@ -487,7 +490,11 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 			accountStatsLongContextPricingEnabled(longContextBillingGate),
 		)
 	}
-	s.rateLimitService.ObserveUsageFirstToken(ctx, usageLog)
+	slowTTFTConfig := account.SlowTTFTConfig()
+	if input.SlowTTFTConfig != nil {
+		slowTTFTConfig = *input.SlowTTFTConfig
+	}
+	s.rateLimitService.ObserveUsageFirstToken(ctx, usageLog, slowTTFTConfig)
 
 	simpleModeKeyRateLimitOnly := simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
 	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly {

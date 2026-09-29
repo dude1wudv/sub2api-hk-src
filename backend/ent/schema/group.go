@@ -38,6 +38,8 @@ func (Group) Fields() []ent.Field {
 		// 唯一约束通过部分索引实现（WHERE deleted_at IS NULL），支持软删除后重用
 		// 见迁移文件 016_soft_delete_partial_unique_indexes.sql
 		field.Time("slow_ttft_exempt_until").Optional().Nillable().SchemaType(map[string]string{dialect.Postgres: "timestamptz"}),
+		// Retired group-priority strategy: retain storage for migration/rolling-upgrade compatibility.
+		// Scheduling always uses the account global priority; these flags are ignored.
 		field.Bool("independent_scheduling").Default(false),
 		field.Bool("scheduling_initialized").Default(false),
 		field.String("name").

@@ -1,6 +1,5 @@
 <template>
   <AppLayout>
-    <GroupSchedulingModal :group-id="schedulingGroupId" @close="schedulingGroupId = null" />
     <TablePageLayout page-scroll>
       <template #filters>
         <div class="flex flex-wrap-reverse items-start justify-between gap-3">
@@ -18,7 +17,6 @@
             @create="showCreate = true"
           >
             <template #after>
-              <button v-if="Number(params.group) > 0" class="btn btn-secondary" @click="schedulingGroupId = Number(params.group)">{{ t('admin.accounts.groupScheduling.title') }}</button>
               <!-- Auto Refresh Dropdown -->
               <div class="relative" ref="autoRefreshDropdownRef">
                 <button
@@ -692,7 +690,6 @@
 
 <script setup lang="ts">
 import SlowTTFTStatus from '@/components/account/SlowTTFTStatus.vue'
-import GroupSchedulingModal from '@/components/group/GroupSchedulingModal.vue'
 import GlacierDisclosure from '@/components/common/GlacierDisclosure.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, toRaw, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
@@ -2971,7 +2968,6 @@ onUnmounted(() => {
   desktopViewportListener = null
   desktopViewportMediaQuery = null
 })
-const schedulingGroupId = ref<number | null>(null)
 </script>
 
 <style scoped>

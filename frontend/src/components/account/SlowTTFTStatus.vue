@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { clearSlowTTFT } from '@/api/admin/scheduling'
+import { clearSlowTTFT } from '@/api/admin/slowTTFT'
 const props = defineProps<{ accountId: number; until?: string | null; reason?: string }>()
 const emit = defineEmits<{ cleared: [] }>()
 const { t } = useI18n()

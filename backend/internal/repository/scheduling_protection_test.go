@@ -4,7 +4,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -108,81 +107,4 @@ func TestSlowTTFTRollingWindowCooldownAndReset(t *testing.T) {
 	require.False(t, observe("8", true).Tripped)
 	trip = observe("9", true)
 	require.True(t, trip.Tripped, "the 60-second window retains samples beyond the old 10-second window")
-}
-
-func TestIndependentSchedulingPriorityAndCapacity(t *testing.T) {
-	ctx := context.Background()
-	cache, _ := newSchedulerCacheUnitWithRedis(t)
-	concurrency := NewConcurrencyCache(cache.rdb, 1, 1).(*concurrencyCache)
-	seq := 0
-	pick := func(candidates ...service.SchedulingCandidate) int64 {
-		seq++
-		id, err := concurrency.AcquireScheduledAccount(ctx, candidates, fmt.Sprintf("select-%d", seq))
-		require.NoError(t, err)
-		return id
-	}
-	// Priority values 10/9/9: both members of the strongest (9) tier are used before tier 10.
-	prioritySet := []service.SchedulingCandidate{
-		{ID: 10, Priority: 10, LoadFactor: 1, Concurrency: 1},
-		{ID: 9, Priority: 9, LoadFactor: 1, Concurrency: 1},
-		{ID: 8, Priority: 9, LoadFactor: 1, Concurrency: 1},
-	}
-	first := pick(prioritySet...)
-	require.Contains(t, []int64{9, 8}, first)
-	second := pick(prioritySet...)
-	require.Contains(t, []int64{9, 8}, second)
-	require.NotEqual(t, first, second)
-	require.Equal(t, int64(10), pick(prioritySet...))
-	require.Zero(t, pick(prioritySet...))
-
-	// Tied utilization in one priority layer is resolved among both candidates.
-	tied := map[int64]bool{}
-	for i := range 40 {
-		got := pick(service.SchedulingCandidate{ID: 1000 + int64(i), Priority: 5, LoadFactor: 1, Concurrency: 1}, service.SchedulingCandidate{ID: 2000 + int64(i), Priority: 5, LoadFactor: 1, Concurrency: 1})
-		tied[got] = true
-	}
-	sawFirst, sawSecond := false, false
-	for id := range tied {
-		if id >= 1000 && id < 2000 {
-			sawFirst = true
-		}
-		if id >= 2000 {
-			sawSecond = true
-		}
-	}
-	require.True(t, sawFirst)
-	require.Equal(t, int64(18), pick(service.SchedulingCandidate{ID: 19, Priority: 6, LoadFactor: 1, Concurrency: 4}, service.SchedulingCandidate{ID: 18, Priority: 6, LoadFactor: 2, Concurrency: 4}), "higher load factor has lower projected utilization at the same tier")
-	require.True(t, sawSecond)
-
-	// A full higher layer gives way to the next priority layer.
-	require.Equal(t, int64(30), pick(service.SchedulingCandidate{ID: 30, Priority: 1, LoadFactor: 1, Concurrency: 1}, service.SchedulingCandidate{ID: 31, Priority: 2, LoadFactor: 1, Concurrency: 2}))
-	require.Equal(t, int64(31), pick(service.SchedulingCandidate{ID: 30, Priority: 1, LoadFactor: 1, Concurrency: 1}, service.SchedulingCandidate{ID: 31, Priority: 2, LoadFactor: 1, Concurrency: 2}))
-	// Legacy and independent scheduling use the same global account-slot set; release makes it available again.
-	ok, err := concurrency.AcquireAccountSlot(ctx, 50, 1, "legacy")
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Zero(t, pick(service.SchedulingCandidate{ID: 50, Priority: 0, LoadFactor: 1, Concurrency: 1}))
-	require.NoError(t, concurrency.ReleaseAccountSlot(ctx, 50, "legacy"))
-	require.Equal(t, int64(50), pick(service.SchedulingCandidate{ID: 50, Priority: 0, LoadFactor: 1, Concurrency: 1}))
-}
-
-func TestIndependentSchedulingPauseGenerationAndExemption(t *testing.T) {
-	ctx := context.Background()
-	cache, _ := newSchedulerCacheUnitWithRedis(t)
-	concurrency := NewConcurrencyCache(cache.rdb, 1, 1).(*concurrencyCache)
-	candidate := service.SchedulingCandidate{ID: 77, Priority: 0, LoadFactor: 1, Concurrency: 1, PauseGeneration: "g1"}
-	pauseKey := slowTTFTKeys(77, "g1")[2]
-	require.NoError(t, cache.rdb.Set(ctx, pauseKey, "g1", time.Minute).Err())
-	id, err := concurrency.AcquireScheduledAccount(ctx, []service.SchedulingCandidate{candidate}, "paused")
-	require.NoError(t, err)
-	require.Zero(t, id)
-	candidate.IgnoreSlowTTFT = true
-	id, err = concurrency.AcquireScheduledAccount(ctx, []service.SchedulingCandidate{candidate}, "exempt")
-	require.NoError(t, err)
-	require.Equal(t, int64(77), id)
-	require.NoError(t, concurrency.ReleaseAccountSlot(ctx, 77, "exempt"))
-	candidate.PauseGeneration, candidate.IgnoreSlowTTFT = "g2", false
-	id, err = concurrency.AcquireScheduledAccount(ctx, []service.SchedulingCandidate{candidate}, "new-epoch")
-	require.NoError(t, err)
-	require.Equal(t, int64(77), id)
 }

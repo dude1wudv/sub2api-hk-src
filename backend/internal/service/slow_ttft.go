@@ -78,8 +78,9 @@ type SlowTTFTRepository interface {
 // ObserveUsageFirstToken samples the protection from the same first_token_ms
 // that the usage record shows. Only streamed dialogue with a measured first
 // token counts; non-stream, media and cyber-blocked records carry no sample.
+// cfg is the immutable policy used by the admitted request (or WebSocket turn).
 // ctx must keep the request values so the scheduling-group exemption applies.
-func (s *RateLimitService) ObserveUsageFirstToken(ctx context.Context, log *UsageLog) {
+func (s *RateLimitService) ObserveUsageFirstToken(ctx context.Context, log *UsageLog, cfg SlowTTFTConfig) {
 	if s == nil || log == nil || log.FirstTokenMs == nil || log.AccountID <= 0 {
 		return
 	}
@@ -87,6 +88,9 @@ func (s *RateLimitService) ObserveUsageFirstToken(ctx context.Context, log *Usag
 		return
 	}
 	if log.ImageCount > 0 || log.VideoCount > 0 || log.RequestType == RequestTypeCyberBlocked {
+		return
+	}
+	if !cfg.Enabled || cfg.ThresholdSeconds < 1 {
 		return
 	}
 	cache, ok := s.tempUnschedCache.(SlowTTFTCache)
@@ -103,8 +107,9 @@ func (s *RateLimitService) ObserveUsageFirstToken(ctx context.Context, log *Usag
 	if err != nil || account == nil {
 		return
 	}
-	cfg := account.SlowTTFTConfig()
-	if !cfg.Enabled || cfg.ThresholdSeconds < 1 {
+	// A clear, configuration edit or disable/re-enable rotates the persisted
+	// generation. Never relabel an old request with the new counting epoch.
+	if current := account.SlowTTFTConfig(); !current.Enabled || current.Generation != cfg.Generation {
 		return
 	}
 	if account.SlowTTFTUntil != nil && time.Now().Before(*account.SlowTTFTUntil) {

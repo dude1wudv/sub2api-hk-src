@@ -2,8 +2,9 @@ package service
 
 import (
 	"context"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 )
 
 type SlowTTFTGroupRepository interface {
@@ -93,4 +94,14 @@ func (s *AccountSelectionResult) WithSlowTTFTContext(ctx context.Context) contex
 		return ctx
 	}
 	return context.WithValue(ctx, slowTTFTGroupKey{}, *s.slowTTFTGroup)
+}
+
+// CopySlowTTFTUsageContext retains the actual scheduling group when a usage
+// worker detaches from the request. Do not substitute the billing group for a
+// fallback/composite selection, or inherit unrelated request cancellation.
+func CopySlowTTFTUsageContext(dst, src context.Context) context.Context {
+	if state, ok := src.Value(slowTTFTGroupKey{}).(slowTTFTGroupState); ok {
+		return context.WithValue(dst, slowTTFTGroupKey{}, state)
+	}
+	return context.WithValue(dst, slowTTFTGroupKey{}, slowTTFTGroupState{ID: slowTTFTGroupID(src)})
 }

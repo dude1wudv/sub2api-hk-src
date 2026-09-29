@@ -16,16 +16,6 @@ export default {
   "clear": "解除慢首字暂停",
   "failed": "解除失败，请重试"
 },
-      "groupScheduling": {
-  "title": "分组优先级",
-  "hint": "优先级数字越小越优先，相同数字表示同等优先级。此设置仅影响当前分组，不会修改账号在其他分组中的顺序。",
-  "up": "上移优先级层",
-  "down": "下移优先级层",
-  "failed": "加载或保存失败，请重试",
-  "conflict": "分组成员或配置已变更，请关闭后重新打开再编辑",
-  "invalid": "优先级须为 0 至 1000000 的整数",
-  "exempt": "全组慢首字恢复：本分组豁免至 {time}"
-},
       title: '账号管理',
       description: '管理 AI 平台账号和 Cookie',
       createAccount: '添加账号',

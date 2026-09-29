@@ -445,7 +445,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 			}
 			// 终检与准入后绑定使用选号结果携带的门（见 responses 同名注释）。
 			admissionCtx := service.ContextWithSelectionProfitGate(c.Request.Context(), selection)
-			latest, vetoed, reason := h.gatewayService.GatewayProfitControlVetoLatest(admissionCtx, account)
+			latest, vetoed, reason := h.gatewayService.PostSlotAdmission(admissionCtx, account)
 			if vetoed {
 				if accountReleaseFunc != nil {
 					accountReleaseFunc()
@@ -454,7 +454,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 				if fs.RecordProfitVeto(account.ID) == FailoverExhausted {
 					reqLog.Warn("gateway.profit_veto_attempts_exhausted", zap.Int("profit_veto_count", fs.ProfitVetoCount()))
 					markOpsRoutingCapacityLimited(c)
-					h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", profitVetoExhaustedMessage, streamStarted)
+					h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", postSlotVetoMessage(reason), streamStarted)
 					return
 				}
 				continue
@@ -791,7 +791,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 			}
 			// 终检与准入后绑定使用选号结果携带的门（见 responses 同名注释）。
 			admissionCtx := service.ContextWithSelectionProfitGate(c.Request.Context(), selection)
-			latest, vetoed, reason := h.gatewayService.GatewayProfitControlVetoLatest(admissionCtx, account)
+			latest, vetoed, reason := h.gatewayService.PostSlotAdmission(admissionCtx, account)
 			if vetoed {
 				if accountReleaseFunc != nil {
 					accountReleaseFunc()
@@ -800,7 +800,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 				if fs.RecordProfitVeto(account.ID) == FailoverExhausted {
 					reqLog.Warn("gateway.profit_veto_attempts_exhausted", zap.Int("profit_veto_count", fs.ProfitVetoCount()))
 					markOpsRoutingCapacityLimited(c)
-					h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", profitVetoExhaustedMessage, streamStarted)
+					h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", postSlotVetoMessage(reason), streamStarted)
 					return
 				}
 				// 尝试被否决（从未转发），立即释放该账号的会话注册

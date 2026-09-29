@@ -117,13 +117,7 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 		return nil, err
 	}
 	ctx = s.withGroupContext(ctx, group)
-	var recovered bool
-	ctx, recovered = withSlowTTFTGroup(ctx, s.accountRepo, groupID)
-	if group != nil {
-		copy := *group
-		copy.IndependentScheduling = recovered
-		group = &copy
-	}
+	ctx, _ = withSlowTTFTGroup(ctx, s.accountRepo, groupID)
 	ctx = s.withGatewayProfitControlGate(ctx, groupID)
 
 	// Claude Code 限制可能已将 groupID 解析为 fallback group，
@@ -145,9 +139,6 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 			stickyAccountID = accountID
 			stickySource = "cache"
 		}
-	}
-	if recovered {
-		stickyAccountID = 0
 	}
 
 	// [DEBUG-STICKY] 调度器入口日志
@@ -171,7 +162,7 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 			derefGroupID(groupID), groupPlatform, requestedModel, shortSessionHash(sessionHash), stickyAccountID, cfg.LoadBatchEnabled, s.concurrencyService != nil)
 	}
 
-	if s.concurrencyService == nil || (!cfg.LoadBatchEnabled && (group == nil || !group.IndependentScheduling)) {
+	if s.concurrencyService == nil || !cfg.LoadBatchEnabled {
 		// 复制排除列表，用于会话限制拒绝时的重试
 		localExcluded := make(map[int64]struct{})
 		for k, v := range excludedIDs {
@@ -443,9 +434,6 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 				}
 			}
 
-			if group != nil && group.IndependentScheduling {
-				return s.selectIndependentGateway(ctx, groupID, sessionHash, routingCandidates, requestedModel, platform, useMixed)
-			}
 			// 2. 批量获取负载信息
 			routingLoads := make([]AccountWithConcurrency, 0, len(routingCandidates))
 			for _, acc := range routingCandidates {
@@ -718,9 +706,6 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 		return nil, ErrNoAvailableAccounts
 	}
 
-	if group != nil && group.IndependentScheduling {
-		return s.selectIndependentGateway(ctx, groupID, sessionHash, candidates, requestedModel, platform, useMixed)
-	}
 	accountLoads := make([]AccountWithConcurrency, 0, len(candidates))
 	for _, acc := range candidates {
 		accountLoads = append(accountLoads, AccountWithConcurrency{

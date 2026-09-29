@@ -16,16 +16,6 @@ export default {
   "clear": "Clear first-output pause",
   "failed": "Unable to clear pause. Retry."
 },
-      "groupScheduling": {
-  "title": "Group priorities",
-  "hint": "Lower numbers have higher priority, and equal numbers have equal priority. These settings apply only to this group.",
-  "up": "Move tier up",
-  "down": "Move tier down",
-  "failed": "Unable to load or save. Retry.",
-  "conflict": "Group membership or settings changed. Close and reopen before editing.",
-  "invalid": "Priority must be an integer from 0 to 1000000",
-  "exempt": "Pool recovery: this group is exempt until {time}"
-},
       title: 'Account Management',
       description: 'Manage AI platform accounts and credentials',
       createAccount: 'Create Account',

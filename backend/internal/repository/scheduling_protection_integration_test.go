@@ -19,7 +19,6 @@ func TestSchedulingProtectionIntegration(t *testing.T) {
 	name := fmt.Sprintf("slow-ttft-%d", time.Now().UnixNano())
 	client := testEntClient(t)
 	accounts := newAccountRepositoryWithSQL(client, integrationDB, nil)
-	groups := newGroupRepositoryWithSQL(client, integrationDB)
 	cfg := service.DefaultSlowTTFTConfig()
 	cfg.Enabled = true
 
@@ -44,7 +43,7 @@ func TestSchedulingProtectionIntegration(t *testing.T) {
 		require.Empty(t, reason)
 	})
 
-	t.Run("manual clear preserves other limits and group scheduling conflicts", func(t *testing.T) {
+	t.Run("manual clear preserves other limits", func(t *testing.T) {
 		g := mustCreateGroup(t, client, &service.Group{Name: name + "-scheduling"})
 		a := mustCreateAccount(t, client, &service.Account{Name: name + "-member", Extra: map[string]any{service.SlowTTFTConfigKey: cfg}})
 		mustBindAccountToGroup(t, client, a.ID, g.ID, 7)
@@ -66,24 +65,6 @@ func TestSchedulingProtectionIntegration(t *testing.T) {
 		require.WithinDuration(t, rateLimitUntil, gotLimit.Time, time.Second)
 		require.Empty(t, gotReason)
 
-		_, err = integrationDB.ExecContext(ctx, `UPDATE groups SET independent_scheduling=true WHERE id=$1`, g.ID)
-		require.NoError(t, err)
-		saved, err := groups.GetGroupScheduling(ctx, g.ID)
-		require.NoError(t, err)
-		require.Equal(t, 7, saved.Accounts[0].Priority, "the editor must expose the group binding priority")
-		saved.Accounts[0].Priority = 3
-		result, err := groups.SaveGroupScheduling(ctx, g.ID, saved)
-		require.NoError(t, err)
-		require.Equal(t, 3, result.Accounts[0].Priority)
-		var independent bool
-		require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT independent_scheduling FROM groups WHERE id=$1`, g.ID).Scan(&independent))
-		require.False(t, independent, "saving priorities retires persisted strict scheduling")
-		_, err = groups.SaveGroupScheduling(ctx, g.ID, saved)
-		require.ErrorIs(t, err, service.ErrSchedulingConflict)
-		missing := *result
-		missing.Accounts = nil
-		_, err = groups.SaveGroupScheduling(ctx, g.ID, &missing)
-		require.ErrorIs(t, err, service.ErrSchedulingConflict, "complete group membership is required")
 	})
 
 	t.Run("BindGroups preserves existing group priority and nil clears all", func(t *testing.T) {
@@ -132,82 +113,6 @@ func TestSchedulingProtectionIntegration(t *testing.T) {
 		require.True(t, stored.Valid)
 		require.WithinDuration(t, *until, stored.Time, time.Second)
 	})
-	t.Run("Redis scheduled acquisition respects capacity under concurrency and releases all slots", func(t *testing.T) {
-		rdb := testRedis(t)
-		concurrency := NewConcurrencyCache(rdb, 1, 1).(*concurrencyCache)
-		candidates := []service.SchedulingCandidate{
-			{ID: 10, Priority: 10, LoadFactor: 1, Concurrency: 4},
-			{ID: 9, Priority: 9, LoadFactor: 1, Concurrency: 4},
-			{ID: 8, Priority: 9, LoadFactor: 1, Concurrency: 4},
-		}
-
-		const requests = 24
-		type acquisition struct {
-			id        int64
-			requestID string
-			err       error
-		}
-		results := make(chan acquisition, requests)
-		start := make(chan struct{})
-		var workers sync.WaitGroup
-		for i := range requests {
-			workers.Add(1)
-			go func(i int) {
-				defer workers.Done()
-				requestID := fmt.Sprintf("parallel-%d", i)
-				<-start
-				id, err := concurrency.AcquireScheduledAccount(ctx, candidates, requestID)
-				results <- acquisition{id: id, requestID: requestID, err: err}
-			}(i)
-		}
-		close(start)
-		workers.Wait()
-		close(results)
-
-		successes := make([]acquisition, 0, 12)
-		counts := map[int64]int{}
-		for got := range results {
-			require.NoError(t, got.err)
-			if got.id == 0 {
-				continue
-			}
-			require.Contains(t, []int64{10, 9, 8}, got.id)
-			successes = append(successes, got)
-			counts[got.id]++
-		}
-		require.Len(t, successes, 12, "requests exceed the combined capacity of the three candidates")
-		for _, id := range []int64{10, 9, 8} {
-			require.LessOrEqual(t, counts[id], 4, "account %d exceeded its concurrency capacity", id)
-		}
-		for _, got := range successes {
-			require.NoError(t, concurrency.ReleaseAccountSlot(ctx, got.id, got.requestID))
-		}
-		for _, id := range []int64{10, 9, 8} {
-			count, err := concurrency.GetAccountConcurrency(ctx, id)
-			require.NoError(t, err)
-			require.Zero(t, count, "all slots for account %d should be released", id)
-		}
-	})
-
-	t.Run("Redis scheduled selection uses load factor within one priority", func(t *testing.T) {
-		rdb := testRedis(t)
-		concurrency := NewConcurrencyCache(rdb, 1, 1).(*concurrencyCache)
-		candidates := []service.SchedulingCandidate{
-			{ID: 10, Priority: 1, LoadFactor: 10, Concurrency: 4},
-			{ID: 9, Priority: 1, LoadFactor: 9, Concurrency: 4},
-			{ID: 8, Priority: 1, LoadFactor: 9, Concurrency: 4},
-		}
-
-		first, err := concurrency.AcquireScheduledAccount(ctx, candidates, "priority-first")
-		require.NoError(t, err)
-		require.Equal(t, int64(10), first)
-		second, err := concurrency.AcquireScheduledAccount(ctx, candidates, "priority-second")
-		require.NoError(t, err)
-		require.Contains(t, []int64{9, 8}, second)
-		require.NoError(t, concurrency.ReleaseAccountSlot(ctx, first, "priority-first"))
-		require.NoError(t, concurrency.ReleaseAccountSlot(ctx, second, "priority-second"))
-	})
-
 	t.Run("Redis SlowTTFT concurrent same-epoch triggers do not extend pause", func(t *testing.T) {
 		rdb := testRedis(t)
 		firstCache := &tempUnschedCache{rdb: rdb}

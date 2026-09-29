@@ -44,18 +44,6 @@ func TestAccountsToService_LargeActiveAccountSetDoesNotExceedPostgresParameterLi
 	require.Len(t, got, len(accounts))
 }
 
-func TestApplyGroupPriority_UsesRequestedGroupBinding(t *testing.T) {
-	accounts := []service.Account{
-		{ID: 1, Priority: 90, AccountGroups: []service.AccountGroup{{GroupID: 7, Priority: 1}}},
-		{ID: 2, Priority: 20, AccountGroups: []service.AccountGroup{{GroupID: 8, Priority: 2}}},
-	}
-
-	applyGroupPriority(accounts, 7)
-
-	require.Equal(t, 1, accounts[0].Priority)
-	require.Equal(t, 20, accounts[1].Priority, "accounts outside the requested group keep their global priority")
-}
-
 func newParameterLimitAccountRepo(t *testing.T) *accountRepository {
 	t.Helper()
 

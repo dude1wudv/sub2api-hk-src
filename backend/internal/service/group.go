@@ -96,8 +96,6 @@ type Group struct {
 
 	// 分组排序
 	SlowTTFTExemptUntil   *time.Time
-	IndependentScheduling bool
-	SchedulingInitialized bool
 	SortOrder             int
 
 	// OpenAI Messages 调度配置（仅 openai 平台使用）

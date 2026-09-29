@@ -1026,8 +1026,6 @@ func groupEntityToService(g *dbent.Group) *service.Group {
 	}
 	return &service.Group{
 		SlowTTFTExemptUntil:             g.SlowTtftExemptUntil,
-		IndependentScheduling:           g.IndependentScheduling,
-		SchedulingInitialized:           g.SchedulingInitialized,
 		ID:                              g.ID,
 		Name:                            g.Name,
 		Description:                     derefString(g.Description),

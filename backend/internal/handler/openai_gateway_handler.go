@@ -255,7 +255,7 @@ func usageRecordContext(parent context.Context, base context.Context) context.Co
 	if requestID, _ := parent.Value(ctxkey.RequestID).(string); strings.TrimSpace(requestID) != "" {
 		base = context.WithValue(base, ctxkey.RequestID, strings.TrimSpace(requestID))
 	}
-	return base
+	return service.CopySlowTTFTUsageContext(base, parent)
 }
 
 func wrapUsageRecordTaskContext(parent context.Context, task service.UsageRecordTask) service.UsageRecordTask {
@@ -757,6 +757,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		if slotResult != openAISlotAcquireOK {
 			return
 		}
+		account = selection.Account
 
 		// Forward request
 		service.SetOpsLatencyMs(c, service.OpsRoutingLatencyMsKey, time.Since(routingStart).Milliseconds())
@@ -1342,6 +1343,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		if slotResult != openAISlotAcquireOK {
 			return
 		}
+		account = selection.Account
 
 		service.SetOpsLatencyMs(c, service.OpsRoutingLatencyMsKey, time.Since(routingStart).Milliseconds())
 		forwardStart := time.Now()
@@ -2119,7 +2121,11 @@ func (h *OpenAIGatewayHandler) handleOpenAIProfitVetoExhausted(
 ) {
 	reqLog.Warn("openai.profit_veto_attempts_exhausted", zap.Int("profit_veto_count", vetoCount))
 	markOpsRoutingCapacityLimited(c)
-	h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", profitVetoExhaustedMessage, streamStarted)
+	reason := ""
+	if c.GetBool(slowTTFTSlotVetoContextKey) {
+		reason = "slow_ttft_paused"
+	}
+	h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", postSlotVetoMessage(reason), streamStarted)
 }
 
 func (h *OpenAIGatewayHandler) acquireResponsesAccountSlot(
@@ -2162,11 +2168,14 @@ func (h *OpenAIGatewayHandler) acquireOpenAIAccountSlot(
 
 	// 终检与准入后绑定使用选号结果携带的门：composite 等跨分组调度解析出的
 	// 门只存在于调度栈的局部 ctx，必须经选号结果重放到本函数的 ctx 上。
-	ctx := service.ContextWithSelectionProfitGate(c.Request.Context(), selection)
+	ctx := service.ContextWithSelectionProfitGate(selection.WithSlowTTFTContext(c.Request.Context()), selection)
 	account := selection.Account
 	if selection.Acquired {
-		latest, vetoed, reason := h.gatewayService.ProfitControlVetoLatest(ctx, account)
+		latest, vetoed, reason := h.gatewayService.PostSlotAdmission(ctx, account)
 		if vetoed {
+			if reason == "slow_ttft_paused" {
+				c.Set(slowTTFTSlotVetoContextKey, true)
+			}
 			if selection.ReleaseFunc != nil {
 				selection.ReleaseFunc()
 			}
@@ -2204,8 +2213,11 @@ func (h *OpenAIGatewayHandler) acquireOpenAIAccountSlot(
 	if fastAcquired {
 		// 分组利润控制：快速抢槽成功后终检。选号与抢槽之间账号
 		// 倍率可能刷新，越线则释放槽位交由调用方排除重选，不绑定粘连。
-		latest, vetoed, reason := h.gatewayService.ProfitControlVetoLatest(ctx, account)
+		latest, vetoed, reason := h.gatewayService.PostSlotAdmission(ctx, account)
 		if vetoed {
+			if reason == "slow_ttft_paused" {
+				c.Set(slowTTFTSlotVetoContextKey, true)
+			}
 			if fastReleaseFunc != nil {
 				fastReleaseFunc()
 			}
@@ -2260,8 +2272,11 @@ func (h *OpenAIGatewayHandler) acquireOpenAIAccountSlot(
 	releaseWait()
 	// 分组利润控制：WaitPlan 排队成功后终检。排队期间账号倍率
 	// 可能上调，越线则释放槽位交由调用方排除重选，不绑定粘连。
-	latest, vetoed, reason := h.gatewayService.ProfitControlVetoLatest(ctx, account)
+	latest, vetoed, reason := h.gatewayService.PostSlotAdmission(ctx, account)
 	if vetoed {
+		if reason == "slow_ttft_paused" {
+			c.Set(slowTTFTSlotVetoContextKey, true)
+		}
 		if accountReleaseFunc != nil {
 			accountReleaseFunc()
 		}
@@ -2701,7 +2716,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 		accountReleaseFunc := selection.ReleaseFunc
 		if selection.Acquired {
 			// 调度器已抢槽路径同样终检：选号与抢槽之间账号倍率可能刷新。
-			latest, vetoed, reason := h.gatewayService.ProfitControlVetoLatest(admissionCtx, account)
+			latest, vetoed, reason := h.gatewayService.PostSlotAdmission(admissionCtx, account)
 			if vetoed {
 				if accountReleaseFunc != nil {
 					accountReleaseFunc()
@@ -2738,7 +2753,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 			}
 			// 分组利润控制：WS 快速抢槽成功后终检，越线则释放
 			// 槽位、排除该账号重新选号，全池耗尽由下一轮选号关闭连接。
-			latest, vetoed, reason := h.gatewayService.ProfitControlVetoLatest(admissionCtx, account)
+			latest, vetoed, reason := h.gatewayService.PostSlotAdmission(admissionCtx, account)
 			if vetoed {
 				if fastReleaseFunc != nil {
 					fastReleaseFunc()
@@ -2814,6 +2829,9 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 		turnChannelMapping.Store(&openAIWSTurnChannelMappingSnapshot{turn: 1, mapping: channelMappingWS})
 		// turn 级定价：首轮回退到 TurnStarted 的所属 turn 时刻；后续 turn 由
 		// BeforeTurn 重新冻结 pricingAt 并按最新门复核当前账号。
+		var turnSlowTTFT atomic.Pointer[service.SlowTTFTConfig]
+		initialSlowTTFT := account.SlowTTFTConfig()
+		turnSlowTTFT.Store(&initialSlowTTFT)
 		var turnPricing openAIWSTurnPricing
 		// Passthrough ingress does not invoke BeforeTurn for the first frame.
 		if err := checkSimpleModeTurnBilling(); err != nil {
@@ -2903,13 +2921,16 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				// 当前账号，越线即要求客户端重连重选（连接绑定单一上游账号，
 				// 无法中途换号）。本 turn 的准入与计费共用同一 pricingAt。
 				turnCtx, turnAt := h.gatewayService.WithOpenAITurnPricingContext(ctx, apiKey.GroupID)
-				if _, vetoed, reason := h.gatewayService.ProfitControlVetoLatest(turnCtx, account); vetoed {
+				turnAccount, vetoed, reason := h.gatewayService.PostSlotAdmission(turnCtx, account)
+				if vetoed {
 					reqLog.Info("openai.websocket_turn_profit_vetoed",
 						zap.Int("turn", turn),
 						zap.Int64("account_id", account.ID),
 						zap.String("reason", reason))
 					return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "account is no longer eligible for this connection, please reconnect", nil)
 				}
+				policy := turnAccount.SlowTTFTConfig()
+				turnSlowTTFT.Store(&policy)
 				turnPricing.freeze(turnAt)
 				if turn == 1 {
 					return nil
@@ -2937,6 +2958,16 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 					}
 					return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "account is busy, please retry later", nil)
 				}
+				// Recheck after the slot acquisition as well; protection may have
+				// changed while acquiring either slot. Never leak either slot on veto.
+				turnAccount, vetoed, _ = h.gatewayService.PostSlotAdmission(turnCtx, account)
+				if vetoed {
+					if accountReleaseFunc != nil { accountReleaseFunc() }
+					if userReleaseFunc != nil { userReleaseFunc() }
+					return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "account is no longer eligible for this connection, please reconnect", nil)
+				}
+				admittedPolicy := turnAccount.SlowTTFTConfig()
+				turnSlowTTFT.Store(&admittedPolicy)
 				currentUserRelease = wrapReleaseOnDone(ctx, userReleaseFunc)
 				currentAccountRelease = wrapReleaseOnDone(ctx, accountReleaseFunc)
 				return checkSimpleModeTurnBilling()
@@ -3019,12 +3050,14 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				sessionID := service.ExtractClientSessionID(c)
 				turnRecordPricingAt := turnPricing.currentOr(turnStart)
 				cyberBlocked := service.GetOpsCyberPolicy(c) != nil
+				turnPolicy := turnSlowTTFT.Load()
 				h.submitOpenAIUsageRecordTask(ctx, result, func(taskCtx context.Context) {
 					if err := h.gatewayService.RecordUsage(taskCtx, &service.OpenAIRecordUsageInput{
 						Result:             result,
 						APIKey:             apiKey,
 						User:               apiKey.User,
 						Account:            account,
+						SlowTTFTConfig:     turnPolicy,
 						Subscription:       subscription,
 						InboundEndpoint:    inboundEndpoint,
 						UpstreamEndpoint:   upstreamEndpoint,

@@ -82,22 +82,22 @@ func slowTTFTUsageLog(requestID string, firstTokenMs int) *UsageLog {
 
 func TestSlowTTFTUsageFirstTokenSampling(t *testing.T) {
 	t.Run("disabled by default", func(t *testing.T) {
-		s, _, cache := slowTTFTTestService(false)
-		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 60000))
+		s, repo, cache := slowTTFTTestService(false)
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 60000), repo.account.SlowTTFTConfig())
 		attempts, _ := cache.snapshot()
 		require.Empty(t, attempts)
 	})
 	t.Run("strict threshold on the recorded first token", func(t *testing.T) {
-		s, _, cache := slowTTFTTestService(true)
-		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 15000))
-		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r2", 15001))
-		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r3", 582))
+		s, repo, cache := slowTTFTTestService(true)
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 15000), repo.account.SlowTTFTConfig())
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r2", 15001), repo.account.SlowTTFTConfig())
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r3", 582), repo.account.SlowTTFTConfig())
 		attempts, slow := cache.snapshot()
 		require.Equal(t, []string{"5:r1", "5:r2", "5:r3"}, attempts)
 		require.Equal(t, []bool{false, true, false}, slow)
 	})
 	t.Run("records without a streamed first token carry no sample", func(t *testing.T) {
-		s, _, cache := slowTTFTTestService(true)
+		s, repo, cache := slowTTFTTestService(true)
 		nonStream := slowTTFTUsageLog("a", 60000)
 		nonStream.Stream = false
 		missing := slowTTFTUsageLog("b", 0)
@@ -107,7 +107,7 @@ func TestSlowTTFTUsageFirstTokenSampling(t *testing.T) {
 		cyber := slowTTFTUsageLog("d", 60000)
 		cyber.RequestType = RequestTypeCyberBlocked
 		for _, log := range []*UsageLog{nil, nonStream, missing, image, cyber} {
-			s.ObserveUsageFirstToken(context.Background(), log)
+			s.ObserveUsageFirstToken(context.Background(), log, repo.account.SlowTTFTConfig())
 		}
 		attempts, _ := cache.snapshot()
 		require.Empty(t, attempts)
@@ -115,7 +115,7 @@ func TestSlowTTFTUsageFirstTokenSampling(t *testing.T) {
 		ws := slowTTFTUsageLog("e", 60000)
 		ws.Stream = false
 		ws.OpenAIWSMode = true
-		s.ObserveUsageFirstToken(context.Background(), ws)
+		s.ObserveUsageFirstToken(context.Background(), ws, repo.account.SlowTTFTConfig())
 		attempts, slow := cache.snapshot()
 		require.Equal(t, []string{"5:e"}, attempts)
 		require.Equal(t, []bool{true}, slow)
@@ -124,14 +124,14 @@ func TestSlowTTFTUsageFirstTokenSampling(t *testing.T) {
 		s, repo, cache := slowTTFTTestService(true)
 		until := time.Now().Add(time.Hour)
 		repo.account.SlowTTFTUntil = &until
-		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 60000))
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 60000), repo.account.SlowTTFTConfig())
 		attempts, _ := cache.snapshot()
 		require.Empty(t, attempts)
 	})
 	t.Run("tripped observation persists the pause", func(t *testing.T) {
 		s, repo, cache := slowTTFTTestService(true)
 		cache.result = SlowTTFTObservation{Tripped: true, Until: time.Now().Add(time.Hour), Reason: "consecutive"}
-		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 60000))
+		s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("r1", 60000), repo.account.SlowTTFTConfig())
 		_, pauses := repo.count()
 		require.Equal(t, 1, pauses)
 	})
@@ -140,9 +140,9 @@ func TestSlowTTFTUsageFirstTokenSampling(t *testing.T) {
 		cache := &slowTTFTTestCache{}
 		s := NewRateLimitService(groupRepo, nil, nil, nil, cache)
 		exempt, _ := withSlowTTFTGroup(context.Background(), groupRepo, ptrInt64(8))
-		s.ObserveUsageFirstToken(exempt, slowTTFTUsageLog("r1", 60000))
+		s.ObserveUsageFirstToken(exempt, slowTTFTUsageLog("r1", 60000), groupRepo.account.SlowTTFTConfig())
 		other, _ := withSlowTTFTGroup(context.Background(), groupRepo, ptrInt64(9))
-		s.ObserveUsageFirstToken(other, slowTTFTUsageLog("r2", 60000))
+		s.ObserveUsageFirstToken(other, slowTTFTUsageLog("r2", 60000), groupRepo.account.SlowTTFTConfig())
 		attempts, slow := cache.snapshot()
 		require.Equal(t, []string{"5:r2"}, attempts)
 		require.Equal(t, []bool{true}, slow)
@@ -274,15 +274,67 @@ func TestWithSlowTTFTGroupRetriesRecoveryWhenPriorLookupFailed(t *testing.T) {
 	require.Equal(t, []int64{groupID, groupID}, repo.recoverCalls)
 }
 
-func TestIndependentGroupSchedulingOnlyActivatesForSlowTTFTRecovery(t *testing.T) {
-	service := &OpenAIGatewayService{}
-	groupID := int64(7)
+func TestSlowTTFTUsageRejectsOldPolicyAfterReset(t *testing.T) {
+	s, repo, cache := slowTTFTTestService(true)
+	admitted := repo.account.SlowTTFTConfig()
+	admitted.Generation = "before-clear"
+	current := admitted
+	current.Generation = "after-clear"
+	repo.account.Extra = map[string]any{SlowTTFTConfigKey: current}
 
-	require.False(t, service.independentGroupScheduling(context.Background(), &groupID))
+	s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("late-old-request", 60000), admitted)
+	attempts, _ := cache.snapshot()
+	require.Empty(t, attempts, "old requests cannot enter a new epoch after a clear or configuration edit")
+	s.ObserveUsageFirstToken(context.Background(), slowTTFTUsageLog("new-request", 60000), current)
+	attempts, _ = cache.snapshot()
+	require.Equal(t, []string{"5:new-request"}, attempts)
+}
 
-	ctx := context.WithValue(context.Background(), slowTTFTGroupKey{}, slowTTFTGroupState{
-		ID:        groupID,
-		Recovered: true,
-	})
-	require.True(t, service.independentGroupScheduling(ctx, &groupID))
+func TestCopySlowTTFTUsageContextPreservesSelectedGroup(t *testing.T) {
+	s, repo, cache := slowTTFTTestService(true)
+	groupRepo := &slowTTFTGroupTestRepo{slowTTFTTestRepo: slowTTFTTestRepo{account: repo.account}}
+	s.accountRepo = groupRepo
+	billing := context.WithValue(context.Background(), ctxkey.Group, &Group{ID: 9})
+	until := time.Now().Add(time.Hour)
+	parent, cancel := context.WithCancel((&AccountSelectionResult{
+		slowTTFTGroup: &slowTTFTGroupState{ID: 8, Until: &until},
+	}).WithSlowTTFTContext(billing))
+	cancel()
+	worker := CopySlowTTFTUsageContext(context.Background(), parent)
+	require.NoError(t, worker.Err(), "copy values, not the canceled request lifetime")
+	require.Equal(t, int64(8), slowTTFTGroupID(worker))
+	s.ObserveUsageFirstToken(worker, slowTTFTUsageLog("exempt", 60000), repo.account.SlowTTFTConfig())
+	attempts, _ := cache.snapshot()
+	require.Empty(t, attempts)
+
+	ungrouped := (&AccountSelectionResult{slowTTFTGroup: &slowTTFTGroupState{}}).WithSlowTTFTContext(billing)
+	require.Zero(t, slowTTFTGroupID(CopySlowTTFTUsageContext(worker, ungrouped)))
+}
+
+func TestSlowTTFTPostSlotAdmissionRechecksPauseAndFreezesPolicy(t *testing.T) {
+	protection, repo, _ := slowTTFTTestService(true)
+	selected := *repo.account
+	until := time.Now().Add(time.Hour)
+	repo.account.SlowTTFTUntil = &until
+	openai := &OpenAIGatewayService{rateLimitService: protection}
+	gateway := &GatewayService{rateLimitService: protection}
+	for _, admission := range []func(context.Context, *Account) (*Account, bool, string){openai.PostSlotAdmission, gateway.PostSlotAdmission} {
+		_, vetoed, reason := admission(context.Background(), &selected)
+		require.True(t, vetoed, "a pause set while waiting must reject the acquired slot")
+		require.Equal(t, "slow_ttft_paused", reason)
+		exempt := context.WithValue(context.Background(), slowTTFTGroupKey{}, slowTTFTGroupState{ID: 8, Until: &until})
+		_, vetoed, _ = admission(exempt, &selected)
+		require.False(t, vetoed, "an exempt group may still use this account")
+	}
+	repo.account.SlowTTFTUntil = nil
+	policy := repo.account.SlowTTFTConfig()
+	policy.Generation = "at-admission"
+	repo.account.Extra = map[string]any{SlowTTFTConfigKey: policy}
+	admitted, vetoed, _ := openai.PostSlotAdmission(context.Background(), &selected)
+	require.False(t, vetoed)
+	require.Equal(t, "at-admission", admitted.SlowTTFTConfig().Generation)
+	require.Empty(t, selected.SlowTTFTConfig().Generation, "do not mutate the selected/shared snapshot")
+	policy.Generation = "next-turn"
+	repo.account.Extra[SlowTTFTConfigKey] = policy
+	require.Equal(t, "at-admission", admitted.SlowTTFTConfig().Generation, "queued usage must retain its original policy")
 }

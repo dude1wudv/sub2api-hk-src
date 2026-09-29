@@ -1945,21 +1945,28 @@ func (r *accountRepository) AddToGroup(ctx context.Context, accountID, groupID i
 
 func (r *accountRepository) RemoveFromGroup(ctx context.Context, accountID, groupID int64) error {
 	tx, err := r.client.Tx(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, dbent.ErrTxStarted) {
 		return err
 	}
-	defer tx.Rollback()
-	if err := lockLiveGroups(ctx, tx.Client(), []int64{groupID}); err != nil {
+	client := r.client
+	if tx != nil {
+		defer func() { _ = tx.Rollback() }()
+		client = tx.Client()
+	}
+	if err := lockLiveGroups(ctx, client, []int64{groupID}); err != nil {
 		return err
 	}
-	if _, err := tx.Client().AccountGroup.Delete().Where(dbaccountgroup.AccountIDEQ(accountID), dbaccountgroup.GroupIDEQ(groupID)).Exec(ctx); err != nil {
+	if _, err := client.AccountGroup.Delete().Where(dbaccountgroup.AccountIDEQ(accountID), dbaccountgroup.GroupIDEQ(groupID)).Exec(ctx); err != nil {
 		return err
 	}
 	payload := buildSchedulerGroupPayload([]int64{groupID})
-	if err := enqueueSchedulerOutbox(ctx, tx.Client(), service.SchedulerOutboxEventAccountGroupsChanged, &accountID, nil, payload); err != nil {
+	if err := enqueueSchedulerOutbox(ctx, client, service.SchedulerOutboxEventAccountGroupsChanged, &accountID, nil, payload); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if tx != nil {
+		return tx.Commit()
+	}
+	return nil
 }
 
 func (r *accountRepository) GetGroups(ctx context.Context, accountID int64) ([]service.Group, error) {
@@ -3403,18 +3410,7 @@ func (r *accountRepository) queryAccountsByGroup(ctx context.Context, groupID in
 		}
 	}
 
-	accountsOut, err := r.accountsToService(ctx, accounts)
-	if err != nil {
-		return nil, err
-	}
-	applyGroupPriority(accountsOut, groupID)
-	return accountsOut, nil
-}
-
-func applyGroupPriority(accounts []service.Account, groupID int64) {
-	for i := range accounts {
-		accounts[i].Priority = accounts[i].PriorityInGroup(groupID)
-	}
+	return r.accountsToService(ctx, accounts)
 }
 
 func (r *accountRepository) accountsToService(ctx context.Context, accounts []*dbent.Account) ([]service.Account, error) {

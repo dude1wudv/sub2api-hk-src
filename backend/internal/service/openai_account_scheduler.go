@@ -74,7 +74,6 @@ type OpenAIAccountScheduleRequest struct {
 	StickyAccountID         int64
 	GuardianParentAccountID int64
 	StickyPreviousAccountID int64
-	IndependentScheduling   bool
 	StickyWeighted          bool
 	SubscriptionPriority    bool
 	PreserveStickyBinding   bool
@@ -436,7 +435,7 @@ func (s *defaultOpenAIAccountScheduler) Select(
 		}
 	}
 
-	if req.GuardianParentAccountID > 0 && !slowTTFTGroupRecovered(ctx) {
+	if req.GuardianParentAccountID > 0 {
 		parentReq := req
 		parentReq.StickyAccountID = req.GuardianParentAccountID
 		parentReq.PreserveStickyBinding = true
@@ -453,7 +452,7 @@ func (s *defaultOpenAIAccountScheduler) Select(
 		}
 	}
 
-	if !req.StickyWeighted && !slowTTFTGroupRecovered(ctx) {
+	if !req.StickyWeighted {
 		selection, escapedSticky, err := s.selectBySessionHash(ctx, req)
 		if err != nil {
 			return nil, decision, err
@@ -903,14 +902,6 @@ func (s *defaultOpenAIAccountScheduler) buildOpenAIAccountLoadPlan(
 		staleSnapshotCompactRetry: staleSnapshotCompactRetry,
 		candidateCount:            len(candidates),
 	}
-	if req.IndependentScheduling {
-		sort.SliceStable(plan.candidates, func(i, j int) bool {
-			return plan.candidates[i].account.PriorityInGroup(derefGroupID(req.GroupID)) < plan.candidates[j].account.PriorityInGroup(derefGroupID(req.GroupID))
-		})
-		plan.topK = len(plan.candidates)
-		plan.selectionOrder = s.buildOpenAISelectionOrder(req, plan)
-		return plan
-	}
 	if len(candidates) == 0 {
 		plan.selectionOrder = s.buildOpenAISelectionOrder(req, plan)
 		return plan
@@ -1064,9 +1055,6 @@ func (s *defaultOpenAIAccountScheduler) buildOpenAISelectionOrder(
 	req OpenAIAccountScheduleRequest,
 	plan openAIAccountLoadPlan,
 ) []openAIAccountCandidateScore {
-	if req.IndependentScheduling {
-		return append([]openAIAccountCandidateScore(nil), plan.candidates...)
-	}
 	buildSelectionOrder := func(pool []openAIAccountCandidateScore) []openAIAccountCandidateScore {
 		if len(pool) == 0 || plan.topK <= 0 {
 			return nil
@@ -1186,9 +1174,6 @@ func (s *defaultOpenAIAccountScheduler) tryAcquireOpenAISelectionOrderWithBudget
 	selectionOrder []openAIAccountCandidateScore,
 	budget *openAISelectionProbeBudget,
 ) (*AccountSelectionResult, bool, error) {
-	if req.IndependentScheduling {
-		return s.tryAcquireIndependent(ctx, req, selectionOrder)
-	}
 	compactBlocked := false
 	release := func(result *AcquireResult) {
 		if result != nil && result.ReleaseFunc != nil {
@@ -2337,9 +2322,6 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 	ctx = s.withOpenAIQuotaAutoPauseContext(ctx)
 	ctx = s.withOpenAIGroupPrivacyRequirement(ctx, groupID)
 	ctx, _ = withSlowTTFTGroup(ctx, s.accountRepo, groupID)
-	if slowTTFTGroupRecovered(ctx) && previousResponseCanMove {
-		previousResponseID = ""
-	}
 	// 分组利润控制：唯一文本调度入口的防御性装门。handler 文本
 	// 入口已在请求开始经 WithOpenAIRequestPricingContext 装门并固定 pricingAt，
 	// 此处对同分组门直接复用（failover 重入阈值稳定），仅为不经 handler 装配的
@@ -2356,11 +2338,7 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 	if strings.TrimSpace(previousResponseID) == "" {
 		guardianParentAccountID = s.resolveOpenAIGuardianParentAccountID(ctx, groupID)
 	}
-	independent := s.independentGroupScheduling(ctx, groupID)
 	scheduler := s.getOpenAIAccountScheduler(ctx)
-	if independent && scheduler == nil {
-		scheduler = newDefaultOpenAIAccountScheduler(s, nil)
-	}
 	if scheduler == nil {
 		decision.Layer = openAIAccountScheduleLayerLoadBalance
 		if selection, hit, err := s.selectLegacyAccountByPreviousResponse(ctx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform); err != nil {
@@ -2473,8 +2451,8 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 			stickyAccountID = accountID
 		}
 	}
-	stickyWeighted := !independent && s.isOpenAIAdvancedSchedulerStickyWeightedEnabled(ctx)
-	subscriptionPriority := !independent && s.isOpenAIAdvancedSchedulerSubscriptionPriorityEnabled(ctx)
+	stickyWeighted := s.isOpenAIAdvancedSchedulerStickyWeightedEnabled(ctx)
+	subscriptionPriority := s.isOpenAIAdvancedSchedulerSubscriptionPriorityEnabled(ctx)
 	stickyPreviousAccountID := int64(0)
 	if stickyWeighted && previousResponseCanMove && strings.TrimSpace(previousResponseID) != "" && platform == PlatformOpenAI {
 		stickyPreviousAccountID = s.ResolveAccountIDByPreviousResponseIDForScheduler(ctx, groupID, previousResponseID, requestedModel, excludedIDs, requiredCapability, requireCompact)
@@ -2487,7 +2465,6 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 		StickyAccountID:         stickyAccountID,
 		GuardianParentAccountID: guardianParentAccountID,
 		StickyPreviousAccountID: stickyPreviousAccountID,
-		IndependentScheduling:   independent,
 		StickyWeighted:          stickyWeighted,
 		SubscriptionPriority:    subscriptionPriority,
 		PreserveStickyBinding:   preserveGuardianParentBinding,

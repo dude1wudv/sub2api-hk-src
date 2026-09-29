@@ -43,7 +43,7 @@ func (r *accountRepository) RecoverSlowTTFTGroup(ctx context.Context, id int64) 
 	if err != nil {
 		return nil, false, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var lockedID int64
 	if err = scanSingleRow(ctx, tx.Client(), `SELECT id FROM groups WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, []any{id}, &lockedID); err != nil {
 		return nil, false, err
@@ -63,13 +63,13 @@ func (r *accountRepository) RecoverSlowTTFTGroup(ctx context.Context, id int64) 
 	for rows.Next() {
 		var accountID int64
 		if err = rows.Scan(&accountID); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, false, err
 		}
 		ids = append(ids, accountID)
 	}
 	err = rows.Err()
-	rows.Close()
+	_ = rows.Close()
 	if err != nil {
 		return nil, false, err
 	}
