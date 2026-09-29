@@ -23,7 +23,7 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 314
+	candidateMigrationCount         = 315
 )
 
 var candidateOnlyMigrations = []string{
@@ -55,6 +55,7 @@ var candidateOnlyMigrations = []string{
 	"240_affiliate_ledger_operation_id.sql",
 	"241_mirasim_platform.sql",
 	"242_account_scheduling_protection.sql",
+	"243_disable_independent_scheduling.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {

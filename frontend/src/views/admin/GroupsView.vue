@@ -381,11 +381,11 @@
           </template>
 
           <template #cell-actions="{ row }">
-            <button v-if="row.platform !== 'composite'" type="button" class="btn btn-secondary" @click="schedulingGroupId = row.id">{{ t('admin.accounts.groupScheduling.title') }}</button>
             <div v-if="isGlassLayout" class="flex items-center gap-2">
               <button type="button" class="glacier-row-action" @click="handleEdit(row)"><Icon name="edit" size="sm" />{{ t('common.edit') }}</button>
               <GlacierActionMenu :label="row.name + ' · ' + t('common.actions')">
                 <template #default="{ close }">
+                  <button v-if="row.platform !== 'composite'" type="button" data-testid="group-priorities" @click="close(); schedulingGroupId = row.id"><Icon name="sort" size="sm" />{{ t('admin.accounts.groupScheduling.title') }}</button>
                   <button v-if="!authStore.isSimpleMode" type="button" data-testid="group-duplicate" :disabled="duplicatingGroupIds.has(row.id)" @click="close(); handleDuplicate(row)"><Icon name="copy" size="sm" />{{ duplicatingGroupIds.has(row.id) ? t('admin.groups.duplicating') : t('admin.groups.duplicate') }}</button>
                   <button v-if="!authStore.isSimpleMode && row.platform === 'composite'" type="button" data-testid="group-composite-routes" @click="close(); handleCompositeRoutes(row)"><Icon name="swap" size="sm" />{{ t('admin.groups.compositeRoutes.action') }}</button>
                   <button v-if="!authStore.isSimpleMode" type="button" data-testid="group-rate-multipliers" @click="close(); handleRateMultipliers(row)"><Icon name="dollar" size="sm" />{{ t('admin.groups.rateMultipliers') }}</button>
@@ -395,6 +395,16 @@
               </GlacierActionMenu>
             </div>
             <div v-else class="flex items-center gap-1">
+              <button
+                v-if="row.platform !== 'composite'"
+                type="button"
+                data-testid="group-priorities"
+                @click="schedulingGroupId = row.id"
+                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+              >
+                <Icon name="sort" size="sm" />
+                <span class="text-xs">{{ t('admin.accounts.groupScheduling.title') }}</span>
+              </button>
               <button
                 @click="handleEdit(row)"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"

@@ -1,6 +1,6 @@
 import { apiClient } from '../client'
 export interface SchedulingAccount { account_id: number; name: string; priority: number; load_factor: number; concurrency: number }
-export interface GroupScheduling { enabled: boolean; version: string; accounts: SchedulingAccount[]; slow_ttft_exempt_until?: string }
+export interface GroupScheduling { version: string; accounts: SchedulingAccount[] }
 export async function getGroupScheduling(id: number): Promise<GroupScheduling> {
   return (await apiClient.get<GroupScheduling>(`/admin/groups/${id}/scheduling`)).data
 }

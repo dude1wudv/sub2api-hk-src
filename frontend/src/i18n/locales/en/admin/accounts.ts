@@ -17,11 +17,8 @@ export default {
   "failed": "Unable to clear pause. Retry."
 },
       "groupScheduling": {
-  "title": "Group scheduling",
-  "enable": "Enable strict priority and load balancing",
-  "hint": "Lower numbers have higher priority. Equal numbers share a tier. Use the next tier only when the current one has no capacity. Within a tier, minimize (active requests + 1) / load factor; break ties randomly. Healthy sticky sessions retain their account.",
-  "recoveryHint": "When the entire group is paused for slow first output, clear that cooldown and retry from the highest priority. Only this group is exempt for 30 minutes. Other limits, quotas and disabled states remain in effect.",
-  "exemptUntil": "This group is exempt from slow first-output protection until: {time}",
+  "title": "Group priorities",
+  "hint": "Lower numbers have higher priority, and equal numbers have equal priority. These settings apply only to this group.",
   "up": "Move tier up",
   "down": "Move tier down",
   "failed": "Unable to load or save. Retry.",

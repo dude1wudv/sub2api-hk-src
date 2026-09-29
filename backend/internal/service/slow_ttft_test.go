@@ -341,3 +341,16 @@ func TestWithSlowTTFTGroupRetriesRecoveryWhenPriorLookupFailed(t *testing.T) {
 	require.True(t, slowTTFTGroupRecovered(nextSelectionContext))
 	require.Equal(t, []int64{groupID, groupID}, repo.recoverCalls)
 }
+
+func TestIndependentGroupSchedulingOnlyActivatesForSlowTTFTRecovery(t *testing.T) {
+	service := &OpenAIGatewayService{}
+	groupID := int64(7)
+
+	require.False(t, service.independentGroupScheduling(context.Background(), &groupID))
+
+	ctx := context.WithValue(context.Background(), slowTTFTGroupKey{}, slowTTFTGroupState{
+		ID:        groupID,
+		Recovered: true,
+	})
+	require.True(t, service.independentGroupScheduling(ctx, &groupID))
+}

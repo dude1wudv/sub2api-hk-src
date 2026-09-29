@@ -5,15 +5,8 @@ import (
 	"sort"
 )
 
-func (s *OpenAIGatewayService) independentGroupScheduling(ctx context.Context, id *int64) bool {
-	if slowTTFTGroupRecovered(ctx) {
-		return true
-	}
-	if id == nil || s.schedulerSnapshot == nil {
-		return false
-	}
-	g, err := s.schedulerSnapshot.GetGroupByIDLite(ctx, *id)
-	return err == nil && g != nil && g.IndependentScheduling
+func (s *OpenAIGatewayService) independentGroupScheduling(ctx context.Context, _ *int64) bool {
+	return slowTTFTGroupRecovered(ctx)
 }
 
 // Refresh the complete candidate pool before comparing priorities/load factors.

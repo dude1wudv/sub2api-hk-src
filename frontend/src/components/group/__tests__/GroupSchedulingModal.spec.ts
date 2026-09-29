@@ -13,7 +13,6 @@ vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 import GroupSchedulingModal from '../GroupSchedulingModal.vue'
 
 const initial = () => ({
-  enabled: false,
   version: 'ver-1',
   accounts: [
     { account_id: 10, name: 'alpha', priority: 10, load_factor: 1, concurrency: 4 },
@@ -33,16 +32,15 @@ beforeEach(() => {
 })
 
 describe('GroupSchedulingModal', () => {
-  it('loads and persists enabled state with the complete group membership', async () => {
+  it('loads and persists the complete group priority list without a strict-mode toggle', async () => {
     const wrapper = mountModal()
     await flushPromises()
-    await wrapper.get('input[type="checkbox"]').setValue(true)
+    expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false)
     await wrapper.get('button.btn-primary').trigger('click')
     await flushPromises()
     expect(getGroupSchedulingMock).toHaveBeenCalledWith(5)
     expect(saveGroupSchedulingMock).toHaveBeenCalledTimes(1)
     const submitted = saveGroupSchedulingMock.mock.calls[0][1]
-    expect(submitted.enabled).toBe(true)
     expect(submitted.version).toBe('ver-1')
     expect(submitted.accounts).toEqual(initial().accounts)
     expect(wrapper.emitted('saved')).toHaveLength(1)

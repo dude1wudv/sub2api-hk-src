@@ -66,15 +66,19 @@ func TestSchedulingProtectionIntegration(t *testing.T) {
 		require.WithinDuration(t, rateLimitUntil, gotLimit.Time, time.Second)
 		require.Empty(t, gotReason)
 
+		_, err = integrationDB.ExecContext(ctx, `UPDATE groups SET independent_scheduling=true WHERE id=$1`, g.ID)
+		require.NoError(t, err)
 		saved, err := groups.GetGroupScheduling(ctx, g.ID)
 		require.NoError(t, err)
-		saved.Enabled = true
+		require.Equal(t, 7, saved.Accounts[0].Priority, "the editor must expose the group binding priority")
+		saved.Accounts[0].Priority = 3
 		result, err := groups.SaveGroupScheduling(ctx, g.ID, saved)
 		require.NoError(t, err)
-		require.True(t, result.Enabled)
-		stale := *saved
-		stale.Enabled = false
-		_, err = groups.SaveGroupScheduling(ctx, g.ID, &stale)
+		require.Equal(t, 3, result.Accounts[0].Priority)
+		var independent bool
+		require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT independent_scheduling FROM groups WHERE id=$1`, g.ID).Scan(&independent))
+		require.False(t, independent, "saving priorities retires persisted strict scheduling")
+		_, err = groups.SaveGroupScheduling(ctx, g.ID, saved)
 		require.ErrorIs(t, err, service.ErrSchedulingConflict)
 		missing := *result
 		missing.Accounts = nil

@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -12,7 +11,7 @@ import (
 )
 
 func readGroupScheduling(ctx context.Context, db sqlExecutor, id int64, lock bool) (*service.GroupScheduling, error) {
-	q := `SELECT independent_scheduling, scheduling_initialized, updated_at::text, slow_ttft_exempt_until FROM groups WHERE id=$1 AND deleted_at IS NULL`
+	q := `SELECT updated_at::text FROM groups WHERE id=$1 AND deleted_at IS NULL`
 	if lock {
 		q += ` FOR UPDATE`
 	}
@@ -20,9 +19,7 @@ func readGroupScheduling(ctx context.Context, db sqlExecutor, id int64, lock boo
 	if err != nil {
 		return nil, err
 	}
-	var enabled, initialized bool
 	var updated string
-	var exempt sql.NullTime
 	if !rows.Next() {
 		err = rows.Err()
 		rows.Close()
@@ -31,20 +28,17 @@ func readGroupScheduling(ctx context.Context, db sqlExecutor, id int64, lock boo
 		}
 		return nil, service.ErrGroupNotFound
 	}
-	err = rows.Scan(&enabled, &initialized, &updated, &exempt)
+	err = rows.Scan(&updated)
 	rows.Close()
 	if err != nil {
 		return nil, err
 	}
-	out := &service.GroupScheduling{Enabled: enabled, Accounts: []service.GroupSchedulingAccount{}}
-	if exempt.Valid {
-		out.SlowTTFTExemptUntil = &exempt.Time
-	}
-	q = `SELECT a.id,a.name,CASE WHEN $2 THEN ag.priority ELSE a.priority END,COALESCE(NULLIF(a.load_factor,0),NULLIF(a.concurrency,0),1),a.concurrency FROM account_groups ag JOIN accounts a ON a.id=ag.account_id WHERE ag.group_id=$1 AND a.deleted_at IS NULL ORDER BY a.id`
+	out := &service.GroupScheduling{Accounts: []service.GroupSchedulingAccount{}}
+	q = `SELECT a.id,a.name,ag.priority,COALESCE(NULLIF(a.load_factor,0),NULLIF(a.concurrency,0),1),a.concurrency FROM account_groups ag JOIN accounts a ON a.id=ag.account_id WHERE ag.group_id=$1 AND a.deleted_at IS NULL ORDER BY a.id`
 	if lock {
 		q += ` FOR UPDATE OF ag, a`
 	}
-	rows, err = db.QueryContext(ctx, q, id, initialized)
+	rows, err = db.QueryContext(ctx, q, id)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +53,7 @@ func readGroupScheduling(ctx context.Context, db sqlExecutor, id int64, lock boo
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
-	b, _ := json.Marshal([]any{id, enabled, initialized, updated, out.Accounts})
+	b, _ := json.Marshal([]any{id, updated, out.Accounts})
 	sum := sha256.Sum256(b)
 	out.Version = hex.EncodeToString(sum[:])
 	return out, nil
@@ -104,7 +98,7 @@ func (r *groupRepository) SaveGroupScheduling(ctx context.Context, id int64, in 
 	if len(members) != 0 {
 		return nil, service.ErrSchedulingConflict
 	}
-	if _, err = tx.Client().ExecContext(ctx, `UPDATE groups SET independent_scheduling=$1,scheduling_initialized=true,updated_at=NOW() WHERE id=$2`, in.Enabled, id); err != nil {
+	if _, err = tx.Client().ExecContext(ctx, `UPDATE groups SET independent_scheduling=false,scheduling_initialized=true,updated_at=NOW() WHERE id=$1`, id); err != nil {
 		return nil, err
 	}
 	if err = enqueueSchedulerOutbox(ctx, tx.Client(), service.SchedulerOutboxEventGroupChanged, nil, &id, nil); err != nil {

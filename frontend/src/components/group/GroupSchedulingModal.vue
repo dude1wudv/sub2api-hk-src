@@ -45,10 +45,7 @@ async function save() {
   <BaseDialog :show="groupId !== null" :title="t('admin.accounts.groupScheduling.title')" width="wide" @close="!saving && emit('close')">
     <p v-if="loading">{{ t('common.loading') }}</p>
     <div v-if="settings" class="space-y-4">
-      <label class="flex items-center gap-2"><input v-model="settings.enabled" type="checkbox" />{{ t('admin.accounts.groupScheduling.enable') }}</label>
       <p class="text-sm text-gray-500">{{ t('admin.accounts.groupScheduling.hint') }}</p>
-      <p class="text-sm text-gray-500">{{ t('admin.accounts.groupScheduling.recoveryHint') }}</p>
-      <p v-if="settings.slow_ttft_exempt_until && Date.parse(settings.slow_ttft_exempt_until) > Date.now()" class="text-sm text-amber-700 dark:text-amber-300">{{ t('admin.accounts.groupScheduling.exemptUntil', { time: new Date(settings.slow_ttft_exempt_until).toLocaleString() }) }}</p>
       <div class="max-h-[55vh] space-y-3 overflow-auto">
         <section v-for="(level, index) in levels" :key="level" class="rounded-xl border border-gray-200 p-3 dark:border-dark-600">
           <div class="mb-2 flex items-center gap-2">

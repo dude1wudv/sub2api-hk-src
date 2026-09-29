@@ -17,10 +17,8 @@ type GroupSchedulingAccount struct {
 	Concurrency int    `json:"concurrency"`
 }
 type GroupScheduling struct {
-	Enabled             bool                     `json:"enabled"`
-	Version             string                   `json:"version"`
-	SlowTTFTExemptUntil *time.Time               `json:"slow_ttft_exempt_until,omitempty"`
-	Accounts            []GroupSchedulingAccount `json:"accounts"`
+	Version  string                   `json:"version"`
+	Accounts []GroupSchedulingAccount `json:"accounts"`
 }
 type GroupSchedulingRepository interface {
 	GetGroupScheduling(context.Context, int64) (*GroupScheduling, error)

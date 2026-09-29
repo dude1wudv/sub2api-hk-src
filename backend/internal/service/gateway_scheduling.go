@@ -121,12 +121,7 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 	ctx, recovered = withSlowTTFTGroup(ctx, s.accountRepo, groupID)
 	if group != nil {
 		copy := *group
-		if s.groupRepo != nil {
-			if current, err := s.groupRepo.GetByIDLite(ctx, group.ID); err == nil && current != nil {
-				copy.IndependentScheduling = current.IndependentScheduling
-			}
-		}
-		copy.IndependentScheduling = copy.IndependentScheduling || recovered
+		copy.IndependentScheduling = recovered
 		group = &copy
 	}
 	ctx = s.withGatewayProfitControlGate(ctx, groupID)
