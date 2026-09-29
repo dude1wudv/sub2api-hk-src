@@ -1,0 +1,31 @@
+name: Setup Go with reusable cache
+description: Install Go and restore module/build caches with a dependency-change fallback.
+
+inputs:
+  go-version-file:
+    description: Path to the go.mod file that declares the Go toolchain.
+    required: true
+  cache-dependency-key:
+    description: Hash of dependency metadata used for the exact cache key.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      id: setup-go
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: ${{ inputs.go-version-file }}
+        check-latest: false
+        cache: false
+
+    - name: Restore Go modules and build cache
+      uses: actions/cache@v6
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: go-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-${{ inputs.cache-dependency-key }}
+        restore-keys: |
+          go-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-

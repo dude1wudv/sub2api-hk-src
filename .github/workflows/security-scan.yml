@@ -16,11 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: ./.github/actions/setup-go-cache
         with:
           go-version-file: backend/go.mod
-          check-latest: false
-          cache-dependency-path: backend/go.sum
+          cache-dependency-key: ${{ hashFiles('backend/go.sum') }}
       - name: Verify Go version
         run: |
           go version | grep -q 'go1.27.0'
@@ -38,12 +37,12 @@ jobs:
         uses: pnpm/action-setup@v6
         with:
           version: 9
+          cache: true
+          cache_dependency_path: frontend/pnpm-lock.yaml
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         working-directory: frontend
         run: pnpm install --frozen-lockfile
