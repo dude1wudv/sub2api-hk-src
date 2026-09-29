@@ -77,7 +77,7 @@ const props = defineProps<{
   response: ModelPlazaResponse | null
   loading: boolean
   error?: boolean
-  /** 后台内嵌形态(AppLayout 内):隐藏页头。 */
+  /** 后台内嵌形态(AppShell 内):隐藏页头。 */
   embedded?: boolean
 }>()
 

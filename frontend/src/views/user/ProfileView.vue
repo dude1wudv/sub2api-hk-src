@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <div>
     <div
       data-testid="profile-shell"
       class="mx-auto max-w-[950px] space-y-6"
@@ -46,14 +46,13 @@
       <ProfileTotpCard />
       <ProfilePasskeyCard :enabled="passkeyEnabled" />
     </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@/components/icons'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import ProfileBalanceNotifyCard from '@/components/user/profile/ProfileBalanceNotifyCard.vue'
 import ProfileInfoCard from '@/components/user/profile/ProfileInfoCard.vue'
 import ProfilePasswordForm from '@/components/user/profile/ProfilePasswordForm.vue'

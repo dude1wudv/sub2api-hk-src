@@ -42,7 +42,7 @@
     </div>
 
     <!-- Navigation -->
-    <nav ref="sidebarNavRef" class="sidebar-nav scrollbar-hide">
+    <nav ref="sidebarNavRef" class="sidebar-nav scrollbar-hide" @pointerover="prefetchNavTarget" @focusin="prefetchNavTarget">
       <div v-if="!sidebarCollapsed" class="workspace-label">{{ isAdmin ? 'OPERATIONS' : 'DEVELOPER' }} / {{ zh ? '工作区' : 'WORKSPACE' }}</div>
       <p v-if="navigationQuery && !filteredAdminNav.length && !filteredUserNav.length && !filteredPersonalNav.length" class="px-3 text-xs text-gray-500" role="status">{{ zh ? '没有匹配的功能' : 'No matching pages' }}</p>
       <!-- Admin View: Admin menu first, then personal menu -->
@@ -217,6 +217,7 @@
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
+import { prefetchRoutePath } from '@/composables/useRoutePrefetch'
 import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import VersionBadge from '@/components/common/VersionBadge.vue'
@@ -302,6 +303,8 @@ watch(mobileOpen, async (open) => {
   }
 })
 watch(desktop, (value) => { if (value) closeMobile() })
+// 侧边栏在页面切换时常驻，导航后清空检索词，保持与原先重新挂载时一致的行为。
+watch(() => route.path, () => { navigationQuery.value = '' })
 
 function handleDrawerKeydown(event: KeyboardEvent) {
   if (desktop.value || !mobileOpen.value) return
@@ -981,6 +984,17 @@ function handleMenuItemClick(itemPath: string, event?: MouseEvent, item?: NavIte
   if (selector && onboardingStore.isCurrentStep(selector)) {
     onboardingStore.nextStep(500)
   }
+}
+
+// 指针悬停或键盘聚焦侧边栏链接时即开始下载目标页面，点击时通常已命中缓存。
+function prefetchNavTarget(event: Event) {
+  if ((event as PointerEvent).pointerType === 'touch') return
+  const link = (event.target as Element | null)?.closest?.('a[href]')
+  const href = link?.getAttribute('href')
+  if (!href || link?.getAttribute('target') === '_blank') return
+  const base = router.options.history.base
+  const path = base && base !== '/' && href.startsWith(base) ? href.slice(base.length) || '/' : href
+  prefetchRoutePath(router, path)
 }
 
 function isActive(path: string): boolean {

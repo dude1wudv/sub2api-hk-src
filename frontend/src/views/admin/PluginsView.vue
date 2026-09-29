@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <div>
     <div class="space-y-6">
       <section
         class="flex flex-col gap-4 border-b border-gray-200 pb-5 dark:border-dark-700 sm:flex-row sm:items-end sm:justify-between"
@@ -329,7 +329,7 @@
 
       <TotpStepUpDialog :controller="pluginStepUp" />
     </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -341,7 +341,6 @@ import {
   type PluginUISession,
 } from "@/api/admin";
 import { useAppStore } from "@/stores";
-import AppLayout from "@/components/layout/AppLayout.vue";
 import BaseDialog from "@/components/common/BaseDialog.vue";
 import Icon from "@/components/icons/Icon.vue";
 import TotpStepUpDialog from "@/components/auth/TotpStepUpDialog.vue";

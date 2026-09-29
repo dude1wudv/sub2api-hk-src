@@ -4,6 +4,7 @@
  */
 
 import 'vue-router'
+import type { RouteLocationNormalizedLoaded } from 'vue-router'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -70,5 +71,12 @@ declare module 'vue-router' {
      * i18n key for the page description
      */
     descriptionKey?: string
+
+    /**
+     * 是否由 App.vue 常驻的 AppShell（侧边栏 + 顶栏）承载该页面。
+     * 函数形式用于随 query 切换的页面（如运维全屏、支付弹窗）。
+     * @default false
+     */
+    appLayout?: boolean | ((route: RouteLocationNormalizedLoaded) => boolean)
   }
 }

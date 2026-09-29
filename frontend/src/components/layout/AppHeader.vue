@@ -255,7 +255,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
@@ -387,6 +387,9 @@ function handleClickOutside(event: MouseEvent) {
     closeDropdown()
   }
 }
+
+// 顶栏在页面切换时常驻，任何导航（含浏览器前进/后退）都收起用户菜单。
+watch(() => route.fullPath, closeDropdown)
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)

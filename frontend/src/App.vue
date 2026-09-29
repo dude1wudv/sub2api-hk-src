@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { RouterView, useRouter, useRoute } from 'vue-router'
+import { RouterView, useRouter, useRoute, type RouteLocationNormalizedLoaded } from 'vue-router'
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import Toast from '@/components/common/Toast.vue'
 import NavigationProgress from '@/components/common/NavigationProgress.vue'
+import AppShell from '@/components/layout/AppShell.vue'
 import AdminComplianceDialog from '@/components/admin/AdminComplianceDialog.vue'
 import { resolveRouteDocumentTitle } from '@/router/title'
 import AnnouncementPopup from '@/components/common/AnnouncementPopup.vue'
@@ -20,6 +21,12 @@ const subscriptionStore = useSubscriptionStore()
 const announcementStore = useAnnouncementStore()
 const adminComplianceStore = useAdminComplianceStore()
 const adminSettingsStore = useAdminSettingsStore()
+
+// 后台页面共用一个常驻 AppShell：切换页面时侧边栏/顶栏不再卸载重建，只替换内容区。
+function usesAppShell(target: RouteLocationNormalizedLoaded): boolean {
+  const appLayout = target.meta.appLayout
+  return typeof appLayout === 'function' ? appLayout(target) : appLayout === true
+}
 
 function updateDocumentTitle() {
   const customMenuItems = [
@@ -163,7 +170,12 @@ onMounted(async () => {
 
 <template>
   <NavigationProgress />
-  <RouterView />
+  <RouterView v-slot="{ Component, route: viewRoute }">
+    <AppShell v-if="usesAppShell(viewRoute)">
+      <component :is="Component" />
+    </AppShell>
+    <component :is="Component" v-else />
+  </RouterView>
   <Toast />
   <AnnouncementPopup />
   <AdminComplianceDialog />

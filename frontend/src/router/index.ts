@@ -3,16 +3,24 @@
  * Defines all application routes with lazy loading and navigation guards
  */
 
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
 import { useAdminComplianceStore } from '@/stores/adminCompliance'
 import { useNavigationLoadingState } from '@/composables/useNavigationLoading'
-import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
+import { resetWorkspaceWarmup, scheduleWorkspaceWarmup, useRoutePrefetch } from '@/composables/useRoutePrefetch'
 import { getSetupStatus } from '@/api/setup'
 import { resolveCompletedSetupRedirectPath } from './setupRedirect'
 import { resolveRouteDocumentTitle } from './title'
+
+// 这些页面按 query 在「后台工作区」与「独立全屏/弹窗」两种形态之间切换。
+const isOpsWorkspaceRoute = (route: RouteLocationNormalizedLoaded) =>
+  route.query.fullscreen !== '1' && route.query.fullscreen !== 'true'
+const isStripeWorkspaceRoute = (route: RouteLocationNormalizedLoaded) => !route.query.method
+// 与 ModelPlazaView 的 isEmbedded 同口径：未登录的内嵌链接降级为独立形态。
+const isEmbeddedPlazaRoute = (route: RouteLocationNormalizedLoaded) =>
+  route.query.embedded === '1' && useAuthStore().isAuthenticated
 
 /**
  * Route definitions with lazy loading
@@ -180,6 +188,7 @@ const routes: RouteRecordRaw[] = [
     name: 'ModelPlaza',
     component: () => import('@/views/ModelPlazaView.vue'),
     meta: {
+      appLayout: isEmbeddedPlazaRoute,
       requiresAuth: false,
       title: 'Model Plaza',
       titleKey: 'modelPlaza.title'
@@ -196,6 +205,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Dashboard',
     component: () => import('@/views/user/DashboardView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Dashboard',
@@ -208,6 +218,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Keys',
     component: () => import('@/views/user/KeysView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'API Keys',
@@ -243,6 +254,7 @@ const routes: RouteRecordRaw[] = [
     alias: '/docs/batch-image',
     component: () => import('@/views/user/BatchImageGuideView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Batch Image Guide',
@@ -255,6 +267,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Usage',
     component: () => import('@/views/user/UsageView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Usage Records',
@@ -267,6 +280,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Redeem',
     component: () => import('@/views/user/RedeemView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Redeem Code',
@@ -279,6 +293,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Affiliate',
     component: () => import('@/views/user/AffiliateView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Affiliate',
@@ -291,6 +306,7 @@ const routes: RouteRecordRaw[] = [
     name: 'UserAvailableChannels',
     component: () => import('@/views/user/AvailableChannelsView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Available Channels',
@@ -303,6 +319,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Profile',
     component: () => import('@/views/user/ProfileView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Profile',
@@ -315,6 +332,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Subscriptions',
     component: () => import('@/views/user/SubscriptionsView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'My Subscriptions',
@@ -328,6 +346,7 @@ const routes: RouteRecordRaw[] = [
     name: 'PurchaseSubscription',
     component: () => import('@/views/user/PaymentView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Purchase Subscription',
@@ -341,6 +360,7 @@ const routes: RouteRecordRaw[] = [
     name: 'OrderList',
     component: () => import('@/views/user/UserOrdersView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'My Orders',
@@ -353,6 +373,7 @@ const routes: RouteRecordRaw[] = [
     name: 'PaymentQRCode',
     component: () => import('@/views/user/PaymentQRCodeView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Payment',
@@ -377,6 +398,7 @@ const routes: RouteRecordRaw[] = [
     name: 'StripePayment',
     component: () => import('@/views/user/StripePaymentView.vue'),
     meta: {
+      appLayout: isStripeWorkspaceRoute,
       requiresAuth: false,
       requiresAdmin: false,
       title: 'Stripe Payment',
@@ -389,6 +411,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AirwallexPayment',
     component: () => import('@/views/user/AirwallexPaymentView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: false,
       requiresAdmin: false,
       title: 'Airwallex Payment',
@@ -412,6 +435,7 @@ const routes: RouteRecordRaw[] = [
     name: 'CustomPage',
     component: () => import('@/views/user/CustomPageView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Custom Page',
@@ -429,6 +453,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminDashboard',
     component: () => import('@/views/admin/DashboardView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Admin Dashboard',
@@ -441,6 +466,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminOps',
     component: () => import('@/views/admin/ops/OpsDashboard.vue'),
     meta: {
+      appLayout: isOpsWorkspaceRoute,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Ops Monitoring',
@@ -453,6 +479,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminAuditLogs',
     component: () => import('@/views/admin/AuditLogView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Audit Logs',
@@ -465,6 +492,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminUsers',
     component: () => import('@/views/admin/UsersView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'User Management',
@@ -477,6 +505,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminGroups',
     component: () => import('@/views/admin/GroupsView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Group Management',
@@ -493,6 +522,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminChannels',
     component: () => import('@/views/admin/ChannelsView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Channel Management',
@@ -505,6 +535,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminChannelMonitor',
     component: () => import('@/views/admin/ChannelMonitorView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Channel Monitor',
@@ -517,6 +548,7 @@ const routes: RouteRecordRaw[] = [
     name: 'ChannelStatus',
     component: () => import('@/views/user/ChannelStatusView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Channel Status',
@@ -528,6 +560,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminSubscriptions',
     component: () => import('@/views/admin/SubscriptionsView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Subscription Management',
@@ -540,6 +573,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminAccounts',
     component: () => import('@/views/admin/AccountsView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Account Management',
@@ -552,6 +586,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminPlugins',
     component: () => import('@/views/admin/PluginsView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Plugin Management',
@@ -564,6 +599,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminAnnouncements',
     component: () => import('@/views/admin/AnnouncementsView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Announcements',
@@ -576,6 +612,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminProxies',
     component: () => import('@/views/admin/ProxiesView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Proxy Management',
@@ -588,6 +625,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminRedeem',
     component: () => import('@/views/admin/RedeemView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Redeem Code Management',
@@ -600,6 +638,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminPromoCodes',
     component: () => import('@/views/admin/PromoCodesView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Promo Code Management',
@@ -612,6 +651,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminSettings',
     component: () => import('@/views/admin/SettingsView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'System Settings',
@@ -624,6 +664,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminRiskControl',
     component: () => import('@/views/admin/RiskControlView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Risk Control',
@@ -637,6 +678,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminPromptAudit',
     component: () => import('@/features/prompt-audit/PromptAuditView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Prompt Audit',
@@ -650,6 +692,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminUsage',
     component: () => import('@/views/admin/UsageView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Usage Records',
@@ -666,6 +709,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminAffiliateInvites',
     component: () => import('@/views/admin/affiliates/AdminAffiliateInvitesView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Affiliate Invite Records',
@@ -678,6 +722,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminAffiliateRebates',
     component: () => import('@/views/admin/affiliates/AdminAffiliateRebatesView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Affiliate Rebate Records',
@@ -690,6 +735,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminAffiliateTransfers',
     component: () => import('@/views/admin/affiliates/AdminAffiliateTransfersView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Affiliate Transfer Records',
@@ -705,6 +751,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminPaymentDashboard',
     component: () => import('@/views/admin/orders/AdminPaymentDashboardView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Payment Dashboard',
@@ -717,6 +764,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminOrders',
     component: () => import('@/views/admin/orders/AdminOrdersView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Order Management',
@@ -729,6 +777,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AdminPaymentPlans',
     component: () => import('@/views/admin/orders/AdminPaymentPlansView.vue'),
     meta: {
+      appLayout: true,
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Subscription Plans',
@@ -1014,6 +1063,14 @@ router.afterEach((to) => {
   }
   // 触发路由预加载（在浏览器空闲时执行）
   routePrefetch.triggerPrefetch(to)
+
+  // 进入工作区后在空闲时预热同工作区的其余页面，首次点击侧边栏即可直接渲染
+  const authStore = useAuthStore()
+  if (!authStore.isAuthenticated) {
+    resetWorkspaceWarmup()
+  } else if (to.meta.appLayout) {
+    scheduleWorkspaceWarmup(router, authStore.isAdmin)
+  }
 })
 
 /**

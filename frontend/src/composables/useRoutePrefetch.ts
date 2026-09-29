@@ -8,7 +8,7 @@
  * - 只在实际需要预加载时才执行
  */
 import { ref, readonly } from 'vue'
-import type { RouteLocationNormalized, Router } from 'vue-router'
+import type { RouteLocationNormalized, RouteRecordNormalized, Router } from 'vue-router'
 
 /**
  * 组件导入函数类型
@@ -195,6 +195,93 @@ export function useRoutePrefetch(router?: Router) {
     _getPrefetchConfig: getPrefetchConfig,
     _isAdminRoute: isAdminRoute
   }
+}
+
+/**
+ * 预热已发起的组件（按 import 函数去重，组件模块本身也由浏览器缓存）
+ */
+const warmedImporters = new WeakSet<ComponentImportFn>()
+
+const warmImporter = (importFn: ComponentImportFn): Promise<void> => {
+  if (warmedImporters.has(importFn)) return Promise.resolve()
+  warmedImporters.add(importFn)
+  return importFn().then(
+    () => undefined,
+    (error) => {
+      // 失败时允许下次重试（如网络抖动），且不影响页面功能
+      warmedImporters.delete(importFn)
+      if (import.meta.env.DEV) {
+        console.debug('[Prefetch] Failed to prefetch component:', error)
+      }
+    }
+  )
+}
+
+const lazyImportersOf = (records: readonly RouteRecordNormalized[]): ComponentImportFn[] => {
+  const importFns: ComponentImportFn[] = []
+  for (const record of records) {
+    const component = record.components?.default
+    if (typeof component === 'function') {
+      importFns.push(component as ComponentImportFn)
+    }
+  }
+  return importFns
+}
+
+/** 用户开启省流量或处于慢速网络时不做推测性预加载 */
+const shouldSkipSpeculativePrefetch = (): boolean => {
+  const connection = (navigator as Navigator & {
+    connection?: { saveData?: boolean; effectiveType?: string }
+  }).connection
+  return !!connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? '')
+}
+
+/**
+ * 立即预加载某个路径对应的页面组件（用于侧边栏链接 hover / focus）。
+ * 用户已表现出点击意图，因此不等待空闲。
+ */
+export function prefetchRoutePath(router: Router, path: string): void {
+  if (!path || !path.startsWith('/')) return
+  let matched: readonly RouteRecordNormalized[]
+  try {
+    matched = router.resolve(path).matched
+  } catch {
+    return
+  }
+  lazyImportersOf(matched).forEach((importFn) => void warmImporter(importFn))
+}
+
+let workspaceWarmupScope: 'admin' | 'user' | null = null
+
+/**
+ * 进入工作区后，在浏览器空闲时逐个预加载同一工作区的全部页面，
+ * 让首次点击侧边栏时页面代码已在缓存中。每个空闲片只加载一个页面，避免抢占交互。
+ */
+export function scheduleWorkspaceWarmup(router: Router, isAdmin: boolean): void {
+  const scope = isAdmin ? 'admin' : 'user'
+  if (workspaceWarmupScope === scope || shouldSkipSpeculativePrefetch()) return
+  workspaceWarmupScope = scope
+
+  const queue = lazyImportersOf(
+    router
+      .getRoutes()
+      .filter((record) => record.meta.appLayout && (isAdmin || record.meta.requiresAdmin !== true))
+  ).filter((importFn) => !warmedImporters.has(importFn))
+
+  const step = (): void => {
+    if (workspaceWarmupScope !== scope) return
+    const next = queue.shift()
+    if (!next) return
+    void warmImporter(next).finally(() => {
+      scheduleIdleCallback(step, { timeout: 3000 })
+    })
+  }
+  scheduleIdleCallback(step, { timeout: 3000 })
+}
+
+/** 登出或切换身份时停止剩余的预热队列 */
+export function resetWorkspaceWarmup(): void {
+  workspaceWarmupScope = null
 }
 
 // 兼容旧测试的导出

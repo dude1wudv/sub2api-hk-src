@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <div>
     <TablePageLayout>
       <template #filters>
         <div class="rounded-2xl border border-gray-200/80 bg-white/70 p-3 shadow-sm backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/45 sm:p-4">
@@ -1227,7 +1227,7 @@
         </div>
       </div>
     </Teleport>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -1245,7 +1245,6 @@ import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 const { t } = useI18n()
 import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
 import SmartRoutingEditor from '@/components/keys/SmartRoutingEditor.vue'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import BulkEditKeysModal from '@/components/keys/BulkEditKeysModal.vue'
 	import DataTable from '@/components/common/DataTable.vue'

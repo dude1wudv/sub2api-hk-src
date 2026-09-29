@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <div>
     <div class="operations-dashboard space-y-6">
       <section class="workspace-hero">
         <div>
@@ -405,7 +405,7 @@
         </div>
       </template>
     </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -427,7 +427,6 @@ import type {
   UserSpendingRankingItem
 } from '@/types'
 import type { UpstreamBalanceSummary } from '@/api/admin/dashboard'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
