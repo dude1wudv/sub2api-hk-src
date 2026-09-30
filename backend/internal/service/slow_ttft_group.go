@@ -48,10 +48,6 @@ func slowTTFTContextExempt(ctx context.Context) bool {
 	state, ok := ctx.Value(slowTTFTGroupKey{}).(slowTTFTGroupState)
 	return ok && state.Until != nil && time.Now().Before(*state.Until)
 }
-func slowTTFTGroupRecovered(ctx context.Context) bool {
-	state, ok := ctx.Value(slowTTFTGroupKey{}).(slowTTFTGroupState)
-	return ok && state.Recovered
-}
 func (s *RateLimitService) slowTTFTGroupExempt(ctx context.Context) bool {
 	if slowTTFTContextExempt(ctx) {
 		return true

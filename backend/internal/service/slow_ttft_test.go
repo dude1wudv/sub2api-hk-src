@@ -270,7 +270,9 @@ func TestWithSlowTTFTGroupRetriesRecoveryWhenPriorLookupFailed(t *testing.T) {
 	require.True(t, nextRecovered, "the next selection must retry group recovery")
 	require.Equal(t, groupID, slowTTFTGroupID(nextSelectionContext))
 	require.True(t, slowTTFTContextExempt(nextSelectionContext))
-	require.True(t, slowTTFTGroupRecovered(nextSelectionContext))
+	state, ok := nextSelectionContext.Value(slowTTFTGroupKey{}).(slowTTFTGroupState)
+	require.True(t, ok)
+	require.True(t, state.Recovered)
 	require.Equal(t, []int64{groupID, groupID}, repo.recoverCalls)
 }
 

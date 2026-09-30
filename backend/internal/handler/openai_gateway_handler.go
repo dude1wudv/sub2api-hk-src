@@ -2962,8 +2962,12 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				// changed while acquiring either slot. Never leak either slot on veto.
 				turnAccount, vetoed, _ = h.gatewayService.PostSlotAdmission(turnCtx, account)
 				if vetoed {
-					if accountReleaseFunc != nil { accountReleaseFunc() }
-					if userReleaseFunc != nil { userReleaseFunc() }
+					if accountReleaseFunc != nil {
+						accountReleaseFunc()
+					}
+					if userReleaseFunc != nil {
+						userReleaseFunc()
+					}
 					return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "account is no longer eligible for this connection, please reconnect", nil)
 				}
 				admittedPolicy := turnAccount.SlowTTFTConfig()
