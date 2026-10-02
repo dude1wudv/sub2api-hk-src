@@ -23,7 +23,7 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 316
+	candidateMigrationCount         = 318
 )
 
 var candidateOnlyMigrations = []string{
@@ -53,10 +53,12 @@ var candidateOnlyMigrations = []string{
 	"239_channel_reasoning_effort_multipliers.sql",
 	"240_add_stepfun_platform.sql",
 	"240_affiliate_ledger_operation_id.sql",
+	"241_add_payment_order_bonus_amount.sql",
 	"241_mirasim_platform.sql",
 	"242_account_scheduling_protection.sql",
 	"243_disable_independent_scheduling.sql",
 	"244_restore_account_global_priority.sql",
+	"245_add_typesafe_platform.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {
@@ -127,6 +129,7 @@ func TestUpstreamMergeValidation_RequiredContractsAndLegacyExclusions(t *testing
 	}
 
 	requireColumn(t, tx, "groups", "allow_live", "boolean", 0, false)
+	requireColumn(t, tx, "payment_orders", "bonus_amount", "numeric", 0, false)
 	requireColumn(t, tx, "payment_orders", "subscription_expires_at", "timestamp with time zone", 0, true)
 	requireColumn(t, tx, "usage_logs", "session_id", "character varying", 255, true)
 	requireColumn(t, tx, "subscription_plans", "purchase_mode", "character varying", 20, false)
