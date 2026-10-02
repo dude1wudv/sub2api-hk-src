@@ -22,7 +22,8 @@ export const CONCRETE_PLATFORM_OPTIONS = [
   { value: 'minimax', label: 'MiniMax' },
   { value: 'stepfun', label: 'StepFun' },
   { value: 'opencode_go', label: 'OpenCode' },
-  { value: 'mirasim', label: 'Mirasim' }
+  { value: 'mirasim', label: 'Mirasim' },
+  { value: 'typesafe', label: 'TypeSafe / Jev' }
 ] as const satisfies readonly PlatformOption<AccountPlatform>[]
 
 /** Platforms that can own a group. */

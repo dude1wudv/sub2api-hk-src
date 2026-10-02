@@ -658,6 +658,17 @@ func apiKeyListOrder(params pagination.PaginationParams) []func(*entsql.Selector
 	sortBy := strings.ToLower(strings.TrimSpace(params.SortBy))
 	sortOrder := params.NormalizedSortOrder(pagination.SortOrderDesc)
 
+	if sortBy == "group" {
+		// Sort before pagination, keeping ungrouped keys last in either direction.
+		opts := []entsql.OrderTermOption{entsql.OrderNullsLast()}
+		tieOrder := dbent.Asc(apikey.FieldID)
+		if sortOrder == pagination.SortOrderDesc {
+			opts = append(opts, entsql.OrderDesc())
+			tieOrder = dbent.Desc(apikey.FieldID)
+		}
+		return []func(*entsql.Selector){apikey.ByGroupField(group.FieldName, opts...), tieOrder}
+	}
+
 	var field string
 	switch sortBy {
 	case "name":
@@ -801,14 +812,14 @@ func (r *apiKeyRepository) ListKeysByGroupID(ctx context.Context, groupID int64)
 }
 
 // apiKeyGroupIDPredicate matches both fixed-group keys and smart-routing keys
-// that include the group in their ordered route list. The JSON column is kept
-// as an array of numbers, so ValueContains emits a typed JSONB containment
-// predicate on PostgreSQL without string matching false positives.
+// that include the group in their ordered route list. Pass a numeric scalar:
+// PostgreSQL JSONB containment matches array elements, and SQLite JSON_EACH
+// compares each element to the scalar without binding an unsupported Go slice.
 func apiKeyGroupIDPredicate(groupID int64) func(*entsql.Selector) {
 	return func(selector *entsql.Selector) {
 		selector.Where(entsql.Or(
 			entsql.EQ(selector.C(apikey.FieldGroupID), groupID),
-			sqljson.ValueContains(apikey.FieldRoutingGroupIds, []int64{groupID}),
+			sqljson.ValueContains(apikey.FieldRoutingGroupIds, groupID),
 		))
 	}
 }

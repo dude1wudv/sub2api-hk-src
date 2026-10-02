@@ -493,6 +493,7 @@ export function getModelsByPlatform(platform: string): string[] {
       'stepaudio-2.5-realtime',
       'stepaudio-2.5-tts'
     ]
+    case 'typesafe': return ['jev-latest']
     case 'doubao': return doubaoModels
     case 'minimax': return minimaxModels
     case 'baidu': return baiduModels
