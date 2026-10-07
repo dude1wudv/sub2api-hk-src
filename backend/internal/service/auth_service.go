@@ -544,6 +544,11 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 		return "", nil, ErrServiceUnavailable
 	}
 
+	// Reject disallowed administrators before attempting password verification.
+	if err := s.CheckAdminLoginEmail(user); err != nil {
+		return "", nil, err
+	}
+
 	// 验证密码
 	if !s.CheckPassword(password, user.PasswordHash) {
 		return "", nil, ErrInvalidCredentials
@@ -1418,6 +1423,9 @@ func (s *AuthService) GenerateToken(ctx context.Context, user *User) (string, er
 
 // generateAccessToken 生成带会话 ID 与绑定指纹的 access token。
 func (s *AuthService) generateAccessToken(user *User, sessionID, bindingHash string) (string, error) {
+	if err := s.CheckAdminLoginEmail(user); err != nil {
+		return "", err
+	}
 	now := time.Now()
 	var expiresAt time.Time
 	if s.cfg.JWT.AccessTokenExpireMinutes > 0 {
@@ -1687,6 +1695,9 @@ type TokenPairWithUser struct {
 // GenerateTokenPair 生成Access Token和Refresh Token对
 // familyID: 可选的Token家族ID，用于Token轮转时保持家族关系
 func (s *AuthService) GenerateTokenPair(ctx context.Context, user *User, familyID string) (*TokenPair, error) {
+	if err := s.CheckAdminLoginEmail(user); err != nil {
+		return nil, err
+	}
 	// 检查 refreshTokenCache 是否可用
 	if s.refreshTokenCache == nil {
 		return nil, errors.New("refresh token cache not configured")

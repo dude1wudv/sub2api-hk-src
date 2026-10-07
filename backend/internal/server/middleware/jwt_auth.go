@@ -85,6 +85,11 @@ func jwtAuth(
 			return
 		}
 
+		if err := authService.CheckAdminLoginEmail(user); err != nil {
+			AbortWithError(c, 401, "INVALID_CREDENTIALS", "invalid email or password")
+			return
+		}
+
 		// Security: Validate TokenVersion to ensure token hasn't been invalidated
 		// This check ensures tokens issued before a password change are rejected
 		if claims.TokenVersion != user.TokenVersion {

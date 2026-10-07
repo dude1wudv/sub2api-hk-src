@@ -746,11 +746,14 @@ type ForwardedClientIPSettings struct {
 }
 
 type SecurityConfig struct {
-	URLAllowlist    URLAllowlistConfig   `mapstructure:"url_allowlist"`
-	ResponseHeaders ResponseHeaderConfig `mapstructure:"response_headers"`
-	CSP             CSPConfig            `mapstructure:"csp"`
-	ProxyFallback   ProxyFallbackConfig  `mapstructure:"proxy_fallback"`
-	ProxyProbe      ProxyProbeConfig     `mapstructure:"proxy_probe"`
+	// AdminLoginEmailDomain restricts interactive administrator authentication to
+	// an exact email domain. Empty preserves unrestricted deployments.
+	AdminLoginEmailDomain string               `mapstructure:"admin_login_email_domain"`
+	URLAllowlist          URLAllowlistConfig   `mapstructure:"url_allowlist"`
+	ResponseHeaders       ResponseHeaderConfig `mapstructure:"response_headers"`
+	CSP                   CSPConfig            `mapstructure:"csp"`
+	ProxyFallback         ProxyFallbackConfig  `mapstructure:"proxy_fallback"`
+	ProxyProbe            ProxyProbeConfig     `mapstructure:"proxy_probe"`
 	// TrustForwardedIPForAPIKeyACL enables legacy raw forwarded-header takeover.
 	// When disabled, server.trusted_proxies is authoritative for all client-IP consumers.
 	TrustForwardedIPForAPIKeyACL  bool                                       `mapstructure:"trust_forwarded_ip_for_api_key_acl"`
@@ -2116,6 +2119,7 @@ func setDefaults() {
 	viper.SetDefault("webauthn.rp_origins", []string{})
 
 	// Security
+	viper.SetDefault("security.admin_login_email_domain", "")
 	viper.SetDefault("security.url_allowlist.enabled", false)
 	viper.SetDefault("security.url_allowlist.upstream_hosts", []string{
 		"api.openai.com",

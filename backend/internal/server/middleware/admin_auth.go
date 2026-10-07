@@ -206,6 +206,10 @@ func validateJWTForAdmin(
 		AbortWithError(c, 403, "FORBIDDEN", "Admin access required")
 		return false
 	}
+	if err := authService.CheckAdminLoginEmail(user); err != nil {
+		AbortWithError(c, 401, "INVALID_CREDENTIALS", "invalid email or password")
+		return false
+	}
 
 	c.Set(string(ContextKeyUser), AuthSubject{
 		UserID:      user.ID,

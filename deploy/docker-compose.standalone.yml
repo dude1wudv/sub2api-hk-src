@@ -74,7 +74,7 @@ services:
       # =======================================================================
       # Admin Account (auto-created on first run)
       # =======================================================================
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@sub2api.local}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
 
       # =======================================================================
@@ -82,6 +82,7 @@ services:
       # =======================================================================
       - JWT_SECRET=${JWT_SECRET:-}
       - JWT_EXPIRE_HOUR=${JWT_EXPIRE_HOUR:-24}
+      - SECURITY_ADMIN_LOGIN_EMAIL_DOMAIN=${SECURITY_ADMIN_LOGIN_EMAIL_DOMAIN:-}
 
       # =======================================================================
       # Setup Configuration
