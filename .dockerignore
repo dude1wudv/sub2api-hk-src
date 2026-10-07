@@ -34,6 +34,9 @@ build/
 # Node modules (will be installed in container)
 frontend/node_modules/
 node_modules/
+image2-playground/node_modules/
+image2-playground/dist/
+image2-playground/public/fonts/
 
 # Go build cache (will be built in container)
 backend/vendor/

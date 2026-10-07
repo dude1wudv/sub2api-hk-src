@@ -35,6 +35,8 @@ backend/.gocache/
 node_modules/
 frontend/node_modules/
 frontend/dist/
+image2-playground/dist/
+image2-playground/public/fonts/
 *.local
 *.tsbuildinfo
 vite.config.d.ts
@@ -123,6 +125,8 @@ tests
 CLAUDE.md
 .claude
 scripts
+!image2-playground/scripts/
+!image2-playground/scripts/**
 !backend/scripts/
 !backend/scripts/resolve-version.sh
 .code-review-state

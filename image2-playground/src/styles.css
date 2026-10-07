@@ -1,0 +1,32 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: #f8f9fa;
+}
+
+.canvas-shell {
+  width: 100%;
+  height: 100dvh;
+}
+
+.storage-warning {
+  position: fixed;
+  z-index: 10;
+  top: 1rem;
+  left: 50%;
+  max-width: min(36rem, calc(100vw - 2rem));
+  padding: 0.75rem 1rem;
+  transform: translateX(-50%);
+  border: 1px solid #f59e0b;
+  border-radius: 0.5rem;
+  background: #fffbeb;
+  color: #92400e;
+  font: 0.875rem/1.4 system-ui, sans-serif;
+}

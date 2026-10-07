@@ -834,10 +834,11 @@ func TestImage2EmbeddedHost(t *testing.T) {
 
 	t.Run("serves_static_image2_asset", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/image2/manifest.webmanifest", nil))
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/image2/config.js", nil))
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		assert.Contains(t, w.Body.String(), `"name"`)
+		assert.Contains(t, w.Header().Get("Content-Type"), "javascript")
+		assert.Contains(t, w.Body.String(), "window.EXCALIDRAW_ASSET_PATH = '/image2/'")
 	})
 
 	t.Run("falls_back_to_image2_spa_index", func(t *testing.T) {

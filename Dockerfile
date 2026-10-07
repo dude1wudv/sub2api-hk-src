@@ -42,9 +42,26 @@ RUN --mount=type=cache,id=sub2api-pnpm-store,target=/root/.local/share/pnpm/stor
 COPY frontend/ ./
 COPY docs/legal/ /app/docs/legal/
 RUN pnpm run build
+# -----------------------------------------------------------------------------
+# Stage 2: Image2 Excalidraw Builder
+# -----------------------------------------------------------------------------
+FROM --platform=${BUILDPLATFORM} ${NODE_IMAGE} AS image2-builder
+ARG NPM_CONFIG_REGISTRY
+
+WORKDIR /app/image2-playground
+
+# Keep the embedded canvas reproducible from its pinned pnpm lockfile.
+RUN corepack enable && corepack prepare pnpm@9 --activate
+COPY image2-playground/package.json image2-playground/pnpm-lock.yaml ./
+RUN --mount=type=cache,id=sub2api-image2-pnpm-store,target=/root/.local/share/pnpm/store \
+    if [ -n "${NPM_CONFIG_REGISTRY}" ]; then pnpm config set registry "${NPM_CONFIG_REGISTRY}"; fi && \
+    pnpm install --frozen-lockfile --prefer-offline
+COPY image2-playground/ ./
+RUN pnpm run build
+
 
 # -----------------------------------------------------------------------------
-# Stage 2: Backend Builder
+# Stage 3: Backend Builder
 # -----------------------------------------------------------------------------
 # --platform=$BUILDPLATFORM: run the Go toolchain on the native host arch and
 # cross-compile to the target arch below. The binary is CGO_ENABLED=0, so this
@@ -88,6 +105,8 @@ RUN find migrations -type f -name '*.sql' -exec sh -c \
 
 # Copy frontend dist from previous stage (must be after backend copy to avoid being overwritten)
 COPY --from=frontend-builder /app/backend/internal/web/dist ./internal/web/dist
+# Copy the reproducible Excalidraw build into the Go embed tree.
+COPY --from=image2-builder /app/image2-playground/dist ./internal/web/image2-dist
 
 # Build the binary (BuildType=release for CI builds, embed frontend)
 # Version precedence: build arg VERSION > exact git tag > cmd/server/VERSION
