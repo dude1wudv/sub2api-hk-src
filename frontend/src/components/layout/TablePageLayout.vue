@@ -7,12 +7,12 @@
     }"
   >
     <!-- 固定区域：操作按钮 -->
-    <div v-if="$slots.actions" class="layout-section-fixed">
+    <div v-if="$slots.actions" class="layout-section-fixed layout-section-actions">
       <slot name="actions" />
     </div>
 
     <!-- 固定区域：搜索和过滤器 -->
-    <div v-if="$slots.filters" class="layout-section-fixed">
+    <div v-if="$slots.filters" class="layout-section-fixed layout-section-filters">
       <slot name="filters" />
     </div>
 
@@ -25,7 +25,7 @@
     </div>
 
     <!-- 固定区域：分页器 -->
-    <div v-if="$slots.pagination" class="layout-section-fixed">
+    <div v-if="$slots.pagination" class="layout-section-fixed layout-section-pagination">
       <slot name="pagination" />
     </div>
   </div>
@@ -68,10 +68,25 @@ onUnmounted(() => {
 
 .layout-section-fixed {
   @apply flex-shrink-0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Keep toolbar menus above glass cards and sticky cells, even when a theme's
+   backdrop-filter creates a stacking context. Order earlier toolbars above
+   later sections so menus can extend into the section below. */
+.layout-section-actions {
+  z-index: 3;
+}
+
+.layout-section-filters {
+  z-index: 2;
 }
 
 .layout-section-scrollable {
   @apply flex-1 min-h-0 flex flex-col;
+  position: relative;
+  z-index: 0;
 }
 
 /* page-scroll 模式：整页滚动，卡片区完整展开，表格保留横向滚动 */
