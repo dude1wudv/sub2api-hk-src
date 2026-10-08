@@ -38,7 +38,7 @@
                 </button>
                 <div
                   v-if="showAutoRefreshDropdown"
-                  class="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-xl border border-gray-200/90 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-dark-700/90 dark:bg-dark-800/95"
+                  class="table-toolbar-menu absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-xl border border-gray-200/90 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-dark-700/90 dark:bg-dark-800/95"
                 >
                   <div class="space-y-0.5 p-1">
                     <button

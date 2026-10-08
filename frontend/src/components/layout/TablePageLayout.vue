@@ -83,6 +83,12 @@ onUnmounted(() => {
   z-index: 2;
 }
 
+/* A glass toolbar is a backdrop root: its menus cannot blur table content
+   outside that root. Use an opaque themed surface to keep options readable. */
+.layout-section-fixed :deep(.table-toolbar-menu) {
+  background: rgb(var(--surface-elevated));
+}
+
 .layout-section-scrollable {
   @apply flex-1 min-h-0 flex flex-col;
   position: relative;
