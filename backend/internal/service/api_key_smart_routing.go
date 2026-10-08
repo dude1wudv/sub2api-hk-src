@@ -12,7 +12,7 @@ const MaxSmartRoutingGroups = 10
 
 func SmartRoutingPlatformSupported(platform string) bool {
 	switch platform {
-	case PlatformOpenAI, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformStepFun:
+	case PlatformAnthropic, PlatformOpenAI, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformStepFun:
 		return true
 	}
 	return false
@@ -33,7 +33,7 @@ func (s *APIKeyService) validateRoutingGroups(ctx context.Context, user *User, i
 			return fmt.Errorf("get routing group: %w", err)
 		}
 		if !SmartRoutingPlatformSupported(group.Platform) || group.Status != StatusActive {
-			return infraerrors.BadRequest("SMART_ROUTING_UNSUPPORTED_GROUP", "Smart routing requires active OpenAI-compatible groups")
+			return infraerrors.BadRequest("SMART_ROUTING_UNSUPPORTED_GROUP", "Smart routing requires active Anthropic or OpenAI-compatible groups")
 		}
 		if !s.canUserBindGroup(ctx, user, group) {
 			return ErrGroupNotAllowed

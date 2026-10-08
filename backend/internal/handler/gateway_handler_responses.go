@@ -335,6 +335,8 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 			return
 		}
 
+		service.MarkSmartRoutingSessionServed(c.Request.Context())
+
 		// 6. Record usage
 		userAgent := c.GetHeader("User-Agent")
 		clientIP := ip.GetClientIP(c)

@@ -27,6 +27,9 @@ func (s *GatewayService) SelectAccount(ctx context.Context, groupID *int64, sess
 
 // SelectAccountForModel 选择支持指定模型的账号（粘性会话+优先级+模型映射）
 func (s *GatewayService) SelectAccountForModel(ctx context.Context, groupID *int64, sessionHash string, requestedModel string) (*Account, error) {
+	if selection := takeSmartRoutingSelection(ctx, groupID, requestedModel); selection != nil {
+		return selection.Account, nil
+	}
 	return s.SelectAccountForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, nil)
 }
 
@@ -98,6 +101,9 @@ func (s *GatewayService) SelectAccountForModelWithExclusions(ctx context.Context
 // metadataUserID: 用于客户端亲和调度，从中提取客户端 ID
 // sub2apiUserID: 系统用户 ID，用于二维亲和调度
 func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, metadataUserID string, sub2apiUserID int64) (*AccountSelectionResult, error) {
+	if selection := takeSmartRoutingSelection(ctx, groupID, requestedModel); selection != nil {
+		return selection, nil
+	}
 	// 调试日志：记录调度入口参数
 	excludedIDsList := make([]int64, 0, len(excludedIDs))
 	for id := range excludedIDs {
@@ -941,6 +947,9 @@ func (s *GatewayService) resolveGatewayGroup(ctx context.Context, groupID *int64
 		if !group.ClaudeCodeOnly || IsClaudeCodeClient(ctx) {
 			return group, &currentID, nil
 		}
+		if smart, _ := ctx.Value(smartRoutingContextKey{}).(bool); smart {
+			return nil, nil, ErrClaudeCodeOnly
+		}
 
 		if group.FallbackGroupID == nil {
 			return nil, nil, ErrClaudeCodeOnly
@@ -1491,6 +1500,9 @@ func (s *GatewayService) checkAndRegisterSession(ctx context.Context, account *A
 	if err != nil {
 		// 失败开放：缓存错误时允许通过
 		return true
+	}
+	if allowed {
+		trackSmartRoutingSession(ctx, account)
 	}
 	return allowed
 }
@@ -2622,6 +2634,9 @@ func summarizeSelectionFailureStats(stats selectionFailureStats) string {
 // isModelSupportedByAccountWithContext 根据账户平台检查模型支持（带 context）
 // 对于 Antigravity 平台，会先获取映射后的最终模型名（包括 thinking 后缀）再检查支持
 func (s *GatewayService) isModelSupportedByAccountWithContext(ctx context.Context, account *Account, requestedModel string) bool {
+	if smart, _ := ctx.Value(smartRoutingContextKey{}).(bool); smart && !gatewaySmartRoutingAccountClaims(account, requestedModel) {
+		return false
+	}
 	if source, ok := CompositeRouteSourceFromContext(ctx); ok && source == CompositeRouteSourceAccount {
 		if publicModel, modelOK := RequestedPublicModelFromContext(ctx); modelOK && !explicitModelMappingClaims(*account, publicModel) {
 			return false

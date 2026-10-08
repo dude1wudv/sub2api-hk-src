@@ -620,8 +620,8 @@ describe('user KeysView column settings', () => {
     )
   })
 
-  it('passes ordered routing groups and the first group as the create payload', async () => {
-    getAvailableGroups.mockResolvedValue([createGroup(42), { ...createGroup(7), platform: 'deepseek' }])
+  it('passes mixed Claude/OpenAI routing groups and the first group as the create payload', async () => {
+    getAvailableGroups.mockResolvedValue([{ ...createGroup(42), platform: 'anthropic' }, { ...createGroup(7), platform: 'openai' }])
     const wrapper = await mountView()
 
     await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
@@ -662,7 +662,7 @@ describe('user KeysView column settings', () => {
       page_size: 20,
       pages: 1,
     })
-    getAvailableGroups.mockResolvedValue([createGroup(42), createGroup(7)])
+    getAvailableGroups.mockResolvedValue([{ ...createGroup(42), platform: 'anthropic' }, { ...createGroup(7), platform: 'openai' }])
     const wrapper = await mountView()
 
     await wrapper.get('[data-test="group-cell"] button').trigger('click')

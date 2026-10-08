@@ -101,7 +101,7 @@ func TestSmartRoutingKeysPreservesOrderAndFiltersCurrentPermissions(t *testing.T
 	first := &Group{ID: 101, Name: "first", Platform: PlatformOpenAI, Status: StatusActive}
 	second := &Group{ID: 102, Name: "second", Platform: PlatformGrok, Status: StatusActive}
 	disabled := &Group{ID: 103, Name: "disabled", Platform: PlatformOpenAI, Status: "disabled"}
-	unsupported := &Group{ID: 104, Name: "unsupported", Platform: PlatformAnthropic, Status: StatusActive}
+	unsupported := &Group{ID: 104, Name: "unsupported", Platform: PlatformGemini, Status: StatusActive}
 	forbidden := &Group{ID: 105, Name: "forbidden", Platform: PlatformOpenAI, Status: StatusActive, IsExclusive: true}
 	user := &User{
 		ID:                   7,

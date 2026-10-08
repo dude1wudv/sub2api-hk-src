@@ -6,15 +6,17 @@ import (
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/httputil"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/requestmodel"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 )
 
-func resolveSmartRoutingKey(c *gin.Context, keys *service.APIKeyService, gateway *service.OpenAIGatewayService, key *service.APIKey) (*service.APIKey, bool) {
-	if gateway == nil {
-		AbortWithError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Smart routing is temporarily unavailable")
+func resolveSmartRoutingKey(c *gin.Context, keys *service.APIKeyService, gateways smartRoutingGateways, key *service.APIKey, metadataBridgeEnabled bool) (*service.APIKey, bool) {
+	gateway := gateways.openai
+	if gateway == nil && gateways.anthropic == nil {
+		abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Smart routing is temporarily unavailable")
 		return nil, false
 	}
 	path := c.Request.URL.Path
@@ -23,15 +25,18 @@ func resolveSmartRoutingKey(c *gin.Context, keys *service.APIKeyService, gateway
 	}
 	discovery := c.Request.Method == http.MethodGet && path == "/models"
 	inspection := c.Request.Method == http.MethodGet && (path == "/usage" || path == "/sub2api/billing")
-	textRequest := c.Request.Method == http.MethodPost && (path == "/chat/completions" || path == "/responses" || path == "/responses/compact")
+	messages := path == "/messages" || path == "/messages/count_tokens"
+	countTokens := path == "/messages/count_tokens"
+	textRequest := c.Request.Method == http.MethodPost && (messages || path == "/chat/completions" || path == "/responses" || path == "/responses/compact")
 	if !discovery && !inspection && !textRequest {
-		AbortWithError(c, 400, "SMART_ROUTING_ENDPOINT_UNSUPPORTED", "Smart routing supports HTTP Chat Completions and Responses; use a fixed-group key for other endpoints")
+		abortSmartRoutingError(c, 400, "SMART_ROUTING_ENDPOINT_UNSUPPORTED", "Smart routing supports HTTP Messages, token counting, Chat Completions and Responses; use a fixed-group key for other endpoints")
 		return nil, false
 	}
 	model, previousResponseID := "", ""
 	compact := path == "/responses/compact"
 	needsResponses := compact
 	imageIntent := false
+	var parsed *service.ParsedRequest
 	if textRequest {
 		body, err := httputil.ReadRequestBodyWithPrealloc(c.Request)
 		if err != nil {
@@ -40,46 +45,68 @@ func resolveSmartRoutingKey(c *gin.Context, keys *service.APIKeyService, gateway
 			if errors.As(err, &maxErr) {
 				status = http.StatusRequestEntityTooLarge
 			}
-			AbortWithError(c, status, "INVALID_REQUEST", "Unable to read request body")
+			abortSmartRoutingError(c, status, "INVALID_REQUEST", "Unable to read request body")
 			return nil, false
 		}
 		requestmodel.ResetRequestBody(c.Request, body)
 		value := gjson.GetBytes(body, "model")
 		if !gjson.ValidBytes(body) || value.Type != gjson.String || strings.TrimSpace(value.String()) == "" {
-			AbortWithError(c, 400, "INVALID_REQUEST", "A non-empty model is required for smart routing")
+			abortSmartRoutingError(c, 400, "INVALID_REQUEST", "A non-empty model is required for smart routing")
 			return nil, false
 		}
 		model = value.String()
 		// Reject ambiguous model fields before choosing any billing group.
 		for _, candidate := range requestmodel.FromBodyCandidates(c.FullPath(), c.GetHeader("Content-Type"), body) {
 			if candidate != model {
-				AbortWithError(c, 400, "INVALID_REQUEST", "Conflicting model fields")
+				abortSmartRoutingError(c, 400, "INVALID_REQUEST", "Conflicting model fields")
 				return nil, false
 			}
 		}
-		previousResponseID = strings.TrimSpace(gjson.GetBytes(body, "previous_response_id").String())
+		if path == "/responses" || compact {
+			previousResponseID = strings.TrimSpace(gjson.GetBytes(body, "previous_response_id").String())
+		}
 		imageIntent = service.IsExplicitImageGenerationIntent(path, model, body)
 		if imageIntent {
-			AbortWithError(c, 400, "SMART_ROUTING_ENDPOINT_UNSUPPORTED", "Use a fixed-group key for image generation")
+			abortSmartRoutingError(c, 400, "SMART_ROUTING_ENDPOINT_UNSUPPORTED", "Use a fixed-group key for image generation")
 			return nil, false
 		}
 		if path == "/responses" && service.HasCompactionTriggerInInput(body) {
 			needsResponses = true
 			compact = !gjson.GetBytes(body, "stream").Bool()
 		}
+		protocol := "chat_completions"
+		if messages {
+			protocol = service.PlatformAnthropic
+		} else if path == "/responses" || compact {
+			protocol = "responses"
+		}
+		parsed, err = service.ParseGatewayRequest(service.NewRequestBodyRef(body), protocol)
+		if err != nil {
+			abortSmartRoutingError(c, 400, "INVALID_REQUEST", "Failed to parse request body")
+			return nil, false
+		}
+		parsed.SessionContext = &service.SessionContext{
+			ClientIP: ip.GetClientIP(c), UserAgent: c.GetHeader("User-Agent"), APIKeyID: key.ID,
+		}
+		if messages {
+			service.SetClaudeCodeClientContext(c, body, parsed)
+		} else {
+			c.Request = c.Request.WithContext(service.SetClaudeCodeClient(c.Request.Context(), false))
+		}
+		c.Request = c.Request.WithContext(service.WithThinkingEnabled(c.Request.Context(), parsed.ThinkingEnabled, metadataBridgeEnabled))
 	}
 	candidates, err := keys.SmartRoutingKeys(c.Request.Context(), key)
 	if err != nil {
-		AbortWithError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to load routing groups")
+		abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to load routing groups")
 		return nil, false
 	}
 	if len(candidates) == 0 {
-		AbortWithError(c, 403, "SMART_ROUTING_NO_ACCESS", "No accessible routing groups")
+		abortSmartRoutingError(c, 403, "SMART_ROUTING_NO_ACCESS", "No accessible routing groups")
 		return nil, false
 	}
 	if inspection {
 		if path == "/sub2api/billing" && len(candidates) > 1 {
-			AbortWithError(c, 400, "SMART_ROUTING_BILLING_UNSUPPORTED", "Billing introspection requires a fixed-group API key")
+			abortSmartRoutingError(c, 400, "SMART_ROUTING_BILLING_UNSUPPORTED", "Billing introspection requires a fixed-group API key")
 			return nil, false
 		}
 		return candidates[0], true
@@ -87,9 +114,23 @@ func resolveSmartRoutingKey(c *gin.Context, keys *service.APIKeyService, gateway
 	if discovery {
 		models := make([]string, 0)
 		for _, candidate := range candidates {
-			ids, err := gateway.SmartRoutingModels(c.Request.Context(), candidate)
+			var ids []string
+			var err error
+			if candidate.Group.Platform == service.PlatformAnthropic {
+				if gateways.anthropic == nil {
+					abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Claude routing is temporarily unavailable")
+					return nil, false
+				}
+				ids, err = gateways.anthropic.SmartRoutingModels(c.Request.Context(), candidate)
+			} else {
+				if gateway == nil {
+					abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "OpenAI routing is temporarily unavailable")
+					return nil, false
+				}
+				ids, err = gateway.SmartRoutingModels(c.Request.Context(), candidate)
+			}
 			if err != nil {
-				AbortWithError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to load routing models")
+				abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to load routing models")
 				return nil, false
 			}
 			models = append(models, ids...)
@@ -98,10 +139,36 @@ func resolveSmartRoutingKey(c *gin.Context, keys *service.APIKeyService, gateway
 		return candidates[0], true
 	}
 	for _, candidate := range candidates {
+		if candidate.Group.Platform == service.PlatformAnthropic {
+			if previousResponseID != "" || needsResponses {
+				continue
+			}
+			if gateways.anthropic == nil {
+				abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Claude routing is temporarily unavailable")
+				return nil, false
+			}
+			prepared, selected, err := gateways.anthropic.PrepareSmartRouting(c.Request.Context(), candidate, parsed, countTokens)
+			if err != nil {
+				abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to select a Claude routing account")
+				return nil, false
+			}
+			if selected {
+				c.Request = c.Request.WithContext(prepared)
+				return candidate, true
+			}
+			continue
+		}
+		if messages {
+			continue
+		}
+		if gateway == nil {
+			abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "OpenAI routing is temporarily unavailable")
+			return nil, false
+		}
 		if previousResponseID != "" {
 			owned, err := gateway.ValidateOpenAIHTTPResponseOwner(c.Request.Context(), *candidate.GroupID, previousResponseID, key.UserID, key.ID)
 			if err != nil {
-				AbortWithError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to verify response ownership")
+				abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to verify response ownership")
 				return nil, false
 			}
 			if !owned {
@@ -114,13 +181,13 @@ func resolveSmartRoutingKey(c *gin.Context, keys *service.APIKeyService, gateway
 		}
 		available, err := gateway.SmartRoutingAvailable(c.Request.Context(), candidate, model, capability, compact)
 		if err != nil {
-			AbortWithError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to check routing availability")
+			abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to check routing availability")
 			return nil, false
 		}
 		if available {
 			prepared, selected, err := gateway.PrepareSmartRouting(c.Request.Context(), candidate, model, previousResponseID, capability, compact)
 			if err != nil {
-				AbortWithError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to select a routing account")
+				abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to select a routing account")
 				return nil, false
 			}
 			if !selected {
@@ -130,6 +197,26 @@ func resolveSmartRoutingKey(c *gin.Context, keys *service.APIKeyService, gateway
 			return candidate, true
 		}
 	}
-	AbortWithError(c, 503, "SMART_ROUTING_NO_AVAILABLE_GROUP", "No routing group currently has an available account for this model")
+	abortSmartRoutingError(c, 503, "SMART_ROUTING_NO_AVAILABLE_GROUP", "No routing group currently has an available account for this model")
 	return nil, false
+}
+
+// Messages clients expect Anthropic errors even when routing fails before a handler.
+func abortSmartRoutingError(c *gin.Context, status int, code, message string) {
+	if strings.HasSuffix(c.Request.URL.Path, "/messages") || strings.HasSuffix(c.Request.URL.Path, "/messages/count_tokens") {
+		errorType := "api_error"
+		switch status {
+		case http.StatusBadRequest, http.StatusRequestEntityTooLarge:
+			errorType = "invalid_request_error"
+		case http.StatusForbidden:
+			errorType = "permission_error"
+		case http.StatusTooManyRequests:
+			errorType = "rate_limit_error"
+		case http.StatusServiceUnavailable:
+			errorType = "overloaded_error"
+		}
+		c.AbortWithStatusJSON(status, gin.H{"type": "error", "error": gin.H{"type": errorType, "message": message, "code": code}})
+		return
+	}
+	AbortWithError(c, status, code, message)
 }

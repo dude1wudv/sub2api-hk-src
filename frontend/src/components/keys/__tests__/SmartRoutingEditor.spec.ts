@@ -145,7 +145,7 @@ const mountEditor = (props: Record<string, unknown> = {}) => mount(SmartRoutingE
 })
 
 describe('SmartRoutingEditor', () => {
-  it('offers active compatible groups across providers while excluding Claude and inactive groups', () => {
+  it('offers active compatible groups across providers including Claude while excluding inactive groups', () => {
     const wrapper = mountEditor({
       groups: [
         makeGroup(1, 'Claude', 'anthropic'),
@@ -153,11 +153,13 @@ describe('SmartRoutingEditor', () => {
         makeGroup(3, 'DeepSeek', 'deepseek'),
         makeGroup(4, 'Grok', 'grok'),
         makeGroup(5, 'Inactive', 'kimi', 'inactive'),
+        makeGroup(6, 'Inactive Claude', 'anthropic', 'inactive'),
+        makeGroup(7, 'Gemini', 'gemini'),
       ],
     })
 
     expect(wrapper.findAll('[data-testid="route-option"]').map(option => option.text()))
-      .toEqual(['OpenAI', 'DeepSeek', 'Grok'])
+      .toEqual(['Claude', 'OpenAI', 'DeepSeek', 'Grok'])
   })
 
   it('renders an empty state and disables the picker when no groups are available', () => {
@@ -167,11 +169,11 @@ describe('SmartRoutingEditor', () => {
     expect(wrapper.get('[data-testid="route-picker-trigger"]').attributes('disabled')).toBeDefined()
   })
 
-  it('seeds the fixed group when smart routing is enabled', async () => {
+  it('seeds a fixed Claude group when smart routing is enabled', async () => {
     const wrapper = mountEditor({
       enabled: false,
       fixedGroupId: 2,
-      groups: [makeGroup(2), makeGroup(3)],
+      groups: [makeGroup(2, 'Claude', 'anthropic'), makeGroup(3)],
     })
 
     await wrapper.findAll('button[aria-pressed="false"]')[0]!.trigger('click')

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 )
@@ -22,12 +23,16 @@ func smartRoutingAccountModels(account *Account) []string {
 	if len(account.GetModelMapping()) == 0 && account.IsOpenAI() {
 		models = append(models, openai.DefaultModelIDs()...)
 	}
+	if len(account.GetModelMapping()) == 0 && account.Platform == PlatformAnthropic {
+		models = append(models, claude.DefaultModelIDs()...)
+	}
 	return models
 }
 
 func smartRoutingAccountClaims(account *Account, model string) bool {
 	for _, id := range smartRoutingAccountModels(account) {
-		if id == model || normalizeRequestedModelForLookup(account.Platform, model) == id {
+		if id == model || normalizeRequestedModelForLookup(account.Platform, model) == id ||
+			(account.Platform == PlatformAnthropic && claude.NormalizeModelID(model) == claude.NormalizeModelID(id)) {
 			return true
 		}
 	}

@@ -633,7 +633,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	currentAPIKey := apiKey
 	currentSubscription := subscription
 	var fallbackGroupID *int64
-	if apiKey.Group != nil {
+	if apiKey.Group != nil && len(apiKey.RoutingGroupIDs) == 0 {
 		fallbackGroupID = apiKey.Group.FallbackGroupIDOnInvalidRequest
 	}
 	fallbackUsed := false
@@ -653,7 +653,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	sessionSlotAccounts := make(map[int64]*service.Account)
 	upstreamServedSession := false
 	defer func() {
-		if upstreamServedSession {
+		if upstreamServedSession || len(apiKey.RoutingGroupIDs) > 0 {
 			return
 		}
 		// 客户端可能已断开、请求 ctx 已取消，用独立 ctx 执行释放
@@ -1108,6 +1108,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					submitForwardUsage(result)
 					// 上游已接受并计量本次会话（流中断），会话槽保持既有语义
 					upstreamServedSession = true
+					service.MarkSmartRoutingSessionServed(c.Request.Context())
 				}
 				return
 			}
@@ -1135,6 +1136,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 			submitForwardUsage(result)
 			// 转发成功，会话槽保持既有空闲超时语义
 			upstreamServedSession = true
+			service.MarkSmartRoutingSessionServed(c.Request.Context())
 			return
 		}
 		if !retryWithFallback {
@@ -2253,6 +2255,7 @@ func (h *GatewayHandler) CountTokens(c *gin.Context) {
 		h.gatewayService.ReleaseAccountSession(context.Background(), account, sessionHash)
 		return
 	}
+	service.MarkSmartRoutingSessionServed(c.Request.Context())
 }
 
 // InterceptType 表示请求拦截类型
