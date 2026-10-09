@@ -15,8 +15,8 @@ func TestMirasimNativeProtocolByModel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.model, func(t *testing.T) {
-			if got := modelRoutedNativeProtocol(account, tt.model); got != tt.want {
-				t.Fatalf("modelRoutedNativeProtocol(%q) = %q, want %q", tt.model, got, tt.want)
+			if got := account.resolveModelRoutedProtocol(tt.model); got != tt.want {
+				t.Fatalf("resolveModelRoutedProtocol(%q) = %q, want %q", tt.model, got, tt.want)
 			}
 		})
 	}

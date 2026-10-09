@@ -25,6 +25,7 @@ import {
   parseHeaderOverridesJson,
   parseOpenCodeGoProtocolRules,
   planTypeDisplayLabel,
+  protocolRuleSet,
   readPlanType,
   serializeHeaderOverrideRows,
   splitHeaderOverridesObject,
@@ -124,9 +125,10 @@ describe('openCodeGo protocol rules', () => {
     expect(defaultCNBaseUrl('opencode_go', 'go', 'anthropic')).toBe('https://opencode.ai/zen/go')
     expect(defaultOpenCodeProtocolRules('zen').some(rule => rule.pattern === 'claude-*')).toBe(true)
     expect(defaultOpenCodeProtocolRules('go').some(rule => rule.pattern === 'minimax-*')).toBe(true)
-    expect(cnQuotaCellVisible('opencode_go', 'zen')).toBe(false)
-    expect(cnQuotaCellVisible('opencode_go', 'go')).toBe(true)
-    expect(cnQuotaCellVisible('opencode_go', '')).toBe(true)
+    const openCodeAccount = (account_mode?: string) => ({ platform: 'opencode_go', type: 'apikey', credentials: { account_mode } })
+    expect(cnQuotaCellVisible(openCodeAccount('zen'))).toBe(false)
+    expect(cnQuotaCellVisible(openCodeAccount('go'))).toBe(true)
+    expect(cnQuotaCellVisible(openCodeAccount())).toBe(true)
   })
 
   it('parses stored rules and skips invalid entries', () => {
@@ -142,6 +144,31 @@ describe('openCodeGo protocol rules', () => {
     ).toEqual([
       { pattern: 'grok-*', protocol: 'responses' },
       { pattern: 'minimax-*', protocol: 'anthropic' }
+    ])
+  })
+
+  it('round-trips protocol sets with the preferred protocol first', () => {
+    const parsed = parseOpenCodeGoProtocolRules([
+      { pattern: 'gpt-*', protocol: 'responses', protocols: ['responses', 'chat_completions', 'adaptive', 'chat_completions'] },
+      { pattern: 'glm-*', protocols: ['anthropic', 'chat_completions'] },
+      { pattern: 'kimi-*', protocol: 'chat_completions', protocols: ['chat_completions'] }
+    ])
+    expect(parsed).toEqual([
+      { pattern: 'gpt-*', protocol: 'responses', extraProtocols: ['chat_completions'] },
+      { pattern: 'glm-*', protocol: 'anthropic', extraProtocols: ['chat_completions'] },
+      { pattern: 'kimi-*', protocol: 'chat_completions' }
+    ])
+    expect(protocolRuleSet(parsed![0])).toEqual(['responses', 'chat_completions'])
+
+    const cloned = cloneOpenCodeGoProtocolRules(parsed!)
+    expect(cloned).toEqual(parsed)
+    expect(cloned[0].extraProtocols).not.toBe(parsed![0].extraProtocols)
+
+    const credentials: Record<string, unknown> = {}
+    applyOpenCodeGoProtocolRules(credentials, [{ pattern: ' GPT-* ', protocol: 'responses', extraProtocols: ['chat_completions', 'responses'] }, ...parsed!.slice(2)], 'create')
+    expect(credentials[OPENCODE_GO_PROTOCOL_RULES_KEY]).toEqual([
+      { pattern: 'gpt-*', protocol: 'responses', protocols: ['responses', 'chat_completions'] },
+      { pattern: 'kimi-*', protocol: 'chat_completions' }
     ])
   })
 
@@ -300,13 +327,13 @@ describe('CN provider presets and usage visibility', () => {
     expect(CN_BASE_URL_PRESETS.deepseek.some(preset => preset.protocol === 'responses')).toBe(true)
     expect(CN_BASE_URL_PRESETS.deepseek.every(preset => preset.mode === 'payg')).toBe(true)
 
-    expect(cnQuotaCellVisible('kimi', 'coding')).toBe(true)
-    expect(cnQuotaCellVisible('zhipu', 'coding')).toBe(true)
-    expect(cnQuotaCellVisible('deepseek', 'coding')).toBe(false)
-    expect(cnBalanceCellVisible('kimi', 'payg')).toBe(true)
-    expect(cnBalanceCellVisible('deepseek', 'payg')).toBe(true)
-    expect(cnBalanceCellVisible('zhipu', 'payg')).toBe(false)
-    expect(cnBalanceCellVisible('kimi', 'coding')).toBe(false)
+    expect(cnQuotaCellVisible({ platform: 'kimi', type: 'apikey', credentials: { account_mode: 'coding' } })).toBe(true)
+    expect(cnQuotaCellVisible({ platform: 'zhipu', type: 'apikey', credentials: { account_mode: 'coding' } })).toBe(true)
+    expect(cnQuotaCellVisible({ platform: 'deepseek', type: 'apikey', credentials: { account_mode: 'coding' } })).toBe(false)
+    expect(cnBalanceCellVisible({ platform: 'kimi', type: 'apikey', credentials: { account_mode: 'payg' } })).toBe(true)
+    expect(cnBalanceCellVisible({ platform: 'deepseek', type: 'apikey', credentials: { account_mode: 'payg' } })).toBe(true)
+    expect(cnBalanceCellVisible({ platform: 'zhipu', type: 'apikey', credentials: { account_mode: 'payg' } })).toBe(false)
+    expect(cnBalanceCellVisible({ platform: 'kimi', type: 'apikey', credentials: { account_mode: 'coding' } })).toBe(false)
   })
 })
 
