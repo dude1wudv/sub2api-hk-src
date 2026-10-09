@@ -23,10 +23,12 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 318
+	candidateMigrationCount         = 320
 )
 
 var candidateOnlyMigrations = []string{
+	"242_drop_platform_check_constraints.sql",
+	"246_hk_platform_catalog_constraints.sql",
 	"222_group_usage_daily_rollups.sql",
 	"223_group_usage_rollup_timezone.sql",
 	"224_user_platform_quotas_add_cn_providers.sql",
@@ -108,6 +110,42 @@ func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *test
 	// A second pass must only close checksums; it must not attempt DDL again.
 	require.NoError(t, applyMigrationsFS(ctx, legacyDB, migrations.FS))
 	require.Zero(t, invalidIndexCount(t, legacyDB, "public"))
+}
+
+// The current HK release already applied 245 before upstream's new 242 is
+// introduced. Exercise that history separately from the older production baseline.
+func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testing.T) {
+	ctx := context.Background()
+	history := fstest.MapFS{}
+	for _, name := range migrationFiles(t, migrations.FS) {
+		if name == "242_drop_platform_check_constraints.sql" || name == "246_hk_platform_catalog_constraints.sql" {
+			continue
+		}
+		content, err := migrations.FS.ReadFile(name)
+		require.NoError(t, err)
+		history[name] = &fstest.MapFile{Data: content}
+	}
+	require.Len(t, history, 318)
+	container, err := tcpostgres.Run(ctx, selectDockerImage(ctx, postgresImageTag),
+		tcpostgres.WithDatabase("hk_014_history"), tcpostgres.WithUsername("postgres"),
+		tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = container.Terminate(ctx) })
+	dsn, err := container.ConnectionString(ctx, "sslmode=disable", "TimeZone=UTC")
+	require.NoError(t, err)
+	db, err := openSQLWithRetry(ctx, dsn, 30*time.Second)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	require.NoError(t, applyMigrationsFS(ctx, db, history))
+	before := migrationChecksums(t, db, "public")
+	require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
+	after := migrationChecksums(t, db, "public")
+	require.Len(t, after, candidateMigrationCount)
+	for name, checksum := range before {
+		require.Equal(t, checksum, after[name], name)
+	}
+	require.Equal(t, schemaFingerprint(t, integrationDB, "public"), schemaFingerprint(t, db, "public"))
+	require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
 }
 
 func TestUpstreamMergeValidation_RequiredContractsAndLegacyExclusions(t *testing.T) {

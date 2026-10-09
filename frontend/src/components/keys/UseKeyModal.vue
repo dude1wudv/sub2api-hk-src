@@ -1339,6 +1339,8 @@ function generateRoutedCodexFiles(
     opencode_go: 'OpenCode',
     mirasim: 'Mirasim',
     typesafe: 'TypeSafe / Jev',
+    command_code: 'Command Code',
+    cline: 'Cline',
     composite: 'Composite'
   }
   const label = labels[platform]
