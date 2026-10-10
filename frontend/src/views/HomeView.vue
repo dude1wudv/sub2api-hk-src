@@ -91,7 +91,10 @@ const consolePath = computed(() => !auth.isAuthenticated ? '/login' : auth.isAdm
 const modelPlazaEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza) && (auth.isAuthenticated || app.cachedPublicSettings?.model_plaza_require_auth !== true))
 const subscriptionsEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.subscription))
 function changeLanguage() { setLocale(zh.value ? 'en' : 'zh') }
-function enterApi() { void router.push({ path:'/keys', query:modelQuery.value.trim() ? {model:modelQuery.value.trim()} : {} }) }
+function enterApi() {
+  const model = modelQuery.value.trim()
+  void router.push(model && modelPlazaEnabled.value ? { path:'/model-plaza', query:{ model, ...(auth.isAuthenticated ? { embedded:'1' } : {}) } } : { path:'/keys' })
+}
 async function copyEndpoint() { copied.value = await copyToClipboard(openAIBase.value) }
 onMounted(() => { auth.checkAuth(); if (!app.publicSettingsLoaded) void app.fetchPublicSettings() })
 </script>

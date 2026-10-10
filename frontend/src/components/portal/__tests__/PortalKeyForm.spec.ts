@@ -1,153 +1,129 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import PortalKeyForm from '../PortalKeyForm.vue'
 
 const { update, create } = vi.hoisted(() => ({ update: vi.fn(), create: vi.fn() }))
-
 vi.mock('@/api/keys', () => ({ keysAPI: { update, create } }))
-vi.mock('@/components/portal/PortalDialog.vue', () => ({ default: { props: ['open', 'title'], template: '<div class="portal-dialog-test"><slot /></div>' } }))
+vi.mock('@/components/portal/PortalDialog.vue', () => ({ default: { props: ['open', 'title', 'wide'], template: '<div class="portal-dialog-test"><slot /></div>' } }))
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   const { ref } = await import('vue')
   return { ...actual, useI18n: () => ({ locale: ref('en-US'), t: (key: string) => key }) }
 })
-
 const groups = [
-  { id: 3, name: 'Standard group', platform: 'openai', status: 'active' },
-  { id: 7, name: 'Smart route group', platform: 'anthropic', status: 'active' },
-  { id: 9, name: 'Unsupported group', platform: 'other', status: 'active' },
-  { id: 11, name: 'Inactive group', platform: 'openai', status: 'inactive' },
+  { id: 3, name: 'Standard group', description: 'Reliable coding', platform: 'openai', status: 'active', rate_multiplier: 2 },
+  { id: 7, name: 'Smart route group', description: 'Large context', platform: 'anthropic', status: 'active', rate_multiplier: 3 },
+  { id: 9, name: 'Unsupported group', platform: 'gemini', status: 'active', rate_multiplier: 1 },
+  { id: 11, name: 'Inactive group', platform: 'openai', status: 'inactive', rate_multiplier: 1 },
 ] as any
-
+const editing = { id: 42, name: 'Production key', group_id: 3, quota: 18, expires_at: '2030-03-04T12:30:00.000Z', rate_limit_5h: 4, rate_limit_1d: 5, rate_limit_7d: 6, ip_whitelist: ['192.0.2.1', '198.51.100.0/24'], ip_blacklist: ['203.0.113.7'], routing_group_ids: [] } as any
+const render = (props: Record<string, unknown> = {}) => mount(PortalKeyForm, { props: { open: true, groups, editing: null, ...props } as any })
 describe('PortalKeyForm', () => {
-  it('loads the selected group, expiry and newline-separated IP data, then clears expiry explicitly', async () => {
-    vi.clearAllMocks()
-    update.mockResolvedValue({ id: 42 })
-    const wrapper = mount(PortalKeyForm, {
-      props: {
-        open: true,
-        groups,
-        editing: {
-          id: 42,
-          name: 'Production key',
-          group_id: 3,
-          quota: 18,
-          expires_at: '2030-03-04T12:30:00.000Z',
-          rate_limit_5h: 4,
-          rate_limit_1d: 5,
-          rate_limit_7d: 6,
-          ip_whitelist: ['192.0.2.1', '198.51.100.0/24'],
-          ip_blacklist: ['203.0.113.7'],
-          routing_group_ids: [],
-        } as any,
-      },
-    })
-
+  beforeEach(() => { vi.clearAllMocks(); create.mockResolvedValue({ id: 43 }); update.mockResolvedValue({ id: 42 }) })
+  it('uses searchable group cards, description search and provider filters with user-specific rates', async () => {
+    const wrapper = render({ groupRates: { 3: 0.8 } })
+    expect(wrapper.get('[data-group-id="3"]').text()).toContain('0.8×')
+    expect(wrapper.get('[data-group-id="3"]').text()).toContain('Your rate')
+    expect(wrapper.find('select').exists()).toBe(false)
+    expect(wrapper.find('.key-routing input[type="checkbox"]').exists()).toBe(false)
+    await wrapper.get('[aria-label="Search groups"]').setValue('large context')
+    expect(wrapper.findAll('.key-group-card')).toHaveLength(1)
+    expect(wrapper.get('.key-group-card').text()).toContain('Smart route group')
+    await wrapper.get('[aria-label="Search groups"]').setValue('')
+    await wrapper.findAll('.key-providers button').find(button => button.text().includes('OpenAI'))!.trigger('click')
+    expect(wrapper.findAll('.key-group-card').map(card => card.attributes('data-group-id'))).toEqual(['3', '11'])
+    await wrapper.get('[data-group-id="3"]').trigger('click')
+    expect(wrapper.get('.key-selected-summary').text()).toContain('0.8×')
+    expect(wrapper.get('.key-common-fields').text()).toContain('Quota (USD)')
+    expect(wrapper.get('.key-advanced').attributes('open')).toBeUndefined()
+    wrapper.unmount()
+  })
+  it('preserves selected group, expiry, IP restrictions and limits without unsolicited resets', async () => {
+    const wrapper = render({ editing })
     expect((wrapper.get('input[type="datetime-local"]').element as HTMLInputElement).value).toMatch(/^2030-03-04T/)
     expect((wrapper.findAll('textarea')[0].element as HTMLTextAreaElement).value).toBe('192.0.2.1\n198.51.100.0/24')
-    expect((wrapper.findAll('textarea')[1].element as HTMLTextAreaElement).value).toBe('203.0.113.7')
-    const groupSelect = wrapper.get('select')
-    expect(groupSelect.findAll('option').map(option => option.text())).toEqual([
-      'Select a group', 'Standard group', 'Smart route group', 'Unsupported group', 'Inactive group',
-    ])
-    expect(wrapper.get('fieldset').text()).toContain('Smart routing groups (up to 10)')
-    expect(wrapper.get('fieldset').text()).not.toContain('Unsupported group')
-    expect(wrapper.get('fieldset').text()).not.toContain('Inactive group')
-
     await wrapper.get('input[type="datetime-local"]').setValue('')
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
-    expect(update).toHaveBeenCalledWith(42, expect.objectContaining({
-      group_id: 3,
-      expires_at: '',
-      ip_whitelist: ['192.0.2.1', '198.51.100.0/24'],
-      ip_blacklist: ['203.0.113.7'],
-    }))
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(update).toHaveBeenCalledWith(42, { name: 'Production key', group_id: 3, quota: 18, expires_at: '', ip_whitelist: ['192.0.2.1', '198.51.100.0/24'], ip_blacklist: ['203.0.113.7'], routing_group_ids: [], rate_limit_5h: 4, rate_limit_1d: 5, rate_limit_7d: 6 })
     expect(wrapper.emitted('saved')).toHaveLength(1)
     wrapper.unmount()
   })
-
-  it('uses actual available routing groups and rejects a stale unsupported routing ID', async () => {
-    vi.clearAllMocks()
-    const wrapper = mount(PortalKeyForm, {
-      props: {
-        open: true,
-        groups,
-        editing: { id: 5, name: 'Stale route', group_id: 3, routing_group_ids: [9] } as any,
-      },
-    })
-
-    expect(wrapper.get('fieldset').text()).toContain('Smart route group')
+  it('keeps stale routing candidates visible, rejects saving them, then allows removal and replacement', async () => {
+    const wrapper = render({ editing: { ...editing, routing_group_ids: [9] } })
     expect(wrapper.get('.routing-order').text()).toContain('Unsupported group')
     expect(wrapper.get('.routing-order').text()).toContain('Unavailable')
-    expect(wrapper.get('.key-routing').findAll('input[type="checkbox"]').map(input => input.element.getAttribute('value'))).toEqual(['3', '7'])
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
-
-    expect(wrapper.get('[role="alert"]').text()).toContain('Select up to 10 groups that support smart routing')
+    expect(wrapper.findAll('.key-group-card').map(card => card.attributes('data-group-id'))).toEqual(['3', '7'])
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Select 1–10 groups')
     expect(update).not.toHaveBeenCalled()
-    wrapper.unmount()
-  })
-
-  it('lets an edited key remove a stale routing group that is no longer selectable', async () => {
-    vi.clearAllMocks()
-    update.mockResolvedValue({ id: 5 })
-    const wrapper = mount(PortalKeyForm, {
-      props: {
-        open: true,
-        groups,
-        editing: { id: 5, name: 'Stale route', group_id: 3, routing_group_ids: [9] } as any,
-      },
-    })
-
-    expect(wrapper.get('.routing-order').text()).toContain('Unavailable')
     await wrapper.get('[aria-label="Remove group 1"]').trigger('click')
     await wrapper.get('form').trigger('submit')
-    await flushPromises()
-
-    expect(update).toHaveBeenCalledWith(5, expect.objectContaining({
-      group_id: 3,
-      routing_group_ids: [],
-    }))
+    expect(update).not.toHaveBeenCalled()
+    await wrapper.get('[data-group-id="7"]').trigger('click')
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(update).toHaveBeenCalledWith(42, expect.objectContaining({ group_id: 7, routing_group_ids: [7] }))
+    wrapper.unmount()
+  })
+  it('initializes routes from the fixed group, preserves order and explicitly switches back to fixed mode', async () => {
+    const wrapper = render({ editing })
+    await wrapper.findAll('.key-mode button')[1].trigger('click')
+    expect(wrapper.get('.routing-order').text()).toContain('Standard group')
+    await wrapper.get('[data-group-id="7"]').trigger('click')
+    await wrapper.get('[aria-label="Move group 1 down"]').trigger('click')
+    expect(wrapper.findAll('.routing-order li')[0].text()).toContain('Smart route group')
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(update).toHaveBeenLastCalledWith(42, expect.objectContaining({ group_id: 7, routing_group_ids: [7, 3] }))
+    await wrapper.findAll('.key-mode button')[0].trigger('click')
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(update).toHaveBeenLastCalledWith(42, expect.objectContaining({ group_id: 3, routing_group_ids: [] }))
+    wrapper.unmount()
+  })
+  it('sends reset flags only when opted in and clears them when reopening', async () => {
+    const wrapper = render({ editing })
+    const resetInputs = wrapper.findAll('.key-resets input')
+    expect((resetInputs[0].element as HTMLInputElement).checked).toBe(false)
+    await resetInputs[0].setValue(true); await resetInputs[1].setValue(true)
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(update).toHaveBeenCalledWith(42, expect.objectContaining({ reset_quota: true, reset_rate_limit_usage: true }))
+    await wrapper.setProps({ open: false }); await wrapper.setProps({ open: true })
+    expect((resetInputs[0].element as HTMLInputElement).checked).toBe(false)
+    expect((resetInputs[1].element as HTMLInputElement).checked).toBe(false)
+    wrapper.unmount()
+  })
+  it('does not add duplicate candidates or exceed ten candidates', async () => {
+    const manyGroups = Array.from({ length: 11 }, (_, index) => ({ ...groups[0], id: index + 1, name: `Group ${index + 1}` }))
+    const wrapper = render({ groups: manyGroups })
+    await wrapper.findAll('.key-mode button')[1].trigger('click')
+    for (let id = 1; id <= 10; id++) await wrapper.get(`[data-group-id="${id}"]`).trigger('click')
+    expect(wrapper.findAll('.routing-order li')).toHaveLength(10)
+    expect(wrapper.get('[data-group-id="1"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-group-id="11"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[aria-label="Remove group 1"]').trigger('click')
+    expect(wrapper.get('[data-group-id="11"]').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+  it('creates through the existing API contract and prevents duplicate saves', async () => {
+    let resolveCreate!: (key: any) => void
+    create.mockReturnValue(new Promise(resolve => { resolveCreate = resolve }))
+    const wrapper = render({ selectedGroup: 3 })
+    await wrapper.get('[data-test="key-name"]').setValue('New key')
+    await wrapper.get('[data-test="key-days"]').setValue('30')
+    await wrapper.get('[data-test="key-quota"]').setValue('12')
+    await wrapper.get('input[type="password"]').setValue('my_private_key_123')
+    await wrapper.get('form').trigger('submit'); await wrapper.get('form').trigger('submit')
+    expect(create).toHaveBeenCalledTimes(1)
+    expect(create).toHaveBeenCalledWith('New key', 3, 'my_private_key_123', [], [], 12, 30, { rate_limit_5h: 0, rate_limit_1d: 0, rate_limit_7d: 0 }, [])
+    resolveCreate({ id: 43 }); await flushPromises()
     expect(wrapper.emitted('saved')).toHaveLength(1)
     wrapper.unmount()
   })
-
-  it('sends reset flags only when opted in and preserves the edited routing order', async () => {
-    vi.clearAllMocks()
-    update.mockResolvedValue({ id: 6 })
-    const wrapper = mount(PortalKeyForm, {
-      props: {
-        open: true,
-        groups,
-        editing: { id: 6, name: 'Ordered routes', group_id: 3, routing_group_ids: [3, 7] } as any,
-      },
-    })
-    expect(wrapper.find('.routing-order').text()).toContain('1. Standard group')
-    await wrapper.get('[aria-label="Move group 1 down"]').trigger('click')
-    expect(wrapper.find('.routing-order').text()).toContain('1. Smart route group')
-
-    const resetQuota = wrapper.findAll('label').find(label => label.text().includes('Reset used quota'))!.get('input')
-    const resetRates = wrapper.findAll('label').find(label => label.text().includes('Reset rate-limit usage'))!.get('input')
-    expect((resetQuota.element as HTMLInputElement).checked).toBe(false)
-    expect((resetRates.element as HTMLInputElement).checked).toBe(false)
-    await resetQuota.setValue(true)
-    await resetRates.setValue(true)
+  it('rejects custom keys that violate the backend format', async () => {
+    const wrapper = render({ selectedGroup: 3 })
+    await wrapper.get('[data-test="key-name"]').setValue('New key')
+    await wrapper.get('input[type="password"]').setValue('short')
     await wrapper.get('form').trigger('submit')
-    await flushPromises()
-
-    expect(update).toHaveBeenCalledWith(6, expect.objectContaining({
-      group_id: 7,
-      routing_group_ids: [7, 3],
-      reset_quota: true,
-      reset_rate_limit_usage: true,
-    }))
-
-    await wrapper.setProps({ open: false })
-    await wrapper.setProps({ open: true })
-    await flushPromises()
-    expect((wrapper.findAll('label').find(label => label.text().includes('Reset used quota'))!.get('input').element as HTMLInputElement).checked).toBe(false)
-    expect((wrapper.findAll('label').find(label => label.text().includes('Reset rate-limit usage'))!.get('input').element as HTMLInputElement).checked).toBe(false)
+    expect(create).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="alert"]').text()).toContain('at least 16')
     wrapper.unmount()
   })
 })

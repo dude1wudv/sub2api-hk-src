@@ -2,41 +2,14 @@
   <div class="portal-page portal-api-page">
     <h1 class="portal-heading">API</h1>
 
-    <section id="api-quick-start" class="portal-api-quick-start" aria-labelledby="portal-api-quick-start-title">
-      <h2 id="portal-api-quick-start-title">{{ text('快速开始', 'Quick start') }}</h2>
-      <div class="portal-api-start-grid">
-        <button type="button" @click="scrollTo('portal-api-models-title')"><span>01</span><strong>{{ text('选择接入方式', 'Choose a connection') }}</strong><Icon name="arrowRight" size="sm" aria-hidden="true" /></button>
-        <button type="button" :disabled="creationDisabled" @click="openCreate()"><span>02</span><strong>{{ text('创建 API Key', 'Create an API key') }}</strong><Icon name="arrowRight" size="sm" aria-hidden="true" /></button>
-        <button type="button" @click="scrollTo('portal-api-examples')"><span>03</span><strong>{{ text('发送请求', 'Send a request') }}</strong><Icon name="arrowRight" size="sm" aria-hidden="true" /></button>
-        <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer"><span><Icon name="book" size="sm" aria-hidden="true" /></span><strong>{{ text('文档', 'Documentation') }}</strong><Icon name="externalLink" size="sm" aria-hidden="true" /></a>
-        <button v-else type="button" @click="docsOpen = true"><span><Icon name="book" size="sm" aria-hidden="true" /></span><strong>{{ text('文档', 'Documentation') }}</strong><Icon name="arrowRight" size="sm" aria-hidden="true" /></button>
-      </div>
-    </section>
+    <p class="portal-api-intro">{{ text('管理你的 API Keys。创建密钥时选择分组与计费规则。', 'Manage your API keys. Choose a group and billing rules when creating a key.') }}</p>
 
     <p v-if="groupsLoading" class="portal-api-inline-state" role="status">{{ text('正在读取可绑定分组…', 'Loading groups available for your keys…') }}</p>
     <div v-else-if="groupsError" class="portal-error portal-api-inline-state" role="alert">{{ groupsError }} <button type="button" class="portal-inline-button" @click="loadGroups">{{ text('重试分组加载', 'Retry groups') }}</button></div>
     <p v-else-if="!groups.length" class="portal-api-inline-state">{{ text('当前账户没有可绑定分组，暂时无法创建 API Key。', 'Your account has no available group for creating an API key.') }} <button type="button" class="portal-inline-button" @click="loadGroups">{{ text('刷新分组', 'Refresh groups') }}</button></p>
 
-    <PortalApiModels
-      v-model:selected-group-id="selectedGroupId"
-      v-model:search="modelSearch"
-      :groups="plazaGroups"
-      :available-connections="groups"
-      :bindable-group-ids="groups.map(group => group.id)"
-      :description="plazaDescription"
-      :server-utc-offset="appStore.cachedPublicSettings?.server_utc_offset"
-      :pricing-enabled="plazaEnabled"
-      :loading="pricingLoading"
-      :error="pricingError"
-      :creation-disabled="creationDisabled"
-      show-create
-      @retry="loadPricing"
-      @create="openCreate(selectedBindableGroup)"
-      @select-model="selectExampleModel"
-    />
-
     <section id="portal-api-keys" class="portal-section portal-api-keys" aria-labelledby="portal-api-keys-title">
-      <div class="portal-section-heading"><h2 id="portal-api-keys-title">{{ text('我的 API Keys', 'My API keys') }}</h2><div class="portal-api-key-heading-actions"><button type="button" class="portal-inline-button" :aria-pressed="bulkMode" data-test="bulk-mode-toggle" @click="toggleBulkMode">{{ bulkMode ? text('退出批量管理', 'Exit bulk management') : text('批量管理', 'Bulk management') }}</button><button type="button" class="portal-button secondary" :disabled="creationDisabled" @click="openCreate()">＋ {{ text('创建 API Key', 'Create API key') }}</button></div></div>
+      <div class="portal-section-heading"><h2 id="portal-api-keys-title">{{ text('我的 API Keys', 'My API keys') }}</h2><div class="portal-api-key-heading-actions"><button type="button" class="portal-inline-button" :aria-pressed="bulkMode" data-test="bulk-mode-toggle" @click="toggleBulkMode">{{ bulkMode ? text('退出批量管理', 'Exit bulk management') : text('批量管理', 'Bulk management') }}</button><button type="button" class="portal-button" :disabled="creationDisabled" @click="openCreate()">＋ {{ text('创建 API Key', 'Create API key') }}</button></div></div>
       <div v-if="lastCreated" class="portal-api-created-key" role="status">
         <span>{{ text('密钥已创建：', 'Key created: ') }}<strong>{{ lastCreated.name }}</strong></span>
         <button type="button" class="portal-inline-button" @click="copyKey(lastCreated)"><Icon name="copy" size="sm" aria-hidden="true" />{{ text('复制密钥', 'Copy key') }}</button>
@@ -78,9 +51,15 @@
       </nav>
     </section>
 
-    <PortalApiExamples v-model:model="exampleModel" />
+    <section class="portal-api-resources" :aria-label="text('接入资源', 'Connection resources')">
+      <RouterLink v-if="plazaEnabled" to="/model-plaza?embedded=1"><Icon name="grid" size="sm" />{{ text('模型与价格', 'Models & pricing') }}<Icon name="arrowRight" size="sm" /></RouterLink>
+      <button type="button" @click="examplesOpen = !examplesOpen" :aria-expanded="examplesOpen"><Icon name="terminal" size="sm" />{{ text('调用示例', 'Request examples') }}<Icon name="chevronDown" size="sm" /></button>
+      <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer"><Icon name="book" size="sm" />{{ text('接入文档', 'Documentation') }}<Icon name="externalLink" size="sm" /></a>
+      <button v-else type="button" @click="docsOpen = true"><Icon name="book" size="sm" />{{ text('接入指南', 'Quick start') }}<Icon name="arrowRight" size="sm" /></button>
+    </section>
+    <PortalApiExamples v-if="examplesOpen" v-model:model="exampleModel" />
 
-    <PortalKeyForm :open="keyFormOpen" :editing="editingKey" :groups="groups" :selected-group="formGroupId" @close="keyFormOpen = false" @saved="onKeySaved" />
+    <PortalKeyForm :open="keyFormOpen" :editing="editingKey" :groups="groups" :group-rates="groupRates" :selected-group="formGroupId" @close="keyFormOpen = false" @saved="onKeySaved" />
     <PortalApiBulkForm :open="bulkFormOpen" :selected-keys="selectedKeys" :groups="groups" :groups-loading="groupsLoading" :groups-error="groupsError" @close="bulkFormOpen = false" @updated="onBulkUpdated" />
     <PortalDialog :open="!!deleteTarget" :title="text('删除 API Key', 'Delete API key')" @close="closeDelete">
       <p>{{ text('删除后，使用此密钥的应用将无法继续请求。', 'Applications using this key will no longer be able to send requests.') }}</p>
@@ -90,22 +69,21 @@
     </PortalDialog>
     <PortalDialog :open="docsOpen" :title="text('API 接入指南', 'API quick start')" @close="docsOpen = false">
       <ol class="portal-api-guide">
-        <li>{{ text('选择当前账户可绑定的接入分组，查看该分组的模型与实际价格。', 'Choose a group available to your account and review its models and prices.') }}</li>
+        <li>{{ text('点击创建 API Key，在弹窗中选择分组并查看分组倍率。完整模型和价格可在模型与价格页面查看。', 'Create an API key to choose a group and review its multiplier. Open Models & pricing for the full catalog.') }}</li>
         <li>{{ text('创建 API Key，并在需要时设置额度、有效期、IP 限制或路由分组。', 'Create an API key and configure quota, expiry, IP restrictions or routing groups as needed.') }}</li>
         <li>{{ text('使用页面下方的接口地址和调用示例，以所选分组支持的模型发送请求。', 'Use the base URL and examples below to request a model supported by your group.') }}</li>
         <li v-if="!authStore.isSimpleMode"><RouterLink to="/usage">{{ text('在用量信息中查看请求与费用。', 'Review requests and costs in Usage.') }}</RouterLink> <RouterLink to="/purchase">{{ text('需要补充额度时前往充值。', 'Recharge when you need more balance.') }}</RouterLink></li>
       </ol>
-      <footer class="portal-dialog-actions"><button type="button" class="portal-button" @click="docsOpen = false; scrollTo('portal-api-examples')">{{ text('查看示例', 'View examples') }}</button></footer>
+      <footer class="portal-dialog-actions"><button type="button" class="portal-button" @click="docsOpen = false; showExamples()">{{ text('查看示例', 'View examples') }}</button></footer>
     </PortalDialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
-import PortalApiModels from '@/components/portal/PortalApiModels.vue'
 import PortalApiKeyCard from '@/components/portal/PortalApiKeyCard.vue'
 import PortalApiExamples from '@/components/portal/PortalApiExamples.vue'
 import PortalApiBulkForm from '@/components/portal/PortalApiBulkForm.vue'
@@ -113,7 +91,6 @@ import PortalDialog from '@/components/portal/PortalDialog.vue'
 import PortalKeyForm from '@/components/portal/PortalKeyForm.vue'
 import { keysAPI } from '@/api/keys'
 import { userGroupsAPI } from '@/api/groups'
-import { modelPlazaAPI, type ModelPlazaGroup } from '@/api/modelPlaza'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboard } from '@/composables/useClipboard'
@@ -124,6 +101,7 @@ import type { ApiKey, Group } from '@/types'
 const { locale } = useI18n()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const route = useRoute()
+const router = useRouter()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const { copyToClipboard } = useClipboard()
@@ -133,14 +111,9 @@ const plazaEnabled = computed(() => resolveFeatureFlag(appStore.cachedPublicSett
 const groups = ref<Group[]>([])
 const groupsLoading = ref(true)
 const groupsError = ref('')
-const plazaGroups = ref<ModelPlazaGroup[]>([])
-const plazaDescription = ref('')
-const pricingLoading = ref(false)
-const pricingError = ref('')
-const selectedGroupId = ref<number | null>(null)
-const modelSearch = ref('')
+const groupRates = ref<Record<number, number>>({})
 const exampleModel = ref('')
-const selectedBindableGroup = computed(() => groups.value.some(group => group.id === selectedGroupId.value) ? selectedGroupId.value ?? undefined : undefined)
+const examplesOpen = ref(false)
 const creationDisabled = computed(() => groupsLoading.value || !!groupsError.value || !groups.value.length)
 
 const keys = ref<ApiKey[]>([])
@@ -175,9 +148,7 @@ const docsOpen = ref(false)
 let disposed = false
 let groupRequest = 0
 let keyRequest = 0
-let pricingRequest = 0
 let keyController: AbortController | undefined
-let pricingController: AbortController | undefined
 
 function errorMessage(error: unknown, fallback: string) {
   return (error as { message?: string })?.message || fallback
@@ -187,31 +158,15 @@ async function loadGroups() {
   groupsLoading.value = true
   groupsError.value = ''
   try {
-    const result = await userGroupsAPI.getAvailable()
-    if (!disposed && request === groupRequest) groups.value = result
+    const [result, rates] = await Promise.all([userGroupsAPI.getAvailable(), userGroupsAPI.getUserGroupRates()])
+    if (!disposed && request === groupRequest) {
+      groups.value = result
+      groupRates.value = rates
+    }
   } catch (error) {
     if (!disposed && request === groupRequest) groupsError.value = errorMessage(error, text('无法读取可绑定分组，请重试。', 'Could not load available groups. Please retry.'))
   } finally {
     if (!disposed && request === groupRequest) groupsLoading.value = false
-  }
-}
-async function loadPricing() {
-  if (!plazaEnabled.value) return
-  const request = ++pricingRequest
-  pricingController?.abort()
-  pricingController = new AbortController()
-  pricingLoading.value = true
-  pricingError.value = ''
-  try {
-    const result = await modelPlazaAPI.getModelPlaza({ signal: pricingController.signal })
-    if (disposed || request !== pricingRequest || !plazaEnabled.value) return
-    plazaGroups.value = result.groups || []
-    plazaDescription.value = result.description || ''
-    selectGroupForSearch()
-  } catch (error) {
-    if (!disposed && request === pricingRequest) pricingError.value = errorMessage(error, text('模型价格加载失败，请重试。', 'Could not load model pricing. Please retry.'))
-  } finally {
-    if (!disposed && request === pricingRequest) pricingLoading.value = false
   }
 }
 async function loadKeys() {
@@ -348,49 +303,28 @@ async function deleteKey() {
     deleting.value = false
   }
 }
-function selectGroupForSearch() {
-  const search = modelSearch.value.trim().toLowerCase()
-  if (!search) return
-  const matching = plazaGroups.value.filter(group => group.models.some(model => model.name.toLowerCase().includes(search)))
-  if (matching.length && !matching.some(group => group.id === selectedGroupId.value)) selectedGroupId.value = matching[0].id
-}
 function scrollTo(id: string) {
   void nextTick(() => document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }))
 }
-function selectExampleModel(name: string) { exampleModel.value = name; scrollTo('portal-api-examples') }
+function showExamples() { examplesOpen.value = true; scrollTo('portal-api-examples') }
 
+// Preserve bookmarked model searches after moving the catalog off the key page.
 watch(() => route.query.model, value => {
-  modelSearch.value = typeof value === 'string' ? value : Array.isArray(value) ? value[0] || '' : ''
-  selectGroupForSearch()
-}, { immediate: true })
-watch(plazaEnabled, enabled => {
-  if (enabled) void loadPricing()
-  else {
-    pricingRequest++
-    pricingController?.abort()
-    plazaGroups.value = []
-    plazaDescription.value = ''
-    pricingLoading.value = false
-    pricingError.value = ''
-  }
+  const model = typeof value === 'string' ? value : Array.isArray(value) ? value[0] || '' : ''
+  if (model && plazaEnabled.value) void router.replace({ path:'/model-plaza', query:{ embedded:'1', model } })
 }, { immediate: true })
 onMounted(() => { void loadGroups(); void loadKeys() })
 onBeforeUnmount(() => {
   disposed = true
   keyController?.abort()
-  pricingController?.abort()
 })
 </script>
 
 <style scoped>
-.portal-api-quick-start > h2 { margin:0 0 12px; font-size:18px; font-weight:400; }
-.portal-api-start-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
-.portal-api-start-grid > :is(button,a) { position:relative; display:grid; min-height:88px; gap:10px; align-content:center; padding:16px; border:1px solid #efede3; border-radius:8px; background:transparent; color:#000; text-align:left; text-decoration:none; font:inherit; }
-.portal-api-start-grid > :is(button,a):hover { background:#f7f5ee; }
-.portal-api-start-grid > button:disabled { opacity:.45; cursor:not-allowed; }
-.portal-api-start-grid > :is(button,a) > span { display:flex; align-items:center; height:16px; color:#929088; font-size:12px; }
-.portal-api-start-grid strong { padding-right:10px; font-size:13px; font-weight:400; }
-.portal-api-start-grid > :is(button,a) > svg { position:absolute; right:12px; bottom:18px; width:12px; height:12px; }
+.portal-api-intro { margin:-14px 0 28px; color:#76736b; font-size:13px; }
+.portal-api-resources { display:flex; flex-wrap:wrap; align-items:center; gap:12px 28px; margin-top:30px; padding-top:22px; border-top:1px solid #efede3; }
+.portal-api-resources > :is(button,a) { display:inline-flex; align-items:center; gap:8px; color:#76736b; background:transparent; border:0; padding:4px 0; font:inherit; font-size:13px; text-decoration:none; }
+.portal-api-resources > :is(button,a):hover { color:#000; }
 .portal-api-inline-state { margin-top:18px; font-size:12px; }
 .portal-api-keys { scroll-margin-top:80px; }
 .portal-api-key-heading-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; font-size:12px; }
@@ -416,6 +350,5 @@ onBeforeUnmount(() => {
 .portal-api-guide { display:grid; gap:16px; padding-left:22px; list-style:decimal; }
 .portal-api-guide a { text-decoration:underline; text-underline-offset:3px; }
 @media(min-width:1700px) { .portal-api-key-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
-@media(max-width:739px) { .portal-api-start-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } }
-@media(max-width:540px) { .portal-api-key-grid { grid-template-columns:1fr; } .portal-api-key-search { max-width:none; width:100%; flex-basis:100%; } .portal-api-key-filters select { flex:1; min-width:0; max-width:none; } .portal-api-start-grid strong { font-size:12px; } }
+@media(max-width:540px) { .portal-api-key-grid { grid-template-columns:1fr; } .portal-api-key-search { max-width:none; width:100%; flex-basis:100%; } .portal-api-key-filters select { flex:1; min-width:0; max-width:none; } }
 </style>

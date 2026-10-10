@@ -133,12 +133,19 @@ describe('HomeView compact mode', () => {
     expect(compactDestination(mountHome({ compact_home_enabled: true }))).toBe('/keys')
   })
 
-  it('routes model search from the API entry to the matching key quick start', async () => {
-    const wrapper = mountHome()
+  it('routes model search to the dedicated catalog', async () => {
+    const wrapper = mountHome({ model_plaza_enabled: true })
     await wrapper.get('input[aria-label="Search models"]').setValue('  gpt-5.4  ')
     await wrapper.get('.home-entry').trigger('submit')
 
-    expect(routerPush).toHaveBeenCalledWith({ path: '/keys', query: { model: 'gpt-5.4' } })
+    expect(routerPush).toHaveBeenCalledWith({ path: '/model-plaza', query: { model: 'gpt-5.4' } })
+    wrapper.unmount()
+  })
+
+  it('keeps an empty entry directed to key management', async () => {
+    const wrapper = mountHome({ model_plaza_enabled: true })
+    await wrapper.get('.home-entry').trigger('submit')
+    expect(routerPush).toHaveBeenCalledWith({ path: '/keys' })
     wrapper.unmount()
   })
 

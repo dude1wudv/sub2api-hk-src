@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getModelPlaza, type ModelPlazaResponse } from '@/api/modelPlaza'
@@ -36,6 +36,13 @@ async function load() {
     if (!current.signal.aborted) error.value = text('模型价格加载失败，请重试。', 'Could not load model pricing. Please retry.')
   } finally { if (!current.signal.aborted) loading.value = false }
 }
+watch(() => route.query.model, value => { search.value = typeof value === 'string' ? value : '' })
+watch([search, data], () => {
+  const query = search.value.trim().toLowerCase()
+  if (!query) return
+  const matching = (data.value?.groups || []).filter(group => group.models.some(model => (model.name + ' ' + model.platform).toLowerCase().includes(query)))
+  if (matching.length && !matching.some(group => group.id === groupId.value)) groupId.value = matching[0].id
+})
 onMounted(load)
 onBeforeUnmount(() => request?.abort())
 </script>
