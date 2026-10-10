@@ -489,7 +489,7 @@
 
     <!-- Create Group Modal -->
     <BaseDialog
-      :show="showCreateModal"
+      :show="showCreateModal" presentation="editor" ref="createDialog" :dirty="createTabDirty" :busy="submitting"
       :title="t('admin.groups.createGroup')"
       width="wide"
       @close="closeCreateModal"
@@ -498,8 +498,11 @@
         id="create-group-form"
         @submit.prevent="handleCreateGroup"
         class="space-y-5"
-      >
-        <div>
+       @invalid.capture="createTabInvalid">
+
+<AdminFormTabs v-model="createTab" id="create-group-form" :tabs="authStore.isSimpleMode ? createTabOptions.slice(0, 1) : createTabOptions" />
+<section v-show="createTab === 'basic'" id="create-group-form-basic-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-group-form-basic-tab" data-admin-tab="basic">
+<div>
           <label class="input-label">{{ t("admin.groups.form.name") }}</label>
           <input
             v-model="createForm.name"
@@ -510,7 +513,7 @@
             data-tour="group-form-name"
           />
         </div>
-        <div>
+<div>
           <label class="input-label">{{
             t("admin.groups.form.description")
           }}</label>
@@ -521,7 +524,7 @@
             :placeholder="t('admin.groups.optionalDescription')"
           ></textarea>
         </div>
-        <div>
+<div>
           <label class="input-label">{{
             t("admin.groups.form.platform")
           }}</label>
@@ -533,8 +536,7 @@
           />
           <p class="input-hint">{{ t("admin.groups.platformHint") }}</p>
         </div>
-        <!-- 从分组复制账号 -->
-        <div v-if="!authStore.isSimpleMode && copyAccountsGroupOptions.length > 0">
+<div v-if="!authStore.isSimpleMode && copyAccountsGroupOptions.length > 0">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t("admin.groups.copyAccounts.title") }}
@@ -622,44 +624,10 @@
           </select>
           <p class="input-hint">{{ t("admin.groups.copyAccounts.hint") }}</p>
         </div>
-        <template v-if="!authStore.isSimpleMode">
-        <div>
-          <label class="input-label">{{
-            t("admin.groups.form.rateMultiplier")
-          }}</label>
-          <input
-            v-model.number="createForm.rate_multiplier"
-            type="number"
-            step="0.001"
-            min="0.001"
-            required
-            class="input"
-            data-tour="group-form-multiplier"
-          />
-          <p class="input-hint">{{ t("admin.groups.rateMultiplierHint") }}</p>
-        </div>
-        <div>
-          <label class="input-label">{{ t("admin.groups.form.rpmLimit") }}</label>
-          <input
-            v-model.number="createForm.rpm_limit"
-            type="number"
-            min="0"
-            step="1"
-            class="input"
-            :placeholder="t('admin.groups.form.rpmLimitPlaceholder')"
-          />
-          <p class="input-hint">{{ t("admin.groups.form.rpmLimitHint") }}</p>
-        </div>
-        <ReasoningEffortPolicyFields
-          v-if="supportsReasoningEffortPolicyPlatform(createForm.platform)"
-          ref="createReasoningEffortPolicyRef"
-          id-prefix="create-group-reasoning"
-          :platform="createForm.platform"
-          v-model:max-effort="createForm.max_reasoning_effort"
-          v-model:over-limit="createForm.max_reasoning_effort_over_limit"
-          v-model:mappings="createForm.reasoning_effort_mappings"
-        />
-        <div
+</section>
+<template v-if="!authStore.isSimpleMode">
+        <section v-show="createTab === 'basic'" class="admin-form-panel" role="group" aria-labelledby="create-group-form-basic-tab" data-admin-tab="basic">
+<div
           v-if="createForm.subscription_type !== 'subscription'"
           data-tour="group-form-exclusive"
         >
@@ -717,9 +685,24 @@
             </span>
           </div>
         </div>
-
-        <!-- Subscription Configuration -->
-        <div class="mt-4 border-t pt-4">
+</section>
+<section v-show="createTab === 'billing'" id="create-group-form-billing-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-group-form-billing-tab" data-admin-tab="billing">
+<div>
+          <label class="input-label">{{
+            t("admin.groups.form.rateMultiplier")
+          }}</label>
+          <input
+            v-model.number="createForm.rate_multiplier"
+            type="number"
+            step="0.001"
+            min="0.001"
+            required
+            class="input"
+            data-tour="group-form-multiplier"
+          />
+          <p class="input-hint">{{ t("admin.groups.rateMultiplierHint") }}</p>
+        </div>
+<div class="mt-4 border-t pt-4">
           <div>
             <label class="input-label">{{
               t("admin.groups.subscription.type")
@@ -779,130 +762,7 @@
             </div>
           </div>
         </div>
-
-        <div class="border-t pt-4">
-          <div class="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {{ t("admin.groups.modelAllowlist.title") }}
-              </label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t("admin.groups.modelAllowlist.hint") }}
-              </p>
-            </div>
-            <Toggle v-model="createModelAllowlistState.enabled" />
-          </div>
-          <div
-            v-if="createModelAllowlistState.enabled"
-            class="overflow-hidden rounded-lg border border-gray-200 bg-gray-50/50 dark:border-dark-600 dark:bg-dark-800/40"
-          >
-            <div
-              v-if="!createModelAllowlistLoading && createModelAllowlistState.items.length > 0"
-              class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-dark-600 dark:bg-dark-800"
-            >
-              <span class="text-gray-500 dark:text-gray-400">
-                {{
-                  t("admin.groups.modelAllowlist.selectedSummary", {
-                    selected: createModelAllowlistSelectedCount,
-                    total: createModelAllowlistState.items.length,
-                  })
-                }}
-              </span>
-              <div class="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  class="rounded px-2 py-1 font-medium text-primary-600 transition-colors hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20"
-                  @click="selectAllModelAllowlistItems(createModelAllowlistState)"
-                >
-                  {{ t("admin.groups.modelAllowlist.selectAll") }}
-                </button>
-                <button
-                  type="button"
-                  class="rounded px-2 py-1 font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
-                  @click="invertModelAllowlistSelection(createModelAllowlistState)"
-                >
-                  {{ t("admin.groups.modelAllowlist.invertSelection") }}
-                </button>
-              </div>
-            </div>
-            <div
-              class="max-h-64 space-y-2 overflow-y-auto p-2"
-            >
-              <p v-if="createModelAllowlistLoading" class="text-xs text-gray-500 dark:text-gray-400">
-                {{ t("admin.groups.modelAllowlist.loading") }}
-              </p>
-              <p
-                v-else-if="createModelAllowlistState.items.length === 0"
-                class="text-xs text-gray-500 dark:text-gray-400"
-              >
-                {{ t("admin.groups.modelAllowlist.empty") }}
-              </p>
-              <div
-                v-for="(item, index) in createModelAllowlistState.items"
-                :key="item.id"
-                class="flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-2 dark:border-dark-600 dark:bg-dark-800"
-              >
-                <input
-                  v-model="item.selected"
-                  type="checkbox"
-                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <span class="min-w-0 flex-1 break-all text-sm text-gray-700 dark:text-gray-300">
-                  {{ item.id }}
-                  <span
-                    v-if="item.id.includes('*')"
-                    class="ml-1 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-                  >
-                    {{ t("admin.groups.modelAllowlist.wildcardTag") }}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  :disabled="index === 0"
-                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
-                  @click="moveCreateModelAllowlistItem(index, index - 1)"
-                >
-                  <Icon name="arrowUp" size="sm" />
-                </button>
-                <button
-                  type="button"
-                  :disabled="index === createModelAllowlistState.items.length - 1"
-                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
-                  @click="moveCreateModelAllowlistItem(index, index + 1)"
-                >
-                  <Icon name="arrowDown" size="sm" />
-                </button>
-              </div>
-            </div>
-            <div class="border-t border-gray-200 px-3 py-2 dark:border-dark-600">
-              <div class="flex items-center gap-2">
-                <input
-                  v-model="createAllowlistCustomEntry"
-                  type="text"
-                  :placeholder="t('admin.groups.modelAllowlist.customPlaceholder')"
-                  class="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none dark:border-dark-500 dark:bg-dark-700 dark:text-gray-200"
-                  @keydown.enter.prevent="submitCreateAllowlistCustomEntry"
-                />
-                <button
-                  type="button"
-                  class="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-                  @click="submitCreateAllowlistCustomEntry"
-                >
-                  {{ t("admin.groups.modelAllowlist.addCustom") }}
-                </button>
-              </div>
-              <p
-                v-if="createAllowlistCustomErrorKey"
-                class="mt-1 text-xs text-red-500"
-              >
-                {{ t(createAllowlistCustomErrorKey) }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 图片生成计费配置 -->
-        <div
+<div
           v-if="supportsImagePricingPlatform(createForm.platform)"
           class="border-t pt-4"
         >
@@ -1052,9 +912,7 @@
             {{ t("admin.groups.imagePricing.batchGeminiOnlyHint") }}
           </p>
         </div>
-
-        <!-- 视频生成计费配置（仅 Grok 平台） -->
-        <div
+<div
           v-if="supportsVideoPricingPlatform(createForm.platform)"
           class="border-t pt-4"
         >
@@ -1183,9 +1041,7 @@
             </div>
           </div>
         </div>
-
-        <!-- 高峰时段倍率配置（仅订阅类型分组） -->
-        <div v-if="createForm.subscription_type === 'subscription'" class="border-t pt-4">
+<div v-if="createForm.subscription_type === 'subscription'" class="border-t pt-4">
           <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
@@ -1230,9 +1086,7 @@
             </div>
           </div>
         </div>
-
-        <!-- 分组利润控制（五个平台 token 请求） -->
-        <div v-if="isProfitControlPlatform(createForm.platform)" class="border-t pt-4">
+<div v-if="isProfitControlPlatform(createForm.platform)" class="border-t pt-4">
           <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input
               v-model="createForm.profit_control_enabled"
@@ -1280,9 +1134,435 @@
             </div>
           </div>
         </div>
-
-        <!-- 支持的模型系列（仅 antigravity 平台） -->
-        <div v-if="createForm.platform === 'antigravity'" class="border-t pt-4">
+<div
+          v-if="createForm.platform === 'openai'"
+          class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
+        >
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            {{ t("admin.groups.webSearchPricing.title") }}
+          </h4>
+          <div>
+            <label class="input-label">{{
+              t("admin.groups.webSearchPricing.pricePerCall")
+            }}</label>
+            <input
+              v-model.number="createForm.web_search_price_per_call"
+              type="number"
+              step="0.001"
+              min="0"
+              placeholder="0.01"
+              class="input"
+            />
+            <p class="input-hint">
+              {{ t("admin.groups.webSearchPricing.pricePerCallHint") }}
+            </p>
+            <div
+              class="mt-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-600 dark:bg-dark-700 dark:text-gray-300"
+            >
+              {{
+                t("admin.groups.webSearchPricing.finalPricePreview", {
+                  price: createWebSearchFinalPricePreview,
+                })
+              }}
+            </div>
+          </div>
+        </div>
+<div class="border-t border-gray-200 pt-4 mt-4 dark:border-dark-400">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t("admin.groups.modelPricing.title") }}</h4>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t("admin.groups.modelPricing.description") }}</p>
+            </div>
+            <button type="button" class="btn btn-secondary shrink-0 whitespace-nowrap" @click="addGroupPricing(createForm.model_pricing)">
+              <Icon name="plus" size="sm" class="mr-1" />{{ t("admin.groups.modelPricing.add") }}
+            </button>
+          </div>
+          <label class="mt-3 flex items-start gap-2">
+            <input v-model="createForm.long_context_pricing_enabled" type="checkbox" class="mt-0.5" />
+            <span><span class="block text-sm text-gray-700 dark:text-gray-300">{{ t("admin.groups.modelPricing.longContext") }}</span><span class="block text-xs text-gray-500">{{ t("admin.groups.modelPricing.longContextHint") }}</span></span>
+          </label>
+          <div class="mt-3 space-y-2">
+            <PricingEntryCard v-for="(entry, index) in createForm.model_pricing" :key="index" :entry="entry" :platform="createForm.platform" hide-token-intervals @update="createForm.model_pricing[index] = $event" @remove="createForm.model_pricing.splice(index, 1)" />
+          </div>
+        </div>
+<div
+          v-if="createForm.platform === 'grok'"
+          class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
+        >
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {{ t("admin.groups.explicitPricing.title") }}
+          </h4>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            {{ t("admin.groups.explicitPricing.description") }}
+          </p>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div>
+              <label class="input-label">{{ t("admin.groups.explicitPricing.searchPricePer1k") }}</label>
+              <input
+                v-model.number="createForm.search_price_per_1k"
+                type="number"
+                step="0.000001"
+                min="0"
+                class="input"
+                :placeholder="t('admin.groups.explicitPricing.pricePlaceholder')"
+                data-testid="create-search-price"
+              />
+            </div>
+            <div>
+              <label class="input-label">{{ t("admin.groups.voicePricing.audioRealtimePerMin") }}</label>
+              <input
+                v-model.number="createForm.audio_realtime_price_per_min"
+                type="number"
+                step="0.000001"
+                min="0"
+                class="input"
+                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
+                data-testid="create-audio-realtime-price"
+              />
+            </div>
+            <div>
+              <label class="input-label">{{ t("admin.groups.voicePricing.audioTtsPerMillionChars") }}</label>
+              <input
+                v-model.number="createForm.audio_tts_price_per_million_chars"
+                type="number"
+                step="0.000001"
+                min="0"
+                class="input"
+                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
+                data-testid="create-audio-tts-price"
+              />
+            </div>
+            <div>
+              <label class="input-label">{{ t("admin.groups.voicePricing.audioSttPerHour") }}</label>
+              <input
+                v-model.number="createForm.audio_stt_price_per_hour"
+                type="number"
+                step="0.000001"
+                min="0"
+                class="input"
+                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
+                data-testid="create-audio-stt-price"
+              />
+            </div>
+          </div>
+        </div>
+</section>
+<section v-show="createTab === 'routing'" id="create-group-form-routing-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-group-form-routing-tab" data-admin-tab="routing">
+<ReasoningEffortPolicyFields
+          v-if="supportsReasoningEffortPolicyPlatform(createForm.platform)"
+          ref="createReasoningEffortPolicyRef"
+          id-prefix="create-group-reasoning"
+          :platform="createForm.platform"
+          v-model:max-effort="createForm.max_reasoning_effort"
+          v-model:over-limit="createForm.max_reasoning_effort_over_limit"
+          v-model:mappings="createForm.reasoning_effort_mappings"
+        />
+<div class="border-t pt-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t("admin.groups.modelAllowlist.title") }}
+              </label>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.groups.modelAllowlist.hint") }}
+              </p>
+            </div>
+            <Toggle v-model="createModelAllowlistState.enabled" />
+          </div>
+          <div
+            v-if="createModelAllowlistState.enabled"
+            class="overflow-hidden rounded-lg border border-gray-200 bg-gray-50/50 dark:border-dark-600 dark:bg-dark-800/40"
+          >
+            <div
+              v-if="!createModelAllowlistLoading && createModelAllowlistState.items.length > 0"
+              class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-dark-600 dark:bg-dark-800"
+            >
+              <span class="text-gray-500 dark:text-gray-400">
+                {{
+                  t("admin.groups.modelAllowlist.selectedSummary", {
+                    selected: createModelAllowlistSelectedCount,
+                    total: createModelAllowlistState.items.length,
+                  })
+                }}
+              </span>
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  class="rounded px-2 py-1 font-medium text-primary-600 transition-colors hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20"
+                  @click="selectAllModelAllowlistItems(createModelAllowlistState)"
+                >
+                  {{ t("admin.groups.modelAllowlist.selectAll") }}
+                </button>
+                <button
+                  type="button"
+                  class="rounded px-2 py-1 font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                  @click="invertModelAllowlistSelection(createModelAllowlistState)"
+                >
+                  {{ t("admin.groups.modelAllowlist.invertSelection") }}
+                </button>
+              </div>
+            </div>
+            <div
+              class="max-h-64 space-y-2 overflow-y-auto p-2"
+            >
+              <p v-if="createModelAllowlistLoading" class="text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.groups.modelAllowlist.loading") }}
+              </p>
+              <p
+                v-else-if="createModelAllowlistState.items.length === 0"
+                class="text-xs text-gray-500 dark:text-gray-400"
+              >
+                {{ t("admin.groups.modelAllowlist.empty") }}
+              </p>
+              <div
+                v-for="(item, index) in createModelAllowlistState.items"
+                :key="item.id"
+                class="flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-2 dark:border-dark-600 dark:bg-dark-800"
+              >
+                <input
+                  v-model="item.selected"
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span class="min-w-0 flex-1 break-all text-sm text-gray-700 dark:text-gray-300">
+                  {{ item.id }}
+                  <span
+                    v-if="item.id.includes('*')"
+                    class="ml-1 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
+                  >
+                    {{ t("admin.groups.modelAllowlist.wildcardTag") }}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  :disabled="index === 0"
+                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
+                  @click="moveCreateModelAllowlistItem(index, index - 1)"
+                >
+                  <Icon name="arrowUp" size="sm" />
+                </button>
+                <button
+                  type="button"
+                  :disabled="index === createModelAllowlistState.items.length - 1"
+                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
+                  @click="moveCreateModelAllowlistItem(index, index + 1)"
+                >
+                  <Icon name="arrowDown" size="sm" />
+                </button>
+              </div>
+            </div>
+            <div class="border-t border-gray-200 px-3 py-2 dark:border-dark-600">
+              <div class="flex items-center gap-2">
+                <input
+                  v-model="createAllowlistCustomEntry"
+                  type="text"
+                  :placeholder="t('admin.groups.modelAllowlist.customPlaceholder')"
+                  class="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none dark:border-dark-500 dark:bg-dark-700 dark:text-gray-200"
+                  @keydown.enter.prevent="submitCreateAllowlistCustomEntry"
+                />
+                <button
+                  type="button"
+                  class="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-700"
+                  @click="submitCreateAllowlistCustomEntry"
+                >
+                  {{ t("admin.groups.modelAllowlist.addCustom") }}
+                </button>
+              </div>
+              <p
+                v-if="createAllowlistCustomErrorKey"
+                class="mt-1 text-xs text-red-500"
+              >
+                {{ t(createAllowlistCustomErrorKey) }}
+              </p>
+            </div>
+          </div>
+        </div>
+<div v-if="createForm.platform === 'anthropic'" class="border-t pt-4">
+          <div class="mb-1.5 flex items-center gap-1">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t("admin.groups.modelRouting.title") }}
+            </label>
+            <!-- Help Tooltip -->
+            <div class="group relative inline-flex">
+              <Icon
+                name="questionCircle"
+                size="sm"
+                :stroke-width="2"
+                class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
+              />
+              <div
+                class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-80 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
+              >
+                <div
+                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                >
+                  <p class="text-xs leading-relaxed text-gray-300">
+                    {{ t("admin.groups.modelRouting.tooltip") }}
+                  </p>
+                  <div
+                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 启用开关 -->
+          <div class="flex items-center gap-3 mb-3">
+            <Toggle v-model="createForm.model_routing_enabled" />
+            <span class="text-sm text-gray-500 dark:text-gray-400">
+              {{
+                createForm.model_routing_enabled
+                  ? t("admin.groups.modelRouting.enabled")
+                  : t("admin.groups.modelRouting.disabled")
+              }}
+            </span>
+          </div>
+          <p
+            v-if="!createForm.model_routing_enabled"
+            class="text-xs text-gray-500 dark:text-gray-400 mb-3"
+          >
+            {{ t("admin.groups.modelRouting.disabledHint") }}
+          </p>
+          <p v-else class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            {{ t("admin.groups.modelRouting.noRulesHint") }}
+          </p>
+          <!-- 路由规则列表（仅在启用时显示） -->
+          <div v-if="createForm.model_routing_enabled" class="space-y-3">
+            <div
+              v-for="rule in createModelRoutingRules"
+              :key="getCreateRuleRenderKey(rule)"
+              class="rounded-lg border border-gray-200 p-3 dark:border-dark-600"
+            >
+              <div class="flex items-start gap-3">
+                <div class="flex-1 space-y-2">
+                  <div>
+                    <label class="input-label text-xs">{{
+                      t("admin.groups.modelRouting.modelPattern")
+                    }}</label>
+                    <input
+                      v-model="rule.pattern"
+                      type="text"
+                      class="input text-sm"
+                      :placeholder="
+                        t('admin.groups.modelRouting.modelPatternPlaceholder')
+                      "
+                    />
+                  </div>
+                  <div>
+                    <label class="input-label text-xs">{{
+                      t("admin.groups.modelRouting.accounts")
+                    }}</label>
+                    <!-- 已选账号标签 -->
+                    <div
+                      v-if="rule.accounts.length > 0"
+                      class="flex flex-wrap gap-1.5 mb-2"
+                    >
+                      <span
+                        v-for="account in rule.accounts"
+                        :key="account.id"
+                        class="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                      >
+                        {{ account.name }}
+                        <button
+                          type="button"
+                          @click="removeSelectedAccount(rule, account.id)"
+                          class="ml-0.5 text-primary-500 hover:text-primary-700 dark:hover:text-primary-200"
+                        >
+                          <Icon name="x" size="xs" />
+                        </button>
+                      </span>
+                    </div>
+                    <!-- 账号搜索输入框 -->
+                    <div class="relative account-search-container">
+                      <input
+                        v-model="
+                          accountSearchKeyword[getCreateRuleSearchKey(rule)]
+                        "
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="
+                          t(
+                            'admin.groups.modelRouting.searchAccountPlaceholder',
+                          )
+                        "
+                        @input="searchAccountsByRule(rule)"
+                        @focus="onAccountSearchFocus(rule)"
+                      />
+                      <!-- 搜索结果下拉框 -->
+                      <div
+                        v-if="
+                          showAccountDropdown[getCreateRuleSearchKey(rule)] &&
+                          accountSearchResults[getCreateRuleSearchKey(rule)]
+                            ?.length > 0
+                        "
+                        class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                      >
+                        <button
+                          v-for="account in accountSearchResults[
+                            getCreateRuleSearchKey(rule)
+                          ]"
+                          :key="account.id"
+                          type="button"
+                          @click="selectAccount(rule, account)"
+                          class="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-700"
+                          :class="{
+                            'opacity-50': rule.accounts.some(
+                              (a) => a.id === account.id,
+                            ),
+                          }"
+                          :disabled="
+                            rule.accounts.some((a) => a.id === account.id)
+                          "
+                        >
+                          <span>{{ account.name }}</span>
+                          <span class="ml-2 text-xs text-gray-400"
+                            >#{{ account.id }}</span
+                          >
+                        </button>
+                      </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">
+                      {{ t("admin.groups.modelRouting.accountsHint") }}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  @click="removeCreateRoutingRule(rule)"
+                  class="mt-5 p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                  :title="t('admin.groups.modelRouting.removeRule')"
+                >
+                  <Icon name="trash" size="sm" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- 添加规则按钮（仅在启用时显示） -->
+          <button
+            v-if="createForm.model_routing_enabled"
+            type="button"
+            @click="addCreateRoutingRule"
+            class="mt-3 flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+          >
+            <Icon name="plus" size="sm" />
+            {{ t("admin.groups.modelRouting.addRule") }}
+          </button>
+        </div>
+</section>
+<section v-show="createTab === 'advanced'" id="create-group-form-advanced-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-group-form-advanced-tab" data-admin-tab="advanced">
+<div>
+          <label class="input-label">{{ t("admin.groups.form.rpmLimit") }}</label>
+          <input
+            v-model.number="createForm.rpm_limit"
+            type="number"
+            min="0"
+            step="1"
+            class="input"
+            :placeholder="t('admin.groups.form.rpmLimitPlaceholder')"
+          />
+          <p class="input-hint">{{ t("admin.groups.form.rpmLimitHint") }}</p>
+        </div>
+<div v-if="createForm.platform === 'antigravity'" class="border-t pt-4">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t("admin.groups.supportedScopes.title") }}
@@ -1354,9 +1634,7 @@
             {{ t("admin.groups.supportedScopes.hint") }}
           </p>
         </div>
-
-        <!-- MCP XML 协议注入（仅 antigravity 平台） -->
-        <div v-if="createForm.platform === 'antigravity'" class="border-t pt-4">
+<div v-if="createForm.platform === 'antigravity'" class="border-t pt-4">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t("admin.groups.mcpXml.title") }}
@@ -1395,9 +1673,7 @@
             </span>
           </div>
         </div>
-
-        <!-- Claude Code 客户端限制（仅 anthropic 平台） -->
-        <div v-if="createForm.platform === 'anthropic'" class="border-t pt-4">
+<div v-if="createForm.platform === 'anthropic'" class="border-t pt-4">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t("admin.groups.claudeCode.title") }}
@@ -1451,126 +1727,7 @@
             </p>
           </div>
         </div>
-
-        <!-- Codex 网页搜索按次计费（仅 openai 平台） -->
-        <div
-          v-if="createForm.platform === 'openai'"
-          class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-        >
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            {{ t("admin.groups.webSearchPricing.title") }}
-          </h4>
-          <div>
-            <label class="input-label">{{
-              t("admin.groups.webSearchPricing.pricePerCall")
-            }}</label>
-            <input
-              v-model.number="createForm.web_search_price_per_call"
-              type="number"
-              step="0.001"
-              min="0"
-              placeholder="0.01"
-              class="input"
-            />
-            <p class="input-hint">
-              {{ t("admin.groups.webSearchPricing.pricePerCallHint") }}
-            </p>
-            <div
-              class="mt-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-600 dark:bg-dark-700 dark:text-gray-300"
-            >
-              {{
-                t("admin.groups.webSearchPricing.finalPricePreview", {
-                  price: createWebSearchFinalPricePreview,
-                })
-              }}
-            </div>
-          </div>
-        </div>
-
-
-        <div class="border-t border-gray-200 pt-4 mt-4 dark:border-dark-400">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="min-w-0 flex-1">
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t("admin.groups.modelPricing.title") }}</h4>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t("admin.groups.modelPricing.description") }}</p>
-            </div>
-            <button type="button" class="btn btn-secondary shrink-0 whitespace-nowrap" @click="addGroupPricing(createForm.model_pricing)">
-              <Icon name="plus" size="sm" class="mr-1" />{{ t("admin.groups.modelPricing.add") }}
-            </button>
-          </div>
-          <label class="mt-3 flex items-start gap-2">
-            <input v-model="createForm.long_context_pricing_enabled" type="checkbox" class="mt-0.5" />
-            <span><span class="block text-sm text-gray-700 dark:text-gray-300">{{ t("admin.groups.modelPricing.longContext") }}</span><span class="block text-xs text-gray-500">{{ t("admin.groups.modelPricing.longContextHint") }}</span></span>
-          </label>
-          <div class="mt-3 space-y-2">
-            <PricingEntryCard v-for="(entry, index) in createForm.model_pricing" :key="index" :entry="entry" :platform="createForm.platform" hide-token-intervals @update="createForm.model_pricing[index] = $event" @remove="createForm.model_pricing.splice(index, 1)" />
-          </div>
-        </div>
-
-        <!-- Grok Voice 显式定价（仅 grok 平台） -->
-        <div
-          v-if="createForm.platform === 'grok'"
-          class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-        >
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {{ t("admin.groups.explicitPricing.title") }}
-          </h4>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            {{ t("admin.groups.explicitPricing.description") }}
-          </p>
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div>
-              <label class="input-label">{{ t("admin.groups.explicitPricing.searchPricePer1k") }}</label>
-              <input
-                v-model.number="createForm.search_price_per_1k"
-                type="number"
-                step="0.000001"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.explicitPricing.pricePlaceholder')"
-                data-testid="create-search-price"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t("admin.groups.voicePricing.audioRealtimePerMin") }}</label>
-              <input
-                v-model.number="createForm.audio_realtime_price_per_min"
-                type="number"
-                step="0.000001"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                data-testid="create-audio-realtime-price"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t("admin.groups.voicePricing.audioTtsPerMillionChars") }}</label>
-              <input
-                v-model.number="createForm.audio_tts_price_per_million_chars"
-                type="number"
-                step="0.000001"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                data-testid="create-audio-tts-price"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t("admin.groups.voicePricing.audioSttPerHour") }}</label>
-              <input
-                v-model.number="createForm.audio_stt_price_per_hour"
-                type="number"
-                step="0.000001"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                data-testid="create-audio-stt-price"
-              />
-            </div>
-          </div>
-        </div>
-        <!-- OpenAI Fast 开关（OpenAI 与 Composite 平台） -->
-        <div
+<div
           v-if="supportsGroupOpenAIFast(createForm.platform)"
           class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
         >
@@ -1604,9 +1761,7 @@
             {{ t("admin.groups.openaiFast.freeHint") }}
           </p>
         </div>
-
-        <!-- Codex Live 开关（OpenAI 与 Composite 平台） -->
-        <div
+<div
           v-if="supportsLivePlatform(createForm.platform)"
           class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
         >
@@ -1626,9 +1781,7 @@
             {{ t("admin.groups.openaiLive.hint") }}
           </p>
         </div>
-
-        <!-- OpenAI Messages 调度配置（OpenAI 与 Composite 平台） -->
-        <div
+<div
           v-if="supportsMessagesDispatchPlatform(createForm.platform)"
           class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
         >
@@ -1838,9 +1991,7 @@
             </div>
           </div>
         </div>
-
-        <!-- 账号过滤控制 (OpenAI/Antigravity/Anthropic/Gemini) -->
-        <div
+<div
           v-if="
             ['openai', 'antigravity', 'anthropic', 'gemini'].includes(
               createForm.platform,
@@ -1886,9 +2037,7 @@
             <Toggle v-model="createForm.require_privacy_set" />
           </div>
         </div>
-
-        <!-- 无效请求兜底（仅 anthropic/antigravity 平台，且非订阅分组） -->
-        <div
+<div
           v-if="
             ['anthropic', 'antigravity'].includes(createForm.platform) &&
             createForm.subscription_type !== 'subscription'
@@ -1907,186 +2056,15 @@
             {{ t("admin.groups.invalidRequestFallback.hint") }}
           </p>
         </div>
-
-        <!-- 模型路由配置（仅 anthropic 平台） -->
-        <div v-if="createForm.platform === 'anthropic'" class="border-t pt-4">
-          <div class="mb-1.5 flex items-center gap-1">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ t("admin.groups.modelRouting.title") }}
-            </label>
-            <!-- Help Tooltip -->
-            <div class="group relative inline-flex">
-              <Icon
-                name="questionCircle"
-                size="sm"
-                :stroke-width="2"
-                class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-              />
-              <div
-                class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-80 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-              >
-                <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                >
-                  <p class="text-xs leading-relaxed text-gray-300">
-                    {{ t("admin.groups.modelRouting.tooltip") }}
-                  </p>
-                  <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- 启用开关 -->
-          <div class="flex items-center gap-3 mb-3">
-            <Toggle v-model="createForm.model_routing_enabled" />
-            <span class="text-sm text-gray-500 dark:text-gray-400">
-              {{
-                createForm.model_routing_enabled
-                  ? t("admin.groups.modelRouting.enabled")
-                  : t("admin.groups.modelRouting.disabled")
-              }}
-            </span>
-          </div>
-          <p
-            v-if="!createForm.model_routing_enabled"
-            class="text-xs text-gray-500 dark:text-gray-400 mb-3"
-          >
-            {{ t("admin.groups.modelRouting.disabledHint") }}
-          </p>
-          <p v-else class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            {{ t("admin.groups.modelRouting.noRulesHint") }}
-          </p>
-          <!-- 路由规则列表（仅在启用时显示） -->
-          <div v-if="createForm.model_routing_enabled" class="space-y-3">
-            <div
-              v-for="rule in createModelRoutingRules"
-              :key="getCreateRuleRenderKey(rule)"
-              class="rounded-lg border border-gray-200 p-3 dark:border-dark-600"
-            >
-              <div class="flex items-start gap-3">
-                <div class="flex-1 space-y-2">
-                  <div>
-                    <label class="input-label text-xs">{{
-                      t("admin.groups.modelRouting.modelPattern")
-                    }}</label>
-                    <input
-                      v-model="rule.pattern"
-                      type="text"
-                      class="input text-sm"
-                      :placeholder="
-                        t('admin.groups.modelRouting.modelPatternPlaceholder')
-                      "
-                    />
-                  </div>
-                  <div>
-                    <label class="input-label text-xs">{{
-                      t("admin.groups.modelRouting.accounts")
-                    }}</label>
-                    <!-- 已选账号标签 -->
-                    <div
-                      v-if="rule.accounts.length > 0"
-                      class="flex flex-wrap gap-1.5 mb-2"
-                    >
-                      <span
-                        v-for="account in rule.accounts"
-                        :key="account.id"
-                        class="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-                      >
-                        {{ account.name }}
-                        <button
-                          type="button"
-                          @click="removeSelectedAccount(rule, account.id)"
-                          class="ml-0.5 text-primary-500 hover:text-primary-700 dark:hover:text-primary-200"
-                        >
-                          <Icon name="x" size="xs" />
-                        </button>
-                      </span>
-                    </div>
-                    <!-- 账号搜索输入框 -->
-                    <div class="relative account-search-container">
-                      <input
-                        v-model="
-                          accountSearchKeyword[getCreateRuleSearchKey(rule)]
-                        "
-                        type="text"
-                        class="input text-sm"
-                        :placeholder="
-                          t(
-                            'admin.groups.modelRouting.searchAccountPlaceholder',
-                          )
-                        "
-                        @input="searchAccountsByRule(rule)"
-                        @focus="onAccountSearchFocus(rule)"
-                      />
-                      <!-- 搜索结果下拉框 -->
-                      <div
-                        v-if="
-                          showAccountDropdown[getCreateRuleSearchKey(rule)] &&
-                          accountSearchResults[getCreateRuleSearchKey(rule)]
-                            ?.length > 0
-                        "
-                        class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
-                      >
-                        <button
-                          v-for="account in accountSearchResults[
-                            getCreateRuleSearchKey(rule)
-                          ]"
-                          :key="account.id"
-                          type="button"
-                          @click="selectAccount(rule, account)"
-                          class="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-700"
-                          :class="{
-                            'opacity-50': rule.accounts.some(
-                              (a) => a.id === account.id,
-                            ),
-                          }"
-                          :disabled="
-                            rule.accounts.some((a) => a.id === account.id)
-                          "
-                        >
-                          <span>{{ account.name }}</span>
-                          <span class="ml-2 text-xs text-gray-400"
-                            >#{{ account.id }}</span
-                          >
-                        </button>
-                      </div>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-1">
-                      {{ t("admin.groups.modelRouting.accountsHint") }}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  @click="removeCreateRoutingRule(rule)"
-                  class="mt-5 p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                  :title="t('admin.groups.modelRouting.removeRule')"
-                >
-                  <Icon name="trash" size="sm" />
-                </button>
-              </div>
-            </div>
-          </div>
-          <!-- 添加规则按钮（仅在启用时显示） -->
-          <button
-            v-if="createForm.model_routing_enabled"
-            type="button"
-            @click="addCreateRoutingRule"
-            class="mt-3 flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-          >
-            <Icon name="plus" size="sm" />
-            {{ t("admin.groups.modelRouting.addRule") }}
-          </button>
-        </div>
+</section>
         </template>
+
       </form>
 
       <template #footer>
         <div class="flex justify-end gap-3 pt-4">
           <button
-            @click="closeCreateModal"
+            @click="createDialog?.requestClose()"
             type="button"
             class="btn btn-secondary"
           >
@@ -2127,7 +2105,7 @@
 
     <!-- Edit Group Modal -->
     <BaseDialog
-      :show="showEditModal"
+      :show="showEditModal" presentation="editor" ref="editDialog" :dirty="editTabDirty" :busy="submitting"
       :title="t('admin.groups.editGroup')"
       width="wide"
       @close="closeEditModal"
@@ -2137,8 +2115,11 @@
         id="edit-group-form"
         @submit.prevent="handleUpdateGroup"
         class="space-y-5"
-      >
-        <div>
+       @invalid.capture="editTabInvalid">
+
+<AdminFormTabs v-model="editTab" id="edit-group-form" :tabs="authStore.isSimpleMode ? editTabOptions.slice(0, 1) : editTabOptions" />
+<section v-show="editTab === 'basic'" id="edit-group-form-basic-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="edit-group-form-basic-tab" data-admin-tab="basic">
+<div>
           <label class="input-label">{{ t("admin.groups.form.name") }}</label>
           <input
             v-model="editForm.name"
@@ -2148,7 +2129,7 @@
             data-tour="edit-group-form-name"
           />
         </div>
-        <div>
+<div>
           <label class="input-label">{{
             t("admin.groups.form.description")
           }}</label>
@@ -2158,7 +2139,7 @@
             class="input"
           ></textarea>
         </div>
-        <div>
+<div>
           <label class="input-label">{{
             t("admin.groups.form.platform")
           }}</label>
@@ -2170,9 +2151,10 @@
           />
           <p class="input-hint">{{ t("admin.groups.platformNotEditable") }}</p>
         </div>
-        <template v-if="!authStore.isSimpleMode">
-        <!-- 从分组复制账号（编辑时） -->
-        <div v-if="copyAccountsGroupOptionsForEdit.length > 0">
+</section>
+<template v-if="!authStore.isSimpleMode">
+        <section v-show="editTab === 'basic'" class="admin-form-panel" role="group" aria-labelledby="edit-group-form-basic-tab" data-admin-tab="basic">
+<div v-if="copyAccountsGroupOptionsForEdit.length > 0">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t("admin.groups.copyAccounts.title") }}
@@ -2262,42 +2244,7 @@
             {{ t("admin.groups.copyAccounts.hintEdit") }}
           </p>
         </div>
-        <div>
-          <label class="input-label">{{
-            t("admin.groups.form.rateMultiplier")
-          }}</label>
-          <input
-            v-model.number="editForm.rate_multiplier"
-            type="number"
-            step="0.001"
-            min="0.001"
-            required
-            class="input"
-            data-tour="group-form-multiplier"
-          />
-        </div>
-        <div>
-          <label class="input-label">{{ t("admin.groups.form.rpmLimit") }}</label>
-          <input
-            v-model.number="editForm.rpm_limit"
-            type="number"
-            min="0"
-            step="1"
-            class="input"
-            :placeholder="t('admin.groups.form.rpmLimitPlaceholder')"
-          />
-          <p class="input-hint">{{ t("admin.groups.form.rpmLimitHint") }}</p>
-        </div>
-        <ReasoningEffortPolicyFields
-          v-if="supportsReasoningEffortPolicyPlatform(editForm.platform)"
-          ref="editReasoningEffortPolicyRef"
-          id-prefix="edit-group-reasoning"
-          :platform="editForm.platform"
-          v-model:max-effort="editForm.max_reasoning_effort"
-          v-model:over-limit="editForm.max_reasoning_effort_over_limit"
-          v-model:mappings="editForm.reasoning_effort_mappings"
-        />
-        <div v-if="editForm.subscription_type !== 'subscription'">
+<div v-if="editForm.subscription_type !== 'subscription'">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t("admin.groups.form.exclusive") }}
@@ -2352,13 +2299,27 @@
             </span>
           </div>
         </div>
-        <div>
+<div>
           <label class="input-label">{{ t("admin.groups.form.status") }}</label>
           <Select v-model="editForm.status" :options="editStatusOptions" />
         </div>
-
-        <!-- Subscription Configuration -->
-        <div class="mt-4 border-t pt-4">
+</section>
+<section v-show="editTab === 'billing'" id="edit-group-form-billing-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="edit-group-form-billing-tab" data-admin-tab="billing">
+<div>
+          <label class="input-label">{{
+            t("admin.groups.form.rateMultiplier")
+          }}</label>
+          <input
+            v-model.number="editForm.rate_multiplier"
+            type="number"
+            step="0.001"
+            min="0.001"
+            required
+            class="input"
+            data-tour="group-form-multiplier"
+          />
+        </div>
+<div class="mt-4 border-t pt-4">
           <div>
             <label class="input-label">{{
               t("admin.groups.subscription.type")
@@ -2419,130 +2380,7 @@
             </div>
           </div>
         </div>
-
-        <div class="border-t pt-4">
-          <div class="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {{ t("admin.groups.modelAllowlist.title") }}
-              </label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t("admin.groups.modelAllowlist.hint") }}
-              </p>
-            </div>
-            <Toggle v-model="editModelAllowlistState.enabled" />
-          </div>
-          <div
-            v-if="editModelAllowlistState.enabled"
-            class="overflow-hidden rounded-lg border border-gray-200 bg-gray-50/50 dark:border-dark-600 dark:bg-dark-800/40"
-          >
-            <div
-              v-if="!editModelAllowlistLoading && editModelAllowlistState.items.length > 0"
-              class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-dark-600 dark:bg-dark-800"
-            >
-              <span class="text-gray-500 dark:text-gray-400">
-                {{
-                  t("admin.groups.modelAllowlist.selectedSummary", {
-                    selected: editModelAllowlistSelectedCount,
-                    total: editModelAllowlistState.items.length,
-                  })
-                }}
-              </span>
-              <div class="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  class="rounded px-2 py-1 font-medium text-primary-600 transition-colors hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20"
-                  @click="selectAllModelAllowlistItems(editModelAllowlistState)"
-                >
-                  {{ t("admin.groups.modelAllowlist.selectAll") }}
-                </button>
-                <button
-                  type="button"
-                  class="rounded px-2 py-1 font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
-                  @click="invertModelAllowlistSelection(editModelAllowlistState)"
-                >
-                  {{ t("admin.groups.modelAllowlist.invertSelection") }}
-                </button>
-              </div>
-            </div>
-            <div
-              class="max-h-64 space-y-2 overflow-y-auto p-2"
-            >
-              <p v-if="editModelAllowlistLoading" class="text-xs text-gray-500 dark:text-gray-400">
-                {{ t("admin.groups.modelAllowlist.loading") }}
-              </p>
-              <p
-                v-else-if="editModelAllowlistState.items.length === 0"
-                class="text-xs text-gray-500 dark:text-gray-400"
-              >
-                {{ t("admin.groups.modelAllowlist.empty") }}
-              </p>
-              <div
-                v-for="(item, index) in editModelAllowlistState.items"
-                :key="item.id"
-                class="flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-2 dark:border-dark-600 dark:bg-dark-800"
-              >
-                <input
-                  v-model="item.selected"
-                  type="checkbox"
-                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <span class="min-w-0 flex-1 break-all text-sm text-gray-700 dark:text-gray-300">
-                  {{ item.id }}
-                  <span
-                    v-if="item.id.includes('*')"
-                    class="ml-1 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-                  >
-                    {{ t("admin.groups.modelAllowlist.wildcardTag") }}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  :disabled="index === 0"
-                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
-                  @click="moveEditModelAllowlistItem(index, index - 1)"
-                >
-                  <Icon name="arrowUp" size="sm" />
-                </button>
-                <button
-                  type="button"
-                  :disabled="index === editModelAllowlistState.items.length - 1"
-                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
-                  @click="moveEditModelAllowlistItem(index, index + 1)"
-                >
-                  <Icon name="arrowDown" size="sm" />
-                </button>
-              </div>
-            </div>
-            <div class="border-t border-gray-200 px-3 py-2 dark:border-dark-600">
-              <div class="flex items-center gap-2">
-                <input
-                  v-model="editAllowlistCustomEntry"
-                  type="text"
-                  :placeholder="t('admin.groups.modelAllowlist.customPlaceholder')"
-                  class="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none dark:border-dark-500 dark:bg-dark-700 dark:text-gray-200"
-                  @keydown.enter.prevent="submitEditAllowlistCustomEntry"
-                />
-                <button
-                  type="button"
-                  class="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-                  @click="submitEditAllowlistCustomEntry"
-                >
-                  {{ t("admin.groups.modelAllowlist.addCustom") }}
-                </button>
-              </div>
-              <p
-                v-if="editAllowlistCustomErrorKey"
-                class="mt-1 text-xs text-red-500"
-              >
-                {{ t(editAllowlistCustomErrorKey) }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 图片生成计费配置 -->
-        <div
+<div
           v-if="supportsImagePricingPlatform(editForm.platform)"
           class="border-t pt-4"
         >
@@ -2692,9 +2530,7 @@
             {{ t("admin.groups.imagePricing.batchGeminiOnlyHint") }}
           </p>
         </div>
-
-        <!-- 视频生成计费配置（仅 Grok 平台） -->
-        <div
+<div
           v-if="supportsVideoPricingPlatform(editForm.platform)"
           class="border-t pt-4"
         >
@@ -2823,9 +2659,7 @@
             </div>
           </div>
         </div>
-
-        <!-- 高峰时段倍率配置（仅订阅类型分组） -->
-        <div v-if="editForm.subscription_type === 'subscription'" class="border-t pt-4">
+<div v-if="editForm.subscription_type === 'subscription'" class="border-t pt-4">
           <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
@@ -2870,9 +2704,7 @@
             </div>
           </div>
         </div>
-
-        <!-- 分组利润控制（五个平台 token 请求） -->
-        <div v-if="isProfitControlPlatform(editForm.platform)" class="border-t pt-4">
+<div v-if="isProfitControlPlatform(editForm.platform)" class="border-t pt-4">
           <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input
               v-model="editForm.profit_control_enabled"
@@ -2920,9 +2752,435 @@
             </div>
           </div>
         </div>
-
-        <!-- 支持的模型系列（仅 antigravity 平台） -->
-        <div v-if="editForm.platform === 'antigravity'" class="border-t pt-4">
+<div
+          v-if="editForm.platform === 'openai'"
+          class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
+        >
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            {{ t("admin.groups.webSearchPricing.title") }}
+          </h4>
+          <div>
+            <label class="input-label">{{
+              t("admin.groups.webSearchPricing.pricePerCall")
+            }}</label>
+            <input
+              v-model.number="editForm.web_search_price_per_call"
+              type="number"
+              step="0.001"
+              min="0"
+              placeholder="0.01"
+              class="input"
+            />
+            <p class="input-hint">
+              {{ t("admin.groups.webSearchPricing.pricePerCallHint") }}
+            </p>
+            <div
+              class="mt-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-600 dark:bg-dark-700 dark:text-gray-300"
+            >
+              {{
+                t("admin.groups.webSearchPricing.finalPricePreview", {
+                  price: editWebSearchFinalPricePreview,
+                })
+              }}
+            </div>
+          </div>
+        </div>
+<div class="border-t border-gray-200 pt-4 mt-4 dark:border-dark-400">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t("admin.groups.modelPricing.title") }}</h4>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t("admin.groups.modelPricing.description") }}</p>
+            </div>
+            <button type="button" class="btn btn-secondary shrink-0 whitespace-nowrap" @click="addGroupPricing(editForm.model_pricing)">
+              <Icon name="plus" size="sm" class="mr-1" />{{ t("admin.groups.modelPricing.add") }}
+            </button>
+          </div>
+          <label class="mt-3 flex items-start gap-2">
+            <input v-model="editForm.long_context_pricing_enabled" type="checkbox" class="mt-0.5" />
+            <span><span class="block text-sm text-gray-700 dark:text-gray-300">{{ t("admin.groups.modelPricing.longContext") }}</span><span class="block text-xs text-gray-500">{{ t("admin.groups.modelPricing.longContextHint") }}</span></span>
+          </label>
+          <div class="mt-3 space-y-2">
+            <PricingEntryCard v-for="(entry, index) in editForm.model_pricing" :key="index" :entry="entry" :platform="editForm.platform" hide-token-intervals @update="editForm.model_pricing[index] = $event" @remove="editForm.model_pricing.splice(index, 1)" />
+          </div>
+        </div>
+<div
+          v-if="editForm.platform === 'grok'"
+          class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
+        >
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {{ t("admin.groups.explicitPricing.title") }}
+          </h4>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            {{ t("admin.groups.explicitPricing.description") }}
+          </p>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div>
+              <label class="input-label">{{ t("admin.groups.explicitPricing.searchPricePer1k") }}</label>
+              <input
+                v-model.number="editForm.search_price_per_1k"
+                type="number"
+                step="0.000001"
+                min="0"
+                class="input"
+                :placeholder="t('admin.groups.explicitPricing.pricePlaceholder')"
+                data-testid="edit-search-price"
+              />
+            </div>
+            <div>
+              <label class="input-label">{{ t("admin.groups.voicePricing.audioRealtimePerMin") }}</label>
+              <input
+                v-model.number="editForm.audio_realtime_price_per_min"
+                type="number"
+                step="0.000001"
+                min="0"
+                class="input"
+                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
+                data-testid="edit-audio-realtime-price"
+              />
+            </div>
+            <div>
+              <label class="input-label">{{ t("admin.groups.voicePricing.audioTtsPerMillionChars") }}</label>
+              <input
+                v-model.number="editForm.audio_tts_price_per_million_chars"
+                type="number"
+                step="0.000001"
+                min="0"
+                class="input"
+                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
+                data-testid="edit-audio-tts-price"
+              />
+            </div>
+            <div>
+              <label class="input-label">{{ t("admin.groups.voicePricing.audioSttPerHour") }}</label>
+              <input
+                v-model.number="editForm.audio_stt_price_per_hour"
+                type="number"
+                step="0.000001"
+                min="0"
+                class="input"
+                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
+                data-testid="edit-audio-stt-price"
+              />
+            </div>
+          </div>
+        </div>
+</section>
+<section v-show="editTab === 'routing'" id="edit-group-form-routing-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="edit-group-form-routing-tab" data-admin-tab="routing">
+<ReasoningEffortPolicyFields
+          v-if="supportsReasoningEffortPolicyPlatform(editForm.platform)"
+          ref="editReasoningEffortPolicyRef"
+          id-prefix="edit-group-reasoning"
+          :platform="editForm.platform"
+          v-model:max-effort="editForm.max_reasoning_effort"
+          v-model:over-limit="editForm.max_reasoning_effort_over_limit"
+          v-model:mappings="editForm.reasoning_effort_mappings"
+        />
+<div class="border-t pt-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t("admin.groups.modelAllowlist.title") }}
+              </label>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.groups.modelAllowlist.hint") }}
+              </p>
+            </div>
+            <Toggle v-model="editModelAllowlistState.enabled" />
+          </div>
+          <div
+            v-if="editModelAllowlistState.enabled"
+            class="overflow-hidden rounded-lg border border-gray-200 bg-gray-50/50 dark:border-dark-600 dark:bg-dark-800/40"
+          >
+            <div
+              v-if="!editModelAllowlistLoading && editModelAllowlistState.items.length > 0"
+              class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-dark-600 dark:bg-dark-800"
+            >
+              <span class="text-gray-500 dark:text-gray-400">
+                {{
+                  t("admin.groups.modelAllowlist.selectedSummary", {
+                    selected: editModelAllowlistSelectedCount,
+                    total: editModelAllowlistState.items.length,
+                  })
+                }}
+              </span>
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  class="rounded px-2 py-1 font-medium text-primary-600 transition-colors hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20"
+                  @click="selectAllModelAllowlistItems(editModelAllowlistState)"
+                >
+                  {{ t("admin.groups.modelAllowlist.selectAll") }}
+                </button>
+                <button
+                  type="button"
+                  class="rounded px-2 py-1 font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                  @click="invertModelAllowlistSelection(editModelAllowlistState)"
+                >
+                  {{ t("admin.groups.modelAllowlist.invertSelection") }}
+                </button>
+              </div>
+            </div>
+            <div
+              class="max-h-64 space-y-2 overflow-y-auto p-2"
+            >
+              <p v-if="editModelAllowlistLoading" class="text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.groups.modelAllowlist.loading") }}
+              </p>
+              <p
+                v-else-if="editModelAllowlistState.items.length === 0"
+                class="text-xs text-gray-500 dark:text-gray-400"
+              >
+                {{ t("admin.groups.modelAllowlist.empty") }}
+              </p>
+              <div
+                v-for="(item, index) in editModelAllowlistState.items"
+                :key="item.id"
+                class="flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-2 dark:border-dark-600 dark:bg-dark-800"
+              >
+                <input
+                  v-model="item.selected"
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span class="min-w-0 flex-1 break-all text-sm text-gray-700 dark:text-gray-300">
+                  {{ item.id }}
+                  <span
+                    v-if="item.id.includes('*')"
+                    class="ml-1 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
+                  >
+                    {{ t("admin.groups.modelAllowlist.wildcardTag") }}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  :disabled="index === 0"
+                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
+                  @click="moveEditModelAllowlistItem(index, index - 1)"
+                >
+                  <Icon name="arrowUp" size="sm" />
+                </button>
+                <button
+                  type="button"
+                  :disabled="index === editModelAllowlistState.items.length - 1"
+                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
+                  @click="moveEditModelAllowlistItem(index, index + 1)"
+                >
+                  <Icon name="arrowDown" size="sm" />
+                </button>
+              </div>
+            </div>
+            <div class="border-t border-gray-200 px-3 py-2 dark:border-dark-600">
+              <div class="flex items-center gap-2">
+                <input
+                  v-model="editAllowlistCustomEntry"
+                  type="text"
+                  :placeholder="t('admin.groups.modelAllowlist.customPlaceholder')"
+                  class="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none dark:border-dark-500 dark:bg-dark-700 dark:text-gray-200"
+                  @keydown.enter.prevent="submitEditAllowlistCustomEntry"
+                />
+                <button
+                  type="button"
+                  class="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-700"
+                  @click="submitEditAllowlistCustomEntry"
+                >
+                  {{ t("admin.groups.modelAllowlist.addCustom") }}
+                </button>
+              </div>
+              <p
+                v-if="editAllowlistCustomErrorKey"
+                class="mt-1 text-xs text-red-500"
+              >
+                {{ t(editAllowlistCustomErrorKey) }}
+              </p>
+            </div>
+          </div>
+        </div>
+<div v-if="editForm.platform === 'anthropic'" class="border-t pt-4">
+          <div class="mb-1.5 flex items-center gap-1">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t("admin.groups.modelRouting.title") }}
+            </label>
+            <!-- Help Tooltip -->
+            <div class="group relative inline-flex">
+              <Icon
+                name="questionCircle"
+                size="sm"
+                :stroke-width="2"
+                class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
+              />
+              <div
+                class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-80 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
+              >
+                <div
+                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                >
+                  <p class="text-xs leading-relaxed text-gray-300">
+                    {{ t("admin.groups.modelRouting.tooltip") }}
+                  </p>
+                  <div
+                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 启用开关 -->
+          <div class="flex items-center gap-3 mb-3">
+            <Toggle v-model="editForm.model_routing_enabled" />
+            <span class="text-sm text-gray-500 dark:text-gray-400">
+              {{
+                editForm.model_routing_enabled
+                  ? t("admin.groups.modelRouting.enabled")
+                  : t("admin.groups.modelRouting.disabled")
+              }}
+            </span>
+          </div>
+          <p
+            v-if="!editForm.model_routing_enabled"
+            class="text-xs text-gray-500 dark:text-gray-400 mb-3"
+          >
+            {{ t("admin.groups.modelRouting.disabledHint") }}
+          </p>
+          <p v-else class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            {{ t("admin.groups.modelRouting.noRulesHint") }}
+          </p>
+          <!-- 路由规则列表（仅在启用时显示） -->
+          <div v-if="editForm.model_routing_enabled" class="space-y-3">
+            <div
+              v-for="rule in editModelRoutingRules"
+              :key="getEditRuleRenderKey(rule)"
+              class="rounded-lg border border-gray-200 p-3 dark:border-dark-600"
+            >
+              <div class="flex items-start gap-3">
+                <div class="flex-1 space-y-2">
+                  <div>
+                    <label class="input-label text-xs">{{
+                      t("admin.groups.modelRouting.modelPattern")
+                    }}</label>
+                    <input
+                      v-model="rule.pattern"
+                      type="text"
+                      class="input text-sm"
+                      :placeholder="
+                        t('admin.groups.modelRouting.modelPatternPlaceholder')
+                      "
+                    />
+                  </div>
+                  <div>
+                    <label class="input-label text-xs">{{
+                      t("admin.groups.modelRouting.accounts")
+                    }}</label>
+                    <!-- 已选账号标签 -->
+                    <div
+                      v-if="rule.accounts.length > 0"
+                      class="flex flex-wrap gap-1.5 mb-2"
+                    >
+                      <span
+                        v-for="account in rule.accounts"
+                        :key="account.id"
+                        class="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                      >
+                        {{ account.name }}
+                        <button
+                          type="button"
+                          @click="removeSelectedAccount(rule, account.id, true)"
+                          class="ml-0.5 text-primary-500 hover:text-primary-700 dark:hover:text-primary-200"
+                        >
+                          <Icon name="x" size="xs" />
+                        </button>
+                      </span>
+                    </div>
+                    <!-- 账号搜索输入框 -->
+                    <div class="relative account-search-container">
+                      <input
+                        v-model="
+                          accountSearchKeyword[getEditRuleSearchKey(rule)]
+                        "
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="
+                          t(
+                            'admin.groups.modelRouting.searchAccountPlaceholder',
+                          )
+                        "
+                        @input="searchAccountsByRule(rule, true)"
+                        @focus="onAccountSearchFocus(rule, true)"
+                      />
+                      <!-- 搜索结果下拉框 -->
+                      <div
+                        v-if="
+                          showAccountDropdown[getEditRuleSearchKey(rule)] &&
+                          accountSearchResults[getEditRuleSearchKey(rule)]
+                            ?.length > 0
+                        "
+                        class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                      >
+                        <button
+                          v-for="account in accountSearchResults[
+                            getEditRuleSearchKey(rule)
+                          ]"
+                          :key="account.id"
+                          type="button"
+                          @click="selectAccount(rule, account, true)"
+                          class="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-700"
+                          :class="{
+                            'opacity-50': rule.accounts.some(
+                              (a) => a.id === account.id,
+                            ),
+                          }"
+                          :disabled="
+                            rule.accounts.some((a) => a.id === account.id)
+                          "
+                        >
+                          <span>{{ account.name }}</span>
+                          <span class="ml-2 text-xs text-gray-400"
+                            >#{{ account.id }}</span
+                          >
+                        </button>
+                      </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">
+                      {{ t("admin.groups.modelRouting.accountsHint") }}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  @click="removeEditRoutingRule(rule)"
+                  class="mt-5 p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                  :title="t('admin.groups.modelRouting.removeRule')"
+                >
+                  <Icon name="trash" size="sm" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- 添加规则按钮（仅在启用时显示） -->
+          <button
+            v-if="editForm.model_routing_enabled"
+            type="button"
+            @click="addEditRoutingRule"
+            class="mt-3 flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+          >
+            <Icon name="plus" size="sm" />
+            {{ t("admin.groups.modelRouting.addRule") }}
+          </button>
+        </div>
+</section>
+<section v-show="editTab === 'advanced'" id="edit-group-form-advanced-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="edit-group-form-advanced-tab" data-admin-tab="advanced">
+<div>
+          <label class="input-label">{{ t("admin.groups.form.rpmLimit") }}</label>
+          <input
+            v-model.number="editForm.rpm_limit"
+            type="number"
+            min="0"
+            step="1"
+            class="input"
+            :placeholder="t('admin.groups.form.rpmLimitPlaceholder')"
+          />
+          <p class="input-hint">{{ t("admin.groups.form.rpmLimitHint") }}</p>
+        </div>
+<div v-if="editForm.platform === 'antigravity'" class="border-t pt-4">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t("admin.groups.supportedScopes.title") }}
@@ -2994,9 +3252,7 @@
             {{ t("admin.groups.supportedScopes.hint") }}
           </p>
         </div>
-
-        <!-- MCP XML 协议注入（仅 antigravity 平台） -->
-        <div v-if="editForm.platform === 'antigravity'" class="border-t pt-4">
+<div v-if="editForm.platform === 'antigravity'" class="border-t pt-4">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t("admin.groups.mcpXml.title") }}
@@ -3035,9 +3291,7 @@
             </span>
           </div>
         </div>
-
-        <!-- Claude Code 客户端限制（仅 anthropic 平台） -->
-        <div v-if="editForm.platform === 'anthropic'" class="border-t pt-4">
+<div v-if="editForm.platform === 'anthropic'" class="border-t pt-4">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t("admin.groups.claudeCode.title") }}
@@ -3091,44 +3345,7 @@
             </p>
           </div>
         </div>
-
-        <!-- Codex 网页搜索按次计费（仅 openai 平台） -->
-        <div
-          v-if="editForm.platform === 'openai'"
-          class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-        >
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            {{ t("admin.groups.webSearchPricing.title") }}
-          </h4>
-          <div>
-            <label class="input-label">{{
-              t("admin.groups.webSearchPricing.pricePerCall")
-            }}</label>
-            <input
-              v-model.number="editForm.web_search_price_per_call"
-              type="number"
-              step="0.001"
-              min="0"
-              placeholder="0.01"
-              class="input"
-            />
-            <p class="input-hint">
-              {{ t("admin.groups.webSearchPricing.pricePerCallHint") }}
-            </p>
-            <div
-              class="mt-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-600 dark:bg-dark-700 dark:text-gray-300"
-            >
-              {{
-                t("admin.groups.webSearchPricing.finalPricePreview", {
-                  price: editWebSearchFinalPricePreview,
-                })
-              }}
-            </div>
-          </div>
-        </div>
-
-        <!-- 固定账号获取 Codex Model Manifest（仅 openai 平台，仅编辑对话框） -->
-        <CodexManifestAccountsField
+<CodexManifestAccountsField
           v-if="editForm.platform === 'openai' && editingGroup"
           ref="editCodexManifestRef"
           :group-id="editingGroup.id"
@@ -3136,91 +3353,7 @@
           @update:model-value="Object.assign(editCodexManifestConfig, $event)"
           :account-names="editCodexManifestAccountNames"
         />
-
-
-        <div class="border-t border-gray-200 pt-4 mt-4 dark:border-dark-400">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="min-w-0 flex-1">
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t("admin.groups.modelPricing.title") }}</h4>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t("admin.groups.modelPricing.description") }}</p>
-            </div>
-            <button type="button" class="btn btn-secondary shrink-0 whitespace-nowrap" @click="addGroupPricing(editForm.model_pricing)">
-              <Icon name="plus" size="sm" class="mr-1" />{{ t("admin.groups.modelPricing.add") }}
-            </button>
-          </div>
-          <label class="mt-3 flex items-start gap-2">
-            <input v-model="editForm.long_context_pricing_enabled" type="checkbox" class="mt-0.5" />
-            <span><span class="block text-sm text-gray-700 dark:text-gray-300">{{ t("admin.groups.modelPricing.longContext") }}</span><span class="block text-xs text-gray-500">{{ t("admin.groups.modelPricing.longContextHint") }}</span></span>
-          </label>
-          <div class="mt-3 space-y-2">
-            <PricingEntryCard v-for="(entry, index) in editForm.model_pricing" :key="index" :entry="entry" :platform="editForm.platform" hide-token-intervals @update="editForm.model_pricing[index] = $event" @remove="editForm.model_pricing.splice(index, 1)" />
-          </div>
-        </div>
-
-        <!-- Grok Voice 显式定价（仅 grok 平台） -->
-        <div
-          v-if="editForm.platform === 'grok'"
-          class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-        >
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {{ t("admin.groups.explicitPricing.title") }}
-          </h4>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            {{ t("admin.groups.explicitPricing.description") }}
-          </p>
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div>
-              <label class="input-label">{{ t("admin.groups.explicitPricing.searchPricePer1k") }}</label>
-              <input
-                v-model.number="editForm.search_price_per_1k"
-                type="number"
-                step="0.000001"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.explicitPricing.pricePlaceholder')"
-                data-testid="edit-search-price"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t("admin.groups.voicePricing.audioRealtimePerMin") }}</label>
-              <input
-                v-model.number="editForm.audio_realtime_price_per_min"
-                type="number"
-                step="0.000001"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                data-testid="edit-audio-realtime-price"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t("admin.groups.voicePricing.audioTtsPerMillionChars") }}</label>
-              <input
-                v-model.number="editForm.audio_tts_price_per_million_chars"
-                type="number"
-                step="0.000001"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                data-testid="edit-audio-tts-price"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t("admin.groups.voicePricing.audioSttPerHour") }}</label>
-              <input
-                v-model.number="editForm.audio_stt_price_per_hour"
-                type="number"
-                step="0.000001"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                data-testid="edit-audio-stt-price"
-              />
-            </div>
-          </div>
-        </div>
-        <!-- OpenAI Fast 开关（OpenAI 与 Composite 平台） -->
-        <div
+<div
           v-if="supportsGroupOpenAIFast(editForm.platform)"
           class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
         >
@@ -3254,9 +3387,7 @@
             {{ t("admin.groups.openaiFast.freeHint") }}
           </p>
         </div>
-
-        <!-- Codex Live 开关（OpenAI 与 Composite 平台） -->
-        <div
+<div
           v-if="supportsLivePlatform(editForm.platform)"
           class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
         >
@@ -3276,9 +3407,7 @@
             {{ t("admin.groups.openaiLive.hint") }}
           </p>
         </div>
-
-        <!-- OpenAI Messages 调度配置（OpenAI 与 Composite 平台） -->
-        <div
+<div
           v-if="supportsMessagesDispatchPlatform(editForm.platform)"
           class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
         >
@@ -3487,9 +3616,7 @@
             </div>
           </div>
         </div>
-
-        <!-- 账号过滤控制 (OpenAI/Antigravity/Anthropic/Gemini) -->
-        <div
+<div
           v-if="
             ['openai', 'antigravity', 'anthropic', 'gemini'].includes(
               editForm.platform,
@@ -3535,9 +3662,7 @@
             <Toggle v-model="editForm.require_privacy_set" />
           </div>
         </div>
-
-        <!-- 无效请求兜底（仅 anthropic/antigravity 平台，且非订阅分组） -->
-        <div
+<div
           v-if="
             ['anthropic', 'antigravity'].includes(editForm.platform) &&
             editForm.subscription_type !== 'subscription'
@@ -3556,186 +3681,15 @@
             {{ t("admin.groups.invalidRequestFallback.hint") }}
           </p>
         </div>
-
-        <!-- 模型路由配置（仅 anthropic 平台） -->
-        <div v-if="editForm.platform === 'anthropic'" class="border-t pt-4">
-          <div class="mb-1.5 flex items-center gap-1">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ t("admin.groups.modelRouting.title") }}
-            </label>
-            <!-- Help Tooltip -->
-            <div class="group relative inline-flex">
-              <Icon
-                name="questionCircle"
-                size="sm"
-                :stroke-width="2"
-                class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-              />
-              <div
-                class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-80 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-              >
-                <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                >
-                  <p class="text-xs leading-relaxed text-gray-300">
-                    {{ t("admin.groups.modelRouting.tooltip") }}
-                  </p>
-                  <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- 启用开关 -->
-          <div class="flex items-center gap-3 mb-3">
-            <Toggle v-model="editForm.model_routing_enabled" />
-            <span class="text-sm text-gray-500 dark:text-gray-400">
-              {{
-                editForm.model_routing_enabled
-                  ? t("admin.groups.modelRouting.enabled")
-                  : t("admin.groups.modelRouting.disabled")
-              }}
-            </span>
-          </div>
-          <p
-            v-if="!editForm.model_routing_enabled"
-            class="text-xs text-gray-500 dark:text-gray-400 mb-3"
-          >
-            {{ t("admin.groups.modelRouting.disabledHint") }}
-          </p>
-          <p v-else class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            {{ t("admin.groups.modelRouting.noRulesHint") }}
-          </p>
-          <!-- 路由规则列表（仅在启用时显示） -->
-          <div v-if="editForm.model_routing_enabled" class="space-y-3">
-            <div
-              v-for="rule in editModelRoutingRules"
-              :key="getEditRuleRenderKey(rule)"
-              class="rounded-lg border border-gray-200 p-3 dark:border-dark-600"
-            >
-              <div class="flex items-start gap-3">
-                <div class="flex-1 space-y-2">
-                  <div>
-                    <label class="input-label text-xs">{{
-                      t("admin.groups.modelRouting.modelPattern")
-                    }}</label>
-                    <input
-                      v-model="rule.pattern"
-                      type="text"
-                      class="input text-sm"
-                      :placeholder="
-                        t('admin.groups.modelRouting.modelPatternPlaceholder')
-                      "
-                    />
-                  </div>
-                  <div>
-                    <label class="input-label text-xs">{{
-                      t("admin.groups.modelRouting.accounts")
-                    }}</label>
-                    <!-- 已选账号标签 -->
-                    <div
-                      v-if="rule.accounts.length > 0"
-                      class="flex flex-wrap gap-1.5 mb-2"
-                    >
-                      <span
-                        v-for="account in rule.accounts"
-                        :key="account.id"
-                        class="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-                      >
-                        {{ account.name }}
-                        <button
-                          type="button"
-                          @click="removeSelectedAccount(rule, account.id, true)"
-                          class="ml-0.5 text-primary-500 hover:text-primary-700 dark:hover:text-primary-200"
-                        >
-                          <Icon name="x" size="xs" />
-                        </button>
-                      </span>
-                    </div>
-                    <!-- 账号搜索输入框 -->
-                    <div class="relative account-search-container">
-                      <input
-                        v-model="
-                          accountSearchKeyword[getEditRuleSearchKey(rule)]
-                        "
-                        type="text"
-                        class="input text-sm"
-                        :placeholder="
-                          t(
-                            'admin.groups.modelRouting.searchAccountPlaceholder',
-                          )
-                        "
-                        @input="searchAccountsByRule(rule, true)"
-                        @focus="onAccountSearchFocus(rule, true)"
-                      />
-                      <!-- 搜索结果下拉框 -->
-                      <div
-                        v-if="
-                          showAccountDropdown[getEditRuleSearchKey(rule)] &&
-                          accountSearchResults[getEditRuleSearchKey(rule)]
-                            ?.length > 0
-                        "
-                        class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
-                      >
-                        <button
-                          v-for="account in accountSearchResults[
-                            getEditRuleSearchKey(rule)
-                          ]"
-                          :key="account.id"
-                          type="button"
-                          @click="selectAccount(rule, account, true)"
-                          class="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-700"
-                          :class="{
-                            'opacity-50': rule.accounts.some(
-                              (a) => a.id === account.id,
-                            ),
-                          }"
-                          :disabled="
-                            rule.accounts.some((a) => a.id === account.id)
-                          "
-                        >
-                          <span>{{ account.name }}</span>
-                          <span class="ml-2 text-xs text-gray-400"
-                            >#{{ account.id }}</span
-                          >
-                        </button>
-                      </div>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-1">
-                      {{ t("admin.groups.modelRouting.accountsHint") }}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  @click="removeEditRoutingRule(rule)"
-                  class="mt-5 p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                  :title="t('admin.groups.modelRouting.removeRule')"
-                >
-                  <Icon name="trash" size="sm" />
-                </button>
-              </div>
-            </div>
-          </div>
-          <!-- 添加规则按钮（仅在启用时显示） -->
-          <button
-            v-if="editForm.model_routing_enabled"
-            type="button"
-            @click="addEditRoutingRule"
-            class="mt-3 flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-          >
-            <Icon name="plus" size="sm" />
-            {{ t("admin.groups.modelRouting.addRule") }}
-          </button>
-        </div>
+</section>
         </template>
+
       </form>
 
       <template #footer>
         <div class="flex justify-end gap-3 pt-4">
           <button
-            @click="closeEditModal"
+            @click="editDialog?.requestClose()"
             type="button"
             class="btn btn-secondary"
           >
@@ -4277,6 +4231,10 @@
 </template>
 
 <script setup lang="ts">
+import { unref } from 'vue'
+import AdminFormTabs from '@/components/admin/AdminFormTabs.vue'
+import { useAdminFormTabs } from '@/composables/useAdminFormTabs'
+import { useAdminDraft } from '@/composables/useAdminDraft'
 import GlacierActionMenu from '@/components/common/GlacierActionMenu.vue'
 import { useGlacierPreferences } from '@/composables/useGlacierPreferences'
 const { isGlassLayout } = useGlacierPreferences()
@@ -5894,7 +5852,9 @@ const validateGroupReasoningMultipliers = (pricing: PricingFormEntry[]): boolean
 };
 
 const handleCreateGroup = async () => {
+  if (submitting.value) return
   if (!createForm.name.trim()) {
+    createTab.value = 'basic';
     appStore.showError(t("admin.groups.nameRequired"));
     return;
   }
@@ -5903,17 +5863,20 @@ const handleCreateGroup = async () => {
     createReasoningEffortPolicyRef.value &&
     !createReasoningEffortPolicyRef.value.validate()
   ) {
+    createTab.value = 'routing';
     return;
   }
   if (!validateProfitControlForm(createForm)) {
+    createTab.value = 'billing';
     return;
   }
-  if (!validateGroupReasoningMultipliers(createForm.model_pricing)) return;
+  if (!validateGroupReasoningMultipliers(createForm.model_pricing)) { createTab.value = 'billing'; return; }
   // 模型白名单：开启且没有任何条目时阻止提交，与后端 400 对齐。
   if (
     createModelAllowlistState.enabled &&
     createModelAllowlistSelectedCount.value === 0
   ) {
+    createTab.value = 'routing';
     appStore.showError(t("admin.groups.modelAllowlist.emptySelectionError"));
     return;
   }
@@ -6225,8 +6188,10 @@ const closeEditModal = () => {
 };
 
 const handleUpdateGroup = async () => {
+  if (submitting.value) return
   if (!editingGroup.value) return;
   if (!editForm.name.trim()) {
+    editTab.value = 'basic';
     appStore.showError(t("admin.groups.nameRequired"));
     return;
   }
@@ -6235,17 +6200,20 @@ const handleUpdateGroup = async () => {
     editReasoningEffortPolicyRef.value &&
     !editReasoningEffortPolicyRef.value.validate()
   ) {
+    editTab.value = 'routing';
     return;
   }
   if (!validateProfitControlForm(editForm)) {
+    editTab.value = 'billing';
     return;
   }
-  if (!validateGroupReasoningMultipliers(editForm.model_pricing)) return;
+  if (!validateGroupReasoningMultipliers(editForm.model_pricing)) { editTab.value = 'billing'; return; }
   // 模型白名单：开启且没有任何条目时阻止提交，与后端 400 对齐。
   if (
     editModelAllowlistState.enabled &&
     editModelAllowlistSelectedCount.value === 0
   ) {
+    editTab.value = 'routing';
     appStore.showError(t("admin.groups.modelAllowlist.emptySelectionError"));
     return;
   }
@@ -6255,6 +6223,7 @@ const handleUpdateGroup = async () => {
     editCodexManifestConfig.value.enabled &&
     editCodexManifestConfig.value.account_ids.length === 0
   ) {
+    editTab.value = 'advanced';
     appStore.showError(t("admin.groups.codexModelsManifest.selectAtLeastOne"));
     editCodexManifestRef.value?.validate();
     return;
@@ -6895,4 +6864,33 @@ onUnmounted(() => {
   accountSearchRunner.clearAll();
   clearAllAccountSearchState();
 });
+
+const createTabOptions = [{"id":"basic","zh":"基础信息","en":"General"},{"id":"billing","zh":"计费与额度","en":"Billing & quotas"},{"id":"routing","zh":"模型与路由","en":"Models & routing"},{"id":"advanced","zh":"高级设置","en":"Advanced"}]
+const { formTab: createTab, revealInvalid: createTabInvalid } = useAdminFormTabs(() => showCreateModal.value)
+const createDialog = ref<InstanceType<typeof BaseDialog> | null>(null)
+const { dirty: createTabDirty } = useAdminDraft(
+  () => showCreateModal.value,
+  () => ({
+    createForm: unref(createForm),
+    createModelAllowlistState: unref(createModelAllowlistState),
+    createAllowlistCustomEntry: unref(createAllowlistCustomEntry),
+    createModelRoutingRules: unref(createModelRoutingRules)
+  }),
+  () => submitting.value
+)
+
+const editTabOptions = [{"id":"basic","zh":"基础信息","en":"General"},{"id":"billing","zh":"计费与额度","en":"Billing & quotas"},{"id":"routing","zh":"模型与路由","en":"Models & routing"},{"id":"advanced","zh":"高级设置","en":"Advanced"}]
+const { formTab: editTab, revealInvalid: editTabInvalid } = useAdminFormTabs(() => showEditModal.value)
+const editDialog = ref<InstanceType<typeof BaseDialog> | null>(null)
+const { dirty: editTabDirty } = useAdminDraft(
+  () => showEditModal.value,
+  () => ({
+    editForm: unref(editForm),
+    editModelAllowlistState: unref(editModelAllowlistState),
+    editAllowlistCustomEntry: unref(editAllowlistCustomEntry),
+    editModelRoutingRules: unref(editModelRoutingRules)
+  }),
+  () => submitting.value
+)
+
 </script>

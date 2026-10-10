@@ -1,23 +1,7 @@
 <template>
   <div>
     <div class="operations-dashboard space-y-6">
-      <section class="workspace-hero">
-        <div>
-          <p class="hero-eyebrow">OPERATIONS WORKSPACE / COMMAND CENTER</p>
-          <h2>{{ zh ? '全局在眼前，运营有章法。' : 'A clear view. A confident operation.' }}</h2>
-          <p class="hero-description">{{ zh ? '聚合资源、流量与成本，从全局洞察到精细调度，让每一个运营决策有据可依。' : 'Resources, traffic and costs in one operational view. Move from insight to action with clarity.' }}</p>
-          <div class="hero-actions">
-            <router-link to="/admin/accounts" class="btn btn-primary"><Icon name="server" size="sm" />{{ t('nav.accounts') }}</router-link>
-            <button class="btn btn-secondary" :disabled="loading || chartsLoading" @click="loadDashboardStats"><Icon name="refresh" size="sm" />{{ t('common.refresh') }}</button>
-          </div>
-        </div>
-        <div class="hero-instrument">
-          <span>{{ t('admin.dashboard.performance') }}</span>
-          <strong>{{ stats ? formatTokens(stats.rpm) : '—' }}</strong>
-          <div class="instrument-rule"></div>
-          <span>RPM / {{ stats ? formatTokens(stats.tpm) : '—' }} TPM</span>
-        </div>
-      </section>
+      <div class="admin-dashboard-toolbar"><router-link to="/admin/accounts" class="btn btn-secondary"><Icon name="server" size="sm" />{{ t('nav.accounts') }}</router-link><button class="btn btn-secondary" :disabled="loading || chartsLoading" @click="loadDashboardStats"><Icon name="refresh" size="sm" />{{ t('common.refresh') }}</button></div>
       <nav class="operations-links" :aria-label="zh ? '运营快捷入口' : 'Operations shortcuts'">
         <router-link to="/admin/users"><Icon name="users" size="sm" />{{ t('admin.users.title') }}</router-link>
         <router-link to="/admin/groups"><Icon name="grid" size="sm" />{{ t('admin.groups.title') }}</router-link>

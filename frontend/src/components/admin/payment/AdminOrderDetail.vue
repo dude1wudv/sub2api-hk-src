@@ -1,5 +1,5 @@
 <template>
-  <BaseDialog
+  <BaseDialog presentation="drawer"
     :show="show"
     :title="t('payment.admin.orderDetail')"
     width="wide"

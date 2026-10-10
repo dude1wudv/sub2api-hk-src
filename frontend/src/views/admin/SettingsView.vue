@@ -8978,6 +8978,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDraft } from '@/composables/useAdminDraft'
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { listPlatformIds } from "@/constants/platformCatalog";
 import { useI18n } from "vue-i18n";
@@ -11324,6 +11325,7 @@ const siteBillingModeHint = computed(() =>
 );
 
 async function saveSettings() {
+  if (saving.value) return;
   saving.value = true;
   try {
     const normalizedTableDefaultPageSize = Math.floor(
@@ -11934,6 +11936,7 @@ async function saveSettings() {
     await appStore.fetchPublicSettings(true);
     await adminSettingsStore.fetch(true);
     if (wsOk) {
+      resetSettingsDraft();
       appStore.showSuccess(t("admin.settings.settingsSaved"));
     }
   } catch (error: unknown) {
@@ -13307,6 +13310,7 @@ watch(
     }
   },
 );
+const { resetDraft: resetSettingsDraft } = useAdminDraft(() => !loading.value, () => ({ form, webSearchConfig, openaiFastPolicyForm }), () => saving.value)
 </script>
 
 <style scoped>

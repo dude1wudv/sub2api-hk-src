@@ -33,6 +33,7 @@ function mountUsage() {
       stubs: {
         RouterLink: true,
         PortalUsageChart: true,
+        PortalUsageAnalytics: true,
         PortalUsageDetail: true,
         PortalDialog: true,
         PortalUsageTable: { props: ['rows'], template: '<div data-testid="usage-table">{{ rows.map(row => row.id).join(",") }}</div>' },

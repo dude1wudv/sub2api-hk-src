@@ -174,6 +174,8 @@
             {{ t('admin.accounts.listPendingSyncAction') }}
           </button>
         </div>
+        <details class="admin-resource-summary" :open="!!activeQuotaPool">
+        <summary>{{ t('admin.accounts.summary.statusTitle') }} · {{ t('admin.accounts.quotaPools.oauthTitle') }}</summary>
         <div class="mt-3 grid gap-3 lg:grid-cols-4 glacier-account-summary">
           <div class="account-summary-panel">
             <div class="flex items-center justify-between gap-3">
@@ -375,6 +377,7 @@
             </button>
           </div>
         </div></GlacierDisclosure>
+        </details>
       </template>
       <template #table>
         <AccountBulkActionsBar
@@ -426,6 +429,7 @@
           </template>
           <template #cell-name="{ row, value }">
             <div class="flex flex-col">
+              <button type="button" class="admin-account-name" @click="detailAccountId = row.id">{{ value }}</button>
               <HelpTooltip
                 v-if="accountHomepageUrl(row)"
                 :content="accountHomepageUrl(row)"
@@ -439,11 +443,11 @@
                     rel="noopener noreferrer"
                     class="border-b border-dotted border-gray-300 font-medium text-gray-900 dark:border-dark-600 dark:text-white"
                   >
-                    {{ value }}
+                    <Icon name="externalLink" size="xs" />
+                    <span class="sr-only">{{ value }}</span>
                   </a>
                 </template>
               </HelpTooltip>
-              <span v-else class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
               <span
                 v-if="accountDisplayEmail(row)"
                 class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]"
@@ -657,6 +661,7 @@
       </template>
       <template #pagination><Pagination v-if="pagination.total > 0" :page="pagination.page" :total="pagination.total" :page-size="pagination.page_size" @update:page="handlePageChange" @update:pageSize="handlePageSizeChange" /></template>
     </TablePageLayout>
+    <AccountDetailsDrawer :account-id="detailAccountId" @close="detailAccountId = null" @edit="account => { detailAccountId = null; handleEdit(account) }" @stats="account => { detailAccountId = null; handleViewStats(account) }" />
     <CreateAccountModal :show="showCreate" :proxies="proxies" :groups="groups" @close="showCreate = false" @created="reload" @mirasim-oauth="startMirasimOAuth" />
     <EditAccountModal :show="showEdit" :account="edAcc" :proxies="proxies" :groups="groups" @close="showEdit = false" @updated="handleAccountUpdated" />
     <MirasimImportModal :show="pendingMirasimOAuth !== null" :submitting="mirasimImportSubmitting" :proxies="proxies" :groups="groups" @close="pendingMirasimOAuth = null" @submit="submitMirasimImport" />
@@ -694,6 +699,7 @@
 </template>
 
 <script setup lang="ts">
+import AccountDetailsDrawer from '@/components/account/AccountDetailsDrawer.vue'
 import SlowTTFTStatus from '@/components/account/SlowTTFTStatus.vue'
 import GlacierDisclosure from '@/components/common/GlacierDisclosure.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, toRaw, watch } from 'vue'
@@ -857,6 +863,7 @@ const showDeleteDialog = ref(false)
 const showCreateShadowDialog = ref(false)
 const showReAuth = ref(false)
 const showTest = ref(false)
+const detailAccountId = ref<number | null>(null)
 const showStats = ref(false)
 const showErrorPassthrough = ref(false)
 const showTLSFingerprintProfiles = ref(false)
@@ -1752,6 +1759,7 @@ const isAnyModalOpen = computed(() => {
     showDeleteDialog.value ||
     showReAuth.value ||
     showTest.value ||
+    detailAccountId.value !== null ||
     showStats.value ||
     showSchedulePanel.value ||
     showErrorPassthrough.value ||

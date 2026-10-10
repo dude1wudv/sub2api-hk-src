@@ -15,6 +15,7 @@ import {
 } from '@/utils/portalUsage'
 import type { ApiKey, Group, UsageLog, UsageQueryParams, UsageStatsResponse, UserErrorRequest, UserErrorRequestDetail, UserErrorListParams } from '@/types'
 import PortalUsageChart from '@/components/portal/PortalUsageChart.vue'
+import PortalUsageAnalytics from '@/components/portal/PortalUsageAnalytics.vue'
 import PortalUsageTable from '@/components/portal/PortalUsageTable.vue'
 import PortalUsageErrorTable from '@/components/portal/PortalUsageErrorTable.vue'
 import PortalUsageDetail from '@/components/portal/PortalUsageDetail.vue'
@@ -314,7 +315,10 @@ onBeforeUnmount(() => {
       <section class="usage-summary"><div><span class="portal-muted">{{ copy('本月消费', 'This month') }}</span><strong>{{ overviewLoading ? '—' : monthStats ? formatUsageMoney(monthStats.total_actual_cost, 2) : '—' }}</strong><small v-if="monthStats && !overviewLoading">{{ formatUsageNumber(monthStats.total_requests) }} {{ copy('次请求', 'requests') }}</small></div><span class="usage-summary-symbol" aria-hidden="true">↗</span></section>
     </div>
     <p v-if="monthError" class="portal-error" role="alert">{{ monthError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></p>
+    <PortalUsageAnalytics />
+    <details class="usage-history"><summary>{{ copy('查看过去 12 个月的消费', 'View spending over the last 12 months') }}</summary>
     <section class="usage-monthly" aria-labelledby="usage-monthly-title"><div class="usage-section-heading"><h2 id="usage-monthly-title">{{ copy('每月用量', 'Monthly usage') }}</h2><button class="portal-inline-button" :disabled="overviewLoading" @click="loadOverview">{{ overviewLoading ? copy('加载中…', 'Loading…') : copy('刷新', 'Refresh') }}</button></div><div v-if="overviewLoading" class="usage-chart-loading" role="status">{{ copy('正在加载每月用量…', 'Loading monthly usage…') }}</div><div v-else-if="trendError" class="portal-error" role="alert">{{ trendError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></div><PortalUsageChart v-else :months="months" /></section>
+    </details>
     <section class="usage-records" aria-labelledby="usage-records-title">
       <div class="usage-section-heading"><h2 id="usage-records-title">{{ copy('明细', 'Details') }}</h2><div class="usage-toolbar"><button class="portal-button secondary" :aria-expanded="showFilters" aria-controls="usage-filters" @click="showFilters = !showFilters">{{ copy('筛选', 'Filters') }}<span v-if="filtersActive" class="usage-filter-dot" :aria-label="copy('已应用筛选', 'Filters applied')"></span></button><button class="portal-button secondary" @click="showColumns = true">{{ copy('显示列', 'Columns') }}</button><button class="portal-button secondary" :disabled="exporting" @click="exportCsv">{{ exporting ? copy('导出中…', 'Exporting…') : copy('导出 CSV', 'Export CSV') }}</button></div></div>
       <div v-if="errorsEnabled" class="usage-record-tabs" role="tablist" :aria-label="copy('明细类别', 'Record type')"><button role="tab" :aria-selected="activeTab === 'usage'" :class="{ active: activeTab === 'usage' }" @click="activeTab = 'usage'">{{ copy('用量记录', 'Usage logs') }}</button><button role="tab" :aria-selected="activeTab === 'errors'" :class="{ active: activeTab === 'errors' }" @click="activeTab = 'errors'">{{ copy('错误请求', 'Error requests') }}</button></div>
@@ -336,12 +340,14 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.usage-overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
-.usage-summary { display: flex; align-items: center; justify-content: space-between; gap: 22px; border: 1px solid #efede3; border-radius: 12px; padding: 24px; min-height: 132px; }
-.usage-summary > div { display: grid; gap: 12px; }
-.usage-summary strong { font-size: 30px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
+.usage-overview { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 40px; margin-bottom: 28px; }
+.usage-history { margin: 24px 0; border-top: 1px solid #efede3; border-bottom: 1px solid #efede3; padding: 18px 0; }
+.usage-history > summary { cursor: pointer; font-size: 13px; color: #77746d; }
+.usage-summary { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 0; }
+.usage-summary > div { display: flex; align-items: baseline; gap: 12px; }
+.usage-summary strong { font-size: 20px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
 .usage-summary small { color: #929088; font-size: 11px; }
-.usage-summary-symbol { font-size: 30px; color: #c9c5bb; }
+.usage-summary-symbol { display: none; }
 .usage-monthly { margin-top: 32px; }
 .usage-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
 .usage-section-heading h2 { font-size: 16px; font-weight: 500; }
@@ -376,6 +382,6 @@ onBeforeUnmount(() => {
 .usage-error-body { padding: 16px; background: #f7f5ee; border: 1px solid #efede3; border-radius: 8px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 340px; overflow: auto; }
 .portal-error { margin: 16px 0; }
 @media (max-width: 1100px) { .usage-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 739px) { .usage-overview { gap: 12px; } .usage-summary { padding: 18px 14px; min-height: 122px; flex-wrap: wrap; gap: 14px; } .usage-summary strong { font-size: 25px; } .usage-summary .portal-button { font-size: 12px; padding: 5px 12px; min-height: 30px; } .usage-summary-symbol { display: none; } .usage-summary > div > .portal-muted { font-size: 12px; } .usage-section-heading { flex-wrap: wrap; } .usage-toolbar { width: 100%; } .usage-filter-panel { padding: 16px; } .usage-filter-actions { flex-wrap: wrap; } .usage-filter-actions > span { width: 100%; margin-bottom: 6px; } }
+@media (max-width: 739px) { .usage-overview { gap: 12px; } .usage-summary { padding: 4px 0; flex-wrap: wrap; gap: 14px; } .usage-summary strong { font-size: 20px; } .usage-summary .portal-button { font-size: 12px; padding: 5px 12px; min-height: 30px; } .usage-summary-symbol { display: none; } .usage-summary > div > .portal-muted { font-size: 12px; } .usage-section-heading { flex-wrap: wrap; } .usage-toolbar { width: 100%; } .usage-filter-panel { padding: 16px; } .usage-filter-actions { flex-wrap: wrap; } .usage-filter-actions > span { width: 100%; margin-bottom: 6px; } }
 @media (max-width: 440px) { .usage-filter-grid { grid-template-columns: 1fr; } .usage-pagination { gap: 8px; } .usage-error-metadata { grid-template-columns: 80px minmax(0, 1fr); gap: 12px; } }
 </style>

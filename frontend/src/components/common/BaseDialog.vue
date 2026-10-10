@@ -4,6 +4,7 @@
       <div
         v-if="show"
         class="modal-overlay"
+        :class="{ 'admin-detail-overlay': adminSurfaceActive && presentation === 'drawer' }"
         :style="zIndexStyle"
         :aria-labelledby="dialogId"
         role="dialog"
@@ -11,7 +12,7 @@
         @click.self="handleClose"
       >
         <!-- Modal panel -->
-        <div ref="dialogRef" :class="['modal-content', widthClasses]" @click.stop>
+        <div ref="dialogRef" :class="['modal-content', widthClasses, { 'admin-edit-modal': adminSurfaceActive && presentation === 'editor' }]" tabindex="-1" @click.stop>
           <!-- Header -->
           <div class="modal-header">
             <h3 :id="dialogId" class="modal-title">
@@ -19,7 +20,8 @@
             </h3>
             <button
               v-if="showCloseButton"
-              @click="emit('close')"
+              @click="requestClose"
+              :disabled="busy"
               class="-mr-2 rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-2 dark:text-dark-300 dark:hover:bg-dark-700 dark:hover:text-white dark:focus-visible:ring-offset-dark-900"
               aria-label="Close modal"
             >
@@ -36,6 +38,10 @@
           <div v-if="$slots.footer" class="modal-footer">
             <slot name="footer"></slot>
           </div>
+          <div v-if="confirmDiscard" ref="discardRef" class="admin-discard-confirm" role="alertdialog" :aria-label="zh ? '未保存的修改' : 'Unsaved changes'" aria-modal="true">
+            <p>{{ zh ? '更改尚未保存。关闭后将放弃本次修改。' : 'Your changes have not been saved. Closing will discard them.' }}</p>
+            <div><button type="button" class="btn btn-secondary" @click="keepEditing">{{ zh ? '继续编辑' : 'Keep editing' }}</button><button type="button" class="btn btn-danger" @click="discard">{{ zh ? '放弃修改' : 'Discard changes' }}</button></div>
+          </div>
         </div>
       </div>
     </Transition>
@@ -48,8 +54,9 @@ const openDialogs = new Set<string>()
 </script>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, onUnmounted, ref, nextTick } from 'vue'
+import { computed, watch, onMounted, onUnmounted, ref, nextTick, getCurrentInstance } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
+import { adminSurfaceActive } from '@/composables/adminSurface'
 
 // 生成唯一ID以避免多个对话框时ID冲突
 const dialogId = `modal-title-${++dialogIdCounter}`
@@ -69,6 +76,9 @@ interface Props {
   closeOnClickOutside?: boolean
   showCloseButton?: boolean
   zIndex?: number
+  presentation?: 'modal' | 'drawer' | 'editor'
+  dirty?: boolean
+  busy?: boolean
 }
 
 interface Emits {
@@ -80,10 +90,29 @@ const props = withDefaults(defineProps<Props>(), {
   closeOnEscape: true,
   closeOnClickOutside: false,
   showCloseButton: true,
-  zIndex: 50
+  zIndex: 50,
+  presentation: 'modal',
+  dirty: false,
+  busy: false
 })
 
 const emit = defineEmits<Emits>()
+const instance = getCurrentInstance()
+const zh = computed(() => String(instance?.appContext.config.globalProperties.$i18n?.locale ?? document.documentElement.lang).startsWith('zh'))
+const confirmDiscard = ref(false)
+const discardRef = ref<HTMLElement | null>(null)
+let editingFocus: HTMLElement | null = null
+function requestClose() {
+  if (props.busy) return
+  if (props.dirty) {
+    editingFocus = document.activeElement as HTMLElement
+    confirmDiscard.value = true
+    void nextTick(() => discardRef.value?.querySelector('button')?.focus())
+  } else emit('close')
+}
+function keepEditing() { confirmDiscard.value = false; void nextTick(() => editingFocus?.focus()) }
+function discard() { confirmDiscard.value = false; emit('close') }
+defineExpose({ requestClose })
 
 // Custom z-index style (overrides the default z-50 from CSS)
 const zIndexStyle = computed(() => {
@@ -106,14 +135,29 @@ const widthClasses = computed(() => {
 
 const handleClose = () => {
   if (props.closeOnClickOutside) {
-    emit('close')
+    requestClose()
   }
 }
 
 const handleEscape = (event: KeyboardEvent) => {
-  if (props.show && props.closeOnEscape && event.key === 'Escape' && [...openDialogs].pop() === dialogId) {
-    emit('close')
+  if (!props.show || [...openDialogs].pop() !== dialogId) return
+  if (props.closeOnEscape && event.key === 'Escape') {
+    if (confirmDiscard.value) keepEditing()
+    else requestClose()
   }
+  if (event.key === 'Tab') {
+    const panel = confirmDiscard.value ? discardRef.value : dialogRef.value
+    const focusable = [...(panel?.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])') ?? [])]
+      .filter(el => !el.closest('[hidden],[inert]') && getComputedStyle(el).visibility !== 'hidden' && !hasHiddenParent(el, panel))
+    const first = focusable[0], last = focusable[focusable.length - 1]
+    if (!first) { event.preventDefault(); panel?.focus(); return }
+    if (event.shiftKey && (document.activeElement === first || !panel?.contains(document.activeElement))) { event.preventDefault(); last.focus() }
+    else if (!event.shiftKey && (document.activeElement === last || !panel?.contains(document.activeElement))) { event.preventDefault(); first.focus() }
+  }
+}
+function hasHiddenParent(el: HTMLElement, panel: HTMLElement | null) {
+  for (let node: HTMLElement | null = el; node && node !== panel; node = node.parentElement) if (getComputedStyle(node).display === 'none') return true
+  return false
 }
 
 const updateScrollLock = (isOpen: boolean) => {
@@ -126,6 +170,7 @@ const updateScrollLock = (isOpen: boolean) => {
 watch(
   () => props.show,
   async (isOpen) => {
+    confirmDiscard.value = false
     if (isOpen) {
       // 保存当前焦点元素
       previousActiveElement = document.activeElement as HTMLElement

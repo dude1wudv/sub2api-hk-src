@@ -216,7 +216,7 @@ watch(
 </script>
 
 <template>
-  <BaseDialog :show="show" :title="modalTitle" width="full" @close="close">
+  <BaseDialog presentation="drawer" :show="show" :title="modalTitle" width="full" @close="close">
     <div class="flex h-full min-h-0 flex-col">
       <!-- Filters -->
       <div class="mb-4 flex-shrink-0 border-b border-gray-200 pb-4 dark:border-dark-700">

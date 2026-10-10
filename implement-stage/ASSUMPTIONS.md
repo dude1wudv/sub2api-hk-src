@@ -39,3 +39,5 @@
 | A-034 | 智能路由分组顺序 | 已选分组展示首选及编号，允许上下移动；严格按显示顺序提交 routing_group_ids，提示依次回退和实际命中分组计费；批量分组变更不改智能路由密钥，需单独编辑 | semantic | sweep; preserve backend contract |
 | A-035 | 发布后 API 页修订 | 用户要求首屏以密钥管理为主，分组与模型表移至按需入口；创建/编辑弹窗用左侧搜索分组卡片、右侧配置的两栏排布，倍率保留用户专属覆盖及高峰说明，不新增折算“实际倍率” | interface | explicit user follow-up |
 | A-036 | 智能路由与模型入口 | 固定/智能模式沿用原 Sub2API 候选资格、最多10、有序回退和失效候选处理；模型价格保留独立页并承接首页搜索。后端未提供密钥级模型白名单，不新增无效控件 | semantic | existing contract; user says preserve features |
+| A-037 | 用量分析补全 | 用户要求恢复 Sub2API 详细统计和彩色图标；新增独立时间范围与粒度的摘要、模型/分组/端点分布及 Token 趋势，使用后端全量聚合而非当前分页求和，保留暖白配色及明细筛选和导出 | semantic | explicit user follow-up |
+| A-038 | 联合发布 | 用户要求用量页与另一会话的管理端改动合并提交部署；通过 RELEASE_COORDINATION.md 交接，双方完成后统一验收和发布 | interface | explicit user authorization |

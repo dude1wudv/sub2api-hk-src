@@ -1,5 +1,6 @@
 import { computed, ref, type ComputedRef, type InjectionKey } from 'vue'
 import { useAppearance } from './useAppearance'
+import { adminSurfaceActive } from './adminSurface'
 
 export type TableDensity = 'comfortable' | 'compact'
 export const tableDensityKey: InjectionKey<ComputedRef<TableDensity | undefined>> = Symbol('table-density')
@@ -14,7 +15,7 @@ export function useGlacierPreferences() {
     initialized = true
   }
   const { style } = useAppearance()
-  const isGlassLayout = computed(() => ['aurora', 'lagoon', 'graphite', 'glacier'].includes(style.value))
+  const isGlassLayout = computed(() => !adminSurfaceActive.value && ['aurora', 'lagoon', 'graphite', 'glacier'].includes(style.value))
   const effectiveDensity = computed(() => isGlassLayout.value ? density.value : undefined)
   function setDensity(value: TableDensity) {
     density.value = value

@@ -83,6 +83,14 @@ export function useOnboardingTour(options: OnboardingOptions) {
     const startTime = Date.now()
     while (Date.now() - startTime < timeout) {
       const element = document.querySelector(selector)
+      if (document.body.dataset.adminSurface === 'true' && element) {
+        const panel = element.closest<HTMLElement>('[data-admin-tab]')
+        const form = panel?.closest('form')
+        if (panel && form && getComputedStyle(panel).display === 'none') {
+          document.getElementById(`${form.id}-${panel.dataset.adminTab}-tab`)?.click()
+          await nextTick()
+        }
+      }
       if (element && element.getBoundingClientRect().height > 0) {
         return true
       }
@@ -275,7 +283,7 @@ export function useOnboardingTour(options: OnboardingOptions) {
         cleanupClickListener()
 
         // 尝试等待元素
-        if (!element && step.element && typeof step.element === 'string') {
+        if ((!element || (document.body.dataset.adminSurface === 'true' && element.getBoundingClientRect().height === 0)) && step.element && typeof step.element === 'string') {
            const exists = await ensureElement(step.element, 8000)
            if (!exists) {
              console.warn(`Tour element not found after 8s: ${step.element}`)

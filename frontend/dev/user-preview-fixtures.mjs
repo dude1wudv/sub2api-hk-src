@@ -132,6 +132,17 @@ export function aggregateUsage(records) {
   result.total_cost = round(records.reduce((sum, row) => sum + row.total_cost, 0))
   result.total_actual_cost = round(records.reduce((sum, row) => sum + row.actual_cost, 0))
   for (const row of records) result.models[row.model] = (result.models[row.model] || 0) + 1
+  // Aggregate synthetic endpoints from the entire filtered set, just like /usage/stats.
+  result.endpoints = [...new Set(records.map(row => row.inbound_endpoint || 'unknown'))].map(endpoint => {
+    const entries = records.filter(row => (row.inbound_endpoint || 'unknown') === endpoint)
+    return {
+      endpoint,
+      requests: entries.length,
+      total_tokens: entries.reduce((sum, row) => sum + fields.reduce((tokens, field) => tokens + row[field], 0), 0),
+      cost: round(entries.reduce((sum, row) => sum + row.total_cost, 0)),
+      actual_cost: round(entries.reduce((sum, row) => sum + row.actual_cost, 0)),
+    }
+  })
   return result
 }
 

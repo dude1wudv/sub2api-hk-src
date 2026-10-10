@@ -4,7 +4,7 @@ import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Toast from '@/components/common/Toast.vue'
 import NavigationProgress from '@/components/common/NavigationProgress.vue'
-import AppShell from '@/components/layout/AppShell.vue'
+import AppShell from '@/components/layout/AdminShell.vue'
 import UserShell from '@/components/layout/UserShell.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import AdminComplianceDialog from '@/components/admin/AdminComplianceDialog.vue'
@@ -16,6 +16,7 @@ import { updateFavicon } from '@/utils/branding'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
 import { isAdminWorkspaceRoute } from '@/utils/workspaceSurface'
+import { adminSurfaceActive } from '@/composables/adminSurface'
 
 const router = useRouter()
 const route = useRoute()
@@ -47,6 +48,15 @@ const adminCustomPending = computed(() => authStore.isAdmin
   && !adminSettingsStore.loaded
   && adminSettingsStore.customMenuItems.length === 0)
 const isPatrickSurface = computed(() => route.path !== '/setup' && !adminCustomPending.value && !usesAdminShell(route))
+watch(() => usesAdminShell(route), (active) => {
+  adminSurfaceActive.value = active
+  if (active) document.body.dataset.adminSurface = 'true'
+  else delete document.body.dataset.adminSurface
+}, { immediate: true })
+onBeforeUnmount(() => {
+  adminSurfaceActive.value = false
+  delete document.body.dataset.adminSurface
+})
 watch(isPatrickSurface, (active) => {
   if (active) document.body.dataset.patrickSurface = 'true'
   else delete document.body.dataset.patrickSurface

@@ -2,7 +2,7 @@
   <BaseDialog
     :show="show"
     :title="t('admin.accounts.createAccount')"
-    width="wide"
+    width="wide" presentation="editor" ref="editorDialog" :dirty="createTabDirty" :busy="submitting"
     @close="handleClose"
   >
     <!-- Step Indicator for OAuth accounts -->
@@ -44,8 +44,11 @@
       id="create-account-form"
       @submit.prevent="handleSubmit"
       class="space-y-5"
-    >
-      <div v-if="form.platform !== 'mirasim'">
+     @invalid.capture="createTabInvalid">
+
+<AdminFormTabs v-model="createTab" id="create-account-form" :tabs="form.platform === 'mirasim' ? createTabOptions.slice(0, 1) : createTabOptions" />
+<section v-show="createTab === 'basic'" id="create-account-form-basic-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-account-form-basic-tab" data-admin-tab="basic">
+<div v-if="form.platform !== 'mirasim'">
         <label class="input-label">{{ t('admin.accounts.accountName') }}</label>
         <input
           v-model="form.name"
@@ -56,7 +59,7 @@
           data-tour="account-form-name"
         />
       </div>
-      <div v-if="form.platform !== 'mirasim'">
+<div v-if="form.platform !== 'mirasim'">
         <label class="input-label">{{ t('admin.accounts.notes') }}</label>
         <textarea
           v-model="form.notes"
@@ -66,9 +69,7 @@
         ></textarea>
         <p class="input-hint">{{ t('admin.accounts.notesHint') }}</p>
       </div>
-
-      <!-- Platform Selection - Segmented Control Style -->
-      <div>
+<div>
         <label class="input-label">{{ t('admin.accounts.platform') }}</label>
         <div class="mt-2 flex flex-wrap rounded-lg bg-gray-100 p-1 dark:bg-dark-700" data-tour="account-form-platform">
           <button
@@ -292,8 +293,7 @@
           </button>
         </div>
       </div>
-
-      <div v-if="form.platform === 'mirasim'" class="space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+<div v-if="form.platform === 'mirasim'" class="space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
         <p class="text-sm text-gray-700 dark:text-gray-200">Mirasim 使用 OAuth 自动签名。授权返回后可选择代理、分组和并发数，再导入账号。</p>
         <p class="text-xs text-gray-600 dark:text-gray-300">首次使用时，在浏览器所在电脑运行本地回调助手，再点击授权。Mirasim 要求 OAuth 回调到该电脑的 127.0.0.1。</p>
         <a href="/mirasim-oauth-helper.ps1" download="mirasim-oauth-helper.ps1" class="text-sm text-primary-600 underline dark:text-primary-400">下载本地回调助手</a>
@@ -303,10 +303,29 @@
           <button type="button" class="btn btn-primary" @click="beginMirasimOAuth('google')">Google OAuth</button>
         </div>
       </div>
-      <template v-else>
+</section>
+<template v-if="form.platform !== 'mirasim'">
 
-      <!-- Account Type Selection (Anthropic) -->
-      <div v-if="form.platform === 'anthropic'">
+      <section v-show="createTab === 'basic'" class="admin-form-panel" role="group" aria-labelledby="create-account-form-basic-tab" data-admin-tab="basic">
+<div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <label class="input-label">{{ t('admin.accounts.expiresAt') }}</label>
+        <input v-model="expiresAtInput" type="datetime-local" class="input" />
+        <div class="mt-2 flex gap-2">
+          <button type="button" class="btn btn-secondary btn-sm" @click="form.expires_at = getAccountExpiryTimestamp(1)">
+            {{ t('payment.oneMonth') }}
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" @click="form.expires_at = getAccountExpiryTimestamp(12)">
+            {{ t('payment.oneYear') }}
+          </button>
+        </div>
+        <p class="input-hint">
+          {{ t('admin.accounts.expiresAtHint') }}
+          {{ t('admin.accounts.expiresAtTimezoneHint', { timezone: browserTimeZone }) }}
+        </p>
+      </div>
+</section>
+<section v-show="createTab === 'auth'" id="create-account-form-auth-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-account-form-auth-tab" data-admin-tab="auth">
+<div v-if="form.platform === 'anthropic'">
         <label class="input-label">{{ t('admin.accounts.accountType') }}</label>
         <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4" data-tour="account-form-type">
           <button
@@ -434,9 +453,7 @@
           <p>{{ t('admin.accounts.vertexAnthropicHint') }}</p>
         </div>
       </div>
-
-      <!-- Account Type Selection (OpenAI) -->
-      <div v-if="form.platform === 'openai'">
+<div v-if="form.platform === 'openai'">
         <label class="input-label">{{ t('admin.accounts.accountType') }}</label>
         <div class="mt-2 grid grid-cols-2 gap-3" data-tour="account-form-type">
           <button
@@ -493,9 +510,7 @@
 
         </div>
       </div>
-
-      <!-- Account Type Selection (Grok) -->
-      <div v-if="form.platform === 'grok'">
+<div v-if="form.platform === 'grok'">
         <label class="input-label">{{ t('admin.accounts.accountType') }}</label>
         <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2" data-tour="account-form-type">
           <button
@@ -552,9 +567,7 @@
           </button>
         </div>
       </div>
-
-      <!-- OpenCode Zen vs Go -->
-      <div v-if="isOpenCodeGoPlatform">
+<div v-if="isOpenCodeGoPlatform">
         <label class="input-label">{{ t('admin.accounts.cnProviders.accountMode.title') }}</label>
         <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
@@ -605,9 +618,7 @@
           </button>
         </div>
       </div>
-
-      <!-- Account Mode Selection (providers using the generic form) -->
-      <div v-if="isGenericMultiProtocolPlatform && genericAccountModes.length > 1" data-testid="generic-account-mode">
+<div v-if="isGenericMultiProtocolPlatform && genericAccountModes.length > 1" data-testid="generic-account-mode">
         <label class="input-label">{{ t('admin.accounts.cnProviders.accountMode.title') }}</label>
         <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
@@ -634,9 +645,7 @@
           </button>
         </div>
       </div>
-
-      <!-- Account Mode Selection (Kimi / Zhipu / DeepSeek) -->
-      <div v-if="isCNPlatform && !isOpenCodeGoPlatform">
+<div v-if="isCNPlatform && !isOpenCodeGoPlatform">
         <label class="input-label">{{ t('admin.accounts.cnProviders.accountMode.title') }}</label>
         <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2" data-tour="account-form-mode">
           <!-- Pay-as-you-go (token balance) -->
@@ -694,9 +703,7 @@
           </button>
         </div>
       </div>
-
-      <!-- API Protocol Selection (Kimi / Zhipu / DeepSeek / OpenCode) -->
-      <div v-if="isMultiProtocolPlatform" class="mt-4">
+<div v-if="isMultiProtocolPlatform" class="mt-4">
         <label class="input-label">{{ t('admin.accounts.cnProviders.apiProtocol.title') }}</label>
         <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <button
@@ -728,9 +735,7 @@
           </button>
         </div>
       </div>
-
-      <!-- Zhipu 团队版 Coding Plan：组织/项目 ID（可选，填写后额度探测走团队版端点） -->
-      <div v-if="form.platform === 'zhipu' && accountMode === 'coding'" class="mt-4">
+<div v-if="form.platform === 'zhipu' && accountMode === 'coding'" class="mt-4">
         <div class="flex items-center">
           <label class="input-label">{{ t('admin.accounts.cnProviders.zhipuTeam.title') }}</label>
           <HelpTooltip trigger="click" width-class="w-80">
@@ -758,9 +763,7 @@
         </div>
         <p class="input-hint mt-2">{{ t('admin.accounts.cnProviders.zhipuTeam.hint') }}</p>
       </div>
-
-      <!-- Account Type Selection (Gemini) -->
-      <div v-if="form.platform === 'gemini'">
+<div v-if="form.platform === 'gemini'">
         <div class="flex items-center justify-between">
           <label class="input-label">{{ t('admin.accounts.accountType') }}</label>
           <button
@@ -1141,9 +1144,7 @@
           <p class="input-hint">{{ t('admin.accounts.gemini.tier.hint') }}</p>
         </div>
       </div>
-
-      <!-- Account Type Selection (Antigravity - OAuth or Upstream) -->
-      <div v-if="form.platform === 'antigravity'">
+<div v-if="form.platform === 'antigravity'">
         <label class="input-label">{{ t('admin.accounts.accountType') }}</label>
         <div class="mt-2 grid grid-cols-2 gap-3">
           <button
@@ -1199,8 +1200,7 @@
           </button>
         </div>
       </div>
-
-      <div v-if="form.platform === 'antigravity' && antigravityAccountType === 'oauth'">
+<div v-if="form.platform === 'antigravity' && antigravityAccountType === 'oauth'">
         <label class="input-label">{{ t('admin.accounts.antigravityProjectIdLabel') }}</label>
         <input
           v-model="antigravityProjectId"
@@ -1211,9 +1211,7 @@
         />
         <p class="input-hint">{{ t('admin.accounts.antigravityProjectIdHint') }}</p>
       </div>
-
-      <!-- Upstream config (only for Antigravity upstream type) -->
-      <div v-if="form.platform === 'antigravity' && antigravityAccountType === 'upstream'" class="space-y-4">
+<div v-if="form.platform === 'antigravity' && antigravityAccountType === 'upstream'" class="space-y-4">
         <div>
           <label class="input-label">{{ t('admin.accounts.upstream.baseUrl') }}</label>
           <input
@@ -1251,9 +1249,7 @@
           />
         </div>
       </div>
-
-      <!-- Vertex Service Account -->
-      <div v-if="(form.platform === 'gemini' || form.platform === 'anthropic') && accountCategory === 'service_account'" class="space-y-4">
+<div v-if="(form.platform === 'gemini' || form.platform === 'anthropic') && accountCategory === 'service_account'" class="space-y-4">
         <div>
           <label class="input-label">Service Account JSON</label>
           <input
@@ -1341,10 +1337,7 @@
           </div>
         </div>
       </div>
-
-      <!-- Antigravity model restriction (applies to OAuth + Upstream) -->
-      <!-- Antigravity 只支持模型映射模式，不支持白名单模式 -->
-      <div v-if="form.platform === 'antigravity'" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+<div v-if="form.platform === 'antigravity'" class="border-t border-gray-200 pt-4 dark:border-dark-600">
         <label class="input-label">{{ t('admin.accounts.modelRestriction') }}</label>
 
         <!-- Mapping Mode Only (no toggle for Antigravity) -->
@@ -1432,9 +1425,7 @@
           </div>
         </div>
       </div>
-
-      <!-- Add Method (only for Anthropic OAuth-based type) -->
-      <div v-if="form.platform === 'anthropic' && isOAuthFlow">
+<div v-if="form.platform === 'anthropic' && isOAuthFlow">
         <label class="input-label">{{ t('admin.accounts.addMethod') }}</label>
         <div class="mt-2 flex gap-4">
           <label class="flex cursor-pointer items-center">
@@ -1459,9 +1450,7 @@
           </label>
         </div>
       </div>
-
-      <!-- API Key input (only for apikey type, excluding Antigravity which has its own fields) -->
-      <div v-if="form.type === 'apikey' && form.platform !== 'antigravity'" class="space-y-4">
+<div v-if="form.type === 'apikey' && form.platform !== 'antigravity'" class="space-y-4">
         <div v-if="!isMultiProtocolPlatform || apiProtocol !== 'adaptive'">
           <label class="input-label">{{ t('admin.accounts.baseUrl') }}</label>
           <input
@@ -1949,9 +1938,7 @@
         </div>
 
       </div>
-
-      <!-- Bedrock credentials (only for Anthropic Bedrock type) -->
-      <div v-if="form.platform === 'anthropic' && accountCategory === 'bedrock'" class="space-y-4">
+<div v-if="form.platform === 'anthropic' && accountCategory === 'bedrock'" class="space-y-4">
         <!-- Auth Mode Radio -->
         <div>
           <label class="input-label">{{ t('admin.accounts.bedrockAuthMode') }}</label>
@@ -2213,113 +2200,7 @@
           </div>
         </div>
       </div>
-
-      <!-- 配额控制 (Anthropic apikey/bedrock: 配额限制 + 亲和) -->
-      <div
-        v-if="form.platform === 'anthropic' && (form.type === 'apikey' || form.type === 'bedrock')"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
-      >
-        <div class="mb-3">
-          <h3 class="input-label mb-0 text-base font-semibold">{{ t('admin.accounts.quotaControl.title') }}</h3>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.accounts.quotaControl.hint') }}
-          </p>
-        </div>
-        <QuotaLimitCard
-          :totalLimit="editQuotaLimit"
-          :dailyLimit="editQuotaDailyLimit"
-          :weeklyLimit="editQuotaWeeklyLimit"
-          :quotaNotifyGlobalEnabled="quotaNotifyGlobalEnabled"
-          :quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled"
-          :quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold"
-          :quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType"
-          :quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled"
-          :quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold"
-          :quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType"
-          :quotaNotifyTotalEnabled="quotaNotifyState.total.enabled"
-          :quotaNotifyTotalThreshold="quotaNotifyState.total.threshold"
-          :quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType"
-          :dailyResetMode="editDailyResetMode"
-          :dailyResetHour="editDailyResetHour"
-          :weeklyResetMode="editWeeklyResetMode"
-          :weeklyResetDay="editWeeklyResetDay"
-          :weeklyResetHour="editWeeklyResetHour"
-          :resetTimezone="editResetTimezone"
-          @update:totalLimit="editQuotaLimit = $event"
-          @update:dailyLimit="editQuotaDailyLimit = $event"
-          @update:weeklyLimit="editQuotaWeeklyLimit = $event"
-          @update:quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled = $event"
-          @update:quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold = $event"
-          @update:quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType = $event"
-          @update:quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled = $event"
-          @update:quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold = $event"
-          @update:quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType = $event"
-          @update:quotaNotifyTotalEnabled="quotaNotifyState.total.enabled = $event"
-          @update:quotaNotifyTotalThreshold="quotaNotifyState.total.threshold = $event"
-          @update:quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType = $event"
-          @update:dailyResetMode="editDailyResetMode = $event"
-          @update:dailyResetHour="editDailyResetHour = $event"
-          @update:weeklyResetMode="editWeeklyResetMode = $event"
-          @update:weeklyResetDay="editWeeklyResetDay = $event"
-          @update:weeklyResetHour="editWeeklyResetHour = $event"
-          @update:resetTimezone="editResetTimezone = $event"
-        />
-      </div>
-
-      <!-- 配额控制 (非 Anthropic apikey/bedrock) -->
-      <div
-        v-else-if="form.type === 'apikey' || form.type === 'bedrock'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
-      >
-        <div class="mb-3">
-          <h3 class="input-label mb-0 text-base font-semibold">{{ t('admin.accounts.quotaControl.title') }}</h3>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.accounts.quotaLimitHint') }}
-          </p>
-        </div>
-        <QuotaLimitCard
-          :totalLimit="editQuotaLimit"
-          :dailyLimit="editQuotaDailyLimit"
-          :weeklyLimit="editQuotaWeeklyLimit"
-          :quotaNotifyGlobalEnabled="quotaNotifyGlobalEnabled"
-          :quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled"
-          :quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold"
-          :quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType"
-          :quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled"
-          :quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold"
-          :quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType"
-          :quotaNotifyTotalEnabled="quotaNotifyState.total.enabled"
-          :quotaNotifyTotalThreshold="quotaNotifyState.total.threshold"
-          :quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType"
-          :dailyResetMode="editDailyResetMode"
-          :dailyResetHour="editDailyResetHour"
-          :weeklyResetMode="editWeeklyResetMode"
-          :weeklyResetDay="editWeeklyResetDay"
-          :weeklyResetHour="editWeeklyResetHour"
-          :resetTimezone="editResetTimezone"
-          @update:totalLimit="editQuotaLimit = $event"
-          @update:dailyLimit="editQuotaDailyLimit = $event"
-          @update:weeklyLimit="editQuotaWeeklyLimit = $event"
-          @update:quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled = $event"
-          @update:quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold = $event"
-          @update:quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType = $event"
-          @update:quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled = $event"
-          @update:quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold = $event"
-          @update:quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType = $event"
-          @update:quotaNotifyTotalEnabled="quotaNotifyState.total.enabled = $event"
-          @update:quotaNotifyTotalThreshold="quotaNotifyState.total.threshold = $event"
-          @update:quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType = $event"
-          @update:dailyResetMode="editDailyResetMode = $event"
-          @update:dailyResetHour="editDailyResetHour = $event"
-          @update:weeklyResetMode="editWeeklyResetMode = $event"
-          @update:weeklyResetDay="editWeeklyResetDay = $event"
-          @update:weeklyResetHour="editWeeklyResetHour = $event"
-          @update:resetTimezone="editResetTimezone = $event"
-        />
-      </div>
-
-      <!-- Grok OAuth Custom Upstream URL (仅改写转发端点，OAuth 授权/刷新不受影响) -->
-      <div
+<div
         v-if="form.platform === 'grok' && isOAuthFlow"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -2358,53 +2239,7 @@
           <GrokBaseUrlPresets @select="grokOAuthBaseUrl = $event" />
         </div>
       </div>
-
-      <!-- Grok OAuth Header Override (OAuth 类型没有 apikey 容器，需要独立区域) -->
-      <div
-        v-if="form.platform === 'grok' && isOAuthFlow"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="mb-3 flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.accounts.headerOverride.title') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.accounts.headerOverride.hint') }}
-            </p>
-          </div>
-          <button
-            type="button"
-            @click="headerOverrideEnabled = !headerOverrideEnabled"
-            :class="[
-              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-              headerOverrideEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
-            ]"
-          >
-            <span
-              :class="[
-                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                headerOverrideEnabled ? 'translate-x-5' : 'translate-x-0'
-              ]"
-            />
-          </button>
-        </div>
-
-        <div v-if="headerOverrideEnabled" class="space-y-3">
-          <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-              <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-              {{ t('admin.accounts.headerOverride.info') }}
-            </p>
-          </div>
-
-          <HeaderOverrideEditor
-            :rows="headerOverrideRows"
-            @update:rows="headerOverrideRows = $event"
-          />
-        </div>
-      </div>
-
-      <!-- OpenAI OAuth Model Mapping (OAuth 类型没有 apikey 容器，需要独立的模型映射区域) -->
-      <div
+<div
         v-if="(form.platform === 'openai' || form.platform === 'grok') && isOAuthFlow"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -2544,9 +2379,26 @@
           </div>
         </template>
       </div>
-
-      <!-- Temp Unschedulable Rules -->
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4">
+<div
+        v-if="form.platform === 'anthropic' && accountCategory === 'apikey'"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <label class="input-label mb-0">{{ t('admin.accounts.anthropic.apiKeyAuthScheme') }}</label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.anthropic.apiKeyAuthSchemeDesc') }}
+            </p>
+          </div>
+          <select v-model="anthropicAPIKeyAuthScheme" class="input w-52 text-sm">
+            <option value="x_api_key">{{ t('admin.accounts.anthropic.apiKeyAuthSchemeXApiKey') }}</option>
+            <option value="authorization_bearer">{{ t('admin.accounts.anthropic.apiKeyAuthSchemeBearer') }}</option>
+          </select>
+        </div>
+      </div>
+</section>
+<section v-show="createTab === 'scheduling'" id="create-account-form-scheduling-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-account-form-scheduling-tab" data-admin-tab="scheduling">
+<div class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4">
         <div class="mb-3 flex items-center justify-between">
           <div>
             <label class="input-label mb-0">{{ t('admin.accounts.tempUnschedulable.title') }}</label>
@@ -2692,9 +2544,7 @@
           </button>
         </div>
       </div>
-
-      <!-- Intercept Warmup Requests (Anthropic/Antigravity) -->
-      <div
+<div
         v-if="form.platform === 'anthropic' || form.platform === 'antigravity'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -2724,9 +2574,316 @@
           </button>
         </div>
       </div>
+<div>
+        <div class="mb-1 flex items-center gap-2">
+          <label class="input-label mb-0">{{ t('admin.accounts.proxy') }}</label>
+          <ProxyAdBanner />
+        </div>
+        <ProxySelector v-model="form.proxy_id" :proxies="proxies" />
+      </div>
+<SlowTTFTSettings v-model="form.slow_ttft" />
+<div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div>
+          <label class="input-label">{{ t('admin.accounts.concurrency') }}</label>
+          <input v-model.number="form.concurrency" type="number" min="1" class="input"
+            @input="form.concurrency = Math.max(1, form.concurrency || 1)" />
+        </div>
+        <div>
+          <label class="input-label">{{ t('admin.accounts.loadFactor') }}</label>
+          <input v-model.number="form.load_factor" type="number" min="1"
+            class="input" :placeholder="String(form.concurrency || 1)"
+            @input="form.load_factor = (form.load_factor &amp;&amp; form.load_factor >= 1) ? form.load_factor : null" />
+          <p class="input-hint">{{ t('admin.accounts.loadFactorHint') }}</p>
+        </div>
+        <div>
+          <label class="input-label">{{ t('admin.accounts.priority') }}</label>
+          <input
+            v-model.number="form.priority"
+            type="number"
+            min="1"
+            class="input"
+            data-tour="account-form-priority"
+          />
+          <p class="input-hint">{{ t('admin.accounts.priorityHint') }}</p>
+        </div>
+        <div>
+          <label class="input-label">{{ t('admin.accounts.billingRateMultiplier') }}</label>
+          <input v-model.number="form.rate_multiplier" type="number" min="0" step="0.001" class="input" />
+          <p class="input-hint">{{ t('admin.accounts.billingRateMultiplierHint') }}</p>
+        </div>
+      </div>
+<div>
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="input-label mb-0">{{
+              t('admin.accounts.autoPauseOnExpired')
+            }}</label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.autoPauseOnExpiredDesc') }}
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="autoPauseOnExpired = !autoPauseOnExpired"
+            :class="[
+              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+              autoPauseOnExpired ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+            ]"
+          >
+            <span
+              :class="[
+                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                autoPauseOnExpired ? 'translate-x-5' : 'translate-x-0'
+              ]"
+            />
+          </button>
+        </div>
+      </div>
+<div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <!-- Mixed Scheduling (only for antigravity accounts) -->
+        <div v-if="form.platform === 'antigravity'" class="flex items-center gap-2">
+          <label class="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              v-model="mixedScheduling"
+              class="h-4 w-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500 dark:border-dark-500"
+            />
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t('admin.accounts.mixedScheduling') }}
+            </span>
+          </label>
+          <div class="group relative">
+            <span
+              class="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-200 text-xs text-gray-500 hover:bg-gray-300 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500"
+            >
+              ?
+            </span>
+            <!-- Tooltip（向下显示避免被弹窗裁剪） -->
+            <div
+              class="pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+            >
+              {{ t('admin.accounts.mixedSchedulingTooltip') }}
+              <div
+                class="absolute bottom-full left-3 border-4 border-transparent border-b-gray-900 dark:border-b-gray-700"
+              ></div>
+            </div>
+          </div>
+        </div>
+        <div v-if="form.platform === 'antigravity'" class="mt-3 flex items-center gap-2">
+          <label class="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              v-model="allowOverages"
+              class="h-4 w-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500 dark:border-dark-500"
+            />
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t('admin.accounts.allowOverages') }}
+            </span>
+          </label>
+          <div class="group relative">
+            <span
+              class="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-200 text-xs text-gray-500 hover:bg-gray-300 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500"
+            >
+              ?
+            </span>
+            <div
+              class="pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+            >
+              {{ t('admin.accounts.allowOveragesTooltip') }}
+              <div
+                class="absolute bottom-full left-3 border-4 border-transparent border-b-gray-900 dark:border-b-gray-700"
+              ></div>
+            </div>
+          </div>
+        </div>
 
-      <!-- 配额控制 (Anthropic OAuth/SetupToken: 亲和 + 窗口费用 + 会话 + RPM 等) -->
-      <div
+        <!-- Group Selection - 仅标准模式显示 -->
+        <GroupSelector
+          v-model="form.group_ids"
+          :groups="groups"
+          :platform="form.platform"
+          :mixed-scheduling="mixedScheduling"
+          data-tour="account-form-groups"
+        />
+      </div>
+</section>
+<section v-show="createTab === 'billing'" id="create-account-form-billing-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-account-form-billing-tab" data-admin-tab="billing">
+<div
+        v-if="form.platform === 'anthropic' && (form.type === 'apikey' || form.type === 'bedrock')"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
+      >
+        <div class="mb-3">
+          <h3 class="input-label mb-0 text-base font-semibold">{{ t('admin.accounts.quotaControl.title') }}</h3>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.accounts.quotaControl.hint') }}
+          </p>
+        </div>
+        <QuotaLimitCard
+          :totalLimit="editQuotaLimit"
+          :dailyLimit="editQuotaDailyLimit"
+          :weeklyLimit="editQuotaWeeklyLimit"
+          :quotaNotifyGlobalEnabled="quotaNotifyGlobalEnabled"
+          :quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled"
+          :quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold"
+          :quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType"
+          :quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled"
+          :quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold"
+          :quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType"
+          :quotaNotifyTotalEnabled="quotaNotifyState.total.enabled"
+          :quotaNotifyTotalThreshold="quotaNotifyState.total.threshold"
+          :quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType"
+          :dailyResetMode="editDailyResetMode"
+          :dailyResetHour="editDailyResetHour"
+          :weeklyResetMode="editWeeklyResetMode"
+          :weeklyResetDay="editWeeklyResetDay"
+          :weeklyResetHour="editWeeklyResetHour"
+          :resetTimezone="editResetTimezone"
+          @update:totalLimit="editQuotaLimit = $event"
+          @update:dailyLimit="editQuotaDailyLimit = $event"
+          @update:weeklyLimit="editQuotaWeeklyLimit = $event"
+          @update:quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled = $event"
+          @update:quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold = $event"
+          @update:quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType = $event"
+          @update:quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled = $event"
+          @update:quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold = $event"
+          @update:quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType = $event"
+          @update:quotaNotifyTotalEnabled="quotaNotifyState.total.enabled = $event"
+          @update:quotaNotifyTotalThreshold="quotaNotifyState.total.threshold = $event"
+          @update:quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType = $event"
+          @update:dailyResetMode="editDailyResetMode = $event"
+          @update:dailyResetHour="editDailyResetHour = $event"
+          @update:weeklyResetMode="editWeeklyResetMode = $event"
+          @update:weeklyResetDay="editWeeklyResetDay = $event"
+          @update:weeklyResetHour="editWeeklyResetHour = $event"
+          @update:resetTimezone="editResetTimezone = $event"
+        />
+      </div>
+<div
+        v-else-if="form.type === 'apikey' || form.type === 'bedrock'"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
+      >
+        <div class="mb-3">
+          <h3 class="input-label mb-0 text-base font-semibold">{{ t('admin.accounts.quotaControl.title') }}</h3>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.accounts.quotaLimitHint') }}
+          </p>
+        </div>
+        <QuotaLimitCard
+          :totalLimit="editQuotaLimit"
+          :dailyLimit="editQuotaDailyLimit"
+          :weeklyLimit="editQuotaWeeklyLimit"
+          :quotaNotifyGlobalEnabled="quotaNotifyGlobalEnabled"
+          :quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled"
+          :quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold"
+          :quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType"
+          :quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled"
+          :quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold"
+          :quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType"
+          :quotaNotifyTotalEnabled="quotaNotifyState.total.enabled"
+          :quotaNotifyTotalThreshold="quotaNotifyState.total.threshold"
+          :quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType"
+          :dailyResetMode="editDailyResetMode"
+          :dailyResetHour="editDailyResetHour"
+          :weeklyResetMode="editWeeklyResetMode"
+          :weeklyResetDay="editWeeklyResetDay"
+          :weeklyResetHour="editWeeklyResetHour"
+          :resetTimezone="editResetTimezone"
+          @update:totalLimit="editQuotaLimit = $event"
+          @update:dailyLimit="editQuotaDailyLimit = $event"
+          @update:weeklyLimit="editQuotaWeeklyLimit = $event"
+          @update:quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled = $event"
+          @update:quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold = $event"
+          @update:quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType = $event"
+          @update:quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled = $event"
+          @update:quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold = $event"
+          @update:quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType = $event"
+          @update:quotaNotifyTotalEnabled="quotaNotifyState.total.enabled = $event"
+          @update:quotaNotifyTotalThreshold="quotaNotifyState.total.threshold = $event"
+          @update:quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType = $event"
+          @update:dailyResetMode="editDailyResetMode = $event"
+          @update:dailyResetHour="editDailyResetHour = $event"
+          @update:weeklyResetMode="editWeeklyResetMode = $event"
+          @update:weeklyResetDay="editWeeklyResetDay = $event"
+          @update:weeklyResetHour="editWeeklyResetHour = $event"
+          @update:resetTimezone="editResetTimezone = $event"
+        />
+      </div>
+<div
+        v-if="form.platform === 'openai' && !hideAccountLongContextBilling && (accountCategory === 'oauth-based' || accountCategory === 'apikey')"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <label class="input-label mb-0">{{ t('admin.accounts.openai.longContextBilling') }}</label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.openai.longContextBillingDesc') }}
+            </p>
+          </div>
+          <button
+            type="button"
+            data-testid="openai-long-context-billing-toggle"
+            role="switch"
+            :aria-checked="openAILongContextBillingEnabled"
+            @click="toggleOpenAILongContextBilling"
+            :class="[
+              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+              openAILongContextBillingEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+            ]"
+          >
+            <span
+              :class="[
+                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                openAILongContextBillingEnabled ? 'translate-x-5' : 'translate-x-0'
+              ]"
+            />
+          </button>
+        </div>
+      </div>
+</section>
+<section v-show="createTab === 'advanced'" id="create-account-form-advanced-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-account-form-advanced-tab" data-admin-tab="advanced">
+<div
+        v-if="form.platform === 'grok' && isOAuthFlow"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <div class="mb-3 flex items-center justify-between">
+          <div>
+            <label class="input-label mb-0">{{ t('admin.accounts.headerOverride.title') }}</label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.headerOverride.hint') }}
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="headerOverrideEnabled = !headerOverrideEnabled"
+            :class="[
+              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+              headerOverrideEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+            ]"
+          >
+            <span
+              :class="[
+                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                headerOverrideEnabled ? 'translate-x-5' : 'translate-x-0'
+              ]"
+            />
+          </button>
+        </div>
+
+        <div v-if="headerOverrideEnabled" class="space-y-3">
+          <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+            <p class="text-xs text-blue-700 dark:text-blue-400">
+              <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
+              {{ t('admin.accounts.headerOverride.info') }}
+            </p>
+          </div>
+
+          <HeaderOverrideEditor
+            :rows="headerOverrideRows"
+            @update:rows="headerOverrideRows = $event"
+          />
+        </div>
+      </div>
+<div
         v-if="form.platform === 'anthropic' && accountCategory === 'oauth-based'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
       >
@@ -3104,71 +3261,12 @@
           </div>
         </div>
       </div>
-
-      <div>
-        <div class="mb-1 flex items-center gap-2">
-          <label class="input-label mb-0">{{ t('admin.accounts.proxy') }}</label>
-          <ProxyAdBanner />
-        </div>
-        <ProxySelector v-model="form.proxy_id" :proxies="proxies" />
-      </div>
-
-      <UpstreamRequestIdHeaderField
+<UpstreamRequestIdHeaderField
         v-model="upstreamRequestIdHeader"
         :platform="form.platform"
         :type="form.type"
       />
-
-      <SlowTTFTSettings v-model="form.slow_ttft" />
-      <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div>
-          <label class="input-label">{{ t('admin.accounts.concurrency') }}</label>
-          <input v-model.number="form.concurrency" type="number" min="1" class="input"
-            @input="form.concurrency = Math.max(1, form.concurrency || 1)" />
-        </div>
-        <div>
-          <label class="input-label">{{ t('admin.accounts.loadFactor') }}</label>
-          <input v-model.number="form.load_factor" type="number" min="1"
-            class="input" :placeholder="String(form.concurrency || 1)"
-            @input="form.load_factor = (form.load_factor &amp;&amp; form.load_factor >= 1) ? form.load_factor : null" />
-          <p class="input-hint">{{ t('admin.accounts.loadFactorHint') }}</p>
-        </div>
-        <div>
-          <label class="input-label">{{ t('admin.accounts.priority') }}</label>
-          <input
-            v-model.number="form.priority"
-            type="number"
-            min="1"
-            class="input"
-            data-tour="account-form-priority"
-          />
-          <p class="input-hint">{{ t('admin.accounts.priorityHint') }}</p>
-        </div>
-        <div>
-          <label class="input-label">{{ t('admin.accounts.billingRateMultiplier') }}</label>
-          <input v-model.number="form.rate_multiplier" type="number" min="0" step="0.001" class="input" />
-          <p class="input-hint">{{ t('admin.accounts.billingRateMultiplierHint') }}</p>
-        </div>
-      </div>
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <label class="input-label">{{ t('admin.accounts.expiresAt') }}</label>
-        <input v-model="expiresAtInput" type="datetime-local" class="input" />
-        <div class="mt-2 flex gap-2">
-          <button type="button" class="btn btn-secondary btn-sm" @click="form.expires_at = getAccountExpiryTimestamp(1)">
-            {{ t('payment.oneMonth') }}
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm" @click="form.expires_at = getAccountExpiryTimestamp(12)">
-            {{ t('payment.oneYear') }}
-          </button>
-        </div>
-        <p class="input-hint">
-          {{ t('admin.accounts.expiresAtHint') }}
-          {{ t('admin.accounts.expiresAtTimezoneHint', { timezone: browserTimeZone }) }}
-        </p>
-      </div>
-
-      <!-- OpenAI 自动透传开关（OAuth/API Key） -->
-      <div
+<div
         v-if="form.platform === 'openai'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -3196,9 +3294,7 @@
           </button>
         </div>
       </div>
-
-      <!-- OpenAI Codex namespace 工具摊平（兼容开关，仅 OAuth） -->
-      <div
+<div
         v-if="form.platform === 'openai' && form.type === 'oauth'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -3227,9 +3323,7 @@
           </button>
         </div>
       </div>
-
-      <!-- OpenAI WS Mode 三态（off/ctx_pool/passthrough） -->
-      <div
+<div
         v-if="form.platform === 'openai' && (accountCategory === 'oauth-based' || accountCategory === 'apikey')"
         data-testid="create-openai-ws-mode"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
@@ -3249,9 +3343,7 @@
           </div>
         </div>
       </div>
-
-      <!-- Anthropic API Key 自动透传开关 -->
-      <div
+<div
         v-if="form.platform === 'anthropic' && accountCategory === 'apikey'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -3279,27 +3371,7 @@
           </button>
         </div>
       </div>
-
-      <div
-        v-if="form.platform === 'anthropic' && accountCategory === 'apikey'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between gap-4">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.accounts.anthropic.apiKeyAuthScheme') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.accounts.anthropic.apiKeyAuthSchemeDesc') }}
-            </p>
-          </div>
-          <select v-model="anthropicAPIKeyAuthScheme" class="input w-52 text-sm">
-            <option value="x_api_key">{{ t('admin.accounts.anthropic.apiKeyAuthSchemeXApiKey') }}</option>
-            <option value="authorization_bearer">{{ t('admin.accounts.anthropic.apiKeyAuthSchemeBearer') }}</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Anthropic API Key: Web Search Emulation (hidden when global disabled) -->
-      <div
+<div
         v-if="form.platform === 'anthropic' && accountCategory === 'apikey' && webSearchGlobalEnabled"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -3317,41 +3389,7 @@
           </select>
         </div>
       </div>
-
-      <!-- OpenAI API 长上下文计费开关 -->
-      <div
-        v-if="form.platform === 'openai' && !hideAccountLongContextBilling && (accountCategory === 'oauth-based' || accountCategory === 'apikey')"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between gap-4">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.accounts.openai.longContextBilling') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.accounts.openai.longContextBillingDesc') }}
-            </p>
-          </div>
-          <button
-            type="button"
-            data-testid="openai-long-context-billing-toggle"
-            role="switch"
-            :aria-checked="openAILongContextBillingEnabled"
-            @click="toggleOpenAILongContextBilling"
-            :class="[
-              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-              openAILongContextBillingEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
-            ]"
-          >
-            <span
-              :class="[
-                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                openAILongContextBillingEnabled ? 'translate-x-5' : 'translate-x-0'
-              ]"
-            />
-          </button>
-        </div>
-      </div>
-
-      <div
+<div
         v-if="form.platform === 'openai' && accountCategory === 'oauth-based'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -3405,9 +3443,7 @@
           </button>
         </div>
       </div>
-
-      <!-- Codex 指纹收敛模式（仅 OpenAI OAuth） -->
-      <div
+<div
         v-if="form.platform === 'openai' && accountCategory === 'oauth-based'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -3423,9 +3459,7 @@
           </div>
         </div>
       </div>
-
-      <!-- OpenAI Compact 能力配置 -->
-      <div
+<div
         v-if="form.platform === 'openai' && (accountCategory === 'oauth-based' || accountCategory === 'apikey')"
         class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
       >
@@ -3462,9 +3496,7 @@
           </button>
         </div>
       </div>
-
-      <!-- OpenAI APIKey Responses API support mode -->
-      <div
+<div
         v-if="form.platform === 'openai' && accountCategory === 'apikey'"
         class="space-y-4 border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -3512,9 +3544,7 @@
           <p class="input-hint">{{ t('admin.accounts.openai.endpointCapabilitiesDesc') }}</p>
         </div>
       </div>
-
-      <!-- OpenAI APIKey images: backfill b64_json from url -->
-      <div
+<div
         v-if="form.platform === 'openai' && accountCategory === 'apikey'"
         class="flex items-center justify-between gap-4 border-t border-gray-200 pt-4 dark:border-dark-600"
       >
@@ -3543,104 +3573,10 @@
           />
         </button>
       </div>
-
-      <div>
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{
-              t('admin.accounts.autoPauseOnExpired')
-            }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.accounts.autoPauseOnExpiredDesc') }}
-            </p>
-          </div>
-          <button
-            type="button"
-            @click="autoPauseOnExpired = !autoPauseOnExpired"
-            :class="[
-              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-              autoPauseOnExpired ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
-            ]"
-          >
-            <span
-              :class="[
-                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                autoPauseOnExpired ? 'translate-x-5' : 'translate-x-0'
-              ]"
-            />
-          </button>
-        </div>
-      </div>
-
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <!-- Mixed Scheduling (only for antigravity accounts) -->
-        <div v-if="form.platform === 'antigravity'" class="flex items-center gap-2">
-          <label class="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              v-model="mixedScheduling"
-              class="h-4 w-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500 dark:border-dark-500"
-            />
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ t('admin.accounts.mixedScheduling') }}
-            </span>
-          </label>
-          <div class="group relative">
-            <span
-              class="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-200 text-xs text-gray-500 hover:bg-gray-300 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500"
-            >
-              ?
-            </span>
-            <!-- Tooltip（向下显示避免被弹窗裁剪） -->
-            <div
-              class="pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
-            >
-              {{ t('admin.accounts.mixedSchedulingTooltip') }}
-              <div
-                class="absolute bottom-full left-3 border-4 border-transparent border-b-gray-900 dark:border-b-gray-700"
-              ></div>
-            </div>
-          </div>
-        </div>
-        <div v-if="form.platform === 'antigravity'" class="mt-3 flex items-center gap-2">
-          <label class="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              v-model="allowOverages"
-              class="h-4 w-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500 dark:border-dark-500"
-            />
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ t('admin.accounts.allowOverages') }}
-            </span>
-          </label>
-          <div class="group relative">
-            <span
-              class="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-200 text-xs text-gray-500 hover:bg-gray-300 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500"
-            >
-              ?
-            </span>
-            <div
-              class="pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
-            >
-              {{ t('admin.accounts.allowOveragesTooltip') }}
-              <div
-                class="absolute bottom-full left-3 border-4 border-transparent border-b-gray-900 dark:border-b-gray-700"
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Group Selection - 仅标准模式显示 -->
-        <GroupSelector
-          v-model="form.group_ids"
-          :groups="groups"
-          :platform="form.platform"
-          :mixed-scheduling="mixedScheduling"
-          data-tour="account-form-groups"
-        />
-      </div>
+</section>
 
       </template>
+
     </form>
 
     <!-- Step 2: OAuth Authorization -->
@@ -3684,7 +3620,7 @@
 
     <template #footer>
       <div v-if="step === 1" class="flex justify-end gap-3">
-        <button @click="handleClose" type="button" class="btn btn-secondary">
+        <button @click="editorDialog?.requestClose()" type="button" class="btn btn-secondary">
           {{ t('common.cancel') }}
         </button>
         <button
@@ -3996,6 +3932,11 @@
 </template>
 
 <script setup lang="ts">
+import { singleFlight } from '@/utils/singleFlight'
+import { unref } from 'vue'
+import AdminFormTabs from '@/components/admin/AdminFormTabs.vue'
+import { useAdminFormTabs } from '@/composables/useAdminFormTabs'
+import { useAdminDraft } from '@/composables/useAdminDraft'
 import SlowTTFTSettings from './SlowTTFTSettings.vue'
 import { defaultSlowTTFT } from './slowTTFT'
 import { ref, reactive, computed, watch } from 'vue'
@@ -4568,18 +4509,21 @@ const validateGrokOAuthUpstreamConfig = (): boolean => {
   if (grokOAuthCustomBaseUrlEnabled.value) {
     const trimmed = grokOAuthBaseUrl.value.trim()
     if (!trimmed) {
-      appStore.showError(t('admin.accounts.grokCustomBaseUrl.required'))
+      createTab.value = 'auth'
+    appStore.showError(t('admin.accounts.grokCustomBaseUrl.required'))
       return false
     }
     if (!/^https?:\/\//i.test(trimmed)) {
-      appStore.showError(t('admin.accounts.grokCustomBaseUrl.invalid'))
+      createTab.value = 'auth'
+    appStore.showError(t('admin.accounts.grokCustomBaseUrl.invalid'))
       return false
     }
   }
   if (headerOverrideEnabled.value) {
     const headerError = validateHeaderOverrideRows(headerOverrideRows.value)
     if (headerError) {
-      appStore.showError(t(`admin.accounts.headerOverride.${headerError}`))
+      createTab.value = 'advanced'
+            appStore.showError(t(`admin.accounts.headerOverride.${headerError}`))
       return false
     }
   }
@@ -5327,6 +5271,7 @@ const applyTempUnschedConfig = (credentials: Record<string, unknown>) => {
 
   const rules = buildTempUnschedRules(tempUnschedRules.value)
   if (rules.length === 0) {
+    createTab.value = 'scheduling'
     appStore.showError(t('admin.accounts.tempUnschedulable.rulesInvalid'))
     return false
   }
@@ -5800,7 +5745,8 @@ const handleVertexServiceAccountDrop = async (event: DragEvent) => {
   applyVertexServiceAccountJson(await file.text())
 }
 
-const handleSubmit = async () => {
+const handleSubmit = singleFlight(async () => {
+  if (submitting.value) return
   // For OAuth-based type, handle OAuth flow (goes to step 2)
   if (isOAuthFlow.value) {
     if (!isGrokSSOInputMethod.value && !form.name.trim()) {
@@ -5926,7 +5872,8 @@ const handleSubmit = async () => {
       return
     }
     if (!vertexLocation.value.trim()) {
-      appStore.showError(t('admin.accounts.vertexLocationRequired'))
+      createTab.value = 'auth'
+    appStore.showError(t('admin.accounts.vertexLocationRequired'))
       return
     }
     const credentials: Record<string, unknown> = {
@@ -6037,7 +5984,8 @@ const handleSubmit = async () => {
     if (headerOverrideEnabled.value) {
       const headerError = validateHeaderOverrideRows(headerOverrideRows.value)
       if (headerError) {
-        appStore.showError(t(`admin.accounts.headerOverride.${headerError}`))
+        createTab.value = 'advanced'
+            appStore.showError(t(`admin.accounts.headerOverride.${headerError}`))
         return
       }
     }
@@ -6059,7 +6007,7 @@ const handleSubmit = async () => {
     upstream_billing_probe_enabled: upstreamBillingAutoProbeEnabled.value,
     auto_pause_on_expired: autoPauseOnExpired.value
   })
-}
+})
 
 const goBackToBasicInfo = () => {
   step.value = 1
@@ -6889,7 +6837,7 @@ const handleAntigravityValidateRT = async (refreshTokenInput: string) => {
 
         const credentials = antigravityOAuth.buildCredentials(tokenInfo, refreshTokens[i])
         applyAntigravityProjectID(credentials, antigravityProjectId.value, 'create')
-        
+
         // Generate account name with index for batch
         const accountName = refreshTokens.length > 1 ? `${form.name} #${i + 1}` : form.name
 
@@ -7187,7 +7135,8 @@ const handleCookieAuth = async (sessionKey: string) => {
       ? buildTempUnschedRules(tempUnschedRules.value)
       : []
     if (tempUnschedEnabled.value && tempUnschedPayload.length === 0) {
-      appStore.showError(t('admin.accounts.tempUnschedulable.rulesInvalid'))
+      createTab.value = 'scheduling'
+    appStore.showError(t('admin.accounts.tempUnschedulable.rulesInvalid'))
       return
     }
 
@@ -7323,4 +7272,114 @@ const handleCookieAuth = async (sessionKey: string) => {
     oauth.loading.value = false
   }
 }
+
+const createTabOptions = [{"id":"basic","zh":"基础信息","en":"General"},{"id":"auth","zh":"认证与模型","en":"Authentication & models"},{"id":"scheduling","zh":"调度与分组","en":"Scheduling & groups"},{"id":"billing","zh":"计费与额度","en":"Billing & quotas"},{"id":"advanced","zh":"高级设置","en":"Advanced"}]
+const { formTab: createTab, revealInvalid: createTabInvalid } = useAdminFormTabs(() => props.show)
+const editorDialog = ref<InstanceType<typeof BaseDialog> | null>(null)
+// Compare editable values only; remote capability flags and translated hints are not drafts.
+const { dirty: createTabDirty } = useAdminDraft(
+  () => props.show,
+  () => ({
+    form: unref(form),
+    zhipuOrganization: unref(zhipuOrganization),
+    zhipuProject: unref(zhipuProject),
+    geminiTierGoogleOne: unref(geminiTierGoogleOne),
+    geminiTierGcp: unref(geminiTierGcp),
+    geminiTierAIStudio: unref(geminiTierAIStudio),
+    antigravityProjectId: unref(antigravityProjectId),
+    upstreamBaseUrl: unref(upstreamBaseUrl),
+    upstreamApiKey: unref(upstreamApiKey),
+    upstreamBillingAutoProbeEnabled: unref(upstreamBillingAutoProbeEnabled),
+    vertexProjectId: unref(vertexProjectId),
+    vertexLocation: unref(vertexLocation),
+    addMethod: unref(addMethod),
+    apiKeyBaseUrl: unref(apiKeyBaseUrl),
+    adaptiveBaseUrls: unref(adaptiveBaseUrls),
+    openCodeGoProtocolRules: unref(openCodeGoProtocolRules),
+    apiKeyValue: unref(apiKeyValue),
+    allowedModels: unref(allowedModels),
+    poolModeRetryCount: unref(poolModeRetryCount),
+    poolModeRetryStatusCodesInput: unref(poolModeRetryStatusCodesInput),
+    customErrorCodeInput: unref(customErrorCodeInput),
+    bedrockAuthMode: unref(bedrockAuthMode),
+    bedrockAccessKeyId: unref(bedrockAccessKeyId),
+    bedrockSecretAccessKey: unref(bedrockSecretAccessKey),
+    bedrockSessionToken: unref(bedrockSessionToken),
+    bedrockApiKeyValue: unref(bedrockApiKeyValue),
+    bedrockRegion: unref(bedrockRegion),
+    bedrockForceGlobal: unref(bedrockForceGlobal),
+    grokOAuthBaseUrl: unref(grokOAuthBaseUrl),
+    windowCostLimit: unref(windowCostLimit),
+    windowCostStickyReserve: unref(windowCostStickyReserve),
+    maxSessions: unref(maxSessions),
+    sessionIdleTimeout: unref(sessionIdleTimeout),
+    baseRpm: unref(baseRpm),
+    rpmStickyBuffer: unref(rpmStickyBuffer),
+    tlsFingerprintProfileId: unref(tlsFingerprintProfileId),
+    cacheTTLOverrideTarget: unref(cacheTTLOverrideTarget),
+    customBaseUrl: unref(customBaseUrl),
+    upstreamRequestIdHeader: unref(upstreamRequestIdHeader),
+    expiresAtInput: unref(expiresAtInput),
+    openaiResponsesWebSocketV2Mode: unref(openaiResponsesWebSocketV2Mode),
+    anthropicAPIKeyAuthScheme: unref(anthropicAPIKeyAuthScheme),
+    webSearchEmulationMode: unref(webSearchEmulationMode),
+    codexFingerprintMode: unref(codexFingerprintMode),
+    openAICompactMode: unref(openAICompactMode),
+    openAIResponsesMode: unref(openAIResponsesMode),
+    mixedScheduling: unref(mixedScheduling),
+    allowOverages: unref(allowOverages),
+    accountCategory: unref(accountCategory),
+    accountMode: unref(accountMode),
+    openCodeAccountMode: unref(openCodeAccountMode),
+    apiProtocol: unref(apiProtocol),
+    modelMappings: unref(modelMappings),
+    openAICompactModelMappings: unref(openAICompactModelMappings),
+    poolModeEnabled: unref(poolModeEnabled),
+    customErrorCodesEnabled: unref(customErrorCodesEnabled),
+    selectedErrorCodes: unref(selectedErrorCodes),
+    headerOverrideEnabled: unref(headerOverrideEnabled),
+    headerOverrideRows: unref(headerOverrideRows),
+    grokOAuthCustomBaseUrlEnabled: unref(grokOAuthCustomBaseUrlEnabled),
+    interceptWarmupRequests: unref(interceptWarmupRequests),
+    autoPauseOnExpired: unref(autoPauseOnExpired),
+    antigravityModelMappings: unref(antigravityModelMappings),
+    tempUnschedEnabled: unref(tempUnschedEnabled),
+    windowCostEnabled: unref(windowCostEnabled),
+    sessionLimitEnabled: unref(sessionLimitEnabled),
+    rpmLimitEnabled: unref(rpmLimitEnabled),
+    rpmStrategy: unref(rpmStrategy),
+    userMsgQueueMode: unref(userMsgQueueMode),
+    tlsFingerprintEnabled: unref(tlsFingerprintEnabled),
+    sessionIdMaskingEnabled: unref(sessionIdMaskingEnabled),
+    cacheTTLOverrideEnabled: unref(cacheTTLOverrideEnabled),
+    customBaseUrlEnabled: unref(customBaseUrlEnabled),
+    openaiPassthroughEnabled: unref(openaiPassthroughEnabled),
+    openaiFlattenNamespacesEnabled: unref(openaiFlattenNamespacesEnabled),
+    openAILongContextBillingEnabled: unref(openAILongContextBillingEnabled),
+    openAIImagesUrlToB64JsonEnabled: unref(openAIImagesUrlToB64JsonEnabled),
+    openAIEndpointCapabilities: unref(openAIEndpointCapabilities),
+    codexCLIOnlyEnabled: unref(codexCLIOnlyEnabled),
+    codexCLIOnlyAppServerEnabled: unref(codexCLIOnlyAppServerEnabled),
+    anthropicPassthroughEnabled: unref(anthropicPassthroughEnabled),
+    antigravityAccountType: unref(antigravityAccountType),
+    vertexClientEmail: unref(vertexClientEmail),
+    vertexServiceAccountJson: unref(vertexServiceAccountJson),
+    geminiOAuthType: unref(geminiOAuthType),
+    antigravityWhitelistModels: unref(antigravityWhitelistModels),
+    antigravityModelRestrictionMode: unref(antigravityModelRestrictionMode),
+    modelRestrictionMode: unref(modelRestrictionMode),
+    tempUnschedRules: unref(tempUnschedRules),
+    editQuotaLimit: unref(editQuotaLimit),
+    editQuotaDailyLimit: unref(editQuotaDailyLimit),
+    editQuotaWeeklyLimit: unref(editQuotaWeeklyLimit),
+    editDailyResetMode: unref(editDailyResetMode),
+    editDailyResetHour: unref(editDailyResetHour),
+    editWeeklyResetMode: unref(editWeeklyResetMode),
+    editWeeklyResetDay: unref(editWeeklyResetDay),
+    editWeeklyResetHour: unref(editWeeklyResetHour),
+    editResetTimezone: unref(editResetTimezone)
+  }),
+  () => submitting.value
+)
+
 </script>

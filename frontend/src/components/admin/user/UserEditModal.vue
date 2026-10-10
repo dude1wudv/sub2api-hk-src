@@ -2,15 +2,28 @@
   <BaseDialog
     :show="show"
     :title="t('admin.users.editUser')"
-    width="normal"
+    width="wide" presentation="editor" ref="editorDialog" :dirty="userTabDirty" :busy="submitting"
     @close="$emit('close')"
   >
-    <form v-if="user" id="edit-user-form" @submit.prevent="handleUpdateUser" class="space-y-5">
-      <div>
+    <form v-if="user" id="edit-user-form" @submit.prevent="handleUpdateUser" class="space-y-5" @invalid.capture="userTabInvalid">
+
+<AdminFormTabs v-model="userTab" id="edit-user-form" :tabs="userTabOptions" />
+<section v-show="userTab === 'basic'" id="edit-user-form-basic-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="edit-user-form-basic-tab" data-admin-tab="basic">
+<div>
         <label class="input-label">{{ t('admin.users.email') }}</label>
         <input v-model="form.email" type="email" class="input" />
       </div>
-      <div>
+<div>
+        <label class="input-label">{{ t('admin.users.username') }}</label>
+        <input v-model="form.username" type="text" class="input" />
+      </div>
+<div>
+        <label class="input-label">{{ t('admin.users.notes') }}</label>
+        <textarea v-model="form.notes" rows="3" class="input"></textarea>
+      </div>
+</section>
+<section v-show="userTab === 'security'" id="edit-user-form-security-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="edit-user-form-security-tab" data-admin-tab="security">
+<div>
         <label class="input-label">{{ t('admin.users.password') }}</label>
         <div class="flex gap-2">
           <div class="relative flex-1">
@@ -25,11 +38,7 @@
           </button>
         </div>
       </div>
-      <div>
-        <label class="input-label">{{ t('admin.users.username') }}</label>
-        <input v-model="form.username" type="text" class="input" />
-      </div>
-      <div>
+<div>
         <label class="input-label">{{ t('admin.users.form.roleLabel') }}</label>
         <Select
           v-model="form.role"
@@ -37,11 +46,7 @@
           :searchable="false"
         />
       </div>
-      <div>
-        <label class="input-label">{{ t('admin.users.notes') }}</label>
-        <textarea v-model="form.notes" rows="3" class="input"></textarea>
-      </div>
-      <div>
+<div>
         <label class="input-label">{{ t('admin.users.columns.concurrency') }}</label>
         <input
           v-model.number="form.concurrency"
@@ -54,7 +59,7 @@
         />
         <p class="input-hint">{{ t('admin.users.form.concurrencyHint') }}</p>
       </div>
-      <div>
+<div>
         <label class="input-label">{{ t('admin.users.form.rpmLimit') }}</label>
         <input
           v-model.number="form.rpm_limit"
@@ -66,11 +71,15 @@
         />
         <p class="input-hint">{{ t('admin.users.form.rpmLimitHint') }}</p>
       </div>
-      <UserAttributeForm v-model="form.customAttributes" :user-id="user?.id" />
+</section>
+<section v-show="userTab === 'attributes'" id="edit-user-form-attributes-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="edit-user-form-attributes-tab" data-admin-tab="attributes">
+<UserAttributeForm v-model="form.customAttributes" :user-id="user?.id" />
+</section>
+
     </form>
     <template #footer>
       <div class="flex justify-end gap-3">
-        <button @click="$emit('close')" type="button" class="btn btn-secondary">{{ t('common.cancel') }}</button>
+        <button @click="editorDialog?.requestClose()" type="button" class="btn btn-secondary">{{ t('common.cancel') }}</button>
         <button type="submit" form="edit-user-form" :disabled="submitting" class="btn btn-primary">
           {{ submitting ? t('admin.users.updating') : t('common.update') }}
         </button>
@@ -83,6 +92,10 @@
 </template>
 
 <script setup lang="ts">
+import { unref } from 'vue'
+import AdminFormTabs from '@/components/admin/AdminFormTabs.vue'
+import { useAdminFormTabs } from '@/composables/useAdminFormTabs'
+import { useAdminDraft } from '@/composables/useAdminDraft'
 import { computed, ref, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -136,6 +149,7 @@ const copyPassword = async () => {
 const stepUp = useStepUp()
 
 const handleUpdateUser = async () => {
+  if (submitting.value) return
   if (!props.user) return
   if (!form.email.trim()) {
     appStore.showError(t('admin.users.emailRequired'))
@@ -170,4 +184,16 @@ const handleUpdateUser = async () => {
     }
   } finally { submitting.value = false }
 }
+
+const userTabOptions = [{"id":"basic","zh":"基础信息","en":"General"},{"id":"security","zh":"安全与权限","en":"Security & permissions"},{"id":"attributes","zh":"自定义属性","en":"Custom attributes"}]
+const { formTab: userTab, revealInvalid: userTabInvalid } = useAdminFormTabs(() => props.show)
+const editorDialog = ref<InstanceType<typeof BaseDialog> | null>(null)
+const { dirty: userTabDirty } = useAdminDraft(
+  () => props.show,
+  () => ({
+    form: unref(form)
+  }),
+  () => submitting.value
+)
+
 </script>

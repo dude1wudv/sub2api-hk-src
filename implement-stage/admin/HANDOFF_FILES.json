@@ -1,0 +1,218 @@
+{
+  "base": "a92691325d9f68cb1ecfdec13a59cad2f9cabb9a",
+  "owner": "admin-side-conversation",
+  "releaseOwner": "user-portal-main-task",
+  "manifest": "implement-stage/admin/HANDOFF_FILES.json",
+  "note": "Only these admin files plus this manifest are proposed for the joint commit; user portal files are owned by the main task. Logs stay local. This file does not stage or commit anything.",
+  "files": [
+    {
+      "path": "frontend/dev/admin-preview-fixtures.mjs",
+      "sha256": "1d8e48fe18e8c30061055c92dab4a2eb75e8eee7f9fa6cd515d25ede8448ad60"
+    },
+    {
+      "path": "frontend/dev/admin-preview.mjs",
+      "sha256": "f83334c8935c49581c5da0b77def1945c16127c891d98b3ff6f79510788acd88"
+    },
+    {
+      "path": "frontend/src/App.vue",
+      "sha256": "d364d3ae05eb5867f703805091423ad77a63ee74bce3c4be997e7aabfbe3fb8b"
+    },
+    {
+      "path": "frontend/src/__tests__/integration/app-shell-persistence.spec.ts",
+      "sha256": "0ffe32f3afaee047621456d4054e3b581e66f78171ee987571ec008f7eb4c55b"
+    },
+    {
+      "path": "frontend/src/components/account/AccountDetailsDrawer.vue",
+      "sha256": "02c3e261ad99cf64acd022b03c519f2765428b67e7ff016b8310790532b88b90"
+    },
+    {
+      "path": "frontend/src/components/account/CreateAccountModal.vue",
+      "sha256": "3193a9d0bdf8bb58db8f3c0eca361929b933c5b536ee7e0df858c7260ba727e6"
+    },
+    {
+      "path": "frontend/src/components/account/EditAccountModal.vue",
+      "sha256": "915609d266b3f7f2101c217566cfe4baf9df854024c3073d593b54a3cac0cf9d"
+    },
+    {
+      "path": "frontend/src/components/account/__tests__/EditAccountModal.spec.ts",
+      "sha256": "ec025e0f86fbe5b4b014c6f4f2824f6e272403577d1b5f7468b75d4d4c33c2b1"
+    },
+    {
+      "path": "frontend/src/components/admin/AdminFormTabs.vue",
+      "sha256": "2ff4c3c4e600a1446a5cf4dbfb5ab9459d2f22398f1b874d9900f0c48b111f41"
+    },
+    {
+      "path": "frontend/src/components/admin/payment/AdminOrderDetail.vue",
+      "sha256": "caed7297d86e0cc25e21f86b0e0fbb1094cfef5ac4891243d7dfeff8fca1d63b"
+    },
+    {
+      "path": "frontend/src/components/admin/user/UserEditModal.vue",
+      "sha256": "c0fcaaaa44c45cf1fc85d005645f8c69b057bc376eb6a597437ac88fc09f9987"
+    },
+    {
+      "path": "frontend/src/components/common/BaseDialog.vue",
+      "sha256": "233a72b119f6a46443ec1952ccc204f25b36e9255688d47eacd1d3f30586ed1d"
+    },
+    {
+      "path": "frontend/src/components/common/__tests__/BaseDialog.admin.spec.ts",
+      "sha256": "81a10474d69ef316fe8a97de17310fb6578fd44f275d53dbcc97b9ab95a02067"
+    },
+    {
+      "path": "frontend/src/components/layout/AdminShell.vue",
+      "sha256": "7235a0f8ca633486a2ba6aa358db3a35bf07b83beb41e071affa2687fb479200"
+    },
+    {
+      "path": "frontend/src/composables/__tests__/adminEditors.spec.ts",
+      "sha256": "2b5449cc2e0341f3a0a1ac4da0604b1fa3ad325085a122d164b2a12b81323f43"
+    },
+    {
+      "path": "frontend/src/composables/adminSurface.ts",
+      "sha256": "71ceba8cdd948cceffedb772aa163500a082b85fccd1afe930adb53a796c4adc"
+    },
+    {
+      "path": "frontend/src/composables/useAdminDraft.ts",
+      "sha256": "8b4befb360592080718ab9970b1db8c5039b58aab1b6cb5b4a63fdfc33c78a84"
+    },
+    {
+      "path": "frontend/src/composables/useAdminFormTabs.ts",
+      "sha256": "fbcf974e33d3f31060d71ac38dc596a8c410d9f8a69a2e6090cb7d7d1ac6a92a"
+    },
+    {
+      "path": "frontend/src/composables/useAppearance.ts",
+      "sha256": "4a948efab5771b109070766c49a9b1346125546d7b685c3c3ff7ae5b092a341c"
+    },
+    {
+      "path": "frontend/src/composables/useGlacierPreferences.ts",
+      "sha256": "6cbc9290f9f6e7a0586a00c87c0b569d8d8ab26a36bc5afdb17f679d95bc0af5"
+    },
+    {
+      "path": "frontend/src/composables/useOnboardingTour.ts",
+      "sha256": "06d87d11540636a38c4d57e1033acd703a4bfbe2d2806ccfece74dc25c7e78c8"
+    },
+    {
+      "path": "frontend/src/features/prompt-audit/components/EventDetailDialog.vue",
+      "sha256": "0f1c1793aee91a5d175ff3378b20be94d2775d520193f2bf40ff07615841e365"
+    },
+    {
+      "path": "frontend/src/styles/admin-portal.css",
+      "sha256": "3da55f24edbe6a1e9564e9d1fae9e1250614a49b9a32c1fb29386252cbc2d4e0"
+    },
+    {
+      "path": "frontend/src/utils/__tests__/adminNavigation.spec.ts",
+      "sha256": "a0f46cfd0866676748c7b88f2d1b11b2eac9ff6c86d83a618acbf945e3fad5f7"
+    },
+    {
+      "path": "frontend/src/utils/__tests__/singleFlight.spec.ts",
+      "sha256": "307ad8b247dcaf73aaafa1dac4e6e1195c84aa7bef05a1cb2a8c28944aaa85bb"
+    },
+    {
+      "path": "frontend/src/utils/adminNavigation.ts",
+      "sha256": "e1b479637675ef206716e3a2f54afadda3b7ca61b920103896b80c8fc15493df"
+    },
+    {
+      "path": "frontend/src/utils/singleFlight.ts",
+      "sha256": "38798b24c60c4f278469846fd029eb493e3ee293c9a22c4af47a5fe5128bcfea"
+    },
+    {
+      "path": "frontend/src/views/admin/AccountsView.vue",
+      "sha256": "ebbbcbc8a51b399f62b6266462af5d76de078d59f447d432b34f268c7a732ec4"
+    },
+    {
+      "path": "frontend/src/views/admin/DashboardView.vue",
+      "sha256": "c46ecd12a367fe849c7f59e60f1259b5265b59636eff7e70c0848be1a6697013"
+    },
+    {
+      "path": "frontend/src/views/admin/GroupsView.vue",
+      "sha256": "caff5c34b72ba37f8a0c47421ef147a819d2b2a1ef54e230ad3141ec45af0274"
+    },
+    {
+      "path": "frontend/src/views/admin/SettingsView.vue",
+      "sha256": "4b3c8571ed5154beecb60d5c2e9b0e4e3f6764af3b85a0e830f83a566638c86c"
+    },
+    {
+      "path": "frontend/src/views/admin/ops/components/OpsErrorDetailModal.vue",
+      "sha256": "e411f2b14d7048480c7df69bf4a070ea50be7c3ba0da68fa14bd4602b162cdb1"
+    },
+    {
+      "path": "frontend/src/views/admin/ops/components/OpsErrorDetailsModal.vue",
+      "sha256": "5bfbdd306fca62ad99c081678a996eb06dbaf56264c700b24a058943c63a5718"
+    },
+    {
+      "path": "frontend/src/views/admin/ops/components/OpsRequestDetailsModal.vue",
+      "sha256": "2d188f327bfab1dab1b281850755bdb7c6168221350bff0ddb3fa0a5826480d0"
+    },
+    {
+      "path": "frontend/src/views/admin/orders/AdminOrdersView.vue",
+      "sha256": "a448c337457caec76ea16fbe04ba150d650f7ac53e50c93fd8a1bbb36fff51df"
+    },
+    {
+      "path": "frontend/tailwind.config.js",
+      "sha256": "9eab94577bc31ab3ce6c934ea317538ab01fa7897ab89bd7ea48ffae15c59644"
+    },
+    {
+      "path": "implement-stage/RELEASE_COORDINATION.md",
+      "sha256": "b0a764163d6238f4d2d065e8f5dbb7093578559b2677070612f270ca865e0fdd"
+    },
+    {
+      "path": "implement-stage/admin/ASSUMPTIONS.md",
+      "sha256": "e465f0623de60e77082d1a090e8dbbd258731c8999a8c9104a8f2b16c830524c"
+    },
+    {
+      "path": "implement-stage/admin/BUILD_NOTE.md",
+      "sha256": "377f94368d966a3a43d94986c49bc77b1f1aa7010dc010e8c79778c42c8c57bb"
+    },
+    {
+      "path": "implement-stage/admin/FUNCTION_COVERAGE.json",
+      "sha256": "01088eed4ce799712d4afd31bf9963bb3c8368dd92db4f69f736a48c3ba38f04"
+    },
+    {
+      "path": "implement-stage/admin/FUNCTION_MAP.md",
+      "sha256": "5e220a931bc7b5060bc011b0b6efa90def7f9ec6e42c53c230deee85ad0da42c"
+    },
+    {
+      "path": "implement-stage/admin/SPEC.md",
+      "sha256": "c3124bfcc4fb5d0a39df821d2efbc0ce5cac034eff20d774c7763fbf0784e82f"
+    },
+    {
+      "path": "implement-stage/admin/inventory.mjs",
+      "sha256": "e15fe8909ae9dba54fb57ee8d9e91fcbf2f3d0cc9402b2b93901ddb6cdb7a511"
+    },
+    {
+      "path": "implement-stage/admin/screenshots/account-drawer-1440.png",
+      "sha256": "97366dfdcffea17044cbdb032c7535138c1fb93afdfeaf0ce7d30adc68c8c608"
+    },
+    {
+      "path": "implement-stage/admin/screenshots/accounts-1024.png",
+      "sha256": "eec48d224e552582e5440f415086fd2c398d8dfa2e1500e54b50ce4db1ade223"
+    },
+    {
+      "path": "implement-stage/admin/screenshots/accounts-1440.png",
+      "sha256": "f37499b49f2e324d5c8d97fe9db8221bc4549a8f89f2e9c562bb21317f38a134"
+    },
+    {
+      "path": "implement-stage/admin/screenshots/dashboard-1440.png",
+      "sha256": "64a60fb0e0b2dc46231b2fcddefa7b582954df0daf1ae673e544e4e13a10184a"
+    },
+    {
+      "path": "implement-stage/admin/screenshots/editor-1440.png",
+      "sha256": "a2c5598bd64679c05f86ee864e79fe3fab80c9bbb52b0604a45cdbddd9c56be6"
+    },
+    {
+      "path": "implement-stage/admin/screenshots/editor-390.png",
+      "sha256": "069fd6243259e989d0ab8690809f0a7348acb8defa5ec01df6ed8d2afb76f565"
+    },
+    {
+      "path": "implement-stage/admin/screenshots/group-editor-1440.png",
+      "sha256": "d2950f2e367226d5c0d8c079c2a48ced8f4d4ace2b7364c236367646b341c90e"
+    },
+    {
+      "path": "implement-stage/admin/screenshots/navigation-390.png",
+      "sha256": "f1fd90092018f45333b231732ba8691331a2e507b779de15428be9e5a1ba8d22"
+    },
+    {
+      "path": "implement-stage/admin/screenshots/settings-1440.png",
+      "sha256": "db78a65e014aa295e213e18f349fa840592ab8542fba9180848c074a53299a5f"
+    }
+  ],
+  "localDiagnostics": []
+}

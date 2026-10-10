@@ -27,7 +27,7 @@ function shellStub(name: 'admin' | 'user') {
   })
 }
 
-vi.mock('@/components/layout/AppShell.vue', () => ({ default: shellStub('admin') }))
+vi.mock('@/components/layout/AdminShell.vue', () => ({ default: shellStub('admin') }))
 vi.mock('@/components/layout/UserShell.vue', () => ({ default: shellStub('user') }))
 
 import App from '@/App.vue'

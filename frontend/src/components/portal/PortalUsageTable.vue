@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { UsageLog } from '@/types'
+import Icon from '@/components/icons/Icon.vue'
+import ModelIcon from '@/components/common/ModelIcon.vue'
 import { firstTokenSeverity, durationSeverity, type LatencySeverity } from '@/utils/latencyHealth'
 import {
   portalUsageColumns, type PortalUsageColumnKey, isTokenUsage, usageBillingLabel, usageBillingMode, usageColumnLabel,
@@ -29,12 +31,12 @@ function latencyColor(ms: number | null | undefined, first = false) {
       <tbody><tr v-if="!rows.length"><td :colspan="visible.length" class="usage-empty">{{ copy('暂无用量记录', 'No usage records') }}</td></tr><tr v-for="row in rows" :key="row.id">
         <td v-for="column in visible" :key="column.key" :class="`usage-${column.key}`">
           <template v-if="column.key === 'created_at'"><time>{{ date(row.created_at) }}<small>{{ time(row.created_at) }}</small></time><button class="usage-detail-link" @click="emit('detail', row)">{{ copy('详情', 'Details') }}</button></template>
-          <template v-else-if="column.key === 'type'"><span class="usage-badge">{{ usageRowRequestLabel(row, !zh) }}</span><small v-if="row.native_compaction_v2">{{ copy('原生压缩', 'Native compaction') }}</small></template>
-          <template v-else-if="column.key === 'model'"><span class="usage-model-text">{{ row.model }}</span><small v-if="row.service_tier">{{ row.service_tier }}</small></template>
+          <template v-else-if="column.key === 'type'"><span class="usage-badge" :class="`usage-request-${row.request_type || (row.stream ? 'stream' : 'sync')}`"><Icon :name="row.stream ? 'bolt' : 'arrowsUpDown'" size="xs" aria-hidden="true" />{{ usageRowRequestLabel(row, !zh) }}</span><small v-if="row.native_compaction_v2">{{ copy('原生压缩', 'Native compaction') }}</small></template>
+          <template v-else-if="column.key === 'model'"><span class="usage-model-name"><ModelIcon :model="row.model" size="20px" aria-hidden="true" /><span class="usage-model-text">{{ row.model }}</span></span><small v-if="row.service_tier">{{ row.service_tier }}</small></template>
           <template v-else-if="column.key === 'tokens'">
             <div v-if="isTokenUsage(row)" class="usage-token-cell">
-              <div class="usage-token-counts"><span :title="`${copy('输入', 'Input')} ${formatUsageNumber(row.input_tokens)} Token`"><b aria-hidden="true">↓</b> {{ formatUsageNumber(row.input_tokens) }}</span><span :title="`${copy('输出', 'Output')} ${formatUsageNumber(row.output_tokens)} Token`"><b aria-hidden="true">↑</b> {{ formatUsageNumber(row.output_tokens) }}</span></div>
-              <div v-if="row.cache_read_tokens > 0 || row.cache_creation_tokens > 0" class="usage-cache"><span v-if="row.cache_read_tokens > 0" :title="`${copy('缓存读取', 'Cache read')} ${formatUsageNumber(row.cache_read_tokens)} Token`">▣ {{ compact(row.cache_read_tokens) }}</span><span v-if="row.cache_creation_tokens > 0" :title="`${copy('缓存写入', 'Cache write')} ${formatUsageNumber(row.cache_creation_tokens)} Token`">▧ {{ compact(row.cache_creation_tokens) }}<i v-if="row.cache_creation_1h_tokens > 0">1h</i><i v-if="row.cache_ttl_overridden" :title="copy('缓存 TTL 已被覆盖', 'Cache TTL overridden')">R</i></span></div>
+              <div class="usage-token-counts"><span :title="`${copy('输入', 'Input')} ${formatUsageNumber(row.input_tokens)} Token`"><Icon name="arrowDown" size="sm" class="usage-input-icon" aria-hidden="true" /> {{ formatUsageNumber(row.input_tokens) }}</span><span :title="`${copy('输出', 'Output')} ${formatUsageNumber(row.output_tokens)} Token`"><Icon name="arrowUp" size="sm" class="usage-output-icon" aria-hidden="true" /> {{ formatUsageNumber(row.output_tokens) }}</span></div>
+              <div v-if="row.cache_read_tokens > 0 || row.cache_creation_tokens > 0" class="usage-cache"><span v-if="row.cache_read_tokens > 0" :title="`${copy('缓存读取', 'Cache read')} ${formatUsageNumber(row.cache_read_tokens)} Token`" class="usage-cache-read"><Icon name="inbox" size="sm" aria-hidden="true" />{{ compact(row.cache_read_tokens) }}</span><span v-if="row.cache_creation_tokens > 0" :title="`${copy('缓存写入', 'Cache write')} ${formatUsageNumber(row.cache_creation_tokens)} Token`" class="usage-cache-write"><Icon name="database" size="sm" aria-hidden="true" />{{ compact(row.cache_creation_tokens) }}<i v-if="row.cache_creation_1h_tokens > 0">1h</i><i v-if="row.cache_ttl_overridden" :title="copy('缓存 TTL 已被覆盖', 'Cache TTL overridden')">R</i></span></div>
               <small v-if="row.image_input_tokens > 0">{{ copy('图像输入', 'Image input') }} {{ formatUsageNumber(row.image_input_tokens) }} Token</small><small v-if="row.image_output_tokens > 0">{{ copy('图像输出', 'Image output') }} {{ formatUsageNumber(row.image_output_tokens) }} Token</small>
               <div class="usage-token-rates"><span :title="copy('缓存命中率 = 缓存读取 / (输入 + 缓存写入 + 缓存读取)', 'Cache hit rate = cache read / (input + cache write + cache read)')">{{ copy('缓存', 'Cache') }} {{ formatUsagePercent(usageCacheRate(row)) }}</span><span :title="copy('输出阶段速率 = 输出 Token / (总耗时 − 首字耗时)', 'Output stage rate = output tokens / (duration - first token)')">{{ copy('输出阶段', 'Output stage') }} {{ formatUsageRate(usageOutputStageRate(row)) }}</span></div>
               <small v-if="usageBillingMode(row) === 'per_request'">{{ copy('按次计费', 'Billed per request') }}</small>
@@ -66,16 +68,25 @@ function latencyColor(ms: number | null | undefined, first = false) {
 .usage-sort > span { color: #b6b2a8; }
 .usage-table small { display: block; font-size: 11px; color: #929088; margin-top: 5px; line-height: 1.45; }
 .usage-detail-link { display: inline-block; margin-top: 7px; color: #929088; text-decoration: underline; font-size: 11px; }
-.usage-badge { display: inline-block; padding: 3px 8px; border-radius: 5px; border: 1px solid #efede3; background: #f7f5ee; }
+.usage-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 5px; border: 1px solid #efede3; background: #f7f5ee; }
 .usage-model-text { display: block; max-width: 200px; white-space: normal; overflow-wrap: anywhere; }
 .usage-token-counts { display: flex; gap: 12px; font-variant-numeric: tabular-nums; font-size: 13px; }
-.usage-token-counts b { font-weight: 400; font-size: 19px; color: #77746d; margin-right: 2px; }
+.usage-token-counts > span, .usage-cache > span { display: inline-flex; align-items: center; gap: 4px; }
+.usage-input-icon { color: #059669; }
+.usage-output-icon { color: #8b5cf6; }
+.usage-cache-read { color: #0284c7; }
+.usage-cache-write { color: #d97706; }
+.usage-model-name { display: flex; align-items: flex-start; gap: 8px; }
+.usage-model-name :deep(svg), .usage-model-name :deep(.model-icon-fallback) { flex-shrink: 0; }
+.usage-request-stream, .usage-request-ws_v2, .usage-request-live { color: #6d28d9; background: #f5f0ff; border-color: #e7dbff; }
+.usage-request-sync { color: #0369a1; background: #f0f9ff; border-color: #d7edf8; }
 .usage-cache { display: flex; gap: 12px; color: #77746d; margin-top: 5px; }
 .usage-cache i { font-size: 9px; font-style: normal; border: 1px solid #dedbd1; padding: 1px 3px; border-radius: 3px; margin-left: 5px; }
 .usage-token-rates { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; font-size: 10px; }
-.usage-token-rates span { border: 1px solid #e3dfd4; background: #f7f5ee; border-radius: 4px; padding: 2px 5px; color: #77746d; }
-.usage-actual-cost { font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
-.usage-standard-cost { font-variant-numeric: tabular-nums; }
+.usage-token-rates span { border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 4px; padding: 2px 5px; color: #1d4ed8; }
+.usage-token-rates span + span { color: #0e7490; border-color: #a5e3e8; background: #ecfeff; }
+.usage-actual-cost { color: #1d4ed8; font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
+.usage-table .usage-standard-cost { color: #a16207; font-variant-numeric: tabular-nums; }
 .usage-latency-values { position:relative; display: grid; grid-template-columns: max-content max-content; gap: 4px 10px; padding-left: 13px; font-size: 11px; }
 .usage-latency-values::before { content:''; position:absolute; inset:0 auto 0 0; width:3px; border-radius:3px; background:linear-gradient(to bottom,var(--latency-first),var(--latency-duration)); }
 .usage-latency-values span { color: #929088; }

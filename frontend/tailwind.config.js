@@ -23,9 +23,9 @@ const textPalette = (name) => ({
 
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
-  // Keep the administrator's saved theme while user routes stay light.
-  // :where preserves the original .dark specificity on administrator pages.
-  darkMode: ['class', '.dark:where(:not(:has(body[data-patrick-surface="true"])))'],
+  // Fixed-light workspaces must not inherit the saved legacy dark preference.
+  // Keep that preference intact for surfaces outside these two workspaces.
+  darkMode: ['class', '.dark:where(:not(:has(body[data-patrick-surface="true"], body[data-admin-surface="true"])))'],
   theme: {
     extend: {
       colors: {

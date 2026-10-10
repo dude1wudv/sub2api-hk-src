@@ -1,4 +1,5 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { adminSurfaceActive } from './adminSurface'
 
 export type ThemeStyle = 'aurora' | 'lagoon' | 'graphite' | 'glacier'
 const styles: ThemeStyle[] = ['aurora', 'lagoon', 'graphite', 'glacier']
@@ -47,5 +48,7 @@ export function useAppearance() {
     document.documentElement.classList.toggle('dark', dark.value)
     persist('theme', dark.value ? 'dark' : 'light')
   }
-  return { style, isDark: dark, setStyle, toggleTheme }
+  const renderedStyle = computed({ get: () => adminSurfaceActive.value ? 'graphite' as ThemeStyle : style.value, set: (value: ThemeStyle) => { style.value = value } })
+  const renderedDark = computed({ get: () => adminSurfaceActive.value ? false : dark.value, set: (value: boolean) => { dark.value = value } })
+  return { style: renderedStyle, isDark: renderedDark, setStyle, toggleTheme }
 }
