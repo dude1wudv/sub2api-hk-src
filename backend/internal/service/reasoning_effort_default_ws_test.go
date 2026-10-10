@@ -68,7 +68,7 @@ func TestReasoningEffortDefaultWSMultiTurn(t *testing.T) {
 				server, serverErrors := startPassthroughHookRecordingServer(t, ctx, svc, account, hooks)
 				defer server.Close()
 				client := dialPassthroughLifecycleClientWithPayload(t, server, `{"type":"response.create","model":"gpt-6.1-sol","stream":false,"input":[]}`)
-				defer client.CloseNow()
+				defer func() { _ = client.CloseNow() }()
 				frames := []string{"", `{"type":"response.create","model":"gpt-6.1-sol","stream":false,"input":[],"reasoning":{"effort":"low"}}`, `{"type":"response.create","stream":false,"input":[]}`}
 				for turn, frame := range frames {
 					if turn > 0 {
