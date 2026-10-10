@@ -1,0 +1,82 @@
+/* Authentication keeps its existing form contracts on the b.ai reference palette. */
+.patrick-surface.patrick-auth {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100svh;
+  color: #000;
+  background: #fffdf7;
+  color-scheme: light;
+  font: 14px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.patrick-auth .pa-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: min(1280px, calc(100% - 80px));
+  min-height: 88px;
+  margin-inline: auto;
+}
+.patrick-auth .pa-brand-link { display: inline-flex; align-items: center; flex-shrink: 0; border-radius: 6px; }
+.patrick-auth .pa-header-actions { display: flex; align-items: center; gap: 28px; }
+.patrick-auth .pa-nav-link { display: inline-flex; align-items: center; min-height: 40px; color: #000; font-size: 14px; }
+.patrick-auth .pa-nav-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.patrick-auth .pa-language select { min-height: 40px; padding: 6px 2px; border: 0; background: transparent; color: #000; cursor: pointer; font: inherit; }
+.patrick-auth .pa-language select:disabled { opacity: .5; cursor: not-allowed; }
+.patrick-auth :is(.pa-brand-link, .pa-nav-link, .pa-language select):focus-visible { outline: 2px solid #000; outline-offset: 4px; }
+
+.patrick-auth .pa-main { display: grid; flex: 1; align-items: center; justify-items: center; width: 100%; padding: 54px 20px 80px; }
+.patrick-auth .pa-form-area { width: min(420px, 100%); }
+.patrick-surface.patrick-auth .pa-form-card { padding: 32px; border: 1px solid #efede3; border-radius: 16px; background: #fffdf7; color: #000; box-shadow: none; }
+.patrick-auth .pa-form-card > .space-y-6 > .text-center:first-child { text-align: center; margin-bottom: 28px; }
+.patrick-surface.patrick-auth .pa-form-card h2 { color: #000; font: 400 26px/1.35 "Times New Roman", Times, serif; letter-spacing: 0; }
+.patrick-auth .pa-form-card > .space-y-6 > .text-center:first-child > p { margin-top: 9px; font-size: 13px; line-height: 1.7; }
+.patrick-surface.patrick-auth .pa-form-card :is([class~="text-gray-400"], [class~="text-gray-500"], [class~="text-gray-600"], .input-hint) { color: #8d8c87; }
+.patrick-surface.patrick-auth .pa-form-card :is([class~="text-gray-700"], [class~="text-gray-800"], [class~="text-gray-900"], [class~="text-gray-950"]) { color: #000; }
+.patrick-surface.patrick-auth .pa-form-card :is(a, [class*="text-primary-"]) { color: #000; }
+.patrick-surface.patrick-auth .pa-form-card a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.patrick-surface.patrick-auth .pa-form-card .input-label { margin-bottom: 8px; color: #4d4c48; font-size: 13px; font-weight: 400; }
+.patrick-surface.patrick-auth .pa-form-card .input { min-height: 44px; border: 1px solid #efede3; border-radius: 8px; background: #fffdf7; color: #000; box-shadow: none; font-size: 14px; }
+.patrick-surface.patrick-auth .pa-form-card .input::placeholder { color: #a5a29a; opacity: 1; }
+.patrick-surface.patrick-auth .pa-form-card .input:focus { border-color: #000; outline: 1px solid #000; outline-offset: 0; box-shadow: none; }
+.patrick-surface.patrick-auth .pa-form-card .input[inputmode="numeric"] { font-variant-numeric: tabular-nums; }
+.patrick-surface.patrick-auth .pa-form-card .input[class*="border-green-"] { border-color: #1f7553; }
+.patrick-surface.patrick-auth .pa-form-card .input-error, .patrick-surface.patrick-auth .pa-form-card .input-error:focus { border-color: #d33045; outline-color: #d33045; }
+.patrick-surface.patrick-auth .pa-form-card .input:disabled { opacity: .55; cursor: not-allowed; }
+.patrick-surface.patrick-auth .pa-form-card input[type="checkbox"] { accent-color: #000; }
+.patrick-surface.patrick-auth .pa-form-card .btn { min-height: 44px; border-radius: 8px; font-size: 14px; font-weight: 400; transform: none; box-shadow: none; }
+.patrick-surface.patrick-auth .pa-form-card .btn-primary { border: 1px solid #000; background: #000; color: #fff; box-shadow: none; }
+.patrick-surface.patrick-auth .pa-form-card .btn-primary:not(:disabled):hover { border-color: #262626; background: #262626; color: #fff; box-shadow: none; }
+.patrick-surface.patrick-auth .pa-form-card .btn-secondary { color: #000; border: 1px solid #efede3; background: #fffdf7; box-shadow: none; }
+.patrick-surface.patrick-auth .pa-form-card .btn-secondary:not(:disabled):hover { background: #f3f0eb; border-color: #efede3; }
+.patrick-surface.patrick-auth .pa-form-card .btn:disabled { opacity: .45; cursor: not-allowed; }
+.patrick-surface.patrick-auth .pa-form-card .h-px { background: #efede3; }
+.patrick-surface.patrick-auth .pa-form-card [class*="text-green-"] { color: #1f7553; }
+.patrick-surface.patrick-auth .pa-form-card [class*="text-amber-"] { color: #946716; }
+.patrick-surface.patrick-auth .pa-form-card [class*="text-red-"] { color: #d33045; }
+.patrick-surface.patrick-auth .pa-form-card [class*="bg-green-"] { background-color: #f1f7f1; }
+.patrick-surface.patrick-auth .pa-form-card [class*="bg-amber-"] { background-color: #faf4e6; }
+.patrick-surface.patrick-auth .pa-form-card [class*="bg-red-"] { background-color: #fff6f4; }
+.patrick-surface.patrick-auth .pa-form-card :is([class*="bg-primary-"], [class*="bg-gray-50"]) { background-color: #f3f0eb; }
+.patrick-auth .pa-form-footer { margin-top: 22px; text-align: center; font-size: 13px; line-height: 1.8; }
+.patrick-surface.patrick-auth .pa-form-footer p { color: #8d8c87; }
+.patrick-surface.patrick-auth .pa-form-footer a { color: #000; margin-inline-start: 3px; }
+.patrick-auth .pa-form-footer a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.patrick-auth .pa-footer { display: flex; justify-content: space-between; gap: 16px; width: min(1280px, calc(100% - 80px)); margin-inline: auto; padding: 20px 0 24px; color: #8d8c87; font-size: 11px; }
+
+@media (max-width: 600px) {
+  .patrick-auth .pa-header { min-height: 76px; width: calc(100% - 40px); gap: 14px; }
+  .patrick-auth .pa-header-actions { gap: 16px; }
+  .patrick-auth .pa-nav-link { font-size: 13px; }
+  .patrick-auth .pa-main { align-items: start; padding: 34px 20px 56px; }
+  .patrick-surface.patrick-auth .pa-form-card { padding: 28px 24px; }
+  .patrick-auth .pa-footer { width: calc(100% - 40px); flex-wrap: wrap; justify-content: center; gap: 8px 24px; text-align: center; }
+}
+
+@media (forced-colors: active) {
+  .patrick-surface.patrick-auth, .patrick-surface.patrick-auth .pa-form-card { color: CanvasText; background: Canvas; }
+  .patrick-surface.patrick-auth .pa-form-card { border: 1px solid CanvasText; }
+  .patrick-surface.patrick-auth .pa-form-card :is(.input, .btn) { color: ButtonText; background: ButtonFace; border: 1px solid ButtonText; }
+}

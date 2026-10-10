@@ -1,0 +1,61 @@
+/* Reference palette sampled from b.ai. Administrator tokens remain isolated. */
+.patrick-surface, body[data-patrick-surface='true'] {
+  --p-ink:#000; --p-muted:#8d8c87; --p-accent:#000; --p-border:#efede3;
+  --p-panel:#fffdf7; --p-sheen:linear-gradient(transparent,transparent); --p-shadow:none;
+  --canvas:255 253 247; --surface:255 253 247; --surface-2:247 245 238;
+  --surface-elevated:255 253 247; --surface-sidebar:255 253 247; --surface-header:255 253 247;
+  --ink:0 0 0; --ink-2:77 76 72; --ink-3:141 140 135;
+  --line:239 237 227; --line-strong:216 213 204;
+  --text-primary:0 0 0; --text-accent:69 65 54; --text-link:0 0 0;
+  --text-ok:31 117 83; --text-warn:148 103 22; --text-err:211 48 69;
+  --color-primary-50:247 245 238; --color-primary-100:239 237 227; --color-primary-200:223 219 208;
+  --color-primary-300:199 195 184; --color-primary-400:153 149 139; --color-primary-500:83 80 73;
+  --color-primary-600:0 0 0; --color-primary-700:0 0 0; --color-primary-800:0 0 0;
+  --color-primary-900:0 0 0; --color-primary-950:0 0 0;
+  --color-accent-50:249 246 236; --color-accent-100:241 232 211; --color-accent-200:223 211 184;
+  --color-accent-300:191 174 141; --color-accent-400:151 135 106; --color-accent-500:105 94 76;
+  --color-accent-600:69 65 54; --color-accent-700:59 54 44; --color-accent-800:49 45 37;
+  --color-accent-900:34 31 24; --color-accent-950:19 18 15;
+  --color-gray-50:255 253 247; --color-gray-100:247 245 238; --color-gray-200:239 237 227;
+  --color-gray-300:213 210 201; --color-gray-400:166 164 156; --color-gray-500:141 140 135;
+  --color-gray-600:99 97 90; --color-gray-700:63 61 56; --color-gray-800:34 32 28;
+  --color-gray-900:0 0 0; --color-gray-950:0 0 0;
+  --color-dark-50:0 0 0; --color-dark-100:34 32 28; --color-dark-200:63 61 56;
+  --color-dark-300:99 97 90; --color-dark-400:141 140 135; --color-dark-500:166 164 156;
+  --color-dark-600:213 210 201; --color-dark-700:239 237 227; --color-dark-800:247 245 238;
+  --color-dark-900:255 253 247; --color-dark-950:255 253 247;
+  --action-contrast:#fff; --focus-ring:83 80 73;
+  --selection-bg:243 240 235; --selection-ink:0 0 0; --selection-edge:216 213 204;
+  --table-surface:255 253 247; --table-head:247 245 238; --table-hover:243 240 235;
+  --radius-card:16px; --radius-control:8px; --radius-overlay:12px;
+  --material-card:#fffdf7; --material-control:#fffdf7; --material-overlay:#fffdf7; --material-shadow:none;
+  --glacier-rim:239 237 227; --glacier-lens:255 253 247; --glacier-lens-alpha:1;
+  --glacier-control:#fffdf7; --glacier-control-shadow:none; --glacier-shadow:none;
+  color-scheme:light;
+}
+body[data-patrick-surface='true'] { background:#fffdf7; }
+.patrick-surface { color:#000; font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; }
+.patrick-surface :where(button,a,input,select,textarea,summary):focus-visible { outline:2px solid #89867c; outline-offset:3px; }
+.patrick-surface :where(button,a) { -webkit-tap-highlight-color:transparent; }
+.patrick-surface .p-glass { background:#fffdf7; border:1px solid #efede3; box-shadow:none; backdrop-filter:none; }
+.patrick-surface .p-button { display:inline-flex; justify-content:center; align-items:center; gap:8px; min-height:40px; padding:8px 20px; border:1px solid #efede3; border-radius:24px; background:#fffdf7; color:#000; font-size:14px; }
+.patrick-surface .p-button--primary { background:#000; color:#fff; border-color:#000; }
+.patrick-surface .p-button:hover { background:#f3f0eb; }
+.patrick-surface .p-button--primary:hover { background:#252525; }
+/* Auxiliary routes keep their contracts while adopting the same flat palette. */
+:root body .patrick-surface :is(.card,.card-glass,.glass-card,.stat-card,.account-summary-panel) { background:#fffdf7; border:1px solid #efede3; border-radius:16px; box-shadow:none; backdrop-filter:none; }
+:root body .patrick-surface :is(.input,.select-trigger) { color:#000; background:#fffdf7; border:1px solid #dedbd1; border-radius:8px; min-height:40px; box-shadow:none; }
+:root body .patrick-surface .input-error { border-color:#d33045; }
+:root body .patrick-surface .btn { border-radius:8px; min-height:36px; font-weight:400; box-shadow:none; }
+:root body .patrick-surface .btn-primary { background:#000; border:1px solid #000; color:#fff; }
+:root body .patrick-surface .btn-secondary { background:#fffdf7; color:#000; border:1px solid #efede3; }
+:root body .patrick-surface .btn-ghost { background:transparent; color:#63615a; }
+:root body .patrick-surface .btn-ghost:hover { background:#f3f0eb; }
+:root body .patrick-surface :is(.table-scroll-container,.glacier-pagination) { background:#fffdf7; border:1px solid #efede3; border-radius:12px; box-shadow:none; }
+:root body .patrick-surface .table-page-layout { height:auto; min-height:0; }
+:root body .patrick-surface .table-wrapper :is(.table-header,.sticky-header-cell) { background:#f7f5ee; color:#66645e; }
+:root body .patrick-surface .table-wrapper :is(.table-body,tbody .sticky-col) { background:#fffdf7; }
+:root body[data-patrick-surface='true'] :is(.modal-content,.dropdown,.select-dropdown-portal,.date-picker-dropdown,.glacier-action-menu) { background:#fffdf7; color:#000; border:1px solid #efede3; border-radius:12px; box-shadow:0 8px 24px #00000012; }
+:root body .patrick-surface .chip-tinted { color:#000; background:#f3f0eb; }
+:root body .patrick-surface .chip-tinted-active { color:#fff; background:#000; }
+@media (prefers-reduced-motion:reduce) { .patrick-surface *, .patrick-surface *::before, .patrick-surface *::after { scroll-behavior:auto!important; animation-duration:.01ms!important; transition-duration:.01ms!important; animation-iteration-count:1!important; } }

@@ -1,0 +1,54 @@
+/* Payment and callback pages share the b.ai palette; payment state stays unchanged. */
+.patrick-surface.patrick-flow {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100svh;
+  color: #000;
+  background: #fffdf7;
+  color-scheme: light;
+  font: 14px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.patrick-flow .pf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: min(1100px, 100%);
+  min-height: 88px;
+  margin-inline: auto;
+  padding: 24px 32px;
+}
+
+.patrick-flow .pf-brand-link { display: inline-flex; flex-shrink: 0; border-radius: 6px; }
+.patrick-flow .pf-brand-link .patrick-brand__mark { width: 32px; height: 34px; }
+.patrick-flow .pf-brand-link .patrick-brand__mark svg { width: 26px; height: 26px; }
+.patrick-flow .pf-brand-link .patrick-brand__name { font-size: 24px; }
+.patrick-flow .pf-domain { color: #8d8c87; font-size: 11px; }
+.patrick-flow .pf-content { flex: 1; width: 100%; margin-inline: auto; padding: 40px 24px 72px; }
+.patrick-flow .pf-content--callback { max-width: 672px; }
+.patrick-flow .pf-content--payment { max-width: 560px; }
+.patrick-flow .pf-content--result { display: flex; flex-direction: column; justify-content: center; max-width: 512px; padding-bottom: 112px; }
+.patrick-flow .pf-detail-panel { color: #000; background: #fffdf7; border: 1px solid #efede3; border-radius: 12px; box-shadow: none; }
+.patrick-flow .pf-content :is(h1, h2) { color: #000; font-family: "Times New Roman", Times, serif; font-size: 22px; font-weight: 400; }
+.patrick-flow .pf-content :is([class*="backdrop-blur"], [class*="backdrop-filter"]) { backdrop-filter: none; }
+.patrick-flow .pf-content [class*="bg-gradient-"] { background: #f3f0eb; }
+.patrick-flow .pf-content [class*="bg-gradient-"] :is([class~="text-white"], [class*="text-indigo-"], [class*="text-blue-"]) { color: #000; }
+/* The embedded Stripe page does not use .patrick-flow, but has the same amount header. */
+.patrick-surface [class*="from-[#635bff]"] { background: #f3f0eb; }
+.patrick-surface [class*="from-[#635bff]"] :is([class~="text-white"], [class*="text-indigo-"]) { color: #000; }
+:root body .patrick-surface .btn-stripe { border: 1px solid #000; background: #000; color: #fff; box-shadow: none; }
+:root body .patrick-surface .btn-stripe:not(:disabled):hover { background: #262626; color: #fff; box-shadow: none; }
+
+@media (max-width: 540px) {
+  .patrick-flow .pf-header { min-height: 76px; gap: 16px; padding: 20px; }
+  .patrick-flow .pf-domain { display: none; }
+  .patrick-flow .pf-content { padding: 24px 18px 48px; }
+  .patrick-flow .pf-content--result { padding-bottom: 76px; }
+}
+
+@media (forced-colors: active) {
+  .patrick-surface.patrick-flow, .patrick-flow .pf-detail-panel { color: CanvasText; background: Canvas; box-shadow: none; }
+  .patrick-flow .pf-detail-panel { border: 1px solid CanvasText; }
+}

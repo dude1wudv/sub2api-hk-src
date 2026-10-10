@@ -1,6 +1,10 @@
 <template>
-  <div class="min-h-screen bg-gray-50 px-4 py-10 dark:bg-dark-900">
-    <div class="mx-auto max-w-2xl">
+  <div class="patrick-surface patrick-flow">
+    <header class="pf-header">
+      <router-link to="/home" class="pf-brand-link" aria-label="patrickapi"><PatrickBrand /></router-link>
+      <span class="pf-domain">patrickapi.microedulab.com</span>
+    </header>
+    <main class="pf-content pf-content--callback">
       <div v-if="isProcessing" class="card p-6 text-center">
         <div class="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></div>
         <h1 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
@@ -141,7 +145,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -153,6 +157,8 @@ import { useClipboard } from '@/composables/useClipboard'
 import { useAppStore, useAuthStore } from '@/stores'
 import { apiClient } from '@/api/client'
 import { buildApiUrl } from '@/api/url'
+import PatrickBrand from '@/components/brand/PatrickBrand.vue'
+import '@/styles/patrick-flow.css'
 import {
   exchangePendingOAuthCompletion,
   persistOAuthTokenContext,

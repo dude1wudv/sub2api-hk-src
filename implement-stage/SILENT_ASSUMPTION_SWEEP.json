@@ -1,0 +1,128 @@
+{
+  "review_round": "b.ai-second-rewrite",
+  "base_commit": "fd31f44d140b8046f4d75d5dbf904b7be59a627e",
+  "review_independence": "same-family",
+  "acceptance_status": "provisional",
+  "verdict": "provisional",
+  "undeclared": [],
+  "stale_rows": [],
+  "semantic_undeclared": 0,
+  "summary": "本轮识别的 7 项假设或账本不符已由代码修复或明确声明，并完成原始代码窄复核。当前未保留未解决项；同族审查不能宣称 clean 或作独立跨家族放行。",
+  "scope": [
+    "读取 SPEC.md、ASSUMPTIONS.md、BUILD_NOTE.md，对 base commit 的 frontend 原始差异及新增 portal、导航、样式、预览代码进行只读审查。",
+    "覆盖 App、路由与用户/管理表面隔离、首页与认证、API/模型、用量、充值/兑换、订阅、账户。",
+    "后续仅复核自然月统计、订阅重置时间、密钥重置/批量编辑、智能路由顺序及移除、延迟等级和支付回调跳转。",
+    "本审查没有修改业务代码，没有运行测试、构建或浏览器操作，没有网络或生产操作；仅按主线程后续授权写入本报告。"
+  ],
+  "initial_findings": [
+    {
+      "id": "B2-01",
+      "kind": "stale_row",
+      "ledger": [
+        "A-026"
+      ],
+      "site": "frontend/src/views/portal/UsageView.vue:loadOverview; backend/internal/handler/usage_handler.go:parseUserUsageFilters",
+      "decision": "本月消费使用 period=month，假定后端表示自然月；后端实际以 now.AddDate(0,-1,0) 定义滚动一个月。",
+      "why_it_matters": "本月消费与自然月图表可能覆盖不同日期，改变金额统计的含义，违反 A-026。",
+      "class": "semantic",
+      "status": "resolved",
+      "resolution": "概览改为显式 start_date=dates.currentStart、end_date=dates.end、timezone；曲线仍从 11 个月前的月初取日至今并按当地年月汇总。"
+    },
+    {
+      "id": "B2-02",
+      "kind": "undeclared",
+      "ledger": [
+        "A-033"
+      ],
+      "site": "frontend/src/views/portal/SubscriptionsView.vue:quotaRows/resetLabel/parseProgress; backend/internal/service/user_subscription.go:DailyResetTime/WeeklyResetTime/MonthlyResetTime",
+      "decision": "客户端将日/周/月额度刷新时间统一推算为窗口起点加 24/168/720 小时。",
+      "why_it_matters": "后端日额度按配置时区次日零点刷新，周/月还处理历史锚点；自行推算会向用户承诺错误的额度恢复时间。",
+      "class": "semantic",
+      "status": "resolved",
+      "resolution": "使用实际已注册的 /subscriptions/progress 列表接口，按 {subscription,progress} 包装解析 used_usd、limit_usd、resets_at；不可用时不推算时间。A-033 明确该选择，预览也采用相同包装和字段。"
+    },
+    {
+      "id": "B2-03",
+      "kind": "undeclared",
+      "ledger": [
+        "A-032"
+      ],
+      "site": "frontend/src/views/portal/ApiView.vue; frontend/src/components/portal/PortalKeyForm.vue; frontend/src/components/portal/PortalApiBulkForm.vue",
+      "decision": "新密钥页面最初撤下原有额度用量重置、限流计数重置和批量编辑能力，而账本只声明视觉重写。",
+      "why_it_matters": "用户无法继续通过页面执行既有密钥管理操作；这是接口能力裁剪而非单纯外观变化。",
+      "class": "interface",
+      "status": "resolved",
+      "resolution": "编辑表单提供默认不勾选的显式 reset_quota/reset_rate_limit_usage；独立新批量表单保留字段选择、当前页选择、成功/失败结果及只重试失败项。A-032 声明该接口范围。"
+    },
+    {
+      "id": "B2-04",
+      "kind": "undeclared",
+      "ledger": [
+        "A-034"
+      ],
+      "site": "frontend/src/components/portal/PortalKeyForm.vue:routing-order/moveRouting/submit; backend/internal/service/api_key_smart_routing.go:SmartRoutingKeys",
+      "decision": "最初只有候选分组 checkbox，勾选先后悄悄决定 routing_group_ids 顺序及首个 group_id。",
+      "why_it_matters": "后端按该顺序尝试候选；相同勾选集合可产生不同首选、回退和实际计费分组。",
+      "class": "semantic",
+      "status": "resolved",
+      "resolution": "新列表显示编号、首选、上下移动和按实际命中分组计费的说明，提交顺序等于所见顺序。A-034 同时声明批量分组变更不处理智能路由密钥，要求单独编辑。"
+    },
+    {
+      "id": "B2-05",
+      "kind": "stale_row",
+      "ledger": [
+        "A-016"
+      ],
+      "site": "frontend/src/components/portal/PortalUsageTable.vue:latencyColor/usage-latency-values",
+      "decision": "新延迟列最初改成固定灰色，移除了原有首字和总耗时健康度等级。",
+      "why_it_matters": "数值虽保留，但用户要求保留的三列呈现丢失了已有阈值信号，与仅统一周边材质的账本表述不一致。",
+      "class": "interface",
+      "status": "resolved",
+      "resolution": "沿用 latencyHealth 的 firstTokenSeverity/durationSeverity，恢复绿/黄/橙/红等级和双指标色条；缺失值中性。A-016 已明确该语义色范围。"
+    },
+    {
+      "id": "B2-06",
+      "kind": "stale_row",
+      "ledger": [
+        "A-015",
+        "A-028"
+      ],
+      "site": "frontend/src/views/user/PaymentResultView.vue:Actions; frontend/src/views/portal/OrdersView.vue",
+      "decision": "历史支付回调仍以“查看订单”跳转 /orders，但 /orders 已按 A-028 改为本站兑换记录。",
+      "why_it_matters": "成功回调将用户导向不包含该支付订单的列表；A-015 原先笼统宣称业务流程不变。",
+      "class": "interface",
+      "status": "resolved",
+      "resolution": "回调保留既有订单查询、金额与状态轮询；末尾操作明确改为“返回控制台”并跳转 /dashboard。A-015 已声明该边界；/orders 继续是兑换记录和发卡网查询入口。"
+    },
+    {
+      "id": "B2-07",
+      "kind": "undeclared",
+      "ledger": [
+        "A-034"
+      ],
+      "site": "frontend/src/components/portal/PortalKeyForm.vue:routing-order",
+      "decision": "首次顺序修复可展示不可用旧路由 ID，却只能上下移动；当前候选 checkbox 不含该 ID，因此不能将其移除。",
+      "why_it_matters": "仓库支持运行时停用、删除或撤销分组权限；保留旧 ID 的密钥会被提交校验拒绝，用户无法修正路由。",
+      "class": "interface",
+      "status": "resolved",
+      "resolution": "最终有序列表对每一项均提供显式移除，包括未知 ID，并显示不可用标识。移除最后一项后固定分组选项恢复可用。"
+    }
+  ],
+  "reviewed_invariants": [
+    "充值使用指定 catfk 店铺和原 redeemAPI；成功后刷新真实账户，未由用户界面自行叠加余额。",
+    "余额订阅只提交 plan ID 与幂等键，金额仍由后端 plan.Price 决定；未增加前端换汇或外部订阅商品。",
+    "模型价格使用现有定价区间、用户倍率、独立媒体倍率及非视觉价格工具；未知单价和零价区分显示。",
+    "用量详情分别使用 actual_cost 和 total_cost；token 模式才显示 Token 吞吐指标，per_request/媒体不显示 tok/s。",
+    "CSV 导出遍历筛选后的完整分页，去重并检查总数；错误记录界面和导出按已有权限开关门控。",
+    "管理路由仍使用原组件/外壳；用户 body 标记与 Tailwind 选择器未写入管理主题偏好。"
+  ],
+  "non_findings": [
+    "订阅零额度按无限额显示符合后端 Group.HasDailyLimit/HasWeeklyLimit/HasMonthlyLimit 对 >0 的判断。",
+    "对 progress 单条 helper 的早期建议已按实际路由注册修正：本次采纳已注册的列表接口，不以存在 helper 推定接口可调用。"
+  ],
+  "limitations": [
+    "本记录为 GPT 同族 Type-B 假设审查，不能替代独立跨家族审查或宣称实现正确。",
+    "未执行测试、构建、浏览器交互或生产验证；最终 Type-A 证据由主线程及验证代理提供。",
+    "写入本报告时 BUILD_NOTE.md 仍含已被否决首轮的玻璃阶段与旧测试记录；主线程已声明将重写第二轮记录。本审查不将首轮数据认作本轮验证结果。"
+  ]
+}

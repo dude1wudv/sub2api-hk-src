@@ -23,7 +23,9 @@ const textPalette = (name) => ({
 
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
-  darkMode: 'class',
+  // Keep the administrator's saved theme while user routes stay light.
+  // :where preserves the original .dark specificity on administrator pages.
+  darkMode: ['class', '.dark:where(:not(:has(body[data-patrick-surface="true"])))'],
   theme: {
     extend: {
       colors: {

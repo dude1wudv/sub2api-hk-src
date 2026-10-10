@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { RouterView, useRouter, useRoute, type RouteLocationNormalizedLoaded } from 'vue-router'
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Toast from '@/components/common/Toast.vue'
 import NavigationProgress from '@/components/common/NavigationProgress.vue'
 import AppShell from '@/components/layout/AppShell.vue'
+import UserShell from '@/components/layout/UserShell.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import AdminComplianceDialog from '@/components/admin/AdminComplianceDialog.vue'
 import { resolveRouteDocumentTitle } from '@/router/title'
 import AnnouncementPopup from '@/components/common/AnnouncementPopup.vue'
@@ -12,6 +15,7 @@ import { getSetupStatus } from '@/api/setup'
 import { updateFavicon } from '@/utils/branding'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
+import { isAdminWorkspaceRoute } from '@/utils/workspaceSurface'
 
 const router = useRouter()
 const route = useRoute()
@@ -21,6 +25,7 @@ const subscriptionStore = useSubscriptionStore()
 const announcementStore = useAnnouncementStore()
 const adminComplianceStore = useAdminComplianceStore()
 const adminSettingsStore = useAdminSettingsStore()
+const { locale } = useI18n()
 
 // 后台页面共用一个常驻 AppShell：切换页面时侧边栏/顶栏不再卸载重建，只替换内容区。
 function usesAppShell(target: RouteLocationNormalizedLoaded): boolean {
@@ -28,23 +33,40 @@ function usesAppShell(target: RouteLocationNormalizedLoaded): boolean {
   return typeof appLayout === 'function' ? appLayout(target) : appLayout === true
 }
 
+function usesAdminShell(target: RouteLocationNormalizedLoaded): boolean {
+  return isAdminWorkspaceRoute(target, authStore.isAdmin, adminSettingsStore.customMenuItems)
+}
+
+// A direct administrator custom-page visit must not depend on AppSidebar
+// mounting before its route ownership can be resolved.
+watch([() => authStore.isAdmin, () => route.path], ([isAdmin, path]) => {
+  if (isAdmin && path.startsWith('/custom/')) void adminSettingsStore.fetch()
+}, { immediate: true })
+const adminCustomPending = computed(() => authStore.isAdmin
+  && route.path.startsWith('/custom/')
+  && !adminSettingsStore.loaded
+  && adminSettingsStore.customMenuItems.length === 0)
+const isPatrickSurface = computed(() => route.path !== '/setup' && !adminCustomPending.value && !usesAdminShell(route))
+watch(isPatrickSurface, (active) => {
+  if (active) document.body.dataset.patrickSurface = 'true'
+  else delete document.body.dataset.patrickSurface
+}, { immediate: true })
+
 function updateDocumentTitle() {
   const customMenuItems = [
     ...(appStore.cachedPublicSettings?.custom_menu_items ?? []),
     ...(authStore.isAdmin ? adminSettingsStore.customMenuItems : []),
   ]
-  document.title = resolveRouteDocumentTitle(route, appStore.siteName, customMenuItems, {
+  document.title = resolveRouteDocumentTitle(route, isPatrickSurface.value ? 'patrickapi' : appStore.siteName, customMenuItems, {
     billingMode: resolveSiteBillingMode(appStore.cachedPublicSettings),
   })
 }
 
 // Watch for site settings changes and update favicon/title
 watch(
-  () => appStore.siteLogo,
-  (newLogo) => {
-    if (newLogo) {
-      updateFavicon(newLogo)
-    }
+  [() => appStore.siteLogo, isPatrickSurface],
+  ([newLogo, userSurface]) => {
+    updateFavicon(userSurface ? '/patrick-mark.svg' : (newLogo || '/logo.svg'))
   },
   { immediate: true }
 )
@@ -142,6 +164,7 @@ router.afterEach(() => {
 })
 
 onBeforeUnmount(() => {
+  delete document.body.dataset.patrickSurface
   document.removeEventListener('visibilitychange', onVisibilityChange)
   window.removeEventListener('admin-compliance-required', onAdminComplianceRequired)
 })
@@ -171,9 +194,17 @@ onMounted(async () => {
 <template>
   <NavigationProgress />
   <RouterView v-slot="{ Component, route: viewRoute }">
-    <AppShell v-if="usesAppShell(viewRoute)">
+    <div v-if="adminCustomPending" role="status" data-testid="workspace-surface-loading" class="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+      <LoadingSpinner v-if="adminSettingsStore.loading" size="md" />
+      <p>{{ adminSettingsStore.loading ? (locale.startsWith('zh') ? '正在载入工作空间…' : 'Loading workspace…') : (locale.startsWith('zh') ? '暂时无法载入工作空间。' : 'Unable to load this workspace.') }}</p>
+      <button v-if="!adminSettingsStore.loading" type="button" class="btn btn-secondary" @click="adminSettingsStore.fetch(true)">{{ locale.startsWith('zh') ? '重新加载' : 'Try again' }}</button>
+    </div>
+    <AppShell v-else-if="usesAppShell(viewRoute) && usesAdminShell(viewRoute)">
       <component :is="Component" />
     </AppShell>
+    <UserShell v-else-if="usesAppShell(viewRoute)">
+      <component :is="Component" />
+    </UserShell>
     <component :is="Component" v-else />
   </RouterView>
   <Toast />

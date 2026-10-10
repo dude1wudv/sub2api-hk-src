@@ -7,7 +7,7 @@
           {{ t('auth.createAccount') }}
         </h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
-          {{ t('auth.signUpToStart', { siteName }) }}
+          {{ t('auth.signUpToStart', { siteName: 'patrickapi' }) }}
         </p>
       </div>
 

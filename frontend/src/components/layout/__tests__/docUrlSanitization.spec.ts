@@ -23,7 +23,7 @@ describe('doc_url sanitization', () => {
   })
 
   it('HomeView applies sanitizeUrl to docUrl', () => {
-    expect(homeViewSource).toContain('sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl')
+    expect(homeViewSource).toContain('sanitizeUrl(app.cachedPublicSettings?.doc_url || app.docUrl')
   })
 
   it('KeyUsageView imports sanitizeUrl', () => {

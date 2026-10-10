@@ -23,9 +23,11 @@ vi.mock('vue-router', async () => {
 
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
+  const { ref } = await import('vue')
   return {
     ...actual,
     useI18n: () => ({
+      locale: ref('en-US'),
       t: (key: string) => key,
     }),
   }
@@ -151,6 +153,8 @@ describe('PaymentResultView', () => {
     expect(wrapper.text()).toContain('payment.result.processing')
     expect(wrapper.text()).not.toContain('payment.result.success')
     expect(wrapper.text()).not.toContain('payment.result.failed')
+    await wrapper.get('.btn-primary').trigger('click')
+    expect(routerPush).toHaveBeenCalledWith('/dashboard')
   })
 
   it('prefers the public resume-token result over a stale restored DB snapshot', async () => {

@@ -1,6 +1,10 @@
 <template>
-  <div :class="isPopup ? 'min-h-screen bg-gray-50 dark:bg-dark-900' : ''">
-    <div class="mx-auto max-w-lg space-y-6 py-8" :class="isPopup ? 'px-4' : ''">
+  <div class="patrick-surface" :class="{ 'patrick-flow': isPopup }">
+    <header v-if="isPopup" class="pf-header">
+      <router-link to="/home" class="pf-brand-link" aria-label="patrickapi"><PatrickBrand /></router-link>
+      <span class="pf-domain">patrickapi.microedulab.com</span>
+    </header>
+    <div class="mx-auto max-w-lg space-y-6 py-8" :class="isPopup ? 'pf-content pf-content--payment' : ''">
       <div v-if="loading" class="flex items-center justify-center py-20">
         <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
       </div>
@@ -106,6 +110,8 @@ import { PAYMENT_RECOVERY_STORAGE_KEY, readPaymentRecoverySnapshot } from '@/com
 import type { PaymentOrder } from '@/types/payment'
 import type { Stripe, StripeElements } from '@stripe/stripe-js'
 import Icon from '@/components/icons/Icon.vue'
+import PatrickBrand from '@/components/brand/PatrickBrand.vue'
+import '@/styles/patrick-flow.css'
 
 const i18n = useI18n()
 const { t } = i18n
@@ -243,10 +249,9 @@ async function confirmWechatPay(stripe: Stripe, clientSecret: string) {
 
 function mountPaymentElement(stripe: Stripe, clientSecret: string) {
   if (disposed) return
-  const isDark = document.documentElement.classList.contains('dark')
   const elements = stripe.elements({
     clientSecret,
-    appearance: { theme: isDark ? 'night' : 'stripe', variables: { borderRadius: '8px' } },
+    appearance: { theme: 'stripe', variables: { borderRadius: '8px' } },
   })
   elementsInstance = elements
   const paymentElement = elements.create('payment', {

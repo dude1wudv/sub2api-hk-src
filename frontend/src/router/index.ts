@@ -186,7 +186,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/model-plaza',
     name: 'ModelPlaza',
-    component: () => import('@/views/ModelPlazaView.vue'),
+    component: () => import('@/views/portal/ModelsView.vue'),
     meta: {
       appLayout: isEmbeddedPlazaRoute,
       requiresAuth: false,
@@ -203,7 +203,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: () => import('@/views/user/DashboardView.vue'),
+    component: () => import('@/views/portal/ApiView.vue'),
     meta: {
       appLayout: true,
       requiresAuth: true,
@@ -216,7 +216,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/keys',
     name: 'Keys',
-    component: () => import('@/views/user/KeysView.vue'),
+    component: () => import('@/views/portal/ApiView.vue'),
     meta: {
       appLayout: true,
       requiresAuth: true,
@@ -265,7 +265,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/usage',
     name: 'Usage',
-    component: () => import('@/views/user/UsageView.vue'),
+    component: () => import('@/views/portal/UsageView.vue'),
     meta: {
       appLayout: true,
       requiresAuth: true,
@@ -278,7 +278,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/redeem',
     name: 'Redeem',
-    component: () => import('@/views/user/RedeemView.vue'),
+    component: () => import('@/views/portal/PurchaseView.vue'),
     meta: {
       appLayout: true,
       requiresAuth: true,
@@ -317,7 +317,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/profile',
     name: 'Profile',
-    component: () => import('@/views/user/ProfileView.vue'),
+    component: () => import('@/views/portal/AccountView.vue'),
     meta: {
       appLayout: true,
       requiresAuth: true,
@@ -330,7 +330,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/subscriptions',
     name: 'Subscriptions',
-    component: () => import('@/views/user/SubscriptionsView.vue'),
+    component: () => import('@/views/portal/SubscriptionsView.vue'),
     meta: {
       appLayout: true,
       requiresAuth: true,
@@ -344,28 +344,26 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/purchase',
     name: 'PurchaseSubscription',
-    component: () => import('@/views/user/PaymentView.vue'),
+    component: () => import('@/views/portal/PurchaseView.vue'),
     meta: {
       appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Purchase Subscription',
       titleKey: 'nav.buySubscription',
-      descriptionKey: 'purchase.description',
-      requiresPayment: true
+      descriptionKey: 'purchase.description'
     }
   },
   {
     path: '/orders',
     name: 'OrderList',
-    component: () => import('@/views/user/UserOrdersView.vue'),
+    component: () => import('@/views/portal/OrdersView.vue'),
     meta: {
       appLayout: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'My Orders',
-      titleKey: 'nav.myOrders',
-      requiresPayment: true
+      titleKey: 'nav.myOrders'
     }
   },
   {
@@ -1023,7 +1021,9 @@ router.beforeEach(async (to, _from, next) => {
       '/admin/subscriptions',
       '/admin/redeem',
       '/subscriptions',
-      '/redeem'
+      '/redeem',
+      '/purchase',
+      '/orders'
     ]
 
     if (restrictedPaths.some((path) => to.path.startsWith(path))) {

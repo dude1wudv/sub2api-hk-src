@@ -3,7 +3,7 @@ import { mount, RouterLinkStub } from '@vue/test-utils'
 
 import HomeView from '../HomeView.vue'
 
-const { appStore, authStore } = vi.hoisted(() => ({
+const { appStore, authStore, routerPush } = vi.hoisted(() => ({
   appStore: {
     cachedPublicSettings: {} as Record<string, unknown>,
     siteName: 'Fallback site',
@@ -18,6 +18,7 @@ const { appStore, authStore } = vi.hoisted(() => ({
     user: null as { email?: string } | null,
     checkAuth: vi.fn(),
   },
+  routerPush: vi.fn(),
 }))
 
 vi.mock('@/stores', () => ({
@@ -29,11 +30,16 @@ vi.mock('@/stores/app', () => ({
   useAppStore: () => appStore,
 }))
 
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
+  return { ...actual, useRouter: () => ({ push: routerPush }) }
+})
+
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>()
   return {
     ...actual,
-    useI18n: () => ({ t: (key: string) => key }),
+    useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
   }
 })
 
@@ -48,6 +54,7 @@ function mountHome(settings: Record<string, unknown> = {}) {
     global: {
       stubs: {
         RouterLink: RouterLinkStub,
+        PatrickBrand: { template: '<span data-testid="patrick-brand">patrickapi</span>' },
         LocaleSwitcher: { template: '<div data-testid="locale-switcher" />' },
         AppearanceSwitcher: true,
         Icon: { template: '<span data-testid="icon" />' },
@@ -57,7 +64,7 @@ function mountHome(settings: Record<string, unknown> = {}) {
 }
 
 function compactDestination(wrapper: ReturnType<typeof mountHome>) {
-  return wrapper.get('[data-testid="compact-home"]').findComponent(RouterLinkStub).props('to')
+  return wrapper.get('[data-testid="home-console"]').findComponent(RouterLinkStub).props('to')
 }
 
 function modelPlazaDestination(wrapper: ReturnType<typeof mountHome>) {
@@ -74,6 +81,7 @@ describe('HomeView compact mode', () => {
     authStore.user = null
     authStore.checkAuth.mockClear()
     appStore.fetchPublicSettings.mockClear()
+    routerPush.mockClear()
     localStorage.clear()
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
   })
@@ -101,25 +109,37 @@ describe('HomeView compact mode', () => {
   it('treats whitespace-only custom content as empty and selects compact mode', () => {
     const wrapper = mountHome({ compact_home_enabled: true, home_content: ' \n\t ' })
 
-    expect(wrapper.get('[data-testid="compact-home"]').text()).toContain('Test site')
+    expect(wrapper.get('[data-testid="compact-home"]').get('h1').text()).toBe('patrickapi')
+    expect(wrapper.get('[data-testid="compact-home"] .home-entry').exists()).toBe(true)
   })
 
-  it.each([undefined, false])('selects the default home when compact mode is %s', (enabled) => {
+  it.each([undefined, false])('selects the patrickapi home when compact mode is %s', (enabled) => {
     const settings = enabled === undefined ? {} : { compact_home_enabled: enabled }
     const wrapper = mountHome(settings)
 
-    expect(wrapper.find('[data-testid="compact-home"]').exists()).toBe(false)
-    expect(wrapper.find('.terminal-container').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="patrick-home"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="home-console"]').findComponent(RouterLinkStub).props('to')).toBe('/login')
+    expect(wrapper.get('h1').text()).toBe('patrickapi')
+    expect(wrapper.get('.home-endpoint code').text()).toMatch(/^https?:\/\//)
   })
 
   it('links unauthenticated visitors to login', () => {
     expect(compactDestination(mountHome({ compact_home_enabled: true }))).toBe('/login')
   })
 
-  it('links authenticated users to their dashboard', () => {
+  it('links authenticated users to the API workspace', () => {
     authStore.isAuthenticated = true
 
-    expect(compactDestination(mountHome({ compact_home_enabled: true }))).toBe('/dashboard')
+    expect(compactDestination(mountHome({ compact_home_enabled: true }))).toBe('/keys')
+  })
+
+  it('routes model search from the API entry to the matching key quick start', async () => {
+    const wrapper = mountHome()
+    await wrapper.get('input[aria-label="Search models"]').setValue('  gpt-5.4  ')
+    await wrapper.get('.home-entry').trigger('submit')
+
+    expect(routerPush).toHaveBeenCalledWith({ path: '/keys', query: { model: 'gpt-5.4' } })
+    wrapper.unmount()
   })
 
   it('links administrators to the admin dashboard', () => {

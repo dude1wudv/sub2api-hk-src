@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :class="{ 'custom-page--user': !isAdminPage }">
     <div class="custom-page-layout">
       <div class="card flex-1 min-h-0 overflow-hidden">
         <div v-if="loading" class="flex h-full items-center justify-center py-12">
@@ -136,6 +136,7 @@ import { useAdminSettingsStore } from '@/stores/adminSettings'
 import Icon from '@/components/icons/Icon.vue'
 import { buildApiUrl } from '@/api/client'
 import { buildEmbeddedUrl, detectTheme } from '@/utils/embedded-url'
+import { isAdminWorkspaceRoute } from '@/utils/workspaceSurface'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
@@ -150,6 +151,7 @@ const route = useRoute()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const adminSettingsStore = useAdminSettingsStore()
+const isAdminPage = computed(() => authStore.isAdmin && isAdminWorkspaceRoute(route, true, adminSettingsStore.customMenuItems))
 
 const loading = ref(false)
 const pageTheme = ref<'light' | 'dark'>('light')
@@ -247,7 +249,7 @@ const embeddedUrl = computed(() => {
     menuItem.value.url,
     authStore.user?.id,
     authStore.token,
-    pageTheme.value,
+    isAdminPage.value ? pageTheme.value : 'light',
     locale.value,
   )
 })
@@ -503,6 +505,11 @@ onUnmounted(() => {
   @apply text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 font-medium;
 }
 
+.custom-page--user .toc-item:hover {
+  color: var(--p-ink, #1f2b3c);
+  background: #e8eff7;
+}
+
 .toc-level-1 { padding-left: 8px; }
 .toc-level-2 { padding-left: 20px; }
 .toc-level-3 { padding-left: 32px; }
@@ -562,6 +569,18 @@ onUnmounted(() => {
 .markdown-page-content pre { @apply bg-gray-900 dark:bg-dark-900 text-gray-100 p-4 rounded-lg overflow-x-auto my-4 relative; }
 .markdown-page-content pre code { @apply bg-transparent p-0 text-inherit; }
 .markdown-page-content hr { @apply my-6 border-gray-200 dark:border-dark-600; }
+
+.custom-page--user .markdown-page-content pre {
+  color: #eef4fa;
+  background: #25384f;
+  border: 1px solid #364c67;
+  box-shadow: inset 0 1px 0 #ffffff0a;
+}
+
+.custom-page--user .markdown-page-content pre code {
+  color: inherit;
+  background: transparent;
+}
 
 .copy-btn {
   position: absolute;

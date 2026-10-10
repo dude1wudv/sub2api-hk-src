@@ -3,18 +3,21 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import CustomPageView from '../CustomPageView.vue'
 
-const { appStore } = vi.hoisted(() => ({
+const { appStore, authStore, adminSettingsStore, route } = vi.hoisted(() => ({
   appStore: {
     publicSettingsLoaded: true,
     cachedPublicSettings: { custom_menu_items: [{ id: 'docs', url: 'https://example.com/docs' }] },
   },
+  authStore: { isAdmin: false, user: { id: 7 }, token: 'test-token' },
+  adminSettingsStore: { customMenuItems: [] as Array<Record<string, unknown>> },
+  route: { path: '/custom/docs', params: { id: 'docs' } },
 }))
 
-vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: 'docs' } }) }))
+vi.mock('vue-router', () => ({ useRoute: () => route }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key, locale: { value: 'en' } }) }))
 vi.mock('@/stores', () => ({ useAppStore: () => appStore }))
-vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ isAdmin: false, user: { id: 7 }, token: 'test-token' }) }))
-vi.mock('@/stores/adminSettings', () => ({ useAdminSettingsStore: () => ({ customMenuItems: [] }) }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => authStore }))
+vi.mock('@/stores/adminSettings', () => ({ useAdminSettingsStore: () => adminSettingsStore }))
 vi.mock('@/api/client', () => ({ buildApiUrl: (path: string) => `/api/v1${path}` }))
 
 let notifyResize: () => void
@@ -65,6 +68,10 @@ function click(button: HTMLElement, detail = 1) {
 
 describe('custom page open button', () => {
   beforeEach(() => {
+    authStore.isAdmin = false
+    adminSettingsStore.customMenuItems = []
+    route.path = '/custom/docs'
+    route.params.id = 'docs'
     appStore.cachedPublicSettings.custom_menu_items = [{ id: 'docs', url: 'https://example.com/docs' }]
     vi.stubGlobal('ResizeObserver', class {
       constructor(callback: () => void) { notifyResize = callback }
@@ -75,7 +82,22 @@ describe('custom page open button', () => {
 
   afterEach(() => {
     wrappers.splice(0).forEach(wrapper => wrapper.unmount())
+    document.documentElement.classList.remove('dark')
     vi.unstubAllGlobals()
+  })
+
+  it('keeps user embeds on the fixed light theme and preserves the admin-selected theme', async () => {
+    document.documentElement.classList.add('dark')
+    const userWrapper = mountPage()
+    await flushPromises()
+    expect(userWrapper.classes()).toContain('custom-page--user')
+    expect(new URL(userWrapper.get('iframe').attributes('src')!).searchParams.get('theme')).toBe('light')
+    authStore.isAdmin = true
+    adminSettingsStore.customMenuItems = [{ id: 'docs', visibility: 'admin' }]
+    const adminWrapper = mountPage()
+    await flushPromises()
+    expect(adminWrapper.classes()).not.toContain('custom-page--user')
+    expect(new URL(adminWrapper.get('iframe').attributes('src')!).searchParams.get('theme')).toBe('dark')
   })
 
   it.each([undefined, false, true])('honors the per-menu hide button setting %s while keeping the iframe', (hidden) => {
