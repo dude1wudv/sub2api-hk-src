@@ -411,6 +411,12 @@ export default {
 	  modelMismatch: '模型不一致',
     reasoningEffort: '推理强度',
     requestedReasoningEffort: '请求推理强度',
+    reasoningEffortSource: '推理来源',
+    reasoningEffortSources: {
+      explicit: '客户端显式',
+      default: '网关缺省',
+      modelSuffix: '模型后缀',
+    },
     endpoint: '端点',
     endpointDistribution: '端点分布',
     inbound: '入站',

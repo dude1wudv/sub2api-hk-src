@@ -20,6 +20,13 @@ func optionalStringValue(value *string) string {
 // coalesceRequestedReasoningEffort prefers the client-requested value and falls
 // back to the effective/forwarded effort for historical or unmapped rows.
 func coalesceRequestedReasoningEffort(requested, forwarded *string) *string {
+	return coalesceRequestedReasoningEffortWithSource(requested, forwarded, nil)
+}
+
+func coalesceRequestedReasoningEffortWithSource(requested, forwarded, source *string) *string {
+	if strings.EqualFold(optionalStringValue(source), ReasoningEffortSourceDefault) {
+		return nil
+	}
 	if trimmed := optionalStringValue(requested); trimmed != "" {
 		return &trimmed
 	}

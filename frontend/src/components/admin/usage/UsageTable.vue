@@ -123,6 +123,12 @@
           </span>
         </template>
 
+        <template #cell-reasoning_effort_source="{ row }">
+          <span class="text-xs text-gray-600 dark:text-gray-300">
+            {{ formatReasoningEffortSource(row.reasoning_effort_source) }}
+          </span>
+        </template>
+
         <template #cell-endpoint="{ row }">
           <div class="max-w-[320px] space-y-1 text-xs">
             <div class="break-all text-gray-700 dark:text-gray-300">
@@ -721,10 +727,21 @@ const accountSwitchWarning = (row: AdminUsageLog): string => t('admin.usage.acco
 })
 const showIpGeoToolbar = computed(() => props.columns.some((col) => col.key === 'ip_address'))
 
+const formatReasoningEffortSource = (source: string | null | undefined): string => {
+  const normalized = source?.trim() || ''
+  if (!normalized) return '-'
+  const labels: Record<string, string> = {
+    explicit: t('usage.reasoningEffortSources.explicit'),
+    default: t('usage.reasoningEffortSources.default'),
+    model_suffix: t('usage.reasoningEffortSources.modelSuffix'),
+  }
+  return labels[normalized] || normalized
+}
+
 const hasReasoningEffortMapping = (row: AdminUsageLog): boolean => {
   const requested = row.reasoning_effort?.trim() || ''
   const forwarded = row.upstream_reasoning_effort?.trim() || ''
-  return requested !== '' && forwarded !== '' && !reasoningEffortValuesEqual(requested, forwarded)
+  return forwarded !== '' && (requested === '' || !reasoningEffortValuesEqual(requested, forwarded))
 }
 
 const sentUpstreamModel = (row: AdminUsageLog): string => row.upstream_model?.trim() || row.model?.trim() || ''

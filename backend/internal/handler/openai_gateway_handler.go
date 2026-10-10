@@ -49,6 +49,7 @@ type OpenAIGatewayHandler struct {
 	imageLimiter               *imageConcurrencyLimiter
 	maxAccountSwitches         int
 	cfg                        *config.Config
+	settingService             *service.SettingService
 }
 
 type openAIWSTurnChannelMappingSnapshot struct {
@@ -473,6 +474,12 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 	if !openAICompatibleTextTargetAllowed(c, apiKey, reqModel) {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Model is not supported by this OpenAI-compatible endpoint for composite groups")
 		return
+	}
+	if defaultBody, _, err := applyReasoningEffortDefaultForRequest(c, h.settingService, body, "responses", effectiveAPIKeyPlatform(c, apiKey), reqModel); err != nil {
+		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
+		return
+	} else {
+		body = defaultBody
 	}
 	if cappedBody, changed, err := applyOpenAIReasoningEffortPolicyForRequest(c, apiKey, body); err != nil {
 		respondOpenAIReasoningEffortPolicyError(c, err, h.errorResponse)
@@ -1218,6 +1225,12 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 	if !openAICompatibleTextTargetAllowed(c, apiKey, reqModel) {
 		h.anthropicErrorResponse(c, http.StatusBadRequest, "invalid_request_error", "Model is not supported by this OpenAI-compatible endpoint for composite groups")
 		return
+	}
+	if defaultBody, _, err := applyReasoningEffortDefaultForRequest(c, h.settingService, body, "messages", effectiveAPIKeyPlatform(c, apiKey), reqModel); err != nil {
+		h.anthropicErrorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
+		return
+	} else {
+		body = defaultBody
 	}
 	bindOpenAIReasoningEffortPolicyForMessagesRequest(c, apiKey, body)
 	routingModel := service.NormalizeOpenAICompatRequestedModel(reqModel)
@@ -2981,6 +2994,10 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 			closeOpenAIClientWS(wsConn, coderws.StatusPolicyViolation, "billing check failed")
 			return
 		}
+		reasoningEffortDefault := service.ReasoningEffortDefaultConfig{}
+		if h.settingService != nil {
+			reasoningEffortDefault = h.settingService.GetGatewayReasoningEffortDefault(c.Request.Context())
+		}
 		hooks := &service.OpenAIWSIngressHooks{
 			ClientLifecycleContext:      clientLifecycleCtx,
 			InitialRequestModel:         reqModel,
@@ -2988,6 +3005,8 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 			MaxReasoningEffort:          maxReasoningEffort,
 			MaxReasoningEffortOverLimit: maxReasoningEffortOverLimit,
 			ReasoningEffortMappings:     reasoningEffortMappings,
+			ReasoningEffortDefault:      reasoningEffortDefault,
+			ReasoningEffortPlatform:     effectiveAPIKeyPlatform(c, apiKey),
 			TurnStarted:                 recordTurnStart,
 			BeforeRequest: func(turn int, payload []byte, originalModel string) error {
 				c.Set(securityAuditWSTurnContextKey, turn)

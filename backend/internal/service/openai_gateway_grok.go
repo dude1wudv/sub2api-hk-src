@@ -704,10 +704,19 @@ func normalizeGrokChatReasoningEffort(body []byte, upstreamModel string) ([]byte
 	if raw == "" {
 		raw = strings.TrimSpace(gjson.GetBytes(body, "reasoningEffort").String())
 	}
-	normalized, keep := normalizeGrokReasoningEffortValue(raw, upstreamModel)
-	keep = keep && grokSupportsReasoningEffort(upstreamModel)
 	out := body
 	var err error
+	if reasoning := gjson.GetBytes(out, "reasoning"); reasoning.Exists() && reasoning.IsObject() {
+		if raw == "" {
+			raw = strings.TrimSpace(reasoning.Get("effort").String())
+		}
+		out, err = sjson.DeleteBytes(out, "reasoning")
+		if err != nil {
+			return nil, err
+		}
+	}
+	normalized, keep := normalizeGrokReasoningEffortValue(raw, upstreamModel)
+	keep = keep && grokSupportsReasoningEffort(upstreamModel)
 	if gjson.GetBytes(out, "reasoningEffort").Exists() {
 		out, err = sjson.DeleteBytes(out, "reasoningEffort")
 		if err != nil {
@@ -720,8 +729,7 @@ func normalizeGrokChatReasoningEffort(body []byte, upstreamModel string) ([]byte
 		}
 		return out, err
 	}
-	out, err = sjson.SetBytes(out, "reasoning_effort", normalized)
-	return out, err
+	return sjson.SetBytes(out, "reasoning_effort", normalized)
 }
 
 func normalizeGrokReasoningEffortValue(raw, model string) (string, bool) {

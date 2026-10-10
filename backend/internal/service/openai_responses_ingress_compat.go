@@ -128,6 +128,9 @@ func convertLegacyResponsesMessages(body []byte) (convertedLegacyResponsesMessag
 	converted.topP = responsesRequest.TopP
 	converted.serviceTier = strings.TrimSpace(responsesRequest.ServiceTier)
 	converted.hasReasoningEffort = strings.TrimSpace(chatRequest.ReasoningEffort) != ""
+	if chatRequest.Reasoning != nil && strings.TrimSpace(chatRequest.Reasoning.Effort) != "" {
+		converted.hasReasoningEffort = true
+	}
 	if responsesRequest.Reasoning != nil {
 		converted.reasoning = responsesRequest.Reasoning
 	}

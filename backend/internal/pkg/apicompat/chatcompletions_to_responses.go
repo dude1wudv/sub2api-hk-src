@@ -18,7 +18,20 @@ type chatMessageContent struct {
 // true. store is always false and reasoning.encrypted_content is always
 // included so that the response translator has full context.
 func ChatCompletionsToResponses(req *ChatCompletionsRequest) (*ResponsesRequest, error) {
-	if err := openai.ValidateGPT61SolReasoningEffort(req.Model, req.ReasoningEffort); err != nil {
+	if req == nil {
+		return nil, fmt.Errorf("chat completions request is nil")
+	}
+	reasoningEffort := req.ReasoningEffort
+	reasoningSummary := "auto"
+	if req.Reasoning != nil {
+		if strings.TrimSpace(reasoningEffort) == "" {
+			reasoningEffort = req.Reasoning.Effort
+		}
+		if req.Reasoning.Summary != "" {
+			reasoningSummary = req.Reasoning.Summary
+		}
+	}
+	if err := openai.ValidateGPT61SolReasoningEffort(req.Model, reasoningEffort); err != nil {
 		return nil, err
 	}
 	input, err := convertChatMessagesToResponsesInput(req.Messages)
@@ -44,7 +57,7 @@ func ChatCompletionsToResponses(req *ChatCompletionsRequest) (*ResponsesRequest,
 
 	// Reasoning models (gpt-5.x) do not accept sampling parameters.
 	// See isReasoningModel in anthropic_to_responses.go.
-	if !isReasoningModel(req.Model) || (openai.IsGPT6SolOrLunaModelSpelling(req.Model) && req.ReasoningEffort == "none") {
+	if !isReasoningModel(req.Model) || (openai.IsGPT6SolOrLunaModelSpelling(req.Model) && reasoningEffort == "none") {
 		out.Temperature = req.Temperature
 		out.TopP = req.TopP
 	}
@@ -69,10 +82,10 @@ func ChatCompletionsToResponses(req *ChatCompletionsRequest) (*ResponsesRequest,
 	}
 
 	// reasoning_effort → reasoning.effort + reasoning.summary="auto"
-	if req.ReasoningEffort != "" {
+	if reasoningEffort != "" {
 		out.Reasoning = &ResponsesReasoning{
-			Effort:  req.ReasoningEffort,
-			Summary: "auto",
+			Effort:  reasoningEffort,
+			Summary: reasoningSummary,
 		}
 	}
 

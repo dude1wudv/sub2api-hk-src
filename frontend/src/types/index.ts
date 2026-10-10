@@ -1760,6 +1760,7 @@ export interface UsageLog {
   model: string
   service_tier?: string | null
   reasoning_effort?: string | null
+  reasoning_effort_source?: string | null
   inbound_endpoint?: string | null
   upstream_endpoint?: string | null
 

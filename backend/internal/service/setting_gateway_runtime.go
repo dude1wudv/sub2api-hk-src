@@ -64,6 +64,7 @@ type cachedGatewayForwardingSettings struct {
 	anthropicCacheTTL1hInjection     bool
 	rewriteMessageCacheControl       bool
 	clientDatelineNormalization      bool
+	reasoningEffortDefault           ReasoningEffortDefaultConfig
 	expiresAt                        int64 // unix nano
 }
 
@@ -911,6 +912,7 @@ func (s *SettingService) getGatewayForwardingSettingsCached(ctx context.Context)
 			SettingKeyEnableAnthropicCacheTTL1hInjection,
 			SettingKeyRewriteMessageCacheControl,
 			SettingKeyEnableClientDatelineNormalization,
+			SettingKeyGatewayReasoningEffortDefault,
 		})
 		if err != nil {
 			slog.Warn("failed to get gateway forwarding settings", "error", err)
@@ -949,6 +951,11 @@ func (s *SettingService) getGatewayForwardingSettingsCached(ctx context.Context)
 		if v, ok := values[SettingKeyEnableClientDatelineNormalization]; ok && v != "" {
 			clientDatelineNormalization = v == "true"
 		}
+		reasoningEffortDefault, err := ParseReasoningEffortDefaultConfig(values[SettingKeyGatewayReasoningEffortDefault])
+		if err != nil {
+			slog.Warn("invalid gateway reasoning effort default setting", "error", err)
+			reasoningEffortDefault = ReasoningEffortDefaultConfig{}
+		}
 		gatewayForwardingCache.Store(&cachedGatewayForwardingSettings{
 			openAITTFTMode:                   ttftMode,
 			fingerprintUnification:           fp,
@@ -959,6 +966,7 @@ func (s *SettingService) getGatewayForwardingSettingsCached(ctx context.Context)
 			claudeOAuthSystemPromptBlocks:    systemPromptBlocks,
 			anthropicCacheTTL1hInjection:     cacheTTL1h,
 			rewriteMessageCacheControl:       rewriteMessageCacheControl,
+			reasoningEffortDefault:           reasoningEffortDefault,
 			clientDatelineNormalization:      clientDatelineNormalization,
 			expiresAt:                        time.Now().Add(gatewayForwardingCacheTTL).UnixNano(),
 		})
@@ -979,6 +987,19 @@ func (s *SettingService) getGatewayForwardingSettingsCached(ctx context.Context)
 		return r
 	}
 	return gatewayForwardingSettingsResult{fp: true, claudeOAuthSystemPromptInjection: true, clientDatelineNormalization: true}
+}
+
+// GetGatewayReasoningEffortDefault returns the validated gateway default
+// configuration from the shared forwarding cache.
+func (s *SettingService) GetGatewayReasoningEffortDefault(ctx context.Context) ReasoningEffortDefaultConfig {
+	if cached, ok := gatewayForwardingCache.Load().(*cachedGatewayForwardingSettings); ok && cached != nil && time.Now().UnixNano() < cached.expiresAt {
+		return cached.reasoningEffortDefault
+	}
+	s.getGatewayForwardingSettingsCached(ctx)
+	if cached, ok := gatewayForwardingCache.Load().(*cachedGatewayForwardingSettings); ok && cached != nil {
+		return cached.reasoningEffortDefault
+	}
+	return ReasoningEffortDefaultConfig{}
 }
 
 // GetOpenAITTFTMode 返回 Responses first_token_ms 的统计口径。

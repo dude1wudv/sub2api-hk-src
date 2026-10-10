@@ -23,7 +23,7 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 320
+	candidateMigrationCount         = 321
 )
 
 var candidateOnlyMigrations = []string{
@@ -61,6 +61,7 @@ var candidateOnlyMigrations = []string{
 	"243_disable_independent_scheduling.sql",
 	"244_restore_account_global_priority.sql",
 	"245_add_typesafe_platform.sql",
+	"246_add_usage_log_reasoning_effort_source.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {
@@ -125,7 +126,7 @@ func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testi
 		require.NoError(t, err)
 		history[name] = &fstest.MapFile{Data: content}
 	}
-	require.Len(t, history, 318)
+	require.Len(t, history, 319)
 	container, err := tcpostgres.Run(ctx, selectDockerImage(ctx, postgresImageTag),
 		tcpostgres.WithDatabase("hk_014_history"), tcpostgres.WithUsername("postgres"),
 		tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())

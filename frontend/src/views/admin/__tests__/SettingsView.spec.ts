@@ -475,6 +475,7 @@ const baseSettingsResponse = {
   enable_anthropic_cache_ttl_1h_injection: false,
   rewrite_message_cache_control: false,
   enable_client_dateline_normalization: true,
+  gateway_reasoning_effort_default: { enabled: false, rules: [] },
   antigravity_user_agent_version: "",
   openai_codex_user_agent: "",
   payment_enabled: true,
@@ -1506,6 +1507,31 @@ describe("admin SettingsView payment visible method controls", () => {
 
     const payload = updateSettings.mock.calls.at(-1)?.[0] as Record<string, unknown>;
     expect(payload.openai_ttft_mode).toBe("semantic");
+  });
+
+  it("loads, edits and saves structured gateway reasoning default rules", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      gateway_reasoning_effort_default: {
+        enabled: true,
+        rules: [{ platform: "openai", match_type: "prefix", model: "gpt-6.1-sol", effort: "high" }],
+      },
+    });
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+    const fields = wrapper.get('[data-testid="reasoning-default-fields"]');
+    expect((fields.get('input[type="checkbox"]').element as HTMLInputElement).checked).toBe(true);
+    await fields.findAll("select")[2]!.setValue("medium");
+    await fields.get('[data-testid="reasoning-default-add"]').trigger("click");
+    expect(fields.findAll("tbody tr")).toHaveLength(2);
+    await fields.findAll("tbody tr")[1]!.get("button").trigger("click");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+    expect(updateSettings.mock.calls.at(-1)?.[0].gateway_reasoning_effort_default).toEqual({
+      enabled: true,
+      rules: [{ platform: "openai", match_type: "prefix", model: "gpt-6.1-sol", effort: "medium" }],
+    });
   });
 
   it("loads fail-safe-off Ollama Cloud usage refresh settings and saves an explicit opt-in", async () => {

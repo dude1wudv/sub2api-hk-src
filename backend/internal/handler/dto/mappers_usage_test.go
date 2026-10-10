@@ -234,6 +234,28 @@ func TestUsageLogFromService_UsersSeeRequestedReasoningEffortOnly(t *testing.T) 
 	require.Contains(t, string(adminJSON), `"upstream_reasoning_effort":"xhigh"`)
 }
 
+func TestUsageLogFromService_DefaultReasoningIsNotClientRequested(t *testing.T) {
+	t.Parallel()
+	source, forwarded, staleRequested := service.ReasoningEffortSourceDefault, "medium", "high"
+	log := &service.UsageLog{
+		Model: "gpt-6.1-sol", ReasoningEffort: &forwarded,
+		RequestedReasoningEffort: &staleRequested, ReasoningEffortSource: &source,
+	}
+	userDTO := UsageLogFromService(log)
+	adminDTO := UsageLogFromServiceAdmin(log)
+	require.Nil(t, userDTO.ReasoningEffort)
+	require.Nil(t, adminDTO.ReasoningEffort)
+	require.Equal(t, &forwarded, adminDTO.UpstreamReasoningEffort)
+	require.Equal(t, &source, adminDTO.ReasoningEffortSource)
+	userJSON, err := json.Marshal(userDTO)
+	require.NoError(t, err)
+	require.NotContains(t, string(userJSON), "reasoning_effort_source")
+	adminJSON, err := json.Marshal(adminDTO)
+	require.NoError(t, err)
+	require.Contains(t, string(adminJSON), `"reasoning_effort_source":"default"`)
+	require.Contains(t, string(adminJSON), `"upstream_reasoning_effort":"medium"`)
+}
+
 func TestUsageLogFromService_OmitsUpstreamReasoningEffortWhenUnmapped(t *testing.T) {
 	t.Parallel()
 

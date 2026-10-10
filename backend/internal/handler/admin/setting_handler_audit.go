@@ -1,11 +1,11 @@
 package admin
 
 import (
-	"log/slog"
-
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"log/slog"
+	"reflect"
 
 	"github.com/gin-gonic/gin"
 )
@@ -478,6 +478,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.EnableClientDatelineNormalization != after.EnableClientDatelineNormalization {
 		changed = append(changed, "enable_client_dateline_normalization")
+	}
+	if !reflect.DeepEqual(before.GatewayReasoningEffortDefault, after.GatewayReasoningEffortDefault) {
+		changed = append(changed, service.SettingKeyGatewayReasoningEffortDefault)
 	}
 	if before.AntigravityUserAgentVersion != after.AntigravityUserAgentVersion {
 		changed = append(changed, "antigravity_user_agent_version")

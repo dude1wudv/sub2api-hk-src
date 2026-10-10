@@ -117,29 +117,66 @@ func bindRequestedReasoningEffort(c *gin.Context, body []byte, model string) {
 }
 
 func stampOpenAIRequestedReasoningEffort(result *service.OpenAIForwardResult, c *gin.Context) {
-	if result == nil || result.RequestedReasoningEffort != nil {
+	if result == nil || c == nil || c.Request == nil {
 		return
 	}
-	if c == nil || c.Request == nil {
-		return
+	source := service.ReasoningEffortSourceFromContext(c.Request.Context())
+	if source == service.ReasoningEffortSourceDefault {
+		result.RequestedReasoningEffort = nil
+	} else if result.RequestedReasoningEffort == nil {
+		result.RequestedReasoningEffort = service.RequestedReasoningEffortFromContext(c.Request.Context())
 	}
-	result.RequestedReasoningEffort = service.RequestedReasoningEffortFromContext(c.Request.Context())
+	if result.ReasoningEffortSource == nil && source != "" {
+		result.ReasoningEffortSource = &source
+	}
 }
 
 func stampForwardRequestedReasoningEffort(result *service.ForwardResult, requested *string) {
-	if result == nil || result.RequestedReasoningEffort != nil {
+	if result == nil {
 		return
 	}
-	result.RequestedReasoningEffort = requested
+	if result.RequestedReasoningEffort == nil {
+		result.RequestedReasoningEffort = requested
+	}
+}
+
+func stampForwardReasoningEffortSource(result *service.ForwardResult, c *gin.Context) {
+	if result == nil || c == nil || c.Request == nil || result.ReasoningEffortSource != nil {
+		return
+	}
+	if source := service.ReasoningEffortSourceFromContext(c.Request.Context()); source != "" {
+		result.ReasoningEffortSource = &source
+		if source == service.ReasoningEffortSourceDefault {
+			result.RequestedReasoningEffort = nil
+		}
+	}
+}
+
+func applyReasoningEffortDefaultForRequest(c *gin.Context, settingService *service.SettingService, body []byte, inboundProtocol, platform, model string) ([]byte, string, error) {
+	cfg := service.ReasoningEffortDefaultConfig{}
+	if settingService != nil {
+		cfg = settingService.GetGatewayReasoningEffortDefault(c.Request.Context())
+	}
+	updated, source, err := service.ResolveReasoningEffortDefault(body, inboundProtocol, platform, model, cfg)
+	if err != nil {
+		return body, "", err
+	}
+	c.Request = c.Request.WithContext(service.WithReasoningEffortSource(c.Request.Context(), source))
+	if source != service.ReasoningEffortSourceDefault {
+		bindRequestedReasoningEffort(c, body, model)
+	}
+	return updated, source, nil
 }
 
 func applyOpenAIReasoningEffortPolicyForRequest(c *gin.Context, apiKey *service.APIKey, body []byte) ([]byte, bool, error) {
-	bindRequestedReasoningEffort(c, body, strings.TrimSpace(gjson.GetBytes(body, "model").String()))
 	maxEffort, mappings, overLimit, ok := openAIReasoningEffortPolicyForRequest(c, apiKey)
+	if service.ReasoningEffortSourceFromContext(c.Request.Context()) != service.ReasoningEffortSourceDefault {
+		bindRequestedReasoningEffort(c, body, strings.TrimSpace(gjson.GetBytes(body, "model").String()))
+	}
 	if !ok {
 		return body, false, nil
 	}
-	return service.ApplyOpenAIReasoningEffortPolicy(body, maxEffort, mappings, overLimit)
+	return service.ApplyReasoningEffortPolicyWithSource(body, maxEffort, mappings, overLimit, service.ReasoningEffortSourceFromContext(c.Request.Context()))
 }
 
 func respondOpenAIReasoningEffortPolicyError(c *gin.Context, err error, write func(*gin.Context, int, string, string)) {
@@ -152,20 +189,24 @@ func respondOpenAIReasoningEffortPolicyError(c *gin.Context, err error, write fu
 
 func applyAnthropicReasoningEffortPolicyForRequest(c *gin.Context, apiKey *service.APIKey, body []byte) ([]byte, bool, error) {
 	maxEffort, mappings, overLimit, ok := anthropicReasoningEffortPolicyForRequest(c, apiKey)
+	if service.ReasoningEffortSourceFromContext(c.Request.Context()) != service.ReasoningEffortSourceDefault {
+		bindRequestedReasoningEffort(c, body, strings.TrimSpace(gjson.GetBytes(body, "model").String()))
+	}
 	if !ok {
 		return body, false, nil
 	}
-	return service.ApplyReasoningEffortPolicy(body, maxEffort, mappings, overLimit)
+	return service.ApplyReasoningEffortPolicyWithSource(body, maxEffort, mappings, overLimit, service.ReasoningEffortSourceFromContext(c.Request.Context()))
 }
 
 func bindOpenAIReasoningEffortPolicyForMessagesRequest(c *gin.Context, apiKey *service.APIKey, body []byte) {
 	if c == nil || c.Request == nil {
 		return
 	}
-	bindRequestedReasoningEffort(c, body, strings.TrimSpace(gjson.GetBytes(body, "model").String()))
-	// The Messages bridge synthesizes a default OpenAI effort when
-	// output_config.effort is omitted. Bind the group policy only for an
-	// explicit client value so the ceiling does not alter that default.
+	if service.ReasoningEffortSourceFromContext(c.Request.Context()) != service.ReasoningEffortSourceDefault {
+		bindRequestedReasoningEffort(c, body, strings.TrimSpace(gjson.GetBytes(body, "model").String()))
+	}
+	// Apply policy to a client value or an injected default. When no rule
+	// matched, preserve the bridge's existing synthesized effort behavior.
 	effort := gjson.GetBytes(body, "output_config.effort")
 	if !effort.Exists() || effort.Type != gjson.String || strings.TrimSpace(effort.String()) == "" {
 		return

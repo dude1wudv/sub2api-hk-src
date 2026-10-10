@@ -258,8 +258,11 @@ type OpenAIWSIngressHooks struct {
 	// MaxReasoningEffortOverLimit is the access control when an explicit effort
 	// exceeds the ceiling: downgrade (default) or deny.
 	MaxReasoningEffortOverLimit string
-	// ReasoningEffortMappings rewrites explicit effort values for this WS session.
-	ReasoningEffortMappings []ReasoningEffortMapping
+	ReasoningEffortMappings     []ReasoningEffortMapping
+	// ReasoningEffortSource identifies an automatically injected default.
+	ReasoningEffortSource   string
+	ReasoningEffortDefault  ReasoningEffortDefaultConfig
+	ReasoningEffortPlatform string
 	TurnStarted             func(turn int, startedAt time.Time)
 	BeforeTurn              func(turn int) error
 	BeforeRequest           func(turn int, payload []byte, originalModel string) error

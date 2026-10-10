@@ -136,6 +136,8 @@ type UsageLog struct {
 	// OpenAI: "low" / "medium" / "high" / "xhigh"; Claude: "low" / "medium" / "high" / "max".
 	// Nil means not provided / not applicable.
 	ReasoningEffort *string
+	// ReasoningEffortSource records explicit/default/model_suffix provenance.
+	ReasoningEffortSource *string
 	// RequestedReasoningEffort is the client-requested effort before mapping.
 	// Nil means historical rows, or that no explicit/suffix-derived effort was observed.
 	RequestedReasoningEffort *string

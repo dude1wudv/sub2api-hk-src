@@ -136,6 +136,7 @@ type openAIWSPassthroughUsageMeta struct {
 	serviceTier              atomic.Pointer[string]
 	reasoningEffort          atomic.Pointer[string]
 	requestedReasoningEffort atomic.Pointer[string]
+	reasoningEffortSource    atomic.Pointer[string]
 	requestModel             atomic.Pointer[string]
 	upstreamModel            atomic.Pointer[string]
 
@@ -696,6 +697,21 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		firstClientMessage = liteFirstMessage
 	}
 	originalFirstClientMessage := firstClientMessage
+	if hooks != nil {
+		model := strings.TrimSpace(gjson.GetBytes(firstClientMessage, "model").String())
+		if model == "" {
+			model = strings.TrimSpace(hooks.InitialRequestModel)
+			if model != "" {
+				firstClientMessage = s.ReplaceModelInBody(firstClientMessage, model)
+			}
+		}
+		next, source, resolveErr := ResolveReasoningEffortDefault(firstClientMessage, "responses", hooks.ReasoningEffortPlatform, model, hooks.ReasoningEffortDefault)
+		if resolveErr != nil {
+			return NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket request payload", resolveErr)
+		}
+		firstClientMessage = next
+		hooks.ReasoningEffortSource = source
+	}
 	if next, policyErr := applyOpenAIWSReasoningEffortPolicy(firstClientMessage, hooks); policyErr != nil {
 		return NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, policyErr.Error(), policyErr)
 	} else {
@@ -807,6 +823,9 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	// goroutine）之间同步当前 turn 的 usage metadata。
 	usageMeta.initFromFirstFrame(firstClientMessage, capturedSessionModel)
 	usageMeta.captureRequestedReasoningEffort(originalFirstClientMessage, capturedSessionModel)
+	if hooks != nil {
+		usageMeta.reasoningEffortSource.Store(optionalTrimmedStringPtr(hooks.ReasoningEffortSource))
+	}
 	_, initialUpstreamModel := usageMeta.turnModels(initialRequestModel)
 	SetOpsUpstreamModel(c, initialUpstreamModel)
 	wsURL, err := s.buildOpenAIResponsesWSURL(account)
@@ -998,6 +1017,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 				}()
 			}
 			responsesLite := isResponseCreate && isOpenAIResponsesLiteWebSocketPayload(payload)
+			reasoningEffortSource := ""
 			if isResponseCreate {
 				if normalized, compatibilityChanged, normalizeErr := normalizeOpenAIResponsesWebSocketCompatibilityBody(payload, account, responsesLite); normalizeErr != nil {
 					return payload, nil, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket request payload", normalizeErr)
@@ -1033,6 +1053,19 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 					payload = litePayload
 				}
 				originalResponseCreate := payload
+				if hooks != nil {
+					model := usageMeta.requestModelForFrame(payload)
+					if model != "" && strings.TrimSpace(gjson.GetBytes(payload, "model").String()) == "" {
+						payload = s.ReplaceModelInBody(payload, model)
+					}
+					next, source, resolveErr := ResolveReasoningEffortDefault(payload, "responses", hooks.ReasoningEffortPlatform, model, hooks.ReasoningEffortDefault)
+					if resolveErr != nil {
+						return payload, nil, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket request payload", resolveErr)
+					}
+					payload = next
+					hooks.ReasoningEffortSource = source
+					reasoningEffortSource = source
+				}
 				if next, policyErr := applyOpenAIWSReasoningEffortPolicy(payload, hooks); policyErr != nil {
 					return payload, nil, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, policyErr.Error(), policyErr)
 				} else {
@@ -1113,6 +1146,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 			//     service_tier 时按 default 处理，billing 应如实反映。
 			if policyErr == nil && blocked == nil && isResponseCreate {
 				usageMeta.updateFromResponseCreate(out, model, requestModelForThisFrame)
+				usageMeta.reasoningEffortSource.Store(optionalTrimmedStringPtr(reasoningEffortSource))
 				_, actualModel := usageMeta.turnModels(requestModelForThisFrame)
 				SetOpsUpstreamModel(c, actualModel)
 				responseCreateAtCopy := responseCreateAt
@@ -1222,6 +1256,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 					ServiceTier:                   usageMeta.serviceTier.Load(),
 					ReasoningEffort:               usageMeta.reasoningEffort.Load(),
 					RequestedReasoningEffort:      usageMeta.requestedReasoningEffort.Load(),
+					ReasoningEffortSource:         usageMeta.reasoningEffortSource.Load(),
 					Stream:                        true,
 					OpenAIWSMode:                  true,
 					UpstreamTerminalEvent:         normalizeOpenAIWSTerminalEvent(turn.TerminalEventType),
@@ -1364,6 +1399,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		ServiceTier:                   usageMeta.serviceTier.Load(),
 		ReasoningEffort:               usageMeta.reasoningEffort.Load(),
 		RequestedReasoningEffort:      usageMeta.requestedReasoningEffort.Load(),
+		ReasoningEffortSource:         usageMeta.reasoningEffortSource.Load(),
 		Stream:                        true,
 		OpenAIWSMode:                  true,
 		UpstreamTerminalEvent:         normalizeOpenAIWSTerminalEvent(relayResult.TerminalEventType),

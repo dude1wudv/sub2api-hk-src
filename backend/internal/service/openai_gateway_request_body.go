@@ -1739,6 +1739,9 @@ func explicitRequestedReasoningEffortFromBody(body []byte) string {
 	if raw == "" {
 		raw = strings.TrimSpace(gjson.GetBytes(body, "output_config.effort").String())
 	}
+	if raw == "" && strings.EqualFold(strings.TrimSpace(gjson.GetBytes(body, "thinking.type").String()), "disabled") {
+		raw = "none"
+	}
 	return raw
 }
 
@@ -2527,6 +2530,20 @@ func CanonicalRequestedReasoningEffortFromReqBody(reqBody map[string]any, modelC
 	if raw == "" {
 		if effort, ok := reqBody["reasoning_effort"].(string); ok {
 			raw = strings.TrimSpace(effort)
+		}
+	}
+	if raw == "" {
+		if outputConfig, ok := reqBody["output_config"].(map[string]any); ok {
+			if effort, ok := outputConfig["effort"].(string); ok {
+				raw = strings.TrimSpace(effort)
+			}
+		}
+	}
+	if raw == "" {
+		if thinking, ok := reqBody["thinking"].(map[string]any); ok {
+			if kind, ok := thinking["type"].(string); ok && strings.EqualFold(strings.TrimSpace(kind), "disabled") {
+				raw = "none"
+			}
 		}
 	}
 	if raw != "" {

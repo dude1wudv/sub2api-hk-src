@@ -5739,6 +5739,9 @@
                   v-model="form.enable_client_dateline_normalization"
                 />
               </div>
+              <ReasoningEffortDefaultFields
+                v-model="form.gateway_reasoning_effort_default"
+              />
 
               <!-- Antigravity UA 版本 -->
               <div>
@@ -9027,6 +9030,7 @@ import PaymentProviderDialog from "@/components/payment/PaymentProviderDialog.vu
 import GroupBadge from "@/components/common/GroupBadge.vue";
 import GroupOptionItem from "@/components/common/GroupOptionItem.vue";
 import Toggle from "@/components/common/Toggle.vue";
+import ReasoningEffortDefaultFields from "@/components/admin/settings/ReasoningEffortDefaultFields.vue";
 import ProxySelector from "@/components/common/ProxySelector.vue";
 import ImageUpload from "@/components/common/ImageUpload.vue";
 import BackupSettings from "@/views/admin/BackupView.vue";
@@ -10023,6 +10027,10 @@ const form = reactive<SettingsForm>({
   enable_anthropic_cache_ttl_1h_injection: false,
   rewrite_message_cache_control: false,
   enable_client_dateline_normalization: true,
+  gateway_reasoning_effort_default: {
+    enabled: false,
+    rules: [],
+  },
   antigravity_user_agent_version: "",
   openai_codex_user_agent: "",
   openai_codex_client_version: "",
@@ -11673,6 +11681,7 @@ async function saveSettings() {
       rewrite_message_cache_control: form.rewrite_message_cache_control,
       enable_client_dateline_normalization:
         form.enable_client_dateline_normalization,
+      gateway_reasoning_effort_default: form.gateway_reasoning_effort_default,
       antigravity_user_agent_version:
         form.antigravity_user_agent_version?.trim() || "",
       openai_codex_user_agent:

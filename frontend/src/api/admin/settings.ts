@@ -629,6 +629,15 @@ export interface SystemSettings {
   allow_ungrouped_key_scheduling: boolean;
 
   // Gateway forwarding behavior
+  gateway_reasoning_effort_default: {
+    enabled: boolean;
+    rules: Array<{
+      platform: string;
+      match_type: string;
+      model: string;
+      effort: string;
+    }>;
+  };
   openai_ttft_mode: string;
   enable_fingerprint_unification: boolean;
   enable_metadata_passthrough: boolean;
@@ -967,6 +976,15 @@ export interface UpdateSettingsRequest {
   enable_anthropic_cache_ttl_1h_injection?: boolean;
   rewrite_message_cache_control?: boolean;
   enable_client_dateline_normalization?: boolean;
+  gateway_reasoning_effort_default?: {
+    enabled: boolean;
+    rules: Array<{
+      platform: string;
+      match_type: string;
+      model: string;
+      effort: string;
+    }>;
+  };
   antigravity_user_agent_version?: string;
   openai_codex_user_agent?: string;
   openai_codex_client_version?: string;

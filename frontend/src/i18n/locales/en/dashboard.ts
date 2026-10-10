@@ -406,6 +406,12 @@ export default {
 	  modelMismatch: 'Different model',
     reasoningEffort: 'Reasoning Effort',
     requestedReasoningEffort: 'Requested reasoning effort',
+    reasoningEffortSource: 'Reasoning source',
+    reasoningEffortSources: {
+      explicit: 'Client explicit',
+      default: 'Gateway default',
+      modelSuffix: 'Model suffix',
+    },
     endpoint: 'Endpoint',
     endpointDistribution: 'Endpoint Distribution',
     inbound: 'Inbound',

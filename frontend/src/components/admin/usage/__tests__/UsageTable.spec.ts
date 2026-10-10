@@ -46,6 +46,7 @@ const messages: Record<string, string> = {
   'usage.outputTokenPrice': 'Output price',
   'usage.perMillionTokens': '/ 1M tokens',
   'usage.serviceTier': 'Service tier',
+  'usage.reasoningEffortSources.default': 'Gateway default',
   'usage.serviceTierPriority': 'Fast',
   'usage.serviceTierUltrafast': 'Ultrafast',
   'usage.serviceTierFlex': 'Flex',
@@ -117,6 +118,7 @@ const DataTableStub = {
       <div v-for="row in data" :key="row.request_id" :data-request-id="row.request_id">
         <slot name="cell-model" :row="row" :value="row.model" />
         <slot name="cell-reasoning_effort" :row="row" :value="row.reasoning_effort" />
+        <slot name="cell-reasoning_effort_source" :row="row" />
         <slot name="cell-billing_mode" :row="row" />
         <slot name="cell-tokens" :row="row" />
         <slot name="cell-cost" :row="row" />
@@ -530,6 +532,24 @@ describe('admin UsageTable tooltip', () => {
     expect(text).toContain('Max')
     expect(text).toContain('XHigh')
     expect(text).toContain('↳')
+  })
+
+  it('shows gateway default separately without inventing a requested effort', () => {
+    const wrapper = mount(UsageTable, {
+      props: {
+        data: [{
+          request_id: 'req-default-effort',
+          model: 'gpt-6.1-sol',
+          reasoning_effort_source: 'default',
+          upstream_reasoning_effort: 'medium',
+        }],
+        loading: false,
+        columns: [],
+      },
+      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true, Teleport: true } },
+    })
+    expect(wrapper.get('[data-testid="reasoning-effort-cell"]').text()).toMatch(/^-\s*↳Medium$/)
+    expect(wrapper.text()).toContain('Gateway default')
   })
 
   it('shows a single reasoning effort when requested matches forwarded', () => {

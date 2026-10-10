@@ -243,22 +243,23 @@ type UpdateSettingsRequest struct {
 	BackendModeEnabled bool `json:"backend_mode_enabled"`
 
 	// Gateway forwarding behavior
-	OpenAITTFTMode                         *string `json:"openai_ttft_mode"`
-	EnableFingerprintUnification           *bool   `json:"enable_fingerprint_unification"`
-	EnableMetadataPassthrough              *bool   `json:"enable_metadata_passthrough"`
-	EnableCCHSigning                       *bool   `json:"enable_cch_signing"`
-	EnableClaudeOAuthSystemPromptInjection *bool   `json:"enable_claude_oauth_system_prompt_injection"`
-	ClaudeOAuthSystemPrompt                *string `json:"claude_oauth_system_prompt"`
-	ClaudeOAuthSystemPromptBlocks          *string `json:"claude_oauth_system_prompt_blocks"`
-	EnableAnthropicCacheTTL1hInjection     *bool   `json:"enable_anthropic_cache_ttl_1h_injection"`
-	RewriteMessageCacheControl             *bool   `json:"rewrite_message_cache_control"`
-	EnableClientDatelineNormalization      *bool   `json:"enable_client_dateline_normalization"`
-	AntigravityUserAgentVersion            *string `json:"antigravity_user_agent_version"`
-	OpenAICodexUserAgent                   *string `json:"openai_codex_user_agent"`
-	OpenAICodexClientVersion               *string `json:"openai_codex_client_version"`
-	OpenAICodexVersionAutoSyncEnabled      *bool   `json:"openai_codex_version_auto_sync_enabled"`
-	ClaudeCodeClientVersion                *string `json:"claude_code_client_version"`
-	ClaudeCodeVersionAutoSyncEnabled       *bool   `json:"claude_code_version_auto_sync_enabled"`
+	OpenAITTFTMode                         *string                               `json:"openai_ttft_mode"`
+	EnableFingerprintUnification           *bool                                 `json:"enable_fingerprint_unification"`
+	EnableMetadataPassthrough              *bool                                 `json:"enable_metadata_passthrough"`
+	EnableCCHSigning                       *bool                                 `json:"enable_cch_signing"`
+	EnableClaudeOAuthSystemPromptInjection *bool                                 `json:"enable_claude_oauth_system_prompt_injection"`
+	ClaudeOAuthSystemPrompt                *string                               `json:"claude_oauth_system_prompt"`
+	ClaudeOAuthSystemPromptBlocks          *string                               `json:"claude_oauth_system_prompt_blocks"`
+	EnableAnthropicCacheTTL1hInjection     *bool                                 `json:"enable_anthropic_cache_ttl_1h_injection"`
+	RewriteMessageCacheControl             *bool                                 `json:"rewrite_message_cache_control"`
+	EnableClientDatelineNormalization      *bool                                 `json:"enable_client_dateline_normalization"`
+	GatewayReasoningEffortDefault          *service.ReasoningEffortDefaultConfig `json:"gateway_reasoning_effort_default"`
+	AntigravityUserAgentVersion            *string                               `json:"antigravity_user_agent_version"`
+	OpenAICodexUserAgent                   *string                               `json:"openai_codex_user_agent"`
+	OpenAICodexClientVersion               *string                               `json:"openai_codex_client_version"`
+	OpenAICodexVersionAutoSyncEnabled      *bool                                 `json:"openai_codex_version_auto_sync_enabled"`
+	ClaudeCodeClientVersion                *string                               `json:"claude_code_client_version"`
+	ClaudeCodeVersionAutoSyncEnabled       *bool                                 `json:"claude_code_version_auto_sync_enabled"`
 
 	// codex_cli_only 加固（global-only）
 	MinCodexVersion                      string `json:"min_codex_version"`
@@ -1436,6 +1437,14 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			return
 		}
 	}
+	if req.GatewayReasoningEffortDefault != nil {
+		normalized, err := service.NormalizeReasoningEffortDefaultConfig(*req.GatewayReasoningEffortDefault)
+		if err != nil {
+			response.BadRequest(c, service.SettingKeyGatewayReasoningEffortDefault+": "+err.Error())
+			return
+		}
+		req.GatewayReasoningEffortDefault = &normalized
+	}
 	if req.AntigravityUserAgentVersion != nil {
 		normalized := strings.TrimSpace(*req.AntigravityUserAgentVersion)
 		req.AntigravityUserAgentVersion = &normalized
@@ -1764,6 +1773,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 				return *req.EnableClientDatelineNormalization
 			}
 			return previousSettings.EnableClientDatelineNormalization
+		}(),
+		GatewayReasoningEffortDefault: func() service.ReasoningEffortDefaultConfig {
+			if req.GatewayReasoningEffortDefault != nil {
+				return *req.GatewayReasoningEffortDefault
+			}
+			return previousSettings.GatewayReasoningEffortDefault
 		}(),
 		AntigravityUserAgentVersion: func() string {
 			if req.AntigravityUserAgentVersion != nil {
@@ -2352,6 +2367,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		EnableAnthropicCacheTTL1hInjection:                     updatedSettings.EnableAnthropicCacheTTL1hInjection,
 		RewriteMessageCacheControl:                             updatedSettings.RewriteMessageCacheControl,
 		EnableClientDatelineNormalization:                      updatedSettings.EnableClientDatelineNormalization,
+		GatewayReasoningEffortDefault:                          updatedSettings.GatewayReasoningEffortDefault,
 		AntigravityUserAgentVersion:                            updatedSettings.AntigravityUserAgentVersion,
 		OpenAICodexUserAgent:                                   updatedSettings.OpenAICodexUserAgent,
 		OpenAICodexClientVersion:                               updatedSettings.OpenAICodexClientVersion,

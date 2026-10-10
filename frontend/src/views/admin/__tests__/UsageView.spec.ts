@@ -521,7 +521,7 @@ describe('admin UsageView request ID column visibility', () => {
     )
     expect(localStorage.setItem).toHaveBeenCalledWith(
       'usage-hidden-columns-version',
-      'upstream-request-id-hidden-by-default',
+      'reasoning-effort-source-hidden-by-default',
     )
   })
 
@@ -564,6 +564,32 @@ describe('admin UsageView request ID column visibility', () => {
     expect(usageTable.props('columns')).toEqual(
       expect.arrayContaining([expect.objectContaining({ key: 'upstream_request_id', label: 'Upstream ID' })]),
     )
+  })
+
+  it.each([
+    ['upstream-request-id-hidden-by-default', false],
+    ['reasoning-effort-source-hidden-by-default', true],
+  ])('migrates %s without resetting explicitly visible columns', async (version, sourceVisible) => {
+    vi.mocked(localStorage.getItem).mockImplementation((key) =>
+      key === 'usage-hidden-columns' ? '[]' : key === 'usage-hidden-columns-version' ? version : null,
+    )
+    const wrapper = mount(UsageView, {
+      global: {
+        stubs: {
+          AppLayout: AppLayoutStub, UsageStatsCards: true, UsageFilters: UsageFiltersStub,
+          UsageTable: UsageTableStub, UsageExportProgress: true, UsageCleanupDialog: true,
+          UserBalanceHistoryModal: true, AuditLogModal: true, Pagination: true, Select: true,
+          DateRangePicker: true, Icon: true, TokenUsageTrend: true, ModelDistributionChart: true,
+          GroupDistributionChart: true, EndpointDistributionChart: true, UserTokenRanking: true,
+        },
+      },
+    })
+    await wrapper.vm.$nextTick()
+    const keys = wrapper.findComponent(UsageTableStub).props('columns').map((column: { key: string }) => column.key)
+    expect(keys).toContain('request_id')
+    expect(keys).toContain('upstream_request_id')
+    expect(keys.includes('reasoning_effort_source')).toBe(sourceVisible)
+    wrapper.unmount()
   })
 })
 

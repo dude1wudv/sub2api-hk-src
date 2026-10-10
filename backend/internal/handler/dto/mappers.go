@@ -771,6 +771,7 @@ func UsageLogFromServiceAdmin(l *service.UsageLog) *AdminUsageLog {
 		UsageLog:                usageLog,
 		UpstreamModel:           l.UpstreamModel,
 		UpstreamReasoningEffort: adminUpstreamReasoningEffort(l),
+		ReasoningEffortSource:   l.ReasoningEffortSource,
 		UpstreamResponseModel:   l.UpstreamResponseModel,
 		UpstreamModelMismatch:   l.UpstreamModelMismatch,
 		ChannelID:               l.ChannelID,
@@ -789,6 +790,9 @@ func UsageLogFromServiceAdmin(l *service.UsageLog) *AdminUsageLog {
 
 func userFacingReasoningEffort(l *service.UsageLog) *string {
 	if l == nil {
+		return nil
+	}
+	if derefString(l.ReasoningEffortSource) == service.ReasoningEffortSourceDefault {
 		return nil
 	}
 	if requested := strings.TrimSpace(derefString(l.RequestedReasoningEffort)); requested != "" {

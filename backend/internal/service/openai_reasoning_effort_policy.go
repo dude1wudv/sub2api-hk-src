@@ -48,6 +48,28 @@ func isReasoningEffortMappingDeny(raw string) bool {
 
 type openAIReasoningEffortPolicyContextKey struct{}
 type requestedReasoningEffortContextKey struct{}
+type reasoningEffortSourceContextKey struct{}
+
+type ReasoningEffortSource string
+
+func WithReasoningEffortSource(ctx context.Context, source string) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	source = strings.TrimSpace(source)
+	if source == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, reasoningEffortSourceContextKey{}, ReasoningEffortSource(source))
+}
+
+func ReasoningEffortSourceFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	source, _ := ctx.Value(reasoningEffortSourceContextKey{}).(ReasoningEffortSource)
+	return strings.TrimSpace(string(source))
+}
 
 type openAIReasoningEffortPolicy struct {
 	maxEffort string
@@ -455,7 +477,7 @@ func ApplyOpenAIReasoningEffortPolicyFromContext(ctx context.Context, body []byt
 	if !ok {
 		return body, false, nil
 	}
-	return ApplyOpenAIReasoningEffortPolicy(body, policy.maxEffort, policy.mappings, policy.overLimit)
+	return ApplyReasoningEffortPolicyWithSource(body, policy.maxEffort, policy.mappings, policy.overLimit, ReasoningEffortSourceFromContext(ctx))
 }
 
 func mapReasoningEffort(raw string, mappings []ReasoningEffortMapping, requestModel string) (string, bool) {
@@ -500,10 +522,21 @@ func sanitizeGroupReasoningEffortPolicy(group *Group) {
 // so upstream defaults stay in control. It understands both OpenAI and
 // Anthropic request field shapes.
 func ApplyReasoningEffortPolicy(body []byte, maxEffort string, mappings []ReasoningEffortMapping, overLimit string) ([]byte, bool, error) {
+	return applyReasoningEffortPolicy(body, maxEffort, mappings, overLimit, "")
+}
+
+// ApplyReasoningEffortPolicyWithSource applies the same group policy while
+// preserving the special semantics of an automatically injected default.
+func ApplyReasoningEffortPolicyWithSource(body []byte, maxEffort string, mappings []ReasoningEffortMapping, overLimit, source string) ([]byte, bool, error) {
+	return applyReasoningEffortPolicy(body, maxEffort, mappings, overLimit, source)
+}
+
+func applyReasoningEffortPolicy(body []byte, maxEffort string, mappings []ReasoningEffortMapping, overLimit, source string) ([]byte, bool, error) {
 	maxRank, hasMax := reasoningEffortRank(maxEffort)
 	if len(body) == 0 || (!hasMax && len(mappings) == 0) {
 		return body, false, nil
 	}
+	defaultInjected := strings.EqualFold(strings.TrimSpace(source), ReasoningEffortSourceDefault)
 	deny := hasMax && NormalizeMaxReasoningEffortOverLimit(overLimit) == ReasoningEffortOverLimitDeny
 	canonicalMax := NormalizeMaxReasoningEffort(maxEffort)
 
@@ -522,6 +555,15 @@ func ApplyReasoningEffortPolicy(body []byte, maxEffort string, mappings []Reason
 
 		effective, mapped := mapReasoningEffort(original, mappings, requestModel)
 		if mapped && isReasoningEffortMappingDeny(effective) {
+			if defaultInjected {
+				updated, err := sjson.DeleteBytes(result, path)
+				if err != nil {
+					continue
+				}
+				result = updated
+				changed = true
+				continue
+			}
 			requested := normalizeReasoningEffortMappingSource(original)
 			if requested == "" {
 				requested = original
@@ -531,7 +573,9 @@ func ApplyReasoningEffortPolicy(body []byte, maxEffort string, mappings []Reason
 		if currentRank, recognized := reasoningEffortRank(effective); recognized {
 			effective = NormalizeMaxReasoningEffort(effective)
 			if hasMax && currentRank > maxRank {
-				if deny {
+				// A default must never turn a previously valid request into a
+				// 403. Downgrade it even when the group says deny.
+				if deny && !defaultInjected {
 					return body, false, &ReasoningEffortOverLimitError{Requested: effective, Max: canonicalMax}
 				}
 				effective = canonicalMax
@@ -555,7 +599,7 @@ func applyOpenAIWSReasoningEffortPolicy(payload []byte, hooks *OpenAIWSIngressHo
 	if hooks == nil || (hooks.MaxReasoningEffort == "" && len(hooks.ReasoningEffortMappings) == 0) {
 		return payload, nil
 	}
-	capped, changed, err := ApplyOpenAIReasoningEffortPolicy(payload, hooks.MaxReasoningEffort, hooks.ReasoningEffortMappings, hooks.MaxReasoningEffortOverLimit)
+	capped, changed, err := ApplyReasoningEffortPolicyWithSource(payload, hooks.MaxReasoningEffort, hooks.ReasoningEffortMappings, hooks.MaxReasoningEffortOverLimit, hooks.ReasoningEffortSource)
 	if err != nil {
 		return payload, err
 	}

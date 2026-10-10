@@ -264,7 +264,8 @@ type OpenAIForwardResult struct {
 	// ReasoningEffort is extracted from request body (reasoning.effort) or derived from model suffix
 	// after group policy rewriting and model-family remapping.
 	// Stored for usage records display; nil means not provided / not applicable.
-	ReasoningEffort *string
+	ReasoningEffort       *string
+	ReasoningEffortSource *string
 	// RequestedReasoningEffort is the client-requested effort before mapping.
 	// Empty/nil means it should fall back to ReasoningEffort at persistence.
 	RequestedReasoningEffort *string
@@ -586,6 +587,12 @@ func NewOpenAIGatewayService(
 	}
 	svc.logOpenAIWSModeBootstrap()
 	return svc
+}
+func (s *OpenAIGatewayService) SettingService() *SettingService {
+	if s == nil {
+		return nil
+	}
+	return s.settingService
 }
 
 // ResolveChannelMapping 解析渠道级模型映射（代理到 ChannelService）
