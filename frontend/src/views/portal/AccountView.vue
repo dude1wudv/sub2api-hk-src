@@ -1,10 +1,7 @@
 <template>
   <div class="portal-page">
   <main class="portal-account" data-testid="portal-account">
-    <header class="portal-account__heading">
-      <h1>{{ copy('账户管理', 'Account management') }}</h1>
-      <p>{{ copy('管理你的账户信息与登录方式', 'Manage your account and sign-in methods') }}</p>
-    </header>
+    <PortalPageHeader eyebrow="YOUR ACCOUNT" :title="copy('让工作方式，更像你。', 'Make this space yours.')" :description="copy('个人资料、登录安全和通知，按你的习惯设置。', 'Manage your profile, sign-in security and notifications in one place.')" />
     <p v-if="notice" class="portal-account-success" role="status">{{ notice }}</p>
     <p v-if="loadError" class="portal-account-error" role="alert">
       {{ loadError }}
@@ -12,8 +9,10 @@
     </p>
     <p v-if="loading && !user" class="portal-account-note" role="status">{{ copy('正在读取账户…', 'Loading account…') }}</p>
 
-    <div v-if="user" class="portal-account-panel">
-      <section class="portal-account-section" :aria-label="copy('账户信息', 'Account information')">
+    <div v-if="user" class="portal-account-layout">
+      <aside class="portal-account-guide"><span class="portal-account-guide-avatar" aria-hidden="true">{{ initial }}</span><strong>{{ user.username || 'patrickapi' }}</strong><span>{{ displayEmail }}</span><nav :aria-label="copy('账户设置分区', 'Account settings sections')"><a href="#account-identity">{{ copy('资料与登录', 'Profile & sign-in') }} <span aria-hidden="true">↗</span></a><a href="#account-security">{{ copy('账户安全', 'Account security') }} <span aria-hidden="true">↗</span></a><a href="#account-appearance">{{ copy('动效偏好', 'Motion preferences') }} <span aria-hidden="true">↗</span></a><a v-if="settings?.balance_low_notify_enabled" href="#account-notifications">{{ copy('余额通知', 'Balance notifications') }} <span aria-hidden="true">↗</span></a></nav></aside>
+      <div class="portal-account-panel">
+      <section id="account-identity" class="portal-account-section" :aria-label="copy('账户信息', 'Account information')"><h2>{{ copy('资料与登录', 'Profile & sign-in') }}</h2>
         <div class="portal-account-row">
           <div class="portal-account-row__identity">
             <span class="portal-account-avatar" aria-hidden="true">{{ initial }}</span>
@@ -51,7 +50,7 @@
         </div>
       </section>
 
-      <section class="portal-account-section" :aria-label="copy('账户安全', 'Account security')">
+      <section id="account-security" class="portal-account-section" :aria-label="copy('账户安全', 'Account security')">
         <h2>{{ copy('账户安全', 'Account security') }}</h2>
         <div class="portal-account-row">
           <div class="portal-account-row__text">
@@ -63,9 +62,11 @@
         <PortalAccountSecurity :passkey-enabled="settings?.passkey_enabled === true" />
       </section>
 
-      <section v-if="settings?.balance_low_notify_enabled" class="portal-account-section" :aria-label="copy('通知', 'Notifications')">
+      <section id="account-notifications" v-if="settings?.balance_low_notify_enabled" class="portal-account-section" :aria-label="copy('通知', 'Notifications')">
         <PortalAccountNotifications :default-threshold="settings.balance_low_notify_threshold ?? 0" />
       </section>
+      <section id="account-appearance" class="portal-account-section"><h2>{{ copy('动效偏好', 'Motion preferences') }}</h2><div class="portal-account-row"><div class="portal-account-row__text"><strong>{{ copy('减少装饰动效', 'Reduce decorative motion') }}</strong><small>{{ copy('停止流动、跟随和位移，保留操作反馈。', 'Stop flow, pointer and movement effects while keeping action feedback.') }}</small></div><MotionPreferenceToggle show-label /></div></section>
+      </div>
     </div>
     <p v-if="settings?.contact_info" class="portal-account-support">{{ settings.contact_info }}</p>
 
@@ -115,6 +116,9 @@
 </template>
 
 <script setup lang="ts">
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import MotionPreferenceToggle from '@/components/common/MotionPreferenceToggle.vue'
+
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'

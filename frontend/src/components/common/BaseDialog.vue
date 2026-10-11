@@ -194,9 +194,8 @@ watch(
         modalBodyRef.value.scrollTop = 0
       }
       if (dialogRef.value) {
-        const firstFocusable = dialogRef.value.querySelector<HTMLElement>(
-          '[autofocus]:not([disabled]), button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
+        const firstFocusable = dialogRef.value.querySelector<HTMLElement>('[autofocus]:not([disabled])')
+          || dialogRef.value.querySelector<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
         ;(firstFocusable || dialogRef.value).focus({ preventScroll: true })
       }
     } else {

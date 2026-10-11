@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 
 import HomeView from '../HomeView.vue'
 
-const { appStore, authStore, routerPush } = vi.hoisted(() => ({
+const { appStore, authStore, routerPush, copyToClipboard } = vi.hoisted(() => ({
   appStore: {
     cachedPublicSettings: {} as Record<string, unknown>,
     siteName: 'Fallback site',
@@ -19,7 +19,10 @@ const { appStore, authStore, routerPush } = vi.hoisted(() => ({
     checkAuth: vi.fn(),
   },
   routerPush: vi.fn(),
+  copyToClipboard: vi.fn().mockResolvedValue(true),
 }))
+
+vi.mock('@/composables/useClipboard', () => ({ useClipboard: () => ({ copyToClipboard }) }))
 
 vi.mock('@/stores', () => ({
   useAppStore: () => appStore,
@@ -81,8 +84,9 @@ describe('HomeView compact mode', () => {
     authStore.checkAuth.mockClear()
     appStore.fetchPublicSettings.mockClear()
     routerPush.mockClear()
+    copyToClipboard.mockReset().mockResolvedValue(true)
     localStorage.clear()
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as MediaQueryList)
   })
 
   it('renders custom HTML ahead of compact mode', () => {
@@ -108,7 +112,7 @@ describe('HomeView compact mode', () => {
   it('treats whitespace-only custom content as empty and selects compact mode', () => {
     const wrapper = mountHome({ compact_home_enabled: true, home_content: ' \n\t ' })
 
-    expect(wrapper.get('[data-testid="compact-home"]').get('h1').text()).toBe('patrickapi')
+    expect(wrapper.get('[data-testid="compact-home"]').get('h1').text()).toBe('Your ideas.In motion.')
     expect(wrapper.get('[data-testid="compact-home"] .home-entry').exists()).toBe(true)
   })
 
@@ -118,7 +122,7 @@ describe('HomeView compact mode', () => {
 
     expect(wrapper.get('[data-testid="patrick-home"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="home-console"]').findComponent(RouterLinkStub).props('to')).toBe('/login')
-    expect(wrapper.get('h1').text()).toBe('patrickapi')
+    expect(wrapper.get('h1').text()).toBe('Your ideas.In motion.')
     expect(wrapper.get('.home-endpoint code').text()).toMatch(/^https?:\/\//)
   })
 
@@ -126,10 +130,10 @@ describe('HomeView compact mode', () => {
     expect(compactDestination(mountHome({ compact_home_enabled: true }))).toBe('/login')
   })
 
-  it('links authenticated users to the API workspace', () => {
+  it('links authenticated users to their overview', () => {
     authStore.isAuthenticated = true
 
-    expect(compactDestination(mountHome({ compact_home_enabled: true }))).toBe('/keys')
+    expect(compactDestination(mountHome({ compact_home_enabled: true }))).toBe('/dashboard')
   })
 
   it('routes model search to the dedicated catalog', async () => {
@@ -154,6 +158,39 @@ describe('HomeView compact mode', () => {
 
     const wrapper = mountHome({ compact_home_enabled: true })
     expect(compactDestination(wrapper)).toBe('/admin/dashboard')
+  })
+
+  it('keeps the connection diagram, endpoint and placeholder example on the same protocol', async () => {
+    const wrapper = mountHome()
+    expect(wrapper.get('.portal-api-code pre').text()).toContain('/v1/chat/completions')
+    await wrapper.get('.ink-destination--anthropic').trigger('click')
+    expect(wrapper.get('.ink-connection').attributes('data-protocol')).toBe('anthropic')
+    expect(wrapper.get('.home-endpoint code').text()).not.toMatch(/\/v1$/)
+    expect(wrapper.get('.portal-api-code pre').text()).toContain('/v1/messages')
+    expect(wrapper.get('.portal-api-code pre').text()).toContain('YOUR_API_KEY')
+    expect(wrapper.get('.portal-api-code pre').text()).toContain('anthropic-version')
+    await wrapper.get('.portal-api-protocols button[data-active-indicator-item="openai"]').trigger('click')
+    expect(wrapper.get('.ink-connection').attributes('data-protocol')).toBe('openai')
+    expect(wrapper.get('.home-endpoint code').text()).toMatch(/\/v1$/)
+    wrapper.unmount()
+  })
+
+  it.each(['protocol', 'unmount'])('discards pending copy feedback after %s changes', async change => {
+    let finish!: (value: boolean) => void
+    copyToClipboard.mockReturnValueOnce(new Promise<boolean>(resolve => { finish = resolve }))
+    const wrapper = mountHome()
+    const timer = vi.spyOn(globalThis, 'setTimeout')
+    await wrapper.get('.home-endpoint button').trigger('click')
+    if (change === 'protocol') await wrapper.get('.ink-destination--anthropic').trigger('click')
+    else wrapper.unmount()
+    finish(true)
+    await flushPromises()
+    expect(timer.mock.calls.filter(call => call[1] === 2200)).toHaveLength(0)
+    if (change === 'protocol') {
+      expect(wrapper.get('.home-endpoint button').attributes('aria-label')).toBe('Copy API base URL')
+      wrapper.unmount()
+    }
+    timer.mockRestore()
   })
 
   it('shows the model plaza link to anonymous visitors when public access is enabled', () => {

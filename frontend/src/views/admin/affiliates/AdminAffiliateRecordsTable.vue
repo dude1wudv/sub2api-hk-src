@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="admin-page admin-page--resources" data-admin-page="affiliate-records-table">
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-wrap items-center gap-3">

@@ -5,11 +5,12 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { DashboardStats } from '@/types'
 import DashboardView from '../DashboardView.vue'
 
-const { getSnapshotV2, getUserUsageTrend, getUserSpendingRanking, getUpstreamBalances } = vi.hoisted(() => ({
+const { getSnapshotV2, getUserUsageTrend, getUserSpendingRanking, getUpstreamBalances, routerPush } = vi.hoisted(() => ({
   getSnapshotV2: vi.fn(),
   getUserUsageTrend: vi.fn(),
   getUserSpendingRanking: vi.fn(),
-  getUpstreamBalances: vi.fn()
+  getUpstreamBalances: vi.fn(),
+  routerPush: vi.fn()
 }))
 
 vi.mock('vue-chartjs', () => ({
@@ -35,7 +36,7 @@ vi.mock('@/stores/app', () => ({
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({
-    push: vi.fn()
+    push: routerPush
   })
 }))
 
@@ -101,6 +102,7 @@ describe('admin DashboardView', () => {
     getUserUsageTrend.mockReset()
     getUserSpendingRanking.mockReset()
     getUpstreamBalances.mockReset()
+    routerPush.mockReset()
 
     getSnapshotV2.mockResolvedValue({
       stats: createDashboardStats(),
@@ -179,5 +181,30 @@ describe('admin DashboardView', () => {
       end_date: formatLocalDate(now),
       granularity: 'hour'
     }))
+  })
+
+  it('drills into only the matching error status and real model/day data', async () => {
+    getSnapshotV2.mockResolvedValue({
+      stats: { ...createDashboardStats(), error_accounts: 3 },
+      trend: [{ date: '2026-10-11 09:00', requests: 4, total_tokens: 12 }],
+      models: [{ model: 'gpt-example', requests: 4 }]
+    })
+    const wrapper = mount(DashboardView, { global: { stubs: {
+      Icon: true, LoadingSpinner: true, DateRangePicker: true, Select: true,
+      ModelDistributionChart: true, TokenUsageTrend: true, Line: true
+    } } })
+    await flushPromises()
+    await wrapper.get('[data-test="error-account-drill"]').trigger('click')
+    expect(routerPush).toHaveBeenLastCalledWith({ path: '/admin/accounts', query: { status: 'error' } })
+    await wrapper.get('[data-test="model-usage-drill"]').trigger('click')
+    expect(routerPush).toHaveBeenLastCalledWith({ path: '/admin/usage', query: expect.objectContaining({
+      model: 'gpt-example', start_date: expect.any(String), end_date: expect.any(String)
+    }) })
+    await wrapper.get('[data-test="dashboard-drill-model"]').setValue('gpt-example')
+    await wrapper.get('[data-test="trend-usage-drill"]').trigger('click')
+    expect(routerPush).toHaveBeenLastCalledWith({ path: '/admin/usage', query: {
+      model: 'gpt-example', start_date: '2026-10-11', end_date: '2026-10-11'
+    } })
+    wrapper.unmount()
   })
 })

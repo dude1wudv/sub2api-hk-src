@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <div class="portal-page user-service-page">
+    <PortalPageHeader eyebrow="CONNECTION MAP" :title="t('nav.availableChannels')" :description="portalCopy('查看你可用的分组、模型与实际价格。', 'Explore your available groups, models and actual prices.')" />
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
@@ -50,6 +51,7 @@
 </template>
 
 <script setup lang="ts">
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
@@ -61,6 +63,8 @@ import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
+const portalLocale = useI18n().locale
+const portalCopy = (zh: string, en: string) => portalLocale?.value.startsWith('zh') ? zh : en
 const appStore = useAppStore()
 
 const channels = ref<UserAvailableChannel[]>([])

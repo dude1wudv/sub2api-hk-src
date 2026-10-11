@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="portal-page portal-payment-transition">
     <div class="mx-auto max-w-lg space-y-6 py-8">
       <div v-if="loading" class="flex items-center justify-center py-20">
         <div class="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
@@ -135,3 +135,9 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.portal-payment-transition { min-height:60dvh; display:grid; align-items:center; }
+.portal-payment-transition > div { width:100%; }
+.portal-payment-transition .card { border:1px solid rgb(var(--line)); border-radius:24px; box-shadow:var(--shadow-panel); }
+</style>

@@ -72,7 +72,7 @@ function quota(over: Partial<PlatformQuotaItem> & { platform: string }): Platfor
 function mountStats(stats: UserStatsType, platformQuotas: PlatformQuotaItem[] | null = null, isSimple = false) {
   return mount(UserDashboardStats, {
     props: { stats, balance: 0, isSimple, platformQuotas },
-    global: { stubs: { Icon: true } },
+    global: { stubs: { Icon: true, RouterLink: true } },
   })
 }
 
@@ -122,6 +122,17 @@ describe('UserDashboardStats 按平台拆分', () => {
     expect(cardPlatforms(w)).toEqual(['gemini'])
     expect(w.text()).toContain('dashboard.platformQuota.disabled')
     expect(w.text()).toContain('dashboard.platformCount:{"count":1}')
+    expect(w.find('[role="progressbar"]').exists()).toBe(false)
+  })
+
+  it('only renders a liquid level for finite positive limits, never for balance or unlimited quotas', () => {
+    const w = mountStats(makeStats(), [quota({ platform: 'openai', daily_limit_usd: 10, daily_usage_usd: 2.5 })])
+    const meters = w.findAll('[role="progressbar"]')
+    expect(meters).toHaveLength(1)
+    expect(meters[0].attributes('aria-valuenow')).toBe('25')
+    expect(w.text()).toContain('Unlimited')
+    expect(w.get('[data-metric="balance"]').find('[role="progressbar"]').exists()).toBe(false)
+    w.unmount()
   })
 
   it('固定顺序之外的平台也产生卡片，并排在固定顺序之后', () => {

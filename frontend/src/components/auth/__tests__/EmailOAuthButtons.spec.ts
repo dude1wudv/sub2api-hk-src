@@ -28,6 +28,19 @@ describe('EmailOAuthButtons', () => {
     window.sessionStorage.clear()
   })
 
+  it.each(['github', 'google'] as const)('preserves automatic and explicit targets for %s', async provider => {
+    for (const [redirect, expected] of [[undefined, '/auth/landing'], ['/dashboard', '/dashboard'], ['/profile', '/profile']] as const) {
+      routeState.query = { redirect }
+      const wrapper = mount(EmailOAuthButtons, {
+        props: { githubEnabled: provider === 'github', googleEnabled: provider === 'google' },
+        global: { stubs: { GitHubMark: true, GoogleMark: true } },
+      })
+      await wrapper.get('button').trigger('click')
+      expect(wrapper.emitted('start')?.[0]?.[0]).toEqual({ provider, params: { redirect: expected } })
+      wrapper.unmount()
+    }
+  })
+
   it('emits the GitHub OAuth request with redirect and affiliate parameters', async () => {
     const wrapper = mount(EmailOAuthButtons, {
       props: {

@@ -9,7 +9,7 @@
     <table v-else class="w-full text-xs">
       <tbody>
         <tr
-          v-for="user in items"
+          v-for="user in displayItems"
           :key="user.user_id"
           class="border-t border-gray-100/50 dark:border-dark-700/50"
         >
@@ -42,6 +42,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import type { UserBreakdownItem } from '@/types'
+import { distributionValue, sortDescending, type DistributionMetric } from '@/utils/chartDistribution'
 
 const { t } = useI18n()
 
@@ -49,12 +50,15 @@ const props = withDefaults(defineProps<{
   items: UserBreakdownItem[]
   loading?: boolean
   showAccountCost?: boolean
+  metric?: DistributionMetric
 }>(), {
   loading: false,
   showAccountCost: true,
+  metric: 'tokens',
 })
 
 const showAccountCost = computed(() => props.showAccountCost)
+const displayItems = computed(() => sortDescending(props.items, item => distributionValue(item, props.metric)))
 
 const formatTokens = (value: number): string => {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`

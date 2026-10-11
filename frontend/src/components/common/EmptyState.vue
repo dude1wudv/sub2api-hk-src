@@ -2,7 +2,7 @@
   <div class="empty-state">
     <!-- Icon -->
     <div
-      class="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gray-100 dark:bg-dark-800"
+      class="empty-state-emblem"
     >
       <slot name="icon">
         <component v-if="icon" :is="icon" class="empty-state-icon h-10 w-10" aria-hidden="true" />
@@ -78,3 +78,11 @@ const displayTitle = computed(() => props.title || t('common.noData'))
 
 defineEmits(['action'])
 </script>
+
+<style scoped>
+.empty-state-emblem { position:relative; display:grid; place-items:center; width:72px; height:72px; margin-bottom:20px; border:1px solid rgb(var(--brand-moss) / .18); border-radius:26px 26px 36px 18px; background:rgb(var(--brand-moss) / .07); color:rgb(var(--brand-moss)); }
+.empty-state-emblem::after { content:''; position:absolute; bottom:-3px; right:-3px; width:9px; height:9px; border-radius:50%; background:rgb(var(--brand-copper)); border:2px solid rgb(var(--surface)); }
+.empty-state-emblem :deep(svg) { color:inherit; width:32px; height:32px; }
+.empty-state-title { color:rgb(var(--ink)); font:550 18px/1.5 var(--font-sans); }
+.empty-state-description { max-width:400px; color:rgb(var(--ink-3)); font-size:14px; line-height:1.8; }
+</style>

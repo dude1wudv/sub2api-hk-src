@@ -11,6 +11,10 @@
       </button>
     </div>
     <p v-if="selectedGroup?.description" class="portal-api-group-description">{{ selectedGroup.description }}</p>
+    <div v-if="platforms.length" ref="platformContainer" class="portal-model-platforms" :aria-label="text('模型平台', 'Model platforms')">
+      <ActiveIndicator :container="platformContainer" :active-key="selectedPlatform || 'all'" /><button type="button" data-active-indicator-item="all" :aria-pressed="!selectedPlatform" @click="selectedPlatform = ''">{{ text('全部平台', 'All platforms') }}<span>{{ selectedGroup?.models.length || 0 }}</span></button>
+      <button v-for="platform in platforms" :key="platform.name" :data-active-indicator-item="platform.name" type="button" :aria-pressed="selectedPlatform === platform.name" @click="selectedPlatform = platform.name"><ModelIcon :model="platform.name" size="18px" />{{ platformLabel(platform.name) }}<span>{{ platform.count }}</span></button>
+    </div>
 
     <div v-if="!pricingEnabled" class="portal-api-model-state">{{ text('模型价格暂未开放。你仍可创建和管理 API Key。', 'Model pricing is not published. You can still create and manage API keys.') }}</div>
     <div v-else-if="loading" class="portal-api-model-state" role="status">{{ text('正在加载模型价格…', 'Loading model pricing…') }}</div>
@@ -23,7 +27,7 @@
           <tbody>
             <tr v-for="model in filteredModels" :key="model.platform + ':' + model.name">
               <td>
-                <button type="button" class="portal-api-model-name" @click="detailModel = model">{{ model.name }}</button>
+                <button type="button" class="portal-api-model-name" @click="detailModel = model"><ModelIcon :model="model.name" size="20px" />{{ model.name }} <span aria-hidden="true">↗</span></button>
                 <span v-if="modelBadges(model).length" class="portal-api-model-badges"><span v-for="badge in modelBadges(model)" :key="badge">{{ badge }}</span></span>
               </td>
               <td v-if="!model.pricing" colspan="4" class="portal-api-price-missing">{{ text('尚未提供实际单价', 'Actual pricing is not provided') }}</td>
@@ -98,6 +102,8 @@ import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import Icon from '@/components/icons/Icon.vue'
+import ModelIcon from '@/components/common/ModelIcon.vue'
+import ActiveIndicator from '@/components/common/ActiveIndicator.vue'
 import PortalDialog from './PortalDialog.vue'
 import type { ModelPlazaGroup, PlazaModel } from '@/api/modelPlaza'
 import type { UserPricingInterval } from '@/api/channels'
@@ -139,10 +145,21 @@ const connections = computed(() => {
   return [...result.values()]
 })
 const selectedGroup = computed(() => props.groups.find(group => group.id === props.selectedGroupId))
+const selectedPlatform = ref('')
+const platformContainer = ref<HTMLElement | null>(null)
+const platforms = computed(() => {
+  const counts = new Map<string, number>()
+  for (const model of selectedGroup.value?.models || []) counts.set(model.platform, (counts.get(model.platform) || 0) + 1)
+  return [...counts].map(([name, count]) => ({ name, count }))
+})
+function platformLabel(platform: string) {
+  const labels: Record<string, string> = { openai: 'OpenAI', anthropic: 'Anthropic', gemini: 'Gemini', deepseek: 'DeepSeek', grok: 'Grok', kimi: 'Kimi', zhipu: 'GLM', minimax: 'MiniMax' }
+  return labels[platform] || platform
+}
 const selectedCannotBind = computed(() => props.selectedGroupId != null && !props.bindableGroupIds.includes(props.selectedGroupId))
 const filteredModels = computed(() => {
   const search = props.search.trim().toLowerCase()
-  return (selectedGroup.value?.models || []).filter(model => !search || (model.name + ' ' + model.platform).toLowerCase().includes(search))
+  return (selectedGroup.value?.models || []).filter(model => (!selectedPlatform.value || model.platform === selectedPlatform.value) && (!search || (model.name + ' ' + model.platform).toLowerCase().includes(search)))
 })
 const emptyMessage = computed(() => props.search.trim()
   ? text('没有找到匹配的模型。', 'No matching models.')
@@ -153,7 +170,8 @@ const peakWindow = computed(() => formatPeakRateWindow(selectedGroup.value, serv
 watch(connections, groups => {
   if (!groups.some(group => group.id === props.selectedGroupId)) emit('update:selectedGroupId', groups[0]?.id ?? null)
 }, { immediate: true })
-watch(() => props.selectedGroupId, () => { detailModel.value = null })
+watch(() => props.selectedGroupId, () => { detailModel.value = null; selectedPlatform.value = '' })
+watch(() => props.search, () => { selectedPlatform.value = '' })
 
 function independentMediaRate(model: PlazaModel) {
   return (model.pricing?.billing_mode === 'image' && selectedGroup.value?.image_rate_independent === true)
@@ -229,6 +247,15 @@ function chooseExampleModel() {
 </script>
 
 <style scoped>
+.portal-model-platforms { position:relative; isolation:isolate; display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:6px; margin:18px 0 22px; border:1px solid rgb(var(--line)); border-radius:18px; background:rgb(var(--surface)); --active-indicator-fill:rgb(var(--ink)); --active-indicator-radius:12px; }
+.portal-model-platforms > button { position:relative; z-index:1; display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:8px 12px; border:0; border-radius:12px; color:rgb(var(--ink-2)); background:transparent; font-size:14px; transition:color var(--motion-fast); }
+.portal-model-platforms > button[aria-pressed='true'] { color:rgb(var(--canvas)); }
+.portal-model-platforms button > span { font-size:13px; opacity:.85; }
+.portal-api-model-name { display:inline-flex; align-items:center; gap:10px; min-height:44px; }
+.portal-api-model-name > :last-child { color:rgb(var(--ink-2)); }
+.portal-api-model-name :deep(svg) { flex-shrink:0; }
+.portal-api-model-table :is(td,th):not(:first-child) { font-variant-numeric:tabular-nums; }
+
 .portal-api-model-search { display:flex; align-items:center; gap:8px; min-width:0; width:190px; padding:5px 0; border-bottom:1px solid rgb(var(--line)); }
 .portal-api-model-search input { min-width:0; width:100%; border:0; outline:none; background:transparent; font:inherit; font-size:13px; }
 .portal-api-model-search:focus-within { border-bottom-color:rgb(var(--ink)); }

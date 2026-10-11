@@ -60,4 +60,18 @@ describe('OAuth login sections', () => {
       }
     })
   })
+
+  it.each([
+    ['linuxdo', LinuxDoOAuthSection],
+    ['dingtalk', DingTalkOAuthSection],
+    ['oidc', OidcOAuthSection]
+  ] as const)('keeps automatic and explicit dashboard intent distinct for %s', async (provider, component) => {
+    for (const [redirect, expected] of [[undefined, '/auth/landing'], ['/dashboard', '/dashboard'], ['//example.com', '/auth/landing']] as const) {
+      routeState.query = { redirect }
+      const wrapper = mount(component)
+      await wrapper.get('button').trigger('click')
+      expect(wrapper.emitted('start')?.[0]?.[0]).toEqual({ provider, params: { redirect: expected } })
+      wrapper.unmount()
+    }
+  })
 })

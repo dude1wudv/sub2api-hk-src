@@ -1,6 +1,14 @@
 <template>
-  <div>
+  <div class="admin-page admin-page--analysis" data-admin-page="dashboard">
     <div class="operations-dashboard space-y-6">
+      <InkSurface as="section" interactive class="admin-workbench-intro">
+        <div>
+          <span class="admin-eyebrow">{{ zh ? '运营工作台' : 'OPERATIONS' }}</span>
+          <h2>{{ zh ? '看清变化，处理重点。' : 'See the change. Find the next step.' }}</h2>
+          <p>{{ zh ? '资源、用量与上游余额，集中查看。' : 'Resources, usage and upstream balances in one place.' }}</p>
+        </div>
+        <span v-if="stats?.stats_stale" class="admin-status-note" role="status">{{ zh ? '统计待更新' : 'Statistics awaiting refresh' }}</span>
+      </InkSurface>
       <div class="admin-dashboard-toolbar"><router-link to="/admin/accounts" class="btn btn-secondary"><Icon name="server" size="sm" />{{ t('nav.accounts') }}</router-link><button class="btn btn-secondary" :disabled="loading || chartsLoading" @click="loadDashboardStats"><Icon name="refresh" size="sm" />{{ t('common.refresh') }}</button></div>
       <nav class="operations-links" :aria-label="zh ? '运营快捷入口' : 'Operations shortcuts'">
         <router-link to="/admin/users"><Icon name="users" size="sm" />{{ t('admin.users.title') }}</router-link>
@@ -54,9 +62,9 @@
                   <span class="font-medium text-emerald-600 dark:text-emerald-400"
                     ><span class="tabular-nums">{{ stats.normal_accounts }}</span> {{ t('common.active') }}</span
                   >
-                  <span v-if="stats.error_accounts > 0" class="ml-1.5 font-medium text-err-600 dark:text-err-400"
-                    ><span class="tabular-nums">{{ stats.error_accounts }}</span> {{ t('common.error') }}</span
-                  >
+                  <button v-if="stats.error_accounts > 0" type="button" class="admin-metric-drill" data-test="error-account-drill" @click="goToErrorAccounts">
+                    <span class="tabular-nums">{{ stats.error_accounts }}</span> {{ t('common.error') }}<Icon name="arrowRight" size="sm" />
+                  </button>
                 </p>
               </div>
             </div>
@@ -340,11 +348,23 @@
                 </div>
               </div>
             </div>
+            <div class="admin-chart-scope">
+              <span>{{ zh ? '以下图表跟随所选时间；顶部指标保持今日或累计口径。' : 'Charts follow this range; headline metrics retain their today or all-time scope.' }}</span>
+              <label class="admin-inline-field">
+                <span>{{ t('usage.model') }}</span>
+                <select v-model="drillModel" class="input" data-test="dashboard-drill-model">
+                  <option value="">{{ zh ? '全部模型' : 'All models' }}</option>
+                  <option v-for="model in modelStats" :key="model.model" :value="model.model">{{ model.model }}</option>
+                </select>
+              </label>
+              <button type="button" class="btn btn-secondary" data-test="usage-range-drill" @click="goToUsage(drillModel)">{{ zh ? '查看区间明细' : 'View requests in range' }}<Icon name="arrowRight" size="sm" /></button>
+            </div>
           </div>
 
           <!-- Charts Grid -->
           <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <ModelDistributionChart
+            <section class="admin-chart-panel">
+              <ModelDistributionChart
               :model-stats="modelStats"
               :enable-ranking-view="true"
               :ranking-items="rankingItems"
@@ -357,8 +377,23 @@
               :start-date="startDate"
               :end-date="endDate"
               @ranking-click="goToUserUsage"
-            />
-            <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
+              />
+              <details v-if="modelStats.length" class="admin-chart-details">
+                <summary>{{ zh ? '按模型查看请求明细' : 'Explore requests by model' }}<span>{{ modelStats.length }}</span></summary>
+                <ul class="admin-drill-list">
+                  <li v-for="model in modelStats" :key="model.model">
+                    <button type="button" data-test="model-usage-drill" @click="goToUsage(model.model)"><span>{{ model.model }}</span><span class="tabular-nums">{{ formatNumber(model.requests) }} {{ zh ? '次' : 'requests' }}</span><Icon name="arrowRight" size="sm" /></button>
+                  </li>
+                </ul>
+              </details>
+            </section>
+            <section class="admin-chart-panel">
+              <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
+              <div v-if="trendDays.length" class="admin-chart-footer">
+                <label class="admin-inline-field"><span>{{ zh ? '选择日期' : 'Choose a day' }}</span><select v-model="drillDate" class="input" data-test="dashboard-drill-date"><option v-for="day in trendDays" :key="day" :value="day">{{ day }}</option></select></label>
+                <button type="button" class="btn btn-secondary" :disabled="!drillDate" data-test="trend-usage-drill" @click="goToUsage(drillModel, drillDate)">{{ zh ? '查看当天明细' : 'View this day' }}<Icon name="arrowRight" size="sm" /></button>
+              </div>
+            </section>
           </div>
 
           <!-- User Usage Trend (Full Width) -->
@@ -394,7 +429,7 @@
 
 <script setup lang="ts">
 import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
@@ -413,6 +448,7 @@ import type {
 import type { UpstreamBalanceSummary } from '@/api/admin/dashboard'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
+import InkSurface from '@/components/common/InkSurface.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Select from '@/components/common/Select.vue'
 import ModelDistributionChart from '@/components/charts/ModelDistributionChart.vue'
@@ -455,6 +491,11 @@ const rankingError = ref(false)
 // Chart data
 const trendData = ref<TrendDataPoint[]>([])
 const modelStats = ref<ModelStat[]>([])
+const drillModel = ref('')
+const drillDate = ref('')
+const trendDays = computed(() => [...new Set(trendData.value.map(item => item.date.slice(0, 10)).filter(day => /^\d{4}-\d{2}-\d{2}$/.test(day)))])
+watch(trendDays, days => { if (!days.includes(drillDate.value)) drillDate.value = days[0] || '' })
+watch(modelStats, models => { if (!models.some(model => model.model === drillModel.value)) drillModel.value = '' })
 const userTrend = ref<UserUsageTrendPoint[]>([])
 const userTrendMetric = ref<'tokens' | 'actual_cost'>('tokens')
 const rankingItems = ref<UserSpendingRankingItem[]>([])
@@ -674,6 +715,21 @@ const goToUserUsage = (item: UserSpendingRankingItem) => {
       user_id: String(item.user_id),
       start_date: startDate.value,
       end_date: endDate.value
+    }
+  })
+}
+
+const goToErrorAccounts = () => {
+  void router.push({ path: '/admin/accounts', query: { status: 'error' } })
+}
+
+const goToUsage = (model = '', day = '') => {
+  void router.push({
+    path: '/admin/usage',
+    query: {
+      start_date: day || startDate.value,
+      end_date: day || endDate.value,
+      ...(model ? { model } : {})
     }
   })
 }

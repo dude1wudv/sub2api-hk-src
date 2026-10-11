@@ -127,7 +127,7 @@ describe('personal workspace navigation', () => {
   it('shows every personal feature and only sorted user custom menus without disclosure', async () => {
     const { wrapper, router } = await mountShell()
     expect(navPaths(wrapper)).toEqual([
-      '/keys', '/usage', '/purchase', '/subscriptions', '/profile', '/model-plaza', '/available-channels', '/monitor',
+      '/dashboard', '/keys', '/usage', '/purchase', '/subscriptions', '/profile', '/model-plaza', '/available-channels', '/monitor',
       '/image2', '/helios', '/batch-image', '/affiliate',
       '/custom/first', '/custom/later',
     ])
@@ -160,6 +160,13 @@ describe('personal workspace navigation', () => {
     expect(paths).toContain('/purchase')
     expect(wrapper.get('.user-balance-pill').attributes('href')).toBe('/purchase')
     expect(wrapper.find('[data-testid="subscriptions"]').exists()).toBe(false)
+    await wrapper.get('.workspace-command-trigger').trigger('click')
+    await flushPromises()
+    const commands = [...document.querySelectorAll('[data-command-palette] [role="option"]')].map(item => item.textContent)
+    expect(commands.some(item => item?.includes('Admin only'))).toBe(false)
+    expect(commands.some(item => item?.includes('模型广场'))).toBe(false)
+    expect(commands.some(item => item?.includes('First'))).toBe(true)
+    expect(commands.some(item => item?.includes('创建 API 密钥'))).toBe(true)
   })
 
   it('retains every entry with an accessible name when the desktop sidebar is collapsed', async () => {
@@ -189,7 +196,7 @@ describe('personal workspace navigation', () => {
   it('keeps simple-mode limits without hiding the remaining personal entries', async () => {
     authStore.isSimpleMode = true
     const { wrapper } = await mountShell()
-    expect(navPaths(wrapper)).toEqual(['/keys', '/profile', '/model-plaza', '/monitor', '/custom/first', '/custom/later'])
+    expect(navPaths(wrapper)).toEqual(['/dashboard', '/keys', '/profile', '/model-plaza', '/monitor', '/custom/first', '/custom/later'])
     expect(wrapper.find('.user-balance-pill').exists()).toBe(false)
     expect(navPaths(wrapper)).not.toContain('/purchase')
     expect(navPaths(wrapper)).not.toContain('/redeem')
@@ -269,7 +276,7 @@ describe('personal workspace navigation at narrow widths', () => {
     expect(wrapper.get('.user-sidebar').attributes('role')).toBe('dialog')
     expect(wrapper.get('.user-sidebar').attributes('aria-modal')).toBe('true')
     expect(wrapper.get('.user-drawer-scrim').exists()).toBe(true)
-    expect(navPaths(wrapper)).toHaveLength(14)
+    expect(navPaths(wrapper)).toHaveLength(15)
     expect(wrapper.findAll('[data-nav-path]').every(item => item.isVisible())).toBe(true)
     expect(wrapper.findAll('.user-nav-heading')).toHaveLength(4)
     expect(wrapper.get('.user-doc-link').isVisible()).toBe(true)
@@ -311,7 +318,7 @@ describe('personal workspace navigation at rail widths (768–1199px)', () => {
     expect(wrapper.get('.user-sidebar').attributes('aria-modal')).toBeUndefined()
     expect(wrapper.get('.user-workspace').attributes('inert')).toBeUndefined()
     const railPaths = navPaths(wrapper)
-    expect(railPaths).toHaveLength(14)
+    expect(railPaths).toHaveLength(15)
     wrapper.findAll('[data-nav-path]').forEach(item => {
       expect(item.isVisible()).toBe(true)
       expect(item.attributes('aria-label')).toBeTruthy()

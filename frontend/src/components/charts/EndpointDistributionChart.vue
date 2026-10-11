@@ -93,11 +93,11 @@
                 :class="enableBreakdown ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/40' : ''"
                 @click="enableBreakdown && toggleBreakdown(item.endpoint)"
               >
-                <td class="max-w-[180px] truncate py-1.5 font-medium" :class="enableBreakdown ? 'text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300' : 'text-gray-900 dark:text-white'" :title="item.endpoint">
+                <td class="max-w-[180px] truncate py-1.5 font-medium" :class="enableBreakdown ? 'text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300' : 'text-gray-900 dark:text-white'" :title="item.endpoint || t('common.unknown')">
                   <span class="inline-flex items-center gap-1">
                     <svg v-if="enableBreakdown && expandedKey === item.endpoint" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     <svg v-else-if="enableBreakdown" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    {{ item.endpoint }}
+                    {{ item.endpoint || t('common.unknown') }}
                   </span>
                 </td>
                 <td class="py-1.5 text-right text-gray-600 dark:text-gray-400">
@@ -118,6 +118,8 @@
                   <UserBreakdownSubTable
                     :items="breakdownItems"
                     :loading="breakdownLoading"
+                    :metric="metric"
+                    :show-account-cost="false"
                   />
                 </td>
               </tr>
@@ -142,6 +144,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
 import type { EndpointStat, UserBreakdownItem } from '@/types'
 import { getUserBreakdown } from '@/api/admin/dashboard'
+import { distributionValue, rankChartRows } from '@/utils/chartDistribution'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -223,21 +226,18 @@ const displayEndpointStats = computed(() => {
       : props.endpointStats
   if (!sourceStats?.length) return []
 
-  const metricKey = props.metric === 'actual_cost' ? 'actual_cost' : 'total_tokens'
-  return [...sourceStats].sort((a, b) => b[metricKey] - a[metricKey])
+  return rankChartRows(sourceStats, row => distributionValue(row, props.metric), chartColors.value)
 })
 
 const chartData = computed(() => {
   if (!displayEndpointStats.value?.length) return null
 
   return {
-    labels: displayEndpointStats.value.map((item) => item.endpoint),
+    labels: displayEndpointStats.value.map((item) => item.endpoint || t('common.unknown')),
     datasets: [
       {
-        data: displayEndpointStats.value.map((item) =>
-          props.metric === 'actual_cost' ? item.actual_cost : item.total_tokens
-        ),
-        backgroundColor: chartColors.value.slice(0, displayEndpointStats.value.length),
+        data: displayEndpointStats.value.map((item) => distributionValue(item, props.metric)),
+        backgroundColor: displayEndpointStats.value.map((item) => item.chartColor),
         borderWidth: 0
       }
     ]

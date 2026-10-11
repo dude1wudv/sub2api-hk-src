@@ -1,6 +1,6 @@
 <template>
   <div v-if="!isDesktopViewport" class="table-cards space-y-3">
-    <div v-if="mobileSort && sortableColumns.length" class="flex min-w-0 items-center gap-2" data-test="mobile-sort">
+    <div v-if="mobileSort && sortableColumns.length" class="table-mobile-sort flex min-w-0 items-center gap-2" data-test="mobile-sort">
       <label class="flex min-w-0 flex-1 items-center gap-2">
         <span class="shrink-0 text-sm text-gray-600 dark:text-gray-300">{{ t('common.sortBy') }}</span>
         <select
@@ -60,7 +60,7 @@
 
     <template v-else>
       <div v-if="selectable" class="flex items-center justify-end gap-2 px-1">
-        <label class="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+        <label class="min-h-11 flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
           <input
             type="checkbox"
             class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
@@ -75,15 +75,17 @@
       <div
         v-for="(row, index) in sortedData"
         :key="resolveRowKey(row, index)"
-        class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
+        class="table-record-card rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
+        :data-selected="selectable && isRowSelected(row, index) || undefined"
         :class="{
           'cursor-pointer': clickableRows,
           'border-primary-300 bg-primary-50/40 dark:border-primary-700 dark:bg-primary-900/10': selectable && isRowSelected(row, index)
         }"
         @click="clickableRows && emit('rowClick', row)"
       >
-        <div class="space-y-3">
+        <div class="table-record-fields space-y-3">
           <div v-if="selectable" class="flex justify-end">
+            <label class="table-selection-control" @click.stop>
             <input
               type="checkbox"
               class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
@@ -93,6 +95,7 @@
               @click.stop
               @change="toggleRowSelection(row, index, ($event.target as HTMLInputElement).checked)"
             />
+            </label>
           </div>
           <div
             v-for="column in dataColumns"
@@ -241,7 +244,7 @@
             :data-index="item.index"
             :aria-selected="selectable ? isRowSelected(item.row, item.index) : undefined"
             :ref="item.measure ? measureElement : undefined"
-            class="hover:bg-[#F6F3EE] dark:hover:bg-[#272420]"
+            class="table-record-row"
             :class="{
               'cursor-pointer': clickableRows,
               'bg-primary-50/40 dark:bg-primary-900/10': selectable && isRowSelected(item.row, item.index)
@@ -978,6 +981,7 @@ defineExpose({
 
 <style scoped>
 .table-wrapper :deep(tbody td) { padding-block: 8px; }
+.table-record-row:hover { background-color: rgb(var(--table-hover)); }
 
 /* 表格横向滚动 */
 .table-wrapper {

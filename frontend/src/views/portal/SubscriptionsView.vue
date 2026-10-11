@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -14,6 +15,7 @@ import { formatPeakRateWindow, hasPeakRate, serverTimezoneLabel } from '@/utils/
 import { getRemainingDurationParts, isOneTimeDailyQuota } from '@/utils/subscriptionQuota'
 import type { CheckoutInfoResponse, SubscriptionPlan } from '@/types/payment'
 import type { UserSubscription } from '@/types'
+import InkSurface from '@/components/common/InkSurface.vue'
 import PortalSubscriptionConfirm from '@/components/portal/PortalSubscriptionConfirm.vue'
 
 const { t, locale } = useI18n()
@@ -135,10 +137,7 @@ onMounted(async () => {
 
 <template>
   <div class="portal-page subscription-page">
-    <header class="subscription-header">
-      <h1 class="portal-heading">{{ copy('订阅计划', 'Subscription plans') }}</h1>
-      <p class="portal-muted">{{ copy('选择适合你的 API 订阅计划，按计划额度使用模型服务。', 'Choose an API plan and use models within your subscription quota.') }}</p>
-    </header>
+    <PortalPageHeader eyebrow="PLANS & CAPACITY" :title="copy('找到合适的创作节奏。', 'Find a plan for your pace.')" :description="copy('按真实额度选择订阅，续订和到期一目了然。', 'Compare quotas, understand your renewal, and keep expiry in view.')" />
     <div v-if="!enabled" class="portal-empty">{{ copy('订阅服务暂未开放。', 'Subscriptions are not available.') }}</div>
     <div v-else-if="loading" class="portal-empty" role="status">{{ copy('正在加载订阅信息…', 'Loading subscriptions…') }}</div>
     <template v-else>
@@ -150,7 +149,7 @@ onMounted(async () => {
         <button v-for="[id, name] in groups" :key="id" :class="{ active: group === id }" @click="group = id">{{ name }}</button>
       </div>
       <section id="portal-subscription-plans" class="subscription-plans" :aria-label="copy('可购买的订阅计划', 'Available subscription plans')">
-        <article v-for="plan in visiblePlans" :key="plan.id" class="subscription-plan">
+        <InkSurface as="article" interactive v-for="plan in visiblePlans" :key="plan.id" class="subscription-plan"><span class="plan-ink-accent" aria-hidden="true"></span>
           <div class="plan-title"><h2>{{ plan.name }}</h2><span v-if="plan.one_purchase_per_user" class="plan-note">{{ copy('每人限购一次', 'One purchase per user') }}</span></div>
           <p class="plan-description">{{ plan.description || plan.group_name }}</p>
           <p class="plan-price"><strong>{{ formatPaymentAmount(plan.price, plan.currency || 'USD') }}</strong><span>/ {{ plan.fixed_expires_at ? copy('固定有效期', 'Fixed term') : planValiditySuffix(plan, t) }}</span></p>
@@ -167,7 +166,7 @@ onMounted(async () => {
             <li v-if="plan.fixed_expires_at"><span>✓</span>{{ copy('有效至', 'Valid until') }} {{ date(plan.fixed_expires_at) }}</li>
           </ul>
           <p v-if="plan.sale_ends_at" class="plan-sale-end">{{ copy('销售截止', 'Sale ends') }} {{ date(plan.sale_ends_at) }}</p>
-        </article>
+        </InkSurface>
       </section>
       <div v-if="!planError && !visiblePlans.length" class="portal-empty">{{ copy('暂无可购买的订阅计划', 'No subscription plans for sale') }}</div>
       <section v-if="active.length" class="current-subscriptions" aria-labelledby="current-subscriptions-title">
@@ -205,16 +204,17 @@ onMounted(async () => {
 .subscription-header { margin-bottom: 28px; }
 .subscription-header p { margin-top: 12px; }
 .subscription-groups { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-.subscription-groups button { padding: 8px 16px; border-radius: 8px; border: 1px solid rgb(var(--line)); background: rgb(var(--surface)); }
-.subscription-groups .active { background: rgb(var(--surface-2)); color: rgb(var(--ink)); }
+.subscription-groups button { padding: 8px 16px; border-radius:999px; border:1px solid rgb(var(--line)); background:rgb(var(--surface)); }
+.subscription-groups .active { background:rgb(var(--ink)); color:rgb(var(--canvas)); border-color:rgb(var(--ink)); }
 .subscription-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; scroll-margin-top: 20px; }
-.subscription-plan { display: flex; flex-direction: column; border: 1px solid rgb(var(--line)); border-radius: 16px; padding: 30px; background: rgb(var(--surface)); }
+.subscription-plan { display: flex; flex-direction: column; border: 1px solid rgb(var(--line)); border-radius:20px; padding:28px; background:rgb(var(--surface)); position:relative; isolation:isolate; }
+.plan-ink-accent { position:absolute; right:26px; top:24px; width:56px; height:62px; background:rgb(var(--brand-moss) / .065); border-radius:40% 60% 50% 45%; transform:rotate(28deg); pointer-events:none; z-index:-1; }
 .plan-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .plan-title h2 { font: 24px/1.3 var(--font-sans); }
 .plan-note { white-space: nowrap; color: rgb(var(--ink-3)); font-size: 13px; border: 1px solid rgb(var(--line)); border-radius: 6px; padding: 4px 6px; }
 .plan-description { min-height: 38px; font-size: 13px; color: rgb(var(--ink-3)); line-height: 1.5; margin: 14px 0 24px; }
 .plan-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
-.plan-price strong { font-size: 38px; line-height: 1.1; font-weight: 500; }
+.plan-price strong { font-size:32px; line-height:1.25; font-weight:600; font-variant-numeric:tabular-nums; }
 .plan-price > span { color: rgb(var(--ink-3)); font-size: 13px; }
 .plan-original { color: rgb(var(--ink-3)); text-decoration: line-through; font-size: 13px; margin-top: 7px; }
 .plan-button { width: 100%; min-height: 46px; margin: 26px 0; border-radius: 100px; }

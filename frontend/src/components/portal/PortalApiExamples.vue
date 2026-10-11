@@ -1,6 +1,6 @@
 <template>
   <section id="portal-api-examples" class="portal-section portal-api-examples" aria-labelledby="portal-api-examples-title">
-    <div class="portal-section-heading"><h2 id="portal-api-examples-title">{{ text('调用示例', 'Request examples') }}</h2><div class="portal-api-protocols" role="group" :aria-label="text('API 协议', 'API protocol')"><button type="button" :aria-pressed="protocol === 'openai'" @click="protocol = 'openai'">OpenAI</button><button type="button" :aria-pressed="protocol === 'anthropic'" @click="protocol = 'anthropic'">Anthropic</button></div></div>
+    <div class="portal-section-heading"><h2 id="portal-api-examples-title">{{ text('调用示例', 'Request examples') }}</h2><div ref="protocolTabs" class="portal-api-protocols" role="group" :aria-label="text('API 协议', 'API protocol')"><ActiveIndicator :container="protocolTabs" :active-key="protocol" /><button type="button" data-active-indicator-item="openai" :aria-pressed="protocol === 'openai'" @click="protocol = 'openai'">OpenAI</button><button type="button" data-active-indicator-item="anthropic" :aria-pressed="protocol === 'anthropic'" @click="protocol = 'anthropic'">Anthropic</button></div></div>
     <div class="portal-api-endpoint">
       <span>{{ protocol === 'openai' ? 'OpenAI Base URL' : 'Anthropic Base URL' }}</span><code>{{ baseURL }}</code><button type="button" class="portal-inline-button" :aria-label="text('复制接口地址', 'Copy base URL')" @click="copyToClipboard(baseURL)"><Icon name="copy" size="sm" aria-hidden="true" /></button>
     </div>
@@ -17,15 +17,18 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
+import ActiveIndicator from '@/components/common/ActiveIndicator.vue'
 import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
 import { useClipboard } from '@/composables/useClipboard'
-const props = defineProps<{ model: string }>()
-defineEmits<{ 'update:model': [value: string] }>()
+const props = defineProps<{ model: string; protocol?: 'openai' | 'anthropic' }>()
+const emit = defineEmits<{ 'update:model': [value: string]; 'update:protocol': [value: 'openai' | 'anthropic'] }>()
 const { locale } = useI18n()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const { apiRoot, openAIBase } = usePatrickApiBase()
 const { copyToClipboard } = useClipboard()
-const protocol = ref<'openai' | 'anthropic'>('openai')
+const protocolTabs = ref<HTMLElement | null>(null)
+const localProtocol = ref<'openai' | 'anthropic'>('openai')
+const protocol = computed({ get: () => props.protocol ?? localProtocol.value, set: (value: 'openai' | 'anthropic') => { localProtocol.value = value; emit('update:protocol', value) } })
 const language = ref<'curl' | 'python' | 'nodejs'>('curl')
 const languages = [{ value: 'curl', label: 'curl' }, { value: 'python', label: 'Python' }, { value: 'nodejs', label: 'Node.js' }] as const
 const baseURL = computed(() => protocol.value === 'openai' ? openAIBase.value : apiRoot.value)
@@ -91,9 +94,9 @@ const code = computed(() => {
 
 <style scoped>
 .portal-api-examples { scroll-margin-top:80px; }
-.portal-api-protocols { display:flex; gap:16px; font-size:13px; }
-.portal-api-protocols button { padding:5px 0; border-bottom:1px solid transparent; color:rgb(var(--ink-3)); background:none; }
-.portal-api-protocols button[aria-pressed='true'] { border-bottom-color:rgb(var(--ink)); color:rgb(var(--ink)); }
+.portal-api-protocols { position:relative; isolation:isolate; display:flex; gap:4px; padding:4px; border:1px solid rgb(var(--line)); border-radius:999px; font-size:13px; --active-indicator-fill:rgb(var(--action-bg)); --active-indicator-radius:999px; }
+.portal-api-protocols button { position:relative; z-index:1; padding:6px 12px; min-height:34px; border:0; color:rgb(var(--ink-3)); background:none; border-radius:999px; }
+.portal-api-protocols button[aria-pressed='true'] { color:rgb(var(--action-text)); }
 .portal-api-endpoint { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; padding:12px 0; font-size:13px; }
 .portal-api-endpoint > span { color:rgb(var(--ink-3)); }
 .portal-api-endpoint code { min-width:0; overflow-wrap:anywhere; }

@@ -12,6 +12,8 @@
   --ink: 34 35 31;
   --ink-2: 78 80 71;
   --ink-3: 111 112 104;
+  --brand-moss: 69 121 106;
+  --brand-copper: 184 119 80;
   --line: 232 228 218;
   --line-strong: 159 158 147;
   --action-bg: 34 35 31;
@@ -19,9 +21,9 @@
   --action-hover: 57 59 51;
   --action-contrast: #fffdf7;
   --focus-ring: 128 102 63;
-  --selection-bg: 239 232 215;
+  --selection-bg: 234 242 235;
   --selection-ink: 34 35 31;
-  --selection-edge: 128 102 63;
+  --selection-edge: 69 121 106;
   --table-surface: var(--surface);
   --table-head: var(--surface-2);
   --table-hover: 247 244 235;
@@ -95,8 +97,8 @@
   --status-err-bg: 252 238 239;
   --status-link-bg: 235 243 251;
   --status-accent-bg: 243 235 248;
-  --chart-1: #3876b5;
-  --chart-2: #337a63;
+  --chart-1: #45796a;
+  --chart-2: #b87750;
   --chart-3: #967122;
   --chart-4: #8062a8;
   --chart-5: #b75363;
@@ -122,6 +124,8 @@
   --ink: 244 241 232;
   --ink-2: 211 211 198;
   --ink-3: 179 180 169;
+  --brand-moss: 141 201 173;
+  --brand-copper: 221 167 120;
   --line: 57 59 52;
   --line-strong: 121 124 110;
   --action-bg: 239 233 217;
@@ -129,7 +133,7 @@
   --action-hover: 255 250 234;
   --action-contrast: #fffdf7;
   --focus-ring: 214 189 135;
-  --selection-bg: 67 61 43;
+  --selection-bg: 45 64 54;
   --selection-ink: 244 241 232;
   --selection-edge: 214 189 135;
   --table-hover: 46 48 41;
@@ -147,8 +151,8 @@
   --overlay-scrim: 6 7 5 / .64;
   --shadow-panel: 0 2px 8px rgb(0 0 0 / .08);
   --shadow-overlay: 0 16px 48px rgb(0 0 0 / .4);
-  --chart-1: #85b5e5;
-  --chart-2: #8dc9ad;
+  --chart-1: #8dc9ad;
+  --chart-2: #dda778;
   --chart-3: #d6ba76;
   --chart-4: #b7a0dc;
   --chart-5: #e397a7;
@@ -301,6 +305,7 @@ tbody .sticky-col { background: rgb(var(--table-surface)); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+:root[data-motion='reduced'] *, :root[data-motion='reduced'] *::before, :root[data-motion='reduced'] *::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-delay:0ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 @media (forced-colors: active) {
   :is(.card,.modal-content,.portal-panel,.input,.btn,.color-mode-toggle) { background: Canvas; color: CanvasText; border: 1px solid CanvasText; box-shadow: none; }
 }

@@ -1,13 +1,13 @@
 <template>
-  <div>
+  <div class="portal-page user-service-page channel-observatory">
     <div class="space-y-6 pb-12">
-      <!-- Ops-style elevated shell: title toolbar + filters (mirrors OpsDashboardHeader) -->
+
       <section
-        class="card sticky top-0 z-20 !rounded-3xl !border-0 p-0 shadow-sm ring-1 ring-gray-900/5 backdrop-blur-sm dark:!bg-dark-800 dark:ring-dark-700 supports-[backdrop-filter]:bg-white/95 dark:supports-[backdrop-filter]:bg-dark-800/95"
+        class="card channel-observatory-controls"
       >
         <header class="page-header mb-0 flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 dark:border-dark-700 sm:px-6">
           <div class="min-w-0">
-            <h1 class="page-title flex items-center gap-2 text-xl font-black text-gray-900 dark:text-white">
+            <p class="portal-eyebrow">SERVICE PULSE</p><h1 class="page-title flex items-center gap-2 text-xl font-semibold text-gray-900 dark:text-white">
               <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-500 dark:bg-blue-900/30 dark:text-blue-400">
                 <Icon name="chart" size="sm" />
               </span>
@@ -931,6 +931,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.channel-observatory-controls { border-radius:20px; box-shadow:none; background:rgb(var(--surface)); border:1px solid rgb(var(--line)); overflow:hidden; }
+.channel-observatory-controls .page-header { padding:24px; }
+.channel-observatory-controls .page-title { font-size:26px; font-weight:600; }
+@media(max-width:767px) { .channel-observatory-controls .page-header { padding:18px; } .channel-observatory-controls .page-title { font-size:24px; } }
 .status-dot {
   display: inline-block;
   height: 0.5rem;

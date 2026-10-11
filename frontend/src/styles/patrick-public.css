@@ -1,4 +1,4 @@
-/* Standalone public pages share the b.ai palette. Embedded catalogs retain their host layout. */
+/* Public resources use the same ink, paper and connection motifs as the workspace. */
 .patrick-surface.patrick-public { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; color: var(--p-ink); background: rgb(var(--canvas)); }
 .patrick-public .pp-nav { position: sticky; top: 0; z-index: 30; border-bottom: 1px solid rgb(var(--line)); background: rgb(var(--surface)); backdrop-filter: none; box-shadow: none; }
 .patrick-public .pp-nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: min(1328px, 100%); min-height: 88px; margin-inline: auto; padding: 18px 40px; }
@@ -36,10 +36,10 @@
 .patrick-public .pp-model-content > .space-y-3 button { min-height: 36px; }
 
 .patrick-public .pp-key-main { max-width: 1120px; padding-top: 62px; }
-.patrick-public .pp-key-hero { text-align: center; margin-bottom: 34px; }
-.patrick-public .pp-key-hero h1 { color: var(--p-ink); font-size: clamp(31px, 3.8vw, 46px); font-weight: 600; letter-spacing: normal; line-height: 1.3; }
+.patrick-public .pp-key-hero { text-align:left; margin-bottom:0; }
+.patrick-public .pp-key-hero h1 { color: var(--p-ink); font-size:clamp(28px,3vw,38px); font-weight: 600; letter-spacing: normal; line-height: 1.3; }
 .patrick-public .pp-page-description { max-width: 500px; margin: 15px auto 0; color: var(--p-muted); font-size: 14px; line-height: 1.8; }
-.patrick-public .pp-query-panel { max-width: 704px; margin: 0 auto 50px; padding: 23px; border: 1px solid rgb(var(--line)); border-radius: 24px; background: rgb(var(--surface)); box-shadow: none; }
+.patrick-public .pp-query-panel { min-width:0; width:100%; max-width:none; margin:0; padding: 23px; border: 1px solid rgb(var(--line)); border-radius: 24px; background: rgb(var(--surface)); box-shadow: none; }
 .patrick-public .pp-key-input-row { display: flex; align-items: center; gap: 12px; }
 .patrick-public .pp-key-input-row > div { min-width: 0; }
 .patrick-public .pp-key-input { height: 50px; color: var(--p-ink); border: 1px solid rgb(var(--line)); border-radius: 14px; background: rgb(var(--surface)); box-shadow: none; }
@@ -56,7 +56,7 @@
 .patrick-public .pp-missing-main { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; width: 100%; padding: 50px 24px 78px; text-align: center; }
 .patrick-public .pp-missing-art { position: relative; isolation: isolate; display: grid; place-items: center; width: 360px; max-width: 100%; height: 206px; margin-bottom: 30px; }
 .patrick-public .pp-missing-art > span { color: rgb(var(--line)); font: 600 166px/1 'Segoe UI', sans-serif; letter-spacing: normal; text-shadow: none; user-select: none; }
-.patrick-public .pp-missing-mark { position: absolute; display: grid; place-items: center; width: 94px; height: 102px; border: 1px solid rgb(var(--line)); border-radius: 27px; background: rgb(var(--surface)); backdrop-filter: none; box-shadow: none; transform: rotate(-8deg); }
+.patrick-public .pp-missing-mark { position: absolute; display: grid; place-items: center; width: 94px; height: 102px; border: 1px solid rgb(var(--line)); border-radius:30px 30px 48px 22px; background:rgb(var(--selection-bg)); backdrop-filter:none; box-shadow:none; transform:rotate(-8deg); }
 .patrick-public .pp-missing-mark .patrick-brand__mark { width: 48px; height: 52px; border: 0; background: none; box-shadow: none; }
 .patrick-public .pp-missing-mark .patrick-brand__mark svg { width: 43px; height: 43px; }
 .patrick-public .pp-missing-orbit { position: absolute; z-index: -1; width: 290px; height: 92px; border: 1px solid rgb(var(--line)); border-radius: 50%; transform: rotate(-24deg); }
@@ -129,3 +129,12 @@
 }
 
 @media(max-width:767px) { .patrick-public .pp-nav-actions { gap:8px; } .patrick-public .pp-nav-actions :is(button,a) { min-height:44px; } .patrick-public .pp-nav-inner { padding-inline:16px; gap:12px; } .patrick-public .pp-nav-left { gap:8px; } .patrick-public .pp-brand-link .patrick-brand__name { display:none; } }
+
+.patrick-public .pp-key-entry { display:grid; grid-template-columns:minmax(0,.72fr) minmax(0,1.3fr); align-items:center; gap:44px; margin-bottom:48px; padding:32px; border:1px solid rgb(var(--line)); border-radius:28px 28px 50px 28px; background:rgb(var(--surface-2) / .45); }
+.patrick-public .pp-key-entry .pp-page-description { margin:15px 0 0; }
+.patrick-public .pp-page-eyebrow { display:flex; align-items:center; gap:8px; }
+.patrick-public .pp-page-eyebrow::before { content:''; width:8px; height:12px; flex:none; border-radius:70% 40% 60% 30%; transform:rotate(30deg); background:rgb(var(--brand-moss)); }
+.patrick-public .pp-missing-orbit { border-color:rgb(var(--brand-moss) / .5); }
+.patrick-public .pp-missing-mark::after { content:''; position:absolute; width:10px; height:10px; right:-14px; bottom:12px; border-radius:50%; background:rgb(var(--brand-copper)); }
+@media(max-width:900px) { .patrick-public .pp-key-entry { grid-template-columns:minmax(0,1fr); gap:24px; padding:26px; } }
+@media(max-width:767px) { .patrick-public .pp-key-entry { padding:20px 16px; gap:22px; margin-bottom:30px; border-radius:22px 22px 38px 22px; } .patrick-public .pp-key-entry .pp-query-panel { padding:16px; } .patrick-public .pp-key-visibility { width:44px; height:44px; } }

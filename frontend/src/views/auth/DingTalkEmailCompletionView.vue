@@ -32,6 +32,7 @@ import PendingOAuthCreateAccountForm, {
 } from '@/components/auth/PendingOAuthCreateAccountForm.vue'
 import { apiClient } from '@/api/client'
 import { useAuthStore, useAppStore } from '@/stores'
+import { resolveOAuthLanding, resolveOAuthStartRedirect as sanitizeRedirectPath } from '@/utils/oauthLanding'
 import {
   persistOAuthTokenContext,
   type PendingOAuthExchangeResponse
@@ -50,14 +51,6 @@ const accountActionError = ref('')
 
 const initialEmail = (route.query.email as string | undefined) || ''
 
-function sanitizeRedirectPath(path: string | null | undefined): string {
-  if (!path) return '/dashboard'
-  if (!path.startsWith('/')) return '/dashboard'
-  if (path.startsWith('//')) return '/dashboard'
-  if (path.includes('://')) return '/dashboard'
-  if (path.includes('\n') || path.includes('\r')) return '/dashboard'
-  return path
-}
 
 function getRequestErrorMessage(error: unknown, fallback: string): string {
   const err = error as { message?: string; response?: { data?: { detail?: string; message?: string } } }
@@ -100,7 +93,7 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
       await authStore.setToken(data.access_token)
       clearAllAffiliateReferralCodes()
       appStore.showSuccess(t('auth.loginSuccess'))
-      await router.replace(redirect)
+      await router.replace(resolveOAuthLanding(redirect, authStore.isAdmin))
       return
     }
 

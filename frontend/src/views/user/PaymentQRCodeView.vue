@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div class="mx-auto flex max-w-md flex-col items-center space-y-6 py-8">
+  <div class="portal-page portal-scan-payment">
+    <div class="portal-scan-card mx-auto flex max-w-md flex-col items-center space-y-6">
       <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
         {{ qrUrl ? scanTitle : t('payment.qr.payInNewWindow') }}
       </h2>
@@ -211,3 +211,10 @@ onMounted(() => {
 
 onUnmounted(() => cleanup())
 </script>
+
+<style scoped>
+.portal-scan-card { margin-block:24px; padding:32px; border:1px solid rgb(var(--line)); border-radius:24px; background:rgb(var(--surface)); box-shadow:var(--shadow-panel); }
+.portal-scan-card > h2 { font-size:24px; text-align:center; }
+.portal-scan-card canvas { max-width:100%; height:auto !important; border-radius:12px; }
+@media(max-width:767px) { .portal-scan-card { padding:24px 18px; } }
+</style>

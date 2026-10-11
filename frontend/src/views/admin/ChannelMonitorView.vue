@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="admin-page admin-page--resources" data-admin-page="channel-monitor">
     <div class="w-full min-w-0 space-y-6 pb-8">
       <header
         class="page-header mb-0 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700 sm:p-6"

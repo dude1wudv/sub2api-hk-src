@@ -321,7 +321,7 @@ function money(value: number) {
 .portal-api-name { max-width:160px; overflow:hidden; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
 .portal-api-secret { display:inline-flex; max-width:210px; align-items:center; gap:4px; padding:3px 4px 3px 8px; border-radius:8px; background:rgb(var(--surface-2)); color:rgb(var(--text-link)); }
 .portal-api-secret code { min-width:0; overflow:hidden; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13px; text-overflow:ellipsis; white-space:nowrap; }
-.portal-api-secret button { display:inline-flex; padding:2px; border:0; border-radius:5px; color:inherit; background:transparent; cursor:pointer; }
+.portal-api-secret button { display:inline-flex; flex:none; align-items:center; justify-content:center; width:28px; height:28px; padding:2px; border:0; border-radius:5px; color:inherit; background:transparent; cursor:pointer; }
 .portal-api-secret button:hover { background:rgb(var(--surface-2)); }
 .portal-api-group { display:inline-flex; max-width:280px; align-items:center; flex-wrap:wrap; gap:6px; padding:4px 6px; border:0; border-radius:8px; color:inherit; background:transparent; font:inherit; text-align:left; cursor:pointer; }
 .portal-api-group:hover { background:rgb(var(--surface-2)); }

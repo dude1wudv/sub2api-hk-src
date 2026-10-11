@@ -44,7 +44,8 @@
         ><Icon name="x" size="md" aria-hidden="true" /></button>
       </div>
 
-      <nav class="user-navigation" :aria-label="zh ? '主要导航' : 'Main navigation'">
+      <nav ref="navigationRef" class="user-navigation" :aria-label="zh ? '主要导航' : 'Main navigation'">
+        <ActiveIndicator :container="navigationRef" :active-key="activeNavigationPath" />
         <div class="user-primary-navigation">
           <RouterLink
             v-for="item in primaryItems"
@@ -57,6 +58,7 @@
             :title="sidebarCollapsed ? item.label : undefined"
             :data-tour="item.path === '/keys' ? 'sidebar-my-keys' : undefined"
             :data-nav-path="item.path"
+            :data-active-indicator-item="item.path"
             @click="activateNavigation(item)"
             @pointerenter="prefetchItem(item, $event)"
             @focus="prefetchItem(item)"
@@ -80,6 +82,7 @@
               :aria-label="sidebarCollapsed ? item.label : undefined"
               :title="sidebarCollapsed ? item.label : undefined"
               :data-nav-path="item.path"
+              :data-active-indicator-item="item.path"
               @click="activateNavigation(item)"
               @pointerenter="prefetchItem(item, $event)"
               @focus="prefetchItem(item)"
@@ -189,9 +192,10 @@
           :aria-label="zh ? '打开导航' : 'Open navigation'"
           @click="toggleNavigation"
         ><Icon name="menu" size="md" aria-hidden="true" /></button>
-        <h1 id="user-page-title" class="sr-only">{{ pageTitle }}</h1>
+        <div class="user-topbar-location"><span>{{ zh ? '工作台' : 'Workspace' }}</span><span aria-hidden="true">/</span><h1 id="user-page-title">{{ pageTitle }}</h1></div>
 
         <div class="user-topbar-actions">
+          <WorkspaceCommandPalette :items="commands" />
           <button type="button" class="user-icon-button user-mode-toggle" :aria-label="isDark ? (zh ? '切换至浅色' : 'Switch to light mode') : (zh ? '切换至深色' : 'Switch to dark mode')" :title="isDark ? (zh ? '切换至浅色' : 'Switch to light mode') : (zh ? '切换至深色' : 'Switch to dark mode')" :aria-pressed="isDark" @click="toggleMode">
             <Icon :name="isDark ? 'sun' : 'moon'" size="md" aria-hidden="true" />
           </button>
@@ -221,6 +225,7 @@
             </button>
             <div v-if="accountOpen" id="user-account-popover" class="user-account-popover">
               <div class="user-account-summary"><strong>{{ displayName }}</strong><span>{{ user.email }}</span></div>
+              <MotionPreferenceToggle show-label class="user-motion-preference" />
               <div v-if="frozenBalance > 0 && !authStore.isSimpleMode" class="user-account-balance">
                 <span>{{ zh ? '冻结金额' : 'Frozen balance' }}</span><span>{{ formatMoney(frozenBalance) }}</span>
               </div>
@@ -249,6 +254,12 @@ import { useI18n } from 'vue-i18n'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
 import Icon from '@/components/icons/Icon.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
+import ActiveIndicator from '@/components/common/ActiveIndicator.vue'
+import WorkspaceCommandPalette from '@/components/common/WorkspaceCommandPalette.vue'
+import MotionPreferenceToggle from '@/components/common/MotionPreferenceToggle.vue'
+import { useClipboard } from '@/composables/useClipboard'
+import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
+import type { WorkspaceCommand } from '@/utils/workspaceCommands'
 import { availableLocales, setLocale } from '@/i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import { useUserNavigation, type UserNavigationItem } from '@/composables/useUserNavigation'
@@ -270,7 +281,21 @@ const router = useRouter()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
-const { primaryItems, secondarySections, refreshBatchImageAccess } = useUserNavigation()
+const { items: navigationItems, primaryItems, secondarySections, refreshBatchImageAccess } = useUserNavigation()
+const navigationRef = ref<HTMLElement | null>(null)
+const activeNavigationPath = computed(() => navigationItems.value.find(isActive)?.path ?? null)
+const { copyToClipboard } = useClipboard()
+const { openAIBase } = usePatrickApiBase()
+const commands = computed<WorkspaceCommand[]>(() => {
+  const entries: WorkspaceCommand[] = navigationItems.value.map(item => ({
+    id: item.path, label: item.label, section: zh.value ? '页面' : 'Pages', keywords: item.path,
+    ...(item.action ? { run: () => activateNavigation(item) } : item.href ? { href: item.href } : { to: { path: item.path, query: item.query } }),
+  }))
+  if (navigationItems.value.some(item => item.path === '/keys')) entries.unshift({ id: 'create-key', label: zh.value ? '创建 API 密钥' : 'Create API key', section: zh.value ? '快捷操作' : 'Quick actions', keywords: 'new api key', to: '/keys?create=1' })
+  entries.unshift({ id: 'copy-endpoint', label: zh.value ? '复制接口地址' : 'Copy API base URL', section: zh.value ? '快捷操作' : 'Quick actions', keywords: 'api base url endpoint', run: async () => { if (!await copyToClipboard(openAIBase.value)) throw new Error('Copy failed') } })
+  if (docUrl.value) entries.push({ id: 'documentation', label: zh.value ? '开发者文档' : 'Documentation', section: zh.value ? '资源' : 'Resources', href: docUrl.value })
+  return entries
+})
 const { isDark, toggleMode } = useColorMode()
 const reducedMotion = useReducedMotion()
 
@@ -304,7 +329,8 @@ const availableBalance = computed(() => Number(user.value?.balance || 0))
 const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
 const currentLocaleCode = computed(() => zh.value ? 'zh' : 'en')
 const pageTitle = computed(() => {
-  if (route.path === '/keys' || route.path === '/dashboard') return 'API'
+  if (route.path === '/dashboard') return zh.value ? '概览' : 'Overview'
+  if (route.path === '/keys') return zh.value ? 'API 密钥' : 'API keys'
   if (route.name === 'CustomPage') {
     const item = appStore.cachedPublicSettings?.custom_menu_items?.find(menu => menu.id === route.params.id)
     if (item?.label) return item.label

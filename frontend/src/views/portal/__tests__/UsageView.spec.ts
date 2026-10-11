@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import UsageView from '../UsageView.vue'
+import PortalUsageAnalytics from '@/components/portal/PortalUsageAnalytics.vue'
 import { usageMonthWindow } from '@/utils/portalUsage'
 
 const { query, listMyErrorRequests, getStats, getDashboardTrend, getDashboardSnapshotV2, listKeys, getAvailable } = vi.hoisted(() => ({
@@ -28,8 +30,11 @@ vi.mock('vue-i18n', async () => {
 })
 
 function mountUsage() {
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/usage', component: UsageView }] })
+  void router.push('/usage')
   return mount(UsageView, {
     global: {
+      plugins: [router],
       stubs: {
         RouterLink: true,
         PortalUsageChart: true,
@@ -69,6 +74,39 @@ describe('portal UsageView access and request races', () => {
     expect(wrapper.text()).not.toContain('Error requests')
     expect(listMyErrorRequests).not.toHaveBeenCalled()
     expect(wrapper.get('[data-testid="usage-table"]').text()).toBe('1')
+    wrapper.unmount()
+  })
+
+  it('restores same-route drilldown conditions and clears unrelated filters on back navigation', async () => {
+    const wrapper = mountUsage()
+    await flushPromises()
+    const router = wrapper.vm.$router
+    await router.push('/usage?start_date=2026-09-04&end_date=2026-09-04&model=gpt-5&api_key_id=7')
+    await flushPromises()
+    expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, start_date: '2026-09-04', end_date: '2026-09-04', model: 'gpt-5', api_key_id: 7 }), expect.anything())
+    expect(wrapper.get('.usage-filter-summary').text()).toContain('gpt-5')
+    await router.push('/usage?start_date=2026-09-07&end_date=2026-09-07&model=claude-sonnet')
+    await flushPromises()
+    expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, start_date: '2026-09-07', model: 'claude-sonnet', api_key_id: undefined, group_id: undefined }), expect.anything())
+    router.back()
+    await flushPromises()
+    expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, start_date: '2026-09-04', model: 'gpt-5', api_key_id: 7 }), expect.anything())
+    wrapper.unmount()
+  })
+
+  it('resets to the first page when the same chart drilldown is selected again', async () => {
+    query.mockResolvedValue({ items: [{ id: 1 }], total: 30, pages: 3, page_size: 10 })
+    const wrapper = mountUsage()
+    await flushPromises()
+    const selection = { start: '2026-10-04', end: '2026-10-04', model: 'gpt-5' }
+    wrapper.getComponent(PortalUsageAnalytics).vm.$emit('drilldown', selection)
+    await flushPromises()
+    await wrapper.get('[aria-label="Next page"]').trigger('click')
+    await flushPromises()
+    expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }), expect.anything())
+    wrapper.getComponent(PortalUsageAnalytics).vm.$emit('drilldown', selection)
+    await flushPromises()
+    expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, model: 'gpt-5' }), expect.anything())
     wrapper.unmount()
   })
 

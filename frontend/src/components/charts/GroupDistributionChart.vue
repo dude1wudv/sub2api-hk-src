@@ -90,6 +90,7 @@
                     :items="breakdownItems"
                     :loading="breakdownLoading"
                     :show-account-cost="showAccountCost"
+                    :metric="metric"
                   />
                 </td>
               </tr>
@@ -117,6 +118,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
 import type { GroupStat, UserBreakdownItem } from '@/types'
 import { getUserBreakdown } from '@/api/admin/dashboard'
+import { distributionValue, rankChartRows } from '@/utils/chartDistribution'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -182,8 +184,7 @@ const chartColors = useChartPalette()
 const displayGroupStats = computed(() => {
   if (!props.groupStats?.length) return []
 
-  const metricKey = props.metric === 'actual_cost' ? 'actual_cost' : 'total_tokens'
-  return [...props.groupStats].sort((a, b) => toFiniteNumber(b[metricKey]) - toFiniteNumber(a[metricKey]))
+  return rankChartRows(props.groupStats, row => distributionValue(row, props.metric), chartColors.value)
 })
 
 const chartData = computed(() => {
@@ -193,8 +194,8 @@ const chartData = computed(() => {
     labels: displayGroupStats.value.map((g) => g.group_name || String(g.group_id)),
     datasets: [
       {
-        data: displayGroupStats.value.map((g) => toFiniteNumber(props.metric === 'actual_cost' ? g.actual_cost : g.total_tokens)),
-        backgroundColor: chartColors.value.slice(0, displayGroupStats.value.length),
+        data: displayGroupStats.value.map((g) => distributionValue(g, props.metric)),
+        backgroundColor: displayGroupStats.value.map((g) => g.chartColor),
         borderWidth: 0
       }
     ]

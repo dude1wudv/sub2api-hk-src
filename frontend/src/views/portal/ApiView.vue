@@ -7,6 +7,7 @@
           <h1>{{ text('API 密钥', 'API keys') }}</h1>
           <span class="portal-api-count">{{ keyTotal }}</span>
         </div>
+        <p class="portal-api-intro">{{ text('一把密钥，连接你的下一次创造。', 'A key to your next creation.') }}</p>
       </div>
       <div class="portal-api-header-actions">
         <button type="button" class="portal-api-icon-button" :disabled="keysLoading || groupsLoading" :aria-label="text('刷新', 'Refresh')" data-test="refresh-keys" @click="refreshPage"><Icon name="refresh" size="sm" aria-hidden="true" /></button>
@@ -14,8 +15,11 @@
         <button type="button" class="portal-button" :disabled="creationDisabled" @click="openCreate()"><Icon name="plus" size="sm" aria-hidden="true" />{{ text('创建密钥', 'Create key') }}</button>
       </div>
     </header>
-
-
+    <div class="portal-api-access-strip">
+      <div><span class="portal-eyebrow">{{ text('连接入口', 'CONNECTION') }}</span><strong>{{ text('从应用到模型，一步接通。', 'One connection. Many possibilities.') }}</strong></div>
+      <button type="button" class="portal-button secondary" @click="docsOpen = true"><Icon name="book" size="sm" />{{ text('接入指南', 'Connection guide') }}<Icon name="arrowRight" size="sm" /></button>
+      <svg viewBox="0 0 170 90" class="portal-api-ink-route" aria-hidden="true"><path d="M2 72C45 72 43 18 82 18s25 54 62 54h26" /><circle cx="82" cy="18" r="12"/><circle cx="143" cy="72" r="5"/></svg>
+    </div>
     <p v-if="groupsLoading" class="portal-api-inline-state" role="status">{{ text('正在读取可绑定分组…', 'Loading groups available for your keys…') }}</p>
     <div v-else-if="groupsError" class="portal-error portal-api-inline-state" role="alert">{{ groupsError }} <button type="button" class="portal-inline-button" @click="loadGroups">{{ text('重试分组加载', 'Retry groups') }}</button></div>
     <p v-else-if="!groups.length" class="portal-api-inline-state">{{ text('当前账户没有可绑定分组，暂时无法创建 API Key。', 'Your account has no available group for creating an API key.') }} <button type="button" class="portal-inline-button" @click="loadGroups">{{ text('刷新分组', 'Refresh groups') }}</button></p>
@@ -223,6 +227,7 @@ const deleteTarget = ref<ApiKey | null>(null)
 const deleteError = ref('')
 const deleting = ref(false)
 const docsOpen = ref(false)
+let consumingCreate = false
 
 let disposed = false
 let groupRequest = 0
@@ -455,6 +460,23 @@ watch(() => route.query.model, value => {
   const model = typeof value === 'string' ? value : Array.isArray(value) ? value[0] || '' : ''
   if (model && plazaEnabled.value) void router.replace({ path:'/model-plaza', query:{ embedded:'1', model } })
 }, { immediate: true })
+watch([() => route.query.create, groupsLoading, groupsError], async ([create, loading, error]) => {
+  if (create !== '1' || loading || error || consumingCreate || disposed) return
+  consumingCreate = true
+  if (!creationDisabled.value) openCreate()
+  else actionError.value = text('当前账户没有可绑定分组，暂时无法创建 API Key。', 'Your account has no available group for creating an API key.')
+  const query = { ...route.query }
+  delete query.create
+  try { await router.replace({ path: route.path, query, hash: route.hash }) }
+  finally { consumingCreate = false }
+}, { immediate: true })
+watch(() => route.query.guide, value => {
+  if (value !== '1') return
+  docsOpen.value = true
+  const query = { ...route.query }
+  delete query.guide
+  void router.replace({ path: route.path, query, hash: route.hash })
+}, { immediate: true })
 onMounted(() => { void loadGroups(); void loadKeys() })
 onBeforeUnmount(() => {
   disposed = true
@@ -471,6 +493,14 @@ onBeforeUnmount(() => {
   padding:28px 32px 64px;
   background-color:rgb(var(--canvas));
 }
+.portal-api-intro { margin:10px 0 0; font-size:14px; line-height:1.7; color:rgb(var(--ink-2)); }
+.portal-api-access-strip { display:flex; align-items:center; justify-content:space-between; gap:24px; position:relative; isolation:isolate; overflow:hidden; padding:24px; margin-bottom:26px; border:1px solid rgb(var(--brand-moss) / .22); border-radius:20px; background:rgb(var(--brand-moss) / .055); }
+.portal-api-access-strip > div { position:relative; z-index:1; }
+.portal-api-access-strip strong { font-size:17px; font-weight:500; }
+.portal-api-access-strip .portal-button { z-index:1; }
+.portal-api-ink-route { position:absolute; width:180px; height:100px; top:0; right:140px; z-index:0; color:rgb(var(--brand-moss)); opacity:.15; pointer-events:none; }
+.portal-api-ink-route path { fill:none; stroke:currentColor; stroke-width:18; stroke-linecap:round; }
+.portal-api-ink-route circle { fill:currentColor; }
 .portal-api-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; }
 .portal-api-eyebrow { margin:0 0 6px; color:rgb(var(--ink-3)); font-size:13px; font-weight:650; letter-spacing:.12em; }
 .portal-api-title-row { display:flex; align-items:center; gap:10px; }
@@ -500,9 +530,10 @@ onBeforeUnmount(() => {
 .portal-api-key-search > button { flex-shrink:0; }
 .portal-api-key-filters select { min-width:110px; max-width:230px; min-height:38px; padding:7px 28px 7px 10px; border:1px solid rgb(var(--line-strong)); border-radius:10px; background-color:rgb(var(--surface)); color:rgb(var(--ink)); font:inherit; font-size:13px; }
 .portal-api-endpoint { display:inline-flex; max-width:100%; align-items:center; gap:8px; margin:0 0 16px; padding:6px 8px 6px 12px; border:1px solid rgb(var(--line-strong)); border-radius:999px; background:rgb(var(--surface)); color:rgb(var(--ink-2)); font-size:13px; }
+.portal-api-endpoint > span { flex:none; white-space:nowrap; }
 .portal-api-endpoint-tag { padding:1px 6px; border-radius:999px; background:rgb(var(--surface-2)); color:rgb(var(--text-link)); }
 .portal-api-endpoint code { min-width:0; overflow:hidden; color:rgb(var(--ink)); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; text-overflow:ellipsis; white-space:nowrap; }
-.portal-api-endpoint button { display:inline-flex; padding:4px; border:0; border-radius:999px; color:rgb(var(--text-link)); background:transparent; cursor:pointer; }
+.portal-api-endpoint button { display:inline-flex; flex:none; align-items:center; justify-content:center; width:28px; height:28px; margin-left:auto; padding:4px; border:0; border-radius:999px; color:rgb(var(--text-link)); background:transparent; cursor:pointer; }
 .portal-api-endpoint button:hover { background:rgb(var(--surface-2)); }
 .portal-api-endpoint button:disabled { opacity:.4; cursor:not-allowed; }
 .portal-api-key-state { padding:36px 20px; border:1px solid rgb(var(--line-strong)); border-radius:12px; color:rgb(var(--ink-3)); background:rgb(var(--surface)); text-align:center; font-size:13px; }
@@ -526,6 +557,8 @@ onBeforeUnmount(() => {
 .portal-api-ccs-choices button:hover { border-color:rgb(var(--text-link) / .35); background:rgb(var(--surface-2)); }
 .portal-api-ccs-choices span { color:rgb(var(--ink-3)); font-size:13px; text-align:center; }
 @media(max-width:767px) {
+  .portal-api-access-strip { padding:18px; align-items:flex-start; flex-direction:column; gap:16px; }
+  .portal-api-ink-route { right:-20px; top:12px; }
   .portal-api-page { padding:16px 16px 48px; }
   .portal-api-title-row h1 { font-size:24px; }
   .portal-api-header { flex-direction:column; }

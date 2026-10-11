@@ -1,6 +1,6 @@
 <template>
   <div
-    class="table-page-layout"
+    class="table-page-layout resource-workspace"
     :class="{
       'mobile-mode': isMobile,
       'page-scroll-mode': pageScroll
@@ -42,7 +42,7 @@ withDefaults(defineProps<{
 const isMobile = ref(false)
 
 const checkMobile = () => {
-  isMobile.value = window.innerWidth < 1024
+  isMobile.value = window.innerWidth < 768
 }
 
 onMounted(() => {
@@ -68,9 +68,7 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-/* Keep toolbar menus above glass cards and sticky cells, even when a theme's
-   backdrop-filter creates a stacking context. Order earlier toolbars above
-   later sections so menus can extend into the section below. */
+/* Keep toolbar menus above the table and its sticky cells. */
 .layout-section-actions {
   z-index: 3;
 }
@@ -79,8 +77,7 @@ onUnmounted(() => {
   z-index: 2;
 }
 
-/* A glass toolbar is a backdrop root: its menus cannot blur table content
-   outside that root. Use an opaque themed surface to keep options readable. */
+/* Menu options remain opaque where they overlap list content. */
 .layout-section-fixed :deep(.table-toolbar-menu) {
   background: rgb(var(--surface-elevated));
 }
@@ -134,8 +131,7 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(thead) {
-  background: rgb(var(--surface-2) / 0.96);
-  backdrop-filter: blur(8px);
+  background: rgb(var(--table-head));
 }
 
 .table-scroll-container :deep(tbody) {
@@ -143,13 +139,13 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  @apply px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider;
+  @apply px-4 py-2.5 text-left text-sm font-semibold;
   color: rgb(var(--ink-2));
   border-bottom: 1px solid rgb(var(--line));
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-4 py-2.5 text-sm;
+  @apply px-4 text-sm;
   color: rgb(var(--ink));
   border-bottom: 1px solid rgb(var(--line));
 }

@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <div class="portal-page user-service-page">
+    <PortalPageHeader eyebrow="SERVICE PULSE" :title="t('nav.channelStatus')" :description="portalCopy('查看各渠道的检测结果与历史状态。', 'Check channel probes and their status history.')" />
     <MonitorHero
       :overall-status="overallStatus"
       :interval-seconds="DEFAULT_INTERVAL_SECONDS"
@@ -29,6 +30,7 @@
 </template>
 
 <script setup lang="ts">
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -49,6 +51,8 @@ import { DEFAULT_INTERVAL_SECONDS, STATUS_OPERATIONAL } from '@/constants/channe
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
 const { t } = useI18n()
+const portalLocale = useI18n().locale
+const portalCopy = (zh: string, en: string) => portalLocale?.value.startsWith('zh') ? zh : en
 const appStore = useAppStore()
 
 // ── State ──

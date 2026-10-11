@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 
-type UserNavigationIcon = 'key' | 'chart' | 'server' | 'bolt' | 'sparkles' | 'cube' | 'creditCard' | 'document' | 'gift' | 'users' | 'user' | 'link'
+type UserNavigationIcon = 'home' | 'key' | 'chart' | 'server' | 'bolt' | 'sparkles' | 'cube' | 'creditCard' | 'document' | 'gift' | 'users' | 'user' | 'link'
 type UserNavigationGroup = 'primary' | 'services' | 'tools' | 'billing' | 'custom'
 
 export interface UserNavigationItem {
@@ -37,7 +37,8 @@ export function useUserNavigation() {
 
     const enabled = (flag: keyof typeof FeatureFlags) => resolveFeatureFlag(settings.value, FeatureFlags[flag])
     const entries: UserNavigationItem[] = [
-      { path: '/keys', activePaths: ['/keys', '/dashboard'], label: 'API', icon: 'key', group: 'primary' },
+      { path: '/dashboard', label: zh.value ? '概览' : 'Overview', icon: 'home', group: 'primary' },
+      { path: '/keys', label: zh.value ? 'API 密钥' : 'API keys', icon: 'key', group: 'primary' },
       { path: '/usage', label: zh.value ? '用量信息' : 'Usage', icon: 'chart', group: 'primary', hideInSimpleMode: true },
       { path: '/purchase', activePaths: ['/purchase', '/redeem', '/orders'], label: purchaseLabel.value, icon: 'creditCard', group: 'primary', hideInSimpleMode: true },
       { path: '/subscriptions', label: zh.value ? '订阅' : 'Subscriptions', icon: 'document', group: 'primary', hideInSimpleMode: true, enabled: enabled('subscription') },

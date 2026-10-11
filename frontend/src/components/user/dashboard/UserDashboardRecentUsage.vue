@@ -1,57 +1,35 @@
-<template>
-  <div class="card">
-    <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-dark-700 sm:px-6">
-      <h2 class="text-base font-semibold text-gray-900 dark:text-white sm:text-lg">{{ t('dashboard.recentUsage') }}</h2>
-      <span class="badge badge-gray text-xs">{{ t('dashboard.last7Days') }}</span>
-    </div>
-    <div class="p-4 sm:p-6">
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <LoadingSpinner size="lg" />
-      </div>
-      <div v-else-if="data.length === 0" class="py-8">
-        <EmptyState :title="t('dashboard.noUsageRecords')" :description="t('dashboard.startUsingApi')" />
-      </div>
-      <div v-else class="space-y-2.5">
-        <div v-for="log in data" :key="log.id" class="flex items-center justify-between gap-3 rounded-xl border border-transparent bg-gray-50/80 p-3.5 transition-colors hover:border-gray-200 hover:bg-gray-100/80 dark:border-transparent dark:bg-dark-800/40 dark:hover:border-dark-600 dark:hover:bg-dark-800">
-          <div class="flex min-w-0 items-center gap-3">
-            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
-              <Icon name="beaker" size="md" />
-            </div>
-            <div class="min-w-0">
-              <p class="truncate font-mono text-sm font-medium text-gray-900 dark:text-white" :title="log.model">{{ log.model }}</p>
-              <p class="text-xs text-gray-500 dark:text-dark-300">{{ formatDateTime(log.created_at) }}</p>
-            </div>
-          </div>
-          <div class="shrink-0 text-right">
-            <p class="text-sm font-semibold tabular-nums">
-              <span class="text-primary-700 dark:text-primary-300" :title="t('dashboard.actual')">${{ formatCost(log.actual_cost) }}</span>
-              <span class="text-xs font-normal text-gray-400 dark:text-dark-400" :title="t('dashboard.standard')"> / ${{ formatCost(log.total_cost) }}</span>
-            </p>
-            <p class="text-xs tabular-nums text-gray-500 dark:text-dark-300">{{ (log.input_tokens + log.output_tokens).toLocaleString() }} tokens</p>
-          </div>
-        </div>
-
-        <router-link to="/usage" class="inline-flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50/50 hover:text-primary-700 dark:text-primary-400 dark:hover:bg-primary-950/20 dark:hover:text-primary-300">
-          {{ t('dashboard.viewAllUsage') }}
-          <Icon name="arrowRight" size="sm" />
-        </router-link>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { formatDateTime } from '@/utils/format'
+import ModelIcon from '@/components/common/ModelIcon.vue'
+import { formatDateTime, formatDateLocalInput } from '@/utils/format'
+import { usageDrilldownQuery } from '@/views/portal/usageRoute'
 import type { UsageLog } from '@/types'
-
-defineProps<{
-  data: UsageLog[]
-  loading: boolean
-}>()
-const { t } = useI18n()
-const formatCost = (c: number) => c.toFixed(4)
+defineProps<{ data: UsageLog[]; loading: boolean }>()
+const { t, locale } = useI18n()
+const tx = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
+const formatCost = (value: number) => value.toFixed(4)
+function usageLocation(log: UsageLog) {
+  const day = formatDateLocalInput(new Date(log.created_at))
+  return { path: '/usage', query: usageDrilldownQuery({ start: day, end: day, model: log.model, key: log.api_key_id }) }
+}
 </script>
+
+<template>
+  <section class="workspace-recent">
+    <header class="workspace-section-title"><div><p class="portal-eyebrow">RECENT REQUESTS</p><h2>{{ t('dashboard.recentUsage') }}</h2></div><span class="portal-tag">{{ t('dashboard.last7Days') }}</span></header>
+    <div v-if="loading" class="workspace-recent-loading" role="status"><LoadingSpinner /></div>
+    <EmptyState v-else-if="!data.length" :title="t('dashboard.noUsageRecords')" :description="t('dashboard.startUsingApi')" />
+    <ol v-else class="workspace-request-list">
+      <li v-for="log in data" :key="log.id"><RouterLink :to="usageLocation(log)" class="workspace-request">
+        <span class="workspace-request-model-icon"><ModelIcon :model="log.model" size="22px" /></span>
+        <span class="workspace-request-identity"><strong :title="log.model">{{ log.model }}</strong><small>{{ formatDateTime(log.created_at) }}</small></span>
+        <span class="workspace-request-cost"><strong :title="t('dashboard.actual')">${{ formatCost(log.actual_cost) }}</strong><small>{{ (log.input_tokens + log.output_tokens).toLocaleString() }} tokens</small></span>
+        <Icon name="arrowRight" size="sm" class="workspace-request-arrow" />
+      </RouterLink></li>
+    </ol>
+    <RouterLink to="/usage" class="workspace-view-all">{{ tx('打开全部请求', 'Explore all requests') }}<Icon name="arrowRight" size="sm" /></RouterLink>
+  </section>
+</template>

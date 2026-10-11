@@ -252,6 +252,7 @@ import PendingOAuthCreateAccountForm, {
 } from '@/components/auth/PendingOAuthCreateAccountForm.vue'
 import { apiClient } from '@/api/client'
 import { useAuthStore, useAppStore } from '@/stores'
+import { OAUTH_DEFAULT_LANDING, resolveOAuthLanding, resolveOAuthStartRedirect as sanitizeRedirectPath } from '@/utils/oauthLanding'
 import {
   completeOIDCOAuthRegistration,
   exchangePendingOAuthCompletion,
@@ -283,7 +284,7 @@ const needsInvitation = ref(false)
 const invitationCode = ref('')
 const isSubmitting = ref(false)
 const invitationError = ref('')
-const redirectTo = ref('/dashboard')
+const redirectTo = ref(OAUTH_DEFAULT_LANDING)
 const providerName = ref('OIDC')
 const adoptionRequired = ref(false)
 const suggestedDisplayName = ref('')
@@ -391,14 +392,6 @@ function readLegacyFragmentLogin(params: URLSearchParams): OAuthTokenResponse | 
   return completion
 }
 
-function sanitizeRedirectPath(path: string | null | undefined): string {
-  if (!path) return '/dashboard'
-  if (!path.startsWith('/')) return '/dashboard'
-  if (path.startsWith('//')) return '/dashboard'
-  if (path.includes('://')) return '/dashboard'
-  if (path.includes('\n') || path.includes('\r')) return '/dashboard'
-  return path
-}
 
 async function loadProviderName() {
   try {
@@ -611,7 +604,7 @@ async function finalizeCompletion(completion: PendingOAuthExchangeResponse, redi
   await authStore.setToken(completion.access_token)
   clearAllAffiliateReferralCodes()
   appStore.showSuccess(t('auth.loginSuccess'))
-  await router.replace(redirect)
+  await router.replace(resolveOAuthLanding(redirect, authStore.isAdmin))
 }
 
 async function finalizePendingAccountResponse(completion: PendingOidcCompletion) {
@@ -763,7 +756,7 @@ async function handleSubmitTotpChallenge() {
     await authStore.setToken(completion.access_token)
     clearAllAffiliateReferralCodes()
     appStore.showSuccess(t('auth.loginSuccess'))
-    await router.replace(redirectTo.value)
+    await router.replace(resolveOAuthLanding(redirectTo.value, authStore.isAdmin))
   } catch (e: unknown) {
     totpError.value = getRequestErrorMessage(e, t('auth.loginFailed'))
   } finally {
@@ -780,7 +773,7 @@ onMounted(async () => {
   const error = params.get('error')
   const errorDesc = params.get('error_description') || params.get('error_message') || ''
   const redirect = sanitizeRedirectPath(
-    params.get('redirect') || (route.query.redirect as string | undefined) || '/dashboard'
+    params.get('redirect') || route.query.redirect
   )
 
   try {
@@ -789,7 +782,7 @@ onMounted(async () => {
       await authStore.setToken(legacyLogin.access_token)
       clearAllAffiliateReferralCodes()
       appStore.showSuccess(t('auth.loginSuccess'))
-      await router.replace(redirect)
+      await router.replace(resolveOAuthLanding(redirect, authStore.isAdmin))
       return
     }
 
@@ -809,7 +802,7 @@ onMounted(async () => {
 
     const completion = await exchangePendingOAuthCompletion() as PendingOidcCompletion
     const completionRedirect = sanitizeRedirectPath(
-      completion.redirect || (route.query.redirect as string | undefined) || '/dashboard'
+      completion.redirect || route.query.redirect
     )
     applyAdoptionSuggestionState(completion)
     redirectTo.value = completionRedirect

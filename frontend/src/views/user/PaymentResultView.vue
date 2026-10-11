@@ -11,7 +11,8 @@
       </div>
       <template v-else>
         <!-- Status Icon -->
-        <div class="text-center">
+        <div class="payment-result-status text-center">
+          <p class="portal-eyebrow payment-result-eyebrow">PAYMENT RESULT</p>
           <div v-if="isSuccess"
             class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
             <svg class="h-10 w-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -77,8 +78,11 @@
             </div>
           </div>
         </div>
+        <ol v-if="paymentTimeline.length" class="payment-result-timeline" :aria-label="localeCode?.startsWith('zh') ? '订单时间线' : 'Order timeline'">
+          <li v-for="event in paymentTimeline" :key="event.label"><span class="payment-result-event-dot" aria-hidden="true"></span><span>{{ event.label }}</span><time :datetime="event.date">{{ new Date(event.date).toLocaleString(localeCode, { hour12: false }) }}</time></li>
+        </ol>
         <!-- EasyPay return info (when no order loaded) -->
-        <div v-else-if="returnInfo" class="pf-detail-panel rounded-xl bg-white p-5 shadow-sm dark:bg-dark-800">
+        <div v-if="!order && returnInfo" class="pf-detail-panel rounded-xl bg-white p-5 shadow-sm dark:bg-dark-800">
           <div class="space-y-3 text-sm">
             <div v-if="returnInfo.outTradeNo" class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.orderId') }}</span>
@@ -134,6 +138,16 @@ const authStore = useAuthStore()
 type ResolvedOrder = PaymentOrder | PublicOrderVerifyResult
 
 const order = ref<ResolvedOrder | null>(null)
+const paymentTimeline = computed(() => {
+  if (!order.value || !('created_at' in order.value)) return []
+  const value = order.value as PaymentOrder
+  const zh = localeCode.value?.startsWith('zh')
+  return [
+    { label: zh ? '订单创建' : 'Order created', date: value.created_at },
+    { label: zh ? '支付到账' : 'Payment received', date: value.paid_at },
+    { label: zh ? '订单完成' : 'Order completed', date: value.completed_at },
+  ].filter((event): event is { label: string; date: string } => !!event.date && Number.isFinite(Date.parse(event.date)))
+})
 const loading = ref(true)
 const currency = ref('CNY')
 
@@ -477,3 +491,18 @@ onBeforeUnmount(() => {
   clearStatusRefreshTimer()
 })
 </script>
+
+<style scoped>
+.payment-result-eyebrow { justify-content:center; margin-bottom:20px; }
+.payment-result-status h2 { font-size:26px; font-weight:600; }
+.payment-result-status > div { border-radius:45% 55% 48% 52%; }
+.payment-result-timeline { display:grid; gap:0; padding:22px; margin:0; list-style:none; background:rgb(var(--surface)); border:1px solid rgb(var(--line)); border-radius:20px; }
+.payment-result-timeline li { position:relative; display:grid; grid-template-columns:16px minmax(0,1fr); gap:4px 12px; padding:0 0 22px; font-size:14px; }
+.payment-result-timeline li:last-child { padding-bottom:0; }
+.payment-result-timeline li:not(:last-child)::before { content:''; position:absolute; left:5px; top:11px; bottom:0; border-left:1px solid rgb(var(--line-strong)); }
+.payment-result-event-dot { width:11px; height:11px; border-radius:45% 55% 50% 45%; margin-top:5px; background:rgb(var(--brand-moss)); z-index:1; }
+.payment-result-timeline time { grid-column:2; color:rgb(var(--ink-2)); font-size:13px; }
+.pf-detail-panel { border-radius:20px; }
+.pf-detail-panel .flex.justify-between { gap:16px; }
+.pf-detail-panel .flex.justify-between > :last-child { text-align:right; overflow-wrap:anywhere; min-width:0; }
+</style>

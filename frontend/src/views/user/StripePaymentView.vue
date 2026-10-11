@@ -19,9 +19,9 @@
       <template v-else>
         <!-- 金额头部 -->
         <div v-if="order" class="card overflow-hidden">
-          <div class="bg-gradient-to-br from-[#635bff] to-[#4f46e5] px-6 py-6 text-center">
-            <p class="text-sm font-medium text-indigo-200">{{ t('payment.actualPay') }}</p>
-            <p class="mt-1 text-3xl font-bold text-white">{{ formatGatewayAmount(order.pay_amount) }}</p>
+          <div class="portal-payment-amount px-6 py-6 text-center">
+            <p class="text-sm font-medium">{{ t('payment.actualPay') }}</p>
+            <p class="mt-2 text-3xl font-semibold">{{ formatGatewayAmount(order.pay_amount) }}</p>
           </div>
         </div>
 
@@ -325,3 +325,9 @@ onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
 })
 </script>
+
+<style scoped>
+.portal-payment-amount { background:rgb(var(--ink)); color:rgb(var(--canvas)); }
+.portal-payment-amount p { color:inherit; }
+.portal-payment-amount > p:last-child { font-variant-numeric:tabular-nums; }
+</style>

@@ -1,235 +1,55 @@
 <template>
-  <!-- Row 1: Core Stats -->
-  <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
-    <!-- Balance -->
-    <div v-if="!isSimple" data-metric="balance" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-      <div class="flex items-center gap-3">
-        <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
-          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-          </svg>
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.balance') }}</p>
-          <p class="metric-value text-gray-900 tabular-nums dark:text-white">${{ formatBalance(balance) }}</p>
-          <p class="text-xs text-gray-400 dark:text-dark-400">{{ t('common.available') }}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- API Keys -->
-    <div data-metric="keys" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-      <div class="flex items-center gap-3">
-        <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-100/70 text-link-700 dark:bg-link-900/30 dark:text-link-300">
-          <Icon name="key" size="md" :stroke-width="2" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.apiKeys') }}</p>
-          <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ stats?.total_api_keys || 0 }}</p>
-          <p class="text-xs font-medium text-emerald-600 dark:text-emerald-400">{{ stats?.active_api_keys || 0 }} {{ t('common.active') }}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Today Requests -->
-    <div data-metric="requests" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-      <div class="flex items-center gap-3">
-        <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
-          <Icon name="chart" size="md" :stroke-width="2" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.todayRequests') }}</p>
-          <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ stats?.today_requests || 0 }}</p>
-          <p class="truncate text-xs text-gray-400 dark:text-dark-400">{{ t('common.total') }}: <span class="tabular-nums font-medium text-gray-600 dark:text-dark-200">{{ formatNumber(stats?.total_requests || 0) }}</span></p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Today Cost -->
-    <div data-metric="cost" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-      <div class="flex items-center gap-3">
-        <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300">
-          <Icon name="dollar" size="md" :stroke-width="2" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.todayCost') }}</p>
-          <p class="metric-value text-gray-900 tabular-nums dark:text-white">
-            <span class="text-primary-700 dark:text-primary-300" :title="t('dashboard.actual')">${{ formatCost(stats?.today_actual_cost || 0) }}</span>
-            <span class="text-xs font-normal text-gray-400 dark:text-dark-400" :title="t('dashboard.standard')"> / ${{ formatCost(stats?.today_cost || 0) }}</span>
-          </p>
-          <p class="truncate text-xs text-gray-400 dark:text-dark-400">
-            <span>{{ t('common.total') }}: </span>
-            <span class="font-medium text-primary-700 dark:text-primary-300 tabular-nums" :title="t('dashboard.actual')">${{ formatCost(stats?.total_actual_cost || 0) }}</span>
-            <span class="tabular-nums text-gray-400 dark:text-dark-400" :title="t('dashboard.standard')"> / ${{ formatCost(stats?.total_cost || 0) }}</span>
-          </p>
-        </div>
-      </div>
-    </div>
+  <div class="workspace-metrics" :class="{ 'workspace-metrics-simple': isSimple }">
+    <article v-if="!isSimple" data-metric="balance" class="workspace-metric workspace-metric-balance">
+      <div class="workspace-metric-label"><span>{{ t('dashboard.balance') }}</span><Icon name="creditCard" size="sm" /></div>
+      <strong class="metric-value">${{ formatBalance(balance) }}</strong>
+      <div class="workspace-metric-note"><span>{{ t('common.available') }}</span><RouterLink to="/purchase">{{ tx('充值余额', 'Top up') }} <span aria-hidden="true">↗</span></RouterLink></div>
+      <svg viewBox="0 0 160 76" aria-hidden="true" class="balance-ink"><path d="M-8 62C26 1 68 96 112 28s76 42 89 20" /></svg>
+    </article>
+    <article data-metric="requests" class="workspace-metric">
+      <div class="workspace-metric-label"><span>{{ t('dashboard.todayRequests') }}</span><Icon name="chart" size="sm" /></div>
+      <strong class="metric-value">{{ formatNumber(stats.today_requests) }}</strong>
+      <p class="workspace-metric-note">{{ t('common.total') }} · {{ formatNumber(stats.total_requests) }}</p>
+    </article>
+    <article data-metric="cost" class="workspace-metric">
+      <div class="workspace-metric-label"><span>{{ t('dashboard.todayCost') }}</span><Icon name="dollar" size="sm" /></div>
+      <strong class="metric-value">${{ formatCost(stats.today_actual_cost) }}</strong>
+      <p class="workspace-metric-note">{{ t('dashboard.standard') }} · ${{ formatCost(stats.today_cost) }}</p>
+    </article>
+    <article data-metric="latency" class="workspace-metric">
+      <div class="workspace-metric-label"><span>{{ t('dashboard.avgResponse') }}</span><Icon name="clock" size="sm" /></div>
+      <strong class="metric-value">{{ formatDuration(stats.average_duration_ms) }}</strong>
+      <p class="workspace-metric-note">{{ tx('累计请求平均总耗时', 'Average duration across all requests') }}</p>
+    </article>
   </div>
-
-  <!-- Row 2: Token Stats -->
-  <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
-    <!-- Today Tokens -->
-    <div data-metric="tokens" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-      <div class="flex items-center gap-3">
-        <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-          <Icon name="cube" size="md" :stroke-width="2" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.todayTokens') }}</p>
-          <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatTokens(stats?.today_tokens || 0) }}</p>
-          <p class="truncate text-[11px] text-gray-400 dark:text-dark-400" :title="`${t('dashboard.input')}: ${formatTokens(stats?.today_input_tokens || 0)} / ${t('dashboard.output')}: ${formatTokens(stats?.today_output_tokens || 0)} / ${t('dashboard.cache')}: ${formatTokens((stats?.today_cache_creation_tokens || 0) + (stats?.today_cache_read_tokens || 0))}`">
-            <span class="tabular-nums">{{ t('dashboard.input') }}: {{ formatTokens(stats?.today_input_tokens || 0) }}</span> /
-            <span class="tabular-nums">{{ t('dashboard.output') }}: {{ formatTokens(stats?.today_output_tokens || 0) }}</span> /
-            <span class="tabular-nums">{{ t('dashboard.cache') }}: {{ formatTokens((stats?.today_cache_creation_tokens || 0) + (stats?.today_cache_read_tokens || 0)) }}</span>
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Total Tokens -->
-    <div data-metric="tokens" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-      <div class="flex items-center gap-3">
-        <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
-          <Icon name="database" size="md" :stroke-width="2" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.totalTokens') }}</p>
-          <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatTokens(stats?.total_tokens || 0) }}</p>
-          <p class="truncate text-[11px] text-gray-400 dark:text-dark-400" :title="`${t('dashboard.input')}: ${formatTokens(stats?.total_input_tokens || 0)} / ${t('dashboard.output')}: ${formatTokens(stats?.total_output_tokens || 0)} / ${t('dashboard.cache')}: ${formatTokens((stats?.total_cache_creation_tokens || 0) + (stats?.total_cache_read_tokens || 0))}`">
-            <span class="tabular-nums">{{ t('dashboard.input') }}: {{ formatTokens(stats?.total_input_tokens || 0) }}</span> /
-            <span class="tabular-nums">{{ t('dashboard.output') }}: {{ formatTokens(stats?.total_output_tokens || 0) }}</span> /
-            <span class="tabular-nums">{{ t('dashboard.cache') }}: {{ formatTokens((stats?.total_cache_creation_tokens || 0) + (stats?.total_cache_read_tokens || 0)) }}</span>
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Performance (RPM/TPM) -->
-    <div data-metric="performance" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-      <div class="flex items-center gap-3">
-        <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-50 text-link-700 dark:bg-link-950/30 dark:text-link-300">
-          <Icon name="bolt" size="md" :stroke-width="2" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.performance') }}</p>
-          <div class="flex items-baseline gap-1.5">
-            <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatTokens(stats?.rpm || 0) }}</p>
-            <span class="text-xs font-semibold uppercase text-gray-400 dark:text-dark-400">RPM</span>
-          </div>
-          <div class="flex items-baseline gap-1.5">
-            <p class="text-xs font-semibold text-link-700 dark:text-link-300 tabular-nums">{{ formatTokens(stats?.tpm || 0) }}</p>
-            <span class="text-[10px] uppercase text-gray-400 dark:text-dark-400">TPM</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Avg Response Time -->
-    <div data-metric="latency" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-      <div class="flex items-center gap-3">
-        <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
-          <Icon name="clock" size="md" :stroke-width="2" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.avgResponse') }}</p>
-          <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatDuration(stats?.average_duration_ms || 0) }}</p>
-          <p class="text-xs text-gray-400 dark:text-dark-400">{{ t('dashboard.averageTime') }}</p>
-        </div>
-      </div>
-    </div>
+  <div class="workspace-facts" :aria-label="tx('更多账户数据', 'More account statistics')">
+    <RouterLink to="/keys" data-metric="keys"><Icon name="key" size="sm" /><span>{{ t('dashboard.apiKeys') }}</span><strong>{{ stats.active_api_keys }} / {{ stats.total_api_keys }}</strong><small>{{ t('common.active') }}</small><span aria-hidden="true">↗</span></RouterLink>
+    <div data-metric="tokens"><span>{{ t('dashboard.todayTokens') }}</span><strong>{{ formatTokens(stats.today_tokens) }}</strong><small>{{ t('dashboard.cache') }}: {{ formatTokens(stats.today_cache_creation_tokens + stats.today_cache_read_tokens) }}</small></div>
+    <div data-metric="tokens"><span>{{ t('dashboard.totalTokens') }}</span><strong>{{ formatTokens(stats.total_tokens) }}</strong><small>{{ t('dashboard.cache') }}: {{ formatTokens(stats.total_cache_creation_tokens + stats.total_cache_read_tokens) }}</small></div>
+    <div data-metric="performance"><span>RPM / TPM</span><strong>{{ formatTokens(stats.rpm) }} / {{ formatTokens(stats.tpm) }}</strong><small>{{ tx('当前吞吐', 'Current throughput') }}</small></div>
   </div>
-
-  <!-- Row 3: Per-platform breakdown -->
-  <div v-if="!isSimple && platformCards.length > 0" class="card p-4 sm:p-5">
-    <div class="mb-3.5 flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('dashboard.platformBreakdown') }}</h3>
-      <span class="badge badge-gray text-xs">
-        {{ t('dashboard.platformCount', { count: platformCount }) }}
-      </span>
-    </div>
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <div
-        v-for="item in platformCards"
-        :key="item.platform"
-        data-testid="platform-card"
-        :data-platform="item.platform"
-        :class="[
-          'rounded-xl border p-3.5 transition-colors',
-          item.isOther
-            ? 'border-dashed border-gray-300 bg-gray-50 text-gray-900 dark:border-dark-600 dark:bg-dark-800/40 dark:text-white'
-            : 'border-gray-200 bg-white/60 hover:border-gray-300 dark:border-dark-700 dark:bg-dark-800/60 dark:hover:border-dark-500'
-        ]"
-      >
-        <div class="flex items-center justify-between gap-2">
-          <span class="truncate text-sm font-semibold text-gray-900 dark:text-white">
-            {{ item.isOther ? t('dashboard.platformOther') : platformLabel(item.platform) }}
-          </span>
-          <span class="shrink-0 font-mono text-sm font-semibold tabular-nums text-primary-700 dark:text-primary-300" :title="t('dashboard.actual')">
-            ${{ formatCost(item.total_actual_cost) }}
-          </span>
-        </div>
-        <div class="mt-2.5 space-y-1.5 text-xs">
-          <div class="flex items-center justify-between">
-            <span class="text-gray-500 dark:text-dark-300">{{ t('dashboard.todayCost') }}</span>
-            <span class="font-mono font-medium tabular-nums text-gray-900 dark:text-white">${{ formatCost(item.today_actual_cost) }}</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-gray-500 dark:text-dark-300">{{ t('dashboard.requests') }}</span>
-            <span class="font-mono tabular-nums text-gray-600 dark:text-dark-200">
-              {{ item.total_requests > 0 ? formatNumber(item.total_requests) : '-' }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-gray-500 dark:text-dark-300">{{ t('dashboard.tokens') }}</span>
-            <span class="font-mono tabular-nums text-gray-600 dark:text-dark-200">
-              {{ item.total_tokens > 0 ? formatTokens(item.total_tokens) : '-' }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Quota 区 -->
-        <div v-if="hasAnyLimit(item.quota) && !item.isOther" class="mt-3.5 space-y-2 border-t border-gray-100 pt-2.5 dark:border-dark-700">
-          <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400">
-            {{ t('dashboard.platformQuota.title') }}
-          </p>
-          <template v-for="w in (['daily', 'weekly', 'monthly'] as const)" :key="w">
-            <div v-if="quotaVal(item.quota, `${w}_limit_usd`) != null" class="space-y-1">
-              <!-- limit=0：完全禁用 -->
-              <template v-if="(quotaVal(item.quota, `${w}_limit_usd`) as number) === 0">
-                <div class="flex items-center justify-between text-xs">
-                  <span class="text-gray-500 dark:text-dark-300">{{ t(`dashboard.platformQuota.${w}`) }}</span>
-                  <span class="font-mono text-xs font-semibold text-err-600 dark:text-err-400">{{ t('dashboard.platformQuota.disabled') }}</span>
-                </div>
-                <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700">
-                  <div class="h-full w-full rounded-full bg-err-500" />
-                </div>
-              </template>
-              <!-- limit>0：正常用量进度条 -->
-              <template v-else>
-                <div class="flex items-center justify-between text-xs">
-                  <span class="text-gray-500 dark:text-dark-300">{{ t(`dashboard.platformQuota.${w}`) }}</span>
-                  <span class="font-mono text-xs tabular-nums text-gray-900 dark:text-white">
-                    ${{ formatUsd((quotaVal(item.quota, `${w}_usage_usd`) as number) ?? 0) }} / ${{ formatUsd(quotaVal(item.quota, `${w}_limit_usd`) as number) }}
-                  </span>
-                </div>
-                <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700">
-                  <div
-                    class="h-full rounded-full transition-[width] duration-300"
-                    :class="quotaBarClass(calcPercent((quotaVal(item.quota, `${w}_usage_usd`) as number) ?? 0, quotaVal(item.quota, `${w}_limit_usd`) as number))"
-                    :style="{ width: calcPercent((quotaVal(item.quota, `${w}_usage_usd`) as number) ?? 0, quotaVal(item.quota, `${w}_limit_usd`) as number) + '%' }"
-                  />
-                </div>
-                <p v-if="quotaVal(item.quota, `${w}_window_resets_at`)" class="text-[10px] text-gray-400 dark:text-dark-400">
-                  {{ t('dashboard.platformQuota.resetsAt', { time: formatResetTime(quotaVal(item.quota, `${w}_window_resets_at`) as string) }) }}
-                </p>
-              </template>
+  <section v-if="!isSimple && platformCards.length" class="workspace-platforms">
+    <header class="workspace-section-title"><div><p class="portal-eyebrow">CAPACITY</p><h2>{{ t('dashboard.platformBreakdown') }}</h2></div><span class="portal-tag">{{ t('dashboard.platformCount', { count: platformCount }) }}</span></header>
+    <div class="workspace-platform-grid">
+      <article v-for="item in platformCards" :key="item.platform" data-testid="platform-card" :data-platform="item.platform" class="workspace-platform" :class="{ 'workspace-platform-other': item.isOther }">
+        <header><span class="platform-ink-dot" aria-hidden="true"></span><h3>{{ item.isOther ? t('dashboard.platformOther') : platformLabel(item.platform) }}</h3><strong :title="t('dashboard.actual')">${{ formatCost(item.total_actual_cost) }}</strong></header>
+        <dl><div><dt>{{ t('dashboard.todayCost') }}</dt><dd>${{ formatCost(item.today_actual_cost) }}</dd></div><div><dt>{{ t('dashboard.requests') }}</dt><dd>{{ item.total_requests > 0 ? formatNumber(item.total_requests) : '—' }}</dd></div><div><dt>{{ t('dashboard.tokens') }}</dt><dd>{{ item.total_tokens > 0 ? formatTokens(item.total_tokens) : '—' }}</dd></div></dl>
+        <div v-if="hasAnyLimit(item.quota) && !item.isOther" class="workspace-quotas">
+          <h4>{{ t('dashboard.platformQuota.title') }}</h4>
+          <div v-for="w in (['daily', 'weekly', 'monthly'] as const)" :key="w" class="workspace-quota-row">
+            <div class="workspace-quota-copy"><span>{{ t(`dashboard.platformQuota.${w}`) }}</span>
+              <strong v-if="quotaVal(item.quota, `${w}_limit_usd`) == null">{{ tx('无限制', 'Unlimited') }}</strong>
+              <strong v-else-if="quotaVal(item.quota, `${w}_limit_usd`) === 0" class="quota-disabled">{{ t('dashboard.platformQuota.disabled') }}</strong>
+              <strong v-else>${{ formatUsd(Number(quotaVal(item.quota, `${w}_usage_usd`)) || 0) }} / ${{ formatUsd(Number(quotaVal(item.quota, `${w}_limit_usd`))) }}</strong>
+              <small v-if="quotaVal(item.quota, `${w}_window_resets_at`)">{{ t('dashboard.platformQuota.resetsAt', { time: formatResetTime(String(quotaVal(item.quota, `${w}_window_resets_at`))) }) }}</small>
             </div>
-          </template>
+            <div v-if="Number(quotaVal(item.quota, `${w}_limit_usd`)) > 0" class="quota-vessel" role="progressbar" :aria-label="`${platformLabel(item.platform)} ${t(`dashboard.platformQuota.${w}`)}`" :aria-valuenow="calcPercent(Number(quotaVal(item.quota, `${w}_usage_usd`)) || 0, Number(quotaVal(item.quota, `${w}_limit_usd`)))" :aria-valuemin="0" :aria-valuemax="100"><span :style="{ height: calcPercent(Number(quotaVal(item.quota, `${w}_usage_usd`)) || 0, Number(quotaVal(item.quota, `${w}_limit_usd`))) + '%' }"></span></div>
+          </div>
         </div>
-      </div>
+        <p v-else-if="!item.isOther" class="workspace-unlimited">{{ platformQuotas === null ? tx('额度信息暂不可用', 'Quota information unavailable') : `${tx('平台额度', 'Platform quota')} · ${tx('无限制', 'Unlimited')}` }}</p>
+      </article>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -255,7 +75,8 @@ const props = defineProps<{
   isSimple: boolean
   platformQuotas?: PlatformQuotaItem[] | null
 }>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const tx = (zh: string, en: string) => locale?.value.startsWith('zh') ? zh : en
 
 const PLATFORM_LABELS: Record<string, string> = {
   anthropic: 'Claude',
@@ -361,12 +182,6 @@ function hasAnyLimit(q: PlatformQuotaItem | undefined): boolean {
 function calcPercent(usage: number, limit: number): number {
   if (!limit || limit <= 0) return 0
   return Math.min(100, Math.max(0, Math.round((usage / limit) * 100)))
-}
-
-function quotaBarClass(p: number): string {
-  if (p >= 95) return 'bg-red-500'
-  if (p >= 75) return 'bg-amber-500'
-  return 'bg-green-500'
 }
 
 // 与 formatBalance 一致使用 Intl.NumberFormat 做半偶舍入，避免 toFixed 在不同 JS 引擎

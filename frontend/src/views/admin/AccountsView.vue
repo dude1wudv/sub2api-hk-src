@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="admin-page admin-page--resources" data-admin-page="accounts">
     <TablePageLayout page-scroll>
       <template #filters>
         <div class="flex flex-wrap-reverse items-start justify-between gap-3">
@@ -173,6 +173,11 @@
           >
             {{ t('admin.accounts.listPendingSyncAction') }}
           </button>
+        </div>
+        <div class="admin-list-status" role="status">
+          <span class="admin-list-status-count"><Icon name="server" size="sm" />{{ t('common.total') }} <strong>{{ loading ? '—' : pagination.total }}</strong></span>
+          <span v-if="selIds.length" class="admin-list-status-selection">{{ t('admin.accounts.selectedCount', { count: selIds.length }) }}</span>
+          <span v-if="params.status" class="admin-list-status-filter">{{ accountStatusLabel }}</span>
         </div>
         <details class="admin-resource-summary" :open="!!activeQuotaPool">
         <summary>{{ t('admin.accounts.summary.statusTitle') }} · {{ t('admin.accounts.quotaPools.oauthTitle') }}</summary>
@@ -721,6 +726,7 @@ import Disclosure from '@/components/common/Disclosure.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, toRaw, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { adminAPI } from '@/api/admin'
@@ -813,6 +819,7 @@ const submitMirasimImport = async (options: MirasimImportOptions) => {
 }
 
 const proxies = ref<AccountProxy[]>([])
+const route = useRoute()
 const groups = ref<AdminGroup[]>([])
 const accountSummary = ref<AccountSummary | null>(null)
 const quotaPoolSummary = ref<AccountSummary | null>(null)
@@ -1756,6 +1763,25 @@ const handleSort = (key: string, order: AccountSortOrder) => {
   pendingTodayStatsRefresh.value = true
   load()
 }
+
+const accountRouteStatuses = new Set(['active', 'inactive', 'error', 'rate_limited', 'temp_unschedulable', 'unschedulable'])
+const accountStatusKeys: Record<string, string> = { rate_limited: 'rateLimited', temp_unschedulable: 'tempUnschedulable' }
+const accountStatusLabel = computed(() => t(`admin.accounts.status.${accountStatusKeys[String(params.status)] || params.status}`))
+const applyRouteStatus = () => {
+  const raw = route?.query.status
+  const status = Array.isArray(raw) ? raw.find(value => typeof value === 'string') : raw
+  Object.assign(params, {
+    platform: '', type: '', status: typeof status === 'string' && accountRouteStatuses.has(status) ? status : '',
+    privacy_mode: '', group: '', search: ''
+  })
+  pagination.page = 1
+  clearSelection()
+}
+
+watch(() => route?.query.status, () => {
+  applyRouteStatus()
+  void load()
+})
 
 watch(loading, (isLoading, wasLoading) => {
   if (wasLoading && !isLoading) {
@@ -2951,6 +2977,7 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 onMounted(async () => {
+  applyRouteStatus()
   if (typeof BroadcastChannel !== 'undefined') {
     mirasimChannel = new BroadcastChannel('sub2api-mirasim-oauth')
     mirasimChannel.onmessage = () => { void reload() }

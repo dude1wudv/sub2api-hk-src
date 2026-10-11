@@ -3,9 +3,9 @@
     <iframe v-if="/^https?:\/\//.test(homeContent.trim())" :src="homeContent.trim()" :title="text('自定义首页','Custom homepage')" class="h-screen w-full border-0" allowfullscreen />
     <div v-else v-html="homeContent" />
   </div>
-  <div v-else class="patrick-surface bai-home" :data-testid="compact ? 'compact-home' : 'patrick-home'" @keydown.esc="menuOpen = false; servicesOpen = false">
+  <div v-else class="patrick-surface ink-home" :data-testid="compact ? 'compact-home' : 'patrick-home'" @keydown.esc="closeMenu(); servicesOpen = false">
     <a href="#home-main" class="home-skip">{{ text('跳到主要内容','Skip to content') }}</a>
-    <div class="home-strip"><span>OpenAI API</span><span>Anthropic API</span><span>{{ text('一个入口，连接模型','One API. More models.') }}</span></div>
+    <div class="home-strip"><span class="home-strip-dot" aria-hidden="true" /><span>{{ text('一个入口，让灵感连上模型','A connection for every idea') }}</span><span>OPENAI / ANTHROPIC</span></div>
     <header class="home-header">
       <router-link to="/home" aria-label="patrickapi home"><PatrickBrand /></router-link>
       <nav class="home-nav" :aria-label="text('主导航','Main navigation')">
@@ -25,9 +25,9 @@
         <ColorModeToggle />
         <button class="home-language" @click="changeLanguage">{{ zh ? 'CN' : 'EN' }}<Icon name="chevronDown" size="xs" /></button>
         <router-link :to="consolePath" class="home-try" data-testid="home-console">{{ auth.isAuthenticated ? text('控制台','CONSOLE') : text('开始使用','TRY PATRICKAPI') }}</router-link>
-        <button class="home-menu-toggle" :aria-label="text('打开菜单','Open menu')" :aria-expanded="menuOpen" @click="menuOpen = !menuOpen"><Icon :name="menuOpen ? 'x' : 'menu'" size="md" /></button>
+        <button ref="menuToggle" class="home-menu-toggle" aria-controls="home-mobile-navigation" :aria-label="text('打开菜单','Open menu')" :aria-expanded="menuOpen" @click="toggleMenu"><Icon :name="menuOpen ? 'x' : 'menu'" size="md" /></button>
       </div>
-      <nav v-if="menuOpen" class="home-mobile-nav" :aria-label="text('移动导航','Mobile navigation')">
+      <nav v-if="menuOpen" id="home-mobile-navigation" ref="mobileNav" class="home-mobile-nav" :aria-label="text('移动导航','Mobile navigation')">
         <router-link :to="consolePath">{{ text('API 服务','API services') }}<Icon name="arrowRight" size="sm" /></router-link>
         <router-link v-if="modelPlazaEnabled" to="/model-plaza">{{ text('模型与价格','Models & pricing') }}</router-link>
         <router-link v-if="!auth.isSimpleMode" to="/purchase">{{ text('充值','Top up') }}</router-link><router-link v-if="subscriptionsEnabled && !auth.isSimpleMode" to="/subscriptions">{{ text('订阅','Subscriptions') }}</router-link>
@@ -35,33 +35,46 @@
         <router-link to="/key-usage">{{ text('用量查询','Usage lookup') }}</router-link>
       </nav>
     </header>
-    <main id="home-main">
+    <main id="home-main" :inert="menuOpen || undefined">
       <section class="home-hero" :class="{ 'is-compact':compact }">
-        <div class="home-hero-center">
-          <router-link :to="consolePath" class="home-notice"><Icon name="terminal" size="sm" /><span>{{ text('统一 API 接入，让模型服务你的下一步。','One API for your next idea.') }}</span><Icon name="chevronRight" size="xs" /></router-link>
-          <h1>patrickapi</h1>
+        <div class="home-hero-copy">
+          <p class="home-eyebrow"><span aria-hidden="true" />PATRICKAPI · {{ text('为创造而连接', 'CONNECTED TO CREATE') }}</p>
+          <h1>{{ text('让想法，', 'Your ideas.') }}<br /><span>{{ text('直接运行。', 'In motion.') }}</span></h1>
+          <p class="home-intro">{{ text('从一行代码，到下一件作品。连接你需要的模型，把时间留给真正想创造的事。', 'From a line of code to your next creation. Connect the models you need, and make room for what comes next.') }}</p>
+          <div class="home-hero-actions">
+            <router-link v-slot="{ href, navigate }" :to="auth.isAuthenticated ? '/keys?create=1' : '/login'" custom><InkSurface as="a" :href="href" magnetic class="home-primary-action" @click="navigate"><span>{{ text('开始接入', 'Start building') }}</span><span class="home-action-arrow" aria-hidden="true">↗</span></InkSurface></router-link>
+            <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="home-secondary-action">{{ text('阅读文档', 'Read the docs') }}<Icon name="arrowRight" size="sm" /></a>
+            <a v-else href="#home-examples" class="home-secondary-action">{{ text('看看调用示例', 'Explore an example') }}<Icon name="arrowRight" size="sm" /></a>
+          </div>
           <form class="home-entry" @submit.prevent="enterApi">
-            <input v-model="modelQuery" :aria-label="text('搜索模型','Search models')" :placeholder="text('你想接入什么模型？','Which model would you like to use?')" />
-            <button :aria-label="text('进入控制台','Open console')" type="submit"><Icon name="arrowRight" size="lg" /></button>
+            <Icon name="search" size="sm" aria-hidden="true" />
+            <input v-model="modelQuery" :aria-label="text('搜索模型','Search models')" :placeholder="text('想用哪个模型？','Find your model…')" />
+            <button :aria-label="text('搜索并接入','Find and connect')" type="submit"><Icon name="arrowRight" size="md" /></button>
           </form>
-          <div class="home-endpoint"><code>{{ openAIBase }}</code><button :aria-label="text('复制 API 地址','Copy API base URL')" @click="copyEndpoint"><Icon :name="copied ? 'check' : 'copy'" size="sm" /></button></div>
+          <p class="home-small-note">{{ text('保留熟悉的 SDK，选择适合你的协议。', 'Your familiar SDK. Your preferred protocol.') }}</p>
         </div>
-        <a v-if="!compact" href="#home-services" class="home-vision"><span aria-hidden="true">✳</span>{{ text('让每一次调用，都通向更多可能','A world of possibilities. One API.') }}</a>
+        <div class="home-hero-visual">
+          <InkConnection v-model:protocol="protocol" />
+          <div class="home-endpoint"><span>{{ protocol === 'openai' ? 'OpenAI' : 'Anthropic' }} Base URL</span><code>{{ baseURL }}</code><button type="button" :aria-label="copied ? text('已复制接口地址','API base URL copied') : text('复制 API 地址','Copy API base URL')" @click="copyEndpoint"><Icon :name="copied ? 'check' : 'copy'" size="sm" /><span v-if="copied" role="status">{{ text('已复制','Copied') }}</span></button></div>
+        </div>
+      </section>
+      <section id="home-examples" class="home-examples">
+        <div class="home-section-intro"><p class="home-eyebrow">02 — MAKE IT YOURS</p><h2>{{ text('下一步，写下你的第一行。', 'Make the next line yours.') }}</h2><p>{{ text('切换协议，接口地址和示例会一起变化。', 'Switch protocols. The endpoint and example follow along.') }}</p></div>
+        <PortalApiExamples v-model:model="exampleModel" v-model:protocol="protocol" />
       </section>
       <section v-if="!compact" id="home-services" class="home-services">
-        <h2>{{ text('一个 API，连接你的工作方式。','One API. Built around your work.') }}</h2>
+        <div class="home-section-intro"><p class="home-eyebrow">03 — YOUR WORKSPACE</p><h2>{{ text('创造有空间，调用有回响。', 'Room to create. Clarity to continue.') }}</h2></div>
         <div class="home-service-links">
-          <router-link :to="consolePath"><Icon name="terminal" size="lg" /><h3>{{ text('API 接入','API access') }}</h3><p>{{ text('选择模型，创建密钥，开始你的第一次请求。','Choose a model, create a key and send your first request.') }}</p><span>{{ text('开始接入','Get started') }} →</span></router-link>
-          <router-link to="/usage"><Icon name="chart" size="lg" /><h3>{{ text('用量信息','Usage') }}</h3><p>{{ text('查看每一次调用的 Token、费用与延迟。','Understand tokens, costs and latency for every request.') }}</p><span>{{ text('查看用量','View usage') }} →</span></router-link>
-          <router-link to="/profile"><Icon name="user" size="lg" /><h3>{{ text('账户管理','Your account') }}</h3><p>{{ text('余额、订阅和账户设置，集中在一处。','Manage balance, subscriptions and settings in one place.') }}</p><span>{{ text('管理账户','Manage account') }} →</span></router-link>
+          <InkSurface v-for="item in serviceCards" :key="item.to" interactive class="home-service-card"><router-link :to="item.to"><span class="home-service-number">{{ item.number }}<Icon :name="item.icon" size="md" /></span><h3>{{ item.title }}</h3><p>{{ item.description }}</p><span class="home-service-action">{{ item.action }}<Icon name="arrowRight" size="sm" /></span></router-link></InkSurface>
         </div>
       </section>
     </main>
-    <footer class="home-footer"><PatrickBrand /><span>© {{ new Date().getFullYear() }} patrickapi</span><router-link to="/key-usage">{{ text('用量查询','Usage lookup') }}</router-link><a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer">{{ text('文档','Docs') }}</a></footer>
+    <footer class="home-footer" :inert="menuOpen || undefined"><PatrickBrand /><MotionPreferenceToggle show-label /><span>© {{ new Date().getFullYear() }} patrickapi</span><router-link to="/key-usage">{{ text('用量查询','Usage lookup') }}</router-link><a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer">{{ text('文档','Docs') }}</a></footer>
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useMediaQuery } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { setLocale } from '@/i18n'
@@ -69,6 +82,11 @@ import { useAuthStore, useAppStore } from '@/stores'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ColorModeToggle from '@/components/common/ColorModeToggle.vue'
+import MotionPreferenceToggle from '@/components/common/MotionPreferenceToggle.vue'
+import InkSurface from '@/components/common/InkSurface.vue'
+import InkConnection from '@/components/brand/InkConnection.vue'
+import PortalApiExamples from '@/components/portal/PortalApiExamples.vue'
+import { useScrollLock } from '@/composables/useScrollLock'
 import { useClipboard } from '@/composables/useClipboard'
 import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
 import { sanitizeUrl } from '@/utils/url'
@@ -80,16 +98,26 @@ const text = (cn: string, en: string) => zh.value ? cn : en
 const auth = useAuthStore()
 const app = useAppStore()
 const router = useRouter()
-const { openAIBase } = usePatrickApiBase()
+const { apiRoot, openAIBase } = usePatrickApiBase()
+const protocol = ref<'openai' | 'anthropic'>('openai')
+const exampleModel = ref('')
+const baseURL = computed(() => protocol.value === 'openai' ? openAIBase.value : apiRoot.value)
 const { copyToClipboard } = useClipboard()
 const menuOpen = ref(false)
+const menuToggle = ref<HTMLButtonElement>()
+const mobileNav = ref<HTMLElement>()
+const wideNavigation = useMediaQuery('(min-width: 961px)')
+useScrollLock(menuOpen)
+function closeMenu() { const restore = menuOpen.value; menuOpen.value = false; if (restore) void nextTick(() => menuToggle.value?.focus()) }
+function toggleMenu() { if (menuOpen.value) closeMenu(); else { menuOpen.value = true; void nextTick(() => mobileNav.value?.querySelector<HTMLElement>('a')?.focus()) } }
+watch(wideNavigation, value => { if (value) menuOpen.value = false })
 const servicesOpen = ref(false)
 const modelQuery = ref('')
 const copied = ref(false)
 const homeContent = computed(() => (app.cachedPublicSettings?.home_content || '').trim())
 const compact = computed(() => app.cachedPublicSettings?.compact_home_enabled === true)
 const docUrl = computed(() => sanitizeUrl(app.cachedPublicSettings?.doc_url || app.docUrl || ''))
-const consolePath = computed(() => !auth.isAuthenticated ? '/login' : auth.isAdmin ? '/admin/dashboard' : '/keys')
+const consolePath = computed(() => !auth.isAuthenticated ? '/login' : auth.isAdmin ? '/admin/dashboard' : '/dashboard')
 const modelPlazaEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza) && (auth.isAuthenticated || app.cachedPublicSettings?.model_plaza_require_auth !== true))
 const subscriptionsEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.subscription))
 function changeLanguage() { setLocale(zh.value ? 'en' : 'zh') }
@@ -97,6 +125,28 @@ function enterApi() {
   const model = modelQuery.value.trim()
   void router.push(model && modelPlazaEnabled.value ? { path:'/model-plaza', query:{ model, ...(auth.isAuthenticated ? { embedded:'1' } : {}) } } : { path:'/keys' })
 }
-async function copyEndpoint() { copied.value = await copyToClipboard(openAIBase.value) }
+let copyTimer: ReturnType<typeof setTimeout> | undefined
+let copyRequest = 0
+function resetCopy() {
+  copyRequest++
+  if (copyTimer) clearTimeout(copyTimer)
+  copyTimer = undefined
+  copied.value = false
+}
+async function copyEndpoint() {
+  resetCopy()
+  const request = copyRequest
+  const success = await copyToClipboard(baseURL.value)
+  if (request !== copyRequest) return
+  copied.value = success
+  if (copied.value) copyTimer = setTimeout(() => { copied.value = false }, 2200)
+}
+watch(baseURL, resetCopy)
+onBeforeUnmount(resetCopy)
+const serviceCards = computed(() => [
+  { number:'01', to:'/keys', icon:'key' as const, title:text('把连接握在手里', 'A connection of your own'), description:text('创建密钥，选择分组。让模型成为你工作流的一部分。', 'Create a key, choose a group, and make models part of your workflow.'), action:text('管理密钥', 'Manage keys') },
+  { number:'02', to:'/usage', icon:'chart' as const, title:text('每次调用，都清楚', 'Every request, in focus'), description:text('费用、Token 与耗时。所有调用细节，随时有据可查。', 'Costs, tokens and latency. Follow the details of every request.'), action:text('探索用量', 'Explore usage') },
+  { number:'03', to:'/dashboard', icon:'home' as const, title:text('回到你的工作台', 'Your place to build'), description:text('余额、使用趋势与最近请求。下一步，从这里开始。', 'Your balance, usage trends and recent requests. Your next step starts here.'), action:text('打开概览', 'Open overview') },
+])
 onMounted(() => { auth.checkAuth(); if (!app.publicSettingsLoaded) void app.fetchPublicSettings() })
 </script>

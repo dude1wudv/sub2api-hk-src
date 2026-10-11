@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter, type LocationQuery } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { keysAPI, usageAPI, userGroupsAPI } from '@/api'
 import { useAuthStore } from '@/stores/auth'
@@ -20,12 +21,16 @@ import PortalUsageTable from '@/components/portal/PortalUsageTable.vue'
 import PortalUsageErrorTable from '@/components/portal/PortalUsageErrorTable.vue'
 import PortalUsageDetail from '@/components/portal/PortalUsageDetail.vue'
 import PortalDialog from '@/components/portal/PortalDialog.vue'
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import { parseUsageRoute, usageFiltersQuery, usageDrilldownQuery, validUsageDate, type UsageDrilldown } from './usageRoute'
 
 const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const copy = (cn: string, en: string) => zh.value ? cn : en
 const auth = useAuthStore()
 const app = useAppStore()
+const route = useRoute()
+const router = useRouter()
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 const dates = usageMonthWindow()
 const monthStats = ref<UsageStatsResponse | null>(null)
@@ -57,8 +62,8 @@ const categoryOptions = computed<Record<string, string>>(() => zh.value ? { auth
 function defaultFilters() {
   return { start: dates.currentStart, end: dates.end, key: '', group: '', model: '', requestType: '', billingType: '', billingMode: '', compaction: '', status: '', category: '' }
 }
-const draft = reactive(defaultFilters())
-const applied = ref(defaultFilters())
+const draft = reactive(parseUsageRoute(route.query, defaultFilters()))
+const applied = ref({ ...draft })
 const filtersActive = computed(() => Object.entries(applied.value).some(([key, value]) => value !== defaultFilters()[key as keyof typeof draft]))
 const usageColumns = ref<PortalUsageColumnKey[]>(portalUsageColumns.filter(column => 'default' in column && column.default).map(column => column.key))
 const errorColumns = ref<PortalErrorColumnKey[]>(portalErrorColumns.filter(column => 'default' in column && column.default).map(column => column.key))
@@ -174,7 +179,7 @@ async function loadOptions() {
   optionsError.value = results.some(result => result.status === 'rejected') ? copy('部分筛选候选暂未加载完整，可输入模型名，或重试加载候选。', 'Some filter options could not be loaded. Enter a model name or retry.') : ''
 }
 function applyFilters() {
-  if (!draft.start || !draft.end || !Number.isFinite(Date.parse(draft.start)) || !Number.isFinite(Date.parse(draft.end)) || draft.start > draft.end) {
+  if (!validUsageDate(draft.start) || !validUsageDate(draft.end) || draft.start > draft.end) {
     filterError.value = copy('请选择有效的开始日期和结束日期。', 'Choose a valid start and end date.')
     return
   }
@@ -184,8 +189,26 @@ function applyFilters() {
   pagination.errors.page = 1
   showFilters.value = false
   void loadRows()
+  // The watcher ignores this same filter state; browser history still restores it.
+  void router.push({ path: '/usage', query: usageFiltersQuery(applied.value) })
 }
 function resetFilters() { Object.assign(draft, defaultFilters()); applyFilters() }
+async function drilldown(value: UsageDrilldown) {
+  const query = usageDrilldownQuery(value)
+  const restored = parseUsageRoute(query as LocationQuery, defaultFilters())
+  const alreadyUsage = activeTab.value === 'usage'
+  Object.assign(draft, restored)
+  applied.value = restored
+  pagination.usage.page = 1
+  pagination.errors.page = 1
+  filterError.value = ''
+  activeTab.value = 'usage'
+  // A repeated chart selection can be a duplicate navigation, so reset locally too.
+  if (alreadyUsage) void loadRows()
+  await router.push({ path: '/usage', query, hash: '#usage-records' })
+  await nextTick()
+  document.getElementById('usage-records')?.scrollIntoView({ block: 'start', behavior: 'auto' })
+}
 function changePage(page: number) { pageState.value.page = page; void loadRows() }
 function changePageSize(event: Event) { pageState.value.size = Number((event.target as HTMLSelectElement).value); pageState.value.page = 1; void loadRows() }
 function changeSort(key: string) {
@@ -293,6 +316,16 @@ async function exportCsv() {
 watch(activeTab, () => { showColumns.value = false; void loadRows() })
 watch(errorsEnabled, enabled => { if (!enabled) { closeErrorDetail(); errorDetail.value = null; errorRows.value = []; if (activeTab.value === 'errors') { cancelExport(); activeTab.value = 'usage' } } })
 watch(subscriptionEnabled, enabled => { if (!enabled && applied.value.billingType) { draft.billingType = ''; applied.value.billingType = ''; pagination.usage.page = 1; if (activeTab.value === 'usage') void loadRows() } })
+watch(() => route.query, query => {
+  const restored = parseUsageRoute(query, defaultFilters())
+  if (JSON.stringify(restored) === JSON.stringify(applied.value) && pagination.usage.page === 1 && pagination.errors.page === 1) return
+  Object.assign(draft, restored)
+  applied.value = restored
+  pagination.usage.page = 1
+  pagination.errors.page = 1
+  filterError.value = ''
+  void loadRows()
+})
 onMounted(() => { restoreColumns(); void loadRows(); void loadOverview(); void loadOptions() })
 onBeforeUnmount(() => {
   disposed = true
@@ -309,17 +342,17 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="portal-page usage-page">
-    <h1 class="portal-heading">{{ copy('用量信息', 'Usage information') }}</h1>
+    <PortalPageHeader eyebrow="03 / ACTIVITY" :title="copy('每一次调用，都有迹可循。', 'Every request tells a story.')" :description="copy('从用量趋势到请求明细，找到值得关注的那一次。', 'Explore usage trends, then follow the details of each request.')" />
     <div class="usage-overview">
       <section class="usage-summary"><div><span class="portal-muted">{{ copy('账户余额', 'Account balance') }}</span><strong>{{ auth.user ? formatUsageMoney(auth.user.balance, 2) : '—' }}</strong></div><RouterLink v-if="!auth.isSimpleMode" to="/purchase" class="portal-button">{{ copy('充值', 'Recharge') }}</RouterLink></section>
       <section class="usage-summary"><div><span class="portal-muted">{{ copy('本月消费', 'This month') }}</span><strong>{{ overviewLoading ? '—' : monthStats ? formatUsageMoney(monthStats.total_actual_cost, 2) : '—' }}</strong><small v-if="monthStats && !overviewLoading">{{ formatUsageNumber(monthStats.total_requests) }} {{ copy('次请求', 'requests') }}</small></div><span class="usage-summary-symbol" aria-hidden="true">↗</span></section>
     </div>
     <p v-if="monthError" class="portal-error" role="alert">{{ monthError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></p>
-    <PortalUsageAnalytics />
+    <PortalUsageAnalytics @drilldown="drilldown" />
     <details class="usage-history"><summary>{{ copy('查看过去 12 个月的消费', 'View spending over the last 12 months') }}</summary>
     <section class="usage-monthly" aria-labelledby="usage-monthly-title"><div class="usage-section-heading"><h2 id="usage-monthly-title">{{ copy('每月用量', 'Monthly usage') }}</h2><button class="portal-inline-button" :disabled="overviewLoading" @click="loadOverview">{{ overviewLoading ? copy('加载中…', 'Loading…') : copy('刷新', 'Refresh') }}</button></div><div v-if="overviewLoading" class="usage-chart-loading" role="status">{{ copy('正在加载每月用量…', 'Loading monthly usage…') }}</div><div v-else-if="trendError" class="portal-error" role="alert">{{ trendError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></div><PortalUsageChart v-else :months="months" /></section>
     </details>
-    <section class="usage-records" aria-labelledby="usage-records-title">
+    <section id="usage-records" class="usage-records" aria-labelledby="usage-records-title">
       <div class="usage-section-heading"><h2 id="usage-records-title">{{ copy('明细', 'Details') }}</h2><div class="usage-toolbar"><button class="portal-button secondary" :aria-expanded="showFilters" aria-controls="usage-filters" @click="showFilters = !showFilters">{{ copy('筛选', 'Filters') }}<span v-if="filtersActive" class="usage-filter-dot" :aria-label="copy('已应用筛选', 'Filters applied')"></span></button><button class="portal-button secondary" @click="showColumns = true">{{ copy('显示列', 'Columns') }}</button><button class="portal-button secondary" :disabled="exporting" @click="exportCsv">{{ exporting ? copy('导出中…', 'Exporting…') : copy('导出 CSV', 'Export CSV') }}</button></div></div>
       <div v-if="errorsEnabled" class="usage-record-tabs" role="tablist" :aria-label="copy('明细类别', 'Record type')"><button role="tab" :aria-selected="activeTab === 'usage'" :class="{ active: activeTab === 'usage' }" @click="activeTab = 'usage'">{{ copy('用量记录', 'Usage logs') }}</button><button role="tab" :aria-selected="activeTab === 'errors'" :class="{ active: activeTab === 'errors' }" @click="activeTab = 'errors'">{{ copy('错误请求', 'Error requests') }}</button></div>
       <form v-if="showFilters" id="usage-filters" class="usage-filter-panel" @submit.prevent="applyFilters">
@@ -328,7 +361,7 @@ onBeforeUnmount(() => {
           <template v-else><label class="portal-field">{{ copy('错误分类', 'Error category') }}<select v-model="draft.category"><option value="">{{ copy('全部分类', 'All categories') }}</option><option v-for="(label, key) in categoryOptions" :key="key" :value="key">{{ label }}</option></select></label><label class="portal-field">{{ copy('状态码', 'Status code') }}<select v-model="draft.status"><option value="">{{ copy('全部状态', 'All status codes') }}</option><option v-for="code in COMMON_ERROR_STATUS_CODES" :key="code" :value="String(code)">{{ code }}</option></select></label></template>
         </div><p v-if="optionsError" class="usage-options-note">{{ optionsError }} <button type="button" @click="loadOptions">{{ copy('重试', 'Retry') }}</button></p><p v-if="filterError" class="portal-error" role="alert">{{ filterError }}</p><div class="usage-filter-actions"><span>{{ copy('筛选仅应用于明细', 'Filters apply to details only') }} · {{ timezone }}</span><button class="portal-button secondary" type="button" @click="resetFilters">{{ copy('重置', 'Reset') }}</button><button class="portal-button" type="submit">{{ copy('应用筛选', 'Apply filters') }}</button></div>
       </form>
-      <div class="usage-range"><span>{{ applied.start }} — {{ applied.end }}</span><button class="portal-inline-button" :disabled="rowsLoading" @click="loadRows">{{ copy('刷新明细', 'Refresh details') }}</button></div>
+      <div class="usage-range"><div class="usage-filter-summary"><span>{{ applied.start }} — {{ applied.end }}</span><span v-if="applied.model" class="portal-tag">{{ applied.model }}</span><span v-if="applied.key" class="portal-tag">{{ keys.find(key => String(key.id) === applied.key)?.name || `Key #${applied.key}` }}</span><button v-if="filtersActive" class="portal-inline-button" @click="resetFilters">{{ copy('清除条件', 'Clear filters') }} ×</button></div><button class="portal-inline-button" :disabled="rowsLoading" @click="loadRows">{{ copy('刷新明细', 'Refresh details') }}</button></div>
       <p v-if="exportProgress" class="usage-export-status" role="status">{{ exportProgress }} <button v-if="exporting" @click="cancelExport">{{ copy('取消导出', 'Cancel export') }}</button></p><p v-if="exportError" class="portal-error" role="alert">{{ exportError }}</p>
       <div v-if="rowsLoading" class="usage-list-loading" role="status">{{ copy('正在加载明细…', 'Loading details…') }}</div><p v-else-if="rowsError" class="portal-error" role="alert">{{ rowsError }} <button @click="loadRows">{{ copy('重试', 'Retry') }}</button></p><PortalUsageTable v-else-if="activeTab === 'usage'" :rows="usageRows" :columns="usageColumns" :sort-by="sorting.usage.by" :sort-order="sorting.usage.order" @sort="changeSort" @detail="openDetail" /><PortalUsageErrorTable v-else-if="errorsEnabled" :rows="errorRows" :columns="errorColumns" :sort-by="sorting.errors.by" :sort-order="sorting.errors.order" @sort="changeSort" @detail="openErrorDetail" />
       <div v-if="!rowsError" class="portal-pagination usage-pagination"><label>{{ copy('每页', 'Per page') }}<select :value="pageState.size" :disabled="rowsLoading" @change="changePageSize"><option :value="10">10</option><option :value="20">20</option><option :value="50">50</option></select></label><span class="portal-muted">{{ zh ? `共 ${pageState.total} 条` : `${pageState.total} records` }} · {{ pageState.page }} / {{ totalPages }}</span><button :disabled="rowsLoading || pageState.page <= 1" @click="changePage(pageState.page - 1)" :aria-label="copy('上一页', 'Previous page')">←</button><button :disabled="rowsLoading || pageState.page >= totalPages" @click="changePage(pageState.page + 1)" :aria-label="copy('下一页', 'Next page')">→</button></div>
@@ -340,6 +373,14 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.usage-filter-summary { display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-width:0; }
+.usage-filter-summary .portal-tag { overflow-wrap:anywhere; }
+.usage-records { scroll-margin-top:24px; border:1px solid rgb(var(--line)); border-radius:20px; background:rgb(var(--surface)); padding:24px; }
+.usage-records .usage-section-heading h2 { font-size:19px; font-weight:600; }
+.usage-records .usage-filter-panel { background:rgb(var(--canvas)); }
+.usage-records .usage-range { gap:14px; align-items:flex-start; }
+@media(max-width:767px) { .usage-records { padding:18px 14px; } .usage-filter-summary { font-size:13px; } .usage-range > button { white-space:nowrap; flex-shrink:0; } }
+
 .usage-overview { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 40px; margin-bottom: 28px; }
 .usage-history { margin: 24px 0; border-top: 1px solid rgb(var(--line)); border-bottom: 1px solid rgb(var(--line)); padding: 18px 0; }
 .usage-history > summary { cursor: pointer; font-size: 13px; color: rgb(var(--ink-3)); }

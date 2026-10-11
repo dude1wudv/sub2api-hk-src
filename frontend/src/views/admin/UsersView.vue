@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="admin-page admin-page--resources" data-admin-page="users">
     <TablePageLayout>
       <!-- Single Row: Search, Filters, and Actions -->
       <template #filters>

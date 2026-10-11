@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -15,19 +16,20 @@ const historyVersion = ref(0)
 
 <template>
   <div class="portal-page purchase-page">
+    <PortalPageHeader eyebrow="04 / BALANCE" :title="copy('为下一次创造，补充能量。', 'Ready for what comes next.')" :description="copy('购买、兑换与余额，各有清楚的一步。', 'Purchase a code, redeem it, and keep creating.')" />
     <nav class="purchase-tabs" :aria-label="copy('充值与兑换记录', 'Top up and redemption history')">
       <RouterLink to="/purchase" class="active" aria-current="page">{{ copy('充值', 'Top up') }}</RouterLink>
       <RouterLink to="/orders">{{ copy('兑换记录', 'Redemption history') }}</RouterLink>
     </nav>
 
     <section class="portal-panel purchase-balance" :aria-label="copy('账户余额', 'Account balance')">
-      <div><p>{{ copy('当前余额', 'Current balance') }}</p><strong>{{ balance }}</strong></div>
+      <div><p>{{ copy('当前余额', 'Current balance') }}</p><strong>{{ balance }}</strong><small>{{ copy('可用于按量计费的模型调用', 'Available for pay-as-you-go model requests') }}</small></div>
       <RouterLink to="/usage" class="portal-button secondary">{{ copy('查看用量', 'View usage') }}</RouterLink>
     </section>
 
     <div class="purchase-grid">
       <section class="portal-panel purchase-shop" aria-labelledby="purchase-shop-title">
-        <div class="purchase-step-heading"><span aria-hidden="true">01</span><h1 id="purchase-shop-title">{{ copy('购买兑换码', 'Purchase a code') }}</h1></div>
+        <div class="purchase-step-heading"><span aria-hidden="true">01</span><h2 id="purchase-shop-title">{{ copy('购买兑换码', 'Purchase a code') }}</h2></div>
         <p class="portal-muted">{{ copy('在发卡网 patrickapi 店铺购买兑换码，完成后返回本站兑换。', 'Buy a code from the patrickapi card shop, then return here to redeem it.') }}</p>
         <a :href="PATRICK_CARD_SHOP_URL" target="_blank" rel="noopener noreferrer" class="portal-button purchase-shop-button">
           {{ copy('前往发卡网购买', 'Visit card shop') }} <span aria-hidden="true">↗</span>
@@ -48,16 +50,17 @@ const historyVersion = ref(0)
 
 <style scoped>
 .purchase-tabs { display: flex; gap: 28px; border-bottom: 1px solid rgb(var(--line)); margin-bottom: 28px; }
-.purchase-tabs a { padding: 0 0 15px; color: rgb(var(--ink-3)); font: 22px/1.3 var(--font-sans); text-decoration: none; }
+.purchase-tabs a { padding: 0 0 15px; color: rgb(var(--ink-3)); font:15px/1.5 var(--font-sans); text-decoration: none; }
 .purchase-tabs .active { color: rgb(var(--ink)); border-bottom: 2px solid rgb(var(--ink)); margin-bottom: -1px; }
-.purchase-balance { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 26px; margin-bottom: 24px; }
-.purchase-balance p { margin: 0 0 10px; color: rgb(var(--ink-3)); font-size: 13px; }
-.purchase-balance strong { display: block; color: rgb(var(--ink)); font-size: 30px; line-height: 1.2; font-weight: 400; font-variant-numeric: tabular-nums; }
+.purchase-balance { background:rgb(var(--ink)); color:rgb(var(--canvas)); position:relative; overflow:hidden; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 26px; margin-bottom: 24px; }
+.purchase-balance p { margin:0 0 10px; color:rgb(var(--canvas)); font-size: 13px; }
+.purchase-balance strong { display:block; color:rgb(var(--canvas)); font-size: 30px; line-height: 1.2; font-weight:600; font-variant-numeric:tabular-nums; }
+.purchase-balance small { display:block; margin-top:12px; font-size:13px; color:rgb(var(--canvas)); }
 .purchase-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 24px; }
 .purchase-shop { padding: 26px; }
 .purchase-step-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.purchase-step-heading > span { display: grid; place-items: center; width: 29px; height: 29px; border: 1px solid rgb(var(--line)); border-radius: 50%; font-size: 13px; }
-.purchase-step-heading h1 { margin: 0; font-size: 18px; font-weight: 400; }
+.purchase-step-heading > span { display: grid; place-items: center; width: 29px; height: 29px; background:rgb(var(--brand-moss) / .12); color:rgb(var(--ink)); border:1px solid rgb(var(--brand-moss) / .2); border-radius:45% 50% 55% 45%; font-size:13px; }
+.purchase-step-heading h2 { margin: 0; font-size: 18px; font-weight: 400; }
 .purchase-shop > p { margin: 0; font-size: 13px; line-height: 1.8; }
 .purchase-shop-button { margin-top: 28px; }
 .purchase-shop .purchase-shop-note { margin-top: 14px; color: rgb(var(--ink-3)); font-size: 13px; }

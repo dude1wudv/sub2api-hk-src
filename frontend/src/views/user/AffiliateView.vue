@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <div class="portal-page user-service-page">
+    <PortalPageHeader eyebrow="PARTNER SPACE" :title="t('affiliate.title')" :description="t('affiliate.description')" />
     <div class="space-y-6">
       <div v-if="loading" class="flex justify-center py-12">
         <div
@@ -140,6 +141,7 @@
 </template>
 
 <script setup lang="ts">
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'

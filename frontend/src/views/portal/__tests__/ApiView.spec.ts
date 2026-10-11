@@ -7,6 +7,7 @@ import UseKeyModal from '@/components/keys/UseKeyModal.vue'
 
 const api = vi.hoisted(() => ({ list: vi.fn(), groups: vi.fn(), rates: vi.fn() }))
 const usage = vi.hoisted(() => ({ batch: vi.fn() }))
+const navigation = vi.hoisted(() => ({ route: { path: '/keys', hash: '', query: {} as Record<string, string> }, replace: vi.fn() }))
 const app = vi.hoisted(() => ({
   docUrl: '',
   siteName: 'sub2api',
@@ -25,7 +26,7 @@ vi.mock('@/api/groups', () => ({ userGroupsAPI: { getAvailable: api.groups, getU
 vi.mock('@/stores/app', () => ({ useAppStore: () => app }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ isSimpleMode: false }) }))
 vi.mock('@/composables/useClipboard', () => ({ useClipboard: () => ({ copyToClipboard: vi.fn() }) }))
-vi.mock('vue-router', async () => ({ ...await vi.importActual('vue-router'), useRoute: () => ({ query: {} }), useRouter: () => ({ replace: vi.fn() }) }))
+vi.mock('vue-router', async () => ({ ...await vi.importActual('vue-router'), useRoute: () => navigation.route, useRouter: () => ({ replace: navigation.replace }) }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ locale: { value: 'zh-CN' }, t: (key: string) => key }) }))
 
 function render() {
@@ -38,11 +39,39 @@ function render() {
 describe('API key workspace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    navigation.route.query = {}
     app.cachedPublicSettings.hide_ccs_import_button = false
     api.list.mockResolvedValue({ items: [], total: 0 })
     api.groups.mockResolvedValue([{ id: 7, name: 'OpenAI', rate_multiplier: 1 }])
     api.rates.mockResolvedValue({ 7: 0.7 })
     usage.batch.mockResolvedValue({ stats: {} })
+  })
+
+  it('waits for available groups before opening and consuming a create shortcut', async () => {
+    navigation.route.query = { create: '1', source: 'command' }
+    let finishGroups!: (value: unknown) => void
+    api.groups.mockImplementationOnce(() => new Promise(resolve => { finishGroups = resolve }))
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.getComponent(PortalKeyForm).props('open')).toBe(false)
+    expect(navigation.replace).not.toHaveBeenCalled()
+    finishGroups([{ id: 7, name: 'OpenAI', rate_multiplier: 1 }])
+    await flushPromises()
+    expect(wrapper.getComponent(PortalKeyForm).props('open')).toBe(true)
+    expect(navigation.replace).toHaveBeenCalledOnce()
+    expect(navigation.replace).toHaveBeenCalledWith({ path: '/keys', hash: '', query: { source: 'command' } })
+    wrapper.unmount()
+  })
+
+  it('explains why a creation shortcut is unavailable when there are no groups', async () => {
+    navigation.route.query = { create: '1' }
+    api.groups.mockResolvedValue([])
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.getComponent(PortalKeyForm).props('open')).toBe(false)
+    expect(wrapper.text()).toContain('当前账户没有可绑定分组')
+    expect(navigation.replace).toHaveBeenCalledWith({ path: '/keys', hash: '', query: {} })
+    wrapper.unmount()
   })
 
   it('starts with key management and opens group configuration only on create', async () => {

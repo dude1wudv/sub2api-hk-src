@@ -7,9 +7,10 @@
       <button v-if="overlayOpen" class="admin-icon-button admin-nav-close" :aria-label="t('common.close')" @click="closeNavigation()"><Icon name="x" size="md" /></button>
       <label v-if="!collapsed" class="admin-menu-search"><Icon name="search" size="sm" /><input v-model="query" :placeholder="zh ? '搜索功能…' : 'Search navigation…'" :aria-label="zh ? '搜索功能' : 'Search navigation'" /></label>
       <nav ref="navigation" class="admin-navigation" @scroll="rememberScroll">
+        <ActiveIndicator :container="navigation || null" :active-key="route.path" />
         <section v-for="section in sections" :key="section.id" class="admin-nav-section">
           <h2 v-if="!collapsed">{{ section.label }}</h2>
-          <RouterLink v-for="item in section.items" :key="item.path" :to="item.path" class="admin-nav-item" :class="{ active: route.path === item.path }" :aria-label="item.label" :aria-current="route.path === item.path ? 'page' : undefined" :title="collapsed ? item.label : undefined" :data-nav-path="item.path" :id="item.path === '/admin/accounts' ? 'sidebar-channel-manage' : item.path === '/admin/groups' ? 'sidebar-group-manage' : undefined" @click="closeNavigation()" @pointerenter="prefetch(item.path)" @focus="prefetch(item.path)">
+          <RouterLink v-for="item in section.items" :key="item.path" :to="item.path" class="admin-nav-item" :class="{ active: route.path === item.path }" :aria-label="item.label" :aria-current="route.path === item.path ? 'page' : undefined" :title="collapsed ? item.label : undefined" :data-nav-path="item.path" :data-active-indicator-item="item.path" :id="item.path === '/admin/accounts' ? 'sidebar-channel-manage' : item.path === '/admin/groups' ? 'sidebar-group-manage' : undefined" @click="closeNavigation()" @pointerenter="prefetch(item.path)" @focus="prefetch(item.path)">
             <span v-if="item.iconSvg" class="admin-custom-icon" v-html="sanitizeSvg(item.iconSvg)" /><Icon v-else :name="item.icon" size="md" /><span v-if="!collapsed">{{ item.label }}</span>
           </RouterLink>
         </section>
@@ -31,7 +32,7 @@
       <header class="admin-topbar">
         <button ref="navToggle" class="admin-icon-button" :aria-label="zh ? '展开或收起导航' : 'Toggle navigation'" :aria-expanded="desktop ? !collapsed : overlayOpen" aria-controls="admin-navigation" @click="toggleNavigation"><Icon name="menu" size="md" /></button>
         <div class="admin-breadcrumb"><span>{{ activeSection }}</span><span>/</span><strong>{{ pageTitle }}</strong></div>
-        <div class="admin-topbar-actions"><button type="button" class="admin-icon-button admin-mode-toggle" :aria-label="isDark ? (zh ? '切换至浅色' : 'Switch to light mode') : (zh ? '切换至深色' : 'Switch to dark mode')" :title="isDark ? (zh ? '切换至浅色' : 'Switch to light mode') : (zh ? '切换至深色' : 'Switch to dark mode')" :aria-pressed="isDark" @click="toggleMode"><Icon :name="isDark ? 'sun' : 'moon'" size="md" aria-hidden="true" /></button><LocaleSwitcher /><AnnouncementBell /><div ref="accountMenu" class="admin-account-control" @keydown.esc.stop.prevent="closeAccount"><button ref="accountToggle" type="button" class="admin-avatar" :aria-label="t('nav.profile')" :aria-expanded="accountOpen" aria-controls="admin-account-menu" @click="accountOpen = !accountOpen">{{ initials }}</button><div v-if="accountOpen" id="admin-account-menu" class="admin-account-menu"><p>{{ displayName }}</p><RouterLink to="/profile" @click="accountOpen = false">{{ t('nav.profile') }}</RouterLink><button v-if="!auth.isSimpleMode" @click="replayTour(); accountOpen = false">{{ zh ? '使用引导' : 'Product tour' }}</button><button @click="logout">{{ t('nav.logout') }}</button></div></div></div>
+        <div class="admin-topbar-actions"><WorkspaceCommandPalette :items="commands" /><button type="button" class="admin-icon-button admin-mode-toggle" :aria-label="isDark ? (zh ? '切换至浅色' : 'Switch to light mode') : (zh ? '切换至深色' : 'Switch to dark mode')" :title="isDark ? (zh ? '切换至浅色' : 'Switch to light mode') : (zh ? '切换至深色' : 'Switch to dark mode')" :aria-pressed="isDark" @click="toggleMode"><Icon :name="isDark ? 'sun' : 'moon'" size="md" aria-hidden="true" /></button><LocaleSwitcher /><AnnouncementBell /><div ref="accountMenu" class="admin-account-control" @keydown.esc.stop.prevent="closeAccount"><button ref="accountToggle" type="button" class="admin-avatar" :aria-label="t('nav.profile')" :aria-expanded="accountOpen" aria-controls="admin-account-menu" @click="accountOpen = !accountOpen">{{ initials }}</button><div v-if="accountOpen" id="admin-account-menu" class="admin-account-menu"><p>{{ displayName }}</p><MotionPreferenceToggle show-label /><RouterLink to="/profile" @click="accountOpen = false">{{ t('nav.profile') }}</RouterLink><button v-if="!auth.isSimpleMode" @click="replayTour(); accountOpen = false">{{ zh ? '使用引导' : 'Product tour' }}</button><button @click="logout">{{ t('nav.logout') }}</button></div></div></div>
       </header>
       <main id="admin-content" class="admin-content" tabindex="-1">
         <header v-if="route.path !== '/admin/ops'" class="admin-page-heading"><h1>{{ pageTitle }}</h1><p v-if="pageDescription">{{ pageDescription }}</p></header>
@@ -51,6 +52,12 @@ import Icon from '@/components/icons/Icon.vue'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
+import ActiveIndicator from '@/components/common/ActiveIndicator.vue'
+import WorkspaceCommandPalette from '@/components/common/WorkspaceCommandPalette.vue'
+import MotionPreferenceToggle from '@/components/common/MotionPreferenceToggle.vue'
+import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
+import { useClipboard } from '@/composables/useClipboard'
+import type { WorkspaceCommand } from '@/utils/workspaceCommands'
 import { adminNavigation, visibleAdminNavigation, type AdminIcon } from '@/utils/adminNavigation'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { sanitizeSvg } from '@/utils/sanitize'
@@ -86,7 +93,7 @@ const docUrl = computed(() => sanitizeUrl(app.docUrl))
 const displayName = computed(() => auth.user?.username || auth.user?.email?.split('@')[0] || 'Admin')
 const initials = computed(() => displayName.value.slice(0, 2).toUpperCase())
 onClickOutside(accountMenu, () => { accountOpen.value = false })
-const sections = computed(() => {
+const navigationSections = computed(() => {
   const groups = visibleAdminNavigation(auth.isSimpleMode, flag => flag === 'ops' ? settings.opsMonitoringEnabled !== false : flag === 'adminPayment' ? settings.paymentEnabled !== false : isFeatureFlagEnabled(FeatureFlags[flag]))
     .map(group => ({ id: group.id, label: zh.value ? group.zh : group.en, items: group.items.map(item => ({ path: item.path, label: t(item.key), icon: item.icon, iconSvg: '' })) }))
   const system = groups.find(group => group.id === 'system')!
@@ -94,8 +101,26 @@ const sections = computed(() => {
   for (const item of [...settings.customMenuItems].filter(item => item.visibility === 'admin').sort((a,b) => a.sort_order - b.sort_order)) {
     system.items.push({ path: `/custom/${item.id}`, label: item.label, icon: 'document' as AdminIcon, iconSvg: item.icon_svg || '' })
   }
+  return groups
+})
+const sections = computed(() => {
+  const groups = navigationSections.value
   const q = query.value.trim().toLocaleLowerCase()
   return groups.map(group => ({ ...group, items: group.items.filter(item => `${item.label} ${item.path}`.toLocaleLowerCase().includes(q)) })).filter(group => group.items.length)
+})
+const { openAIBase } = usePatrickApiBase()
+const { copyToClipboard } = useClipboard()
+const commands = computed<WorkspaceCommand[]>(() => {
+  const entries: WorkspaceCommand[] = navigationSections.value.flatMap(section => section.items.map(item => ({ id: item.path, label: item.label, section: section.label, keywords: item.path, to: item.path })))
+  entries.unshift({ id: 'copy-endpoint', label: zh.value ? '复制接口地址' : 'Copy API base URL', section: zh.value ? '快捷操作' : 'Quick actions', keywords: 'api base url', run: async () => { if (!await copyToClipboard(openAIBase.value)) throw new Error('Copy failed') } })
+  if (entries.some(item => item.id === '/keys')) entries.unshift({ id: 'create-key', label: zh.value ? '创建 API 密钥' : 'Create API key', section: zh.value ? '快捷操作' : 'Quick actions', to: '/keys?create=1' })
+  entries.push({ id: 'user-workspace', label: zh.value ? '用户工作区' : 'User workspace', section: zh.value ? '账户' : 'Account', to: '/dashboard' }, { id: 'profile', label: t('nav.profile'), section: zh.value ? '账户' : 'Account', to: '/profile' })
+  if (!auth.isSimpleMode) {
+    entries.push({ id: 'image2', label: t('nav.image2'), section: zh.value ? '外部工具' : 'Tools', href: '/image2/' }, { id: 'helios', label: t('nav.infiniteCanvas'), section: zh.value ? '外部工具' : 'Tools', run: launchHelios })
+    if (canUseBatchImage.value) entries.push({ id: 'batch-image', label: t('nav.batchImage'), section: zh.value ? '工具' : 'Tools', to: '/batch-image' })
+    if (docUrl.value) entries.push({ id: 'docs', label: zh.value ? '开发者文档' : 'Documentation', section: zh.value ? '资源' : 'Resources', href: docUrl.value })
+  }
+  return entries
 })
 const activeSection = computed(() => {
   const group = adminNavigation.find(g => g.items.some(i => i.path === route.path))
@@ -145,6 +170,10 @@ onBeforeUnmount(rememberScroll)
 </script>
 
 <style scoped>
+.admin-navigation { position:relative; isolation:isolate; --active-indicator-fill:rgb(var(--action-bg)); --active-indicator-radius:14px; }
+.admin-navigation .admin-nav-item { position:relative; z-index:1; }
+.admin-navigation .admin-nav-item.active { background:transparent; color:rgb(var(--action-text)); }
+.admin-account-menu :deep(.motion-preference-toggle) { width:100%; justify-content:flex-start; font-size:14px; border-radius:10px; }
 .admin-sidebar { padding-top: env(safe-area-inset-top, 0px); }
 .admin-nav-close { top: calc(10px + env(safe-area-inset-top, 0px)); }
 .admin-sidebar-bottom { padding-bottom: max(14px, env(safe-area-inset-bottom, 0px)); }

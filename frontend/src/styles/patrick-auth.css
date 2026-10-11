@@ -1,4 +1,4 @@
-/* Authentication keeps its existing form contracts on the b.ai reference palette. */
+/* Shared brand/story composition; authentication contracts stay in each form. */
 .patrick-surface.patrick-auth {
   display: flex;
   flex-direction: column;
@@ -6,7 +6,7 @@
   min-height: 100svh;
   color: rgb(var(--ink));
   background: rgb(var(--canvas));
-  font: 14px/1.6 var(--font-sans);
+  font: 15px/1.6 var(--font-sans);
 }
 
 .patrick-auth .pa-header {
@@ -26,10 +26,10 @@
 .patrick-auth .pa-language select:disabled { opacity: .5; cursor: not-allowed; }
 .patrick-auth :is(.pa-brand-link, .pa-nav-link, .pa-language select):focus-visible { outline: 2px solid rgb(var(--focus-ring)); outline-offset: 4px; }
 
-.patrick-auth .pa-main { display: grid; flex: 1; align-items: center; justify-items: center; width: 100%; padding: 54px 20px 80px; }
-.patrick-auth .pa-form-area { width: min(420px, 100%); }
+.patrick-auth .pa-main { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); align-items:start; gap:80px; flex:1; width:min(1160px,calc(100% - 80px)); margin-inline:auto; padding:42px 0 64px; }
+.patrick-auth .pa-form-area { width:100%; max-width:480px; padding-top:8px; }
 .patrick-surface.patrick-auth .pa-form-card { padding: 32px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); background: rgb(var(--surface)); color: rgb(var(--ink)); box-shadow: none; }
-.patrick-auth .pa-form-card > .space-y-6 > .text-center:first-child { text-align: center; margin-bottom: 28px; }
+.patrick-auth .pa-form-card > .space-y-6 > .text-center:first-child { text-align:left; margin-bottom:28px; }
 .patrick-surface.patrick-auth .pa-form-card h2 { color: rgb(var(--ink)); font: 600 26px/1.35 var(--font-sans); letter-spacing: 0; }
 .patrick-auth .pa-form-card > .space-y-6 > .text-center:first-child > p { margin-top: 9px; font-size: 13px; line-height: 1.7; }
 .patrick-surface.patrick-auth .pa-form-card :is([class~="text-gray-400"], [class~="text-gray-500"], [class~="text-gray-600"], .input-hint) { color: rgb(var(--ink-3)); }
@@ -69,7 +69,7 @@
   .patrick-auth .pa-header { min-height: 76px; width: calc(100% - 40px); gap: 14px; }
   .patrick-auth .pa-header-actions { gap: 16px; }
   .patrick-auth .pa-nav-link { font-size: 13px; }
-  .patrick-auth .pa-main { align-items: start; padding: 34px 20px 56px; }
+  .patrick-auth .pa-main { padding:16px 0 40px; }
   .patrick-surface.patrick-auth .pa-form-card { padding: 28px 24px; }
   .patrick-auth .pa-footer { width: calc(100% - 40px); flex-wrap: wrap; justify-content: center; gap: 8px 24px; text-align: center; }
 }
@@ -83,3 +83,15 @@
 .patrick-auth .pa-form-card h2.pa-display-title { font-family: var(--font-display); font-weight: 500; }
 @media(max-width:767px) { .patrick-auth .pa-header-actions { gap:12px; } .patrick-auth .pa-header :is(a,select) { min-height:44px; } }
 @media(max-width:479px) { .patrick-auth .pa-header .patrick-brand__name { display:none; } }
+
+.patrick-auth .pa-story { position:sticky; top:28px; overflow:hidden; min-height:570px; padding:42px; border:1px solid rgb(var(--line)); border-radius:28px 28px 80px 28px; background:rgb(var(--ink)); color:rgb(var(--canvas)); }
+.patrick-auth .pa-story-eyebrow { font:11px/1.5 var(--font-sans); letter-spacing:.07em; opacity:.8; }
+.patrick-auth .pa-story h1 { position:relative; z-index:1; margin-top:34px; font:500 43px/1.4 var(--font-sans); letter-spacing:-.025em; }
+.patrick-auth .pa-story-intro { position:relative; z-index:1; max-width:300px; margin-top:18px; font-size:14px; line-height:1.9; }
+.patrick-auth .pa-story-art { display:block; width:100%; height:270px; margin-top:10px; }
+.patrick-auth .pa-story-drop { fill:rgb(var(--brand-copper)); }.patrick-auth .pa-story-moss { fill:rgb(var(--brand-moss)); }
+.patrick-auth .pa-story-notes { display:flex; align-items:center; gap:13px; font-size:13px; }
+.patrick-auth .pa-story-notes i { width:3px; height:3px; border-radius:50%; background:currentColor; opacity:.7; }
+.patrick-auth .pa-footer { align-items:center; }
+@media(max-width:1100px) { .patrick-auth .pa-main { gap:40px; } .patrick-auth .pa-story { padding:30px; } .patrick-auth .pa-story h1 { font-size:36px; } }
+@media(max-width:767px) { .patrick-auth .pa-main { grid-template-columns:minmax(0,1fr); gap:22px; width:min(480px,calc(100% - 40px)); padding-top:18px; } .patrick-auth .pa-story { position:relative; top:auto; min-height:0; padding:22px 24px; border-radius:20px 20px 42px 20px; } .patrick-auth .pa-story h1 { margin-top:12px; font-size:27px; line-height:1.4; } .patrick-auth .pa-story h1 br { display:none; } .patrick-auth .pa-story-intro { margin-top:10px; font-size:13px; max-width:85%; } .patrick-auth .pa-story-art,.patrick-auth .pa-story-notes { display:none; } .patrick-auth .pa-form-area { padding-top:0; } .patrick-surface.patrick-auth .pa-form-card { padding:26px 22px; } .patrick-auth .pa-footer { padding-top:4px; } }

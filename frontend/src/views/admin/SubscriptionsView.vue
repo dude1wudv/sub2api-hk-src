@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="admin-page admin-page--resources" data-admin-page="subscriptions">
     <TablePageLayout>
       <template #filters>
         <!-- Top Toolbar: Left (search + filters) / Right (actions) -->

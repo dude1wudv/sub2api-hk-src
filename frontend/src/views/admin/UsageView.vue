@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="admin-page admin-page--analysis" data-admin-page="usage">
     <div class="space-y-6">
       <UsageStatsCards :stats="usageStats" />
       <!-- Charts Section -->
@@ -298,7 +298,11 @@ const getGranularityForRange = (start: string, end: string): 'day' | 'hour' => {
 }
 const defaultRange = getLast24HoursRangeDates()
 const startDate = ref(defaultRange.start); const endDate = ref(defaultRange.end)
-const filters = ref<AdminUsageQueryParams>({ user_id: undefined, model: undefined, group_id: undefined, request_type: undefined, native_compaction_v2: null, billing_type: null, start_date: startDate.value, end_date: endDate.value })
+const defaultUsageFilters = (start: string, end: string): AdminUsageQueryParams => ({
+  user_id: undefined, model: undefined, group_id: undefined, request_type: undefined,
+  native_compaction_v2: null, billing_type: null, start_date: start, end_date: end
+})
+const filters = ref<AdminUsageQueryParams>(defaultUsageFilters(startDate.value, endDate.value))
 const pagination = reactive({ page: 1, page_size: getPersistedPageSize(), total: 0 })
 const sortState = reactive({
   sort_by: 'created_at',
@@ -314,27 +318,31 @@ const getNumericQueryValue = (value: string | null | Array<string | null> | unde
   const raw = getSingleQueryValue(value)
   if (!raw) return undefined
   const parsed = Number(raw)
-  return Number.isFinite(parsed) ? parsed : undefined
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined
 }
 
 const applyRouteQueryFilters = () => {
-  const queryStartDate = getSingleQueryValue(route.query.start_date)
-  const queryEndDate = getSingleQueryValue(route.query.end_date)
+  const fallback = getLast24HoursRangeDates()
+  const validDate = (value: string | undefined) => {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined
+    const date = new Date(`${value}T00:00:00Z`)
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : undefined
+  }
+  const queryStartDate = validDate(getSingleQueryValue(route.query.start_date))
+  const queryEndDate = validDate(getSingleQueryValue(route.query.end_date))
   const queryUserId = getNumericQueryValue(route.query.user_id)
-
-  if (queryStartDate) {
-    startDate.value = queryStartDate
+  startDate.value = queryStartDate || fallback.start
+  endDate.value = queryEndDate || fallback.end
+  if (startDate.value > endDate.value) {
+    startDate.value = fallback.start
+    endDate.value = fallback.end
   }
-  if (queryEndDate) {
-    endDate.value = queryEndDate
-  }
-
   filters.value = {
-    ...filters.value,
+    ...defaultUsageFilters(startDate.value, endDate.value),
     user_id: queryUserId,
-    start_date: startDate.value,
-    end_date: endDate.value
+    model: getSingleQueryValue(route.query.model)?.trim() || undefined
   }
+  pagination.page = 1
   granularity.value = getGranularityForRange(startDate.value, endDate.value)
 }
 
@@ -883,6 +891,16 @@ onMounted(() => {
   document.addEventListener('click', handleColumnClickOutside)
 })
 onUnmounted(() => { abortController?.abort(); exportAbortController?.abort(); document.removeEventListener('click', handleColumnClickOutside) })
+
+watch(
+  () => [route.query.start_date, route.query.end_date, route.query.user_id, route.query.model],
+  () => {
+    applyRouteQueryFilters()
+    usageFiltersRef.value?.setUserKeyword?.('')
+    void loadRouteUserFilterLabel()
+    applyFilters()
+  }
+)
 
 watch(modelDistributionSource, (source) => {
   void loadModelStats(source)

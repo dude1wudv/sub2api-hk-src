@@ -10,7 +10,11 @@ const app = reactive({ sidebarScrollTop: 0, docUrl: '', cachedPublicSettings: {}
 const auth = reactive({ isSimpleMode: false, user: { username: 'Admin', email: 'admin@example.test' }, logout: vi.fn() })
 const settings = reactive({ customMenuItems: [], opsMonitoringEnabled: true, paymentEnabled: true, fetch: vi.fn() })
 vi.mock('@/stores', () => ({ useAppStore: () => app, useAuthStore: () => auth, useAdminSettingsStore: () => settings, useOnboardingStore: () => ({ setReplayCallback: vi.fn() }) }))
-vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key, locale: ref('zh') }) }))
+vi.mock('@/stores/app', () => ({ useAppStore: () => app }))
+vi.mock('vue-i18n', async () => {
+  const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
+  return { ...actual, useI18n: () => ({ t: (key: string) => key, locale: ref('zh') }) }
+})
 vi.mock('@vueuse/core', () => ({ useMediaQuery: (query: string) => query === '(min-width: 1200px)' ? desktop : rail, onClickOutside: vi.fn() }))
 vi.mock('@/composables/useColorMode', () => ({ useColorMode: () => ({ isDark, toggleMode }) }))
 vi.mock('@/composables/useBatchImageAccess', () => ({ useBatchImageAccess: () => ({ canUseBatchImage: ref(false), refreshBatchImageAccess: vi.fn() }) }))

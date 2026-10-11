@@ -1,48 +1,32 @@
 <template>
-  <div>
-    <div class="developer-dashboard space-y-6">
-      <section class="workspace-hero">
-        <div>
-          <p class="hero-eyebrow">DEVELOPER WORKSPACE / API COCKPIT</p>
-          <h2>{{ zh ? '你的下一次创造，从这里开始。' : 'Your next idea starts here.' }}</h2>
-          <p class="hero-description">{{ zh ? '密钥、用量与模型，一目了然。把复杂留给平台，把专注留给创造。' : 'Your keys, usage and models, in one clear view. Less administration. More creation.' }}</p>
-          <div class="hero-actions">
-            <router-link to="/keys" class="btn btn-primary"><Icon name="key" size="sm" />{{ t('nav.apiKeys') }}</router-link>
-            <router-link to="/usage" class="btn btn-secondary"><Icon name="chart" size="sm" />{{ t('dashboard.viewUsage') }}</router-link>
-          </div>
-        </div>
-        <div class="hero-instrument">
-          <span>{{ t('dashboard.todayRequests') }}</span>
-          <strong>{{ stats ? stats.today_requests.toLocaleString() : '—' }}</strong>
-          <div class="instrument-rule"></div>
-          <span>{{ zh ? '每一次调用，都是新的可能' : 'Every call, a new possibility' }}</span>
-        </div>
+  <div class="portal-page developer-dashboard">
+    <PortalPageHeader eyebrow="01 / WORKSPACE" :title="zh ? '让创造，自然发生。' : 'A little space for big ideas.'" :description="zh ? '你的接口、用量与下一步，都在这里。' : 'Your connections, your activity, your next move.'">
+      <span class="workspace-today">{{ new Date().toLocaleDateString(locale, { month: 'long', day: 'numeric', weekday: 'short' }) }}</span>
+      <button class="portal-button secondary" :disabled="loading" @click="refreshAll"><Icon name="refresh" size="sm" :class="{ 'animate-spin': loading }" />{{ t('common.refresh') }}</button>
+    </PortalPageHeader>
+    <div v-if="error" role="alert" class="portal-error workspace-error"><p>{{ error }}</p><button class="portal-button secondary" :disabled="loading" @click="refreshAll">{{ zh ? '重试' : 'Retry' }}</button></div>
+    <div v-if="loading && !stats" class="portal-panel flex items-center justify-center py-12" role="status"><LoadingSpinner /></div>
+    <template v-if="stats">
+      <UserDashboardStats :stats="stats" :balance="user?.balance || 0" :is-simple="authStore.isSimpleMode" :platform-quotas="platformQuotas" />
+      <section class="workspace-activity">
+        <header class="workspace-section-title"><div><p class="portal-eyebrow">YOUR ACTIVITY</p><h2>{{ zh ? '看看灵感的轨迹' : 'Follow your activity' }}</h2></div><RouterLink to="/usage" class="portal-inline-button">{{ zh ? '用量明细' : 'Usage details' }} <Icon name="arrowRight" size="sm" /></RouterLink></header>
+        <p v-if="chartError" class="portal-error" role="alert">{{ chartError }} <button @click="loadCharts">{{ zh ? '重试' : 'Retry' }}</button></p>
+        <UserDashboardCharts v-model:startDate="startDate" v-model:endDate="endDate" v-model:granularity="granularity" :loading="loadingCharts" :trend="trendData" :models="modelStats" @dateRangeChange="loadCharts" @granularityChange="loadCharts" @refresh="loadCharts" @drilldown="drilldown" />
       </section>
-      <div class="dashboard-section-heading">
-        <h2>{{ zh ? '账户与用量概览' : 'Account & usage overview' }}</h2>
-        <button class="btn btn-ghost btn-sm" :disabled="loading" @click="refreshAll"><Icon name="refresh" size="sm" :class="{ 'animate-spin': loading }" />{{ t('common.refresh') }}</button>
+      <div class="workspace-bottom-grid">
+        <div class="min-w-0"><p v-if="recentError" class="portal-error" role="alert">{{ recentError }} <button @click="loadRecent">{{ zh ? '重试' : 'Retry' }}</button></p><UserDashboardRecentUsage :data="recentUsage" :loading="loadingUsage" /></div>
+        <UserDashboardQuickActions />
       </div>
-      <div v-if="error" role="alert" class="card flex flex-wrap items-center justify-between gap-3 p-5">
-        <p class="text-sm text-err-600 dark:text-err-300">{{ error }}</p>
-        <button class="btn btn-secondary" :disabled="loading" @click="refreshAll">{{ zh ? '重试' : 'Retry' }}</button>
-      </div>
-      <div v-if="loading && !stats" class="card flex items-center justify-center py-12" role="status"><LoadingSpinner /></div>
-      <template v-if="stats">
-        <UserDashboardStats :stats="stats" :balance="user?.balance || 0" :is-simple="authStore.isSimpleMode" :platform-quotas="platformQuotas" />
-        <div class="dashboard-section-heading"><h2>{{ zh ? '了解你的 API 活动' : 'Understand your API activity' }}</h2><span>USAGE ANALYTICS</span></div>
-        <UserDashboardCharts v-model:startDate="startDate" v-model:endDate="endDate" v-model:granularity="granularity" :loading="loadingCharts" :trend="trendData" :models="modelStats" @dateRangeChange="loadCharts" @granularityChange="loadCharts" @refresh="refreshAll" />
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div class="min-w-0 lg:col-span-2"><UserDashboardRecentUsage :data="recentUsage" :loading="loadingUsage" /></div>
-          <div class="min-w-0 lg:col-span-1"><UserDashboardQuickActions /></div>
-        </div>
-      </template>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import { usageDrilldownQuery, type UsageDrilldown } from '@/views/portal/usageRoute'
 import { useAuthStore } from '@/stores/auth'
 import { usageAPI, type UserDashboardStats as UserStatsType } from '@/api/usage'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -58,6 +42,7 @@ import { formatDateLocalInput } from '@/utils/format'
 const { t, locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const authStore = useAuthStore()
+const router = useRouter()
 const user = computed(() => authStore.user)
 const stats = ref<UserStatsType | null>(null)
 const loading = ref(false)
@@ -72,13 +57,19 @@ const startDate = ref(formatDateLocalInput(new Date(Date.now() - 6 * 86400000)))
 const endDate = ref(formatDateLocalInput(new Date()))
 const granularity = ref('day')
 let chartRequest = 0
+let disposed = false
+const chartError = ref('')
+const recentError = ref('')
+const today = formatDateLocalInput(new Date())
+function drilldown(value: UsageDrilldown) { void router.push({ path: '/usage', query: usageDrilldownQuery(value) }) }
 
 async function loadStats() {
   loading.value = true
   error.value = ''
   try {
     await authStore.refreshUser()
-    stats.value = await usageAPI.getDashboardStats()
+    const data = await usageAPI.getDashboardStats()
+    if (!disposed) stats.value = data
   } catch (cause) {
     error.value = zh.value ? '暂时无法获取账户概览，请重试。' : 'Unable to load your overview. Please try again.'
     console.error('Failed to load dashboard stats:', cause)
@@ -87,24 +78,27 @@ async function loadStats() {
 async function loadCharts() {
   const request = ++chartRequest
   loadingCharts.value = true
+  chartError.value = ''
   try {
     const [trend, models] = await Promise.all([
       usageAPI.getDashboardTrend({ start_date: startDate.value, end_date: endDate.value, granularity: granularity.value as 'day' | 'hour' }),
       usageAPI.getDashboardModels({ start_date: startDate.value, end_date: endDate.value })
     ])
-    if (request !== chartRequest) return
+    if (disposed || request !== chartRequest) return
     trendData.value = trend.trend || []
     modelStats.value = models.models || []
   } catch (cause) {
+    if (!disposed && request === chartRequest) chartError.value = zh.value ? '趋势暂时无法加载，请重试。' : 'Unable to load trends. Please retry.'
     console.error('Failed to load charts:', cause)
   } finally { if (request === chartRequest) loadingCharts.value = false }
 }
 async function loadRecent() {
   loadingUsage.value = true
+  recentError.value = ''
   try {
-    const res = await usageAPI.getByDateRange(startDate.value, endDate.value)
-    recentUsage.value = res.items.slice(0, 5)
-  } catch (cause) { console.error('Failed to load recent usage:', cause) }
+    const res = await usageAPI.getByDateRange(formatDateLocalInput(new Date(Date.now() - 6 * 86400000)), today)
+    if (!disposed) recentUsage.value = res.items.slice(0, 5)
+  } catch (cause) { recentError.value = zh.value ? '最近请求加载失败，请重试。' : 'Unable to load recent requests. Please retry.'; console.error('Failed to load recent usage:', cause) }
   finally { loadingUsage.value = false }
 }
 async function loadPlatformQuotas() {
@@ -113,7 +107,7 @@ async function loadPlatformQuotas() {
     platformQuotas.value = data.platform_quotas ?? []
   } catch (cause) {
     console.warn('Failed to load platform quotas:', cause)
-    platformQuotas.value = []
+    platformQuotas.value = null
   }
 }
 function refreshAll() {
@@ -123,4 +117,5 @@ function refreshAll() {
   void loadPlatformQuotas()
 }
 onMounted(refreshAll)
+onBeforeUnmount(() => { disposed = true; chartRequest++ })
 </script>

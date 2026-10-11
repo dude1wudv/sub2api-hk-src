@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, ref } from 'vue'
+import { defineComponent, reactive, ref } from 'vue'
 
 import UsageView from '../UsageView.vue'
 
@@ -111,9 +111,11 @@ vi.mock('vue-i18n', async () => {
   }
 })
 
+const reactiveRouteQuery = reactive(routeQuery)
+
 vi.mock('vue-router', () => ({
   useRoute: () => ({
-    query: routeQuery
+    query: reactiveRouteQuery
   })
 }))
 
@@ -199,6 +201,37 @@ describe('admin UsageView route filters', () => {
   afterEach(() => {
     Object.keys(routeQuery).forEach((key) => delete routeQuery[key])
     vi.useRealTimers()
+  })
+
+  it('hydrates model drilldown and replaces filters when query changes or is removed', async () => {
+    Object.assign(routeQuery, { start_date: '2026-10-01', end_date: '2026-10-03', model: 'model-a', user_id: '42' })
+    getById.mockResolvedValue({ id: 42, email: 'route-user@test.com' })
+    const wrapper = mountRouteFilteredUsageView()
+    await flushPromises()
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, model: 'model-a', user_id: 42, start_date: '2026-10-01' }), expect.anything())
+    const state = wrapper.vm as any
+    state.filters.group_id = 9
+    state.filters.account_id = 8
+    state.pagination.page = 4
+    reactiveRouteQuery.model = 'model-b'
+    delete reactiveRouteQuery.user_id
+    await flushPromises()
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, model: 'model-b', user_id: undefined }), expect.anything())
+    expect(list.mock.calls.at(-1)?.[0]).not.toHaveProperty('account_id')
+    expect(list.mock.calls.at(-1)?.[0].group_id).toBeUndefined()
+    expect(wrapper.get('[data-test="user-filter-label"]').text()).toBe('')
+    delete reactiveRouteQuery.model
+    delete reactiveRouteQuery.start_date
+    delete reactiveRouteQuery.end_date
+    reactiveRouteQuery.model_source = 'upstream'
+    await flushPromises()
+    expect(list.mock.calls.at(-1)?.[0].model).toBeUndefined()
+    expect(list.mock.calls.at(-1)?.[0].start_date).toBe(formatLocalDate(new Date(Date.now() - 86400000)))
+    // Browser forward navigation restores the original, independent filter state.
+    Object.assign(reactiveRouteQuery, { start_date: '2026-10-01', end_date: '2026-10-03', model: 'model-a', user_id: '42' })
+    await flushPromises()
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, model: 'model-a', user_id: 42 }), expect.anything())
+    wrapper.unmount()
   })
 
   it('shows the routed user while applying user_id to usage requests', async () => {

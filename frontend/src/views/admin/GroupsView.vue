@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="admin-page admin-page--resources" data-admin-page="groups">
     <TablePageLayout>
       <template #filters>
         <div

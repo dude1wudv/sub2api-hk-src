@@ -27,9 +27,10 @@
 
     <!-- Main Content -->
     <main class="pp-main pp-key-main">
+      <section class="pp-key-entry">
       <!-- Hero -->
       <div class="pp-key-hero">
-        <p class="p-eyebrow pp-page-eyebrow">USAGE INSIGHTS</p>
+        <p class="p-eyebrow pp-page-eyebrow">01 / USAGE INSIGHTS</p>
         <h1>
           {{ t('keyUsage.title') }}
         </h1>
@@ -123,6 +124,8 @@
           </div>
         </div>
       </div>
+
+      </section>
 
       <!-- Results Container -->
       <div v-if="showResults" class="pp-key-results">

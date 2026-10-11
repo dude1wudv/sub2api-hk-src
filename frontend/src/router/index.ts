@@ -1,3 +1,4 @@
+import { resolveAuthLanding } from '@/utils/authLanding'
 /**
  * Vue Router configuration for Sub2API frontend
  * Defines all application routes with lazy loading and navigation guards
@@ -197,13 +198,21 @@ const routes: RouteRecordRaw[] = [
 
   // ==================== User Routes ====================
   {
+    path: '/auth/landing',
+    name: 'AuthLanding',
+    component: { render: () => null },
+    // beforeEnter runs after the global guard has restored the authenticated user.
+    beforeEnter: () => useAuthStore().isAdmin ? '/admin/dashboard' : '/dashboard',
+    meta: { requiresAuth: true, title: 'Workspace' }
+  },
+  {
     path: '/',
     redirect: '/home'
   },
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: () => import('@/views/portal/ApiView.vue'),
+    component: () => import('@/views/user/DashboardView.vue'),
     meta: {
       appLayout: true,
       requiresAuth: true,
@@ -895,8 +904,8 @@ router.beforeEach(async (to, _from, next) => {
         next()
         return
       }
-      // Admin users go to admin dashboard, regular users go to user dashboard
-      next(authStore.isAdmin ? '/admin/dashboard' : '/dashboard')
+      // An explicit return path takes priority over the role's default workspace.
+      next(resolveAuthLanding(to.query.redirect, authStore.isAdmin))
       return
     }
     // Model Plaza:公开路由但受「启用开关 + 可选强制登录」双重控制(后端同口径 fail-closed)

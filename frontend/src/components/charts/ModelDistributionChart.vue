@@ -43,7 +43,7 @@
           </button>
         </div>
         <div
-          v-if="showMetricToggle"
+          v-if="showMetricToggle && activeView === 'model_distribution'"
           class="inline-flex rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
         >
           <button
@@ -158,6 +158,7 @@
                     :items="breakdownItems"
                     :loading="breakdownLoading"
                     :show-account-cost="showAccountCost"
+                    :metric="metric"
                   />
                 </td>
               </tr>
@@ -252,6 +253,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
 import type { ModelStat, UserSpendingRankingItem, UserBreakdownItem } from '@/types'
 import { getUserBreakdown } from '@/api/admin/dashboard'
+import { distributionValue, rankChartRows, sortDescending } from '@/utils/chartDistribution'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -351,8 +353,7 @@ const displayModelStats = computed(() => {
       : props.modelStats
   if (!sourceStats?.length) return []
 
-  const metricKey = props.metric === 'actual_cost' ? 'actual_cost' : 'total_tokens'
-  return [...sourceStats].sort((a, b) => toFiniteNumber(b[metricKey]) - toFiniteNumber(a[metricKey]))
+  return rankChartRows(sourceStats, row => distributionValue(row, props.metric), chartColors.value)
 })
 
 const chartData = computed(() => {
@@ -362,8 +363,8 @@ const chartData = computed(() => {
     labels: displayModelStats.value.map((m) => m.model),
     datasets: [
       {
-        data: displayModelStats.value.map((m) => toFiniteNumber(props.metric === 'actual_cost' ? m.actual_cost : m.total_tokens)),
-        backgroundColor: chartColors.value.slice(0, displayModelStats.value.length),
+        data: displayModelStats.value.map((m) => distributionValue(m, props.metric)),
+        backgroundColor: displayModelStats.value.map((m) => m.chartColor),
         borderWidth: 0
       }
     ]
@@ -373,22 +374,16 @@ const chartData = computed(() => {
 const rankingChartData = computed(() => {
   if (!props.rankingItems?.length) return null
 
-  const labels = props.rankingItems.map((item, index) => `#${index + 1} ${getRankingUserLabel(item)}`)
-  const data = props.rankingItems.map((item) => toFiniteNumber(item.actual_cost))
-  const backgroundColor = chartColors.value.slice(0, props.rankingItems.length)
-
-  if (otherRankingItem.value) {
-    labels.push(t('admin.dashboard.spendingRankingOther'))
-    data.push(otherRankingItem.value.actual_cost)
-    backgroundColor.push(chartTheme.value.text)
-  }
-
   return {
-    labels,
+    labels: rankingDisplayItems.value.map((item, index) => item.isOther
+      ? t('admin.dashboard.spendingRankingOther')
+      : `#${index + 1} ${getRankingUserLabel(item)}`),
     datasets: [
       {
-        data,
-        backgroundColor,
+        data: rankingDisplayItems.value.map(item => toFiniteNumber(item.actual_cost)),
+        backgroundColor: rankingDisplayItems.value.map(item => item.isOther
+          ? chartTheme.value.text
+          : chartColors.value[props.rankingItems.indexOf(item) % chartColors.value.length]),
         borderWidth: 0
       }
     ]
@@ -421,9 +416,10 @@ const otherRankingItem = computed<RankingDisplayItem | null>(() => {
 
 const rankingDisplayItems = computed<RankingDisplayItem[]>(() => {
   if (!props.rankingItems?.length) return []
+  const rankedItems = sortDescending(props.rankingItems, item => item.actual_cost)
   return otherRankingItem.value
-    ? [...props.rankingItems, otherRankingItem.value]
-    : [...props.rankingItems]
+    ? [...rankedItems, otherRankingItem.value]
+    : rankedItems
 })
 
 const doughnutOptions = computed(() => ({

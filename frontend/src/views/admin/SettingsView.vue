@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div class="mx-auto max-w-6xl space-y-6">
+  <div class="admin-page admin-page--settings" data-admin-page="settings">
+    <div class="admin-settings-workspace mx-auto max-w-6xl space-y-6">
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center py-12">
         <div
@@ -9,7 +9,7 @@
       </div>
 
       <!-- Settings Form -->
-      <form v-else @submit.prevent="saveSettings" class="space-y-6" novalidate>
+      <form v-else @submit.prevent="saveSettings" class="admin-settings-form space-y-6" novalidate>
         <!-- Tab Navigation -->
         <div class="settings-tabs-shell">
           <nav
@@ -17,11 +17,14 @@
             role="tablist"
             :aria-label="t('admin.settings.title')"
           >
-            <div class="settings-tabs">
+            <div ref="settingsTabContainer" class="settings-tabs">
+              <ActiveIndicator :container="settingsTabContainer" :active-key="activeTab" />
               <button
                 v-for="tab in settingsTabs"
                 :key="tab.key"
                 :id="`settings-tab-${tab.key}`"
+                :data-active-indicator-item="tab.key"
+                :data-active="activeTab === tab.key"
                 type="button"
                 role="tab"
                 :aria-selected="activeTab === tab.key"
@@ -8905,7 +8908,7 @@
         </div>
 
         <!-- Save Button -->
-        <div v-show="activeTab !== 'backup'" class="flex justify-end">
+        <div v-show="activeTab !== 'backup'" class="admin-sticky-submit-bar flex justify-end">
           <button
             type="submit"
             :disabled="saving || loadFailed"
@@ -9017,6 +9020,7 @@ import type {
 } from "@/types";
 import type { ProviderInstance } from "@/types/payment";
 import Icon from "@/components/icons/Icon.vue";
+import ActiveIndicator from "@/components/common/ActiveIndicator.vue";
 import Select, { type SelectOption } from "@/components/common/Select.vue";
 import {
   SITE_BILLING_MODES,
@@ -9105,6 +9109,7 @@ type SettingsTab =
   | "email"
   | "backup";
 const activeTab = ref<SettingsTab>("general");
+const settingsTabContainer = ref<HTMLElement | null>(null);
 const settingsTabs = [
   { key: "general" as SettingsTab, icon: "home" as const },
   { key: "agreement" as SettingsTab, icon: "document" as const },

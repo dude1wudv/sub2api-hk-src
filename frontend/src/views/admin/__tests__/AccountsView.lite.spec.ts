@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
-import { defineComponent } from 'vue'
+import { defineComponent, reactive } from 'vue'
 
 import AccountsView from '../AccountsView.vue'
 import AccountActionMenu from '@/components/admin/account/AccountActionMenu.vue'
+
+const accountRoute = reactive<{ query: Record<string, string> }>({ query: {} })
+vi.mock('vue-router', () => ({ useRoute: () => accountRoute }))
 
 const {
   listAccounts,
@@ -171,6 +174,7 @@ const fullAccount = {
 
 describe('admin AccountsView lite account list', () => {
   beforeEach(() => {
+    accountRoute.query = {}
     localStorage.clear()
     listAccounts.mockReset().mockResolvedValue({ items: [listRow], total: 1, page: 1, page_size: 20, pages: 1 })
     listWithEtag.mockReset().mockResolvedValue({ notModified: true, etag: 'compact-etag', data: null })
@@ -202,6 +206,25 @@ describe('admin AccountsView lite account list', () => {
       expect.objectContaining({ lite: '1' }),
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     )
+    wrapper.unmount()
+  })
+
+  it('applies the routed status on page one and clears unrelated filters on navigation', async () => {
+    accountRoute.query = { status: 'error' }
+    const wrapper = mountView()
+    await flushPromises()
+    expect(listAccounts).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ status: 'error', platform: '', group: '', search: '' }), expect.anything())
+    const filters = wrapper.findComponent({ name: 'AccountTableFilters' })
+    await filters.vm.$emit('update:filters', { platform: 'openai', group: '7', type: 'apikey', status: 'error', search: 'narrow', privacy_mode: 'training_off' })
+    accountRoute.query = { status: 'inactive' }
+    await flushPromises()
+    expect(listAccounts).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ status: 'inactive', platform: '', group: '', type: '', privacy_mode: '', search: '' }), expect.anything())
+    accountRoute.query = {}
+    await flushPromises()
+    expect(listAccounts.mock.calls.at(-1)?.[2].status).toBe('')
+    accountRoute.query = { status: 'error' }
+    await flushPromises()
+    expect(listAccounts.mock.calls.at(-1)?.[2].status).toBe('error')
     wrapper.unmount()
   })
 

@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <div class="portal-page user-service-page">
+    <PortalPageHeader eyebrow="CREATIVE QUEUE" :title="t('nav.batchImage')" :description="portalCopy('组织批量图片任务，让每一个灵感都有进度。', 'Organize your image batches and follow each idea through to completion.')" />
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col gap-3">
@@ -752,8 +753,12 @@
 </template>
 
 <script setup lang="ts">
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+const portalLocale = useI18n().locale
+const portalCopy = (zh: string, en: string) => portalLocale?.value.startsWith('zh') ? zh : en
+
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'

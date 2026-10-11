@@ -7,6 +7,7 @@ import { useAuthStore, useAppStore } from '@/stores'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
 import PortalApiModels from '@/components/portal/PortalApiModels.vue'
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -51,7 +52,7 @@ onBeforeUnmount(() => request?.abort())
   <div class="patrick-surface portal-models" :class="{ 'portal-models-public': !embedded }">
     <header v-if="!embedded" class="portal-models-header"><RouterLink to="/home" aria-label="patrickapi"><PatrickBrand /></RouterLink><RouterLink to="/keys" class="portal-button">{{ text('开始接入', 'Get started') }} →</RouterLink></header>
     <div class="portal-page">
-      <h1 class="portal-heading">{{ text('模型与价格', 'Models & pricing') }}</h1>
+      <PortalPageHeader eyebrow="MODEL LIBRARY" :title="text('找到想法的最佳搭档。', 'Find your idea’s next collaborator.')" :description="text('按平台探索模型，按真实价格选择。所有计费细节，清楚呈现。', 'Explore models by platform. Compare real prices and understand every billing detail.')"><RouterLink v-if="auth.isAuthenticated" to="/keys?create=1" class="portal-button">{{ text('创建密钥', 'Create a key') }} ↗</RouterLink></PortalPageHeader>
       <PortalApiModels v-model:selected-group-id="groupId" v-model:search="search" :groups="data?.groups || []" :description="data?.description || ''" :pricing-enabled="enabled" :loading="loading" :error="error" :server-utc-offset="app.cachedPublicSettings?.server_utc_offset" @retry="load" />
     </div>
   </div>

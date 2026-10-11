@@ -1,8 +1,8 @@
 <template>
-  <div>
+  <div class="admin-page admin-page--settings" data-admin-page="plugins">
     <div class="space-y-6">
       <section
-        class="flex flex-col gap-4 border-b border-gray-200 pb-5 dark:border-dark-700 sm:flex-row sm:items-end sm:justify-between"
+        class="admin-task-header flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
       >
         <div class="min-w-0">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">

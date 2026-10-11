@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-[rgb(var(--canvas))] text-[rgb(var(--ink))]">
+  <div class="legal-reading-page min-h-screen bg-[rgb(var(--canvas))] text-[rgb(var(--ink))]">
     <header class="sticky top-0 z-20 border-b border-gray-200/80 bg-white/80 backdrop-blur-md dark:border-dark-800 dark:bg-dark-900/80">
       <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
         <RouterLink to="/home" class="flex min-w-0 items-center gap-3 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40">
@@ -183,6 +183,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.legal-reading-page { font-family:var(--font-sans); }
+.legal-reading-page > header { background:rgb(var(--surface)); border-color:rgb(var(--line)); backdrop-filter:none; }
+.legal-reading-page > main { width:100%; max-width:960px; }
+.legal-reading-page article { padding:32px 40px; border:1px solid rgb(var(--line)); border-top:3px solid rgb(var(--brand-moss)); border-radius:24px; background:rgb(var(--surface)); }
+.legal-reading-page article h1 { font:600 28px/1.5 var(--font-sans); }
+.legal-reading-page > header a:last-child { border-radius:999px; min-height:44px; }
+@media(max-width:767px) { .legal-reading-page article { padding:24px 18px; border-radius:20px; } .legal-reading-page article h1 { font-size:24px; } }
+
 .legal-document-content {
   line-height: 1.8;
   overflow-wrap: anywhere;

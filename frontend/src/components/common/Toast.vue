@@ -5,28 +5,22 @@
       aria-live="polite"
       aria-atomic="true"
     >
-      <TransitionGroup
-        enter-active-class="transition ease-out duration-300"
-        enter-from-class="opacity-0 translate-x-full"
-        enter-to-class="opacity-100 translate-x-0"
-        leave-active-class="transition ease-in duration-200"
-        leave-from-class="opacity-100 translate-x-0"
-        leave-to-class="opacity-0 translate-x-full"
-      >
+      <TransitionGroup name="toast" :css="!reducedMotion">
         <div
           v-for="toast in toasts"
           :key="toast.id"
           :class="[
             'pointer-events-auto min-w-[320px] max-w-md overflow-hidden rounded-lg shadow-lg',
             'bg-white dark:bg-dark-800',
-            'border-l-4',
+            'border-l-4 toast-notification',
+            { 'toast-notification--reduced': reducedMotion },
             getBorderColor(toast.type)
           ]"
         >
           <div class="p-4">
             <div class="flex items-start gap-3">
               <!-- Icon -->
-              <div class="mt-0.5 flex-shrink-0">
+              <div class="mt-0.5 flex-shrink-0" :class="{ 'toast-success-mark': successFeedback.has(toast.id) }" @animationend="successFeedback.delete(toast.id)">
                 <Icon
                   :name="getToastIconName(toast.type)"
                   size="md"
@@ -64,7 +58,7 @@
           </div>
 
           <!-- Progress bar -->
-          <div v-if="toast.duration" class="h-1 bg-gray-100 dark:bg-dark-700">
+          <div v-if="toast.duration" class="h-1 bg-gray-100 dark:bg-dark-700" aria-hidden="true">
             <div
               :class="['h-full toast-progress', getProgressBarColor(toast.type)]"
               :style="{ animationDuration: `${toast.duration}ms` }"
@@ -77,13 +71,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores/app'
+import { useReducedMotion } from '@/composables/useReducedMotion'
 
 const appStore = useAppStore()
+const reducedMotion = useReducedMotion()
 
 const toasts = computed(() => appStore.toasts)
+const successFeedback = reactive(new Set<string>())
+const seenToasts = new Set<string>()
+watch(() => toasts.value.map(toast => ({ id: toast.id, type: toast.type })), entries => {
+  const current = new Set(entries.map(toast => toast.id))
+  for (const id of seenToasts) if (!current.has(id)) { seenToasts.delete(id); successFeedback.delete(id) }
+  for (const toast of entries) {
+    if (!seenToasts.has(toast.id) && toast.type === 'success' && !reducedMotion.value) successFeedback.add(toast.id)
+    seenToasts.add(toast.id)
+  }
+}, { immediate: true })
+watch(reducedMotion, reduced => { if (reduced) successFeedback.clear() })
 
 const getToastIconName = (type: string): 'checkCircle' | 'xCircle' | 'exclamationTriangle' | 'infoCircle' => {
   switch (type) {
@@ -137,6 +144,7 @@ const removeToast = (id: string) => {
 <style scoped>
 .toast-progress {
   width: 100%;
+  transform-origin: left center;
   animation-name: toast-progress-shrink;
   animation-timing-function: linear;
   animation-fill-mode: forwards;
@@ -144,10 +152,24 @@ const removeToast = (id: string) => {
 
 @keyframes toast-progress-shrink {
   from {
-    width: 100%;
+    transform: scaleX(1);
   }
   to {
-    width: 0%;
+    transform: scaleX(0);
   }
+}
+
+.toast-enter-active, .toast-leave-active { transition: opacity var(--motion-overlay, 260ms) var(--motion-ease, ease), transform var(--motion-overlay, 260ms) var(--motion-ease, ease); }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(14px); }
+.toast-success-mark { animation: toast-success-arrive var(--motion-page, 360ms) var(--motion-ease, ease) both; }
+@keyframes toast-success-arrive {
+  0% { opacity: .4; transform: scale(.7); }
+  65% { opacity: 1; transform: scale(1.14); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.toast-notification--reduced .toast-progress { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .toast-progress, .toast-success-mark { animation: none; }
+  .toast-enter-active, .toast-leave-active { transition: none; }
 }
 </style>

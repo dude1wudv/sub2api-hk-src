@@ -1,6 +1,6 @@
 <template>
   <div :class="{ 'custom-page--user': !isAdminPage }">
-    <div class="custom-page-layout">
+    <div class="custom-page-layout custom-resource-frame">
       <div class="card flex-1 min-h-0 overflow-hidden">
         <div v-if="loading" class="flex h-full items-center justify-center py-12">
           <div
@@ -438,6 +438,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.custom-resource-frame > .card { border:1px solid rgb(var(--line)); border-radius:20px; background:rgb(var(--surface)); }
+.custom-page--user { padding:20px 24px; }
+@media(max-width:767px) { .custom-page--user { padding:12px; } }
 .custom-page-layout {
   @apply flex flex-col;
   height: calc(100vh - 64px - 4rem);

@@ -111,6 +111,17 @@ describe('WechatOAuthSection', () => {
     vi.unstubAllGlobals()
   })
 
+  it('keeps the selected WeChat mode while distinguishing automatic and explicit targets', async () => {
+    seedPublicSettings({ wechat_oauth_open_enabled: true, wechat_oauth_mp_enabled: false })
+    for (const [redirect, expected] of [[undefined, '/auth/landing'], ['/dashboard', '/dashboard'], ['/profile', '/profile']] as const) {
+      routeState.query = { redirect }
+      const wrapper = mount(WechatOAuthSection, { global: { plugins: [pinia] } })
+      await wrapper.get('button').trigger('click')
+      expect(wrapper.emitted('start')?.[0]?.[0]).toEqual({ provider: 'wechat', params: { mode: 'open', redirect: expected } })
+      wrapper.unmount()
+    }
+  })
+
   it('starts the open WeChat OAuth flow with the current redirect target when open mode is configured', async () => {
     seedPublicSettings({
       wechat_oauth_open_enabled: true,

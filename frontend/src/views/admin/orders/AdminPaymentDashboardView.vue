@@ -1,8 +1,9 @@
 <template>
-  <div>
+  <div class="admin-page admin-page--analysis" data-admin-page="payment-dashboard">
     <div class="space-y-6">
       <!-- Header with Day Switcher -->
-      <div class="flex items-center justify-end">
+      <div class="admin-task-toolbar flex flex-wrap items-center justify-between gap-3">
+        <span class="admin-eyebrow">{{ t('admin.dashboard.timeRange') }}</span>
         <div class="flex items-center gap-2">
           <div class="flex rounded-lg border border-gray-200 dark:border-dark-600">
             <button

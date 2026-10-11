@@ -7,7 +7,7 @@ const { getStats, getDashboardModels, getDashboardSnapshotV2 } = vi.hoisted(() =
 vi.mock('@/api', () => ({ usageAPI: { getStats, getDashboardModels, getDashboardSnapshotV2 } }))
 vi.mock('vue-i18n', async () => {
   const { ref } = await import('vue')
-  return { useI18n: () => ({ locale: ref('en-US') }) }
+  return { useI18n: () => ({ locale: ref('en-US'), t: (key: string) => key === 'common.unknown' ? 'Unknown' : key }) }
 })
 vi.mock('vue-chartjs', () => ({
   Doughnut: { name: 'Doughnut', props: ['data', 'options'], template: '<div class="doughnut-stub" />' },
@@ -80,6 +80,87 @@ describe('PortalUsageAnalytics', () => {
     expect(section.findAll('button')[1].attributes('aria-pressed')).toBe('true')
     expect(wrapper.findComponent({ name: 'Doughnut' }).props('data').datasets[0].data).toEqual([0.5])
     expect(getStats).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('exposes keyboard model/date drilldowns and clickable chart data points', async () => {
+    const wrapper = mountAnalytics()
+    await flushPromises()
+    await wrapper.get('.analytics-model-link').trigger('click')
+    expect(wrapper.emitted('drilldown')?.[0]?.[0]).toMatchObject({ model: 'claude-sonnet', start: expect.any(String), end: expect.any(String) })
+    await wrapper.get('.analytics-drilldown').trigger('submit')
+    expect(wrapper.emitted('drilldown')?.[1]?.[0]).toEqual({ start: '2026-10-10', end: '2026-10-10' })
+    wrapper.findComponent({ name: 'Line' }).props('options').onClick({}, [{ index: 0 }])
+    expect(wrapper.emitted('drilldown')?.[2]?.[0]).toEqual({ start: '2026-10-10', end: '2026-10-10' })
+    expect(getStats).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('ranks every distribution by the selected metric, preserves colors and drilldowns, and restores token ordering', async () => {
+    const values = [
+      { requests: 10, total_tokens: 9000, cost: 8, actual_cost: 0.25 },
+      { requests: 5, total_tokens: 300, cost: 20, actual_cost: 8 },
+    ]
+    const models = Object.freeze(values.map((value, index) => Object.freeze({ ...model, ...value, model: ['token-first', 'cost-first'][index] })))
+    const groups = Object.freeze(values.map((value, index) => Object.freeze({ ...value, group_id: index + 1, group_name: ['token-group', 'cost-group'][index] })))
+    const endpoints = Object.freeze(values.map((value, index) => Object.freeze({ ...value, endpoint: ['/v1/token-first', ''][index] })))
+    const trend = Object.freeze([Object.freeze({ ...point, date: '2026-10-09', total_tokens: 300 }), Object.freeze({ ...point, date: '2026-10-10', total_tokens: 9000 })])
+    getStats.mockResolvedValueOnce({ ...summary(), endpoints })
+    getDashboardModels.mockResolvedValueOnce({ models })
+    getDashboardSnapshotV2.mockResolvedValueOnce({ groups, trend })
+    const wrapper = mountAnalytics()
+    await flushPromises()
+    const cases = [
+      ['models', 'token-first', 'cost-first'],
+      ['groups', 'token-group', 'cost-group'],
+      ['endpoints', '/v1/token-first', 'Unknown'],
+    ]
+
+    for (const [id, tokenFirst, costFirst] of cases) {
+      const section = wrapper.get(`[data-distribution="${id}"]`)
+      const chart = section.findComponent({ name: 'Doughnut' })
+      const buttons = section.findAll('.analytics-segment button')
+      const rows = () => section.findAll('tbody tr').map(row => row.get('td').attributes('title'))
+      const initialData = chart.props('data')
+      const initialColors = section.findAll('.analytics-row-label i').map(dot => dot.attributes('style'))
+      expect(initialData.labels).toEqual([tokenFirst, costFirst])
+      expect(initialData.datasets[0].data).toEqual([9000, 300])
+      expect(rows()).toEqual([tokenFirst, costFirst])
+
+      await buttons[1].trigger('click')
+      expect(chart.props('data').labels).toEqual([costFirst, tokenFirst])
+      expect(chart.props('data').datasets[0].data).toEqual([8, 0.25])
+      expect(chart.props('data').datasets[0].backgroundColor).toEqual([...initialData.datasets[0].backgroundColor].reverse())
+      expect(rows()).toEqual([costFirst, tokenFirst])
+      expect(section.findAll('.analytics-row-label i').map(dot => dot.attributes('style'))).toEqual([...initialColors].reverse())
+      if (id === 'models') {
+        chart.props('options').onClick({}, [{ index: 0 }])
+        expect(wrapper.emitted('drilldown')?.at(-1)?.[0]).toMatchObject({ model: 'cost-first' })
+        await section.find('.analytics-model-link').trigger('click')
+        expect(wrapper.emitted('drilldown')?.at(-1)?.[0]).toMatchObject({ model: 'cost-first' })
+      }
+
+      await buttons[0].trigger('click')
+      expect(chart.props('data')).toEqual(initialData)
+      expect(rows()).toEqual([tokenFirst, costFirst])
+    }
+
+    expect(models.map(row => row.model)).toEqual(['token-first', 'cost-first'])
+    expect(groups.map(row => row.group_id)).toEqual([1, 2])
+    expect(endpoints.map(row => row.endpoint)).toEqual(['/v1/token-first', ''])
+    expect(wrapper.findComponent({ name: 'Line' }).props('data').labels).toEqual(['2026-10-09', '2026-10-10'])
+    expect(getStats).toHaveBeenCalledOnce()
+    expect(getDashboardModels).toHaveBeenCalledOnce()
+    expect(getDashboardSnapshotV2).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('keeps the full cost precision and gives long amounts the available summary width', async () => {
+    getStats.mockResolvedValueOnce({ ...summary(), total_actual_cost: 1234567890.4724 })
+    const wrapper = mountAnalytics()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="analytics-actual-cost"]').text()).toBe('$1234567890.4724')
+    expect(wrapper.get('.analytics-summary-wide [data-testid="analytics-actual-cost"]').exists()).toBe(true)
     wrapper.unmount()
   })
 
