@@ -94,7 +94,6 @@
     v-else
     ref="tableWrapperRef"
     class="table-wrapper"
-    :data-density="effectiveDensity"
     :class="{
       'actions-expanded': actionsExpanded,
       'is-scrollable': isScrollable
@@ -265,9 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch, nextTick, inject } from 'vue'
-import { tableDensityKey, type TableDensity } from '@/composables/useGlacierPreferences'
-import { useGlacierTableSurface } from '@/composables/useGlacierTableSurface'
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useVirtualizer, observeElementRect as observeElementRectDefault } from '@tanstack/vue-virtual'
 import { useI18n } from 'vue-i18n'
 import type { Column } from './types'
@@ -289,7 +286,6 @@ const emit = defineEmits<{
 
 // 表格容器引用
 const tableWrapperRef = ref<HTMLElement | null>(null)
-useGlacierTableSurface(tableWrapperRef)
 const isScrollable = ref(false)
 const actionsColumnNeedsExpanding = ref(false)
 
@@ -460,10 +456,8 @@ interface Props {
   serverSideSort?: boolean
   /** Emit 'rowClick' on row/card click and show pointer cursor (interactive cells should @click.stop) */
   clickableRows?: boolean
-  /** Estimated row height in px for the virtualizer (default 56) */
+  /** Estimated row height in px for the virtualizer (default 44) */
   estimateRowHeight?: number
-  /** Optional presentation density; an enclosing Glacier workspace may provide a default. */
-  density?: TableDensity
   /** Number of rows to render beyond the visible area (default 5) */
   overscan?: number
   /**
@@ -492,8 +486,6 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const sortKey = ref<string>('')
-const inheritedDensity = inject(tableDensityKey, undefined)
-const effectiveDensity = computed(() => props.density ?? inheritedDensity?.value)
 const sortOrder = ref<'asc' | 'desc'>('asc')
 const actionsExpanded = ref(false)
 
@@ -775,7 +767,7 @@ const rowVirtualizer = useVirtualizer(computed(() => ({
     const row = sortedData.value?.[index]
     return row != null ? resolveRowKey(row, index) : index
   },
-  estimateSize: () => props.estimateRowHeight ?? (effectiveDensity.value === 'compact' ? 44 : 56),
+  estimateSize: () => props.estimateRowHeight ?? 44,
   overscan: props.overscan ?? 5,
   // 兜底高度:首个有效高度读数到来前,先按一屏渲染,避免空白帧
   initialRect: { width: 0, height: estimatedViewportHeight() },
@@ -786,10 +778,6 @@ const rowVirtualizer = useVirtualizer(computed(() => ({
 })))
 
 const virtualItems = computed(() => rowVirtualizer.value.getVirtualItems())
-watch(effectiveDensity, () => {
-  rowVirtualizer.value.measure()
-  checkScrollable()
-}, { flush: 'post' })
 
 const virtualPaddingTop = computed(() => {
   const items = virtualItems.value
@@ -964,8 +952,7 @@ defineExpose({
 </script>
 
 <style scoped>
-.table-wrapper[data-density='comfortable'] :deep(tbody td) { padding-block: 14px; }
-.table-wrapper[data-density='compact'] :deep(tbody td) { padding-block: 8px; }
+.table-wrapper :deep(tbody td) { padding-block: 8px; }
 
 /* 表格横向滚动 */
 .table-wrapper {
@@ -983,15 +970,16 @@ defineExpose({
   position: sticky;
   top: 0;
   z-index: 200;
-  background-color: rgb(var(--surface-2));
+  background-color: rgb(var(--table-head));
 }
 
 .dark .table-wrapper .table-header {
-  background-color: rgb(var(--surface-2));
+  background-color: rgb(var(--table-head));
 }
 
 /* 表体保持在表头下方 */
 .table-body {
+  background-color: rgb(var(--table-surface));
   position: relative;
   z-index: 0;
 }
@@ -1001,11 +989,11 @@ defineExpose({
   position: sticky;
   top: 0;
   z-index: 210; /* 必须高于所有表体内容 */
-  background-color: rgb(var(--surface-2));
+  background-color: rgb(var(--table-head));
 }
 
 .dark .sticky-header-cell {
-  background-color: rgb(var(--surface-2));
+  background-color: rgb(var(--table-head));
 }
 
 /* Sticky 列基础样式 */
@@ -1041,20 +1029,20 @@ defineExpose({
 
 /* 表体 sticky 列背景 */
 tbody .sticky-col {
-  background-color: rgb(var(--surface));
+  background-color: rgb(var(--table-surface));
 }
 
 .dark tbody .sticky-col {
-  background-color: rgb(var(--surface));
+  background-color: rgb(var(--table-surface));
 }
 
 /* hover 状态保持 */
 tbody tr:hover .sticky-col {
-  background-color: rgb(var(--surface-2));
+  background-color: rgb(var(--table-hover));
 }
 
 .dark tbody tr:hover .sticky-col {
-  background-color: rgb(var(--surface-2));
+  background-color: rgb(var(--table-hover));
 }
 
 /* 阴影只在可滚动时显示 */

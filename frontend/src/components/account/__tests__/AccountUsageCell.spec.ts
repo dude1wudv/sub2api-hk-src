@@ -130,6 +130,62 @@ describe('AccountUsageCell', () => {
     })
   })
 
+  it('opens the ineligible account warning without a hidden tooltip inside the cell', async () => {
+    getUsage.mockResolvedValue({})
+    const wrapper = mount(AccountUsageCell, {
+      attachTo: document.body,
+      props: { account: makeAccount({ extra: { load_code_assist: { currentTier: { id: 'free-tier' }, ineligibleTiers: [{ reason: 'unsupported' }] } } }) },
+      global: { stubs: { UsageProgressBar: true, AccountQuotaInfo: true } },
+    })
+    try {
+      await flushPromises()
+      const trigger = wrapper.get('button[aria-label="common.warning"]')
+      const details = document.getElementById(trigger.attributes('aria-controls'))!
+      expect(trigger.attributes('type')).toBe('button')
+      expect(details.style.display).toBe('none')
+      expect(wrapper.element.contains(details)).toBe(false)
+      trigger.element.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+      await flushPromises()
+      expect(details.style.display).not.toBe('none')
+      expect(details.textContent).toContain('admin.accounts.ineligibleWarning')
+      expect(trigger.attributes('aria-expanded')).toBe('true')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('keeps the Gemini quota explanation and documentation link keyboard accessible', async () => {
+    const wrapper = mount(AccountUsageCell, {
+      attachTo: document.body,
+      props: { account: makeAccount({ platform: 'gemini', type: 'apikey', credentials: { tier_id: 'aistudio_free' } }) },
+      global: { stubs: { UsageProgressBar: true, AccountQuotaInfo: true } },
+    })
+    try {
+      await flushPromises()
+      const trigger = wrapper.get('button[aria-label="admin.accounts.gemini.quotaPolicy.title"]')
+      const details = document.getElementById(trigger.attributes('aria-controls'))!
+      expect(details.style.display).toBe('none')
+      expect(wrapper.element.contains(details)).toBe(false)
+      await trigger.trigger('keydown', { key: 'ArrowDown' })
+      await flushPromises()
+      expect(details.style.display).not.toBe('none')
+      expect(document.activeElement).toBe(details)
+      expect(details.textContent).toContain('admin.accounts.gemini.quotaPolicy.note')
+      const link = details.querySelector<HTMLAnchorElement>('a')!
+      expect(link.href).toBe('https://ai.google.dev/pricing')
+      expect(link.target).toBe('_blank')
+      expect(link.rel).toBe('noopener noreferrer')
+      link.focus()
+      await flushPromises()
+      expect(details.style.display).not.toBe('none')
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      await flushPromises()
+      expect(document.activeElement).toBe(trigger.element)
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   it('renders eligible Ollama Cloud state and forwards query updates', async () => {
     const wrapper = mount(AccountUsageCell, {
       props: {

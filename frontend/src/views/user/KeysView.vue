@@ -403,65 +403,16 @@
           </template>
 
           <template #cell-actions="{ row }">
-            <div v-if="isGlassLayout" class="flex items-center gap-2">
-              <button type="button" class="glacier-row-action" @click="openUseKeyModal(row)"><Icon name="terminal" size="sm" />{{ t('keys.useKey') }}</button>
-              <button type="button" class="glacier-row-action" @click="editKey(row)"><Icon name="edit" size="sm" />{{ t('common.edit') }}</button>
-              <GlacierActionMenu :label="row.name + ' · ' + t('common.actions')">
+            <div class="flex items-center gap-2">
+              <button type="button" class="row-action" @click="openUseKeyModal(row)"><Icon name="terminal" size="sm" />{{ t('keys.useKey') }}</button>
+              <button type="button" class="row-action" @click="editKey(row)"><Icon name="edit" size="sm" />{{ t('common.edit') }}</button>
+              <ActionMenu :label="row.name + ' · ' + t('common.actions')">
                 <template #default="{ close }">
                   <button v-if="!publicSettings?.hide_ccs_import_button" type="button" @click="close(); importToCcswitch(row)"><Icon name="upload" size="sm" />{{ t('keys.importToCcSwitch') }}</button>
                   <button type="button" @click="close(); toggleKeyStatus(row)"><Icon :name="row.status === 'active' ? 'ban' : 'checkCircle'" size="sm" />{{ row.status === 'active' ? t('keys.disable') : t('keys.enable') }}</button>
                   <button type="button" data-danger="true" @click="close(); confirmDelete(row)"><Icon name="trash" size="sm" />{{ t('common.delete') }}</button>
                 </template>
-              </GlacierActionMenu>
-            </div>
-            <div v-else class="flex items-center gap-1.5">
-              <!-- Use Key Button -->
-              <button
-                @click="openUseKeyModal(row)"
-                class="flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:hover:bg-primary-950/30 dark:hover:text-primary-300"
-              >
-                <Icon name="terminal" size="sm" />
-                <span class="text-xs">{{ t('keys.useKey') }}</span>
-              </button>
-              <!-- Import to CC Switch Button -->
-              <button
-                v-if="!publicSettings?.hide_ccs_import_button"
-                @click="importToCcswitch(row)"
-                class="flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 text-gray-500 transition-colors hover:bg-link-50 hover:text-link-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-link-500/40 dark:hover:bg-link-950/30 dark:hover:text-link-300"
-              >
-                <Icon name="upload" size="sm" />
-                <span class="text-xs">{{ t('keys.importToCcSwitch') }}</span>
-              </button>
-              <!-- Toggle Status Button -->
-              <button
-                @click="toggleKeyStatus(row)"
-                :class="[
-                  'flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40',
-                  row.status === 'active'
-                    ? 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400'
-                    : 'text-gray-500 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400'
-                ]"
-              >
-                <Icon v-if="row.status === 'active'" name="ban" size="sm" />
-                <Icon v-else name="checkCircle" size="sm" />
-                <span class="text-xs">{{ row.status === 'active' ? t('keys.disable') : t('keys.enable') }}</span>
-              </button>
-              <!-- Edit Button -->
-              <button
-                @click="editKey(row)"
-                class="flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:hover:bg-dark-700 dark:hover:text-primary-300"
-              >
-                <Icon name="edit" size="sm" />
-                <span class="text-xs">{{ t('common.edit') }}</span>
-              </button>
-              <!-- Delete Button -->
-              <button
-                @click="confirmDelete(row)"
-                class="flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 text-gray-500 transition-colors hover:bg-err-50 hover:text-err-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-err-500/40 dark:hover:bg-err-950/30 dark:hover:text-err-300"
-              >
-                <Icon name="trash" size="sm" />
-                <span class="text-xs">{{ t('common.delete') }}</span>
-              </button>
+              </ActionMenu>
             </div>
           </template>
 
@@ -1231,9 +1182,7 @@
 </template>
 
 <script setup lang="ts">
-import GlacierActionMenu from '@/components/common/GlacierActionMenu.vue'
-import { useGlacierPreferences } from '@/composables/useGlacierPreferences'
-const { isGlassLayout } = useGlacierPreferences()
+import ActionMenu from '@/components/common/ActionMenu.vue'
 
 	import { ref, reactive, computed, watch, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'

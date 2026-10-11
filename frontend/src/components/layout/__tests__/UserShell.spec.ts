@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
-import { computed, nextTick, reactive, ref } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import type { PublicSettings, User } from '@/types'
 import UserShell from '../UserShell.vue'
@@ -17,6 +17,8 @@ const spies = vi.hoisted(() => ({
 const desktop = ref(true)
 const railViewport = ref(true)
 const batchAllowed = ref(true)
+const isDark = ref(false)
+const toggleMode = vi.fn(() => { isDark.value = !isDark.value })
 const appStore = reactive({
   cachedPublicSettings: {} as Partial<PublicSettings>,
   backendModeEnabled: false,
@@ -44,13 +46,9 @@ vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   return { ...actual, useI18n: () => ({ t: (key: string) => key, locale: ref('zh-CN') }) }
 })
-vi.mock('@vueuse/core', () => ({ useMediaQuery: (query: string) => query === '(min-width: 1100px)' ? desktop : railViewport }))
+vi.mock('@vueuse/core', () => ({ useMediaQuery: (query: string) => query === '(min-width: 1200px)' ? desktop : railViewport }))
+vi.mock('@/composables/useColorMode', () => ({ useColorMode: () => ({ isDark, toggleMode }) }))
 vi.mock('@/composables/useBatchImageAccess', () => ({ useBatchImageAccess: () => ({ canUseBatchImage: batchAllowed, refreshBatchImageAccess: spies.refreshAccess }) }))
-vi.mock('@/composables/useGlacierPreferences', () => ({
-  tableDensityKey: Symbol('table-density'),
-  useGlacierPreferences: () => ({ effectiveDensity: computed(() => 'comfortable'), isGlassLayout: computed(() => false) }),
-}))
-vi.mock('@/composables/useGlacierInteraction', () => ({ useGlacierInteraction: vi.fn() }))
 vi.mock('@/composables/useOnboardingTour', () => ({ useOnboardingTour: () => ({ replayTour: spies.replayTour }) }))
 vi.mock('@/composables/useRoutePrefetch', () => ({ prefetchRoutePath: spies.prefetch }))
 vi.mock('@/router/title', () => ({ resolveRouteMetaKeys: () => ({ titleKey: 'dashboard.title' }) }))
@@ -62,7 +60,7 @@ vi.mock('@/components/common/SubscriptionProgressMini.vue', () => ({ default: { 
 
 const wrappers: VueWrapper[] = []
 
-async function mountShell(openMore = false) {
+async function mountShell() {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -79,10 +77,6 @@ async function mountShell(openMore = false) {
   const wrapper = mount(UserShell, { attachTo: document.body, global: { plugins: [router] }, slots: { default: '<div>Workspace page</div>' } })
   wrappers.push(wrapper)
   await flushPromises()
-  if (openMore) {
-    await wrapper.get('.user-more-toggle').trigger('click')
-    await flushPromises()
-  }
   return { wrapper, router }
 }
 
@@ -93,6 +87,7 @@ function navPaths(wrapper: VueWrapper) {
 beforeEach(() => {
   vi.clearAllMocks()
   desktop.value = true
+  isDark.value = false
   railViewport.value = true
   batchAllowed.value = true
   authStore.user = { id: 7, username: 'Demo', email: 'demo@example.test', balance: 12, role: 'user' }
@@ -120,8 +115,17 @@ afterEach(() => {
 })
 
 describe('personal workspace navigation', () => {
-  it('retains every personal feature and only sorted user custom menus', async () => {
-    const { wrapper, router } = await mountShell(true)
+  it('offers the shared color mode switch in the top bar', async () => {
+    const { wrapper } = await mountShell()
+    const toggle = wrapper.get('.user-mode-toggle')
+    expect(toggle.attributes('aria-label')).toBe('切换至深色')
+    await toggle.trigger('click')
+    expect(toggleMode).toHaveBeenCalledOnce()
+    expect(toggle.attributes('aria-pressed')).toBe('true')
+    expect(toggle.attributes('aria-label')).toBe('切换至浅色')
+  })
+  it('shows every personal feature and only sorted user custom menus without disclosure', async () => {
+    const { wrapper, router } = await mountShell()
     expect(navPaths(wrapper)).toEqual([
       '/keys', '/usage', '/purchase', '/subscriptions', '/profile', '/model-plaza', '/available-channels', '/monitor',
       '/image2', '/helios', '/batch-image', '/affiliate',
@@ -132,6 +136,9 @@ describe('personal workspace navigation', () => {
     expect(wrapper.get('[data-nav-path="/keys"]').attributes('data-tour')).toBe('sidebar-my-keys')
     expect(wrapper.find('[aria-label="切换语言"]').exists()).toBe(true)
     expect(wrapper.find('[aria-label="announcements"]').exists()).toBe(true)
+    expect(wrapper.find('.user-more-toggle').exists()).toBe(false)
+    expect(wrapper.findAll('.user-nav-heading').map(heading => heading.text())).toEqual(['服务', '工具', '账单与权益', '资源'])
+    expect(wrapper.get('.user-doc-link').isVisible()).toBe(true)
 
     await wrapper.get('[data-nav-path="/model-plaza"]').trigger('click')
     await flushPromises()
@@ -145,7 +152,7 @@ describe('personal workspace navigation', () => {
       available_channels_enabled: false, affiliate_enabled: false, model_plaza_enabled: false,
     })
     batchAllowed.value = false
-    const { wrapper } = await mountShell(true)
+    const { wrapper } = await mountShell()
     const paths = navPaths(wrapper)
     for (const path of ['/subscriptions', '/orders', '/monitor', '/available-channels', '/affiliate', '/model-plaza', '/batch-image']) {
       expect(paths).not.toContain(path)
@@ -155,9 +162,33 @@ describe('personal workspace navigation', () => {
     expect(wrapper.find('[data-testid="subscriptions"]').exists()).toBe(false)
   })
 
+  it('retains every entry with an accessible name when the desktop sidebar is collapsed', async () => {
+    const { wrapper, router } = await mountShell()
+    const expandedPaths = navPaths(wrapper)
+    const names = wrapper.findAll('[data-nav-path]').map(item => item.text())
+    await wrapper.get('.user-sidebar-toggle').trigger('click')
+
+    expect(wrapper.get('.user-portal').attributes('data-sidebar-collapsed')).toBe('true')
+    expect(navPaths(wrapper)).toEqual(expandedPaths)
+    wrapper.findAll('[data-nav-path]').forEach((item, index) => {
+      expect(item.isVisible()).toBe(true)
+      expect(item.attributes('aria-label')).toBe(names[index])
+      expect(item.attributes('title')).toBe(names[index])
+      expect(item.find('.user-nav-label').exists()).toBe(false)
+    })
+    expect(wrapper.get('.user-doc-link').attributes('aria-label')).toBe('文档')
+    expect(wrapper.get('.user-doc-link').attributes('title')).toBe('文档')
+
+    await router.push('/monitor')
+    await flushPromises()
+    expect(wrapper.get('[data-nav-path="/monitor"]').attributes('aria-current')).toBe('page')
+    expect(wrapper.get('.user-portal').attributes('data-sidebar-collapsed')).toBe('true')
+    expect(navPaths(wrapper)).toEqual(expandedPaths)
+  })
+
   it('keeps simple-mode limits without hiding the remaining personal entries', async () => {
     authStore.isSimpleMode = true
-    const { wrapper } = await mountShell(true)
+    const { wrapper } = await mountShell()
     expect(navPaths(wrapper)).toEqual(['/keys', '/profile', '/model-plaza', '/monitor', '/custom/first', '/custom/later'])
     expect(wrapper.find('.user-balance-pill').exists()).toBe(false)
     expect(navPaths(wrapper)).not.toContain('/purchase')
@@ -166,7 +197,7 @@ describe('personal workspace navigation', () => {
 
   it('keeps the recharge label when subscriptions are disabled', async () => {
     appStore.cachedPublicSettings.subscription_enabled = false
-    const { wrapper } = await mountShell(true)
+    const { wrapper } = await mountShell()
     expect(wrapper.get('[data-nav-path="/purchase"]').text()).toBe('充值')
   })
 
@@ -181,6 +212,21 @@ describe('personal workspace navigation', () => {
     expect(spies.replayTour).not.toHaveBeenCalled()
   })
 
+  it('opens the API guide without smooth scrolling when reduced motion is preferred', async () => {
+    const media = vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as MediaQueryList)
+    const target = document.createElement('div')
+    target.id = 'api-quick-start'
+    target.scrollIntoView = vi.fn()
+    document.body.append(target)
+    try {
+      const { wrapper } = await mountShell()
+      await wrapper.get('.user-account-trigger').trigger('click')
+      await wrapper.get('button.user-account-action:not(.user-signout)').trigger('click')
+      await flushPromises()
+      expect(target.scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' })
+    } finally { target.remove(); media.mockRestore() }
+  })
+
   it('gives administrators personal navigation and an explicit return to administration', async () => {
     authStore.isAdmin = true
     authStore.user!.role = 'admin'
@@ -193,7 +239,7 @@ describe('personal workspace navigation', () => {
   })
 
   it('opens Helios through the existing popup handoff and reports a blocked popup', async () => {
-    const { wrapper } = await mountShell(true)
+    const { wrapper } = await mountShell()
     await wrapper.get('[data-nav-path="/helios"]').trigger('click')
     expect(spies.launchHelios).toHaveBeenCalledWith(expect.objectContaining({ mode: 'popup' }))
     spies.launchHelios.mock.calls[0][0].notify('popup-blocked')
@@ -223,12 +269,19 @@ describe('personal workspace navigation at narrow widths', () => {
     expect(wrapper.get('.user-sidebar').attributes('role')).toBe('dialog')
     expect(wrapper.get('.user-sidebar').attributes('aria-modal')).toBe('true')
     expect(wrapper.get('.user-drawer-scrim').exists()).toBe(true)
+    expect(navPaths(wrapper)).toHaveLength(14)
+    expect(wrapper.findAll('[data-nav-path]').every(item => item.isVisible())).toBe(true)
+    expect(wrapper.findAll('.user-nav-heading')).toHaveLength(4)
+    expect(wrapper.get('.user-doc-link').isVisible()).toBe(true)
+    expect(wrapper.find('.user-more-toggle').exists()).toBe(false)
     expect(document.activeElement).toBe(wrapper.get('.user-sidebar [aria-label="关闭导航"]').element)
     expect(wrapper.get('.user-workspace').attributes()).toHaveProperty('inert')
+    expect(document.body.style.overflow).toBe('hidden')
     await wrapper.get('.user-sidebar').trigger('keydown', { key: 'Escape' })
     await nextTick()
     expect(wrapper.get('.user-sidebar').isVisible()).toBe(false)
     expect(document.activeElement).toBe(toggle.element)
+    expect(document.body.style.overflow).not.toBe('hidden')
   })
 
   it('keeps Tab inside the drawer and closes it after navigation', async () => {
@@ -246,7 +299,7 @@ describe('personal workspace navigation at narrow widths', () => {
   })
 })
 
-describe('personal workspace navigation at rail widths (740–1099px)', () => {
+describe('personal workspace navigation at rail widths (768–1199px)', () => {
   beforeEach(() => { desktop.value = false; railViewport.value = true })
 
   it('keeps the collapsed navigation rail visible without treating it as a modal', async () => {
@@ -257,11 +310,22 @@ describe('personal workspace navigation at rail widths (740–1099px)', () => {
     expect(wrapper.get('.user-sidebar').attributes('role')).toBeUndefined()
     expect(wrapper.get('.user-sidebar').attributes('aria-modal')).toBeUndefined()
     expect(wrapper.get('.user-workspace').attributes('inert')).toBeUndefined()
+    const railPaths = navPaths(wrapper)
+    expect(railPaths).toHaveLength(14)
+    wrapper.findAll('[data-nav-path]').forEach(item => {
+      expect(item.isVisible()).toBe(true)
+      expect(item.attributes('aria-label')).toBeTruthy()
+      expect(item.attributes('title')).toBe(item.attributes('aria-label'))
+    })
+    expect(wrapper.find('.user-navigation .user-nav-label').exists()).toBe(false)
+    expect(wrapper.get('.user-doc-link').attributes('aria-label')).toBe('文档')
 
     await wrapper.get('.user-nav-toggle').trigger('click')
     await nextTick()
     expect(wrapper.get('.user-portal').attributes('data-sidebar-collapsed')).toBe('false')
     expect(wrapper.get('.user-portal').attributes('data-nav-open')).toBe('true')
     expect(wrapper.get('.user-sidebar').attributes('role')).toBe('dialog')
+    expect(navPaths(wrapper)).toEqual(railPaths)
+    expect(wrapper.findAll('.user-nav-heading')).toHaveLength(4)
   })
 })

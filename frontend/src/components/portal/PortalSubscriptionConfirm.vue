@@ -68,9 +68,9 @@ async function purchase() {
 </template>
 
 <style scoped>
-.subscription-confirm-summary { display: grid; gap: 14px; margin: 24px 0; padding: 24px 0; border-block: 1px solid #efede3; }
+.subscription-confirm-summary { display: grid; gap: 14px; margin: 24px 0; padding: 24px 0; border-block: 1px solid rgb(var(--line)); }
 .subscription-confirm-summary > div { display: flex; justify-content: space-between; gap: 20px; }
-.subscription-confirm-summary dt { color: #777; }
+.subscription-confirm-summary dt { color: rgb(var(--ink-3)); }
 .subscription-confirm-summary dd { font-variant-numeric: tabular-nums; }
 .portal-error { margin-top: 16px; }
 </style>

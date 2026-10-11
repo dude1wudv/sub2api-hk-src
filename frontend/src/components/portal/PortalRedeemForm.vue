@@ -114,19 +114,19 @@ onBeforeUnmount(() => { disposed = true; code.value = '' })
 <style scoped>
 .redeem-entry { padding: 26px; }
 .redeem-entry-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.redeem-entry-heading > span { display: grid; place-items: center; width: 29px; height: 29px; border: 1px solid #efede3; border-radius: 50%; font-size: 12px; }
+.redeem-entry-heading > span { display: grid; place-items: center; width: 29px; height: 29px; border: 1px solid rgb(var(--line)); border-radius: 50%; font-size: 13px; }
 .redeem-entry-heading h2 { margin: 0; font-size: 18px; font-weight: 400; }
 .redeem-entry > p { margin: 0; font-size: 13px; line-height: 1.8; }
 .redeem-form { display: grid; gap: 18px; margin-top: 24px; }
 .redeem-form .portal-button { justify-self: start; }
-.redeem-form input { background: #fffdf7; }
+.redeem-form input { background: rgb(var(--surface)); }
 .redeem-form input:disabled { opacity: .55; }
 .redeem-form .portal-error { margin: 0; font-size: 13px; }
-.redeem-success { margin-top: 24px; padding-top: 20px; border-top: 1px solid #efede3; }
-.redeem-success > strong { display: block; color: #25744f; font-weight: 500; }
+.redeem-success { margin-top: 24px; padding-top: 20px; border-top: 1px solid rgb(var(--line)); }
+.redeem-success > strong { display: block; color: rgb(var(--text-ok)); font-weight: 500; }
 .redeem-success p { margin: 6px 0 0; font-size: 13px; line-height: 1.8; }
-.redeem-history-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; color: #000; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
-.redeem-refresh-warning { margin-top: 12px; color: #796230; }
-.redeem-refresh-warning .portal-button { margin-top: 12px; font-size: 12px; }
-@media (max-width: 739px) { .redeem-entry { padding: 20px; } }
+.redeem-history-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; color: rgb(var(--ink)); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.redeem-refresh-warning { margin-top: 12px; color: rgb(var(--text-err)); }
+.redeem-refresh-warning .portal-button { margin-top: 12px; font-size: 13px; }
+@media (max-width: 767px) { .redeem-entry { padding: 20px; } }
 </style>

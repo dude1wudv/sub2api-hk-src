@@ -19,10 +19,9 @@
 </template>
 
 <script setup lang="ts">
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAppearance } from '@/composables/useAppearance'
-import { useGlacierChartPalette } from '@/composables/useGlacierChartPalette'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -49,6 +48,7 @@ ChartJS.register(
   Filler
 )
 
+const chartTheme = useChartTheme()
 const { t } = useI18n()
 
 const props = defineProps<{
@@ -56,16 +56,15 @@ const props = defineProps<{
   loading?: boolean
 }>()
 
-const { isDark: isDarkMode, style } = useAppearance()
-const palette = useGlacierChartPalette(['#2879df', '#169aaa', '#8c79bc'])
+const palette = useChartPalette()
 const chartColors = computed(() => ({
-  text: isDarkMode.value ? '#d4d8e2' : '#4b5563',
-  grid: isDarkMode.value ? '#ffffff20' : '#24344718',
+  text: chartTheme.value.text,
+  grid: chartTheme.value.grid,
   input: palette.value[0],
-  output: style.value === 'glacier' ? '#10b981' : palette.value[4],
-  cacheCreation: style.value === 'glacier' ? '#f59e0b' : palette.value[3],
-  cacheRead: palette.value[1],
-  cacheHitRate: palette.value[2]
+  output: palette.value[1],
+  cacheCreation: palette.value[2],
+  cacheRead: palette.value[5],
+  cacheHitRate: palette.value[3]
 }))
 
 const chartData = computed(() => {
@@ -125,6 +124,7 @@ const chartData = computed(() => {
 
 const lineOptions = computed(() => ({
   responsive: true,
+  animation: false as const,
   maintainAspectRatio: false,
   elements: { point: { radius: 1, hoverRadius: 5 }, line: { borderWidth: 2 } },
   interaction: {
@@ -140,11 +140,12 @@ const lineOptions = computed(() => ({
         pointStyle: 'circle',
         padding: 15,
         font: {
-          size: 11
+          size: 13
         }
       }
     },
     tooltip: {
+      ...chartTheme.value.tooltip,
       callbacks: {
         label: (context: any) => {
           if (context.dataset.yAxisID === 'yPercent') {
@@ -171,7 +172,7 @@ const lineOptions = computed(() => ({
       ticks: {
         color: chartColors.value.text,
         font: {
-          size: 10
+          size: 13
         }
       }
     },
@@ -182,7 +183,7 @@ const lineOptions = computed(() => ({
       ticks: {
         color: chartColors.value.text,
         font: {
-          size: 10
+          size: 13
         },
         callback: (value: string | number) => formatTokens(Number(value))
       }
@@ -197,7 +198,7 @@ const lineOptions = computed(() => ({
       ticks: {
         color: chartColors.value.cacheHitRate,
         font: {
-          size: 10
+          size: 13
         },
         callback: (value: string | number) => `${value}%`
       }

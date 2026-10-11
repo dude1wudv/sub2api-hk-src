@@ -448,8 +448,8 @@
 </template>
 
 <script setup lang="ts">
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { ref, watch, computed } from 'vue'
-import { useAppearance } from '@/composables/useAppearance'
 import { useI18n } from 'vue-i18n'
 import {
   Chart as ChartJS,
@@ -482,6 +482,8 @@ ChartJS.register(
   Filler
 )
 
+const chartTheme = useChartTheme()
+const seriesPalette = useChartPalette()
 const { t } = useI18n()
 
 const props = defineProps<{
@@ -497,12 +499,11 @@ const loading = ref(false)
 const stats = ref<AccountUsageStatsResponse | null>(null)
 
 // Dark mode detection
-const { isDark: isDarkMode } = useAppearance()
 
 // Chart colors
 const chartColors = computed(() => ({
-  text: isDarkMode.value ? '#e5e7eb' : '#374151',
-  grid: isDarkMode.value ? '#374151' : '#e5e7eb'
+  text: chartTheme.value.text,
+  grid: chartTheme.value.grid
 }))
 
 // Line chart data
@@ -515,8 +516,8 @@ const trendChartData = computed(() => {
       {
         label: t('usage.accountBilled') + ' (USD)',
         data: stats.value.history.map((h) => h.actual_cost),
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: seriesPalette.value[0],
+        backgroundColor: `${seriesPalette.value[0]}1a`,
         fill: true,
         tension: 0.3,
         yAxisID: 'y'
@@ -524,8 +525,8 @@ const trendChartData = computed(() => {
       {
         label: t('usage.userBilled') + ' (USD)',
         data: stats.value.history.map((h) => h.user_cost),
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+        borderColor: seriesPalette.value[1],
+        backgroundColor: `${seriesPalette.value[1]}14`,
         fill: false,
         tension: 0.3,
         borderDash: [5, 5],
@@ -534,8 +535,8 @@ const trendChartData = computed(() => {
       {
         label: t('admin.accounts.stats.requests'),
         data: stats.value.history.map((h) => h.requests),
-        borderColor: '#f97316',
-        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+        borderColor: seriesPalette.value[2],
+        backgroundColor: `${seriesPalette.value[2]}1a`,
         fill: false,
         tension: 0.3,
         yAxisID: 'y1'
@@ -547,6 +548,7 @@ const trendChartData = computed(() => {
 // Line chart options with dual Y-axis
 const lineChartOptions = computed(() => ({
   responsive: true,
+  animation: false as const,
   maintainAspectRatio: false,
   interaction: {
     intersect: false,
@@ -561,11 +563,12 @@ const lineChartOptions = computed(() => ({
         pointStyle: 'circle',
         padding: 15,
         font: {
-          size: 11
+          size: 13
         }
       }
     },
     tooltip: {
+      ...chartTheme.value.tooltip,
       callbacks: {
         label: (context: any) => {
           const label = context.dataset.label || ''
@@ -586,7 +589,7 @@ const lineChartOptions = computed(() => ({
       ticks: {
         color: chartColors.value.text,
         font: {
-          size: 10
+          size: 13
         },
         maxRotation: 45,
         minRotation: 0
@@ -600,18 +603,18 @@ const lineChartOptions = computed(() => ({
         color: chartColors.value.grid
       },
       ticks: {
-        color: '#3b82f6',
+        color: seriesPalette.value[0],
         font: {
-          size: 10
+          size: 13
         },
         callback: (value: string | number) => '$' + formatCost(Number(value))
       },
       title: {
         display: true,
         text: t('usage.accountBilled') + ' (USD)',
-        color: '#3b82f6',
+        color: seriesPalette.value[0],
         font: {
-          size: 11
+          size: 13
         }
       }
     },
@@ -623,18 +626,18 @@ const lineChartOptions = computed(() => ({
         drawOnChartArea: false
       },
       ticks: {
-        color: '#f97316',
+        color: seriesPalette.value[2],
         font: {
-          size: 10
+          size: 13
         },
         callback: (value: string | number) => formatNumber(Number(value))
       },
       title: {
         display: true,
         text: t('admin.accounts.stats.requests'),
-        color: '#f97316',
+        color: seriesPalette.value[2],
         font: {
-          size: 11
+          size: 13
         }
       }
     }

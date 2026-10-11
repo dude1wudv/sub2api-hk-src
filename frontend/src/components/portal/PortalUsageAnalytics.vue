@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler, type ChartOptions } from 'chart.js'
 import { Doughnut, Line } from 'vue-chartjs'
@@ -28,7 +29,8 @@ const errors = ref({ stats: false, models: false, snapshot: false })
 const metrics = ref<Record<string, 'tokens' | 'actual_cost'>>({ models: 'tokens', groups: 'tokens', endpoints: 'tokens' })
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 let requestSequence = 0
-const colors = ['#2879df', '#169aaa', '#8c79bc', '#d39a3b', '#23a87d', '#d06c86', '#6574ad', '#a38564']
+const colors = useChartPalette()
+const chartTheme = useChartTheme()
 const number = (value: number) => !Number.isFinite(value) ? '—' : value >= 1e9 ? `${(value / 1e9).toFixed(2)}B` : value >= 1e6 ? `${(value / 1e6).toFixed(2)}M` : value >= 1e3 ? `${(value / 1e3).toFixed(2)}K` : value.toLocaleString()
 const money = (value: number) => Number.isFinite(value) ? `$${value.toFixed(value < 0.01 && value > 0 ? 6 : 4)}` : '—'
 const duration = (value: number) => Number.isFinite(value) ? `${(value / 1000).toFixed(2)}s` : '—'
@@ -82,34 +84,34 @@ const sections = computed(() => [
 ])
 type DistributionRow = { name: string; total_tokens: number; actual_cost: number }
 function distributionData(id: string, rows: DistributionRow[]) {
-  return { labels: rows.map(row => row.name), datasets: [{ data: rows.map(row => metrics.value[id] === 'actual_cost' ? row.actual_cost : row.total_tokens), backgroundColor: rows.map((_, index) => colors[index % colors.length]), borderWidth: 2, borderColor: '#fffdf7', hoverOffset: 5 }] }
+  return { labels: rows.map(row => row.name), datasets: [{ data: rows.map(row => metrics.value[id] === 'actual_cost' ? row.actual_cost : row.total_tokens), backgroundColor: rows.map((_, index) => colors.value[index % colors.value.length]), borderWidth: 0, hoverOffset: 5 }] }
 }
 function hasDistribution(id: string, rows: DistributionRow[]) {
   return rows.some(row => (metrics.value[id] === 'actual_cost' ? row.actual_cost : row.total_tokens) > 0)
 }
-const doughnutOptions: ChartOptions<'doughnut'> = { responsive: true, maintainAspectRatio: false, animation: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => `${context.label}: ${Number(context.raw).toLocaleString(undefined, { maximumFractionDigits: 6 })}` } } } }
+const doughnutOptions = computed<ChartOptions<'doughnut'>>(() => ({ responsive: true, maintainAspectRatio: false, animation: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { ...chartTheme.value.tooltip, callbacks: { label: context => `${context.label}: ${Number(context.raw).toLocaleString(undefined, { maximumFractionDigits: 6 })}` } } } }))
 const trendData = computed(() => ({
   labels: trend.value.map(item => item.date),
   datasets: [
-    { label: tx('输入', 'Input'), data: trend.value.map(item => item.input_tokens), borderColor: colors[0], backgroundColor: `${colors[0]}14`, fill: true },
-    { label: tx('输出', 'Output'), data: trend.value.map(item => item.output_tokens), borderColor: '#23a87d', backgroundColor: '#23a87d14', fill: true },
-    { label: tx('缓存写入', 'Cache creation'), data: trend.value.map(item => item.cache_creation_tokens), borderColor: '#d39a3b', backgroundColor: '#d39a3b14', fill: true },
-    { label: tx('缓存读取', 'Cache read'), data: trend.value.map(item => item.cache_read_tokens), borderColor: colors[1], backgroundColor: `${colors[1]}14`, fill: true },
-    { label: tx('缓存命中率', 'Cache hit rate'), data: trend.value.map(item => { const prompt = item.input_tokens + item.cache_creation_tokens + item.cache_read_tokens; return prompt > 0 ? item.cache_read_tokens / prompt * 100 : 0 }), borderColor: colors[2], backgroundColor: colors[2], borderDash: [5, 5], yAxisID: 'percentage', fill: false },
+    { label: tx('输入', 'Input'), data: trend.value.map(item => item.input_tokens), borderColor: colors.value[0], backgroundColor: `${colors.value[0]}14`, fill: true },
+    { label: tx('输出', 'Output'), data: trend.value.map(item => item.output_tokens), borderColor: colors.value[1], backgroundColor: `${colors.value[1]}14`, fill: true },
+    { label: tx('缓存写入', 'Cache creation'), data: trend.value.map(item => item.cache_creation_tokens), borderColor: colors.value[2], backgroundColor: `${colors.value[2]}14`, fill: true },
+    { label: tx('缓存读取', 'Cache read'), data: trend.value.map(item => item.cache_read_tokens), borderColor: colors.value[5], backgroundColor: `${colors.value[5]}14`, fill: true },
+    { label: tx('缓存命中率', 'Cache hit rate'), data: trend.value.map(item => { const prompt = item.input_tokens + item.cache_creation_tokens + item.cache_read_tokens; return prompt > 0 ? item.cache_read_tokens / prompt * 100 : 0 }), borderColor: colors.value[3], backgroundColor: colors.value[3], borderDash: [5, 5], yAxisID: 'percentage', fill: false },
   ],
 }))
 const lineOptions = computed<ChartOptions<'line'>>(() => ({
   responsive: true, maintainAspectRatio: false, animation: false,
   interaction: { intersect: false, mode: 'index' },
   elements: { point: { radius: trend.value.length > 48 ? 0 : 2, hoverRadius: 5 }, line: { borderWidth: 2, tension: 0.2 } },
-  plugins: { legend: { position: 'bottom', labels: { color: '#706d65', usePointStyle: true, boxWidth: 8, font: { size: 11 } } }, tooltip: { callbacks: {
+  plugins: { legend: { position: 'bottom', labels: { color: chartTheme.value.text, usePointStyle: true, boxWidth: 8, font: { size: 13 } } }, tooltip: { ...chartTheme.value.tooltip, callbacks: {
     label: context => `${context.dataset.label}: ${context.dataset.yAxisID === 'percentage' ? `${Number(context.raw).toFixed(1)}%` : number(Number(context.raw))}`,
     footer: items => { const item = trend.value[items[0]?.dataIndex ?? -1]; return item ? `${tx('实际', 'Actual')} ${money(item.actual_cost)} · ${tx('标准', 'Standard')} ${money(item.cost)}` : '' },
   } } },
   scales: {
-    x: { grid: { display: false }, ticks: { color: '#817d73', maxTicksLimit: 8, font: { size: 10 } } },
-    y: { beginAtZero: true, grid: { color: '#efede3' }, ticks: { color: '#817d73', callback: value => number(Number(value)), font: { size: 10 } } },
-    percentage: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { color: colors[2], callback: value => `${value}%`, font: { size: 10 } } },
+    x: { grid: { display: false }, ticks: { color: chartTheme.value.text, maxTicksLimit: 8, font: { size: 13 } } },
+    y: { beginAtZero: true, grid: { color: chartTheme.value.grid }, ticks: { color: chartTheme.value.text, callback: value => number(Number(value)), font: { size: 13 } } },
+    percentage: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { color: colors.value[3], callback: value => `${value}%`, font: { size: 13 } } },
   },
 }))
 onMounted(() => { void load() })
@@ -154,9 +156,62 @@ onBeforeUnmount(() => { requestSequence++ })
 </template>
 
 <style scoped>
-.portal-usage-analytics{color:#27251f;margin:34px 0 42px;font-size:13px}.analytics-heading{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:22px}.analytics-heading h2{margin:0;font-size:23px;font-weight:600}.analytics-heading p,.analytics-timezone,.analytics-chart-note{color:#8b867b;font-size:12px;margin:8px 0 0}.analytics-refresh{display:flex;align-items:center;gap:7px;border:1px solid #e7e3d9;border-radius:9px;padding:9px 12px;background:transparent;white-space:nowrap}.analytics-refresh:disabled{opacity:.5}.analytics-controls{display:flex;align-items:end;gap:14px;flex-wrap:wrap}.analytics-controls label{display:flex;align-items:center;gap:8px;color:#777267;font-size:12px}.analytics-controls select,.analytics-controls input{min-height:38px;border:1px solid #e7e3d9;border-radius:8px;background:#fffdf7;color:#27251f;padding:6px 10px;font:inherit}.analytics-range{font-size:12px;color:#8b867b;padding:10px 0}.analytics-granularity{margin-left:auto}.analytics-apply{background:#171713;color:#fffdf7;border:0;border-radius:8px;padding:10px 16px}.analytics-timezone{margin:12px 0 18px}.analytics-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid #ece8de;border-radius:14px;margin-bottom:20px;overflow:hidden}.analytics-summary article{display:flex;gap:12px;padding:23px 18px;min-width:0;position:relative}.analytics-summary article+article:before{content:'';position:absolute;left:0;top:24px;bottom:24px;width:1px;background:#ece8de}.analytics-summary article>div{min-width:0}.analytics-summary article>div>span{color:#777267;font-size:12px}.analytics-summary strong{display:block;font-size:27px;line-height:1.4;font-weight:600;letter-spacing:-.7px;font-variant-numeric:tabular-nums}.analytics-summary small{display:block;color:#8b867b;font-size:10px;line-height:1.8}.analytics-metric-icon{width:34px;height:34px;padding:8px;display:flex;flex-shrink:0;border-radius:10px}.blue{background:#eaf2fc;color:#2879df}.amber{background:#fbf1dc;color:#b58125}.green{background:#e8f5ee;color:#24926c}.purple{background:#f0eaf8;color:#8c79bc}.analytics-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.analytics-panel{container-type:inline-size;border:1px solid #ece8de;border-radius:14px;padding:20px;min-width:0}.analytics-panel header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:20px}.analytics-panel h3{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:0}.analytics-panel h3 svg{color:#817765}.analytics-segment{display:flex;background:#f3f0e9;border-radius:8px;padding:3px}.analytics-segment button{padding:5px 9px;border:0;border-radius:6px;font-size:11px;background:transparent;color:#8b867b;white-space:nowrap}.analytics-segment button[aria-pressed=true]{background:#fffdf7;color:#27251f;box-shadow:0 1px 3px #30291010}.analytics-distribution{display:flex;align-items:center;gap:18px;min-height:210px}.analytics-doughnut{width:136px;height:136px;flex-shrink:0;display:flex;align-items:center;justify-content:center}.analytics-zero{color:#8b867b;font-size:11px;text-align:center;border:14px solid #f0ede4;width:136px;height:136px;border-radius:50%;display:flex;align-items:center;justify-content:center}.analytics-table-scroll{min-width:0;flex:1;max-height:230px;overflow:auto}.analytics-table-scroll table{border-collapse:collapse;width:100%;font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}.analytics-table-scroll th{font-weight:400;color:#8b867b;text-align:right;padding:0 8px 10px}.analytics-table-scroll td{padding:10px 8px;border-top:1px solid #efede3;text-align:right;color:#777267}.analytics-table-scroll td:first-child,.analytics-table-scroll th:first-child{text-align:left;padding-left:0}.analytics-row-label{display:flex;gap:6px;align-items:center;color:#39362e;max-width:180px}.analytics-row-label>span{overflow:hidden;text-overflow:ellipsis}.analytics-row-label i{width:6px;height:6px;border-radius:50%;flex-shrink:0}.analytics-row-label :deep(svg){flex-shrink:0}.analytics-table-scroll .analytics-actual{color:#2879df}.analytics-state{min-height:210px;display:flex;align-items:center;justify-content:center;text-align:center;color:#8b867b}.analytics-error{color:#bb513c}.analytics-line{height:225px;min-width:0}.analytics-chart-note{font-size:10px;line-height:1.5}.portal-usage-analytics button:focus-visible,.portal-usage-analytics input:focus-visible,.portal-usage-analytics select:focus-visible{outline:2px solid #817765;outline-offset:3px}
-@media(max-width:1400px){.analytics-distribution{flex-direction:column;align-items:stretch}.analytics-doughnut{align-self:center}.analytics-summary article{padding:20px 13px;gap:8px}.analytics-summary strong{font-size:23px}.analytics-table-scroll{width:100%;flex:auto}.analytics-line{height:365px}}
-@media(max-width:900px){.analytics-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.analytics-summary article:nth-child(3):before{display:none}.analytics-summary article:nth-child(n+3){border-top:1px solid #ece8de}.analytics-grid{grid-template-columns:1fr}.analytics-distribution{flex-direction:row;align-items:center}.analytics-table-scroll{width:auto;flex:1}.analytics-line{height:245px}}
-@media(max-width:540px){.analytics-summary strong{font-size:22px}.analytics-metric-icon{width:27px;height:27px;padding:6px}.analytics-summary article{padding:18px 11px;gap:7px}.analytics-summary small{font-size:9px}.analytics-heading h2{font-size:20px}.analytics-heading p{line-height:1.6}.analytics-panel{padding:16px}.analytics-distribution{flex-direction:column;align-items:stretch}.analytics-table-scroll{width:100%;flex:auto}.analytics-granularity{margin-left:0}.analytics-range{order:3;width:100%;padding:0}.analytics-controls label{flex-wrap:wrap}.analytics-controls{gap:10px}.analytics-heading{align-items:flex-start}.analytics-line{height:260px}}
-@container(max-width:560px){.analytics-distribution{flex-direction:column;align-items:stretch}.analytics-doughnut{align-self:center}.analytics-table-scroll{width:100%;flex:auto}.analytics-row-label{max-width:155px}}
+.portal-usage-analytics { margin: 34px 0 42px; color: rgb(var(--ink)); font-size: 14px; }
+.analytics-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 22px; }
+.analytics-heading h2 { margin: 0; font-size: 24px; font-weight: 600; }
+.analytics-heading p, .analytics-timezone, .analytics-chart-note { color: rgb(var(--ink-2)); font-size: 13px; margin: 8px 0 0; line-height: 1.6; }
+.analytics-refresh { display: flex; min-height: 44px; align-items: center; gap: 7px; border: 1px solid rgb(var(--line-strong)); border-radius: 10px; padding: 9px 12px; background: rgb(var(--surface)); color: rgb(var(--ink)); white-space: nowrap; }
+.analytics-refresh:disabled { opacity: .5; }
+.analytics-controls { display: flex; align-items: end; gap: 14px; flex-wrap: wrap; }
+.analytics-controls label { display: flex; align-items: center; gap: 8px; color: rgb(var(--ink-2)); font-size: 13px; }
+.analytics-controls select, .analytics-controls input { min-width: 0; min-height: 44px; border: 1px solid rgb(var(--line-strong)); border-radius: 10px; background: rgb(var(--surface)); color: rgb(var(--ink)); padding: 9px 10px; font: inherit; }
+.analytics-range { font-size: 13px; color: rgb(var(--ink-2)); padding: 10px 0; }
+.analytics-granularity { margin-left: auto; }
+.analytics-apply { min-height: 44px; background: rgb(var(--action-bg)); color: rgb(var(--action-text)); border: 0; border-radius: 10px; padding: 10px 16px; }
+.analytics-timezone { margin: 12px 0 18px; }
+.analytics-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid rgb(var(--line)); border-radius: 16px; margin-bottom: 20px; overflow: hidden; background: rgb(var(--surface)); }
+.analytics-summary article { display: flex; gap: 12px; padding: 23px 18px; min-width: 0; position: relative; }
+.analytics-summary article + article::before { content: ''; position: absolute; left: 0; top: 24px; bottom: 24px; width: 1px; background: rgb(var(--line)); }
+.analytics-summary article > div { min-width: 0; }
+.analytics-summary article > div > span { color: rgb(var(--ink-2)); font-size: 13px; }
+.analytics-summary strong { display: block; font-size: 30px; line-height: 1.4; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.analytics-summary small { display: block; color: rgb(var(--ink-2)); font-size: 13px; line-height: 1.7; }
+.analytics-metric-icon { width: 34px; height: 34px; padding: 8px; display: flex; flex-shrink: 0; border-radius: 10px; }
+.blue { background: color-mix(in srgb, var(--chart-1) 12%, transparent); color: var(--chart-1); }
+.amber { background: color-mix(in srgb, var(--chart-3) 12%, transparent); color: var(--chart-3); }
+.green { background: color-mix(in srgb, var(--chart-2) 12%, transparent); color: var(--chart-2); }
+.purple { background: color-mix(in srgb, var(--chart-4) 12%, transparent); color: var(--chart-4); }
+.analytics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.analytics-panel { container-type: inline-size; border: 1px solid rgb(var(--line)); border-radius: 16px; padding: 20px; min-width: 0; background: rgb(var(--surface)); }
+.analytics-panel header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.analytics-panel h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; margin: 0; }
+.analytics-panel h3 svg { color: rgb(var(--ink-2)); }
+.analytics-segment { display: flex; background: rgb(var(--surface-2)); border-radius: 10px; padding: 3px; }
+.analytics-segment button { min-height: 44px; padding: 7px 10px; border: 0; border-radius: 7px; font-size: 13px; background: transparent; color: rgb(var(--ink-2)); white-space: nowrap; }
+.analytics-segment button[aria-pressed='true'] { background: rgb(var(--surface)); color: rgb(var(--ink)); box-shadow: var(--shadow-panel); }
+.analytics-distribution { display: flex; align-items: center; gap: 18px; min-height: 210px; }
+.analytics-doughnut { width: 136px; height: 136px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.analytics-zero { color: rgb(var(--ink-2)); font-size: 13px; text-align: center; border: 14px solid rgb(var(--surface-2)); width: 136px; height: 136px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.analytics-table-scroll { min-width: 0; flex: 1; max-height: 264px; overflow: auto; }
+.analytics-table-scroll table { border-collapse: collapse; width: 100%; font-size: 14px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.analytics-table-scroll th { font-weight: 500; color: rgb(var(--ink-2)); text-align: right; padding: 0 10px 10px; }
+.analytics-table-scroll td { padding: 12px 10px; border-top: 1px solid rgb(var(--line)); text-align: right; color: rgb(var(--ink-2)); }
+.analytics-table-scroll td:first-child, .analytics-table-scroll th:first-child { text-align: left; padding-left: 0; }
+.analytics-row-label { display: flex; gap: 6px; align-items: center; color: rgb(var(--ink)); max-width: 180px; }
+.analytics-row-label > span { overflow: hidden; text-overflow: ellipsis; }
+.analytics-row-label i { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.analytics-row-label :deep(svg) { flex-shrink: 0; }
+.analytics-table-scroll .analytics-actual { color: var(--chart-1); }
+.analytics-state { min-height: 210px; display: flex; align-items: center; justify-content: center; text-align: center; color: rgb(var(--ink-2)); }
+.analytics-error { color: rgb(var(--text-err)); }
+.analytics-line { height: 260px; min-width: 0; }
+.analytics-chart-note { font-size: 13px; line-height: 1.6; }
+.portal-usage-analytics :is(button, input, select):focus-visible { outline: 2px solid rgb(var(--focus-ring)); outline-offset: 3px; }
+.portal-usage-analytics button { transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease); }
+.analytics-refresh:hover:not(:disabled) { background: rgb(var(--surface-2)); }
+.analytics-apply:hover { background: rgb(var(--action-hover)); }
+@container (max-width: 550px) { .analytics-distribution { flex-direction: column; align-items: stretch; } .analytics-doughnut { align-self: center; } .analytics-table-scroll { width: 100%; } }
+@media (max-width: 1199px) { .analytics-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .analytics-summary article:nth-child(3)::before { display: none; } .analytics-summary article:nth-child(n+3) { border-top: 1px solid rgb(var(--line)); } }
+@media (max-width: 767px) { .analytics-heading { align-items: flex-start; } .analytics-heading h2 { font-size: 22px; } .analytics-grid { grid-template-columns: 1fr; } .analytics-panel { padding: 16px; } .analytics-summary article { gap: 8px; padding: 18px 12px; } .analytics-summary strong { font-size: 28px; } .analytics-summary .analytics-metric-icon { display: none; } .analytics-controls { display: grid; grid-template-columns: minmax(0, 1fr); } .analytics-controls label { display: grid; grid-template-columns: 76px minmax(0, 1fr); } .analytics-controls select, .analytics-controls input { width: 100%; font-size: 16px; } .analytics-granularity { margin-left: 0; } .analytics-apply { width: 100%; } .analytics-line { height: 260px; } }
+@media (prefers-reduced-motion: reduce) { .portal-usage-analytics button { transition: none; } }
 </style>

@@ -17,6 +17,7 @@ const paymentStore = vi.hoisted(() => ({
 const loadStripe = vi.hoisted(() => vi.fn())
 const stripeElements = vi.hoisted(() => ({
   create: vi.fn(),
+  update: vi.fn(),
 }))
 const stripePaymentElement = vi.hoisted(() => ({
   mount: vi.fn(),
@@ -64,6 +65,7 @@ vi.mock('@stripe/stripe-js/pure', () => ({
 }))
 
 import StripePaymentView from '../StripePaymentView.vue'
+import { useColorMode } from '@/composables/useColorMode'
 import { formatPaymentAmount } from '@/components/payment/currency'
 import type { PaymentOrder } from '@/types/payment'
 
@@ -109,6 +111,8 @@ describe('StripePaymentView', () => {
     paymentStore.fetchConfig.mockReset().mockResolvedValue(undefined)
     paymentStore.pollOrderStatus.mockReset()
     loadStripe.mockReset().mockResolvedValue(stripeInstance)
+    useColorMode().setMode('light')
+    stripeElements.update.mockReset()
     stripeElements.create.mockReset().mockReturnValue(stripePaymentElement)
     stripePaymentElement.mount.mockReset()
     stripePaymentElement.on.mockReset().mockImplementation((event: string, callback: () => void) => {
@@ -119,6 +123,20 @@ describe('StripePaymentView', () => {
     stripeInstance.confirmAlipayPayment.mockReset()
     stripeInstance.confirmWechatPayPayment.mockReset()
     window.localStorage.clear()
+  })
+
+  it('mounts in the active mode and updates Stripe Elements without recreating the payment', async () => {
+    useColorMode().setMode('dark')
+    const wrapper = mountView()
+    await flushPromises()
+    await flushPromises()
+    expect(stripeInstance.elements).toHaveBeenCalledWith(expect.objectContaining({ appearance: expect.objectContaining({ theme: 'night' }) }))
+    useColorMode().setMode('light')
+    await flushPromises()
+    expect(stripeElements.update).toHaveBeenLastCalledWith({ appearance: expect.objectContaining({ theme: 'stripe' }) })
+    expect(stripeInstance.elements).toHaveBeenCalledTimes(1)
+    expect(stripeInstance.confirmPayment).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it.each(['alipay', 'wechat_pay', ''])('does not start %s payment after leaving during SDK loading', async (method) => {

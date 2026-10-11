@@ -1,10 +1,12 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key === 'common.close' ? 'Close' : 'Help' }) }))
+
 function getTooltipElement(): HTMLDivElement {
-  const tooltip = document.body.querySelector('[role="tooltip"]')
+  const tooltip = document.body.querySelector('[role="tooltip"], [role="dialog"]')
   if (!(tooltip instanceof HTMLDivElement)) {
     throw new Error('tooltip element not found')
   }
@@ -13,6 +15,8 @@ function getTooltipElement(): HTMLDivElement {
 
 describe('HelpTooltip', () => {
   afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     document.body.innerHTML = ''
   })
 
@@ -170,4 +174,79 @@ describe('HelpTooltip', () => {
 
     wrapper.unmount()
   })
+
+  it('clamps fixed coordinates to the viewport and flips below a trigger near its top edge', async () => {
+    vi.stubGlobal('innerWidth', 390)
+    vi.stubGlobal('innerHeight', 844)
+    vi.stubGlobal('scrollX', 150)
+    vi.stubGlobal('scrollY', 800)
+    const wrapper = mount(HelpTooltip, { attachTo: document.body, props: { content: 'Details', widthClass: 'w-80' } })
+    const trigger = wrapper.get('.group')
+    const tooltip = getTooltipElement()
+    const bounds = vi.spyOn(trigger.element, 'getBoundingClientRect').mockReturnValue(rect(355, 300, 24, 24))
+    vi.spyOn(tooltip, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 320, 180))
+
+    await trigger.trigger('mouseenter')
+    await flushPromises()
+    expect(tooltip.style.left).toBe('58px')
+    expect(tooltip.style.top).toBe('112px')
+    expect(tooltip.style.maxWidth).toBe('366px')
+    expect(tooltip.dataset.placement).toBe('top')
+
+    bounds.mockReturnValue(rect(0, 15, 24, 24))
+    window.dispatchEvent(new Event('scroll'))
+    await flushPromises()
+    expect(tooltip.style.left).toBe('12px')
+    expect(tooltip.style.top).toBe('47px')
+    expect(tooltip.dataset.placement).toBe('bottom')
+    wrapper.unmount()
+  })
+
+  it('keeps long interactive details scrollable and returns keyboard focus on Escape', async () => {
+    vi.stubGlobal('innerWidth', 390)
+    vi.stubGlobal('innerHeight', 390)
+    const wrapper = mount(HelpTooltip, {
+      attachTo: document.body,
+      props: { trigger: 'click', label: 'Quota policy', widthClass: 'w-80' },
+      slots: { default: '<p>Long quota explanation</p><a href="https://docs.example.test/quotas">Read full policy</a>' },
+    })
+    const button = wrapper.get('button')
+    const tooltip = getTooltipElement()
+    vi.spyOn(wrapper.element, 'getBoundingClientRect').mockReturnValue(rect(180, 180, 24, 24))
+    vi.spyOn(tooltip, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 320, 700))
+
+    expect(button.attributes('type')).toBe('button')
+    expect(button.attributes('aria-controls')).toBe(tooltip.id)
+    expect(button.attributes('aria-haspopup')).toBe('dialog')
+    await button.trigger('keydown', { key: 'ArrowDown' })
+    await flushPromises()
+    expect(tooltip.getAttribute('role')).toBe('dialog')
+    expect(button.attributes('aria-expanded')).toBe('true')
+    expect(document.activeElement).toBe(tooltip)
+    expect(tooltip.style.maxHeight).toBe('166px')
+    const scrollable = tooltip.querySelector<HTMLElement>('.overflow-y-auto')!
+    expect(scrollable.style.maxHeight).toBe('166px')
+    const measurements = vi.mocked(tooltip.getBoundingClientRect).mock.calls.length
+    scrollable.scrollTop = 100
+    scrollable.dispatchEvent(new Event('scroll', { bubbles: true }))
+    await flushPromises()
+    expect(scrollable.scrollTop).toBe(100)
+    expect(tooltip.getBoundingClientRect).toHaveBeenCalledTimes(measurements)
+    const link = tooltip.querySelector<HTMLAnchorElement>('a')!
+    expect(link.href).toBe('https://docs.example.test/quotas')
+    link.focus()
+    await nextTick()
+    expect(tooltip.style.display).not.toBe('none')
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+    expect(tooltip.style.display).toBe('none')
+    expect(button.attributes('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(button.element)
+    wrapper.unmount()
+  })
 })
+
+function rect(left: number, top: number, width: number, height: number): DOMRect {
+  return { left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }
+}

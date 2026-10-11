@@ -23,7 +23,7 @@
     <!-- Charts Grid -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <!-- Model Distribution Chart -->
-      <div class="card material-chart-panel relative overflow-hidden p-4 sm:p-5">
+      <div class="card chart-panel relative overflow-hidden p-4 sm:p-5">
         <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-xs dark:bg-dark-900/60">
           <LoadingSpinner size="md" />
         </div>
@@ -65,10 +65,9 @@
 </template>
 
 <script setup lang="ts">
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAppearance } from '@/composables/useAppearance'
-import { useGlacierChartPalette } from '@/composables/useGlacierChartPalette'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Select from '@/components/common/Select.vue'
@@ -79,31 +78,32 @@ import { formatCostFixed as formatCost, formatNumberLocaleString as formatNumber
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler)
 
+const chartTheme = useChartTheme()
 const props = defineProps<{ loading: boolean, startDate: string, endDate: string, granularity: string, trend: TrendDataPoint[], models: ModelStat[] }>()
 defineEmits(['update:startDate', 'update:endDate', 'update:granularity', 'dateRangeChange', 'granularityChange', 'refresh'])
 const { t } = useI18n()
-const { style } = useAppearance()
-const legacyColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
-const palette = useGlacierChartPalette(legacyColors)
+const palette = useChartPalette()
 
 const modelData = computed(() => !props.models?.length ? null : {
   labels: props.models.map((m: ModelStat) => m.model),
   datasets: [{
     data: props.models.map((m: ModelStat) => m.total_tokens),
-    backgroundColor: style.value === 'glacier' ? legacyColors : palette.value
+    backgroundColor: palette.value
   }]
 })
 
-const doughnutOptions = {
+const doughnutOptions = computed(() => ({
   responsive: true,
+  animation: false as const,
   maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
     tooltip: {
+      ...chartTheme.value.tooltip,
       callbacks: {
         label: (context: any) => `${context.label}: ${formatTokens(context.parsed)} tokens`
       }
     }
   }
-}
+}))
 </script>

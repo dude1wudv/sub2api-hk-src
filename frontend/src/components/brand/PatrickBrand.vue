@@ -16,7 +16,7 @@ defineProps<{ compact?: boolean }>()
 </script>
 
 <style scoped>
-.patrick-brand { display:inline-flex; align-items:center; gap:4px; flex-shrink:0; color:#000; line-height:1; }
+.patrick-brand { display:inline-flex; align-items:center; gap:4px; flex-shrink:0; color:rgb(var(--ink)); line-height:1; }
 .patrick-brand__mark { display:grid; place-items:center; width:28px; height:32px; }
 .patrick-brand__mark svg { width:28px; height:28px; }
 .patrick-brand__name { font-family:'Times New Roman',Times,serif; font-size:28px; font-weight:500; letter-spacing:-1px; }

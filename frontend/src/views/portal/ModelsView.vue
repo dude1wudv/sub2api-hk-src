@@ -58,8 +58,8 @@ onBeforeUnmount(() => request?.abort())
 </template>
 
 <style scoped>
-.portal-models-public { min-height: 100dvh; background: #fffdf7; }
+.portal-models-public { min-height: 100dvh; background: rgb(var(--surface)); }
 .portal-models-header { width: 86%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 28px 0 48px; }
 .portal-models-public .portal-page { max-width: 1160px; }
-@media (max-width: 739px) { .portal-models-header { width: calc(100% - 32px); padding-block: 22px 30px; } }
+@media (max-width: 767px) { .portal-models-header { width: calc(100% - 32px); padding-block: 22px 30px; } }
 </style>

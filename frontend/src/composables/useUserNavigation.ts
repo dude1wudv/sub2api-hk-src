@@ -64,16 +64,16 @@ export function useUserNavigation() {
   })
 
   const primaryItems = computed(() => items.value.filter(item => item.group === 'primary'))
-  const moreSections = computed(() => {
+  const secondarySections = computed(() => {
     const groups: { id: UserNavigationGroup; label: string }[] = [
       { id: 'services', label: zh.value ? '服务' : 'Services' },
       { id: 'tools', label: zh.value ? '工具' : 'Tools' },
       { id: 'billing', label: zh.value ? '账单与权益' : 'Billing and benefits' },
-      { id: 'custom', label: zh.value ? '更多资源' : 'Resources' },
+      { id: 'custom', label: zh.value ? '资源' : 'Resources' },
     ]
     return groups.map(group => ({ ...group, items: items.value.filter(item => item.group === group.id) }))
       .filter(group => group.items.length > 0)
   })
 
-  return { items, primaryItems, moreSections, purchaseLabel, refreshBatchImageAccess }
+  return { items, primaryItems, secondarySections, purchaseLabel, refreshBatchImageAccess }
 }

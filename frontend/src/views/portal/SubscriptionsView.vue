@@ -61,7 +61,7 @@ function renew(subscription: UserSubscription) {
   group.value = String(subscription.group_id)
   const plans = availablePlans.value.filter(plan => plan.group_id === subscription.group_id && !unavailable(plan))
   if (plans.length === 1) selected.value = plans[0]
-  else document.getElementById('portal-subscription-plans')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  else document.getElementById('portal-subscription-plans')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
 }
 function quotaRows(subscription: UserSubscription) {
   return [
@@ -205,49 +205,49 @@ onMounted(async () => {
 .subscription-header { margin-bottom: 28px; }
 .subscription-header p { margin-top: 12px; }
 .subscription-groups { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-.subscription-groups button { padding: 8px 16px; border-radius: 8px; border: 1px solid #efede3; background: #fffdf7; }
-.subscription-groups .active { background: #f3f0eb; color: #000; }
+.subscription-groups button { padding: 8px 16px; border-radius: 8px; border: 1px solid rgb(var(--line)); background: rgb(var(--surface)); }
+.subscription-groups .active { background: rgb(var(--surface-2)); color: rgb(var(--ink)); }
 .subscription-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; scroll-margin-top: 20px; }
-.subscription-plan { display: flex; flex-direction: column; border: 1px solid #efede3; border-radius: 16px; padding: 30px; background: #fffdf7; }
+.subscription-plan { display: flex; flex-direction: column; border: 1px solid rgb(var(--line)); border-radius: 16px; padding: 30px; background: rgb(var(--surface)); }
 .plan-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.plan-title h2 { font: 24px/1.3 'Times New Roman', Times, serif; }
-.plan-note { white-space: nowrap; color: #777; font-size: 11px; border: 1px solid #efede3; border-radius: 6px; padding: 4px 6px; }
-.plan-description { min-height: 38px; font-size: 13px; color: #999; line-height: 1.5; margin: 14px 0 24px; }
+.plan-title h2 { font: 24px/1.3 var(--font-sans); }
+.plan-note { white-space: nowrap; color: rgb(var(--ink-3)); font-size: 13px; border: 1px solid rgb(var(--line)); border-radius: 6px; padding: 4px 6px; }
+.plan-description { min-height: 38px; font-size: 13px; color: rgb(var(--ink-3)); line-height: 1.5; margin: 14px 0 24px; }
 .plan-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
 .plan-price strong { font-size: 38px; line-height: 1.1; font-weight: 500; }
-.plan-price > span { color: #777; font-size: 13px; }
-.plan-original { color: #999; text-decoration: line-through; font-size: 13px; margin-top: 7px; }
+.plan-price > span { color: rgb(var(--ink-3)); font-size: 13px; }
+.plan-original { color: rgb(var(--ink-3)); text-decoration: line-through; font-size: 13px; margin-top: 7px; }
 .plan-button { width: 100%; min-height: 46px; margin: 26px 0; border-radius: 100px; }
 .plan-features { display: grid; gap: 18px; margin: 0; padding: 0; list-style: none; }
 .plan-features li { display: flex; align-items: flex-start; gap: 11px; line-height: 1.6; font-size: 13px; }
-.plan-features li > span { color: #555; }
-.plan-sale-end { color: #999; margin-top: 20px; font-size: 11px; }
+.plan-features li > span { color: rgb(var(--ink-2)); }
+.plan-sale-end { color: rgb(var(--ink-3)); margin-top: 20px; font-size: 13px; }
 .current-subscriptions, .subscription-history { margin-top: 42px; }
-.current-subscriptions h2, .subscription-history h2 { font: 22px/1.3 'Times New Roman', Times, serif; margin-bottom: 20px; }
+.current-subscriptions h2, .subscription-history h2 { font: 22px/1.3 var(--font-sans); margin-bottom: 20px; }
 .progress-retry { text-decoration: underline; text-underline-offset: 3px; }
-.subscription-current { border-bottom: 1px solid #efede3; }
+.subscription-current { border-bottom: 1px solid rgb(var(--line)); }
 .subscription-current summary { padding: 18px 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; cursor: pointer; list-style: none; }
-.subscription-current summary::after { content: '+'; color: #999; margin-left: auto; }
+.subscription-current summary::after { content: '+'; color: rgb(var(--ink-3)); margin-left: auto; }
 .subscription-current[open] summary::after { content: '−'; }
-.subscription-current summary .portal-muted { font-size: 12px; }
+.subscription-current summary .portal-muted { font-size: 13px; }
 .current-content { padding: 10px 0 26px; max-width: 680px; }
 .subscription-quota { margin-bottom: 20px; }
 .subscription-quota p { display: flex; justify-content: space-between; gap: 20px; font-size: 13px; }
-.subscription-quota progress { width: 100%; height: 5px; appearance: none; margin: 10px 0 5px; border: 0; background: #efede3; border-radius: 4px; overflow: hidden; }
-.subscription-quota progress::-webkit-progress-bar { background: #efede3; }
-.subscription-quota progress::-webkit-progress-value { background: #000; border-radius: 4px; }
-.subscription-quota progress::-moz-progress-bar { background: #000; }
-.subscription-quota small { color: #999; font-size: 11px; }
+.subscription-quota progress { width: 100%; height: 5px; appearance: none; margin: 10px 0 5px; border: 0; background: rgb(var(--line)); border-radius: 4px; overflow: hidden; }
+.subscription-quota progress::-webkit-progress-bar { background: rgb(var(--line)); }
+.subscription-quota progress::-webkit-progress-value { background: rgb(var(--action-bg)); border-radius: 4px; }
+.subscription-quota progress::-moz-progress-bar { background: rgb(var(--action-bg)); }
+.subscription-quota small { color: rgb(var(--ink-3)); font-size: 13px; }
 .history-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
-.history-heading a { font-size: 12px; color: #777; margin-bottom: 20px; }
-.subscription-table-wrap { border: 1px solid #efede3; border-radius: 12px; overflow-x: auto; }
+.history-heading a { font-size: 13px; color: rgb(var(--ink-3)); margin-bottom: 20px; }
+.subscription-table-wrap { border: 1px solid rgb(var(--line)); border-radius: 12px; overflow-x: auto; }
 .subscription-history-table { width: 100%; text-align: left; white-space: nowrap; border-collapse: collapse; }
-.subscription-history-table th, .subscription-history-table td { padding: 18px; border-bottom: 1px solid #efede3; font-size: 12px; }
-.subscription-history-table th { font-weight: 400; background: #f7f5ee; color: #777; }
+.subscription-history-table th, .subscription-history-table td { padding: 18px; border-bottom: 1px solid rgb(var(--line)); font-size: 13px; }
+.subscription-history-table th { font-weight: 400; background: rgb(var(--surface-2)); color: rgb(var(--ink-3)); }
 .subscription-history-table tr:last-child td { border-bottom: 0; }
-.history-empty { height: 150px; text-align: center; color: #999; }
-.subscription-state { display: inline-block; border-radius: 5px; padding: 4px 9px; background: #f3f0eb; color: #777; }
-.subscription-state.active { color: #356148; background: #edf4ec; }
+.history-empty { height: 150px; text-align: center; color: rgb(var(--ink-3)); }
+.subscription-state { display: inline-block; border-radius: 5px; padding: 4px 9px; background: rgb(var(--surface-2)); color: rgb(var(--ink-3)); }
+.subscription-state.active { color: rgb(var(--ink)); background: rgb(var(--surface-2)); }
 .portal-error button { margin: 10px; text-decoration: underline; }
 @media (max-width: 780px) { .subscription-plans { grid-template-columns: 1fr; } .subscription-plan { padding: 24px; } .subscription-current summary { flex-wrap: wrap; gap: 8px; } .subscription-current summary .portal-muted { width: 100%; order: 2; } }
 </style>

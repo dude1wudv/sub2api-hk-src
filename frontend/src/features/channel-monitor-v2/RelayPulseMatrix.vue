@@ -586,7 +586,7 @@ function formatBucketRange(value: string) {
 }
 .pulse-tooltip-line {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.45;
   color: rgb(75 85 99);
 }
@@ -633,7 +633,7 @@ function formatBucketRange(value: string) {
 }
 .matrix-floating-tooltip-line {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.45;
   color: rgb(75 85 99);
 }

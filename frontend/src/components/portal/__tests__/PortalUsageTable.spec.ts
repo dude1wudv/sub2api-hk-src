@@ -66,8 +66,8 @@ describe('PortalUsageTable latency states', () => {
     const firstColors = wrapper.findAll('.usage-latency-values > b:nth-of-type(1)').map(node => node.element.style.color)
     const durationColors = wrapper.findAll('.usage-latency-values > b:nth-of-type(2)').map(node => node.element.style.color)
 
-    expect(firstColors).toEqual(['rgb(22, 128, 74)', 'rgb(166, 108, 0)', 'rgb(194, 81, 23)', 'rgb(200, 49, 49)', 'rgb(146, 144, 136)'])
-    expect(durationColors).toEqual(['rgb(22, 128, 74)', 'rgb(166, 108, 0)', 'rgb(194, 81, 23)', 'rgb(200, 49, 49)', 'rgb(146, 144, 136)'])
+    expect(firstColors).toEqual(['rgb(var(--text-ok))', 'rgb(var(--text-warn))', 'rgb(var(--text-warn))', 'rgb(var(--text-err))', 'rgb(var(--ink-3))'])
+    expect(durationColors).toEqual(['rgb(var(--text-ok))', 'rgb(var(--text-warn))', 'rgb(var(--text-warn))', 'rgb(var(--text-err))', 'rgb(var(--ink-3))'])
     wrapper.unmount()
   })
 

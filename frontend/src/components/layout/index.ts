@@ -1,9 +1,4 @@
-/**
- * Layout Components
- * Export all layout components for easy importing
- */
-
-export { default as AppShell } from './AppShell.vue'
-export { default as AppSidebar } from './AppSidebar.vue'
-export { default as AppHeader } from './AppHeader.vue'
+/** Active workspace layouts. */
+export { default as UserShell } from './UserShell.vue'
+export { default as AdminShell } from './AdminShell.vue'
 export { default as AuthLayout } from './AuthLayout.vue'

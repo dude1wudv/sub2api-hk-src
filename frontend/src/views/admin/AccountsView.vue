@@ -176,7 +176,7 @@
         </div>
         <details class="admin-resource-summary" :open="!!activeQuotaPool">
         <summary>{{ t('admin.accounts.summary.statusTitle') }} · {{ t('admin.accounts.quotaPools.oauthTitle') }}</summary>
-        <div class="mt-3 grid gap-3 lg:grid-cols-4 glacier-account-summary">
+        <div class="mt-3 grid gap-3 lg:grid-cols-4 account-summary-grid">
           <div class="account-summary-panel">
             <div class="flex items-center justify-between gap-3">
               <div>
@@ -279,17 +279,17 @@
             </div>
           </div>
 
-          <GlacierDisclosure class="lg:col-span-4" :label="`${t('admin.accounts.summary.proxyTitle')} · ${accountSummary?.openai ?? '—'}`"><div class="account-summary-panel lg:col-span-4">
+          <Disclosure class="lg:col-span-4" :label="`${t('admin.accounts.summary.proxyTitle')} · ${accountSummary?.openai ?? '—'}`"><div class="account-summary-panel lg:col-span-4">
             <div class="flex items-center justify-between gap-3">
               <div>
                 <p class="account-summary-label">{{ t('admin.accounts.summary.proxyTitle') }}</p>
                 <p class="account-summary-value">{{ accountSummary?.openai ?? '-' }}</p>
               </div>
-              <span class="account-summary-pill">{{ t('admin.accounts.summary.tokyoPool') }}</span>
+              <span class="account-summary-pill" data-test="proxy-node-count">{{ t('admin.accounts.summary.proxyNodeCount', { count: proxyNodeCount }) }}</span>
             </div>
             <div class="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
               <div
-                v-for="proxy in tokyoProxyHealth"
+                v-for="proxy in proxyHealthRows"
                 :key="proxy.proxy_id ?? 'none'"
                 class="proxy-health-row"
               >
@@ -297,8 +297,11 @@
                   <div class="min-w-0">
                     <div class="flex items-center gap-2">
                       <span :class="['proxy-health-dot', proxyHealthDotClass(proxy)]"></span>
-                      <span class="truncate text-sm font-medium text-gray-900 dark:text-white" :title="proxy.name">{{ proxy.name }}</span>
+                      <span class="min-w-0 break-words text-sm font-medium text-gray-900 dark:text-white" :title="proxy.nodeLocation" data-test="proxy-node-location">{{ proxy.nodeLocation }}</span>
                     </div>
+                    <p v-if="proxy.nodeAddress" class="mt-1 break-all text-xs text-gray-600 dark:text-gray-300" data-test="proxy-node-address">
+                      {{ t(proxy.nodeAddressLabel) }}: {{ proxy.nodeAddress }}
+                    </p>
                     <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400" :title="proxyHealthMessage(proxy)">
                       {{ proxyHealthMessage(proxy) }}
                     </p>
@@ -322,11 +325,11 @@
                   </div>
                 </div>
               </div>
-              <div v-if="tokyoProxyHealth.length === 0" class="text-xs text-gray-400 dark:text-gray-500">-</div>
+              <div v-if="proxyHealthRows.length === 0" class="text-xs text-gray-400 dark:text-gray-500">-</div>
             </div>
-          </div></GlacierDisclosure>
+          </div></Disclosure>
         </div>
-        <GlacierDisclosure :label="`${t('admin.accounts.quotaPools.oauthTitle')} · ${formatSummaryPercent(quotaPoolSummaryView?.oauth_pool?.remaining_percent)}`" :active="!!activeQuotaPool"><div class="mt-3 space-y-3">
+        <Disclosure :label="`${t('admin.accounts.quotaPools.oauthTitle')} · ${formatSummaryPercent(quotaPoolSummaryView?.oauth_pool?.remaining_percent)}`" :active="!!activeQuotaPool"><div class="mt-3 space-y-3">
           <div
             role="button"
             tabindex="0"
@@ -376,7 +379,7 @@
               {{ t('admin.accounts.quotaPools.exitPool') }}
             </button>
           </div>
-        </div></GlacierDisclosure>
+        </div></Disclosure>
         </details>
       </template>
       <template #table>
@@ -499,8 +502,20 @@
             </div>
           </template>
           <template #cell-schedulable="{ row }">
-            <button @click="handleToggleSchedulable(row)" :disabled="togglingSchedulable === row.id" class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-dark-800" :class="[row.schedulable ? 'bg-primary-500 hover:bg-primary-600' : 'bg-gray-200 hover:bg-gray-300 dark:bg-dark-600 dark:hover:bg-dark-500']" :title="row.schedulable ? t('admin.accounts.schedulableEnabled') : t('admin.accounts.schedulableDisabled')">
-              <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="[row.schedulable ? 'translate-x-4' : 'translate-x-0']" />
+            <button
+              type="button"
+              role="switch"
+              class="account-schedule-switch"
+              :aria-checked="row.schedulable"
+              :aria-busy="togglingSchedulable === row.id"
+              :aria-label="`${t('admin.accounts.columns.schedulable')} · ${row.name}`"
+              :title="row.schedulable ? t('admin.accounts.schedulableEnabled') : t('admin.accounts.schedulableDisabled')"
+              :disabled="togglingSchedulable === row.id"
+              @click="handleToggleSchedulable(row)"
+            >
+              <span class="account-schedule-track" aria-hidden="true">
+                <span class="account-schedule-thumb" />
+              </span>
             </button>
           </template>
           <template #cell-today_stats="{ row }">
@@ -701,7 +716,7 @@
 <script setup lang="ts">
 import AccountDetailsDrawer from '@/components/account/AccountDetailsDrawer.vue'
 import SlowTTFTStatus from '@/components/account/SlowTTFTStatus.vue'
-import GlacierDisclosure from '@/components/common/GlacierDisclosure.vue'
+import Disclosure from '@/components/common/Disclosure.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, toRaw, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
@@ -1425,11 +1440,32 @@ const formatClockTime = (date: Date) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 }
 
-const tokyoProxyHealth = computed<AccountProxySummary[]>(() => {
-  const proxyRows = accountSummary.value?.proxy_distribution ?? []
-  const tokyo = proxyRows.filter((proxy) => /tokyo|東京|日本|japan|jp/i.test(proxy.name))
-  return (tokyo.length > 0 ? tokyo : proxyRows).slice(0, 4)
+const proxyHealthRows = computed(() => {
+  const nodesById = new Map<number, AccountProxy>()
+  for (const account of accounts.value) {
+    if (account.proxy) nodesById.set(account.proxy.id, account.proxy)
+  }
+  for (const proxy of proxies.value) nodesById.set(proxy.id, proxy)
+
+  return (accountSummary.value?.proxy_distribution ?? []).map(proxy => {
+    const node = proxy.proxy_id == null ? undefined : nodesById.get(proxy.proxy_id)
+    const exitIp = node?.ip_address?.trim()
+    const location = [...new Set([
+      node?.country?.trim() || node?.country_code?.trim().toUpperCase(),
+      node?.region?.trim(),
+      node?.city?.trim()
+    ].filter(Boolean))].join(' · ')
+    return {
+      ...proxy,
+      nodeLocation: proxy.proxy_id == null
+        ? t('admin.accounts.noProxy')
+        : location || t('admin.accounts.summary.unknownProxyRegion'),
+      nodeAddress: exitIp || node?.host?.trim() || '',
+      nodeAddressLabel: exitIp ? 'admin.accounts.summary.exitIp' : 'admin.accounts.summary.proxyAddress'
+    }
+  })
 })
+const proxyNodeCount = computed(() => proxyHealthRows.value.filter(proxy => proxy.proxy_id != null).length)
 
 const activeQuotaPool = computed<'oauth' | null>(() => {
   const requestParams = params as any
@@ -2934,7 +2970,7 @@ onMounted(async () => {
   load()
   loadUpstreamBillingProbeGlobalState()
   const [proxiesResult, groupsResult] = await Promise.allSettled([
-    adminAPI.proxies.getAll(),
+    adminAPI.proxies.getAllWithCount(),
     adminAPI.groups.getAll()
   ])
   if (proxiesResult.status === 'fulfilled') {
@@ -2984,6 +3020,62 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.account-schedule-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.account-schedule-switch:focus-visible {
+  outline: 2px solid rgb(var(--focus-ring));
+  outline-offset: 2px;
+}
+
+.account-schedule-switch:disabled { opacity: .5; cursor: progress; }
+
+.account-schedule-track {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgb(var(--line-strong));
+  transition: background-color var(--motion-fast) var(--motion-ease);
+  pointer-events: none;
+}
+
+.account-schedule-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgb(var(--surface));
+  box-shadow: 0 1px 2px rgb(0 0 0 / .15);
+  transition: transform var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease);
+}
+
+.account-schedule-switch[aria-checked='true'] .account-schedule-track { background: rgb(var(--action-bg)); }
+.account-schedule-switch[aria-checked='true'] .account-schedule-thumb { transform: translateX(16px); background: rgb(var(--action-text)); }
+.account-schedule-switch[aria-checked='true']:hover:not(:disabled) .account-schedule-track { background: rgb(var(--action-hover)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .account-schedule-track,
+  .account-schedule-thumb { transition: none; }
+}
+
 .account-tools-menu-item {
   @apply flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs sm:text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200/60 dark:text-gray-200 dark:hover:bg-dark-700 dark:active:bg-dark-600/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40;
 }

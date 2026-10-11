@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { computed, ref, watch } from 'vue'
-import { useAppearance } from '@/composables/useAppearance'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, CategoryScale, Filler, Legend, LineElement, LinearScale, PointElement, Title, Tooltip } from 'chart.js'
 import { Line } from 'vue-chartjs'
@@ -23,6 +23,8 @@ interface Props {
   fullscreen?: boolean
 }
 
+const chartTheme = useChartTheme()
+const seriesPalette = useChartPalette()
 const props = defineProps<Props>()
 const { t } = useI18n()
 const emit = defineEmits<{
@@ -44,14 +46,13 @@ watch(
   }
 )
 
-const { isDark: isDarkMode } = useAppearance()
 const colors = computed(() => ({
-  blue: '#3b82f6',
-  blueAlpha: '#3b82f620',
-  green: '#10b981',
-  greenAlpha: '#10b98120',
-  grid: isDarkMode.value ? '#374151' : '#f3f4f6',
-  text: isDarkMode.value ? '#9ca3af' : '#6b7280'
+  blue: seriesPalette.value[0],
+  blueAlpha: `${seriesPalette.value[0]}20`,
+  green: seriesPalette.value[1],
+  greenAlpha: `${seriesPalette.value[1]}20`,
+  grid: chartTheme.value.grid,
+  text: chartTheme.value.text
 }))
 
 const totalRequests = computed(() => sumNumbers(props.points.map((p) => p.request_count)))
@@ -96,18 +97,20 @@ const options = computed(() => {
   const c = colors.value
   return {
     responsive: true,
+    animation: false as const,
     maintainAspectRatio: false,
     interaction: { intersect: false, mode: 'index' as const },
     plugins: {
       legend: {
         position: 'top' as const,
         align: 'end' as const,
-        labels: { color: c.text, usePointStyle: true, boxWidth: 6, font: { size: 10 } }
+        labels: { color: c.text, usePointStyle: true, boxWidth: 6, font: { size: 13 } }
       },
       tooltip: {
-        backgroundColor: isDarkMode.value ? '#1f2937' : '#ffffff',
-        titleColor: isDarkMode.value ? '#f3f4f6' : '#111827',
-        bodyColor: isDarkMode.value ? '#d1d5db' : '#4b5563',
+      ...chartTheme.value.tooltip,
+        backgroundColor: chartTheme.value.tooltip.backgroundColor,
+        titleColor: chartTheme.value.tooltip.titleColor,
+        bodyColor: chartTheme.value.tooltip.bodyColor,
         borderColor: c.grid,
         borderWidth: 1,
         padding: 10,
@@ -133,7 +136,7 @@ const options = computed(() => {
         grid: { display: false },
         ticks: {
           color: c.text,
-          font: { size: 10 },
+          font: { size: 13 },
           maxTicksLimit: 8,
           autoSkip: true,
           autoSkipPadding: 10
@@ -144,14 +147,14 @@ const options = computed(() => {
         display: true,
         position: 'left' as const,
         grid: { color: c.grid, borderDash: [4, 4] },
-        ticks: { color: c.text, font: { size: 10 } }
+        ticks: { color: c.text, font: { size: 13 } }
       },
       y1: {
         type: 'linear' as const,
         display: true,
         position: 'right' as const,
         grid: { display: false },
-        ticks: { color: c.green, font: { size: 10 } }
+        ticks: { color: c.green, font: { size: 13 } }
       }
     }
   }

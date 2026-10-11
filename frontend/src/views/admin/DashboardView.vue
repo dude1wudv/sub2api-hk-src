@@ -27,7 +27,7 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.apiKeys') }}
                 </p>
-                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
                   {{ stats.total_api_keys }}
                 </p>
                 <p class="text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -47,7 +47,7 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.accounts') }}
                 </p>
-                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
                   {{ stats.total_accounts }}
                 </p>
                 <p class="truncate text-xs">
@@ -72,7 +72,7 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.todayRequests') }}
                 </p>
-                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
                   {{ stats.today_requests }}
                 </p>
                 <p class="truncate text-xs text-gray-400 dark:text-dark-400">
@@ -92,7 +92,7 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.users') }}
                 </p>
-                <p class="metric-value text-xl font-bold tracking-tight text-emerald-600 tabular-nums dark:text-emerald-400 sm:text-2xl">
+                <p class="metric-value text-emerald-600 tabular-nums dark:text-emerald-400">
                   +{{ stats.today_new_users }}
                 </p>
                 <p class="truncate text-xs text-gray-400 dark:text-dark-400">
@@ -116,7 +116,7 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.todayTokens') }}
                 </p>
-                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
                   {{ formatTokens(stats.today_tokens) }}
                 </p>
                 <p class="truncate text-xs">
@@ -152,7 +152,7 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.totalTokens') }}
                 </p>
-                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
                   {{ formatTokens(stats.total_tokens) }}
                 </p>
                 <p class="truncate text-xs">
@@ -189,7 +189,7 @@
                   {{ t('admin.dashboard.performance') }}
                 </p>
                 <div class="flex items-baseline gap-1.5">
-                  <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                  <p class="metric-value text-gray-900 tabular-nums dark:text-white">
                     {{ formatTokens(stats.rpm) }}
                   </p>
                   <span class="text-xs font-semibold uppercase text-gray-400 dark:text-dark-400">RPM</span>
@@ -214,7 +214,7 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
                   {{ t('admin.dashboard.avgResponse') }}
                 </p>
-                <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
                   {{ formatDuration(stats.average_duration_ms) }}
                 </p>
                 <p class="truncate text-xs text-gray-400 dark:text-dark-400">
@@ -229,7 +229,7 @@
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
               <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('admin.dashboard.upstreamBalance.title') }}</p>
-              <p class="text-2xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-3xl">${{ formatCost(upstreamBalances?.total || 0) }}</p>
+              <p class="metric-value">${{ formatCost(upstreamBalances?.total || 0) }}</p>
               <p class="mt-1 text-xs text-gray-400 dark:text-dark-400">{{ t('admin.dashboard.upstreamBalance.autoRefresh') }}</p>
             </div>
             <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-100/70 text-link-700 dark:bg-link-900/30 dark:text-link-300">
@@ -247,13 +247,13 @@
                   </div>
                   <span v-if="item.error" class="badge badge-danger text-xs font-medium">{{ t('admin.dashboard.upstreamBalance.error') }}</span>
                 </div>
-                <p class="mt-2 text-lg font-bold tracking-tight text-gray-900 tabular-nums dark:text-white">{{ item.error ? '--' : `$${formatCost(item.balance)}` }}</p>
+                <p class="mt-2 break-all text-lg font-semibold text-gray-900 tabular-nums dark:text-white">{{ item.error ? '--' : `$${formatCost(item.balance)}` }}</p>
               </div>
             </div>
             <div class="mt-3.5 grid grid-cols-2 gap-3 md:grid-cols-4">
               <div v-for="entry in upstreamConsumptionCards" :key="entry.label" class="rounded-xl bg-amber-50/80 p-3.5 dark:bg-amber-950/20">
                 <p class="text-xs font-medium text-amber-700 dark:text-amber-300">{{ entry.label }}</p>
-                <p class="mt-1 text-lg font-bold tracking-tight text-amber-900 tabular-nums dark:text-amber-100">${{ formatCost(entry.value) }}</p>
+                <p class="mt-1 break-all text-lg font-semibold text-amber-900 tabular-nums dark:text-amber-100">${{ formatCost(entry.value) }}</p>
               </div>
             </div>
           </template>
@@ -393,13 +393,13 @@
 </template>
 
 <script setup lang="ts">
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
-import { useAppearance } from '@/composables/useAppearance'
-import { useGlacierChartPalette } from '@/composables/useGlacierChartPalette'
 
+const chartTheme = useChartTheme()
 const { t, locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 import { adminAPI } from '@/api/admin'
@@ -503,18 +503,18 @@ const granularityOptions = computed(() => [
 ])
 
 // Dark mode detection
-const { isDark: isDarkMode, style } = useAppearance()
-const userTrendPalette = useGlacierChartPalette(['#3b82f6', '#10b981', '#f59e0b'])
+const userTrendPalette = useChartPalette()
 
 // Chart colors
 const chartColors = computed(() => ({
-  text: isDarkMode.value ? '#e5e7eb' : '#374151',
-  grid: isDarkMode.value ? '#374151' : '#e5e7eb'
+  text: chartTheme.value.text,
+  grid: chartTheme.value.grid
 }))
 
 // Line chart options (for user trend chart)
 const lineOptions = computed(() => ({
   responsive: true,
+  animation: false as const,
   maintainAspectRatio: false,
   interaction: {
     intersect: false,
@@ -529,11 +529,12 @@ const lineOptions = computed(() => ({
         pointStyle: 'circle',
         padding: 15,
         font: {
-          size: 11
+          size: 13
         }
       }
     },
     tooltip: {
+      ...chartTheme.value.tooltip,
       itemSort: (a: any, b: any) => {
         const aValue = typeof a?.raw === 'number' ? a.raw : Number(a?.parsed?.y ?? 0)
         const bValue = typeof b?.raw === 'number' ? b.raw : Number(b?.parsed?.y ?? 0)
@@ -554,7 +555,7 @@ const lineOptions = computed(() => ({
       ticks: {
         color: chartColors.value.text,
         font: {
-          size: 10
+          size: 13
         }
       }
     },
@@ -565,7 +566,7 @@ const lineOptions = computed(() => ({
       ticks: {
         color: chartColors.value.text,
         font: {
-          size: 10
+          size: 13
         },
         callback: (value: string | number) => formatUserTrendValue(Number(value))
       }
@@ -605,20 +606,7 @@ const userTrendChartData = computed(() => {
   })
 
   const sortedDates = Array.from(allDates).sort()
-  const colors = style.value === 'glacier' ? [
-    '#3b82f6',
-    '#10b981',
-    '#f59e0b',
-    '#ef4444',
-    '#8b5cf6',
-    '#ec4899',
-    '#14b8a6',
-    '#f97316',
-    '#6366f1',
-    '#84cc16',
-    '#06b6d4',
-    '#a855f7'
-  ] : userTrendPalette.value
+  const colors = userTrendPalette.value
 
   const datasets = Array.from(userGroups.values()).map((group, idx) => ({
     label: group.name,

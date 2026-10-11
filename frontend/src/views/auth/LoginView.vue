@@ -3,7 +3,7 @@
     <div class="space-y-6">
       <!-- Title -->
       <div class="text-center">
-        <h2 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+        <h2 class="pa-display-title text-xl font-bold tracking-tight text-gray-900 dark:text-white">
           {{ t('auth.welcomeBack') }}
         </h2>
         <p class="mt-1 text-xs text-gray-500 dark:text-dark-300">

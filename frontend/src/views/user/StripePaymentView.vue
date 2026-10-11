@@ -98,7 +98,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { useColorMode } from '@/composables/useColorMode'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { usePaymentStore } from '@/stores/payment'
@@ -137,6 +138,9 @@ const showPaymentElement = ref(false)
 let disposed = false
 let stripeInstance: Stripe | null = null
 let elementsInstance: StripeElements | null = null
+const { isDark } = useColorMode()
+const stripeAppearance = computed(() => ({ theme: isDark.value ? 'night' as const : 'stripe' as const, variables: { borderRadius: '8px' } }))
+watch(stripeAppearance, appearance => { elementsInstance?.update({ appearance }) })
 let redirectTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(async () => {
@@ -251,7 +255,7 @@ function mountPaymentElement(stripe: Stripe, clientSecret: string) {
   if (disposed) return
   const elements = stripe.elements({
     clientSecret,
-    appearance: { theme: 'stripe', variables: { borderRadius: '8px' } },
+    appearance: stripeAppearance.value,
   })
   elementsInstance = elements
   const paymentElement = elements.create('payment', {

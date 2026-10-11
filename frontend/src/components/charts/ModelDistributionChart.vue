@@ -101,7 +101,7 @@
     </div>
     <div
       v-else-if="activeView === 'model_distribution' && displayModelStats.length > 0 && chartData"
-      class="flex flex-col items-center gap-4 sm:flex-row sm:gap-6"
+      class="distribution-body flex flex-col items-center gap-4 sm:flex-row sm:gap-6"
     >
       <div class="h-44 w-44 shrink-0 sm:h-48 sm:w-48">
         <Doughnut :data="chartData" :options="doughnutOptions" />
@@ -182,7 +182,7 @@
     >
       {{ t('admin.dashboard.failedToLoad') }}
     </div>
-    <div v-else-if="rankingDisplayItems.length > 0 && rankingChartData" class="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+    <div v-else-if="rankingDisplayItems.length > 0 && rankingChartData" class="distribution-body flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
       <div class="h-44 w-44 shrink-0 sm:h-48 sm:w-48">
         <Doughnut :data="rankingChartData" :options="rankingDoughnutOptions" />
       </div>
@@ -243,7 +243,7 @@
 </template>
 
 <script setup lang="ts">
-import { useGlacierChartPalette } from '@/composables/useGlacierChartPalette'
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
@@ -255,6 +255,7 @@ import { getUserBreakdown } from '@/api/admin/dashboard'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
+const chartTheme = useChartTheme()
 const { t } = useI18n()
 
 type DistributionMetric = 'tokens' | 'actual_cost'
@@ -340,20 +341,7 @@ const showAccountCost = computed(() => props.showAccountCost)
 const distributionColspan = computed(() => showAccountCost.value ? 6 : 5)
 const activeView = ref<'model_distribution' | 'spending_ranking'>('model_distribution')
 
-const chartColors = useGlacierChartPalette([
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#ec4899',
-  '#14b8a6',
-  '#f97316',
-  '#6366f1',
-  '#84cc16',
-  '#06b6d4',
-  '#a855f7'
-])
+const chartColors = useChartPalette()
 
 const displayModelStats = computed(() => {
   const sourceStats = props.source === 'upstream'
@@ -392,7 +380,7 @@ const rankingChartData = computed(() => {
   if (otherRankingItem.value) {
     labels.push(t('admin.dashboard.spendingRankingOther'))
     data.push(otherRankingItem.value.actual_cost)
-    backgroundColor.push('#94a3b8')
+    backgroundColor.push(chartTheme.value.text)
   }
 
   return {
@@ -440,12 +428,14 @@ const rankingDisplayItems = computed<RankingDisplayItem[]>(() => {
 
 const doughnutOptions = computed(() => ({
   responsive: true,
+  animation: false as const,
   maintainAspectRatio: false,
   plugins: {
     legend: {
       display: false
     },
     tooltip: {
+      ...chartTheme.value.tooltip,
       callbacks: {
         label: (context: any) => {
           const value = context.raw as number
@@ -463,12 +453,14 @@ const doughnutOptions = computed(() => ({
 
 const rankingDoughnutOptions = computed(() => ({
   responsive: true,
+  animation: false as const,
   maintainAspectRatio: false,
   plugins: {
     legend: {
       display: false
     },
     tooltip: {
+      ...chartTheme.value.tooltip,
       callbacks: {
         label: (context: any) => {
           const value = context.raw as number

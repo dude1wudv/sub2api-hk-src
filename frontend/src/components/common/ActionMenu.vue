@@ -1,9 +1,9 @@
 <template>
-  <button ref="trigger" type="button" class="glacier-action-trigger" :aria-label="label" :title="label" aria-haspopup="menu" :aria-expanded="open" @click.stop="toggle" @keydown.down.prevent="show">
+  <button ref="trigger" type="button" class="action-trigger" :aria-label="label" :title="label" aria-haspopup="menu" :aria-expanded="open" @click.stop="toggle" @keydown.down.prevent="show">
     <Icon name="more" size="sm" />
   </button>
   <Teleport to="body">
-    <div v-if="open" ref="panel" role="menu" :aria-label="label" class="glacier-action-menu" :style="position" @keydown="onKeydown">
+    <div v-if="open" ref="panel" role="menu" :aria-label="label" class="action-menu" :style="position" @keydown="onKeydown">
       <slot :close="close" />
     </div>
   </Teleport>
@@ -12,9 +12,9 @@
 <script setup lang="ts">
 import { ref, nextTick, onUnmounted, watch } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
-import { useAppearance } from '@/composables/useAppearance'
+import { useColorMode } from '@/composables/useColorMode'
 defineProps<{ label: string }>()
-const { style } = useAppearance()
+const { mode } = useColorMode()
 const open = ref(false)
 const trigger = ref<HTMLButtonElement>()
 const panel = ref<HTMLDivElement>()
@@ -66,6 +66,19 @@ function onKeydown(event: KeyboardEvent) {
   const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
   items[next]?.focus()
 }
-watch(style, dismiss)
+watch(mode, dismiss)
 onUnmounted(dismiss)
 </script>
+
+<style scoped>
+.action-trigger { display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; border: 1px solid rgb(var(--line)); border-radius: 8px; color: rgb(var(--ink-2)); background: rgb(var(--surface)); transition: color var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease); }
+.action-trigger:hover, .action-trigger[aria-expanded='true'] { color: rgb(var(--ink)); background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); }
+.action-trigger:focus-visible, .action-menu :deep(button:focus-visible) { outline: 2px solid rgb(var(--focus-ring)); outline-offset: 2px; }
+.action-menu { position: fixed; z-index: 250; width: max-content; min-width: 180px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto; padding: 6px; border: 1px solid rgb(var(--line-strong)); border-radius: 12px; color: rgb(var(--ink)); background: rgb(var(--surface-elevated)); box-shadow: 0 12px 36px rgb(0 0 0 / .16); animation: menu-enter var(--motion-menu) var(--motion-ease); }
+.action-menu :deep(button) { display: flex; width: 100%; min-height: 44px; align-items: center; gap: 9px; border: 0; border-radius: 6px; padding: 8px 12px; background: transparent; color: inherit; font: inherit; font-size: 14px; text-align: left; white-space: normal; cursor: pointer; transition: background-color var(--motion-fast) var(--motion-ease); }
+.action-menu :deep(button:hover) { background: rgb(var(--surface-2)); }
+.action-menu :deep(button[data-danger='true']) { color: rgb(var(--text-err)); }
+.action-menu :deep(button:disabled) { opacity: .5; cursor: not-allowed; }
+@keyframes menu-enter { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .action-trigger, .action-menu, .action-menu :deep(button) { animation: none; transition: none; } }
+</style>

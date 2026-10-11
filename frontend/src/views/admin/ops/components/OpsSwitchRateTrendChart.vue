@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { computed } from 'vue'
-import { useAppearance } from '@/composables/useAppearance'
 import { useI18n } from 'vue-i18n'
 import {
   Chart as ChartJS,
@@ -29,15 +29,16 @@ interface Props {
   fullscreen?: boolean
 }
 
+const chartTheme = useChartTheme()
+const seriesPalette = useChartPalette()
 const props = defineProps<Props>()
 const { t } = useI18n()
 
-const { isDark: isDarkMode } = useAppearance()
 const colors = computed(() => ({
-  teal: '#14b8a6',
-  tealAlpha: '#14b8a620',
-  grid: isDarkMode.value ? '#374151' : '#f3f4f6',
-  text: isDarkMode.value ? '#9ca3af' : '#6b7280'
+  teal: seriesPalette.value[5],
+  tealAlpha: `${seriesPalette.value[5]}20`,
+  grid: chartTheme.value.grid,
+  text: chartTheme.value.text
 }))
 
 const totalRequests = computed(() => sumNumbers(props.points.map((p) => p.request_count)))
@@ -76,18 +77,20 @@ const options = computed(() => {
   const c = colors.value
   return {
     responsive: true,
+    animation: false as const,
     maintainAspectRatio: false,
     interaction: { intersect: false, mode: 'index' as const },
     plugins: {
       legend: {
         position: 'top' as const,
         align: 'end' as const,
-        labels: { color: c.text, usePointStyle: true, boxWidth: 6, font: { size: 10 } }
+        labels: { color: c.text, usePointStyle: true, boxWidth: 6, font: { size: 13 } }
       },
       tooltip: {
-        backgroundColor: isDarkMode.value ? '#1f2937' : '#ffffff',
-        titleColor: isDarkMode.value ? '#f3f4f6' : '#111827',
-        bodyColor: isDarkMode.value ? '#d1d5db' : '#4b5563',
+      ...chartTheme.value.tooltip,
+        backgroundColor: chartTheme.value.tooltip.backgroundColor,
+        titleColor: chartTheme.value.tooltip.titleColor,
+        bodyColor: chartTheme.value.tooltip.bodyColor,
         borderColor: c.grid,
         borderWidth: 1,
         padding: 10,
@@ -106,7 +109,7 @@ const options = computed(() => {
         grid: { display: false },
         ticks: {
           color: c.text,
-          font: { size: 10 },
+          font: { size: 13 },
           maxTicksLimit: 8,
           autoSkip: true,
           autoSkipPadding: 10
@@ -119,7 +122,7 @@ const options = computed(() => {
         grid: { color: c.grid, borderDash: [4, 4] },
         ticks: {
           color: c.text,
-          font: { size: 10 },
+          font: { size: 13 },
           callback: (value: any) => Number(value).toFixed(3)
         }
       }

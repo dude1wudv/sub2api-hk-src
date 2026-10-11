@@ -1,6 +1,6 @@
 <template>
   <div class="w-full">
-    <label v-if="label" :for="id" class="input-label mb-1.5 block">
+    <label v-if="label" :for="inputId" class="input-label mb-1.5 block">
       {{ label }}
       <span v-if="required" class="text-red-500">*</span>
     </label>
@@ -14,7 +14,7 @@
       </div>
 
       <input
-        :id="id"
+        :id="inputId"
         ref="inputRef"
         :type="type"
         :value="modelValue"
@@ -23,6 +23,8 @@
         :placeholder="placeholderText"
         :autocomplete="autocomplete"
         :readonly="readonly"
+        :aria-describedby="describedBy"
+        :aria-invalid="error ? 'true' : undefined"
         :class="[
           'input w-full',
           $slots.prefix ? 'pl-10' : '',
@@ -45,17 +47,17 @@
       </div>
     </div>
     <!-- Hint / Error Text -->
-    <p v-if="error" class="input-error-text mt-1.5">
+    <p v-if="error" :id="messageId" class="input-error-text mt-1.5" role="alert">
       {{ error }}
     </p>
-    <p v-else-if="hint" class="input-hint mt-1.5">
+    <p v-else-if="hint" :id="messageId" class="input-hint mt-1.5">
       {{ hint }}
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 
 interface Props {
   modelValue: string | number | null | undefined
@@ -69,6 +71,7 @@ interface Props {
   hint?: string
   id?: string
   autocomplete?: string
+  ariaDescribedby?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -87,6 +90,10 @@ const emit = defineEmits<{
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)
+const generatedId = useId()
+const inputId = computed(() => props.id || `input-${generatedId}`)
+const messageId = computed(() => `${inputId.value}-message`)
+const describedBy = computed(() => [props.ariaDescribedby, props.error || props.hint ? messageId.value : ''].filter(Boolean).join(' ') || undefined)
 const placeholderText = computed(() => props.placeholder || '')
 
 const onInput = (event: Event) => {
@@ -100,3 +107,8 @@ defineExpose({
   select: () => inputRef.value?.select()
 })
 </script>
+
+<style scoped>
+.input { transition: border-color var(--motion-fast, 160ms), box-shadow var(--motion-fast, 160ms), background-color var(--motion-fast, 160ms); }
+@media (max-width: 767px) { .input { min-height: 44px; font-size: 16px; } }
+</style>

@@ -2,178 +2,7 @@
   <!-- .table-wrapper 是 TablePageLayout 滚动链的挂载点：外层 .table-scroll-container
        负责卡片外观并 overflow-hidden，本层接收 overflow-y-auto 才能在内容超高时滚动。 -->
   <div class="table-wrapper">
-    <table
-      v-if="!isGlassLayout"
-      data-testid="desktop-channels"
-      class="!hidden w-full table-fixed border-collapse text-sm lg:!table"
-    >
-      <thead>
-        <tr class="border-b border-gray-100 bg-gray-50/50 text-xs font-medium uppercase tracking-wide text-gray-500 dark:border-dark-700 dark:bg-dark-800/50 dark:text-gray-400">
-          <th class="w-[180px] px-4 py-3 text-center">{{ columns.name }}</th>
-          <th class="w-[200px] px-4 py-3 text-left">{{ columns.description }}</th>
-          <th class="w-[140px] px-4 py-3 text-left">{{ columns.platform }}</th>
-          <th class="px-4 py-3 text-left">{{ columns.groups }}</th>
-          <th class="px-4 py-3 text-left">{{ columns.supportedModels }}</th>
-        </tr>
-      </thead>
-      <tbody v-if="loading">
-        <tr>
-          <td colspan="5" class="py-10 text-center">
-            <Icon name="refresh" size="lg" class="inline-block animate-spin text-gray-400" />
-          </td>
-        </tr>
-      </tbody>
-      <tbody v-else-if="rows.length === 0">
-        <tr>
-          <td colspan="5" class="py-12 text-center">
-            <Icon name="inbox" size="xl" class="mx-auto mb-3 h-12 w-12 text-gray-400" />
-            <p class="text-sm text-gray-500 dark:text-gray-400">{{ emptyLabel }}</p>
-          </td>
-        </tr>
-      </tbody>
-      <!-- 每个渠道一个 tbody：首行 td rowspan 渠道名，后续行只渲染其余三列。
-           tbody 之间强分隔线表达"渠道边界"，tbody 内部用淡分隔线区分平台。 -->
-      <tbody
-        v-else
-        v-for="(channel, chIdx) in rows"
-        :key="`${channel.name}-${chIdx}`"
-        class="border-b-2 border-gray-200 last:border-b-0 dark:border-dark-600"
-      >
-        <tr
-          v-for="(section, secIdx) in channel.platforms"
-          :key="`${channel.name}-${section.platform}`"
-          class="transition-colors hover:bg-gray-50/40 dark:hover:bg-dark-800/40"
-          :class="{ 'border-t border-gray-100/70 dark:border-dark-700/50': secIdx > 0 }"
-        >
-          <!-- 渠道名：只在第一行渲染并用 rowspan 纵向合并 -->
-          <td
-            v-if="secIdx === 0"
-            :rowspan="channel.platforms.length"
-            class="px-4 py-3 text-center align-middle font-medium text-gray-900 dark:text-white"
-          >
-            {{ channel.name }}
-          </td>
-
-          <!-- 描述：独立一列，同样用 rowspan 纵向合并 -->
-          <td
-            v-if="secIdx === 0"
-            :rowspan="channel.platforms.length"
-            class="px-4 py-3 align-middle text-xs text-gray-500 dark:text-gray-400"
-          >
-            <template v-if="channel.description">{{ channel.description }}</template>
-            <span v-else class="text-gray-400">-</span>
-          </td>
-
-          <!-- 平台徽章 -->
-          <td class="align-top px-4 py-3">
-            <span
-              :class="[
-                'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium uppercase',
-                platformBadgeClass(section.platform),
-              ]"
-            >
-              <PlatformIcon :platform="section.platform as GroupPlatform" size="xs" />
-              {{ section.platform }}
-            </span>
-          </td>
-
-          <!-- 分组：专属分组在前（紫色 shield 行），公开分组在后（灰色 globe 行）。 -->
-          <td class="align-top px-4 py-3">
-            <div class="flex flex-col gap-1.5">
-              <div
-                v-if="exclusiveGroups(section).length > 0"
-                class="flex flex-wrap items-center gap-1.5"
-              >
-                <span
-                  class="inline-flex items-center gap-0.5 text-[10px] font-medium uppercase text-purple-600 dark:text-purple-400"
-                  :title="t('availableChannels.exclusiveTooltip')"
-                >
-                  <Icon name="shield" size="xs" class="h-3 w-3" />
-                  {{ t('availableChannels.exclusive') }}
-                </span>
-                <div
-                  v-for="g in exclusiveGroups(section)"
-                  :key="`ex-${g.id}`"
-                  class="inline-flex flex-wrap items-center gap-1"
-                >
-                  <GroupBadge
-                    :name="g.name"
-                    :platform="g.platform as GroupPlatform"
-                    :subscription-type="(g.subscription_type || 'standard') as SubscriptionType"
-                    :rate-multiplier="g.rate_multiplier"
-                    :user-rate-multiplier="userGroupRates[g.id] ?? null"
-                    always-show-rate
-                  />
-                  <span
-                    v-if="hasPeakRate(g)"
-                    class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
-                    :title="peakRateTitle(g)"
-                  >
-                    <Icon name="clock" size="xs" class="h-3 w-3" />
-                    {{ peakRateLabel(g) }}
-                  </span>
-                </div>
-              </div>
-              <div
-                v-if="publicGroups(section).length > 0"
-                class="flex flex-wrap items-center gap-1.5"
-              >
-                <span
-                  class="inline-flex items-center gap-0.5 text-[10px] font-medium uppercase text-gray-500 dark:text-gray-400"
-                  :title="t('availableChannels.publicTooltip')"
-                >
-                  <Icon name="globe" size="xs" class="h-3 w-3" />
-                  {{ t('availableChannels.public') }}
-                </span>
-                <div
-                  v-for="g in publicGroups(section)"
-                  :key="`pub-${g.id}`"
-                  class="inline-flex flex-wrap items-center gap-1"
-                >
-                  <GroupBadge
-                    :name="g.name"
-                    :platform="g.platform as GroupPlatform"
-                    :subscription-type="(g.subscription_type || 'standard') as SubscriptionType"
-                    :rate-multiplier="g.rate_multiplier"
-                    :user-rate-multiplier="userGroupRates[g.id] ?? null"
-                    always-show-rate
-                  />
-                  <span
-                    v-if="hasPeakRate(g)"
-                    class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
-                    :title="peakRateTitle(g)"
-                  >
-                    <Icon name="clock" size="xs" class="h-3 w-3" />
-                    {{ peakRateLabel(g) }}
-                  </span>
-                </div>
-              </div>
-              <span v-if="section.groups.length === 0" class="text-xs text-gray-400">-</span>
-            </div>
-          </td>
-
-          <!-- 支持模型 -->
-          <td class="align-top px-4 py-3">
-            <div class="flex flex-wrap gap-1">
-              <SupportedModelChip
-                v-for="m in section.supported_models"
-                :key="`${section.platform}-${m.name}`"
-                :model="m"
-                :pricing-key-prefix="pricingKeyPrefix"
-                :no-pricing-label="noPricingLabel"
-                :show-platform="false"
-                :platform-hint="section.platform"
-              />
-              <span v-if="section.supported_models.length === 0" class="text-xs text-gray-400">
-                {{ noModelsLabel }}
-              </span>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div :data-testid="isGlassLayout ? 'glacier-channels' : 'mobile-channels'" :data-density="isGlassLayout ? density : undefined" :class="isGlassLayout ? 'glacier-channel-list' : 'w-full min-w-0 overflow-x-hidden lg:hidden'">
+    <div data-testid="available-channels" class="channel-list">
       <div v-if="loading" data-testid="mobile-loading" class="py-10 text-center">
         <Icon name="refresh" size="lg" class="inline-block animate-spin text-gray-400" />
       </div>
@@ -185,7 +14,7 @@
         v-else
         v-for="(channel, chIdx) in rows"
         :key="`mobile-${channel.name}-${chIdx}`"
-        :class="isGlassLayout ? 'glacier-channel-card' : 'border-b-2 border-gray-200 px-4 py-4 last:border-b-0 dark:border-dark-600'"
+        class="channel-card"
       >
         <header class="mb-3 min-w-0">
           <h3 class="break-words text-sm font-semibold text-gray-900 dark:text-white">
@@ -212,7 +41,7 @@
               {{ section.platform }}
             </span>
 
-            <dl :class="isGlassLayout ? 'glacier-channel-section' : 'mt-3 space-y-3'">
+            <dl class="channel-section">
               <div class="min-w-0">
                 <dt class="mb-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400">
                   {{ columns.groups }}
@@ -294,7 +123,7 @@
 
               <div class="min-w-0">
                 <dt class="mb-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                  {{ columns.supportedModels }} <span v-if="isGlassLayout" class="ml-1 tabular-nums">{{ section.supported_models.length }}</span>
+                  {{ columns.supportedModels }} <span class="ml-1 tabular-nums">{{ section.supported_models.length }}</span>
                 </dt>
                 <dd class="flex min-w-0 flex-wrap gap-1">
                   <SupportedModelChip
@@ -307,7 +136,7 @@
                     :show-platform="false"
                     :platform-hint="section.platform"
                   />
-                  <button v-if="isGlassLayout && section.supported_models.length > 6 && !searchQuery.trim()" type="button" class="glacier-row-action" :aria-expanded="expandedSections.has(sectionKey(channel, section))" @click="toggleModels(channel, section)">
+                  <button v-if="section.supported_models.length > 6 && !searchQuery.trim()" type="button" class="row-action" :aria-expanded="expandedSections.has(sectionKey(channel, section))" @click="toggleModels(channel, section)">
                     {{ expandedSections.has(sectionKey(channel, section)) ? (zh ? '收起' : 'Show less') : (zh ? '查看全部 ' : 'Show all ') + section.supported_models.length }}
                     <Icon :name="expandedSections.has(sectionKey(channel, section)) ? 'chevronDown' : 'chevronRight'" size="xs" />
                   </button>
@@ -326,7 +155,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useGlacierPreferences } from '@/composables/useGlacierPreferences'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
@@ -363,7 +191,6 @@ void props.userGroupRates
 
 const { t, locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
-const { isGlassLayout, density } = useGlacierPreferences()
 const searchQuery = computed(() => props.searchQuery ?? '')
 const expandedSections = ref(new Set<string>())
 function sectionKey(channel: UserAvailableChannel, section: UserChannelPlatformSection) { return JSON.stringify([channel.name, section.platform]) }
@@ -374,7 +201,6 @@ function toggleModels(channel: UserAvailableChannel, section: UserChannelPlatfor
   expandedSections.value = next
 }
 function visibleModels(channel: UserAvailableChannel, section: UserChannelPlatformSection) {
-  if (!isGlassLayout.value) return section.supported_models
   const query = searchQuery.value.trim().toLowerCase()
   if (query) {
     const matches = section.supported_models.filter(model => model.name.toLowerCase().includes(query))

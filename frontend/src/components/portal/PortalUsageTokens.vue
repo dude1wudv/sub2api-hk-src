@@ -50,18 +50,18 @@ function compact(value: number) {
 </template>
 
 <style scoped>
-small { display:block; margin-top:5px; color:#929088; font-size:11px; line-height:1.45; }
-.usage-detail-link { display:inline-block; margin-top:7px; color:#929088; font-size:11px; text-decoration:underline; }
+small { display:block; margin-top:5px; color:rgb(var(--ink-3)); font-size:13px; line-height:1.45; }
+.usage-detail-link { display:inline-block; margin-top:7px; color:rgb(var(--ink-3)); font-size:13px; text-decoration:underline; }
 .usage-token-counts { display:flex; gap:12px; font-size:13px; font-variant-numeric:tabular-nums; }
 .usage-token-counts > span, .usage-cache > span { display:inline-flex; align-items:center; gap:4px; }
-.usage-input-icon { color:#059669; }
-.usage-output-icon { color:#8b5cf6; }
-.usage-cache-read { color:#0284c7; }
-.usage-cache-write { color:#d97706; }
-.usage-cache { display:flex; gap:12px; margin-top:5px; color:#77746d; }
-.usage-cache i { margin-left:5px; padding:1px 3px; border:1px solid #dedbd1; border-radius:3px; font-size:9px; font-style:normal; }
-.usage-token-rates { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; font-size:10px; }
-.usage-token-rates span { padding:2px 5px; border:1px solid #bfdbfe; border-radius:4px; background:#eff6ff; color:#1d4ed8; }
-.usage-token-rates span + span { border-color:#a5e3e8; background:#ecfeff; color:#0e7490; }
-.usage-media strong { font-size:12px; font-weight:500; }
+.usage-input-icon { color:rgb(var(--text-ok)); }
+.usage-output-icon { color:rgb(var(--text-accent)); }
+.usage-cache-read { color:rgb(var(--text-link)); }
+.usage-cache-write { color:rgb(var(--text-err)); }
+.usage-cache { display:flex; gap:12px; margin-top:5px; color:rgb(var(--ink-3)); }
+.usage-cache i { margin-left:5px; padding:1px 3px; border:1px solid rgb(var(--line)); border-radius:3px; font-size:13px; font-style:normal; }
+.usage-token-rates { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; font-size:13px; }
+.usage-token-rates span { padding:2px 5px; border:1px solid rgb(var(--text-ok) / .35); border-radius:4px; background:rgb(var(--surface-2)); color:rgb(var(--text-link)); }
+.usage-token-rates span + span { border-color:rgb(var(--text-ok) / .35); background:rgb(var(--surface-2)); color:rgb(var(--text-link)); }
+.usage-media strong { font-size:13px; font-weight:500; }
 </style>

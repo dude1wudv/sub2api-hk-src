@@ -1,14 +1,14 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
-import GlacierDisclosure from '../GlacierDisclosure.vue'
-import { useAppearance } from '@/composables/useAppearance'
+import Disclosure from '../Disclosure.vue'
+import { useColorMode } from '@/composables/useColorMode'
 
-describe('GlacierDisclosure', () => {
-  afterEach(() => useAppearance().setStyle('aurora'))
+describe('Disclosure', () => {
+  afterEach(() => useColorMode().setMode('light'))
 
-  it('starts collapsed in Glacier, expands on demand, and opens for active content', async () => {
-    useAppearance().setStyle('glacier')
-    const wrapper = mount(GlacierDisclosure, {
+  it('starts collapsed, expands on demand, and opens for active content', async () => {
+    useColorMode().setMode('dark')
+    const wrapper = mount(Disclosure, {
       props: { label: 'Proxy summary' },
       slots: { default: '<span>Proxy details</span>' },
     })
@@ -17,7 +17,7 @@ describe('GlacierDisclosure', () => {
     await details.get('summary').trigger('click')
     expect((details.element as HTMLDetailsElement).open).toBe(true)
 
-    const active = mount(GlacierDisclosure, {
+    const active = mount(Disclosure, {
       props: { label: 'Quota pool', active: true },
       slots: { default: '<span>Quota details</span>' },
     })
@@ -26,9 +26,9 @@ describe('GlacierDisclosure', () => {
     active.unmount()
   })
 
-  it.each(['aurora', 'lagoon', 'graphite'] as const)('retains expandable content in %s', async theme => {
-    useAppearance().setStyle(theme)
-    const wrapper = mount(GlacierDisclosure, {
+  it.each(['light', 'dark'] as const)('retains expandable content in %s mode', async theme => {
+    useColorMode().setMode(theme)
+    const wrapper = mount(Disclosure, {
       props: { label: 'Proxy summary' },
       slots: { default: '<span>Proxy details</span>' },
     })

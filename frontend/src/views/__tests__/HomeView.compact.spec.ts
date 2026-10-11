@@ -56,7 +56,6 @@ function mountHome(settings: Record<string, unknown> = {}) {
         RouterLink: RouterLinkStub,
         PatrickBrand: { template: '<span data-testid="patrick-brand">patrickapi</span>' },
         LocaleSwitcher: { template: '<div data-testid="locale-switcher" />' },
-        AppearanceSwitcher: true,
         Icon: { template: '<span data-testid="icon" />' },
       },
     },

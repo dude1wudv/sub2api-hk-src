@@ -1,12 +1,12 @@
 <template>
   <div class="w-full">
-    <label v-if="label" :for="id" class="input-label mb-1.5 block">
+    <label v-if="label" :for="inputId" class="input-label mb-1.5 block">
       {{ label }}
       <span v-if="required" class="text-red-500">*</span>
     </label>
     <div class="relative">
       <textarea
-        :id="id"
+        :id="inputId"
         ref="textAreaRef"
         :value="modelValue"
         :disabled="disabled"
@@ -14,8 +14,10 @@
         :placeholder="placeholderText"
         :readonly="readonly"
         :rows="rows"
+        :aria-describedby="describedBy"
+        :aria-invalid="error ? 'true' : undefined"
         :class="[
-          'input w-full min-h-[80px] transition-all duration-200 resize-y',
+          'input w-full min-h-[80px] resize-y',
           error ? 'input-error ring-2 ring-red-500/20' : '',
           disabled ? 'cursor-not-allowed bg-gray-100 opacity-60 dark:bg-dark-900' : ''
         ]"
@@ -26,17 +28,17 @@
       ></textarea>
     </div>
     <!-- Hint / Error Text -->
-    <p v-if="error" class="input-error-text mt-1.5">
+    <p v-if="error" :id="messageId" class="input-error-text mt-1.5" role="alert">
       {{ error }}
     </p>
-    <p v-else-if="hint" class="input-hint mt-1.5">
+    <p v-else-if="hint" :id="messageId" class="input-hint mt-1.5">
       {{ hint }}
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 
 interface Props {
   modelValue: string | null | undefined
@@ -49,6 +51,7 @@ interface Props {
   hint?: string
   id?: string
   rows?: number | string
+  ariaDescribedby?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -66,6 +69,10 @@ const emit = defineEmits<{
 }>()
 
 const textAreaRef = ref<HTMLTextAreaElement | null>(null)
+const generatedId = useId()
+const inputId = computed(() => props.id || `textarea-${generatedId}`)
+const messageId = computed(() => `${inputId.value}-message`)
+const describedBy = computed(() => [props.ariaDescribedby, props.error || props.hint ? messageId.value : ''].filter(Boolean).join(' ') || undefined)
 const placeholderText = computed(() => props.placeholder || '')
 
 const onInput = (event: Event) => {
@@ -79,3 +86,8 @@ defineExpose({
   select: () => textAreaRef.value?.select()
 })
 </script>
+
+<style scoped>
+.input { transition: border-color var(--motion-fast, 160ms), box-shadow var(--motion-fast, 160ms), background-color var(--motion-fast, 160ms); }
+@media (max-width: 767px) { .input { font-size: 16px; } }
+</style>

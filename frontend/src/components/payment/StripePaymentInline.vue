@@ -64,7 +64,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, nextTick } from 'vue'
+import { computed, ref, onMounted, nextTick, watch } from 'vue'
+import { useColorMode } from '@/composables/useColorMode'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { extractI18nErrorMessage } from '@/utils/apiError'
@@ -108,6 +109,9 @@ const paymentAmountSymbol = computed(() => currencySymbol(props.currency))
 
 let stripeInstance: Stripe | null = null
 let elementsInstance: StripeElements | null = null
+const { isDark } = useColorMode()
+const stripeAppearance = computed(() => ({ theme: isDark.value ? 'night' as const : 'stripe' as const, variables: { borderRadius: '8px' } }))
+watch(stripeAppearance, appearance => { elementsInstance?.update({ appearance }) })
 
 onMounted(async () => {
   try {
@@ -120,10 +124,9 @@ onMounted(async () => {
     await nextTick()
     if (!stripeMount.value) return
 
-    const isDark = document.documentElement.classList.contains('dark')
     const elements = stripe.elements({
       clientSecret: props.clientSecret,
-      appearance: { theme: isDark ? 'night' : 'stripe', variables: { borderRadius: '8px' } },
+      appearance: stripeAppearance.value,
     })
     elementsInstance = elements
     const paymentElement = elements.create('payment', {

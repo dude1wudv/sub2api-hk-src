@@ -1,9 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { computed, ref } from 'vue'
 
 import DataTable from '../DataTable.vue'
-import { tableDensityKey, type TableDensity } from '@/composables/useGlacierPreferences'
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
@@ -124,39 +122,40 @@ describe('DataTable', () => {
     expect(instance.options.count).toBe(data.length)
   })
 
-  it('keeps the legacy density when no preference is provided', () => {
+  it('uses the compact virtual row estimate independently of obsolete density preferences', () => {
+    localStorage.setItem('table-density', 'comfortable')
+    localStorage.setItem('glacier-table-density', 'comfortable')
     const wrapper = mount(DataTable, {
       props: {
         columns: [{ key: 'name', label: 'Name' }],
         data: [{ id: 1, name: 'One' }]
       }
     })
+    const exposed = (wrapper.vm as any).virtualizer
+    const virtualizer = exposed?.value ?? exposed
+    expect(virtualizer.options.estimateSize(0)).toBe(44)
     expect(wrapper.get('.table-wrapper').attributes('data-density')).toBeUndefined()
+    wrapper.unmount()
   })
 
-  it('updates the inherited density and remeasures virtual rows', async () => {
-    const density = ref<TableDensity>('comfortable')
+  it('keeps custom row height estimates available to virtualized tables', async () => {
     const data = Array.from({ length: 12 }, (_, id) => ({ id, name: `Row ${id}` }))
     const wrapper = mount(DataTable, {
       props: {
         columns: [{ key: 'name', label: 'Name' }],
         data,
         rowKey: 'id',
-        virtualizeThreshold: 3
-      },
-      global: { provide: { [tableDensityKey as symbol]: computed(() => density.value) } }
+        virtualizeThreshold: 3,
+        estimateRowHeight: 72
+      }
     })
     await wrapper.vm.$nextTick()
-    const table = wrapper
     const exposed = (wrapper.vm as any).virtualizer
     const virtualizer = exposed?.value ?? exposed
-    const measure = vi.spyOn(virtualizer, 'measure')
-
-    expect(table.get('.table-wrapper').attributes('data-density')).toBe('comfortable')
-    density.value = 'compact'
-    await wrapper.vm.$nextTick()
-    expect(table.get('.table-wrapper').attributes('data-density')).toBe('compact')
-    expect(measure).toHaveBeenCalled()
+    expect((wrapper.vm as any).shouldVirtualize).toBe(true)
+    expect(virtualizer.options.estimateSize(0)).toBe(72)
+    await wrapper.setProps({ estimateRowHeight: 60 })
+    expect(virtualizer.options.estimateSize(0)).toBe(60)
     wrapper.unmount()
   })
 

@@ -78,20 +78,20 @@ const sizeSource = computed(() => {
 </template>
 
 <style scoped>
-.usage-detail-model { display: flex; align-items: center; gap: 12px; padding-bottom: 22px; margin-bottom: 22px; border-bottom: 1px solid #efede3; overflow-wrap: anywhere; }
+.usage-detail-model { display: flex; align-items: center; gap: 12px; padding-bottom: 22px; margin-bottom: 22px; border-bottom: 1px solid rgb(var(--line)); overflow-wrap: anywhere; }
 .usage-detail-model strong { font-weight: 500; min-width: 0; }
-.usage-detail-model span { margin-left: auto; color: #77746d; font-size: 12px; }
+.usage-detail-model span { margin-left: auto; color: rgb(var(--ink-3)); font-size: 13px; }
 .usage-detail-model :deep(svg) { flex-shrink: 0; }
-.usage-token-icon { color: #8b5cf6; }
-.usage-cost-icon { color: #2563eb; }
-.usage-latency-icon { color: #059669; }
+.usage-token-icon { color: rgb(var(--text-accent)); }
+.usage-cost-icon { color: rgb(var(--text-link)); }
+.usage-latency-icon { color: rgb(var(--text-ok)); }
 .usage-detail-grid { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px 20px; font-size: 13px; line-height: 1.6; }
-.usage-detail-grid dt { color: #929088; }
+.usage-detail-grid dt { color: rgb(var(--ink-3)); }
 .usage-detail-grid dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.usage-detail-section { margin-top: 24px; padding-top: 22px; border-top: 1px solid #efede3; }
+.usage-detail-section { margin-top: 24px; padding-top: 22px; border-top: 1px solid rgb(var(--line)); }
 .usage-detail-section h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; font-size: 15px; font-weight: 500; }
-.usage-detail-note { color: #929088; font-size: 11px; line-height: 1.8; margin-top: 14px; }
+.usage-detail-note { color: rgb(var(--ink-3)); font-size: 13px; line-height: 1.8; margin-top: 14px; }
 .usage-detail-strong { font-weight: 600; }
-.usage-detail-agent { font-size: 12px; color: #77746d; overflow-wrap: anywhere; }
+.usage-detail-agent { font-size: 13px; color: rgb(var(--ink-3)); overflow-wrap: anywhere; }
 @media (max-width: 560px) { .usage-detail-grid { grid-template-columns: 105px minmax(0, 1fr); gap: 12px; } }
 </style>

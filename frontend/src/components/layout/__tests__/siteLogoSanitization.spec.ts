@@ -5,20 +5,14 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const dir = dirname(fileURLToPath(import.meta.url))
-const sidebarSource = readFileSync(resolve(dir, '../AppSidebar.vue'), 'utf8')
+const adminShellSource = readFileSync(resolve(dir, '../AdminShell.vue'), 'utf8')
 const homeViewSource = readFileSync(resolve(dir, '../../../views/HomeView.vue'), 'utf8')
 const keyUsageViewSource = readFileSync(resolve(dir, '../../../views/KeyUsageView.vue'), 'utf8')
 const authLayoutSource = readFileSync(resolve(dir, '../AuthLayout.vue'), 'utf8')
 
-describe('Patrick public brand and admin site_logo sanitization', () => {
-  it('keeps configured site_logo scoped to the admin sidebar and sanitizes it', () => {
-    expect(sidebarSource).toContain("import { sanitizeUrl } from '@/utils/url'")
-    expect(sidebarSource).toContain('sanitizeUrl(appStore.siteLogo')
-    expect(sidebarSource).toContain('allowRelative: true')
-    expect(sidebarSource).toContain('allowDataUrl: true')
-  })
-
+describe('Patrick public and workspace brand', () => {
   it.each([
+    ['AdminShell', adminShellSource],
     ['HomeView', homeViewSource],
     ['KeyUsageView', keyUsageViewSource],
     ['AuthLayout', authLayoutSource],

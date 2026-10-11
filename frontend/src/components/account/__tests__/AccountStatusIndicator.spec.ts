@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import AccountStatusIndicator from '../AccountStatusIndicator.vue'
 import type { Account } from '@/types'
 
@@ -51,6 +51,34 @@ function makeAccount(overrides: Partial<Account>): Account {
 }
 
 describe('AccountStatusIndicator', () => {
+  it('opens full error details outside the cell with a semantic button and restores focus', async () => {
+    const errorMessage = 'Upstream rejected the request.\nAccount verification is required.'
+    const wrapper = mount(AccountStatusIndicator, {
+      attachTo: document.body,
+      props: { account: makeAccount({ status: 'error', error_message: errorMessage }) },
+    })
+    try {
+      const trigger = wrapper.get('button[aria-label="common.error"]')
+      const details = document.getElementById(trigger.attributes('aria-controls'))!
+      expect(trigger.attributes('type')).toBe('button')
+      expect(details.getAttribute('role')).toBe('dialog')
+      expect(details.style.display).toBe('none')
+      expect(wrapper.element.contains(details)).toBe(false)
+
+      await trigger.trigger('click')
+      await flushPromises()
+      expect(details.style.display).not.toBe('none')
+      expect(details.textContent).toContain(errorMessage)
+      expect(trigger.attributes('aria-expanded')).toBe('true')
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      await flushPromises()
+      expect(details.style.display).toBe('none')
+      expect(document.activeElement).toBe(trigger.element)
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   it('Claude 5 系列模型限流时显示 Opus 和 Sonnet 的短别名', () => {
     const wrapper = mount(AccountStatusIndicator, {
       props: {

@@ -66,51 +66,44 @@
           </RouterLink>
         </div>
 
-        <div v-if="moreSections.length || docUrl" class="user-more-navigation">
-          <button
-            ref="moreToggleRef"
-            type="button"
-            class="user-nav-item user-more-toggle"
-            :class="{ 'user-nav-active': moreActive && (!moreOpen || sidebarCollapsed) }"
-            :aria-label="sidebarCollapsed ? (zh ? '更多' : 'More') : undefined"
-            :title="sidebarCollapsed ? (zh ? '更多' : 'More') : undefined"
-            :aria-expanded="moreOpen && !sidebarCollapsed"
-            aria-controls="user-more-navigation"
-            @click="toggleMore"
+        <div v-if="secondarySections.length || docUrl" class="user-secondary-navigation">
+          <section v-for="section in secondarySections" :key="section.id" class="user-nav-section" :aria-label="section.label">
+            <h2 v-if="!sidebarCollapsed" class="user-nav-heading">{{ section.label }}</h2>
+            <component
+              :is="item.action ? 'button' : item.href ? 'a' : RouterLink"
+              v-for="item in section.items"
+              :key="item.path"
+              v-bind="item.action ? { type: 'button' } : item.href ? { href: item.href } : { to: { path: item.path, query: item.query } }"
+              class="user-nav-item"
+              :class="{ 'user-nav-active': isActive(item) }"
+              :aria-current="isActive(item) ? 'page' : undefined"
+              :aria-label="sidebarCollapsed ? item.label : undefined"
+              :title="sidebarCollapsed ? item.label : undefined"
+              :data-nav-path="item.path"
+              @click="activateNavigation(item)"
+              @pointerenter="prefetchItem(item, $event)"
+              @focus="prefetchItem(item)"
+            >
+              <span v-if="item.iconSvg" class="user-custom-icon" aria-hidden="true" v-html="sanitizeSvg(item.iconSvg)" />
+              <Icon v-else :name="item.icon" size="md" aria-hidden="true" />
+              <span v-if="!sidebarCollapsed" class="user-nav-label">{{ item.label }}</span>
+              <Icon v-if="!sidebarCollapsed && (item.href || item.action)" name="externalLink" size="xs" class="user-nav-trailing" aria-hidden="true" />
+            </component>
+          </section>
+          <a
+            v-if="docUrl"
+            :href="docUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="user-nav-item user-doc-link"
+            :aria-label="sidebarCollapsed ? (zh ? '文档' : 'Documentation') : undefined"
+            :title="sidebarCollapsed ? (zh ? '文档' : 'Documentation') : undefined"
+            @click="closeMobile()"
           >
-            <Icon name="more" size="md" aria-hidden="true" />
-            <span v-if="!sidebarCollapsed" class="user-nav-label">{{ zh ? '更多' : 'More' }}</span>
-            <Icon v-if="!sidebarCollapsed" :name="moreOpen ? 'chevronUp' : 'chevronDown'" size="xs" class="user-nav-trailing" aria-hidden="true" />
-          </button>
-
-          <div v-if="moreOpen && !sidebarCollapsed" id="user-more-navigation" class="user-more-content">
-            <section v-for="section in moreSections" :key="section.id" class="user-nav-section" :aria-label="section.label">
-              <h2 class="user-nav-heading">{{ section.label }}</h2>
-              <component
-                :is="item.action ? 'button' : item.href ? 'a' : RouterLink"
-                v-for="item in section.items"
-                :key="item.path"
-                v-bind="item.action ? { type: 'button' } : item.href ? { href: item.href } : { to: { path: item.path, query: item.query } }"
-                class="user-nav-item"
-                :class="{ 'user-nav-active': isActive(item) }"
-                :aria-current="isActive(item) ? 'page' : undefined"
-                :data-nav-path="item.path"
-                @click="activateNavigation(item)"
-                @pointerenter="prefetchItem(item, $event)"
-                @focus="prefetchItem(item)"
-              >
-                <span v-if="item.iconSvg" class="user-custom-icon" aria-hidden="true" v-html="sanitizeSvg(item.iconSvg)" />
-                <Icon v-else :name="item.icon" size="md" aria-hidden="true" />
-                <span class="user-nav-label">{{ item.label }}</span>
-                <Icon v-if="item.href || item.action" name="externalLink" size="xs" class="user-nav-trailing" aria-hidden="true" />
-              </component>
-            </section>
-            <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="user-nav-item user-doc-link" @click="closeMobile()">
-              <Icon name="book" size="md" aria-hidden="true" />
-              <span class="user-nav-label">{{ zh ? '文档' : 'Documentation' }}</span>
-              <Icon name="externalLink" size="xs" class="user-nav-trailing" aria-hidden="true" />
-            </a>
-          </div>
+            <Icon name="book" size="md" aria-hidden="true" />
+            <span v-if="!sidebarCollapsed" class="user-nav-label">{{ zh ? '文档' : 'Documentation' }}</span>
+            <Icon v-if="!sidebarCollapsed" name="externalLink" size="xs" class="user-nav-trailing" aria-hidden="true" />
+          </a>
         </div>
 
         <RouterLink
@@ -199,6 +192,9 @@
         <h1 id="user-page-title" class="sr-only">{{ pageTitle }}</h1>
 
         <div class="user-topbar-actions">
+          <button type="button" class="user-icon-button user-mode-toggle" :aria-label="isDark ? (zh ? '切换至浅色' : 'Switch to light mode') : (zh ? '切换至深色' : 'Switch to dark mode')" :title="isDark ? (zh ? '切换至浅色' : 'Switch to light mode') : (zh ? '切换至深色' : 'Switch to dark mode')" :aria-pressed="isDark" @click="toggleMode">
+            <Icon :name="isDark ? 'sun' : 'moon'" size="md" aria-hidden="true" />
+          </button>
           <RouterLink
             v-if="user && !authStore.isSimpleMode"
             to="/purchase"
@@ -246,7 +242,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -256,7 +252,9 @@ import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import { availableLocales, setLocale } from '@/i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import { useUserNavigation, type UserNavigationItem } from '@/composables/useUserNavigation'
-import { tableDensityKey, useGlacierPreferences } from '@/composables/useGlacierPreferences'
+import { useColorMode } from '@/composables/useColorMode'
+import { useScrollLock } from '@/composables/useScrollLock'
+import { useReducedMotion } from '@/composables/useReducedMotion'
 import { prefetchRoutePath } from '@/composables/useRoutePrefetch'
 import { resolveRouteMetaKeys } from '@/router/title'
 import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
@@ -272,18 +270,18 @@ const router = useRouter()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
-const { primaryItems, moreSections, refreshBatchImageAccess } = useUserNavigation()
-const { effectiveDensity } = useGlacierPreferences()
-provide(tableDensityKey, effectiveDensity)
+const { primaryItems, secondarySections, refreshBatchImageAccess } = useUserNavigation()
+const { isDark, toggleMode } = useColorMode()
+const reducedMotion = useReducedMotion()
 
 // These controls are local to the user shell; administrator preferences are not written.
-const desktop = useMediaQuery('(min-width: 1100px)')
-const railViewport = useMediaQuery('(min-width: 740px)')
+const desktop = useMediaQuery('(min-width: 1200px)')
+const railViewport = useMediaQuery('(min-width: 768px)')
 const collapsed = ref(false)
 const mobileOpen = ref(false)
 const overlayOpen = computed(() => mobileOpen.value && !desktop.value)
+useScrollLock(overlayOpen)
 const sidebarCollapsed = computed(() => desktop.value ? collapsed.value : railViewport.value && !mobileOpen.value)
-const moreOpen = ref(false)
 const accountOpen = ref(false)
 const localeOpen = ref(false)
 const localeSwitching = ref(false)
@@ -292,7 +290,6 @@ const sidebarRef = ref<HTMLElement | null>(null)
 const drawerCloseRef = ref<HTMLButtonElement | null>(null)
 const navToggleRef = ref<HTMLButtonElement | null>(null)
 const desktopToggleRef = ref<HTMLButtonElement | null>(null)
-const moreToggleRef = ref<HTMLButtonElement | null>(null)
 const contentRef = ref<HTMLElement | null>(null)
 const accountRef = ref<HTMLElement | null>(null)
 const accountToggleRef = ref<HTMLButtonElement | null>(null)
@@ -306,7 +303,6 @@ const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const availableBalance = computed(() => Number(user.value?.balance || 0))
 const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
 const currentLocaleCode = computed(() => zh.value ? 'zh' : 'en')
-const moreActive = computed(() => moreSections.value.some(section => section.items.some(isActive)))
 const pageTitle = computed(() => {
   if (route.path === '/keys' || route.path === '/dashboard') return 'API'
   if (route.name === 'CustomPage') {
@@ -356,20 +352,6 @@ function toggleNavigation() {
     closeMobile()
   } else {
     openNavigation()
-  }
-}
-
-function toggleMore() {
-  if (sidebarCollapsed.value) {
-    moreOpen.value = true
-    if (desktop.value) {
-      collapsed.value = false
-      void nextTick(() => moreToggleRef.value?.focus())
-    } else {
-      openNavigation()
-    }
-  } else {
-    moreOpen.value = !moreOpen.value
   }
 }
 
@@ -478,7 +460,7 @@ async function replayUserGuide() {
   closeMobile()
   await router.push({ path: '/keys', hash: '#api-quick-start' })
   await nextTick()
-  document.getElementById('api-quick-start')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  document.getElementById('api-quick-start')?.scrollIntoView({ behavior: reducedMotion.value ? 'auto' : 'smooth', block: 'start' })
 }
 
 async function logout() {
@@ -502,7 +484,7 @@ function handlePointerDown(event: PointerEvent) {
 }
 
 function handleWindowKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Escape') return
+  if (event.key !== 'Escape' || event.defaultPrevented || (event.target instanceof Element && event.target.closest('dialog[open]'))) return
   if (localeOpen.value) {
     closeLocale()
   } else if (accountOpen.value) {
@@ -518,13 +500,8 @@ watch(() => route.fullPath, () => {
   closeMobile(false)
   closeLocale(false)
   accountOpen.value = false
-  if (moreActive.value) moreOpen.value = true
   if (focusContent) void nextTick(() => contentRef.value?.focus())
 }, { immediate: true })
-
-watch(moreActive, active => {
-  if (active) moreOpen.value = true
-})
 
 watch([desktop, railViewport], ([isDesktop, hasRail]) => {
   const focusedInSidebar = sidebarRef.value?.contains(document.activeElement)
@@ -551,3 +528,29 @@ onBeforeUnmount(() => {
 
 defineExpose({ replayTour: replayUserGuide })
 </script>
+
+<style scoped>
+.user-portal .user-sidebar { padding-top: env(safe-area-inset-top, 0px); }
+.user-portal .user-sidebar-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+.user-portal .user-topbar { padding-top: calc(20px + env(safe-area-inset-top, 0px)); height: calc(var(--user-topbar-height) + env(safe-area-inset-top, 0px)); }
+.user-portal .user-workspace-content { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.user-portal :is(.user-icon-button, .user-account-trigger, .user-language-toggle) { transition: color var(--motion-fast, 160ms), background-color var(--motion-fast, 160ms); }
+.user-portal :is(.user-account-popover, .user-language-menu) { animation: user-menu-enter var(--motion-menu, 180ms) ease-out; transform-origin: top right; }
+.user-portal[data-nav-open='true'] .user-sidebar { animation: user-drawer-enter var(--motion-overlay, 260ms) cubic-bezier(.2,.8,.2,1); }
+@keyframes user-menu-enter { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes user-drawer-enter { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 767px) {
+  .user-portal .user-topbar { align-items: center; padding-top: calc(6px + env(safe-area-inset-top, 0px)); padding-bottom: 6px; }
+  .user-portal :is(.user-icon-button, .user-language-toggle, .user-account-trigger, .user-signin-link) { min-width: 44px; min-height: 44px; }
+  .user-portal :is(.user-nav-item, .user-account-action, .user-language-menu button, .user-balance-pill) { min-height: 44px; }
+  .user-portal .user-announcement-control :deep(button) { min-width: 44px; min-height: 44px; }
+  .user-portal .user-account-trigger { max-width: 100px; }
+}
+@media (max-width: 359px) {
+  .user-portal .user-topbar-actions { gap: 4px; }
+  .user-portal .user-account-trigger { max-width: 64px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .user-portal :is(.user-sidebar, .user-account-popover, .user-language-menu) { animation: none; }
+}
+</style>

@@ -52,7 +52,7 @@
  *   8. Frontend `api/admin/settings.ts`        → admin DTO typings
  *   9. **Frontend `utils/featureFlags.ts` (this file)** → register via `defineFlag`
  *  10. Frontend `views/admin/SettingsView.vue` → Toggle UI + form defaults + save payload
- *  11. Frontend `components/layout/AppSidebar.vue` → attach via `makeSidebarFlag`
+ *  11. Frontend `utils/adminNavigation.ts` → attach the registered `flag`
  *
  * ## Usage
  *

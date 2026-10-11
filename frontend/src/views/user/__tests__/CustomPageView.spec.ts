@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import CustomPageView from '../CustomPageView.vue'
+import { useColorMode } from '@/composables/useColorMode'
 
 const { appStore, authStore, adminSettingsStore, route } = vi.hoisted(() => ({
   appStore: {
@@ -82,22 +83,26 @@ describe('custom page open button', () => {
 
   afterEach(() => {
     wrappers.splice(0).forEach(wrapper => wrapper.unmount())
-    document.documentElement.classList.remove('dark')
+    useColorMode().setMode('light')
     vi.unstubAllGlobals()
   })
 
-  it('keeps user embeds on the fixed light theme and preserves the admin-selected theme', async () => {
-    document.documentElement.classList.add('dark')
+  it('keeps user and administrator embeds in the active mode', async () => {
+    useColorMode().setMode('dark')
     const userWrapper = mountPage()
     await flushPromises()
     expect(userWrapper.classes()).toContain('custom-page--user')
-    expect(new URL(userWrapper.get('iframe').attributes('src')!).searchParams.get('theme')).toBe('light')
+    expect(new URL(userWrapper.get('iframe').attributes('src')!).searchParams.get('theme')).toBe('dark')
     authStore.isAdmin = true
     adminSettingsStore.customMenuItems = [{ id: 'docs', visibility: 'admin' }]
     const adminWrapper = mountPage()
     await flushPromises()
     expect(adminWrapper.classes()).not.toContain('custom-page--user')
     expect(new URL(adminWrapper.get('iframe').attributes('src')!).searchParams.get('theme')).toBe('dark')
+    useColorMode().setMode('light')
+    await nextTick()
+    expect(new URL(userWrapper.get('iframe').attributes('src')!).searchParams.get('theme')).toBe('light')
+    expect(new URL(adminWrapper.get('iframe').attributes('src')!).searchParams.get('theme')).toBe('light')
   })
 
   it.each([undefined, false, true])('honors the per-menu hide button setting %s while keeping the iframe', (hidden) => {

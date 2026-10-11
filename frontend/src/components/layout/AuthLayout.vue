@@ -5,6 +5,7 @@
         <PatrickBrand />
       </router-link>
       <nav class="pa-header-actions" :aria-label="zh ? '页面导航' : 'Page navigation'">
+        <ColorModeToggle />
         <router-link to="/home" class="pa-nav-link">{{ zh ? '首页' : 'Home' }}</router-link>
         <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="pa-nav-link">{{ zh ? '文档' : 'Docs' }}</a>
         <label class="pa-language">
@@ -37,6 +38,7 @@ import { useAppStore } from '@/stores'
 import { availableLocales, setLocale } from '@/i18n'
 import { sanitizeUrl } from '@/utils/url'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
+import ColorModeToggle from '@/components/common/ColorModeToggle.vue'
 import '@/styles/patrick-auth.css'
 
 const appStore = useAppStore()

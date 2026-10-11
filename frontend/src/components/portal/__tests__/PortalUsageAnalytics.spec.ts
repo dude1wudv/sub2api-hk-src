@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import PortalUsageAnalytics from '../PortalUsageAnalytics.vue'
+import { useColorMode } from '@/composables/useColorMode'
 
 const { getStats, getDashboardModels, getDashboardSnapshotV2 } = vi.hoisted(() => ({ getStats: vi.fn(), getDashboardModels: vi.fn(), getDashboardSnapshotV2: vi.fn() }))
 vi.mock('@/api', () => ({ usageAPI: { getStats, getDashboardModels, getDashboardSnapshotV2 } }))
@@ -24,6 +25,34 @@ describe('PortalUsageAnalytics', () => {
     getStats.mockResolvedValue(summary())
     getDashboardModels.mockResolvedValue({ models: [model] })
     getDashboardSnapshotV2.mockResolvedValue({ groups: [{ group_id: 1, group_name: 'Claude group', requests: 42, total_tokens: 1800, cost: 1.5, actual_cost: 0.5 }], trend: [point] })
+  })
+
+  it('recolors existing charts on a mode switch without refetching data or animating the totals', async () => {
+    useColorMode().setMode('light')
+    const style = vi.spyOn(window, 'getComputedStyle').mockImplementation(() => ({
+      getPropertyValue: (name: string) => {
+        const dark = document.documentElement.classList.contains('dark')
+        if (name === '--chart-1') return dark ? '#aabbcc' : '#112233'
+        if (name === '--chart-text') return dark ? '#dddddd' : '#333333'
+        return ''
+      },
+    }) as CSSStyleDeclaration)
+    const wrapper = mountAnalytics()
+    await flushPromises()
+    const line = wrapper.findComponent({ name: 'Line' })
+    const values = line.props('data').datasets.map((dataset: { data: number[] }) => dataset.data)
+    expect(line.props('data').datasets[0].borderColor).toBe('#112233')
+    useColorMode().setMode('dark')
+    await flushPromises()
+    expect(line.props('data').datasets[0].borderColor).toBe('#aabbcc')
+    expect(line.props('options').scales.y.ticks.color).toBe('#dddddd')
+    expect(line.props('data').datasets.map((dataset: { data: number[] }) => dataset.data)).toEqual(values)
+    expect(line.props('options').animation).toBe(false)
+    expect(wrapper.findComponent({ name: 'Doughnut' }).props('options').animation).toBe(false)
+    expect(getStats).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+    style.mockRestore()
+    useColorMode().setMode('light')
   })
 
   it('uses complete aggregate APIs, requested models, colored model icons and token/cache trend', async () => {

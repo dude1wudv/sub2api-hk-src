@@ -1,13 +1,12 @@
 import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 
 import { createPinia } from 'pinia'
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AvailableChannelsTable from '../AvailableChannelsTable.vue'
 import type { UserAvailableChannel } from '@/api/channels'
-import { useAppearance } from '@/composables/useAppearance'
+import { useColorMode } from '@/composables/useColorMode'
 
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
@@ -17,14 +16,13 @@ vi.mock('vue-i18n', async () => {
   }
 })
 
-const componentPath = resolve(dirname(fileURLToPath(import.meta.url)), '../AvailableChannelsTable.vue')
+const componentPath = resolve(process.cwd(), 'src/components/channels/AvailableChannelsTable.vue')
 const componentSource = readFileSync(componentPath, 'utf8')
 
-describe('AvailableChannelsTable scroll integration', () => {
-  // #4555：根元素必须是 TablePageLayout 滚动链约定的 .table-wrapper，
-  // 否则内容超出视口高度时被外层 overflow-hidden 裁剪且没有滚动条。
-  it('mounts the table on the .table-wrapper scroll hook', () => {
-    expect(componentSource).toMatch(/<div class="table-wrapper">\s*<table/)
+describe('AvailableChannelsTable card layout integration', () => {
+  it('mounts the channel list and its cards on the .table-wrapper scroll hook', () => {
+    expect(componentSource).toMatch(/<div class="table-wrapper">\s*<div data-testid="available-channels"[^>]*class="channel-list">/)
+    expect(componentSource).toMatch(/<section\s+v-else\s+v-for="\(channel, chIdx\) in rows"[\s\S]*?class="channel-card"/)
   })
 
   it('does not clip content with its own overflow-hidden card wrapper', () => {
@@ -111,11 +109,11 @@ function mountTable(props = {}) {
 }
 
 describe('AvailableChannelsTable responsive surfaces', () => {
-  it.each(['aurora', 'lagoon', 'graphite', 'glacier'] as const)('shares complete channel cards in %s', theme => {
-    useAppearance().setStyle(theme)
+  it.each(['light', 'dark'] as const)('shares complete channel cards in %s', theme => {
+    useColorMode().setMode(theme)
     const wrapper = mountTable()
-    expect(wrapper.find('[data-testid="desktop-channels"]').exists()).toBe(false)
-    const cards = wrapper.get('[data-testid="glacier-channels"]')
+    const cards = wrapper.get('[data-testid="available-channels"]')
+    expect(cards.findAll('.channel-card')).toHaveLength(1)
     expect(cards.text()).toContain('Primary channel')
     expect(cards.text()).toContain('Fast and reliable access')
     expect(cards.findAll('[data-group-badge]')).toHaveLength(2)
@@ -123,11 +121,11 @@ describe('AvailableChannelsTable responsive surfaces', () => {
     wrapper.unmount()
   })
 
-  it('renders a mobile-only readable surface with groups, rates, peaks, and model pricing chips', () => {
+  it('renders a readable surface with groups, rates, peaks, and model pricing chips', () => {
     const wrapper = mountTable()
-    const mobile = wrapper.get('[data-testid="glacier-channels"]')
+    const mobile = wrapper.get('[data-testid="available-channels"]')
 
-    expect(mobile.classes()).toContain('glacier-channel-list')
+    expect(mobile.classes()).toContain('channel-list')
     expect(mobile.text()).toContain('Primary channel')
     expect(mobile.text()).toContain('Fast and reliable access')
     expect(mobile.text()).toContain('Groups and rates')
@@ -154,7 +152,7 @@ describe('AvailableChannelsTable responsive surfaces', () => {
         },
       ],
     })
-    const mobile = wrapper.get('[data-testid="glacier-channels"]')
+    const mobile = wrapper.get('[data-testid="available-channels"]')
 
     expect(mobile.text()).toContain('Fallback channel')
     expect(mobile.text()).toContain('openai')
@@ -162,7 +160,7 @@ describe('AvailableChannelsTable responsive surfaces', () => {
     expect(mobile.findAll('dd')[0].text()).toBe('-')
   })
 
-  it('provides loading and empty states on both responsive surfaces', async () => {
+  it('provides loading and empty states for the channel list', async () => {
     const wrapper = mountTable({ loading: true, rows: [] })
 
     expect(wrapper.get('[data-testid="mobile-loading"] [data-icon="refresh"]')).toBeTruthy()
@@ -173,28 +171,28 @@ describe('AvailableChannelsTable responsive surfaces', () => {
   })
 })
 
-describe('AvailableChannelsTable Glacier model discovery', () => {
+describe('AvailableChannelsTable model discovery', () => {
   const sevenModels = Array.from({ length: 7 }, (_, index) => ({
     name: `model-${index + 1}`,
     platform: 'anthropic',
     pricing: index === 6 ? { marker: 'priced' } : null,
   }))
 
-  beforeEach(() => useAppearance().setStyle('glacier'))
-  afterEach(() => useAppearance().setStyle('aurora'))
+  beforeEach(() => useColorMode().setMode('dark'))
+  afterEach(() => useColorMode().setMode('light'))
 
   it('shows six models by default and reveals the rest with their pricing when expanded', async () => {
     const wrapper = mountTable({
       rows: [{ ...rows[0], platforms: [{ ...rows[0].platforms[0], supported_models: sevenModels }] }],
     })
-    const list = wrapper.get('[data-testid="glacier-channels"]')
+    const list = wrapper.get('[data-testid="available-channels"]')
     expect(list.findAll('[data-model-chip]')).toHaveLength(6)
     expect(list.text()).toContain('7')
 
-    await list.get('.glacier-row-action').trigger('click')
+    await list.get('.row-action').trigger('click')
     expect(list.findAll('[data-model-chip]')).toHaveLength(7)
     expect(list.text()).toContain('model-7:priced')
-    expect(list.get('.glacier-row-action').attributes('aria-expanded')).toBe('true')
+    expect(list.get('.row-action').attributes('aria-expanded')).toBe('true')
     wrapper.unmount()
   })
 
@@ -203,7 +201,7 @@ describe('AvailableChannelsTable Glacier model discovery', () => {
       searchQuery: 'model-7',
       rows: [{ ...rows[0], platforms: [{ ...rows[0].platforms[0], supported_models: sevenModels }] }],
     })
-    const list = wrapper.get('[data-testid="glacier-channels"]')
+    const list = wrapper.get('[data-testid="available-channels"]')
     expect(list.findAll('[data-model-chip]')).toHaveLength(1)
     expect(list.get('[data-model-chip]').text()).toBe('model-7:priced')
     expect(list.get('[data-group-badge]').text()).toBe('Exclusive Pro:1.2:0.8')

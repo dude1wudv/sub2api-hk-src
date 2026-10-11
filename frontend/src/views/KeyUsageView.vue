@@ -7,7 +7,7 @@
           <span class="pp-nav-divider" aria-hidden="true"></span>
           <span class="pp-section-label">{{ t('keyUsage.title') }}</span>
         </div>
-        <div class="pp-nav-actions">
+        <div class="pp-nav-actions"><ColorModeToggle />
           <div class="pp-locale"><LocaleSwitcher /></div>
           <a
             v-if="docUrl"
@@ -413,6 +413,7 @@
 </template>
 
 <script setup lang="ts">
+import ColorModeToggle from '@/components/common/ColorModeToggle.vue'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'

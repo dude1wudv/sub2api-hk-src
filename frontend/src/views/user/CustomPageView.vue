@@ -135,7 +135,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
 import Icon from '@/components/icons/Icon.vue'
 import { buildApiUrl } from '@/api/client'
-import { buildEmbeddedUrl, detectTheme } from '@/utils/embedded-url'
+import { buildEmbeddedUrl } from '@/utils/embedded-url'
+import { useColorMode } from '@/composables/useColorMode'
 import { isAdminWorkspaceRoute } from '@/utils/workspaceSurface'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -154,13 +155,12 @@ const adminSettingsStore = useAdminSettingsStore()
 const isAdminPage = computed(() => authStore.isAdmin && isAdminWorkspaceRoute(route, true, adminSettingsStore.customMenuItems))
 
 const loading = ref(false)
-const pageTheme = ref<'light' | 'dark'>('light')
+const { mode: pageTheme } = useColorMode()
 const renderedHtml = ref('')
 const markdownContainer = ref<HTMLElement | null>(null)
 const tocItems = ref<TocItem[]>([])
 const tocVisible = ref(typeof window !== 'undefined' ? window.innerWidth > 768 : true)
 const activeHeadingId = ref('')
-let themeObserver: MutationObserver | null = null
 let markdownRequestVersion = 0
 
 const embedShell = ref<HTMLElement | null>(null)
@@ -249,7 +249,7 @@ const embeddedUrl = computed(() => {
     menuItem.value.url,
     authStore.user?.id,
     authStore.token,
-    isAdminPage.value ? pageTheme.value : 'light',
+    pageTheme.value,
     locale.value,
   )
 })
@@ -423,18 +423,6 @@ watch(markdownSlug, (slug) => {
 }, { immediate: true })
 
 onMounted(async () => {
-  pageTheme.value = detectTheme()
-
-  if (typeof document !== 'undefined') {
-    themeObserver = new MutationObserver(() => {
-      pageTheme.value = detectTheme()
-    })
-    themeObserver.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    })
-  }
-
   if (appStore.publicSettingsLoaded) return
   loading.value = true
   try {
@@ -446,10 +434,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   markdownRequestVersion++
-  if (themeObserver) {
-    themeObserver.disconnect()
-    themeObserver = null
-  }
 })
 </script>
 
@@ -506,8 +490,8 @@ onUnmounted(() => {
 }
 
 .custom-page--user .toc-item:hover {
-  color: var(--p-ink, #1f2b3c);
-  background: #e8eff7;
+  color: rgb(var(--ink));
+  background: rgb(var(--surface-2));
 }
 
 .toc-level-1 { padding-left: 8px; }
@@ -587,7 +571,7 @@ onUnmounted(() => {
   top: 8px;
   right: 8px;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: 13px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.15);
   color: #e2e8f0;

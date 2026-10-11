@@ -1,14 +1,14 @@
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import GlacierActionMenu from '../GlacierActionMenu.vue'
+import ActionMenu from '../ActionMenu.vue'
 
 const mounted: ReturnType<typeof mount>[] = []
 
 function mountMenu(onSelect = vi.fn()) {
   const Host = defineComponent({
     setup() {
-      return () => h(GlacierActionMenu, { label: 'More actions' }, {
+      return () => h(ActionMenu, { label: 'More actions' }, {
         default: ({ close }: { close: () => void }) => [
           h('button', { disabled: true }, 'Unavailable'),
           h('button', { onClick: () => { close(); onSelect() } }, 'Edit'),
@@ -23,7 +23,7 @@ function mountMenu(onSelect = vi.fn()) {
 }
 
 async function openMenu(wrapper: ReturnType<typeof mount>) {
-  await wrapper.get('.glacier-action-trigger').trigger('click')
+  await wrapper.get('.action-trigger').trigger('click')
   await new Promise(resolve => setTimeout(resolve, 0))
   return document.body.querySelector<HTMLElement>('[role="menu"]')!
 }
@@ -32,7 +32,7 @@ afterEach(() => {
   mounted.splice(0).forEach(wrapper => wrapper.unmount())
 })
 
-describe('GlacierActionMenu', () => {
+describe('ActionMenu', () => {
   it('skips disabled actions and wraps through arrow, Home, and End navigation', async () => {
     const wrapper = mountMenu()
     const menu = await openMenu(wrapper)
@@ -56,7 +56,7 @@ describe('GlacierActionMenu', () => {
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
     await wrapper.vm.$nextTick()
     expect(document.body.querySelector('[role="menu"]')).toBeNull()
-    expect(document.activeElement).toBe(wrapper.get('.glacier-action-trigger').element)
+    expect(document.activeElement).toBe(wrapper.get('.action-trigger').element)
 
     await openMenu(wrapper)
     document.body.querySelector('[role="menu"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))

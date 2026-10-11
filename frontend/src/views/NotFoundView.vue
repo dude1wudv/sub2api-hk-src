@@ -3,7 +3,7 @@
     <header class="pp-nav">
       <nav class="pp-nav-inner" :aria-label="zh ? '主导航' : 'Main navigation'">
         <router-link to="/" class="pp-brand-link" :aria-label="zh ? 'patrickapi 首页' : 'patrickapi home'"><PatrickBrand /></router-link>
-        <div class="pp-nav-actions"><div class="pp-locale"><LocaleSwitcher /></div></div>
+        <div class="pp-nav-actions"><ColorModeToggle /><div class="pp-locale"><LocaleSwitcher /></div></div>
       </nav>
     </header>
 
@@ -36,6 +36,7 @@
 </template>
 
 <script setup lang="ts">
+import ColorModeToggle from '@/components/common/ColorModeToggle.vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'

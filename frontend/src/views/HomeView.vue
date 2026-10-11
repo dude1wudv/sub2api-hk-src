@@ -22,6 +22,7 @@
         <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer">{{ text('开发者','Developers') }}<Icon name="chevronDown" size="xs" /></a>
       </nav>
       <div class="home-tools">
+        <ColorModeToggle />
         <button class="home-language" @click="changeLanguage">{{ zh ? 'CN' : 'EN' }}<Icon name="chevronDown" size="xs" /></button>
         <router-link :to="consolePath" class="home-try" data-testid="home-console">{{ auth.isAuthenticated ? text('控制台','CONSOLE') : text('开始使用','TRY PATRICKAPI') }}</router-link>
         <button class="home-menu-toggle" :aria-label="text('打开菜单','Open menu')" :aria-expanded="menuOpen" @click="menuOpen = !menuOpen"><Icon :name="menuOpen ? 'x' : 'menu'" size="md" /></button>
@@ -67,6 +68,7 @@ import { setLocale } from '@/i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
 import Icon from '@/components/icons/Icon.vue'
+import ColorModeToggle from '@/components/common/ColorModeToggle.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
 import { sanitizeUrl } from '@/utils/url'

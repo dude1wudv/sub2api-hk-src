@@ -13,6 +13,7 @@ vi.mock('vue-i18n', async () => {
 })
 
 const originalInnerWidth = window.innerWidth
+const originalInnerHeight = window.innerHeight
 let unmountWrapper: (() => void) | undefined
 
 const setViewportWidth = (width: number) => {
@@ -22,13 +23,13 @@ const setViewportWidth = (width: number) => {
   })
 }
 
-const mockTriggerRect = (left: number, width: number) => {
+const mockTriggerRect = (left: number, width: number, top = 20) => {
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
     x: left,
-    y: 20,
-    top: 20,
+    y: top,
+    top,
     right: left + width,
-    bottom: 60,
+    bottom: top + 40,
     left,
     width,
     height: 40,
@@ -61,6 +62,7 @@ afterEach(() => {
   unmountWrapper = undefined
   document.body.innerHTML = ''
   setViewportWidth(originalInnerWidth)
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight })
   vi.useRealTimers()
   vi.restoreAllMocks()
 })
@@ -78,16 +80,16 @@ describe('Select dropdown viewport constraints', () => {
     expect(dropdown?.style.maxWidth).toBe('996px')
   })
 
-  it('shrinks the minimum width to fit near the right viewport edge', async () => {
+  it('moves a right-edge dropdown left so its options retain their usable width', async () => {
     setViewportWidth(320)
     mockTriggerRect(220, 80)
 
     const dropdown = await openSelect()
 
     expect(dropdown).not.toBeNull()
-    expect(dropdown?.style.left).toBe('220px')
-    expect(dropdown?.style.minWidth).toBe('92px')
-    expect(dropdown?.style.maxWidth).toBe('92px')
+    expect(dropdown?.style.left).toBe('112px')
+    expect(dropdown?.style.minWidth).toBe('200px')
+    expect(dropdown?.style.maxWidth).toBe('200px')
   })
 
   it('clamps a trigger left of the viewport to the safe padding', async () => {
@@ -102,16 +104,39 @@ describe('Select dropdown viewport constraints', () => {
     expect(dropdown?.style.maxWidth).toBe('304px')
   })
 
-  it('clamps an offscreen-right trigger position to the viewport boundary', async () => {
+  it('keeps the complete dropdown inside the viewport even for an offscreen trigger', async () => {
     setViewportWidth(320)
     mockTriggerRect(400, 80)
 
     const dropdown = await openSelect()
 
     expect(dropdown).not.toBeNull()
-    expect(dropdown?.style.left).toBe('312px')
-    expect(dropdown?.style.minWidth).toBe('0px')
-    expect(dropdown?.style.maxWidth).toBe('0px')
+    expect(dropdown?.style.left).toBe('112px')
+    expect(dropdown?.style.minWidth).toBe('200px')
+    expect(dropdown?.style.maxWidth).toBe('200px')
+  })
+
+  it('fits a wide trigger between both viewport gutters', async () => {
+    setViewportWidth(360)
+    mockTriggerRect(0, 500)
+
+    const dropdown = await openSelect()
+
+    expect(dropdown?.style.left).toBe('8px')
+    expect(dropdown?.style.minWidth).toBe('344px')
+    expect(dropdown?.style.maxWidth).toBe('344px')
+  })
+
+  it('uses the larger space above a low trigger and bounds the menu height', async () => {
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 240 })
+    mockTriggerRect(20, 120, 140)
+
+    const dropdown = await openSelect()
+    await nextTick()
+
+    expect(dropdown?.style.bottom).toBe('104px')
+    expect(dropdown?.style.maxHeight).toBe('128px')
+    expect(dropdown?.style.top).toBe('')
   })
 })
 

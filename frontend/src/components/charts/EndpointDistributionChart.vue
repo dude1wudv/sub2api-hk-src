@@ -71,7 +71,7 @@
     <div v-if="loading" class="flex h-48 items-center justify-center">
       <LoadingSpinner />
     </div>
-    <div v-else-if="displayEndpointStats.length > 0 && chartData" class="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+    <div v-else-if="displayEndpointStats.length > 0 && chartData" class="distribution-body flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
       <div class="h-44 w-44 shrink-0 sm:h-48 sm:w-48">
         <Doughnut :data="chartData" :options="doughnutOptions" />
       </div>
@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { useGlacierChartPalette } from '@/composables/useGlacierChartPalette'
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
@@ -145,6 +145,7 @@ import { getUserBreakdown } from '@/api/admin/dashboard'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
+const chartTheme = useChartTheme()
 const { t } = useI18n()
 
 type DistributionMetric = 'tokens' | 'actual_cost'
@@ -212,20 +213,7 @@ const toggleBreakdown = async (endpoint: string) => {
   }
 }
 
-const chartColors = useGlacierChartPalette([
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#ec4899',
-  '#14b8a6',
-  '#f97316',
-  '#6366f1',
-  '#84cc16',
-  '#06b6d4',
-  '#a855f7'
-])
+const chartColors = useChartPalette()
 
 const displayEndpointStats = computed(() => {
   const sourceStats = props.source === 'upstream'
@@ -258,12 +246,14 @@ const chartData = computed(() => {
 
 const doughnutOptions = computed(() => ({
   responsive: true,
+  animation: false as const,
   maintainAspectRatio: false,
   plugins: {
     legend: {
       display: false
     },
     tooltip: {
+      ...chartTheme.value.tooltip,
       callbacks: {
         label: (context: any) => {
           const value = context.raw as number

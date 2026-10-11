@@ -1,9 +1,8 @@
-import { defineComponent, ref } from 'vue'
+import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AdminGroup } from '@/types'
-import type * as GlacierPreferencesModule from '@/composables/useGlacierPreferences'
 import GroupsView from '@/views/admin/GroupsView.vue'
 import { adminAPI } from '@/api/admin'
 
@@ -31,16 +30,6 @@ const {
 
 const authState = vi.hoisted(() => ({ isSimpleMode: false }))
 
-vi.mock('@/composables/useGlacierPreferences', async () => {
-  const actual = await vi.importActual<typeof GlacierPreferencesModule>('@/composables/useGlacierPreferences')
-  return {
-    ...actual,
-    useGlacierPreferences: () => ({
-      ...actual.useGlacierPreferences(),
-      isGlassLayout: ref(false)
-    })
-  }
-})
 
 vi.mock('@/api/admin', () => ({
   adminAPI: {
@@ -168,6 +157,7 @@ function mountView() {
   return mount(GroupsView, {
     global: {
       stubs: {
+        ActionMenu: { template: '<div><slot :close="() => {}" /></div>' },
         AppLayout: AppLayoutStub,
         TablePageLayout: TablePageLayoutStub,
         DataTable: DataTableStub,
@@ -272,7 +262,7 @@ describe('GroupsView duplicate action', () => {
 
     expect(duplicateGroup).toHaveBeenCalledTimes(1)
     expect(button.attributes('disabled')).toBeDefined()
-    expect(button.attributes('title')).toBe('admin.groups.duplicating')
+    expect(button.text()).toContain('admin.groups.duplicating')
 
     resolveDuplicate({ ...sourceGroup, id: 43, name: 'Primary (Copy)', status: 'inactive' })
     await flushPromises()

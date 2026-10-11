@@ -11,7 +11,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.balance') }}</p>
-          <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">${{ formatBalance(balance) }}</p>
+          <p class="metric-value text-gray-900 tabular-nums dark:text-white">${{ formatBalance(balance) }}</p>
           <p class="text-xs text-gray-400 dark:text-dark-400">{{ t('common.available') }}</p>
         </div>
       </div>
@@ -25,7 +25,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.apiKeys') }}</p>
-          <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">{{ stats?.total_api_keys || 0 }}</p>
+          <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ stats?.total_api_keys || 0 }}</p>
           <p class="text-xs font-medium text-emerald-600 dark:text-emerald-400">{{ stats?.active_api_keys || 0 }} {{ t('common.active') }}</p>
         </div>
       </div>
@@ -39,7 +39,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.todayRequests') }}</p>
-          <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">{{ stats?.today_requests || 0 }}</p>
+          <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ stats?.today_requests || 0 }}</p>
           <p class="truncate text-xs text-gray-400 dark:text-dark-400">{{ t('common.total') }}: <span class="tabular-nums font-medium text-gray-600 dark:text-dark-200">{{ formatNumber(stats?.total_requests || 0) }}</span></p>
         </div>
       </div>
@@ -53,7 +53,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.todayCost') }}</p>
-          <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">
+          <p class="metric-value text-gray-900 tabular-nums dark:text-white">
             <span class="text-primary-700 dark:text-primary-300" :title="t('dashboard.actual')">${{ formatCost(stats?.today_actual_cost || 0) }}</span>
             <span class="text-xs font-normal text-gray-400 dark:text-dark-400" :title="t('dashboard.standard')"> / ${{ formatCost(stats?.today_cost || 0) }}</span>
           </p>
@@ -77,7 +77,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.todayTokens') }}</p>
-          <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">{{ formatTokens(stats?.today_tokens || 0) }}</p>
+          <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatTokens(stats?.today_tokens || 0) }}</p>
           <p class="truncate text-[11px] text-gray-400 dark:text-dark-400" :title="`${t('dashboard.input')}: ${formatTokens(stats?.today_input_tokens || 0)} / ${t('dashboard.output')}: ${formatTokens(stats?.today_output_tokens || 0)} / ${t('dashboard.cache')}: ${formatTokens((stats?.today_cache_creation_tokens || 0) + (stats?.today_cache_read_tokens || 0))}`">
             <span class="tabular-nums">{{ t('dashboard.input') }}: {{ formatTokens(stats?.today_input_tokens || 0) }}</span> /
             <span class="tabular-nums">{{ t('dashboard.output') }}: {{ formatTokens(stats?.today_output_tokens || 0) }}</span> /
@@ -95,7 +95,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.totalTokens') }}</p>
-          <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">{{ formatTokens(stats?.total_tokens || 0) }}</p>
+          <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatTokens(stats?.total_tokens || 0) }}</p>
           <p class="truncate text-[11px] text-gray-400 dark:text-dark-400" :title="`${t('dashboard.input')}: ${formatTokens(stats?.total_input_tokens || 0)} / ${t('dashboard.output')}: ${formatTokens(stats?.total_output_tokens || 0)} / ${t('dashboard.cache')}: ${formatTokens((stats?.total_cache_creation_tokens || 0) + (stats?.total_cache_read_tokens || 0))}`">
             <span class="tabular-nums">{{ t('dashboard.input') }}: {{ formatTokens(stats?.total_input_tokens || 0) }}</span> /
             <span class="tabular-nums">{{ t('dashboard.output') }}: {{ formatTokens(stats?.total_output_tokens || 0) }}</span> /
@@ -114,7 +114,7 @@
         <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.performance') }}</p>
           <div class="flex items-baseline gap-1.5">
-            <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">{{ formatTokens(stats?.rpm || 0) }}</p>
+            <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatTokens(stats?.rpm || 0) }}</p>
             <span class="text-xs font-semibold uppercase text-gray-400 dark:text-dark-400">RPM</span>
           </div>
           <div class="flex items-baseline gap-1.5">
@@ -133,7 +133,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('dashboard.avgResponse') }}</p>
-          <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">{{ formatDuration(stats?.average_duration_ms || 0) }}</p>
+          <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatDuration(stats?.average_duration_ms || 0) }}</p>
           <p class="text-xs text-gray-400 dark:text-dark-400">{{ t('dashboard.averageTime') }}</p>
         </div>
       </div>

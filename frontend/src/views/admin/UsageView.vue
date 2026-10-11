@@ -3,8 +3,8 @@
     <div class="space-y-6">
       <UsageStatsCards :stats="usageStats" />
       <!-- Charts Section -->
-      <div class="space-y-4 glacier-analytics">
-        <div class="card p-3.5 sm:p-4 glacier-analytics-controls">
+      <div class="space-y-4 dashboard-analytics">
+        <div class="card p-3.5 sm:p-4 dashboard-analytics-controls">
           <div class="flex flex-wrap items-center gap-4">
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('admin.dashboard.timeRange') }}:</span>
@@ -22,8 +22,8 @@
             </div>
           </div>
         </div>
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 glacier-chart-row">
-          <ModelDistributionChart class="glacier-models"
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 dashboard-chart-row">
+          <ModelDistributionChart class="dashboard-models"
             v-model:source="modelDistributionSource"
             v-model:metric="modelDistributionMetric"
             :model-stats="requestedModelStats"
@@ -36,7 +36,7 @@
             :end-date="endDate"
             :filters="breakdownFilters"
           />
-          <GroupDistributionChart class="glacier-groups"
+          <GroupDistributionChart class="dashboard-groups"
             v-model:metric="groupDistributionMetric"
             :group-stats="groupStats"
             :loading="chartsLoading"
@@ -46,8 +46,8 @@
             :filters="breakdownFilters"
           />
         </div>
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 glacier-chart-row">
-          <EndpointDistributionChart class="glacier-endpoints"
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 dashboard-chart-row">
+          <EndpointDistributionChart class="dashboard-endpoints"
             v-model:source="endpointDistributionSource"
             v-model:metric="endpointDistributionMetric"
             :endpoint-stats="inboundEndpointStats"
@@ -61,7 +61,7 @@
             :end-date="endDate"
             :filters="breakdownFilters"
           />
-          <TokenUsageTrend class="glacier-trend" :trend-data="trendData" :loading="chartsLoading" />
+          <TokenUsageTrend class="dashboard-trend" :trend-data="trendData" :loading="chartsLoading" />
         </div>
       </div>
       <!-- 明细区：tab 栏 + 筛选 + 内容收进同一张卡片，消除割裂感 -->
@@ -81,7 +81,6 @@
             <Icon :name="tab.icon" size="sm" />
             {{ tab.label }}
           </button>
-          <GlacierDensityControl class="ml-auto my-2" />
         </div>
 
         <UsageFilters v-model="filters" ref="usageFiltersRef" flat :mode="activeTab" class="border-b border-gray-100 dark:border-dark-700/50" :start-date="startDate" :end-date="endDate" :exporting="exporting" :model-options="modelNameOptions" @change="applyFilters" @refresh="refreshData" @reset="resetFilters" @cleanup="openCleanupDialog" @export="exportToExcel">
@@ -185,7 +184,6 @@
 </template>
 
 <script setup lang="ts">
-import GlacierDensityControl from '@/components/common/GlacierDensityControl.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { saveAs } from 'file-saver'

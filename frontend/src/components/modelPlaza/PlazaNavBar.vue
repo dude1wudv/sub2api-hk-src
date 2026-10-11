@@ -21,26 +21,30 @@
         </template>
       </div>
 
+      <div class="ml-auto flex shrink-0 items-center gap-3">
+      <ColorModeToggle />
       <!-- 右:登录 / 回到后台 -->
       <RouterLink
         v-if="isAuthenticated"
         :to="backTarget"
-        class="inline-flex flex-shrink-0 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary-500/25 transition-all duration-200 hover:from-primary-600 hover:to-primary-700 hover:shadow-lg hover:shadow-primary-500/30 active:scale-[0.98] dark:shadow-primary-500/20"
+        class="btn btn-primary shrink-0"
       >
         {{ t('modelPlaza.nav.backToDashboard') }}
       </RouterLink>
       <RouterLink
         v-else
         :to="{ path: '/login', query: { redirect: '/model-plaza' } }"
-        class="inline-flex flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary-500/25 transition-all duration-200 hover:from-primary-600 hover:to-primary-700 hover:shadow-lg hover:shadow-primary-500/30 active:scale-[0.98] dark:shadow-primary-500/20"
+        class="btn btn-primary shrink-0"
       >
         {{ t('modelPlaza.nav.login') }}
       </RouterLink>
+      </div>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
+import ColorModeToggle from '@/components/common/ColorModeToggle.vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { sanitizeUrl } from '@/utils/url'

@@ -23,9 +23,7 @@ const textPalette = (name) => ({
 
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
-  // Fixed-light workspaces must not inherit the saved legacy dark preference.
-  // Keep that preference intact for surfaces outside these two workspaces.
-  darkMode: ['class', '.dark:where(:not(:has(body[data-patrick-surface="true"], body[data-admin-surface="true"])))'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -80,21 +78,10 @@ export default {
         pink: textPalette('err'),
         fuchsia: textPalette('err')
       },
+      fontSize: { xs: ['13px', { lineHeight: '1.5' }] },
       fontFamily: {
         serif: ['Iowan Old Style', 'Palatino Linotype', 'Songti SC', 'STSong', 'Georgia', 'serif'],
-        sans: [
-          'system-ui',
-          '-apple-system',
-          'BlinkMacSystemFont',
-          'Segoe UI',
-          'Roboto',
-          'Helvetica Neue',
-          'Arial',
-          'PingFang SC',
-          'Hiragino Sans GB',
-          'Microsoft YaHei',
-          'sans-serif'
-        ],
+        sans: ['var(--font-sans)'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
       },
       boxShadow: {

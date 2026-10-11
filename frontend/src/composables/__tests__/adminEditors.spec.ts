@@ -4,7 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { useAdminDraft } from '../useAdminDraft'
 import { useAdminFormTabs } from '../useAdminFormTabs'
-import { initAppearance, useAppearance } from '../useAppearance'
+import { initColorMode, useColorMode } from '../useColorMode'
 import { adminSurfaceActive } from '../adminSurface'
 vi.mock('vue-i18n',()=>({useI18n:()=>({locale:ref('en'),t:(k:string)=>k})}))
 afterEach(()=>{vi.restoreAllMocks();adminSurfaceActive.value=false;localStorage.clear()})
@@ -34,12 +34,15 @@ describe('admin draft lifecycle',()=>{
     await w.get('input').setValue('original');expect(w.text()).toBe('false')
     await w.get('input').setValue('changed again');confirm.mockReturnValue(true);await router.push('/other');expect(router.currentRoute.value.path).toBe('/other');w.unmount()
   })
-  it('restores the saved theme after leaving administration without overwriting preference',()=>{
-    initAppearance();useAppearance().setStyle('lagoon');localStorage.setItem('theme','dark');initAppearance()
-    const appearance=useAppearance();adminSurfaceActive.value=true
-    expect(appearance.style.value).toBe('graphite');expect(appearance.isDark.value).toBe(false)
-    expect(localStorage.getItem('appearance-style')).toBe('lagoon');expect(localStorage.getItem('theme')).toBe('dark')
-    adminSurfaceActive.value=false;expect(appearance.style.value).toBe('lagoon');expect(appearance.isDark.value).toBe(true)
+  it('preserves the active color mode across administration and user surfaces',()=>{
+    localStorage.setItem('theme','dark')
+    const dispose=initColorMode(), appearance=useColorMode()
+    adminSurfaceActive.value=true
+    expect(appearance.isDark.value).toBe(true)
+    expect(localStorage.getItem('theme')).toBe('dark')
+    adminSurfaceActive.value=false
+    expect(appearance.isDark.value).toBe(true)
+    dispose()
   })
   it('reveals the first invalid hidden tab while preserving input on other tabs',async()=>{
     const Editor=defineComponent({setup(){return {a:ref('kept'),...useAdminFormTabs(()=>true)}},template:`<form @invalid.capture="revealInvalid"><section data-admin-tab="basic" v-show="formTab === 'basic'"><input v-model="a"></section><section data-admin-tab="auth" v-show="formTab === 'auth'"><input id="invalid" required></section></form>`})

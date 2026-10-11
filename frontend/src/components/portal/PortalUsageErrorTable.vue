@@ -9,7 +9,7 @@ const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const copy = (cn: string, en: string) => zh.value ? cn : en
 const emit = defineEmits<{ sort: [key: string]; detail: [row: UserErrorRequest] }>()
-const mobile = useMediaQuery('(max-width: 739px)')
+const mobile = useMediaQuery('(max-width: 767px)')
 const visible = computed(() => portalErrorColumns.filter(column => props.columns.includes(column.key)))
 const primaryKeys = new Set(['created_at', 'type', 'model', 'status_code', 'category', 'message'])
 const extras = computed(() => visible.value.filter(column => !primaryKeys.has(column.key)))
@@ -71,29 +71,29 @@ function categoryName(value: string) { return categories.value[value] || value |
 
 <style scoped>
 .error-table-wrap { padding: 8px; }
-.error-table { width:max-content; min-width:100%; white-space: nowrap; font-size: 12px; }
-.error-table th { font-size: 11px; }
+.error-table { width:max-content; min-width:100%; white-space: nowrap; font-size: 14px; }
+.error-table th { font-size: 14px; }
 .error-table td { padding: 20px 12px; }
 .error-sort { display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 0; font: inherit; }
-.error-sort > span { color: #b6b2a8; }
-.error-detail, .error-table small { display: block; font-size: 11px; color: #929088; margin-top: 8px; }
+.error-sort > span { color: rgb(var(--ink-3)); }
+.error-detail, .error-table small { display: block; font-size: 13px; color: rgb(var(--ink-3)); margin-top: 8px; }
 .error-detail { text-decoration: underline; }
-.error-status { background: #f3f0eb; padding: 4px 8px; border: 1px solid #efede3; border-radius: 5px; }
+.error-status { background: rgb(var(--surface-2)); padding: 4px 8px; border: 1px solid rgb(var(--line)); border-radius: 5px; }
 .error-message { display: -webkit-box; max-width: 260px; min-width: 180px; white-space: normal; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: break-word; }
 .error-wrap { display: block; max-width: 220px; min-width: 140px; white-space: normal; overflow-wrap: break-word; }
-.error-empty { height: 170px; text-align: center; color: #929088; }
+.error-empty { height: 170px; text-align: center; color: rgb(var(--ink-3)); }
 .error-cards { display:grid; gap:12px; }
 .error-card-sort { display:flex; flex-wrap:wrap; gap:8px 16px; }
-.error-card { display:grid; gap:8px; padding:14px; border:1px solid #efede3; border-radius:12px; background:#fffdf7; }
+.error-card { display:grid; gap:8px; padding:14px; border:1px solid rgb(var(--line)); border-radius:12px; background:rgb(var(--surface)); }
 .error-card-head { display:flex; align-items:center; gap:8px; }
 .error-card-head .error-detail { margin-top:0; margin-left:auto; }
-.error-card-time { color:#929088; font-size:12px; }
+.error-card-time { color:rgb(var(--ink-3)); font-size:13px; }
 .error-card-model { margin:0; font-weight:600; overflow-wrap:anywhere; }
-.error-card-type { margin:0; color:#77746d; font-size:12px; }
+.error-card-type { margin:0; color:rgb(var(--ink-3)); font-size:13px; }
 .error-card .error-message { max-width:none; min-width:0; margin:0; }
 .error-card-extra { display:grid; gap:8px; margin:0; }
 .error-card-extra div { display:grid; grid-template-columns:72px minmax(0,1fr); gap:8px; }
-.error-card-extra dt { color:#929088; font-size:11px; }
-.error-card-extra dd { margin:0; overflow-wrap:anywhere; font-size:12px; }
-.error-cards .error-empty { display:grid; place-items:center; margin:0; border:1px solid #efede3; border-radius:12px; }
+.error-card-extra dt { color:rgb(var(--ink-3)); font-size:13px; }
+.error-card-extra dd { margin:0; overflow-wrap:anywhere; font-size:13px; }
+.error-cards .error-empty { display:grid; place-items:center; margin:0; border:1px solid rgb(var(--line)); border-radius:12px; }
 </style>

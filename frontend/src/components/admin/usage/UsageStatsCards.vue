@@ -5,9 +5,9 @@
         <Icon name="document" size="md" />
       </div>
       <div class="min-w-0 flex-1">
-        <p class="truncate text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('usage.totalRequests') }}</p>
-        <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">{{ stats?.total_requests?.toLocaleString() || '0' }}</p>
-        <p class="truncate text-xs text-gray-400 dark:text-dark-400">{{ t('usage.inSelectedRange') }}</p>
+        <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('usage.totalRequests') }}</p>
+        <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ stats?.total_requests?.toLocaleString() || '0' }}</p>
+        <p class="text-xs text-gray-400 dark:text-dark-400">{{ t('usage.inSelectedRange') }}</p>
       </div>
     </div>
 
@@ -16,9 +16,9 @@
         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
       </div>
       <div class="min-w-0 flex-1">
-        <p class="truncate text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('usage.totalTokens') }}</p>
-        <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">{{ formatTokens(stats?.total_tokens || 0) }}</p>
-        <p class="flex min-w-0 items-center gap-x-1 truncate text-[11px] text-gray-400 dark:text-dark-400">
+        <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('usage.totalTokens') }}</p>
+        <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatTokens(stats?.total_tokens || 0) }}</p>
+        <p class="flex min-w-0 items-center gap-x-1 text-xs text-gray-400 dark:text-dark-400">
           <span class="tabular-nums">{{ t('usage.in') }}: {{ formatTokens(stats?.total_input_tokens || 0) }}</span>
           <span>/</span>
           <span class="tabular-nums">{{ t('usage.out') }}: {{ formatTokens(stats?.total_output_tokens || 0) }}</span>
@@ -41,9 +41,9 @@
         <Icon name="dollar" size="md" />
       </div>
       <div class="min-w-0 flex-1">
-        <p class="truncate text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('usage.totalCost') }}</p>
-        <p class="metric-value text-xl font-bold tracking-tight text-primary-700 tabular-nums dark:text-primary-300 sm:text-2xl">${{ (stats?.total_actual_cost || 0).toFixed(4) }}</p>
-        <p class="truncate text-xs text-gray-400 dark:text-dark-400">
+        <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('usage.totalCost') }}</p>
+        <p class="metric-value text-primary-700 tabular-nums dark:text-primary-300">${{ (stats?.total_actual_cost || 0).toFixed(4) }}</p>
+        <p class="text-xs text-gray-400 dark:text-dark-400">
           <template v-if="showAccountCost && totalAccountCost != null"><span class="text-amber-600 dark:text-amber-400">{{ t('usage.accountCost') }} ${{ totalAccountCost.toFixed(4) }}</span><span> · </span></template>
           <span>{{ t('usage.standardCost') }} <span class="tabular-nums" :class="{ 'line-through': strikeStandardCost }">${{ (stats?.total_cost || 0).toFixed(4) }}</span></span>
         </p>
@@ -55,8 +55,8 @@
         <Icon name="clock" size="md" />
       </div>
       <div class="min-w-0 flex-1">
-        <p class="truncate text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('usage.avgDuration') }}</p>
-        <p class="metric-value text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl">{{ formatDuration(stats?.average_duration_ms || 0) }}</p>
+        <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('usage.avgDuration') }}</p>
+        <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatDuration(stats?.average_duration_ms || 0) }}</p>
       </div>
     </div>
   </div>

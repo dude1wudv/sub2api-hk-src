@@ -163,24 +163,24 @@ async function submit() {
 </script>
 
 <style scoped>
-.portal-api-bulk-intro { margin:0 0 12px; color:#76736b; font-size:13px; line-height:1.7; }
-.portal-api-bulk-selection { margin-bottom:20px; font-size:12px; }
+.portal-api-bulk-intro { margin:0 0 12px; color:rgb(var(--ink-3)); font-size:13px; line-height:1.7; }
+.portal-api-bulk-selection { margin-bottom:20px; font-size:13px; }
 .portal-api-bulk-selection summary,.portal-api-bulk-successes summary { cursor:pointer; }
 .portal-api-bulk-selection ul,.portal-api-bulk-successes ul { max-height:128px; overflow:auto; margin:10px 0 0; padding-left:20px; list-style:disc; overflow-wrap:anywhere; }
-.portal-api-bulk-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 24px; padding:18px 0; border:0; border-block:1px solid #efede3; }
+.portal-api-bulk-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 24px; padding:18px 0; border:0; border-block:1px solid rgb(var(--line)); }
 .portal-api-bulk-fields:disabled { opacity:.6; }
 .portal-api-bulk-field { min-width:0; }
 .portal-api-bulk-full { grid-column:1 / -1; }
 .portal-api-bulk-check { display:flex; align-items:center; gap:9px; font-size:13px; line-height:1.7; }
-.portal-api-bulk-check input { flex-shrink:0; width:15px; height:15px; accent-color:#000; }
+.portal-api-bulk-check input { flex-shrink:0; width:15px; height:15px; accent-color:rgb(var(--ink)); }
 .portal-api-bulk-form .portal-field { margin-top:12px; font-size:13px; }
-.portal-api-bulk-form .portal-field small { font-size:11px; line-height:1.6; color:#76736b; }
-.portal-api-bulk-hint { margin:10px 0 0; color:#76736b; font-size:12px; line-height:1.7; }
+.portal-api-bulk-form .portal-field small { font-size:13px; line-height:1.6; color:rgb(var(--ink-3)); }
+.portal-api-bulk-hint { margin:10px 0 0; color:rgb(var(--ink-3)); font-size:13px; line-height:1.7; }
 .portal-api-bulk-expiry { margin-top:12px; }
-.portal-api-bulk-results { margin-top:20px; padding:16px; border:1px solid #efede3; border-radius:8px; background:#f7f5ee; font-size:13px; }
+.portal-api-bulk-results { margin-top:20px; padding:16px; border:1px solid rgb(var(--line)); border-radius:8px; background:rgb(var(--surface-2)); font-size:13px; }
 .portal-api-bulk-results > p { margin:0 0 8px; }
-.portal-api-bulk-successes { margin-top:12px; font-size:12px; }
-.portal-api-bulk-failures { display:grid; gap:6px; margin:12px 0 0; padding-left:20px; color:#b8253a; list-style:disc; overflow-wrap:anywhere; }
+.portal-api-bulk-successes { margin-top:12px; font-size:13px; }
+.portal-api-bulk-failures { display:grid; gap:6px; margin:12px 0 0; padding-left:20px; color:rgb(var(--text-err)); list-style:disc; overflow-wrap:anywhere; }
 .portal-api-bulk-form > .portal-error { margin-top:16px; }
 @media(max-width:520px) { .portal-api-bulk-fields { grid-template-columns:1fr; gap:18px; } }
 </style>

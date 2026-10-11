@@ -20,10 +20,11 @@
             </h3>
             <button
               v-if="showCloseButton"
+              type="button"
               @click="requestClose"
               :disabled="busy"
-              class="-mr-2 rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-2 dark:text-dark-300 dark:hover:bg-dark-700 dark:hover:text-white dark:focus-visible:ring-offset-dark-900"
-              aria-label="Close modal"
+              class="modal-close -mr-2 rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-2 dark:text-dark-300 dark:hover:bg-dark-700 dark:hover:text-white dark:focus-visible:ring-offset-dark-900"
+              :aria-label="zh ? '关闭弹窗' : 'Close modal'"
             >
               <Icon name="x" size="md" />
             </button>
@@ -57,6 +58,7 @@ const openDialogs = new Set<string>()
 import { computed, watch, onMounted, onUnmounted, ref, nextTick, getCurrentInstance } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
 import { adminSurfaceActive } from '@/composables/adminSurface'
+import { useScrollLock } from '@/composables/useScrollLock'
 
 // 生成唯一ID以避免多个对话框时ID冲突
 const dialogId = `modal-title-${++dialogIdCounter}`
@@ -97,6 +99,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<Emits>()
+useScrollLock(() => props.show)
 const instance = getCurrentInstance()
 const zh = computed(() => String(instance?.appContext.config.globalProperties.$i18n?.locale ?? document.documentElement.lang).startsWith('zh'))
 const confirmDiscard = ref(false)
@@ -141,9 +144,13 @@ const handleClose = () => {
 
 const handleEscape = (event: KeyboardEvent) => {
   if (!props.show || [...openDialogs].pop() !== dialogId) return
-  if (props.closeOnEscape && event.key === 'Escape') {
-    if (confirmDiscard.value) keepEditing()
-    else requestClose()
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    if (props.closeOnEscape) {
+      if (confirmDiscard.value) keepEditing()
+      else requestClose()
+    }
   }
   if (event.key === 'Tab') {
     const panel = confirmDiscard.value ? discardRef.value : dialogRef.value
@@ -160,10 +167,14 @@ function hasHiddenParent(el: HTMLElement, panel: HTMLElement | null) {
   return false
 }
 
-const updateScrollLock = (isOpen: boolean) => {
+const updateDialogStack = (isOpen: boolean) => {
   if (isOpen) openDialogs.add(dialogId)
   else openDialogs.delete(dialogId)
-  document.body.classList.toggle('modal-open', openDialogs.size > 0)
+}
+
+function restoreFocus() {
+  if (previousActiveElement?.isConnected && !previousActiveElement.closest('[inert]')) previousActiveElement.focus({ preventScroll: true })
+  previousActiveElement = null
 }
 
 // Prevent body scroll when modal is open and manage focus
@@ -174,27 +185,24 @@ watch(
     if (isOpen) {
       // 保存当前焦点元素
       previousActiveElement = document.activeElement as HTMLElement
-      // 使用CSS类而不是直接操作style,更易于管理多个对话框
-      updateScrollLock(true)
+      updateDialogStack(true)
 
       // 等待DOM更新后设置焦点到对话框
       await nextTick()
+      if (!props.show) return
       if (modalBodyRef.value) {
         modalBodyRef.value.scrollTop = 0
       }
       if (dialogRef.value) {
         const firstFocusable = dialogRef.value.querySelector<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          '[autofocus]:not([disabled]), button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
         )
-        firstFocusable?.focus()
+        ;(firstFocusable || dialogRef.value).focus({ preventScroll: true })
       }
     } else {
-      updateScrollLock(false)
+      updateDialogStack(false)
       // 恢复之前的焦点
-      if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
-        previousActiveElement.focus()
-      }
-      previousActiveElement = null
+      restoreFocus()
     }
   },
   { immediate: true }
@@ -207,6 +215,28 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('keydown', handleEscape)
   // 确保组件卸载时移除滚动锁定
-  updateScrollLock(false)
+  updateDialogStack(false)
+  restoreFocus()
 })
 </script>
+
+<style scoped>
+.modal-overlay { padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px)); }
+.modal-content { max-height: calc(100dvh - 48px); color: rgb(var(--ink)); background: rgb(var(--surface)); font-family: var(--font-sans); }
+.modal-body { overscroll-behavior: contain; }
+.modal-close { display: inline-grid; place-items: center; flex-shrink: 0; transition-duration: var(--motion-fast, 160ms); }
+.modal-title { font-family: var(--font-sans); }
+.modal-enter-active, .modal-leave-active { transition-duration: var(--motion-overlay, 260ms); }
+.modal-enter-active .modal-content, .modal-leave-active .modal-content { transition-duration: var(--motion-overlay, 260ms); transition-timing-function: var(--motion-ease, cubic-bezier(.2,.8,.2,1)); }
+@media (max-width: 767px) {
+  .modal-overlay { padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+  .modal-content { max-height: calc(100dvh - 24px); }
+  .modal-close { min-width: 44px; min-height: 44px; }
+  .modal-header { padding-top: max(16px, env(safe-area-inset-top, 0px)); }
+  .modal-footer { padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+  .modal-body :deep(input:not([type='checkbox']):not([type='radio'])), .modal-body :deep(select), .modal-body :deep(textarea) { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-enter-active, .modal-leave-active, .modal-enter-active .modal-content, .modal-leave-active .modal-content { transition-duration: .01ms; }
+}
+</style>

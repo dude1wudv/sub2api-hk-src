@@ -16,7 +16,7 @@ const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const copy = (cn: string, en: string) => zh.value ? cn : en
 const emit = defineEmits<{ sort: [key: string]; detail: [row: UsageLog] }>()
-const mobile = useMediaQuery('(max-width: 739px)')
+const mobile = useMediaQuery('(max-width: 767px)')
 const visible = computed(() => portalUsageColumns.filter(column => props.columns.includes(column.key)))
 const primaryKeys = new Set(['created_at', 'type', 'model', 'tokens', 'cost', 'latency'])
 const extras = computed(() => visible.value.filter(column => !primaryKeys.has(column.key)))
@@ -24,9 +24,9 @@ const sortableVisible = computed(() => visible.value.filter(column => 'sortable'
 function shown(key: string) { return props.columns.includes(key as PortalUsageColumnKey) }
 function date(value: string) { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleDateString(locale.value) }
 function time(value: string) { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? '' : parsed.toLocaleTimeString(locale.value, { hour12: false }) }
-const latencyColors: Record<LatencySeverity, string> = { good: '#16804a', warn: '#a66c00', slow: '#c25117', critical: '#c83131' }
+const latencyColors: Record<LatencySeverity, string> = { good: 'rgb(var(--text-ok))', warn: 'rgb(var(--text-warn))', slow: 'rgb(var(--text-warn))', critical: 'rgb(var(--text-err))' }
 function latencyColor(ms: number | null | undefined, first = false) {
-  return ms == null || !Number.isFinite(ms) || ms < 0 ? '#929088' : latencyColors[first ? firstTokenSeverity(ms) : durationSeverity(ms)]
+  return ms == null || !Number.isFinite(ms) || ms < 0 ? 'rgb(var(--ink-3))' : latencyColors[first ? firstTokenSeverity(ms) : durationSeverity(ms)]
 }
 </script>
 
@@ -107,42 +107,42 @@ function latencyColor(ms: number | null | undefined, first = false) {
 
 <style scoped>
 .usage-table-wrap { padding: 8px; }
-.usage-table { width:max-content; min-width:100%; white-space: nowrap; font-size: 12px; }
-.usage-table th { font-size: 11px; text-transform: none; }
+.usage-table { width:max-content; min-width:100%; white-space: nowrap; font-size: 14px; }
+.usage-table th { font-size: 14px; text-transform: none; }
 .usage-table td { padding: 18px 12px; }
 .usage-sort { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; font: inherit; }
-.usage-sort > span { color: #b6b2a8; }
-.usage-table small, .usage-card small { display: block; font-size: 11px; color: #929088; margin-top: 5px; line-height: 1.45; }
-.usage-detail-link { display: inline-block; margin-top: 7px; color: #929088; text-decoration: underline; font-size: 11px; }
-.usage-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 5px; border: 1px solid #efede3; background: #f7f5ee; white-space:nowrap; }
+.usage-sort > span { color: rgb(var(--ink-3)); }
+.usage-table small, .usage-card small { display: block; font-size: 13px; color: rgb(var(--ink-3)); margin-top: 5px; line-height: 1.45; }
+.usage-detail-link { display: inline-block; margin-top: 7px; color: rgb(var(--ink-3)); text-decoration: underline; font-size: 13px; }
+.usage-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 5px; border: 1px solid rgb(var(--line)); background: rgb(var(--surface-2)); white-space:nowrap; }
 .usage-model-text { display: block; min-width: 140px; max-width: 220px; white-space: normal; overflow-wrap: break-word; }
 .usage-model-name { display: flex; align-items: flex-start; gap: 8px; }
 .usage-model-name :deep(svg), .usage-model-name :deep(.model-icon-fallback) { flex-shrink: 0; }
-.usage-request-stream, .usage-request-ws_v2, .usage-request-live { color: #6d28d9; background: #f5f0ff; border-color: #e7dbff; }
-.usage-request-sync { color: #0369a1; background: #f0f9ff; border-color: #d7edf8; }
-.usage-actual-cost { color: #1d4ed8; font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
-.usage-table .usage-standard-cost, .usage-card .usage-standard-cost { color: #a16207; font-variant-numeric: tabular-nums; }
-.usage-latency-values { position:relative; display: grid; grid-template-columns: max-content max-content; gap: 4px 10px; padding-left: 13px; font-size: 11px; }
+.usage-request-stream, .usage-request-ws_v2, .usage-request-live { color: rgb(var(--text-accent)); background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); }
+.usage-request-sync { color: rgb(var(--text-link)); background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); }
+.usage-actual-cost { color: rgb(var(--text-link)); font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
+.usage-table .usage-standard-cost, .usage-card .usage-standard-cost { color: rgb(var(--text-err)); font-variant-numeric: tabular-nums; }
+.usage-latency-values { position:relative; display: grid; grid-template-columns: max-content max-content; gap: 4px 10px; padding-left: 13px; font-size: 13px; }
 .usage-latency-values::before { content:''; position:absolute; inset:0 auto 0 0; width:3px; border-radius:3px; background:linear-gradient(to bottom,var(--latency-first),var(--latency-duration)); }
-.usage-latency-values span { color: #929088; }
+.usage-latency-values span { color: rgb(var(--ink-3)); }
 .usage-latency-values b { font-weight: 400; font-variant-numeric: tabular-nums; }
 .usage-long-text { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
-.usage-empty { height: 170px; text-align: center; color: #929088; }
+.usage-empty { height: 170px; text-align: center; color: rgb(var(--ink-3)); }
 .usage-cards { display:grid; gap:12px; }
 .usage-card-sort { display:flex; flex-wrap:wrap; gap:8px 16px; }
-.usage-card { display:grid; gap:10px; padding:14px; border:1px solid #efede3; border-radius:12px; background:#fffdf7; }
+.usage-card { display:grid; gap:10px; padding:14px; border:1px solid rgb(var(--line)); border-radius:12px; background:rgb(var(--surface)); }
 .usage-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .usage-card .usage-model-name { min-width:0; flex:1; }
 .usage-card .usage-model-text { min-width:0; max-width:none; }
-.usage-card-time { display:flex; align-items:center; justify-content:space-between; gap:12px; color:#77746d; font-size:12px; }
+.usage-card-time { display:flex; align-items:center; justify-content:space-between; gap:12px; color:rgb(var(--ink-3)); font-size:13px; }
 .usage-card-time .usage-detail-link { margin-top:0; }
 .usage-card-cost { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; }
-.usage-card-latency { display:flex; flex-wrap:wrap; gap:6px 14px; padding-left:10px; border-left:3px solid var(--latency-first); font-size:12px; }
-.usage-card-latency span { color:#77746d; }
-.usage-card-latency b { color:#1c2430; font-weight:500; font-variant-numeric:tabular-nums; }
+.usage-card-latency { display:flex; flex-wrap:wrap; gap:6px 14px; padding-left:10px; border-left:3px solid var(--latency-first); font-size:13px; }
+.usage-card-latency span { color:rgb(var(--ink-3)); }
+.usage-card-latency b { color:rgb(var(--ink)); font-weight:500; font-variant-numeric:tabular-nums; }
 .usage-card-extra { display:grid; gap:8px; margin:0; }
 .usage-card-extra div { display:grid; grid-template-columns:72px minmax(0,1fr); gap:8px; }
-.usage-card-extra dt { color:#929088; font-size:11px; }
-.usage-card-extra dd { margin:0; overflow-wrap:anywhere; font-size:12px; }
-.usage-cards .usage-empty { display:grid; place-items:center; margin:0; border:1px solid #efede3; border-radius:12px; }
+.usage-card-extra dt { color:rgb(var(--ink-3)); font-size:13px; }
+.usage-card-extra dd { margin:0; overflow-wrap:anywhere; font-size:13px; }
+.usage-cards .usage-empty { display:grid; place-items:center; margin:0; border:1px solid rgb(var(--line)); border-radius:12px; }
 </style>

@@ -12,3 +12,6 @@ dist/
 # 忽略缓存
 .cache/
 .vite/
+
+# Local preview captures and one-off inspection scripts (also ignored by Git)
+tmp/

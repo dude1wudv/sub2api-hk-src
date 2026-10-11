@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { computed } from 'vue'
-import { useAppearance } from '@/composables/useAppearance'
 import { useI18n } from 'vue-i18n'
 import {
   Chart as ChartJS,
@@ -28,6 +28,8 @@ interface Props {
   timeRange: string
 }
 
+const chartTheme = useChartTheme()
+const seriesPalette = useChartPalette()
 const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'openRequestErrors'): void
@@ -35,15 +37,14 @@ const emit = defineEmits<{
 }>()
 const { t } = useI18n()
 
-const { isDark: isDarkMode } = useAppearance()
 const colors = computed(() => ({
-  red: '#ef4444',
-  redAlpha: '#ef444420',
-  purple: '#8b5cf6',
-  purpleAlpha: '#8b5cf620',
-  gray: '#9ca3af',
-  grid: isDarkMode.value ? '#374151' : '#f3f4f6',
-  text: isDarkMode.value ? '#9ca3af' : '#6b7280'
+  red: seriesPalette.value[4],
+  redAlpha: `${seriesPalette.value[4]}20`,
+  purple: seriesPalette.value[3],
+  purpleAlpha: `${seriesPalette.value[3]}20`,
+  gray: chartTheme.value.text,
+  grid: chartTheme.value.grid,
+  text: chartTheme.value.text
 }))
 
 const totalRequestErrors = computed(() => sumNumbers(props.points.map((p) => p.error_count_sla ?? 0)))
@@ -111,18 +112,20 @@ const options = computed(() => {
   const c = colors.value
   return {
     responsive: true,
+    animation: false as const,
     maintainAspectRatio: false,
     interaction: { intersect: false, mode: 'index' as const },
     plugins: {
       legend: {
         position: 'top' as const,
         align: 'end' as const,
-        labels: { color: c.text, usePointStyle: true, boxWidth: 6, font: { size: 10 } }
+        labels: { color: c.text, usePointStyle: true, boxWidth: 6, font: { size: 13 } }
       },
       tooltip: {
-        backgroundColor: isDarkMode.value ? '#1f2937' : '#ffffff',
-        titleColor: isDarkMode.value ? '#f3f4f6' : '#111827',
-        bodyColor: isDarkMode.value ? '#d1d5db' : '#4b5563',
+      ...chartTheme.value.tooltip,
+        backgroundColor: chartTheme.value.tooltip.backgroundColor,
+        titleColor: chartTheme.value.tooltip.titleColor,
+        bodyColor: chartTheme.value.tooltip.bodyColor,
         borderColor: c.grid,
         borderWidth: 1,
         padding: 10,
@@ -135,7 +138,7 @@ const options = computed(() => {
         grid: { display: false },
         ticks: {
           color: c.text,
-          font: { size: 10 },
+          font: { size: 13 },
           maxTicksLimit: 8,
           autoSkip: true,
           autoSkipPadding: 10
@@ -146,7 +149,7 @@ const options = computed(() => {
         display: true,
         position: 'left' as const,
         grid: { color: c.grid, borderDash: [4, 4] },
-        ticks: { color: c.text, font: { size: 10 }, precision: 0 }
+        ticks: { color: c.text, font: { size: 13 }, precision: 0 }
       }
     }
   }
