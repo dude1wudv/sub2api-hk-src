@@ -1224,6 +1224,13 @@ func (r *accountRepository) ListOpsAccountsForStats(ctx context.Context, platfor
 func accountListOrder(params pagination.PaginationParams) []func(*entsql.Selector) {
 	sortBy := strings.ToLower(strings.TrimSpace(params.SortBy))
 	sortOrder := params.NormalizedSortOrder(pagination.SortOrderAsc)
+	if sortBy == "platform_type" {
+		fields := []string{dbaccount.FieldPlatform, dbaccount.FieldType, dbaccount.FieldID}
+		if sortOrder == pagination.SortOrderDesc {
+			return []func(*entsql.Selector){dbent.Desc(fields...)}
+		}
+		return []func(*entsql.Selector){dbent.Asc(fields...)}
+	}
 	if sortBy == "upstream_billing_rate" {
 		direction := "ASC"
 		tieOrder := entsql.Asc

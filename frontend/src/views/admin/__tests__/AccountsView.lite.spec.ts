@@ -205,6 +205,26 @@ describe('admin AccountsView lite account list', () => {
     wrapper.unmount()
   })
 
+  it('restores platform sorting and requests a fresh first page when mobile sorting changes', async () => {
+    localStorage.setItem('account-table-sort', JSON.stringify({ key: 'platform_type', order: 'desc' }))
+    const wrapper = mountView()
+    await flushPromises()
+    expect(listAccounts).toHaveBeenLastCalledWith(
+      1, 20,
+      expect.objectContaining({ lite: '1', sort_by: 'platform_type', sort_order: 'desc' }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    )
+
+    wrapper.getComponent(DataTableStub).vm.$emit('sort', 'id', 'asc')
+    await flushPromises()
+    expect(listAccounts).toHaveBeenLastCalledWith(
+      1, 20,
+      expect.objectContaining({ lite: '1', sort_by: 'id', sort_order: 'asc' }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    )
+    wrapper.unmount()
+  })
+
   it('maps group_ids through the group catalog for the table cell', async () => {
     const wrapper = mountView()
     await flushPromises()

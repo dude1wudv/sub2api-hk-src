@@ -249,6 +249,41 @@ tbody .sticky-col { background: rgb(var(--table-surface)); }
 }
 @media (max-width: 767px) {
   :is(.portal-page,.admin-content,.chart-panel,.portal-dialog,.modal-content,dialog) button { min-height: 44px !important; }
+  /* Existing switches use the button as their track. Keep its geometry compact;
+     reserve a 44px layout footprint and extend only the transparent hit area. */
+  button:is(.h-6.w-11,.h-5.w-9).rounded-full.border-2:has(> span.pointer-events-none.rounded-full) {
+    position: relative;
+    box-sizing: border-box;
+    width: 44px;
+    height: 24px;
+    min-width: 44px !important;
+    min-height: 24px !important;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0;
+    margin-block: 10px;
+    margin-inline: 0;
+    touch-action: manipulation;
+  }
+  button.h-5.w-9.rounded-full.border-2:has(> span.pointer-events-none.rounded-full) {
+    width: 36px;
+    height: 20px;
+    min-width: 36px !important;
+    min-height: 20px !important;
+    margin-block: 12px;
+    margin-inline: 4px;
+  }
+  button:is(.h-6.w-11,.h-5.w-9).rounded-full.border-2:has(> span.pointer-events-none.rounded-full)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    border-radius: inherit;
+    background: transparent;
+    transform: translate(-50%,-50%);
+  }
   :is(.portal-api-header-actions,.portal-api-endpoint,.portal-api-secret) button { min-width: 44px; }
   :is(.btn,.portal-button,.select-trigger,.date-picker-trigger,.color-mode-toggle) { min-height: 44px; }
   :is(.btn-icon,.color-mode-toggle) { min-width: 44px; }

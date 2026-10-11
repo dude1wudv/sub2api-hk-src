@@ -25,13 +25,28 @@ const accounts = Array.from({length: 24}, (_, i) => ({
   scheduler_scores: [{group_id:i%2+1, group_name:groups[i%2].name, base_score:72.5}]
 }))
 const page = (items, params) => { const size=Number(params.get('page_size')||20), n=Number(params.get('page')||1); return {items:items.slice((n-1)*size,n*size),total:items.length,page:n,page_size:size,pages:Math.ceil(items.length/size)} }
+const sortAccounts = (items, params) => {
+  const requested = params.get('sort_by') || 'name'
+  const keys = requested === 'platform_type' ? ['platform', 'type', 'id'] : [requested, 'id']
+  const direction = params.get('sort_order') === 'desc' ? -1 : 1
+  return [...items].sort((left, right) => {
+    for (const key of keys) {
+      const a = left[key], b = right[key]
+      const comparison = typeof a === 'number' && typeof b === 'number'
+        ? a - b
+        : String(a ?? '').localeCompare(String(b ?? ''), 'en', { numeric: true })
+      if (comparison) return comparison * direction
+    }
+    return 0
+  })
+}
 export function adminPreview(method, path, params, fixtures, settings) {
   if (method !== 'GET') return undefined
   if (path === '/admin/settings') return {...settings, ops_monitoring_enabled:false, payment_enabled:true, purchase_subscription_url:'', purchase_subscription_enabled:true}
   if (path === '/admin/payment/config') return {enabled:true,methods:[],plans:[]}
   if (path === '/admin/dashboard/users-trend') return {trend:[]}
   if (path === '/admin/dashboard/users-ranking') return {users:[],total:0}
-  if (path === '/admin/accounts') return page(accounts.filter(a => (!params.get('platform') || a.platform===params.get('platform')) && (!params.get('search') || a.name.toLowerCase().includes(params.get('search').toLowerCase()))), params)
+  if (path === '/admin/accounts') return page(sortAccounts(accounts.filter(a => (!params.get('platform') || a.platform===params.get('platform')) && (!params.get('search') || a.name.toLowerCase().includes(params.get('search').toLowerCase()))), params), params)
   if (/^\/admin\/accounts\/\d+$/.test(path)) return accounts.find(a=>a.id===Number(path.split('/').at(-1))) ?? null
   if (path === '/admin/accounts/platform-stats') return {total:24,by_platform:{anthropic:8,openai:8,gemini:8}}
   if (path === '/admin/accounts/today-stats') return {}

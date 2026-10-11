@@ -407,6 +407,7 @@
           :loading="loading"
           row-key="id"
           :server-side-sort="true"
+          mobile-sort
           @sort="handleSort"
           default-sort-key="name"
           default-sort-order="asc"
@@ -937,6 +938,7 @@ type AccountSortState = {
 const ACCOUNT_SORTABLE_KEYS = new Set([
   'id',
   'name',
+  'platform_type',
   'status',
   'schedulable',
   'priority',
@@ -2214,7 +2216,7 @@ const allColumns = computed(() => {
     { key: 'select', label: '', sortable: false },
     { key: 'name', label: t('admin.accounts.columns.name'), sortable: true },
     { key: 'id', label: t('admin.accounts.columns.id'), sortable: true },
-    { key: 'platform_type', label: t('admin.accounts.columns.platformType'), sortable: false },
+    { key: 'platform_type', label: t('admin.accounts.columns.platformType'), sortable: true },
     { key: 'capacity', label: t('admin.accounts.columns.capacity'), sortable: false },
     { key: 'status', label: t('admin.accounts.columns.status'), sortable: true },
     { key: 'schedulable', label: t('admin.accounts.columns.schedulable'), sortable: true },

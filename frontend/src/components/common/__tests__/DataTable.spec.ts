@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import DataTable from '../DataTable.vue'
@@ -81,6 +81,72 @@ describe('DataTable', () => {
     expect(nameHeader.attributes('aria-sort')).toBe('descending')
     expect(nameHeader.findAll('svg')[0].classes()).toContain('text-gray-300')
     expect(nameHeader.findAll('svg')[1].classes()).toContain('text-primary-600')
+  })
+
+  it('sorts mobile cards through the server, persists the choice and shares it with desktop headers', async () => {
+    stubMobileMatchMedia()
+    const columns = [
+      { key: 'name', label: 'Name', sortable: true },
+      { key: 'id', label: 'ID', sortable: true },
+      { key: 'platform_type', label: 'Platform / Type', sortable: true },
+      { key: 'actions', label: 'Actions', sortable: false }
+    ]
+    const props = {
+      columns,
+      data: [{ id: 1, name: 'Beta' }, { id: 2, name: 'Alpha' }],
+      serverSideSort: true,
+      mobileSort: true,
+      defaultSortKey: 'name',
+      sortStorageKey: 'account-table-sort'
+    }
+    const wrapper = mount(DataTable, { props })
+    await flushPromises()
+
+    const picker = wrapper.get<HTMLSelectElement>('[data-test="mobile-sort-key"]')
+    expect(picker.element.value).toBe('name')
+    expect(picker.findAll('option').map(option => option.element.value)).toEqual(['name', 'id', 'platform_type'])
+    await picker.setValue('id')
+    expect(wrapper.emitted('sort')?.at(-1)).toEqual(['id', 'asc'])
+
+    await wrapper.get('[data-test="mobile-sort-order"]').trigger('click')
+    expect(wrapper.emitted('sort')?.at(-1)).toEqual(['id', 'desc'])
+    expect(wrapper.get('[data-test="mobile-sort-order"]').attributes('aria-label')).toBe('common.switchToAscending')
+    await picker.setValue('platform_type')
+    expect(wrapper.emitted('sort')?.at(-1)).toEqual(['platform_type', 'desc'])
+    expect(JSON.parse(localStorage.getItem('account-table-sort')!)).toEqual({ key: 'platform_type', order: 'desc' })
+    expect((wrapper.vm as any).sortedData).toEqual(props.data)
+
+    const media = vi.mocked(window.matchMedia).mock.results.at(-1)!.value
+    const change = media.addEventListener.mock.calls.find(([event]: [string]) => event === 'change')[1]
+    change({ matches: true })
+    await flushPromises()
+    expect(wrapper.find('[data-test="mobile-sort"]').exists()).toBe(false)
+    expect(wrapper.findAll('th')[2].attributes('aria-sort')).toBe('descending')
+    wrapper.unmount()
+
+    const restored = mount(DataTable, { props })
+    await flushPromises()
+    expect(restored.get<HTMLSelectElement>('[data-test="mobile-sort-key"]').element.value).toBe('platform_type')
+    expect(restored.get('[data-test="mobile-sort-order"]').text()).toBe('common.descending')
+    expect(restored.emitted('sort')).toBeUndefined()
+    restored.unmount()
+  })
+
+  it('keeps the optional mobile sort controls out of other lists and disables them while loading', async () => {
+    stubMobileMatchMedia()
+    const wrapper = mount(DataTable, {
+      props: {
+        columns: [{ key: 'name', label: 'Name', sortable: true }],
+        data: [],
+        defaultSortKey: 'name'
+      }
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-test="mobile-sort"]').exists()).toBe(false)
+    await wrapper.setProps({ mobileSort: true, loading: true })
+    expect(wrapper.get<HTMLSelectElement>('[data-test="mobile-sort-key"]').element.disabled).toBe(true)
+    expect(wrapper.get<HTMLButtonElement>('[data-test="mobile-sort-order"]').element.disabled).toBe(true)
+    wrapper.unmount()
   })
 
   it('renders every row with no virtual padding spacer for small datasets (virtualization off)', async () => {

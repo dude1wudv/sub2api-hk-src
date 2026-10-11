@@ -1,5 +1,32 @@
 <template>
   <div v-if="!isDesktopViewport" class="table-cards space-y-3">
+    <div v-if="mobileSort && sortableColumns.length" class="flex min-w-0 items-center gap-2" data-test="mobile-sort">
+      <label class="flex min-w-0 flex-1 items-center gap-2">
+        <span class="shrink-0 text-sm text-gray-600 dark:text-gray-300">{{ t('common.sortBy') }}</span>
+        <select
+          class="input !min-h-11 min-w-0 flex-1 text-base"
+          :aria-label="t('common.sortBy')"
+          :value="sortKey"
+          :disabled="loading"
+          data-test="mobile-sort-key"
+          @change="setSort(($event.target as HTMLSelectElement).value, sortOrder)"
+        >
+          <option v-if="!sortKey" value="" disabled>{{ t('common.selectOption') }}</option>
+          <option v-for="column in sortableColumns" :key="column.key" :value="column.key">{{ column.label }}</option>
+        </select>
+      </label>
+      <button
+        type="button"
+        class="btn btn-secondary min-h-11 shrink-0 gap-1.5 px-3"
+        :disabled="loading || !sortKey"
+        :aria-label="t(sortOrder === 'asc' ? 'common.switchToDescending' : 'common.switchToAscending')"
+        data-test="mobile-sort-order"
+        @click="setSort(sortKey, sortOrder === 'asc' ? 'desc' : 'asc')"
+      >
+        <Icon :name="sortOrder === 'asc' ? 'arrowUp' : 'arrowDown'" size="sm" />
+        <span>{{ t(sortOrder === 'asc' ? 'common.ascending' : 'common.descending') }}</span>
+      </button>
+    </div>
     <template v-if="loading">
       <div v-for="i in 5" :key="i" class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900">
         <div class="space-y-3">
@@ -454,6 +481,8 @@ interface Props {
    * will emit 'sort' events instead of performing client-side sorting.
    */
   serverSideSort?: boolean
+  /** Show field and direction controls above mobile cards. Uses the same sort state as desktop headers. */
+  mobileSort?: boolean
   /** Emit 'rowClick' on row/card click and show pointer cursor (interactive cells should @click.stop) */
   clickableRows?: boolean
   /** Estimated row height in px for the virtualizer (default 44) */
@@ -481,6 +510,7 @@ const props = withDefaults(defineProps<Props>(), {
   expandableActions: true,
   defaultSortOrder: 'asc',
   serverSideSort: false,
+  mobileSort: false,
   selectable: false,
   selectedKeys: () => []
 })
@@ -488,6 +518,7 @@ const props = withDefaults(defineProps<Props>(), {
 const sortKey = ref<string>('')
 const sortOrder = ref<'asc' | 'desc'>('asc')
 const actionsExpanded = ref(false)
+const sortableColumns = computed(() => props.columns.filter(column => column.sortable))
 
 type PersistedSortState = {
   key: string
@@ -669,22 +700,16 @@ watch(actionsExpanded, async () => {
   checkScrollable()
 })
 
-const handleSort = (key: string) => {
-  let newOrder: 'asc' | 'desc' = 'asc'
-  if (sortKey.value === key) {
-    newOrder = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  }
+const setSort = (key: string, order: 'asc' | 'desc') => {
+  if (!normalizeSortKey(key)) return
+  sortKey.value = key
+  sortOrder.value = order
+  if (props.serverSideSort) emit('sort', key, order)
+}
 
-  if (props.serverSideSort) {
-    // Server-side sort mode: emit event and update internal state for UI feedback
-    sortKey.value = key
-    sortOrder.value = newOrder
-    emit('sort', key, newOrder)
-  } else {
-    // Client-side sort mode: just update internal state
-    sortKey.value = key
-    sortOrder.value = newOrder
-  }
+const handleSort = (key: string) => {
+  const order = sortKey.value === key && sortOrder.value === 'asc' ? 'desc' : 'asc'
+  setSort(key, order)
 }
 
 const sortedData = computed(() => {
