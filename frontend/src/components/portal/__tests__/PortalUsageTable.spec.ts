@@ -1,7 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { ref } from 'vue'
 import PortalUsageTable from '../PortalUsageTable.vue'
 
+const mobile = ref(false)
+vi.mock('@vueuse/core', () => ({ useMediaQuery: () => mobile }))
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   const { ref } = await import('vue')
@@ -29,6 +32,8 @@ function row(first_token_ms: number | null, duration_ms: number | null) {
 }
 
 describe('PortalUsageTable latency states', () => {
+  beforeEach(() => { mobile.value = false })
+
   it('shows provider and semantic token icons without losing cache, pricing, or request details', () => {
     const wrapper = mount(PortalUsageTable, {
       props: {
@@ -63,6 +68,26 @@ describe('PortalUsageTable latency states', () => {
 
     expect(firstColors).toEqual(['rgb(22, 128, 74)', 'rgb(166, 108, 0)', 'rgb(194, 81, 23)', 'rgb(200, 49, 49)', 'rgb(146, 144, 136)'])
     expect(durationColors).toEqual(['rgb(22, 128, 74)', 'rgb(166, 108, 0)', 'rgb(194, 81, 23)', 'rgb(200, 49, 49)', 'rgb(146, 144, 136)'])
+    wrapper.unmount()
+  })
+
+  it('renders a mobile card with the full model name in one element', async () => {
+    mobile.value = true
+    const wrapper = mount(PortalUsageTable, {
+      props: {
+        rows: [{ ...row(1_000, 3_000), model: 'gpt-6.1-sol', stream: true, api_key: { name: 'pro' } }],
+        columns: ['created_at', 'model', 'tokens', 'api_key'],
+        sortBy: 'created_at',
+        sortOrder: 'desc',
+      },
+    })
+    expect(wrapper.find('table').exists()).toBe(false)
+    const model = wrapper.get('.usage-card .usage-model-text')
+    expect(model.text()).toBe('gpt-6.1-sol')
+    expect(model.element.childElementCount).toBe(0)
+    expect(wrapper.get('.usage-card-extra').text()).toContain('pro')
+    await wrapper.get('.usage-card .usage-detail-link').trigger('click')
+    expect(wrapper.emitted('detail')?.[0]?.[0]).toMatchObject({ model: 'gpt-6.1-sol' })
     wrapper.unmount()
   })
 })

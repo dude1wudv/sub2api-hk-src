@@ -71,6 +71,17 @@ describe('API key workspace', () => {
     wrapper.unmount()
   })
 
+  it('opens the key editor when a group is clicked', async () => {
+    const key = { id: 3, key: 'sk-test-key-value', name: 'pro', group_id: 7 }
+    api.list.mockResolvedValue({ items: [key], total: 1 })
+    const wrapper = render()
+    await flushPromises()
+    wrapper.getComponent(PortalApiKeyTable).vm.$emit('edit', key)
+    await flushPromises()
+    expect(wrapper.getComponent(PortalKeyForm).props()).toMatchObject({ open: true, editing: key })
+    wrapper.unmount()
+  })
+
   it('opens the use-key dialog from a table row', async () => {
     api.list.mockResolvedValue({ items: [{ id: 3, key: 'sk-test-key-value', name: 'pro' }], total: 1 })
     const wrapper = render()

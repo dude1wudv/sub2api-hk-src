@@ -532,9 +532,12 @@ onBeforeUnmount(() => {
 @media(max-width:739px) {
   .portal-api-page { padding:16px 16px 48px; }
   .portal-api-header { flex-direction:column; }
-  .portal-api-header-actions { justify-content:flex-start; }
+  .portal-api-header-actions { width:100%; justify-content:flex-start; }
   .portal-api-key-search { max-width:none; width:100%; flex-basis:100%; }
   .portal-api-key-filters select { flex:1; min-width:0; max-width:none; }
+  .portal-api-endpoint { display:flex; width:100%; }
+  .portal-api-pager { align-items:flex-start; }
+  .portal-api-pager-pages { flex-wrap:wrap; }
   .portal-api-ccs-choices { grid-template-columns:1fr; }
 }
 </style>

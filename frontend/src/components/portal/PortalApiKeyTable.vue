@@ -1,5 +1,105 @@
 <template>
-  <div class="portal-api-table-wrap">
+  <div v-if="mobile" class="portal-api-cards">
+    <article
+      v-for="apiKey in keys"
+      :key="apiKey.id"
+      class="portal-api-card"
+      :data-key-id="apiKey.id"
+      :data-selected="selectable && selectedIds.includes(apiKey.id)"
+      data-test="api-key-card"
+    >
+      <header class="portal-api-card-head">
+        <label v-if="selectable" class="portal-api-card-check">
+          <input
+            type="checkbox"
+            :checked="selectedIds.includes(apiKey.id)"
+            :disabled="busyIds.has(apiKey.id)"
+            :aria-label="text('选择密钥：', 'Select key: ') + apiKey.name"
+            :data-test="'select-key-' + apiKey.id"
+            @change="emit('select', apiKey.id, ($event.target as HTMLInputElement).checked)"
+          />
+        </label>
+        <strong class="portal-api-card-name" :title="apiKey.name">{{ apiKey.name }}</strong>
+        <span class="portal-api-status" :data-status="apiKey.status">{{ statusName(apiKey.status) }}</span>
+      </header>
+      <span class="portal-api-secret">
+        <code>{{ masked(apiKey.key) }}</code>
+        <button type="button" :aria-label="text('复制密钥：', 'Copy key: ') + apiKey.name" @click="emit('copy', apiKey)">
+          <Icon name="copy" size="sm" aria-hidden="true" />
+        </button>
+      </span>
+      <button
+        type="button"
+        class="portal-api-group"
+        :disabled="busyIds.has(apiKey.id)"
+        :title="text('点击修改分组', 'Click to change group')"
+        :aria-label="groupLabel(apiKey)"
+        data-test="edit-group"
+        @click="emit('edit', apiKey)"
+      >
+        <GroupBadge
+          v-if="groupFor(apiKey)"
+          :name="groupFor(apiKey)?.name || ''"
+          :platform="groupFor(apiKey)?.platform"
+          :subscription-type="groupFor(apiKey)?.subscription_type"
+          :rate-multiplier="groupFor(apiKey)?.rate_multiplier"
+          :user-rate-multiplier="groupRates[groupFor(apiKey)?.id ?? -1] ?? null"
+          :peak-rate-enabled="groupFor(apiKey)?.peak_rate_enabled"
+          :peak-start="groupFor(apiKey)?.peak_start"
+          :peak-end="groupFor(apiKey)?.peak_end"
+          :peak-rate-multiplier="groupFor(apiKey)?.peak_rate_multiplier"
+        />
+        <span v-else class="portal-api-muted">{{ text('未绑定分组', 'No group') }}</span>
+        <span v-if="routingCount(apiKey)" class="portal-api-routing">{{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}</span>
+      </button>
+      <dl class="portal-api-facts">
+        <div>
+          <dt>{{ text('今日', 'Today') }}</dt>
+          <dd>{{ usageFor(apiKey.id) ? '$' + money(usageFor(apiKey.id)?.today_actual_cost ?? 0) : '—' }}</dd>
+        </div>
+        <div>
+          <dt>{{ text('累计', 'Total') }}</dt>
+          <dd>{{ usageFor(apiKey.id) ? '$' + money(usageFor(apiKey.id)?.total_actual_cost ?? 0) : '—' }}</dd>
+        </div>
+        <div>
+          <dt>{{ text('当前并发', 'Concurrency') }}</dt>
+          <dd>{{ apiKey.current_concurrency || 0 }}</dd>
+        </div>
+        <div>
+          <dt>{{ text('过期时间', 'Expires') }}</dt>
+          <dd :class="apiKey.status === 'expired' ? 'portal-api-expired' : undefined">{{ apiKey.expires_at ? date(apiKey.expires_at) : text('永久有效', 'Never expires') }}</dd>
+        </div>
+        <div>
+          <dt>{{ text('创建时间', 'Created') }}</dt>
+          <dd>{{ date(apiKey.created_at) }}</dd>
+        </div>
+      </dl>
+      <div class="portal-api-card-actions">
+        <button type="button" data-test="use-key" :disabled="busyIds.has(apiKey.id)" @click="emit('use', apiKey)">
+          <Icon name="terminal" size="sm" aria-hidden="true" />
+          <span>{{ text('使用密钥', 'Use key') }}</span>
+        </button>
+        <button v-if="!hideCcs" type="button" data-test="import-ccs" :disabled="busyIds.has(apiKey.id)" @click="emit('import-ccs', apiKey)">
+          <Icon name="upload" size="sm" aria-hidden="true" />
+          <span>{{ text('导入到 CCS', 'Import to CCS') }}</span>
+        </button>
+        <button type="button" :disabled="busyIds.has(apiKey.id)" @click="emit('toggle', apiKey)">
+          <Icon :name="apiKey.status === 'active' ? 'ban' : 'play'" size="sm" aria-hidden="true" />
+          <span>{{ apiKey.status === 'active' ? text('禁用', 'Disable') : text('启用', 'Enable') }}</span>
+        </button>
+        <button type="button" data-test="edit-key" :disabled="busyIds.has(apiKey.id)" @click="emit('edit', apiKey)">
+          <Icon name="edit" size="sm" aria-hidden="true" />
+          <span>{{ text('编辑', 'Edit') }}</span>
+        </button>
+        <button type="button" class="portal-api-delete" :disabled="busyIds.has(apiKey.id)" @click="emit('delete', apiKey)">
+          <Icon name="trash" size="sm" aria-hidden="true" />
+          <span>{{ text('删除', 'Delete') }}</span>
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <div v-else class="portal-api-table-wrap">
     <table class="portal-api-table">
       <caption class="portal-api-table-caption">{{ text('API 密钥', 'API keys') }}</caption>
       <thead>
@@ -53,19 +153,30 @@
             </span>
           </td>
           <td>
-            <GroupBadge
-              v-if="groupFor(apiKey)"
-              :name="groupFor(apiKey)?.name || ''"
-              :platform="groupFor(apiKey)?.platform"
-              :subscription-type="groupFor(apiKey)?.subscription_type"
-              :rate-multiplier="groupFor(apiKey)?.rate_multiplier"
-              :user-rate-multiplier="groupRates[groupFor(apiKey)?.id ?? -1] ?? null"
-              :peak-rate-enabled="groupFor(apiKey)?.peak_rate_enabled"
-              :peak-start="groupFor(apiKey)?.peak_start"
-              :peak-end="groupFor(apiKey)?.peak_end"
-              :peak-rate-multiplier="groupFor(apiKey)?.peak_rate_multiplier"
-            />
-            <span v-else class="portal-api-muted">{{ text('未绑定分组', 'No group') }}</span>
+            <button
+              type="button"
+              class="portal-api-group"
+              :disabled="busyIds.has(apiKey.id)"
+              :title="text('点击修改分组', 'Click to change group')"
+              :aria-label="groupLabel(apiKey)"
+              data-test="edit-group"
+              @click="emit('edit', apiKey)"
+            >
+              <GroupBadge
+                v-if="groupFor(apiKey)"
+                :name="groupFor(apiKey)?.name || ''"
+                :platform="groupFor(apiKey)?.platform"
+                :subscription-type="groupFor(apiKey)?.subscription_type"
+                :rate-multiplier="groupFor(apiKey)?.rate_multiplier"
+                :user-rate-multiplier="groupRates[groupFor(apiKey)?.id ?? -1] ?? null"
+                :peak-rate-enabled="groupFor(apiKey)?.peak_rate_enabled"
+                :peak-start="groupFor(apiKey)?.peak_start"
+                :peak-end="groupFor(apiKey)?.peak_end"
+                :peak-rate-multiplier="groupFor(apiKey)?.peak_rate_multiplier"
+              />
+              <span v-else class="portal-api-muted">{{ text('未绑定分组', 'No group') }}</span>
+              <span v-if="routingCount(apiKey)" class="portal-api-routing">{{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}</span>
+            </button>
           </td>
           <td><span class="portal-api-concurrency">{{ apiKey.current_concurrency || 0 }}</span></td>
           <td>
@@ -96,7 +207,7 @@
                 <Icon :name="apiKey.status === 'active' ? 'ban' : 'play'" size="sm" aria-hidden="true" />
                 <span>{{ apiKey.status === 'active' ? text('禁用', 'Disable') : text('启用', 'Enable') }}</span>
               </button>
-              <button type="button" :disabled="busyIds.has(apiKey.id)" @click="emit('edit', apiKey)">
+              <button type="button" data-test="edit-key" :disabled="busyIds.has(apiKey.id)" @click="emit('edit', apiKey)">
                 <Icon name="edit" size="sm" aria-hidden="true" />
                 <span>{{ text('编辑', 'Edit') }}</span>
               </button>
@@ -115,6 +226,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useMediaQuery } from '@vueuse/core'
 import GroupBadge from '@/components/common/GroupBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { maskApiKey } from '@/utils/maskApiKey'
@@ -148,6 +260,7 @@ const emit = defineEmits<{
 
 const { locale } = useI18n()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
+const mobile = useMediaQuery('(max-width: 739px)')
 const busy = computed(() => props.busyIds.size > 0)
 const selectedOnPage = computed(() => props.keys.filter(key => props.selectedIds.includes(key.id)))
 const allSelected = computed(() => props.keys.length > 0 && selectedOnPage.value.length === props.keys.length)
@@ -158,6 +271,13 @@ function usageFor(id: number) {
 }
 function groupFor(apiKey: ApiKey) {
   return apiKey.group || (apiKey.group_id == null ? undefined : props.groups.find(group => group.id === apiKey.group_id))
+}
+function routingCount(apiKey: ApiKey) {
+  return apiKey.routing_group_ids?.length ?? 0
+}
+function groupLabel(apiKey: ApiKey) {
+  const groupName = groupFor(apiKey)?.name || text('未绑定分组', 'No group')
+  return text('修改分组：', 'Change group: ') + apiKey.name + ' · ' + groupName
 }
 function masked(value: string) {
   return maskApiKey(value)
@@ -203,6 +323,12 @@ function money(value: number) {
 .portal-api-secret code { min-width:0; overflow:hidden; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
 .portal-api-secret button { display:inline-flex; padding:2px; border:0; border-radius:5px; color:inherit; background:transparent; cursor:pointer; }
 .portal-api-secret button:hover { background:#dceaff; }
+.portal-api-group { display:inline-flex; max-width:280px; align-items:center; flex-wrap:wrap; gap:6px; padding:4px 6px; border:0; border-radius:8px; color:inherit; background:transparent; font:inherit; text-align:left; cursor:pointer; }
+.portal-api-group:hover { background:#eef3f8; }
+.portal-api-group:focus-visible { outline:2px solid #2458b5; outline-offset:2px; }
+.portal-api-group:disabled { opacity:.45; cursor:wait; }
+.portal-api-group :deep(.truncate) { max-width:160px; }
+.portal-api-routing { color:#2458b5; font-size:11px; font-weight:600; white-space:nowrap; }
 .portal-api-muted { color:#8b93a1; }
 .portal-api-expiry { white-space:nowrap; }
 .portal-api-expired { color:#d14343; }
@@ -223,8 +349,23 @@ function money(value: number) {
 .portal-api-actions > button:disabled { opacity:.45; cursor:wait; }
 .portal-api-actions .portal-api-delete { color:#d14343; }
 .portal-api-actions .portal-api-delete:hover { background:#fdecec; }
-@media(max-width:739px) {
-  .portal-api-actions > button span { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-  .portal-api-actions > button { min-width:34px; }
-}
+.portal-api-cards { display:grid; gap:12px; }
+.portal-api-card { display:grid; gap:12px; padding:14px; border:1px solid #e4e9ef; border-radius:14px; background:#fff; }
+.portal-api-card[data-selected='true'] { border-color:#93b4e8; background:#f2f7ff; }
+.portal-api-card-head { display:flex; align-items:center; gap:8px; }
+.portal-api-card-check { display:inline-flex; }
+.portal-api-card-check input { width:18px; height:18px; accent-color:#1d4ed8; }
+.portal-api-card-name { min-width:0; flex:1; overflow:hidden; font-size:15px; font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
+.portal-api-card .portal-api-secret { max-width:none; width:100%; justify-content:space-between; min-height:36px; }
+.portal-api-card .portal-api-secret code { flex:1; }
+.portal-api-card .portal-api-group { max-width:none; width:100%; min-height:44px; padding:8px 10px; border:1px solid #e4e9ef; background:#f8fbff; }
+.portal-api-card .portal-api-group :deep(.truncate) { max-width:100%; }
+.portal-api-facts { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin:0; }
+.portal-api-facts div:last-child { grid-column:1 / -1; }
+.portal-api-facts dt { color:#8b93a1; font-size:11px; }
+.portal-api-facts dd { margin:2px 0 0; color:#1c2430; font-size:13px; overflow-wrap:anywhere; }
+.portal-api-card-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding-top:12px; border-top:1px solid #eef2f6; }
+.portal-api-card-actions > button { display:inline-flex; min-height:44px; align-items:center; justify-content:center; gap:6px; padding:8px 6px; border:1px solid #e4e9ef; border-radius:10px; color:#1c2430; background:#fff; font:inherit; font-size:12px; cursor:pointer; }
+.portal-api-card-actions > button:disabled { opacity:.45; cursor:wait; }
+.portal-api-card-actions .portal-api-delete { color:#d14343; border-color:#f6d4d4; }
 </style>
