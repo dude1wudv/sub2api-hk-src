@@ -469,14 +469,11 @@ onBeforeUnmount(() => {
   min-height:calc(100dvh - 56px);
   margin:0;
   padding:28px 32px 64px;
-  background-color:#f4f7fa;
+  background-color:#fffdf7;
   background-image:
-    linear-gradient(rgba(176, 196, 216, .28) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(176, 196, 216, .28) 1px, transparent 1px),
-    radial-gradient(circle at 12% 18%, #7eb6ff 0 3px, transparent 3.5px),
-    radial-gradient(circle at 78% 30%, #5aa2f5 0 2.5px, transparent 3.5px),
-    radial-gradient(circle at 88% 72%, #9ec9ff 0 2px, transparent 3px);
-  background-size:56px 56px, 56px 56px, 100% 100%, 100% 100%, 100% 100%;
+    linear-gradient(rgba(196, 188, 172, .45) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(196, 188, 172, .45) 1px, transparent 1px);
+  background-size:56px 56px, 56px 56px;
 }
 .portal-api-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; }
 .portal-api-eyebrow { margin:0 0 6px; color:#8b93a1; font-size:11px; font-weight:650; letter-spacing:.12em; }
