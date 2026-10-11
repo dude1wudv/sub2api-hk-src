@@ -17,9 +17,11 @@ import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
 import { isAdminWorkspaceRoute } from '@/utils/workspaceSurface'
 import { adminSurfaceActive } from '@/composables/adminSurface'
+import { useDelegatedPointerSurfaces } from '@/composables/useDelegatedPointerSurfaces'
 
 const router = useRouter()
 const route = useRoute()
+useDelegatedPointerSurfaces(() => route.fullPath)
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const subscriptionStore = useSubscriptionStore()

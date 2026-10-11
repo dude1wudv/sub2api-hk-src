@@ -50,9 +50,9 @@ onBeforeUnmount(() => request?.abort())
 
 <template>
   <div class="patrick-surface portal-models" :class="{ 'portal-models-public': !embedded }">
-    <header v-if="!embedded" class="portal-models-header"><RouterLink to="/home" aria-label="patrickapi"><PatrickBrand /></RouterLink><RouterLink to="/keys" class="portal-button">{{ text('开始接入', 'Get started') }} →</RouterLink></header>
+    <header v-if="!embedded" class="portal-models-header"><RouterLink to="/home" aria-label="patrickapi"><PatrickBrand /></RouterLink><RouterLink to="/keys" class="portal-button">{{ text('API 密钥', 'API keys') }} →</RouterLink></header>
     <div class="portal-page">
-      <PortalPageHeader eyebrow="MODEL LIBRARY" :title="text('找到想法的最佳搭档。', 'Find your idea’s next collaborator.')" :description="text('按平台探索模型，按真实价格选择。所有计费细节，清楚呈现。', 'Explore models by platform. Compare real prices and understand every billing detail.')"><RouterLink v-if="auth.isAuthenticated" to="/keys?create=1" class="portal-button">{{ text('创建密钥', 'Create a key') }} ↗</RouterLink></PortalPageHeader>
+      <PortalPageHeader :title="text('模型与价格', 'Models & pricing')"><RouterLink v-if="auth.isAuthenticated" to="/keys?create=1" class="portal-button">{{ text('创建密钥', 'Create a key') }} ↗</RouterLink></PortalPageHeader>
       <PortalApiModels v-model:selected-group-id="groupId" v-model:search="search" :groups="data?.groups || []" :description="data?.description || ''" :pricing-enabled="enabled" :loading="loading" :error="error" :server-utc-offset="app.cachedPublicSettings?.server_utc_offset" @retry="load" />
     </div>
   </div>

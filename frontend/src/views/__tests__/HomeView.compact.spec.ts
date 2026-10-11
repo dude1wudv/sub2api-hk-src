@@ -112,7 +112,7 @@ describe('HomeView compact mode', () => {
   it('treats whitespace-only custom content as empty and selects compact mode', () => {
     const wrapper = mountHome({ compact_home_enabled: true, home_content: ' \n\t ' })
 
-    expect(wrapper.get('[data-testid="compact-home"]').get('h1').text()).toBe('Your ideas.In motion.')
+    expect(wrapper.get('[data-testid="compact-home"]').get('h1').text()).toBe('Model APIs.One endpoint.')
     expect(wrapper.get('[data-testid="compact-home"] .home-entry').exists()).toBe(true)
   })
 
@@ -122,7 +122,7 @@ describe('HomeView compact mode', () => {
 
     expect(wrapper.get('[data-testid="patrick-home"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="home-console"]').findComponent(RouterLinkStub).props('to')).toBe('/login')
-    expect(wrapper.get('h1').text()).toBe('Your ideas.In motion.')
+    expect(wrapper.get('h1').text()).toBe('Model APIs.One endpoint.')
     expect(wrapper.get('.home-endpoint code').text()).toMatch(/^https?:\/\//)
   })
 

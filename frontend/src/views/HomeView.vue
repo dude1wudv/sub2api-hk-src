@@ -1,11 +1,11 @@
 <template>
-  <div v-if="homeContent" class="min-h-screen">
+  <div v-if="homeContent" class="min-h-screen" data-ink-hover="off">
     <iframe v-if="/^https?:\/\//.test(homeContent.trim())" :src="homeContent.trim()" :title="text('自定义首页','Custom homepage')" class="h-screen w-full border-0" allowfullscreen />
     <div v-else v-html="homeContent" />
   </div>
   <div v-else class="patrick-surface ink-home" :data-testid="compact ? 'compact-home' : 'patrick-home'" @keydown.esc="closeMenu(); servicesOpen = false">
     <a href="#home-main" class="home-skip">{{ text('跳到主要内容','Skip to content') }}</a>
-    <div class="home-strip"><span class="home-strip-dot" aria-hidden="true" /><span>{{ text('一个入口，让灵感连上模型','A connection for every idea') }}</span><span>OPENAI / ANTHROPIC</span></div>
+    <div class="home-strip"><span class="home-strip-dot" aria-hidden="true" /><span>{{ text('OpenAI / Anthropic 兼容接口','OpenAI / Anthropic compatible APIs') }}</span></div>
     <header class="home-header">
       <router-link to="/home" aria-label="patrickapi home"><PatrickBrand /></router-link>
       <nav class="home-nav" :aria-label="text('主导航','Main navigation')">
@@ -38,20 +38,17 @@
     <main id="home-main" :inert="menuOpen || undefined">
       <section class="home-hero" :class="{ 'is-compact':compact }">
         <div class="home-hero-copy">
-          <p class="home-eyebrow"><span aria-hidden="true" />PATRICKAPI · {{ text('为创造而连接', 'CONNECTED TO CREATE') }}</p>
-          <h1>{{ text('让想法，', 'Your ideas.') }}<br /><span>{{ text('直接运行。', 'In motion.') }}</span></h1>
-          <p class="home-intro">{{ text('从一行代码，到下一件作品。连接你需要的模型，把时间留给真正想创造的事。', 'From a line of code to your next creation. Connect the models you need, and make room for what comes next.') }}</p>
+          <h1>{{ text('多模型 API', 'Model APIs.') }}<br /><span>{{ text('统一接入', 'One endpoint.') }}</span></h1>
           <div class="home-hero-actions">
-            <router-link v-slot="{ href, navigate }" :to="auth.isAuthenticated ? '/keys?create=1' : '/login'" custom><InkSurface as="a" :href="href" magnetic class="home-primary-action" @click="navigate"><span>{{ text('开始接入', 'Start building') }}</span><span class="home-action-arrow" aria-hidden="true">↗</span></InkSurface></router-link>
+            <router-link v-slot="{ href, navigate }" :to="auth.isAuthenticated ? '/keys?create=1' : '/login'" custom><InkSurface as="a" :href="href" magnetic class="home-primary-action" @click="navigate"><span>{{ text('创建密钥', 'Create API key') }}</span><span class="home-action-arrow" aria-hidden="true">↗</span></InkSurface></router-link>
             <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="home-secondary-action">{{ text('阅读文档', 'Read the docs') }}<Icon name="arrowRight" size="sm" /></a>
-            <a v-else href="#home-examples" class="home-secondary-action">{{ text('看看调用示例', 'Explore an example') }}<Icon name="arrowRight" size="sm" /></a>
+            <a v-else href="#home-examples" class="home-secondary-action">{{ text('调用示例', 'API examples') }}<Icon name="arrowRight" size="sm" /></a>
           </div>
           <form class="home-entry" @submit.prevent="enterApi">
             <Icon name="search" size="sm" aria-hidden="true" />
-            <input v-model="modelQuery" :aria-label="text('搜索模型','Search models')" :placeholder="text('想用哪个模型？','Find your model…')" />
-            <button :aria-label="text('搜索并接入','Find and connect')" type="submit"><Icon name="arrowRight" size="md" /></button>
+            <input v-model="modelQuery" :aria-label="text('搜索模型','Search models')" :placeholder="text('搜索模型','Search models')" />
+            <button :aria-label="text('搜索模型','Search models')" type="submit"><Icon name="arrowRight" size="md" /></button>
           </form>
-          <p class="home-small-note">{{ text('保留熟悉的 SDK，选择适合你的协议。', 'Your familiar SDK. Your preferred protocol.') }}</p>
         </div>
         <div class="home-hero-visual">
           <InkConnection v-model:protocol="protocol" />
@@ -59,11 +56,11 @@
         </div>
       </section>
       <section id="home-examples" class="home-examples">
-        <div class="home-section-intro"><p class="home-eyebrow">02 — MAKE IT YOURS</p><h2>{{ text('下一步，写下你的第一行。', 'Make the next line yours.') }}</h2><p>{{ text('切换协议，接口地址和示例会一起变化。', 'Switch protocols. The endpoint and example follow along.') }}</p></div>
+        <div class="home-section-intro"><h2>{{ text('API 接入', 'API access') }}</h2></div>
         <PortalApiExamples v-model:model="exampleModel" v-model:protocol="protocol" />
       </section>
       <section v-if="!compact" id="home-services" class="home-services">
-        <div class="home-section-intro"><p class="home-eyebrow">03 — YOUR WORKSPACE</p><h2>{{ text('创造有空间，调用有回响。', 'Room to create. Clarity to continue.') }}</h2></div>
+        <div class="home-section-intro"><h2>{{ text('控制台', 'Console') }}</h2></div>
         <div class="home-service-links">
           <InkSurface v-for="item in serviceCards" :key="item.to" interactive class="home-service-card"><router-link :to="item.to"><span class="home-service-number">{{ item.number }}<Icon :name="item.icon" size="md" /></span><h3>{{ item.title }}</h3><p>{{ item.description }}</p><span class="home-service-action">{{ item.action }}<Icon name="arrowRight" size="sm" /></span></router-link></InkSurface>
         </div>
@@ -144,9 +141,9 @@ async function copyEndpoint() {
 watch(baseURL, resetCopy)
 onBeforeUnmount(resetCopy)
 const serviceCards = computed(() => [
-  { number:'01', to:'/keys', icon:'key' as const, title:text('把连接握在手里', 'A connection of your own'), description:text('创建密钥，选择分组。让模型成为你工作流的一部分。', 'Create a key, choose a group, and make models part of your workflow.'), action:text('管理密钥', 'Manage keys') },
-  { number:'02', to:'/usage', icon:'chart' as const, title:text('每次调用，都清楚', 'Every request, in focus'), description:text('费用、Token 与耗时。所有调用细节，随时有据可查。', 'Costs, tokens and latency. Follow the details of every request.'), action:text('探索用量', 'Explore usage') },
-  { number:'03', to:'/dashboard', icon:'home' as const, title:text('回到你的工作台', 'Your place to build'), description:text('余额、使用趋势与最近请求。下一步，从这里开始。', 'Your balance, usage trends and recent requests. Your next step starts here.'), action:text('打开概览', 'Open overview') },
+  { number:'01', to:'/keys', icon:'key' as const, title:text('API 密钥', 'API keys'), description:text('创建密钥、选择分组、设置额度。', 'Create keys, select groups and set quotas.'), action:text('管理密钥', 'Manage keys') },
+  { number:'02', to:'/usage', icon:'chart' as const, title:text('使用记录', 'Usage'), description:text('查看请求、Token、费用与耗时。', 'Requests, tokens, costs and latency.'), action:text('查看用量', 'View usage') },
+  { number:'03', to:'/dashboard', icon:'home' as const, title:text('概览', 'Overview'), description:text('余额、使用趋势与最近请求。', 'Balance, usage trends and recent requests.'), action:text('打开概览', 'Open overview') },
 ])
 onMounted(() => { auth.checkAuth(); if (!app.publicSettingsLoaded) void app.fetchPublicSettings() })
 </script>

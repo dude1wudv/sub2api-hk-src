@@ -2,12 +2,10 @@
   <div class="portal-page portal-api-page">
     <header class="portal-api-header">
       <div>
-        <p class="portal-api-eyebrow">02 / ACCESS</p>
         <div class="portal-api-title-row">
           <h1>{{ text('API 密钥', 'API keys') }}</h1>
           <span class="portal-api-count">{{ keyTotal }}</span>
         </div>
-        <p class="portal-api-intro">{{ text('一把密钥，连接你的下一次创造。', 'A key to your next creation.') }}</p>
       </div>
       <div class="portal-api-header-actions">
         <button type="button" class="portal-api-icon-button" :disabled="keysLoading || groupsLoading" :aria-label="text('刷新', 'Refresh')" data-test="refresh-keys" @click="refreshPage"><Icon name="refresh" size="sm" aria-hidden="true" /></button>
@@ -16,7 +14,7 @@
       </div>
     </header>
     <div class="portal-api-access-strip">
-      <div><span class="portal-eyebrow">{{ text('连接入口', 'CONNECTION') }}</span><strong>{{ text('从应用到模型，一步接通。', 'One connection. Many possibilities.') }}</strong></div>
+      <div><strong>{{ text('API 接入', 'API access') }}</strong></div>
       <button type="button" class="portal-button secondary" @click="docsOpen = true"><Icon name="book" size="sm" />{{ text('接入指南', 'Connection guide') }}<Icon name="arrowRight" size="sm" /></button>
       <svg viewBox="0 0 170 90" class="portal-api-ink-route" aria-hidden="true"><path d="M2 72C45 72 43 18 82 18s25 54 62 54h26" /><circle cx="82" cy="18" r="12"/><circle cx="143" cy="72" r="5"/></svg>
     </div>

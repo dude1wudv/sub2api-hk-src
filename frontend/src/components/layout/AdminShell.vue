@@ -10,22 +10,22 @@
         <ActiveIndicator :container="navigation || null" :active-key="route.path" />
         <section v-for="section in sections" :key="section.id" class="admin-nav-section">
           <h2 v-if="!collapsed">{{ section.label }}</h2>
-          <RouterLink v-for="item in section.items" :key="item.path" :to="item.path" class="admin-nav-item" :class="{ active: route.path === item.path }" :aria-label="item.label" :aria-current="route.path === item.path ? 'page' : undefined" :title="collapsed ? item.label : undefined" :data-nav-path="item.path" :data-active-indicator-item="item.path" :id="item.path === '/admin/accounts' ? 'sidebar-channel-manage' : item.path === '/admin/groups' ? 'sidebar-group-manage' : undefined" @click="closeNavigation()" @pointerenter="prefetch(item.path)" @focus="prefetch(item.path)">
+          <RouterLink v-for="item in section.items" :key="item.path" :to="item.path" class="admin-nav-item" :class="{ active: route.path === item.path }" :aria-label="item.label" :aria-current="route.path === item.path ? 'page' : undefined" :title="collapsed ? item.label : undefined" :data-nav-path="item.path" :data-active-indicator-item="item.path" :id="item.path === '/admin/accounts' ? 'sidebar-channel-manage' : item.path === '/admin/groups' ? 'sidebar-group-manage' : undefined" @click="closeNavigation()" @pointerenter="prefetch(item.path)" @focus="prefetch(item.path)"><span class="sidebar-nav-surface" aria-hidden="true" />
             <span v-if="item.iconSvg" class="admin-custom-icon" v-html="sanitizeSvg(item.iconSvg)" /><Icon v-else :name="item.icon" size="md" /><span v-if="!collapsed">{{ item.label }}</span>
           </RouterLink>
         </section>
         <p v-if="!sections.length" class="admin-nav-empty">{{ t('common.noData') }}</p>
         <section v-if="!auth.isSimpleMode && !query" class="admin-nav-section">
           <h2 v-if="!collapsed">{{ zh ? '外部工具' : 'Tools' }}</h2>
-          <a href="/image2/" class="admin-nav-item" :title="t('nav.image2')" :aria-label="t('nav.image2')"><Icon name="sparkles" size="md" /><span v-if="!collapsed">{{ t('nav.image2') }}</span></a>
-          <button class="admin-nav-item" :title="t('nav.infiniteCanvas')" :aria-label="t('nav.infiniteCanvas')" @click="launchHelios"><Icon name="sparkles" size="md" /><span v-if="!collapsed">{{ t('nav.infiniteCanvas') }}</span></button>
-          <RouterLink v-if="canUseBatchImage" to="/batch-image" class="admin-nav-item" :aria-label="t('nav.batchImage')" :title="t('nav.batchImage')"><Icon name="sparkles" size="md" /><span v-if="!collapsed">{{ t('nav.batchImage') }}</span></RouterLink>
-          <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="admin-nav-item" :title="zh ? '文档' : 'Documentation'"><Icon name="book" size="md" /><span v-if="!collapsed">{{ zh ? '文档' : 'Documentation' }}</span></a>
+          <a href="/image2/" class="admin-nav-item" :title="t('nav.image2')" :aria-label="t('nav.image2')"><span class="sidebar-nav-surface" aria-hidden="true" /><Icon name="sparkles" size="md" /><span v-if="!collapsed">{{ t('nav.image2') }}</span></a>
+          <button class="admin-nav-item" :title="t('nav.infiniteCanvas')" :aria-label="t('nav.infiniteCanvas')" @click="launchHelios"><span class="sidebar-nav-surface" aria-hidden="true" /><Icon name="sparkles" size="md" /><span v-if="!collapsed">{{ t('nav.infiniteCanvas') }}</span></button>
+          <RouterLink v-if="canUseBatchImage" to="/batch-image" class="admin-nav-item" :aria-label="t('nav.batchImage')" :title="t('nav.batchImage')"><span class="sidebar-nav-surface" aria-hidden="true" /><Icon name="sparkles" size="md" /><span v-if="!collapsed">{{ t('nav.batchImage') }}</span></RouterLink>
+          <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="admin-nav-item" :title="zh ? '文档' : 'Documentation'"><span class="sidebar-nav-surface" aria-hidden="true" /><Icon name="book" size="md" /><span v-if="!collapsed">{{ zh ? '文档' : 'Documentation' }}</span></a>
         </section>
       </nav>
       <div class="admin-sidebar-bottom">
-        <RouterLink to="/dashboard" class="admin-nav-item" :aria-label="zh ? '用户工作区' : 'User workspace'" :title="zh ? '用户工作区' : 'User workspace'"><Icon name="externalLink" size="md" /><span v-if="!collapsed">{{ zh ? '用户工作区' : 'User workspace' }}</span></RouterLink>
-        <RouterLink to="/profile" class="admin-nav-item admin-sidebar-account" :aria-label="t('nav.profile')"><span class="admin-avatar">{{ initials }}</span><span v-if="!collapsed">{{ displayName }}<small>{{ zh ? '管理员' : 'Administrator' }}</small></span></RouterLink>
+        <RouterLink to="/dashboard" class="admin-nav-item" :aria-label="zh ? '用户工作区' : 'User workspace'" :title="zh ? '用户工作区' : 'User workspace'"><span class="sidebar-nav-surface" aria-hidden="true" /><Icon name="externalLink" size="md" /><span v-if="!collapsed">{{ zh ? '用户工作区' : 'User workspace' }}</span></RouterLink>
+        <RouterLink to="/profile" class="admin-nav-item admin-sidebar-account" :aria-label="t('nav.profile')"><span class="sidebar-nav-surface" aria-hidden="true" /><span class="admin-avatar">{{ initials }}</span><span v-if="!collapsed">{{ displayName }}<small>{{ zh ? '管理员' : 'Administrator' }}</small></span></RouterLink>
       </div>
     </aside>
     <div class="admin-workspace" :inert="overlayOpen || undefined">
@@ -170,7 +170,7 @@ onBeforeUnmount(rememberScroll)
 </script>
 
 <style scoped>
-.admin-navigation { position:relative; isolation:isolate; --active-indicator-fill:rgb(var(--action-bg)); --active-indicator-radius:14px; }
+.admin-navigation { position:relative; isolation:isolate; --active-indicator-fill:rgb(var(--action-bg)); --active-indicator-radius:14px; --active-indicator-edge:transparent; }
 .admin-navigation .admin-nav-item { position:relative; z-index:1; }
 .admin-navigation .admin-nav-item.active { background:transparent; color:rgb(var(--action-text)); }
 .admin-account-menu :deep(.motion-preference-toggle) { width:100%; justify-content:flex-start; font-size:14px; border-radius:10px; }

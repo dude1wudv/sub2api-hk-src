@@ -1,6 +1,23 @@
 import { computed, getCurrentInstance, onActivated, onDeactivated, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import { useMotionPreferences } from './useMotionPreferences'
 
+// Deliberate surface boundaries; never select arbitrary divs, inputs or table rows.
+export const delegatedSurfaceSelector = [
+  '.card', '.portal-panel', '.portal-section', '.portal-api-access-strip', '.portal-api-card',
+  '.portal-account-section', '.analytics-panel', '.usage-card', '.usage-section', '.usage-filter-panel',
+  '.workspace-metric', '.workspace-facts', '.workspace-platforms', '.workspace-platform', '.workspace-activity',
+  '.workspace-trend', '.workspace-models', '.workspace-recent', '.workspace-launchpad', '.workspace-action-card',
+  '.admin-task-header', '.admin-chart-panel', '.admin-metric-grid > div',
+  '.subscription-plan', '.subscription-current', '.redemption-orders-note',
+].join(',')
+const pointerSurfaceSelector = `[data-ink-surface],${delegatedSurfaceSelector}`
+
+export function nearestPointerSurface(event: Event): HTMLElement | undefined {
+  const path = event.composedPath()
+  if (path.some(node => node instanceof HTMLElement && node.matches('[data-ink-hover="off"]'))) return undefined
+  return path.find(node => node instanceof HTMLElement && node.matches(pointerSurfaceSelector)) as HTMLElement | undefined
+}
+
 interface PointerSurfaceOptions {
   enabled?: MaybeRefOrGetter<boolean>
   magnetic?: MaybeRefOrGetter<boolean>
@@ -47,7 +64,7 @@ export function usePointerSurface(target: MaybeRefOrGetter<HTMLElement | null | 
     let clientX = 0, clientY = 0
     let inside = false
     const releaseInvalidation = retainInvalidation()
-    const blocked = () => element.matches(':disabled, [aria-disabled="true"]') || !!element.closest('[inert]')
+    const blocked = () => element.matches(':disabled, [aria-disabled="true"]') || !!element.closest('[inert], [data-ink-hover="off"]')
     const reset = () => {
       if (frame) cancelAnimationFrame(frame)
       frame = 0
@@ -60,8 +77,7 @@ export function usePointerSurface(target: MaybeRefOrGetter<HTMLElement | null | 
     const draw = () => {
       frame = 0
       if (!inside || blocked()) { reset(); return }
-      bounds ??= element.getBoundingClientRect()
-      if (!bounds.width || !bounds.height) return
+      if (!bounds?.width || !bounds.height) return
       const x = Math.min(bounds.width, Math.max(0, clientX - bounds.left))
       const y = Math.min(bounds.height, Math.max(0, clientY - bounds.top))
       element.style.setProperty('--ink-pointer-x', `${x.toFixed(1)}px`)
@@ -74,8 +90,9 @@ export function usePointerSurface(target: MaybeRefOrGetter<HTMLElement | null | 
     }
     const move = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse' || blocked()) { reset(); return }
-      const nearest = event.composedPath().find(node => node instanceof HTMLElement && node.hasAttribute('data-ink-surface'))
-      if (nearest && nearest !== element) { reset(); return }
+      const nearest = nearestPointerSurface(event)
+      if (nearest !== element) { reset(); return }
+      bounds ??= element.getBoundingClientRect()
       inside = true
       activeSurfaces.add(reset)
       clientX = event.clientX

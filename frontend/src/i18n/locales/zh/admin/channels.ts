@@ -636,7 +636,7 @@ export default {
         label: '请求模板',
         none: '不使用模板',
         placeholder: '选择一个模板（按当前平台过滤）',
-        applyHint: '选中模板后，会把模板的请求头和请求体拷贝到此监控（快照）。后续模板变动不自动同步。'
+        applyHint: '选中模板后，模板的请求头和请求体将复制到此监控（快照）。后续模板变动不自动同步。'
       },
       template: {
         manageButton: '模板管理',
@@ -648,10 +648,10 @@ export default {
         updateSuccess: '模板更新成功',
         deleteSuccess: '模板删除成功',
         applyButton: '应用到关联监控',
-        applyTooltip: '把当前模板配置覆盖到所有关联的监控上',
+        applyTooltip: '使用当前模板配置覆盖所有关联监控',
         applyTitle: '应用模板',
         applyConfirm: '确认应用',
-        applyConfirmMessage: '将把模板「{name}」的当前配置覆盖到 {n} 个关联监控。监控本地已编辑的自定义修改会被丢弃，是否继续？',
+        applyConfirmMessage: '将使用模板「{name}」的当前配置覆盖 {n} 个关联监控。监控本地已编辑的自定义修改会被丢弃，是否继续？',
         applySuccess: '已应用到 {n} 个监控',
         applyPickerTitle: '应用模板「{name}」',
         applyPickerHint: '勾选要覆盖请求头/请求体的监控（默认全选）。监控本地已编辑的自定义修改会被丢弃。',

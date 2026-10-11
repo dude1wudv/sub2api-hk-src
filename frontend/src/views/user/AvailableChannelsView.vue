@@ -1,6 +1,6 @@
 <template>
   <div class="portal-page user-service-page">
-    <PortalPageHeader eyebrow="CONNECTION MAP" :title="t('nav.availableChannels')" :description="portalCopy('查看你可用的分组、模型与实际价格。', 'Explore your available groups, models and actual prices.')" />
+    <PortalPageHeader :title="t('nav.availableChannels')" />
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
@@ -63,8 +63,6 @@ import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
-const portalLocale = useI18n().locale
-const portalCopy = (zh: string, en: string) => portalLocale?.value.startsWith('zh') ? zh : en
 const appStore = useAppStore()
 
 const channels = ref<UserAvailableChannel[]>([])

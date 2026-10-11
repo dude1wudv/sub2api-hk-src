@@ -19,7 +19,7 @@ function usageLocation(log: UsageLog) {
 
 <template>
   <section class="workspace-recent">
-    <header class="workspace-section-title"><div><p class="portal-eyebrow">RECENT REQUESTS</p><h2>{{ t('dashboard.recentUsage') }}</h2></div><span class="portal-tag">{{ t('dashboard.last7Days') }}</span></header>
+    <header class="workspace-section-title"><div><h2>{{ t('dashboard.recentUsage') }}</h2></div><span class="portal-tag">{{ t('dashboard.last7Days') }}</span></header>
     <div v-if="loading" class="workspace-recent-loading" role="status"><LoadingSpinner /></div>
     <EmptyState v-else-if="!data.length" :title="t('dashboard.noUsageRecords')" :description="t('dashboard.startUsingApi')" />
     <ol v-else class="workspace-request-list">
@@ -30,6 +30,6 @@ function usageLocation(log: UsageLog) {
         <Icon name="arrowRight" size="sm" class="workspace-request-arrow" />
       </RouterLink></li>
     </ol>
-    <RouterLink to="/usage" class="workspace-view-all">{{ tx('打开全部请求', 'Explore all requests') }}<Icon name="arrowRight" size="sm" /></RouterLink>
+    <RouterLink to="/usage" class="workspace-view-all">{{ tx('查看全部请求', 'View all requests') }}<Icon name="arrowRight" size="sm" /></RouterLink>
   </section>
 </template>

@@ -70,6 +70,7 @@
           <!-- Content -->
           <div
             ref="markdownContainer"
+            data-ink-hover="off"
             class="markdown-page-content flex-1 h-full overflow-auto p-6 md:p-10"
             v-html="renderedHtml"
             @scroll="onContentScroll"

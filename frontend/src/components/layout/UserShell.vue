@@ -62,7 +62,7 @@
             @click="activateNavigation(item)"
             @pointerenter="prefetchItem(item, $event)"
             @focus="prefetchItem(item)"
-          >
+          ><span class="sidebar-nav-surface" aria-hidden="true" />
             <Icon :name="item.icon" size="md" aria-hidden="true" />
             <span v-if="!sidebarCollapsed" class="user-nav-label">{{ item.label }}</span>
           </RouterLink>
@@ -86,7 +86,7 @@
               @click="activateNavigation(item)"
               @pointerenter="prefetchItem(item, $event)"
               @focus="prefetchItem(item)"
-            >
+            ><span class="sidebar-nav-surface" aria-hidden="true" />
               <span v-if="item.iconSvg" class="user-custom-icon" aria-hidden="true" v-html="sanitizeSvg(item.iconSvg)" />
               <Icon v-else :name="item.icon" size="md" aria-hidden="true" />
               <span v-if="!sidebarCollapsed" class="user-nav-label">{{ item.label }}</span>
@@ -102,7 +102,7 @@
             :aria-label="sidebarCollapsed ? (zh ? '文档' : 'Documentation') : undefined"
             :title="sidebarCollapsed ? (zh ? '文档' : 'Documentation') : undefined"
             @click="closeMobile()"
-          >
+          ><span class="sidebar-nav-surface" aria-hidden="true" />
             <Icon name="book" size="md" aria-hidden="true" />
             <span v-if="!sidebarCollapsed" class="user-nav-label">{{ zh ? '文档' : 'Documentation' }}</span>
             <Icon v-if="!sidebarCollapsed" name="externalLink" size="xs" class="user-nav-trailing" aria-hidden="true" />
@@ -116,7 +116,7 @@
           :aria-label="sidebarCollapsed ? (zh ? '返回首页' : 'Back to home') : undefined"
           :title="sidebarCollapsed ? (zh ? '返回首页' : 'Back to home') : undefined"
           @click="closeCurrentRoute('/home')"
-        >
+        ><span class="sidebar-nav-surface" aria-hidden="true" />
           <Icon name="home" size="md" aria-hidden="true" />
           <span v-if="!sidebarCollapsed">{{ zh ? '返回首页' : 'Back to home' }}</span>
         </RouterLink>
@@ -129,7 +129,7 @@
           class="user-nav-item user-admin-return"
           :title="sidebarCollapsed ? (zh ? '返回管理后台' : 'Back to administration') : undefined"
           :aria-label="sidebarCollapsed ? (zh ? '返回管理后台' : 'Back to administration') : undefined"
-        >
+        ><span class="sidebar-nav-surface" aria-hidden="true" />
           <Icon name="shield" size="md" aria-hidden="true" />
           <span v-if="!sidebarCollapsed" class="user-nav-label">{{ zh ? '管理后台' : 'Administration' }}</span>
         </RouterLink>

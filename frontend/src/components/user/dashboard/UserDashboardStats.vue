@@ -29,7 +29,7 @@
     <div data-metric="performance"><span>RPM / TPM</span><strong>{{ formatTokens(stats.rpm) }} / {{ formatTokens(stats.tpm) }}</strong><small>{{ tx('当前吞吐', 'Current throughput') }}</small></div>
   </div>
   <section v-if="!isSimple && platformCards.length" class="workspace-platforms">
-    <header class="workspace-section-title"><div><p class="portal-eyebrow">CAPACITY</p><h2>{{ t('dashboard.platformBreakdown') }}</h2></div><span class="portal-tag">{{ t('dashboard.platformCount', { count: platformCount }) }}</span></header>
+    <header class="workspace-section-title"><div><h2>{{ t('dashboard.platformBreakdown') }}</h2></div><span class="portal-tag">{{ t('dashboard.platformCount', { count: platformCount }) }}</span></header>
     <div class="workspace-platform-grid">
       <article v-for="item in platformCards" :key="item.platform" data-testid="platform-card" :data-platform="item.platform" class="workspace-platform" :class="{ 'workspace-platform-other': item.isOther }">
         <header><span class="platform-ink-dot" aria-hidden="true"></span><h3>{{ item.isOther ? t('dashboard.platformOther') : platformLabel(item.platform) }}</h3><strong :title="t('dashboard.actual')">${{ formatCost(item.total_actual_cost) }}</strong></header>

@@ -3,7 +3,6 @@
     <div class="space-y-4">
       <!-- Actions -->
       <div class="admin-task-toolbar flex flex-wrap items-center justify-end gap-2">
-        <span class="admin-eyebrow mr-auto">{{ t('nav.paymentPlans') }}</span>
         <button @click="loadPlans" :disabled="plansLoading" class="btn btn-secondary" :title="t('common.refresh')">
           <Icon name="refresh" size="md" :class="plansLoading ? 'animate-spin' : ''" />
         </button>

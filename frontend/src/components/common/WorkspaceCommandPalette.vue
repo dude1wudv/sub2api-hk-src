@@ -3,14 +3,13 @@
     <Icon name="search" size="sm" aria-hidden="true" />
     <span>{{ text('前往…', 'Go to…') }}</span><kbd>{{ modifier }} K</kbd>
   </button>
-  <BaseDialog :show="open" :title="text('去往下一步', 'Your next step')" width="wide" close-on-click-outside @close="open = false">
+  <BaseDialog :show="open" :title="text('快捷操作', 'Quick actions')" width="wide" close-on-click-outside @close="open = false">
     <div class="workspace-command" data-command-palette>
       <label class="workspace-command-search">
         <Icon name="search" size="md" aria-hidden="true" />
         <input ref="search" v-model="query" autofocus autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="open" :aria-controls="listId" :aria-activedescendant="activeId" :aria-label="text('搜索页面或操作', 'Search pages or actions')" :placeholder="text('搜索页面、功能或操作…', 'Search pages, features or actions…')" @keydown="onSearchKeydown" />
         <kbd>esc</kbd>
       </label>
-      <p class="workspace-command-hint">{{ text('输入名称快速抵达，或选择下面的常用入口。', 'Find a page by name, or pick an action below.') }}</p>
       <div :id="listId" ref="list" class="workspace-command-results" role="listbox" :aria-label="text('搜索结果', 'Search results')">
         <button v-for="(item, index) in matches" :id="`${listId}-${index}`" :key="item.id" type="button" role="option" tabindex="-1" :aria-selected="index === selected" :disabled="busy" class="workspace-command-item" @pointermove="selected = index" @click="execute(item)">
           <span class="workspace-command-symbol" aria-hidden="true"><Icon :name="item.run ? 'bolt' : 'arrowRight'" size="sm" /></span>
@@ -101,7 +100,6 @@ kbd { font:12px/1.4 var(--font-sans); border:1px solid rgb(var(--line)); border-
 .workspace-command-search { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid rgb(var(--line)); border-radius:14px; background:rgb(var(--surface-2)); color:rgb(var(--ink-3)); }
 .workspace-command-search:focus-within { border-color:rgb(var(--focus-ring)); }
 .workspace-command-search input { width:100%; min-width:0; border:0; background:transparent; color:rgb(var(--ink)); font-size:16px; outline:none; }
-.workspace-command-hint { margin:14px 4px; font-size:13px; color:rgb(var(--ink-3)); }
 .workspace-command-results { max-height:min(48dvh,410px); overflow-y:auto; overscroll-behavior:contain; padding:3px; }
 .workspace-command-item { display:flex; width:100%; align-items:center; gap:12px; padding:12px; border:1px solid transparent; border-radius:14px; text-align:start; }
 .workspace-command-item[aria-selected='true'] { background:rgb(var(--selection-bg)); border-color:rgb(var(--brand-moss) / .22); }

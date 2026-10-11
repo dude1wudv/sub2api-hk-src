@@ -1,7 +1,7 @@
 <template>
   <div class="portal-page">
   <main class="portal-account" data-testid="portal-account">
-    <PortalPageHeader eyebrow="YOUR ACCOUNT" :title="copy('让工作方式，更像你。', 'Make this space yours.')" :description="copy('个人资料、登录安全和通知，按你的习惯设置。', 'Manage your profile, sign-in security and notifications in one place.')" />
+    <PortalPageHeader :title="copy('账户设置', 'Account settings')" />
     <p v-if="notice" class="portal-account-success" role="status">{{ notice }}</p>
     <p v-if="loadError" class="portal-account-error" role="alert">
       {{ loadError }}
@@ -55,7 +55,6 @@
         <div class="portal-account-row">
           <div class="portal-account-row__text">
             <strong>{{ copy('登录密码', 'Password') }}</strong>
-            <small>{{ copy('定期更新密码，保护账户安全', 'Update your password to keep your account secure') }}</small>
           </div>
           <button type="button" class="portal-account-action" @click="openEditor('password')">{{ copy('更改', 'Change') }}</button>
         </div>

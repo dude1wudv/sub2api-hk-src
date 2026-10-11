@@ -342,7 +342,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="portal-page usage-page">
-    <PortalPageHeader eyebrow="03 / ACTIVITY" :title="copy('每一次调用，都有迹可循。', 'Every request tells a story.')" :description="copy('从用量趋势到请求明细，找到值得关注的那一次。', 'Explore usage trends, then follow the details of each request.')" />
+    <PortalPageHeader :title="copy('使用记录', 'Usage records')" />
     <div class="usage-overview">
       <section class="usage-summary"><div><span class="portal-muted">{{ copy('账户余额', 'Account balance') }}</span><strong>{{ auth.user ? formatUsageMoney(auth.user.balance, 2) : '—' }}</strong></div><RouterLink v-if="!auth.isSimpleMode" to="/purchase" class="portal-button">{{ copy('充值', 'Recharge') }}</RouterLink></section>
       <section class="usage-summary"><div><span class="portal-muted">{{ copy('本月消费', 'This month') }}</span><strong>{{ overviewLoading ? '—' : monthStats ? formatUsageMoney(monthStats.total_actual_cost, 2) : '—' }}</strong><small v-if="monthStats && !overviewLoading">{{ formatUsageNumber(monthStats.total_requests) }} {{ copy('次请求', 'requests') }}</small></div><span class="usage-summary-symbol" aria-hidden="true">↗</span></section>

@@ -137,7 +137,7 @@ onMounted(async () => {
 
 <template>
   <div class="portal-page subscription-page">
-    <PortalPageHeader eyebrow="PLANS & CAPACITY" :title="copy('找到合适的创作节奏。', 'Find a plan for your pace.')" :description="copy('按真实额度选择订阅，续订和到期一目了然。', 'Compare quotas, understand your renewal, and keep expiry in view.')" />
+    <PortalPageHeader :title="copy('订阅', 'Subscriptions')" />
     <div v-if="!enabled" class="portal-empty">{{ copy('订阅服务暂未开放。', 'Subscriptions are not available.') }}</div>
     <div v-else-if="loading" class="portal-empty" role="status">{{ copy('正在加载订阅信息…', 'Loading subscriptions…') }}</div>
     <template v-else>

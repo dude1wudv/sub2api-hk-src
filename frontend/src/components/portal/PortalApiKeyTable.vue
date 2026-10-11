@@ -28,7 +28,7 @@
           <Icon name="copy" size="sm" aria-hidden="true" />
         </button>
       </span>
-      <button
+      <InkSurface as="button" interactive
         type="button"
         class="portal-api-group"
         :disabled="busyIds.has(apiKey.id)"
@@ -51,7 +51,7 @@
         />
         <span v-else class="portal-api-muted">{{ text('未绑定分组', 'No group') }}</span>
         <span v-if="routingCount(apiKey)" class="portal-api-routing">{{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}</span>
-      </button>
+      </InkSurface>
       <dl class="portal-api-facts">
         <div>
           <dt>{{ text('今日', 'Today') }}</dt>
@@ -153,7 +153,7 @@
             </span>
           </td>
           <td>
-            <button
+            <InkSurface as="button" interactive
               type="button"
               class="portal-api-group"
               :disabled="busyIds.has(apiKey.id)"
@@ -176,7 +176,7 @@
               />
               <span v-else class="portal-api-muted">{{ text('未绑定分组', 'No group') }}</span>
               <span v-if="routingCount(apiKey)" class="portal-api-routing">{{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}</span>
-            </button>
+            </InkSurface>
           </td>
           <td><span class="portal-api-concurrency">{{ apiKey.current_concurrency || 0 }}</span></td>
           <td>
@@ -228,6 +228,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMediaQuery } from '@vueuse/core'
 import GroupBadge from '@/components/common/GroupBadge.vue'
+import InkSurface from '@/components/common/InkSurface.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { maskApiKey } from '@/utils/maskApiKey'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
@@ -314,7 +315,8 @@ function money(value: number) {
 .portal-api-table th { padding:12px 10px; color:rgb(var(--ink-3)); background:rgb(var(--surface-2)); font-size: 14px; font-weight:500; white-space:nowrap; border-bottom:1px solid rgb(var(--line-strong)); }
 .portal-api-table td { padding:14px 10px; border-bottom:1px solid rgb(var(--line-strong)); vertical-align:middle; background:rgb(var(--surface)); }
 .portal-api-table tbody tr:last-child td { border-bottom:0; }
-.portal-api-table tbody tr:hover td { background:rgb(var(--surface-2)); }
+.portal-api-table tbody tr:hover { --ink-3:var(--ink-2); }
+.portal-api-table tbody tr:hover td { background:linear-gradient(rgb(var(--brand-moss) / .09), rgb(var(--brand-moss) / .09)) rgb(var(--surface)); }
 .portal-api-table tbody tr[data-selected='true'] td { background:rgb(var(--surface-2)); }
 .portal-api-select-col { width:42px; }
 .portal-api-select-col input { width:15px; height:15px; accent-color:rgb(var(--text-link)); }
@@ -324,7 +326,9 @@ function money(value: number) {
 .portal-api-secret button { display:inline-flex; flex:none; align-items:center; justify-content:center; width:28px; height:28px; padding:2px; border:0; border-radius:5px; color:inherit; background:transparent; cursor:pointer; }
 .portal-api-secret button:hover { background:rgb(var(--surface-2)); }
 .portal-api-group { display:inline-flex; max-width:280px; align-items:center; flex-wrap:wrap; gap:6px; padding:4px 6px; border:0; border-radius:8px; color:inherit; background:transparent; font:inherit; text-align:left; cursor:pointer; }
-.portal-api-group:hover { background:rgb(var(--surface-2)); }
+.portal-api-group { transition:background-color var(--motion-fast); }
+.portal-api-group:not(:disabled):is(:hover, :focus-visible) { background:rgb(var(--brand-moss) / .16); }
+.portal-api-group:not(:disabled):active { background:rgb(var(--brand-moss) / .2); }
 .portal-api-group:focus-visible { outline:2px solid rgb(var(--focus-ring)); outline-offset:2px; }
 .portal-api-group:disabled { opacity:.45; cursor:wait; }
 .portal-api-group :deep(.truncate) { max-width:160px; }
@@ -359,6 +363,7 @@ function money(value: number) {
 .portal-api-card .portal-api-secret { max-width:none; width:100%; justify-content:space-between; min-height:36px; }
 .portal-api-card .portal-api-secret code { flex:1; }
 .portal-api-card .portal-api-group { max-width:none; width:100%; min-height:44px; padding:8px 10px; border:1px solid rgb(var(--line-strong)); background:rgb(var(--surface-2)); }
+.portal-api-card .portal-api-group:not(:disabled):is(:hover, :focus-visible) { background:rgb(var(--brand-moss) / .16); }
 .portal-api-card .portal-api-group :deep(.truncate) { max-width:100%; }
 .portal-api-facts { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin:0; }
 .portal-api-facts div:last-child { grid-column:1 / -1; }

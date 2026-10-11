@@ -3,9 +3,7 @@
     <div class="operations-dashboard space-y-6">
       <InkSurface as="section" interactive class="admin-workbench-intro">
         <div>
-          <span class="admin-eyebrow">{{ zh ? '运营工作台' : 'OPERATIONS' }}</span>
-          <h2>{{ zh ? '看清变化，处理重点。' : 'See the change. Find the next step.' }}</h2>
-          <p>{{ zh ? '资源、用量与上游余额，集中查看。' : 'Resources, usage and upstream balances in one place.' }}</p>
+          <h2>{{ zh ? '资源与用量' : 'Resources & usage' }}</h2>
         </div>
         <span v-if="stats?.stats_stale" class="admin-status-note" role="status">{{ zh ? '统计待更新' : 'Statistics awaiting refresh' }}</span>
       </InkSurface>
@@ -16,7 +14,7 @@
         <router-link to="/admin/usage"><Icon name="chart" size="sm" />{{ t('admin.usage.title') }}</router-link>
         <router-link to="/admin/audit-logs"><Icon name="shield" size="sm" />{{ t('admin.audit.title') }}</router-link>
       </nav>
-      <div class="dashboard-section-heading"><h2>{{ zh ? '核心运营指标' : 'Core operational metrics' }}</h2><span>PLATFORM OVERVIEW</span></div>
+      <div class="dashboard-section-heading"><h2>{{ zh ? '核心运营指标' : 'Core operational metrics' }}</h2></div>
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center py-12">
         <LoadingSpinner />
@@ -112,7 +110,7 @@
         </div>
 
         <!-- Row 2: Token Stats -->
-        <div class="dashboard-section-heading"><h2>{{ zh ? '消耗与性能' : 'Consumption & performance' }}</h2><span>COST & PERFORMANCE</span></div>
+        <div class="dashboard-section-heading"><h2>{{ zh ? '消耗与性能' : 'Consumption & performance' }}</h2></div>
         <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
           <!-- Today Tokens -->
           <div data-metric="tokens" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">

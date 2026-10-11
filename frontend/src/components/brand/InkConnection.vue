@@ -1,7 +1,7 @@
 <template>
   <figure ref="viewport" class="ink-connection" :data-protocol="protocol" :data-running="running" :aria-label="text('API 协议连接示意', 'API protocol connection diagram')">
     <InkSurface interactive class="ink-connection-stage">
-      <div class="ink-connection-label"><span>01 — CONNECT</span><span>{{ text('从想法到调用', 'From idea to request') }}</span></div>
+      <div class="ink-connection-label"><span>API</span><span>{{ text('协议', 'Protocols') }}</span></div>
       <svg class="ink-connection-art" viewBox="0 0 600 400" fill="none" aria-hidden="true">
         <circle class="ink-orbit" cx="302" cy="204" r="135" stroke="currentColor" stroke-dasharray="2 9" />
         <path class="ink-wire" d="M100 205H210C250 205 250 108 306 108H475" />
@@ -21,7 +21,7 @@
         <button type="button" :aria-pressed="protocol === 'openai'" class="ink-destination ink-destination--openai" @click="$emit('update:protocol', 'openai')"><span class="ink-node" aria-hidden="true" /><strong>OpenAI</strong><span class="ink-protocol-type">/chat/completions</span></button>
         <button type="button" :aria-pressed="protocol === 'anthropic'" class="ink-destination ink-destination--anthropic" @click="$emit('update:protocol', 'anthropic')"><span class="ink-node" aria-hidden="true" /><strong>Anthropic</strong><span class="ink-protocol-type">/messages</span></button>
       </div>
-      <div class="ink-connection-caption"><span class="ink-caption-dot" aria-hidden="true" />{{ text('选择协议，探索连接方式。', 'Pick a protocol. Explore the connection.') }}<span>↗</span></div>
+      <div class="ink-connection-caption"><span class="ink-caption-dot" aria-hidden="true" />{{ text('点击切换协议', 'Select a protocol') }}<span>↗</span></div>
     </InkSurface>
     <figcaption>{{ text('协议连接示意 · 示例不会发送请求', 'Protocol preview · no requests are sent') }}</figcaption>
   </figure>

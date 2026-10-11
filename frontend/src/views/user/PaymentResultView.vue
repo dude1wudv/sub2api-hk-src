@@ -12,7 +12,6 @@
       <template v-else>
         <!-- Status Icon -->
         <div class="payment-result-status text-center">
-          <p class="portal-eyebrow payment-result-eyebrow">PAYMENT RESULT</p>
           <div v-if="isSuccess"
             class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
             <svg class="h-10 w-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"

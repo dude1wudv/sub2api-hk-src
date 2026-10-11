@@ -1,6 +1,6 @@
 <template>
   <div class="portal-page developer-dashboard">
-    <PortalPageHeader eyebrow="01 / WORKSPACE" :title="zh ? '让创造，自然发生。' : 'A little space for big ideas.'" :description="zh ? '你的接口、用量与下一步，都在这里。' : 'Your connections, your activity, your next move.'">
+    <PortalPageHeader :title="zh ? '概览' : 'Overview'">
       <span class="workspace-today">{{ new Date().toLocaleDateString(locale, { month: 'long', day: 'numeric', weekday: 'short' }) }}</span>
       <button class="portal-button secondary" :disabled="loading" @click="refreshAll"><Icon name="refresh" size="sm" :class="{ 'animate-spin': loading }" />{{ t('common.refresh') }}</button>
     </PortalPageHeader>
@@ -9,7 +9,7 @@
     <template v-if="stats">
       <UserDashboardStats :stats="stats" :balance="user?.balance || 0" :is-simple="authStore.isSimpleMode" :platform-quotas="platformQuotas" />
       <section class="workspace-activity">
-        <header class="workspace-section-title"><div><p class="portal-eyebrow">YOUR ACTIVITY</p><h2>{{ zh ? '看看灵感的轨迹' : 'Follow your activity' }}</h2></div><RouterLink to="/usage" class="portal-inline-button">{{ zh ? '用量明细' : 'Usage details' }} <Icon name="arrowRight" size="sm" /></RouterLink></header>
+        <header class="workspace-section-title"><div><h2>{{ zh ? '用量统计' : 'Usage statistics' }}</h2></div><RouterLink to="/usage" class="portal-inline-button">{{ zh ? '用量明细' : 'Usage details' }} <Icon name="arrowRight" size="sm" /></RouterLink></header>
         <p v-if="chartError" class="portal-error" role="alert">{{ chartError }} <button @click="loadCharts">{{ zh ? '重试' : 'Retry' }}</button></p>
         <UserDashboardCharts v-model:startDate="startDate" v-model:endDate="endDate" v-model:granularity="granularity" :loading="loadingCharts" :trend="trendData" :models="modelStats" @dateRangeChange="loadCharts" @granularityChange="loadCharts" @refresh="loadCharts" @drilldown="drilldown" />
       </section>

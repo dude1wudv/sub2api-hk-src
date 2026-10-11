@@ -115,7 +115,7 @@ export default {
       },
       imageStorage: {
         title: '异步生图对象存储',
-        description: '开启后，异步生图接口可用，生成结果转存到对象存储，只把短链接写入 Redis。与备份共用同一套 S3 客户端，保存后立即生效，无需重启。',
+        description: '开启后，异步生图接口可用，生成结果转存到对象存储，Redis 仅保存短链接。与备份共用同一套 S3 客户端，保存后立即生效，无需重启。',
         enabled: '启用异步生图',
         reuseBackupS3: '复用上方备份的 S3 配置（只用不同的存储桶/前缀）',
         bucket: '存储桶',
@@ -696,7 +696,7 @@ export default {
       failedToUpdateSortOrder: '更新排序失败',
       deleteConfirm: "确定要删除分组 '{name}' 吗？所有关联的 API 密钥将不再属于任何分组。",
       deleteConfirmSubscription:
-        "确定要删除订阅分组 '{name}' 吗？此操作会让所有绑定此订阅的用户的 API Key 失效，并删除所有相关的订阅记录。此操作无法撤销。",
+        "确定要删除订阅分组 '{name}' 吗？此操作将使所有绑定此订阅的用户的 API Key 失效，并删除所有相关的订阅记录。此操作无法撤销。",
       columns: {
         name: '名称',
         id: 'ID',
@@ -798,7 +798,7 @@ export default {
           '开启后，用户在创建 API Key 时将无法看到此分组。只有管理员手动将用户分配到此分组后，用户才能使用。',
         example: '使用场景：',
         exampleContent:
-          '公开分组费率 0.8，您可以创建一个费率 0.7 的专属分组，手动分配给 VIP 用户，让他们享受更优惠的价格。'
+          '公开分组费率为 0.8，VIP 专属分组费率可设为 0.7，并手动分配给指定用户。'
       },
       rateMultiplierHint: '1.0 = 标准费率，0.5 = 半价，2.0 = 双倍',
       platforms: {

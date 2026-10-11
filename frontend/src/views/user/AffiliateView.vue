@@ -1,6 +1,6 @@
 <template>
   <div class="portal-page user-service-page">
-    <PortalPageHeader eyebrow="PARTNER SPACE" :title="t('affiliate.title')" :description="t('affiliate.description')" />
+    <PortalPageHeader :title="t('affiliate.title')" />
     <div class="space-y-6">
       <div v-if="loading" class="flex justify-center py-12">
         <div

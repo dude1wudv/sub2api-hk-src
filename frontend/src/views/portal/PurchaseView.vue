@@ -16,7 +16,7 @@ const historyVersion = ref(0)
 
 <template>
   <div class="portal-page purchase-page">
-    <PortalPageHeader eyebrow="04 / BALANCE" :title="copy('为下一次创造，补充能量。', 'Ready for what comes next.')" :description="copy('购买、兑换与余额，各有清楚的一步。', 'Purchase a code, redeem it, and keep creating.')" />
+    <PortalPageHeader :title="copy('充值', 'Top up')" />
     <nav class="purchase-tabs" :aria-label="copy('充值与兑换记录', 'Top up and redemption history')">
       <RouterLink to="/purchase" class="active" aria-current="page">{{ copy('充值', 'Top up') }}</RouterLink>
       <RouterLink to="/orders">{{ copy('兑换记录', 'Redemption history') }}</RouterLink>

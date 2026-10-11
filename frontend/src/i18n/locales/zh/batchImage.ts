@@ -202,7 +202,7 @@ export default {
       deleteNotReady: '任务结束后才能删除记录。正在生成或结算中的任务请先等待完成。',
       disabled: '批量生图功能当前未开启。',
       authRequired: '当前 API Key 不可用或已失效，请重新选择密钥。',
-      adminReference: '请把错误码和请求 ID 发给管理员排查。',
+      adminReference: '请向管理员提供错误码和请求 ID。',
       errorReference: '错误信息',
       errorCodeRef: '错误码：{code}',
       requestIdRef: '请求 ID：{id}',

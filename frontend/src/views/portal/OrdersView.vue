@@ -10,7 +10,7 @@ const copy = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 
 <template>
   <div class="portal-page redemption-page">
-    <PortalPageHeader eyebrow="BALANCE HISTORY" :title="copy('每一笔额度，都清楚。', 'Every credit, accounted for.')" :description="copy('查看兑换结果与额度变化，安心回到创作。', 'Review your redemptions and balance adjustments.')" />
+    <PortalPageHeader :title="copy('兑换记录', 'Redemption history')" />
     <nav class="redemption-tabs" :aria-label="copy('充值与兑换记录', 'Top up and redemption history')">
       <RouterLink to="/purchase">{{ copy('充值', 'Top up') }}</RouterLink>
       <RouterLink to="/orders" class="active" aria-current="page">{{ copy('兑换记录', 'Redemption history') }}</RouterLink>

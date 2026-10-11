@@ -1,0 +1,18 @@
+/* Selection is painted behind content. Existing image layers and background colors remain. */
+[data-ink-hover-active='true'] {
+  --ink-3: var(--ink-2);
+  background-image:
+    radial-gradient(310px 200px at var(--ink-hover-x, 50%) var(--ink-hover-y, 50%), rgb(var(--brand-moss) / .12), transparent 76%),
+    radial-gradient(180px 290px at var(--ink-hover-x, 50%) var(--ink-hover-y, 50%), rgb(var(--brand-copper) / .07), transparent 80%),
+    linear-gradient(rgb(var(--brand-moss) / .055), rgb(var(--brand-moss) / .055)),
+    var(--ink-hover-base-image, none) !important;
+  background-size: 102% 102%, 102% 102%, 100% 100%, var(--ink-hover-base-size, auto) !important;
+  background-position: center, center, center, var(--ink-hover-base-position, 0% 0%) !important;
+  background-repeat: no-repeat, no-repeat, no-repeat, var(--ink-hover-base-repeat, repeat) !important;
+}
+[data-motion='reduced'] [data-ink-hover-active='true'] {
+  background-image: var(--ink-hover-base-image, none) !important;
+}
+@media (prefers-reduced-motion: reduce), (hover: none), (pointer: coarse), (max-width: 767px), (forced-colors: active) {
+  [data-ink-hover-active='true'] { background-image: var(--ink-hover-base-image, none) !important; }
+}
