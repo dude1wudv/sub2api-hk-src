@@ -137,7 +137,7 @@ func openAIUsagePricingAt(input *OpenAIRecordUsageInput) time.Time {
 }
 
 func groupBillsOpenAIFastAtStandard(apiKey *APIKey, account *Account, serviceTier string) bool {
-	if apiKey == nil || apiKey.Group == nil || !apiKey.Group.FreeOpenAIFast {
+	if apiKey == nil || apiKey.Group == nil {
 		return false
 	}
 	if account == nil || !account.IsOpenAI() {
@@ -148,7 +148,9 @@ func groupBillsOpenAIFastAtStandard(apiKey *APIKey, account *Account, serviceTie
 	}
 	switch normalizeBillingServiceTier(serviceTier) {
 	case "priority", "fast":
-		return true
+		return apiKey.Group.FreeOpenAIFast
+	case OpenAIFastTierUltrafast:
+		return apiKey.Group.FreeOpenAIUltrafast
 	default:
 		return false
 	}
@@ -241,6 +243,10 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	}
 	longContextBillingGate := openAILongContextBillingGate(billingAccount)
 	modelLongContextExempt := openAISubscriptionLongContextExempt(billingAccount, result)
+	billingPlatform := ""
+	if billingAccount != nil {
+		billingPlatform = billingAccount.Platform
+	}
 	cost, err = s.calculateOpenAIRecordUsageCost(
 		ctx,
 		result,
@@ -255,6 +261,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		longContextBillingGate,
 		modelLongContextExempt,
 		pricingAt,
+		billingPlatform,
 	)
 	if err != nil {
 		if !isUsagePricingUnavailableError(err) {
@@ -287,7 +294,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 			responseModels := s.filterCNProviderBillingModelCandidates(ctx, account, apiKey, usageBillingModelCandidates(responseModel))
 			responseCost, responseErr := s.calculateOpenAIRecordUsageCost(
 				ctx, result, apiKey, responseModels, multiplier, imageMultiplier,
-				videoMultiplier, baseMultiplier, tokens, serviceTier, longContextBillingGate, modelLongContextExempt, pricingAt,
+				videoMultiplier, baseMultiplier, tokens, serviceTier, longContextBillingGate, modelLongContextExempt, pricingAt, billingPlatform,
 			)
 			// 基线定价源以 baselineBillingModel 为准：它正是 calculateOpenAIRecordUsageCost
 			// 内部做渠道定价判断时使用的模型，且"首候选有渠道价"必然意味着首候选就是实际
@@ -302,7 +309,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		}
 	}
 
-	// Free Fast changes only the customer charge. Keep priority TotalCost and
+	// Free Fast / Ultrafast changes only the customer charge. Keep tier TotalCost and
 	// service_tier for upstream accounting, but evaluate ActualCost once more at
 	// the Standard tier using the same channel, peak, and long-context policy.
 	if groupBillsOpenAIFastAtStandard(apiKey, billingAccount, serviceTier) {
@@ -320,6 +327,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 			longContextBillingGate,
 			modelLongContextExempt,
 			pricingAt,
+			billingPlatform,
 		)
 		if standardErr != nil && !isUsagePricingUnavailableError(standardErr) {
 			return standardErr
@@ -598,6 +606,7 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 	longContextBillingGate *bool,
 	modelLongContextExempt bool,
 	pricingAt time.Time,
+	upstreamPlatforms ...string,
 ) (*CostBreakdown, error) {
 	billingModel := firstUsageBillingModel(billingModels)
 	if result != nil && result.WebSearchCalls > 0 {
@@ -654,6 +663,7 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 				optionalStringValue(result.ReasoningEffort),
 				longContextBillingGate,
 				modelLongContextExempt,
+				upstreamPlatforms...,
 			)
 			if err == nil {
 				tokenCost = cost
@@ -749,24 +759,28 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageTokenCost(
 	reasoningEffort string,
 	longContextBillingGate *bool,
 	modelLongContextExempt bool,
+	upstreamPlatforms ...string,
 ) (*CostBreakdown, error) {
+	platform := ""
+	if len(upstreamPlatforms) > 0 {
+		platform = upstreamPlatforms[0]
+	}
 	if s.resolver != nil && apiKey.Group != nil {
 		gid := apiKey.Group.ID
 		return s.billingService.CalculateCostUnified(CostInput{
 			Ctx: ctx, Model: billingModel, GroupID: &gid, Group: apiKey.Group,
-			Tokens: tokens, RequestCount: 1, RateMultiplier: multiplier, PricingAt: pricingAt,
+			Platform: platform,
+			Tokens:   tokens, RequestCount: 1, RateMultiplier: multiplier, PricingAt: pricingAt,
 			ServiceTier: serviceTier, ReasoningEffort: reasoningEffort, Resolver: s.resolver,
 			LongContextBillingEnabled:      longContextBillingGate,
 			DisableModelLongContextPricing: modelLongContextExempt,
 		})
 	}
-	return s.billingService.calculateCostWithServiceTierPolicy(
-		billingModel,
-		tokens,
-		multiplier,
-		serviceTier,
-		(longContextBillingGate == nil || *longContextBillingGate) && !modelLongContextExempt,
-	)
+	return s.billingService.CalculateCostUnified(CostInput{
+		Ctx: ctx, Model: billingModel, Platform: platform, Tokens: tokens,
+		RateMultiplier: multiplier, ServiceTier: serviceTier, ReasoningEffort: reasoningEffort,
+		LongContextBillingEnabled: longContextBillingGate, DisableModelLongContextPricing: modelLongContextExempt,
+	})
 }
 
 func (s *OpenAIGatewayService) calculateOpenAIImageCost(

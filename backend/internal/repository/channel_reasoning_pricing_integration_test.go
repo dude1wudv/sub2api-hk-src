@@ -91,6 +91,40 @@ func TestChannelReasoningPricingCreateUpdateReplace(t *testing.T) {
 	assertStored(expected)
 }
 
+func TestChannelUltrafastPricingCreateUpdateReplace(t *testing.T) {
+	ctx := context.Background()
+	channel := &service.Channel{}
+	repo := newReasoningPricingIntegrationChannel(t, channel)
+	ultra := 6.0
+	pricing := service.ChannelModelPricing{ChannelID: channel.ID, Platform: service.PlatformOpenAI, Models: []string{"custom-ultrafast-model"}, UltrafastMultiplier: &ultra}
+	assertStored := func(expected *float64) {
+		t.Helper()
+		listed, err := repo.ListModelPricing(ctx, channel.ID)
+		require.NoError(t, err)
+		require.Len(t, listed, 1)
+		require.Equal(t, expected, listed[0].UltrafastMultiplier)
+		batch, err := repo.batchLoadModelPricing(ctx, []int64{channel.ID})
+		require.NoError(t, err)
+		require.Len(t, batch[channel.ID], 1)
+		require.Equal(t, expected, batch[channel.ID][0].UltrafastMultiplier)
+	}
+	require.NoError(t, repo.CreateModelPricing(ctx, &pricing))
+	assertStored(&ultra)
+	ultra = 4.5
+	require.NoError(t, repo.UpdateModelPricing(ctx, &pricing))
+	assertStored(&ultra)
+	pricing.UltrafastMultiplier = nil
+	require.NoError(t, repo.UpdateModelPricing(ctx, &pricing))
+	assertStored(nil)
+	ultra = 3
+	require.NoError(t, repo.ReplaceModelPricing(ctx, channel.ID, []service.ChannelModelPricing{{Platform: service.PlatformOpenAI, Models: []string{"replacement-ultrafast-model"}, UltrafastMultiplier: &ultra}}))
+	assertStored(&ultra)
+	// The real migration constraint rejects zero and the transaction restores the old rows.
+	zero := 0.0
+	require.Error(t, repo.ReplaceModelPricing(ctx, channel.ID, []service.ChannelModelPricing{{Platform: service.PlatformOpenAI, Models: []string{"invalid"}, UltrafastMultiplier: &zero}}))
+	assertStored(&ultra)
+}
+
 func TestAccountStatsReasoningPricingRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	channel := &service.Channel{

@@ -30,7 +30,7 @@ func (c *capturedReasoningMultipliersJSON) Match(value driver.Value) bool {
 func reasoningPricingRow(multipliers any) *sqlmock.Rows {
 	return sqlmock.NewRows(channelModelPricingTimePricingColumns).AddRow(
 		int64(11), int64(7), "openai", `["custom-model"]`, service.BillingModeToken,
-		nil, nil, nil, nil, nil, nil, nil, multipliers, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil, 6.0, multipliers, nil, nil, nil, nil,
 		time.Time{}, time.Time{},
 	)
 }
@@ -50,15 +50,17 @@ func TestChannelReasoningEffortMultipliersRoundTrip(t *testing.T) {
 			t.Run(tt.name+"/"+operation, func(t *testing.T) {
 				repo, mock := newChannelModelPricingTimePricingRepo(t)
 				ctx := context.Background()
+				ultrafast := 6.0
 				pricing := &service.ChannelModelPricing{
 					ID: 11, ChannelID: 7, Platform: "openai", Models: []string{"custom-model"},
 					ReasoningEffortMultipliers: tt.multipliers,
+					UltrafastMultiplier:        &ultrafast,
 				}
 				stored := &capturedReasoningMultipliersJSON{}
 				if operation == "update" {
 					mock.ExpectExec(`(?s)UPDATE channel_model_pricing.*reasoning_effort_multipliers = \$10.*WHERE id = \$16`).
 						WithArgs([]byte(`["custom-model"]`), service.BillingModeToken,
-							nil, nil, nil, nil, nil, nil, nil, stored, nil, nil, nil, nil, "openai", int64(11)).
+							nil, nil, nil, nil, nil, nil, nil, stored, nil, nil, nil, nil, "openai", int64(11), ultrafast).
 						WillReturnResult(sqlmock.NewResult(0, 1))
 					require.NoError(t, repo.UpdateModelPricing(ctx, pricing))
 				} else {
@@ -69,7 +71,7 @@ func TestChannelReasoningEffortMultipliersRoundTrip(t *testing.T) {
 					}
 					mock.ExpectQuery(`INSERT INTO channel_model_pricing .*reasoning_effort_multipliers`).
 						WithArgs(int64(7), "openai", []byte(`["custom-model"]`), service.BillingModeToken,
-							nil, nil, nil, nil, nil, nil, nil, stored, nil, nil, nil, nil).
+							nil, nil, nil, nil, nil, nil, nil, stored, nil, nil, nil, nil, ultrafast).
 						WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).AddRow(int64(11), time.Time{}, time.Time{}))
 					if operation == "replace" {
 						mock.ExpectCommit()
@@ -86,6 +88,8 @@ func TestChannelReasoningEffortMultipliersRoundTrip(t *testing.T) {
 				loaded, err := repo.ListModelPricing(ctx, 7)
 				require.NoError(t, err)
 				require.Len(t, loaded, 1)
+				require.NotNil(t, loaded[0].UltrafastMultiplier)
+				require.Equal(t, ultrafast, *loaded[0].UltrafastMultiplier)
 				if len(tt.multipliers) == 0 {
 					require.Empty(t, loaded[0].ReasoningEffortMultipliers)
 				} else {
@@ -105,6 +109,8 @@ func TestChannelReasoningEffortMultipliersBatchLoad(t *testing.T) {
 	pricing, err := repo.batchLoadModelPricing(context.Background(), []int64{7})
 	require.NoError(t, err)
 	require.Len(t, pricing[7], 1)
+	require.NotNil(t, pricing[7][0].UltrafastMultiplier)
+	require.Equal(t, 6.0, *pricing[7][0].UltrafastMultiplier)
 	require.Equal(t, map[string]float64{"medium": 1.25, "high": 2}, pricing[7][0].ReasoningEffortMultipliers)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

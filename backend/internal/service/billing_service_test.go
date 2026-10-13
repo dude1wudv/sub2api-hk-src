@@ -301,12 +301,10 @@ func TestCalculateCost_OpenAIGPT54LongContextAppliesWholeSessionMultipliers(t *t
 func TestCalculateCost_OpenAIGPT54LongContextMarkerRequiresActualCostIncrease(t *testing.T) {
 	svc := newTestBillingServiceWithOpenAILadderCatalog(t)
 
-	cost, err := svc.calculateCostWithServiceTierPolicy(
+	cost, err := svc.CalculateCost(
 		"gpt-5.4-2026-03-05",
 		UsageTokens{InputTokens: 300000},
 		0,
-		"",
-		true,
 	)
 
 	require.NoError(t, err)
@@ -1501,7 +1499,7 @@ func TestCalculateCost_LargeTokenCount(t *testing.T) {
 func TestServiceTierCostMultiplier(t *testing.T) {
 	require.InDelta(t, 2.0, serviceTierCostMultiplier("priority"), 1e-12)
 	require.InDelta(t, 2.0, serviceTierCostMultiplier(" Priority "), 1e-12)
-	require.InDelta(t, 2.0, serviceTierCostMultiplier("ultrafast"), 1e-12)
+	require.InDelta(t, 8.0, serviceTierCostMultiplier("ultrafast"), 1e-12)
 	require.InDelta(t, 0.5, serviceTierCostMultiplier("flex"), 1e-12)
 	require.InDelta(t, 1.0, serviceTierCostMultiplier(""), 1e-12)
 	require.InDelta(t, 1.0, serviceTierCostMultiplier("default"), 1e-12)
@@ -1517,10 +1515,10 @@ func TestCalculateCostWithServiceTier_OpenAIPriorityUsesPriorityPricing(t *testi
 	priorityCost, err := svc.CalculateCostWithServiceTier("gpt-5.1-codex", tokens, 1.0, "priority")
 	require.NoError(t, err)
 
-	require.InDelta(t, baseCost.InputCost*2, priorityCost.InputCost, 1e-10)
-	require.InDelta(t, baseCost.OutputCost*2, priorityCost.OutputCost, 1e-10)
-	require.InDelta(t, baseCost.CacheReadCost*2, priorityCost.CacheReadCost, 1e-10)
-	require.InDelta(t, baseCost.TotalCost*2, priorityCost.TotalCost, 1e-10)
+	require.InDelta(t, baseCost.InputCost*2.5, priorityCost.InputCost, 1e-10)
+	require.InDelta(t, baseCost.OutputCost*2.5, priorityCost.OutputCost, 1e-10)
+	require.InDelta(t, baseCost.CacheReadCost*2.5, priorityCost.CacheReadCost, 1e-10)
+	require.InDelta(t, baseCost.TotalCost*2.5, priorityCost.TotalCost, 1e-10)
 }
 
 func TestCalculateCostWithServiceTier_FlexAppliesHalfMultiplier(t *testing.T) {
@@ -1550,11 +1548,11 @@ func TestCalculateCostWithServiceTier_Gpt54MiniPriorityFallsBackToTierMultiplier
 	priorityCost, err := svc.CalculateCostWithServiceTier("gpt-5.4-mini", tokens, 1.0, "priority")
 	require.NoError(t, err)
 
-	require.InDelta(t, baseCost.InputCost*2, priorityCost.InputCost, 1e-10)
-	require.InDelta(t, baseCost.OutputCost*2, priorityCost.OutputCost, 1e-10)
-	require.InDelta(t, baseCost.CacheCreationCost*2, priorityCost.CacheCreationCost, 1e-10)
-	require.InDelta(t, baseCost.CacheReadCost*2, priorityCost.CacheReadCost, 1e-10)
-	require.InDelta(t, baseCost.TotalCost*2, priorityCost.TotalCost, 1e-10)
+	require.InDelta(t, baseCost.InputCost*2.5, priorityCost.InputCost, 1e-10)
+	require.InDelta(t, baseCost.OutputCost*2.5, priorityCost.OutputCost, 1e-10)
+	require.InDelta(t, baseCost.CacheCreationCost*2.5, priorityCost.CacheCreationCost, 1e-10)
+	require.InDelta(t, baseCost.CacheReadCost*2.5, priorityCost.CacheReadCost, 1e-10)
+	require.InDelta(t, baseCost.TotalCost*2.5, priorityCost.TotalCost, 1e-10)
 }
 
 func TestCalculateCostWithServiceTier_Gpt54NanoFlexAppliesHalfMultiplier(t *testing.T) {
@@ -1613,11 +1611,11 @@ func TestBillingServiceGetModelPricing_UsesDynamicPriorityFields(t *testing.T) {
 	pricing, err := svc.GetModelPricing("gpt-5.4")
 	require.NoError(t, err)
 	require.InDelta(t, 2.5e-6, pricing.InputPricePerToken, 1e-12)
-	require.InDelta(t, 5e-6, pricing.InputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 6.25e-6, pricing.InputPricePerTokenPriority, 1e-12)
 	require.InDelta(t, 15e-6, pricing.OutputPricePerToken, 1e-12)
-	require.InDelta(t, 30e-6, pricing.OutputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 37.5e-6, pricing.OutputPricePerTokenPriority, 1e-12)
 	require.InDelta(t, 0.25e-6, pricing.CacheReadPricePerToken, 1e-12)
-	require.InDelta(t, 0.5e-6, pricing.CacheReadPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 0.625e-6, pricing.CacheReadPricePerTokenPriority, 1e-12)
 	require.Equal(t, 272000, pricing.LongContextInputThreshold)
 	require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
 	require.InDelta(t, 1.5, pricing.LongContextOutputMultiplier, 1e-12)
@@ -1630,14 +1628,14 @@ func TestBillingServiceGetModelPricing_OpenAIFallbackGpt52Variants(t *testing.T)
 	require.NoError(t, err)
 	require.NotNil(t, gpt52)
 	require.InDelta(t, 1.75e-6, gpt52.InputPricePerToken, 1e-12)
-	require.InDelta(t, 3.5e-6, gpt52.InputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 1.75e-6*2.5, gpt52.InputPricePerTokenPriority, 1e-12)
 
 	gpt52Codex, err := svc.GetModelPricing("gpt-5.2-codex")
 	require.NoError(t, err)
 	require.NotNil(t, gpt52Codex)
 	require.InDelta(t, 1.75e-6, gpt52Codex.InputPricePerToken, 1e-12)
-	require.InDelta(t, 3.5e-6, gpt52Codex.InputPricePerTokenPriority, 1e-12)
-	require.InDelta(t, 28e-6, gpt52Codex.OutputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 1.75e-6*2.5, gpt52Codex.InputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 14e-6*2.5, gpt52Codex.OutputPricePerTokenPriority, 1e-12)
 }
 
 func TestCalculateCostWithServiceTier_PriorityFallsBackToTierMultiplierWhenExplicitPriceMissing(t *testing.T) {
@@ -1672,16 +1670,16 @@ func TestGetModelPricing_OpenAIGpt52FallbacksExposePriorityPrices(t *testing.T) 
 	gpt52, err := svc.GetModelPricing("gpt-5.2")
 	require.NoError(t, err)
 	require.InDelta(t, 1.75e-6, gpt52.InputPricePerToken, 1e-12)
-	require.InDelta(t, 3.5e-6, gpt52.InputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 1.75e-6*2.5, gpt52.InputPricePerTokenPriority, 1e-12)
 	require.InDelta(t, 14e-6, gpt52.OutputPricePerToken, 1e-12)
-	require.InDelta(t, 28e-6, gpt52.OutputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 14e-6*2.5, gpt52.OutputPricePerTokenPriority, 1e-12)
 
 	gpt52Codex, err := svc.GetModelPricing("gpt-5.2-codex")
 	require.NoError(t, err)
 	require.InDelta(t, 1.75e-6, gpt52Codex.InputPricePerToken, 1e-12)
-	require.InDelta(t, 3.5e-6, gpt52Codex.InputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 1.75e-6*2.5, gpt52Codex.InputPricePerTokenPriority, 1e-12)
 	require.InDelta(t, 14e-6, gpt52Codex.OutputPricePerToken, 1e-12)
-	require.InDelta(t, 28e-6, gpt52Codex.OutputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 14e-6*2.5, gpt52Codex.OutputPricePerTokenPriority, 1e-12)
 }
 
 func TestGetModelPricing_MapsDynamicPriorityFieldsIntoBillingPricing(t *testing.T) {
@@ -1871,9 +1869,9 @@ func TestGetModelPricingWithChannel_PreservesCatalogPriorityRatio(t *testing.T) 
 	require.NoError(t, err)
 
 	require.InDelta(t, 4e-6, pricing.InputPricePerToken, 1e-12)
-	require.InDelta(t, 8e-6, pricing.InputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 4e-6*2.5, pricing.InputPricePerTokenPriority, 1e-12)
 	require.InDelta(t, 30e-6, pricing.OutputPricePerToken, 1e-12)
-	require.InDelta(t, 60e-6, pricing.OutputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 30e-6*2.5, pricing.OutputPricePerTokenPriority, 1e-12)
 }
 
 func TestGetModelPricingWithChannel_UnknownModelReturnsError(t *testing.T) {
@@ -2002,7 +2000,7 @@ func TestNewModelPricingCatalogFallbackAndContext(t *testing.T) {
 		} {
 			t.Run(source+"/"+tc.model, func(t *testing.T) {
 				for _, n := range []int{271999, 272000, 272001} {
-					for tier, mult := range map[string]float64{"": 1, "priority": 2, "fast": 2, "flex": 0.5} {
+					for tier, mult := range map[string]float64{"": 1, "priority": 2.5, "fast": 2.5, "flex": 0.5, "ultrafast": 8} {
 						tokens := UsageTokens{InputTokens: n - 3000, CacheReadTokens: 2000, CacheCreationTokens: 1000, OutputTokens: 500}
 						cost, err := svc.CalculateCostWithServiceTier(tc.model, tokens, 1, tier)
 						require.NoError(t, err)
@@ -2132,7 +2130,7 @@ func TestNewModelPricingAliasesRetainExplicitOverrides(t *testing.T) {
 	}
 }
 
-func TestAstraUltrafastPricingUsesSixTimesStandard(t *testing.T) {
+func TestAstraUltrafastPricingUsesEightTimesStandard(t *testing.T) {
 	data, err := os.ReadFile("../../resources/model-pricing/model_prices_and_context_window.json")
 	require.NoError(t, err)
 	catalog := &PricingService{}
@@ -2148,10 +2146,10 @@ func TestAstraUltrafastPricingUsesSixTimesStandard(t *testing.T) {
 				if n > 272000 {
 					im, om = 2, 1.5
 				}
-				require.InDelta(t, float64(n-3000)*60e-6*im, cost.InputCost, 1e-10)
-				require.InDelta(t, 2000*6e-6*im, cost.CacheReadCost, 1e-10)
-				require.InDelta(t, 1000*75e-6*im, cost.CacheCreationCost, 1e-10)
-				require.InDelta(t, 500*300e-6*om, cost.OutputCost, 1e-10)
+				require.InDelta(t, float64(n-3000)*80e-6*im, cost.InputCost, 1e-10)
+				require.InDelta(t, 2000*8e-6*im, cost.CacheReadCost, 1e-10)
+				require.InDelta(t, 1000*100e-6*im, cost.CacheCreationCost, 1e-10)
+				require.InDelta(t, 500*400e-6*om, cost.OutputCost, 1e-10)
 			}
 		}
 	}
@@ -2160,14 +2158,14 @@ func TestAstraUltrafastPricingUsesSixTimesStandard(t *testing.T) {
 		fast := 3.0
 		p, err := svc.GetModelPricingWithChannel("gpt-6-astra", &ChannelModelPricing{InputPrice: &custom, OutputPrice: &custom, CacheWritePrice: &custom, CacheReadPrice: &custom, FastMultiplier: &fast})
 		require.NoError(t, err)
-		require.Equal(t, 6.0, configuredServiceTierMultiplier("ultrafast", p))
+		require.Equal(t, 8.0, configuredServiceTierMultiplier("ultrafast", p))
 		require.Equal(t, 3.0, configuredServiceTierMultiplier("priority", p))
 		cost := svc.computeTokenBreakdown(p, UsageTokens{InputTokens: 1000, OutputTokens: 1000, CacheReadTokens: 1000, CacheCreationTokens: 1000}, 1, "ultrafast", false)
-		require.InDelta(t, custom*24000, cost.TotalCost, 1e-10)
+		require.InDelta(t, custom*32000, cost.TotalCost, 1e-10)
 	}
 	p, err := svc.GetModelPricing("gpt-6-sol")
 	require.NoError(t, err)
-	require.Equal(t, 2.0, configuredServiceTierMultiplier("ultrafast", p))
+	require.Equal(t, 8.0, configuredServiceTierMultiplier("ultrafast", p))
 }
 
 func TestGPT61SolExplicitZeroCacheWriteAcrossTiers(t *testing.T) {

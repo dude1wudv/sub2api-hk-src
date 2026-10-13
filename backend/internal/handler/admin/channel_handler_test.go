@@ -455,6 +455,7 @@ func TestPricingRequestToService_MultipliersGatedByFlag(t *testing.T) {
 		Models:                     []string{"gpt-5"},
 		BillingMode:                "token",
 		FastMultiplier:             float64Ptr(2.5),
+		UltrafastMultiplier:        float64Ptr(6),
 		FlexMultiplier:             float64Ptr(0.5),
 		ReasoningEffortMultipliers: map[string]float64{"high": 1.5, "max": 3},
 		Intervals: []pricingIntervalRequest{{
@@ -468,6 +469,8 @@ func TestPricingRequestToService_MultipliersGatedByFlag(t *testing.T) {
 
 	allowed := pricingRequestToService([]channelModelPricingRequest{req}, true)
 	require.Equal(t, float64Ptr(2.5), allowed[0].FastMultiplier)
+	require.Equal(t, float64Ptr(6), allowed[0].UltrafastMultiplier)
+	require.Equal(t, float64Ptr(6), pricingToResponse(&allowed[0]).UltrafastMultiplier)
 	require.Equal(t, float64Ptr(0.5), allowed[0].FlexMultiplier)
 	require.Equal(t, req.ReasoningEffortMultipliers, allowed[0].ReasoningEffortMultipliers)
 	require.Equal(t, float64Ptr(2), allowed[0].Intervals[0].InputMultiplier)
@@ -477,6 +480,7 @@ func TestPricingRequestToService_MultipliersGatedByFlag(t *testing.T) {
 
 	dropped := pricingRequestToService([]channelModelPricingRequest{req}, false)
 	require.Nil(t, dropped[0].FastMultiplier)
+	require.Nil(t, dropped[0].UltrafastMultiplier)
 	require.Nil(t, dropped[0].FlexMultiplier)
 	require.Equal(t, req.ReasoningEffortMultipliers, dropped[0].ReasoningEffortMultipliers)
 	require.Nil(t, dropped[0].Intervals[0].InputMultiplier)

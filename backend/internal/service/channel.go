@@ -99,6 +99,7 @@ type ChannelModelPricing struct {
 	CacheWrite1hPrice          *float64            `json:"cache_write_1h_price"`
 	CacheReadPrice             *float64            `json:"cache_read_price"`
 	FastMultiplier             *float64            `json:"fast_multiplier"`
+	UltrafastMultiplier        *float64            `json:"ultrafast_multiplier"`
 	FlexMultiplier             *float64            `json:"flex_multiplier"`
 	ReasoningEffortMultipliers map[string]float64  `json:"reasoning_effort_multipliers,omitempty"`
 	ImageInputPrice            *float64            `json:"image_input_price"`
@@ -212,6 +213,10 @@ func (p *ChannelModelPricing) GetTierByLabel(label string) *PricingInterval {
 // Clone 返回 ChannelModelPricing 的拷贝（切片和映射独立，价格指针字段共享，调用方只读安全）
 func (p ChannelModelPricing) Clone() ChannelModelPricing {
 	cp := p
+	if p.UltrafastMultiplier != nil {
+		value := *p.UltrafastMultiplier
+		cp.UltrafastMultiplier = &value
+	}
 	cp.ReasoningEffortMultipliers = maps.Clone(p.ReasoningEffortMultipliers)
 	if p.Models != nil {
 		cp.Models = make([]string, len(p.Models))

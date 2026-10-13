@@ -3832,7 +3832,10 @@ func TestAstraUltrafastCatalogUsesAccountCapabilities(t *testing.T) {
 		want                     bool
 	}{
 		{AccountTypeAPIKey, "https://api.openai.com", "gpt-6-astra", true},
-		{AccountTypeAPIKey, "https://api.openai.com", "gpt-6.1-sol", false},
+		{AccountTypeAPIKey, "https://api.openai.com", "gpt-6.1-sol", true},
+		{AccountTypeAPIKey, "https://api.openai.com/v1", "gpt-6.1-sol-max", true},
+		{AccountTypeAPIKey, "https://proxy.example", "gpt-6.1-sol", false},
+		{AccountTypeOAuth, "https://chatgpt.com", "gpt-6.1-sol", false},
 		{AccountTypeAPIKey, "https://proxy.example", "gpt-6-astra", false},
 		{AccountTypeOAuth, "https://chatgpt.com", "gpt-6-astra", false},
 	} {
@@ -3858,6 +3861,39 @@ func TestGPT61SolAPIKeyCatalogUsesFullResponses(t *testing.T) {
 	require.NoError(t, json.Unmarshal(body, &catalog))
 	require.Equal(t, false, catalog.Models[0]["use_responses_lite"])
 	require.Equal(t, "low", catalog.Models[0]["default_reasoning_level"])
+}
+
+func TestGPT61SolOfficialAPIManifestCompletesUltrafast(t *testing.T) {
+	account := newCodexModelsAPIKeyTestAccount("https://api.openai.com/v1")
+	svc := &OpenAIGatewayService{}
+	for _, raw := range []string{
+		`{"models":[{"slug":"gpt-6.1-sol"}]}`,
+		`{"data":[{"id":"gpt-6.1-sol"}]}`,
+	} {
+		body := convertOpenAIModelListToCodexManifestForAccount([]byte(raw), account)
+		manifest := &OpenAIModelsResponse{Body: body}
+		require.NoError(t, svc.CompleteAPIKeyCodexModelsManifestForClient(manifest, account))
+		models := decodeCodexManifestModels(t, manifest.Body)
+		require.Len(t, models, 1)
+		tiers, err := json.Marshal(models[0]["service_tiers"])
+		require.NoError(t, err)
+		require.Contains(t, string(tiers), `"id":"ultrafast"`)
+		require.Contains(t, string(tiers), "8x Standard")
+	}
+	for _, tiers := range []string{`null`, `[]`, `[{"id":"priority"}]`} {
+		for _, raw := range []string{
+			`{"models":[{"slug":"gpt-6.1-sol","service_tiers":` + tiers + `}]}`,
+			`{"data":[{"id":"gpt-6.1-sol","service_tiers":` + tiers + `}]}`,
+		} {
+			body := convertOpenAIModelListToCodexManifestForAccount([]byte(raw), account)
+			manifest := &OpenAIModelsResponse{Body: body}
+			require.NoError(t, svc.CompleteAPIKeyCodexModelsManifestForClient(manifest, account))
+			models := decodeCodexManifestModels(t, manifest.Body)
+			encoded, err := json.Marshal(models[0]["service_tiers"])
+			require.NoError(t, err)
+			require.NotContains(t, string(encoded), "ultrafast", "explicit upstream tiers remain authoritative")
+		}
+	}
 }
 
 func TestGPT61SolAPIKeyCatalogContextWindow(t *testing.T) {

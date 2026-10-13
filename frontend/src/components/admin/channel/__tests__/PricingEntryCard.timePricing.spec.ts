@@ -22,6 +22,7 @@ function createEntry(billingMode: PricingFormEntry['billing_mode'] = 'token'): P
     cache_write_price: null,
     cache_read_price: null,
     fast_multiplier: null,
+    ultrafast_multiplier: null,
     flex_multiplier: null,
     reasoning_effort_multipliers: null,
     image_input_price: null,
@@ -80,16 +81,42 @@ describe('PricingEntryCard time pricing visibility', () => {
 })
 
 describe('PricingEntryCard request multipliers', () => {
-  it('shows Fast and Flex controls only when explicitly enabled', () => {
+  it('shows Fast, Ultra Fast, and Flex controls only when explicitly enabled', () => {
     const hidden = shallowMount(PricingEntryCard, { props: { entry: createEntry() } })
     expect(hidden.text()).not.toContain('admin.channels.form.fastMultiplier')
+    expect(hidden.find('[data-testid="ultrafast-multiplier"]').exists()).toBe(false)
 
     const shown = shallowMount(PricingEntryCard, {
       props: { entry: createEntry(), enableTierMultipliers: true },
     })
     expect(shown.text()).toContain('admin.channels.form.fastMultiplier')
+    expect(shown.text()).toContain('admin.channels.form.ultrafastMultiplier')
     expect(shown.text()).toContain('admin.channels.form.flexMultiplier')
     expect(shown.text()).toContain('admin.channels.form.reasoningEffortMultipliers')
+  })
+
+  it('edits and clears Ultra Fast independently and shows OpenAI defaults', async () => {
+    const entry = { ...createEntry(), fast_multiplier: 3, flex_multiplier: 0.5 }
+    const wrapper = shallowMount(PricingEntryCard, {
+      props: { entry, platform: 'openai', enableTierMultipliers: true },
+    })
+    expect(wrapper.get('[data-testid="fast-multiplier"]').attributes('placeholder')).toBe('admin.channels.form.fastMultiplierDefault')
+    expect(wrapper.get('[data-testid="ultrafast-multiplier"]').attributes('placeholder')).toBe('admin.channels.form.ultrafastMultiplierDefault')
+    await wrapper.get('[data-testid="ultrafast-multiplier"]').setValue('9.5')
+    const updated = wrapper.emitted('update')!.at(-1)![0] as PricingFormEntry
+    expect(updated).toMatchObject({ fast_multiplier: 3, ultrafast_multiplier: '9.5', flex_multiplier: 0.5 })
+    expect(entry.ultrafast_multiplier).toBeNull()
+    await wrapper.setProps({ entry: updated })
+    await wrapper.get('[data-testid="ultrafast-multiplier"]').setValue('')
+    expect(wrapper.emitted('update')!.at(-1)![0]).toMatchObject({ fast_multiplier: 3, ultrafast_multiplier: null, flex_multiplier: 0.5 })
+  })
+
+  it('keeps the model-specific Anthropic Fast default instead of showing the OpenAI default', () => {
+    const wrapper = shallowMount(PricingEntryCard, {
+      props: { entry: createEntry(), platform: 'anthropic', enableTierMultipliers: true },
+    })
+    expect(wrapper.get('[data-testid="fast-multiplier"]').attributes('placeholder')).toBe('admin.channels.form.multiplierPlaceholder')
+    expect(wrapper.text()).not.toContain('admin.channels.form.openaiTierMultipliersHint')
   })
 
   it.each(['token', 'per_request', 'image', 'video'] as const)('supports every reasoning level for %s pricing and account statistics', billingMode => {

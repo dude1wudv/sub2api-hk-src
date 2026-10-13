@@ -114,7 +114,7 @@ func TestBillingServiceGPT6AstraUsesOfficialPricingAcrossTiersAndLongContext(t *
 		priceScale  float64
 	}{
 		{name: "standard", priceScale: 1},
-		{name: "fast", serviceTier: "priority", priceScale: 2},
+		{name: "fast", serviceTier: "priority", priceScale: 2.5},
 		{name: "flex", serviceTier: "flex", priceScale: 0.5},
 	}
 	for _, tier := range tiers {
@@ -143,13 +143,13 @@ func TestGPT6AstraDedicatedFallbacksUseOfficialRates(t *testing.T) {
 			pricing, err := tt.svc.GetModelPricing("gpt-6-astra")
 			require.NoError(t, err)
 			require.InDelta(t, 10e-6, pricing.InputPricePerToken, 1e-12)
-			require.InDelta(t, 20e-6, pricing.InputPricePerTokenPriority, 1e-12)
+			require.InDelta(t, 10e-6*2.5, pricing.InputPricePerTokenPriority, 1e-12)
 			require.InDelta(t, 50e-6, pricing.OutputPricePerToken, 1e-12)
-			require.InDelta(t, 100e-6, pricing.OutputPricePerTokenPriority, 1e-12)
+			require.InDelta(t, 50e-6*2.5, pricing.OutputPricePerTokenPriority, 1e-12)
 			require.InDelta(t, 12.5e-6, pricing.CacheCreationPricePerToken, 1e-12)
-			require.InDelta(t, 25e-6, pricing.CacheCreationPricePerTokenPriority, 1e-12)
+			require.InDelta(t, 12.5e-6*2.5, pricing.CacheCreationPricePerTokenPriority, 1e-12)
 			require.InDelta(t, 1e-6, pricing.CacheReadPricePerToken, 1e-12)
-			require.InDelta(t, 2e-6, pricing.CacheReadPricePerTokenPriority, 1e-12)
+			require.InDelta(t, 1e-6*2.5, pricing.CacheReadPricePerTokenPriority, 1e-12)
 			require.Equal(t, 272_000, pricing.LongContextInputThreshold)
 			require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
 			require.InDelta(t, 1.5, pricing.LongContextOutputMultiplier, 1e-12)
@@ -197,7 +197,7 @@ func TestBillingService_GPT56CacheWritePricingUsesOfficialMultiplier(t *testing.
 			pricing, err := svc.GetModelPricing(tt.model)
 			require.NoError(t, err)
 			require.InDelta(t, tt.input*1.25, pricing.CacheCreationPricePerToken, 1e-12)
-			require.InDelta(t, tt.inputPriority*1.25, pricing.CacheCreationPricePerTokenPriority, 1e-12)
+			require.InDelta(t, tt.input*2.5*1.25, pricing.CacheCreationPricePerTokenPriority, 1e-12)
 			// 阶梯由目录数据驱动：条目无 above/long_context 字段时不再由策略强补。
 			require.Zero(t, pricing.LongContextInputThreshold)
 
@@ -208,7 +208,7 @@ func TestBillingService_GPT56CacheWritePricingUsesOfficialMultiplier(t *testing.
 
 			priority, err := svc.CalculateCostWithServiceTier(tt.model, tokens, 1, "priority")
 			require.NoError(t, err)
-			require.InDelta(t, 200*tt.inputPriority*1.25, priority.CacheCreationCost, 1e-12)
+			require.InDelta(t, 200*tt.input*2.5*1.25, priority.CacheCreationCost, 1e-12)
 
 			flex, err := svc.CalculateCostWithServiceTier(tt.model, tokens, 1, "flex")
 			require.NoError(t, err)
@@ -258,7 +258,7 @@ func TestBillingService_GPT56UsesLongContextPricingAcrossModelsAndTiers(t *testi
 		priceScale float64
 	}{
 		{name: "standard", priceScale: 1},
-		{name: "priority", priceScale: 2},
+		{name: "priority", priceScale: 2.5},
 		{name: "flex", priceScale: 0.5},
 	}
 	tokens := UsageTokens{
@@ -351,10 +351,10 @@ func TestDefaultPricingIncludesOfficialGPT56Rates(t *testing.T) {
 			require.InDelta(t, tt.cached, pricing.CacheReadPricePerToken, 1e-12)
 			require.InDelta(t, tt.cacheWrite, pricing.CacheCreationPricePerToken, 1e-12)
 			require.InDelta(t, tt.output, pricing.OutputPricePerToken, 1e-12)
-			require.InDelta(t, tt.inputPriority, pricing.InputPricePerTokenPriority, 1e-12)
-			require.InDelta(t, tt.cachedPriority, pricing.CacheReadPricePerTokenPriority, 1e-12)
-			require.InDelta(t, tt.cacheWritePriority, pricing.CacheCreationPricePerTokenPriority, 1e-12)
-			require.InDelta(t, tt.outputPriority, pricing.OutputPricePerTokenPriority, 1e-12)
+			require.InDelta(t, tt.input*2.5, pricing.InputPricePerTokenPriority, 1e-12)
+			require.InDelta(t, tt.cached*2.5, pricing.CacheReadPricePerTokenPriority, 1e-12)
+			require.InDelta(t, tt.cacheWrite*2.5, pricing.CacheCreationPricePerTokenPriority, 1e-12)
+			require.InDelta(t, tt.output*2.5, pricing.OutputPricePerTokenPriority, 1e-12)
 			require.Equal(t, 272000, pricing.LongContextInputThreshold)
 			require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
 			require.InDelta(t, 1.5, pricing.LongContextOutputMultiplier, 1e-12)

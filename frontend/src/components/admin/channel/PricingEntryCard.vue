@@ -144,18 +144,29 @@
             </div>
           </div>
 
-          <div v-if="enableTierMultipliers" class="mt-3 grid max-w-md grid-cols-1 gap-2 sm:grid-cols-2">
+          <div v-if="enableTierMultipliers" class="mt-3 grid max-w-xl grid-cols-1 gap-2 sm:grid-cols-3">
             <div>
               <label class="text-xs text-gray-400">{{ t('admin.channels.form.fastMultiplier') }}</label>
               <input :value="entry.fast_multiplier" @input="emitField('fast_multiplier', ($event.target as HTMLInputElement).value)"
-                type="number" step="any" min="0.000001" class="input mt-0.5 text-sm" :placeholder="t('admin.channels.form.multiplierPlaceholder')" />
+                data-testid="fast-multiplier" :aria-label="t('admin.channels.form.fastMultiplier')"
+                type="number" step="any" min="0.000001" class="input mt-0.5 text-sm" :placeholder="t(platform === 'openai' || platform === 'composite' ? 'admin.channels.form.fastMultiplierDefault' : 'admin.channels.form.multiplierPlaceholder')" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-400">{{ t('admin.channels.form.ultrafastMultiplier') }}</label>
+              <input :value="entry.ultrafast_multiplier" @input="emitField('ultrafast_multiplier', ($event.target as HTMLInputElement).value)"
+                data-testid="ultrafast-multiplier" :aria-label="t('admin.channels.form.ultrafastMultiplier')"
+                type="number" step="any" min="0.000001" class="input mt-0.5 text-sm" :placeholder="t('admin.channels.form.ultrafastMultiplierDefault')" />
             </div>
             <div>
               <label class="text-xs text-gray-400">{{ t('admin.channels.form.flexMultiplier') }}</label>
               <input :value="entry.flex_multiplier" @input="emitField('flex_multiplier', ($event.target as HTMLInputElement).value)"
+                data-testid="flex-multiplier" :aria-label="t('admin.channels.form.flexMultiplier')"
                 type="number" step="any" min="0.000001" class="input mt-0.5 text-sm" :placeholder="t('admin.channels.form.multiplierPlaceholder')" />
             </div>
           </div>
+          <p v-if="enableTierMultipliers && (platform === 'openai' || platform === 'composite')" class="mt-1 text-xs text-gray-400">
+            {{ t('admin.channels.form.openaiTierMultipliersHint') }}
+          </p>
 
           <!-- Channel token intervals; the group long-context toggle controls whether tiers apply. -->
           <div v-if="!hideTokenIntervals" class="mt-3">

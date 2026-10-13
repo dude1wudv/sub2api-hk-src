@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import AccountUsageCell from '../AccountUsageCell.vue'
 import type { Account } from '@/types'
 
@@ -1823,6 +1823,7 @@ describe('AccountUsageCell', () => {
   })
 
   it('Gemini 官方 API Key 保留 AI Studio 等级与模拟配额', async () => {
+    const existingDialogs = new Set(document.querySelectorAll('[role="dialog"]'))
     getUsage.mockResolvedValue({
       gemini_pro_daily: {
         utilization: 20,
@@ -1832,6 +1833,7 @@ describe('AccountUsageCell', () => {
     })
 
     const wrapper = mount(AccountUsageCell, {
+      attachTo: document.body,
       props: {
         account: makeAccount({
           id: 4003,
@@ -1853,13 +1855,28 @@ describe('AccountUsageCell', () => {
       }
     })
 
-    await flushPromises()
-
-    const text = wrapper.text()
-    expect(text).toContain('ai studio paid')
-    expect(text).toContain('admin.accounts.gemini.quotaPolicy.title')
-    expect(text).toContain('admin.accounts.gemini.quotaPolicy.simulatedNote')
-    expect(getUsage).toHaveBeenCalledWith(4003)
+    try {
+      await flushPromises()
+      expect(wrapper.text()).toContain('ai studio paid')
+      expect(wrapper.text()).toContain('admin.accounts.gemini.quotaPolicy.simulatedNote')
+      const trigger = wrapper.get('button[aria-label="admin.accounts.gemini.quotaPolicy.title"]')
+      const tooltipElement = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).find(element =>
+        !existingDialogs.has(element) && element.id === trigger.attributes('aria-controls')
+      )!
+      expect(tooltipElement).toBeDefined()
+      expect(wrapper.element.contains(tooltipElement)).toBe(false)
+      const tooltip = new DOMWrapper(tooltipElement)
+      expect(tooltip.isVisible()).toBe(false)
+      await trigger.trigger('click')
+      await flushPromises()
+      expect(trigger.attributes('aria-expanded')).toBe('true')
+      expect(tooltip.isVisible()).toBe(true)
+      expect(tooltip.text()).toContain('admin.accounts.gemini.quotaPolicy.title')
+      expect(tooltip.text()).toContain('admin.accounts.gemini.quotaPolicy.note')
+      expect(getUsage).toHaveBeenCalledWith(4003)
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('Anthropic OAuth 会渲染 7d F (Fable) 进度条，且 7d S 逻辑保留', async () => {

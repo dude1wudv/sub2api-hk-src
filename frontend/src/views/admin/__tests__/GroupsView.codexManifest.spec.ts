@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AdminGroup, CodexModelsManifestConfig } from "@/types";
 import GroupsView from "@/views/admin/hk/GroupsView.vue";
+import PricingEntryCard from "@/components/admin/channel/PricingEntryCard.vue";
 let pinia: Pinia;
 
 const {
@@ -13,25 +14,29 @@ const {
   getUsageSummary,
   getCapacitySummary,
   getLiveCapability,
+  createGroup,
+  updateGroup,
 } = vi.hoisted(() => ({
   listGroups: vi.fn(),
   getModelAllowlistCandidates: vi.fn(),
   getUsageSummary: vi.fn(),
   getCapacitySummary: vi.fn(),
   getLiveCapability: vi.fn(),
+  createGroup: vi.fn(),
+  updateGroup: vi.fn(),
 }));
 
 vi.mock("@/api/admin", () => ({
   adminAPI: {
     groups: {
       list: listGroups,
-      getAll: vi.fn(),
+      getAll: vi.fn().mockResolvedValue([]),
       getModelAllowlistCandidates,
       getUsageSummary,
       getCapacitySummary,
       getLiveCapability,
-      create: vi.fn(),
-      update: vi.fn(),
+      create: createGroup,
+      update: updateGroup,
       delete: vi.fn(),
       duplicate: vi.fn(),
       updateSortOrder: vi.fn(),
@@ -81,6 +86,8 @@ const sourceGroup = {
   long_context_pricing_enabled: true,
   force_openai_fast: false,
   free_openai_fast: false,
+  force_openai_ultrafast: false,
+  free_openai_ultrafast: false,
   model_pricing: [],
   profit_control_enabled: false,
   profit_min_margin: 0,
@@ -221,7 +228,6 @@ const mountView = () =>
         GroupCapacityBadge: true,
         GroupRateMultipliersModal: true,
         GroupRPMOverridesModal: true,
-        ReasoningEffortPolicyFields: true,
         CodexManifestAccountsField: CodexManifestAccountsFieldStub,
         PricingEntryCard: true,
         VueDraggable: true,
@@ -229,7 +235,7 @@ const mountView = () =>
     },
   });
 
-describe("GroupsView Codex manifest binding", () => {
+describe("GroupsView Codex manifest and OpenAI tier forms", () => {
   beforeEach(() => {
     pinia = createPinia();
     setActivePinia(pinia);
@@ -239,6 +245,8 @@ describe("GroupsView Codex manifest binding", () => {
     getUsageSummary.mockReset();
     getCapacitySummary.mockReset();
     getLiveCapability.mockReset();
+    createGroup.mockReset().mockResolvedValue(sourceGroup);
+    updateGroup.mockReset().mockResolvedValue(sourceGroup);
 
     listGroups.mockResolvedValue({
       items: [sourceGroup],
@@ -286,6 +294,115 @@ describe("GroupsView Codex manifest binding", () => {
       }),
     );
 
+    wrapper.unmount();
+  });
+
+  async function openCreate(wrapper: ReturnType<typeof mountView>, platform: string) {
+    await flushPromises();
+    await wrapper.findAll('button').find(button => button.text() === 'admin.groups.createGroup')!.trigger('click');
+    await flushPromises();
+    const select = wrapper.getComponent('[data-tour="group-form-platform"]');
+    select.vm.$emit('update:modelValue', platform);
+    await flushPromises();
+    expect(select.props('modelValue')).toBe(platform);
+    await wrapper.get('#create-group-form input[type="text"]').setValue('Speed group');
+    await wrapper.get('#create-group-form-advanced-tab').trigger('click');
+    return select;
+  }
+
+  it.each(['openai', 'composite'])('creates %s groups with independent Fast and Ultra Fast settings', async platform => {
+    const wrapper = mountView();
+    await openCreate(wrapper, platform);
+    for (const setting of ['force-openai-fast', 'free-openai-fast', 'force-openai-ultrafast', 'free-openai-ultrafast']) {
+      expect(wrapper.get(`[data-testid="create-${setting}"]`).attributes('aria-checked')).toBe('false');
+    }
+    await wrapper.get('[data-testid="create-force-openai-fast"]').trigger('click');
+    await wrapper.get('[data-testid="create-force-openai-ultrafast"]').trigger('click');
+    await wrapper.get('[data-testid="create-free-openai-ultrafast"]').trigger('click');
+    expect(wrapper.get('[data-testid="create-free-openai-fast"]').attributes('aria-checked')).toBe('false');
+    await wrapper.get('#create-group-form').trigger('submit');
+    await flushPromises();
+    expect(createGroup).toHaveBeenCalledWith(expect.objectContaining({
+      platform, force_openai_fast: true, free_openai_fast: false,
+      force_openai_ultrafast: true, free_openai_ultrafast: true,
+    }));
+    await openCreate(wrapper, platform);
+    expect(wrapper.get('[data-testid="create-force-openai-ultrafast"]').attributes('aria-checked')).toBe('false');
+    expect(wrapper.get('[data-testid="create-free-openai-ultrafast"]').attributes('aria-checked')).toBe('false');
+    wrapper.unmount();
+  });
+
+  it('hides and clears stale Ultra Fast settings when changing to an unsupported platform', async () => {
+    const wrapper = mountView();
+    const select = await openCreate(wrapper, 'openai');
+    await wrapper.get('[data-testid="create-force-openai-ultrafast"]').trigger('click');
+    await wrapper.get('[data-testid="create-free-openai-ultrafast"]').trigger('click');
+    await wrapper.get('#create-group-form-basic-tab').trigger('click');
+    select.vm.$emit('update:modelValue', 'anthropic');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="create-force-openai-ultrafast"]').exists()).toBe(false);
+    await wrapper.get('#create-group-form').trigger('submit');
+    await flushPromises();
+    expect(createGroup).toHaveBeenCalledWith(expect.objectContaining({
+      platform: 'anthropic', force_openai_fast: false, free_openai_fast: false,
+      force_openai_ultrafast: false, free_openai_ultrafast: false,
+    }));
+    wrapper.unmount();
+  });
+
+  async function openPricedGroup() {
+    listGroups.mockResolvedValue({ items: [{ ...sourceGroup,
+      force_openai_ultrafast: true, free_openai_ultrafast: true,
+      model_pricing: [{ platform: 'openai', models: ['gpt-5.5'], billing_mode: 'token',
+        input_price: 3e-6, output_price: 15e-6, cache_write_price: null, cache_read_price: null,
+        fast_multiplier: 3, ultrafast_multiplier: 9, flex_multiplier: 0.5,
+        image_input_price: null, image_output_price: null, per_request_price: null,
+        intervals: [], time_pricing: null }],
+    }], total: 1, page: 1, page_size: 20, pages: 1 });
+    const wrapper = mountView();
+    await flushPromises();
+    await wrapper.findAll('button').find(button => button.text().includes('common.edit'))!.trigger('click');
+    await flushPromises();
+    await wrapper.get('#edit-group-form-advanced-tab').trigger('click');
+    return wrapper;
+  }
+
+  it('loads group tier overrides and saves edited Ultra Fast pricing without dropping Fast or Flex', async () => {
+    const wrapper = await openPricedGroup();
+    expect(wrapper.get('[data-testid="edit-force-openai-ultrafast"]').attributes('aria-checked')).toBe('true');
+    expect(wrapper.get('[data-testid="edit-free-openai-ultrafast"]').attributes('aria-checked')).toBe('true');
+    expect(wrapper.get('[data-testid="edit-free-openai-fast"]').attributes('aria-checked')).toBe('false');
+    await wrapper.get('#edit-group-form-billing-tab').trigger('click');
+    const card = wrapper.getComponent(PricingEntryCard);
+    expect(card.props('enableTierMultipliers')).toBe(true);
+    expect(card.props('entry')).toMatchObject({ input_price: 3, fast_multiplier: 3, ultrafast_multiplier: 9, flex_multiplier: 0.5 });
+    card.vm.$emit('update', { ...card.props('entry'), ultrafast_multiplier: '10' });
+    await wrapper.get('#edit-group-form-advanced-tab').trigger('click');
+    await wrapper.get('[data-testid="edit-free-openai-ultrafast"]').trigger('click');
+    await wrapper.get('#edit-group-form').trigger('submit');
+    await flushPromises();
+    expect(updateGroup).toHaveBeenCalledWith(42, expect.objectContaining({
+      force_openai_ultrafast: true, free_openai_ultrafast: false, free_openai_fast: false,
+      model_pricing: [expect.objectContaining({ input_price: 3e-6, fast_multiplier: 3, ultrafast_multiplier: 10, flex_multiplier: 0.5 })],
+    }));
+    wrapper.unmount();
+  });
+
+  it('rejects an invalid group Ultra Fast multiplier and clears an override to the default', async () => {
+    const wrapper = await openPricedGroup();
+    await wrapper.get('#edit-group-form-billing-tab').trigger('click');
+    const card = wrapper.getComponent(PricingEntryCard);
+    card.vm.$emit('update', { ...card.props('entry'), ultrafast_multiplier: '0' });
+    await flushPromises();
+    await wrapper.get('#edit-group-form').trigger('submit');
+    expect(updateGroup).not.toHaveBeenCalled();
+    card.vm.$emit('update', { ...card.props('entry'), ultrafast_multiplier: '' });
+    await flushPromises();
+    await wrapper.get('#edit-group-form').trigger('submit');
+    await flushPromises();
+    expect(updateGroup).toHaveBeenCalledWith(42, expect.objectContaining({
+      model_pricing: [expect.objectContaining({ fast_multiplier: 3, ultrafast_multiplier: null, flex_multiplier: 0.5 })],
+    }));
     wrapper.unmount();
   });
 });

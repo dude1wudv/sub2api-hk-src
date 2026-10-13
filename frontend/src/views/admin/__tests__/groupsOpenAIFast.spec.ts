@@ -36,5 +36,17 @@ describe("groupsOpenAIFast", () => {
       free: expect.any(String),
       freeHint: expect.stringContaining("Standard"),
     });
+    for (const locale of [zh, en]) {
+      expect(locale.groups.openaiFast.hint).toContain('2.5');
+      expect(locale.groups.openaiUltraFast).toMatchObject({
+        title: expect.any(String), force: expect.any(String), free: expect.any(String),
+        hint: expect.stringContaining('service_tier=ultrafast'),
+        freeHint: expect.stringContaining('Standard'),
+      });
+      expect(locale.groups.openaiUltraFast.hint).toContain('8');
+      expect(locale.groups.openaiUltraFast.hint).toContain('WebSocket');
+    }
+    expect(zh.groups.openaiFast.hint).toContain('优先于全局');
+    expect(en.groups.openaiFast.hint).toContain('precedence over the global');
   });
 });

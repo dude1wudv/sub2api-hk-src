@@ -96,8 +96,10 @@ type BillingCache interface {
 
 // ModelPricing 模型价格配置（per-token价格，与LiteLLM格式一致）
 type ModelPricing struct {
-	// UltrafastMultiplier is model-owned and independent of operator Fast pricing.
+	// UltrafastMultiplier is independent of Fast pricing; zero uses the 8x default.
 	UltrafastMultiplier                float64
+	defaultFastMultiplier              float64
+	pricingPlatform                    string
 	InputPricePerToken                 float64            // 每token输入价格 (USD)
 	InputPricePerTokenPriority         float64            // priority service tier 下每token输入价格 (USD)
 	ImageInputPricePerToken            float64            // 图片输入 token 价格 (USD)，用于多模态 embedding 等图文不同价场景；为 0 时回退到 InputPricePerToken
@@ -135,7 +137,7 @@ func usePriorityServiceTierPricing(serviceTier string, pricing *ModelPricing) bo
 	if tier != "priority" && tier != "fast" {
 		return false
 	}
-	if pricing.FastMultiplier != nil {
+	if pricing.FastMultiplier != nil || pricing.defaultFastMultiplier > 0 {
 		return false
 	}
 	return pricing.InputPricePerTokenPriority > 0 || pricing.OutputPricePerTokenPriority > 0 ||
@@ -144,8 +146,10 @@ func usePriorityServiceTierPricing(serviceTier string, pricing *ModelPricing) bo
 
 func serviceTierCostMultiplier(serviceTier string) float64 {
 	switch normalizeBillingServiceTier(serviceTier) {
-	case "priority", "fast", OpenAIFastTierUltrafast:
+	case "priority", "fast":
 		return 2.0
+	case OpenAIFastTierUltrafast:
+		return 8.0
 	case "flex":
 		return 0.5
 	default:
@@ -162,6 +166,9 @@ func configuredServiceTierMultiplier(serviceTier string, pricing *ModelPricing) 
 		case "priority", "fast":
 			if pricing.FastMultiplier != nil {
 				return *pricing.FastMultiplier
+			}
+			if pricing.defaultFastMultiplier > 0 {
+				return pricing.defaultFastMultiplier
 			}
 		case "flex":
 			if pricing.FlexMultiplier != nil {
@@ -1374,7 +1381,8 @@ func (s *BillingService) getModelPricingAt(model string, pricingAt time.Time) (*
 			price5m := litellmPricing.CacheCreationInputTokenCost
 			price1h := litellmPricing.CacheCreationInputTokenCostAbove1hr
 			enableBreakdown := price1h > 0 && price1h > price5m
-			return s.applyModelSpecificPricingPolicyEx(model, &ModelPricing{
+			pricing := &ModelPricing{
+				pricingPlatform:                    litellmPricing.LiteLLMProvider,
 				InputPricePerToken:                 litellmPricing.InputCostPerToken,
 				InputPricePerTokenPriority:         litellmPricing.InputCostPerTokenPriority,
 				OutputPricePerToken:                litellmPricing.OutputCostPerToken,
@@ -1395,7 +1403,11 @@ func (s *BillingService) getModelPricingAt(model string, pricingAt time.Time) (*
 				ImageInputPricePerToken:       litellmPricing.InputCostPerImageToken,
 				ImageCacheReadPricePerToken:   litellmPricing.CacheReadInputImageTokenCost,
 				ImageOutputPricePerToken:      litellmPricing.OutputCostPerImageToken,
-			}, true, pricingAt), nil
+			}
+			if strings.EqualFold(litellmPricing.LiteLLMProvider, PlatformOpenAI) || strings.EqualFold(litellmPricing.LiteLLMProvider, "azure") {
+				pricing.defaultFastMultiplier = 2.5
+			}
+			return s.applyModelSpecificPricingPolicyEx(model, pricing, true, pricingAt), nil
 		}
 	}
 
@@ -1427,11 +1439,28 @@ func (s *BillingService) GetModelPricingWithChannel(model string, channelPricing
 	cloned := *pricing
 	pricing = &cloned
 	applyChannelTokenPriceOverrides(pricing, channelPricing)
-	pricing.FastMultiplier = channelPricing.FastMultiplier
-	pricing.FlexMultiplier = channelPricing.FlexMultiplier
+	applyChannelServiceTierOverrides(pricing, channelPricing)
 	pricing.ReasoningEffortMultipliers = maps.Clone(channelPricing.ReasoningEffortMultipliers)
 	applyChannelImagePriceOverrides(channelPricing, pricing)
 	return pricing, nil
+}
+
+func applyChannelServiceTierOverrides(pricing *ModelPricing, channelPricing *ChannelModelPricing) {
+	if pricing == nil || channelPricing == nil {
+		return
+	}
+	pricing.FastMultiplier = channelPricing.FastMultiplier
+	pricing.FlexMultiplier = channelPricing.FlexMultiplier
+	pricing.UltrafastMultiplier = 8
+	if channelPricing.UltrafastMultiplier != nil {
+		pricing.UltrafastMultiplier = *channelPricing.UltrafastMultiplier
+	}
+	if channelPricing.Platform == PlatformOpenAI && !pricingHasNonOpenAIIdentity(pricing) {
+		pricing.defaultFastMultiplier = 2.5
+	}
+	if pricing.pricingPlatform == "" && channelPricing.Platform != "" && channelPricing.Platform != PlatformComposite {
+		pricing.pricingPlatform = channelPricing.Platform
+	}
 }
 
 // channelTierOverridePrice applies a Standard-tier override while preserving
@@ -1487,6 +1516,7 @@ func applyChannelTokenPriceOverrides(pricing *ModelPricing, channelPricing *Chan
 type CostInput struct {
 	Ctx                       context.Context
 	Model                     string
+	Platform                  string // 实际计费账号平台；Composite/公开别名不能用于判断 OpenAI 档位默认倍率
 	GroupID                   *int64 // 用于渠道定价查找
 	Group                     *Group
 	Tokens                    UsageTokens
@@ -1517,6 +1547,7 @@ func (s *BillingService) CalculateCostUnified(input CostInput) (*CostBreakdown, 
 		if err != nil {
 			return nil, err
 		}
+		pricing = pricingForBillingPlatform(pricing, input.Platform)
 		breakdown := s.computeTokenBreakdown(pricing, input.Tokens, input.RateMultiplier, input.ServiceTier, applyLongContextBilling && !input.DisableModelLongContextPricing)
 		applyCostBreakdownMultiplier(breakdown, reasoningEffortBillingMultiplier(input.ReasoningEffort, pricing.ReasoningEffortMultipliers))
 		return breakdown, nil
@@ -1588,6 +1619,7 @@ func (s *BillingService) calculateTokenCost(resolved *ResolvedPricing, input Cos
 	// 默认价卡（Source=LiteLLM）应用 DeepSeek 官方价强制覆盖（幂等，GetModelPricing
 	// 内部已强制过）；分组/渠道自定义定价保留运营者配置，不强制覆盖官方价。
 	pricing = s.applyModelSpecificPricingPolicyEx(input.Model, pricing, resolved.Source == PricingSourceLiteLLM, pricingAt)
+	pricing = pricingForBillingPlatform(pricing, input.Platform)
 
 	// DeepSeek 模型默认价卡按官方峰谷口径调整：高峰时段（01:00–04:00 与
 	// 06:00–10:00 UTC，仅工作日；北京时间周末全天低谷）按 2× 低谷价计费。
@@ -1610,6 +1642,27 @@ func (s *BillingService) calculateTokenCost(resolved *ResolvedPricing, input Cos
 	applyCostBreakdownMultiplier(breakdown, resolvedChannelTimeMultiplier(resolved, input.PricingAt))
 	applyCostBreakdownMultiplier(breakdown, reasoningEffortBillingMultiplier(input.ReasoningEffort, pricing.ReasoningEffortMultipliers))
 	return breakdown, nil
+}
+
+// pricingForBillingPlatform uses the actual upstream account platform for aliases
+// that carry no model/provider identity. Clone so a Composite group's shared
+// price card cannot make a later Anthropic request inherit OpenAI defaults.
+func pricingForBillingPlatform(pricing *ModelPricing, platform string) *ModelPricing {
+	if pricing == nil || platform != PlatformOpenAI {
+		return pricing
+	}
+	// A concrete non-OpenAI provider/card retains its own tier pricing.
+	if pricingHasNonOpenAIIdentity(pricing) {
+		return pricing
+	}
+	cloned := *pricing
+	cloned.defaultFastMultiplier = 2.5
+	return &cloned
+}
+
+func pricingHasNonOpenAIIdentity(pricing *ModelPricing) bool {
+	platform := strings.ToLower(strings.TrimSpace(pricing.pricingPlatform))
+	return platform != "" && platform != PlatformOpenAI && platform != "azure"
 }
 
 // computeTokenBreakdown 是 token 计费的核心逻辑，由 calculateTokenCost 和 calculateCostInternal 共用。
@@ -1815,16 +1868,6 @@ func (s *BillingService) CalculateCostWithServiceTier(model string, tokens Usage
 	return s.calculateCostInternal(model, tokens, rateMultiplier, serviceTier, nil)
 }
 
-func (s *BillingService) calculateCostWithServiceTierPolicy(
-	model string,
-	tokens UsageTokens,
-	rateMultiplier float64,
-	serviceTier string,
-	longContextBillingEnabled bool,
-) (*CostBreakdown, error) {
-	return s.calculateCostInternalWithPolicy(model, tokens, rateMultiplier, serviceTier, nil, longContextBillingEnabled)
-}
-
 func (s *BillingService) calculateCostInternal(model string, tokens UsageTokens, rateMultiplier float64, serviceTier string, channelPricing *ChannelModelPricing) (*CostBreakdown, error) {
 	return s.calculateCostInternalWithPolicy(model, tokens, rateMultiplier, serviceTier, channelPricing, true)
 }
@@ -1872,6 +1915,22 @@ func (s *BillingService) applyModelSpecificPricingPolicyEx(model string, pricing
 	if pricing == nil {
 		return nil
 	}
+	// A known model identity wins over an OpenAI-compatible API/provider/card.
+	// Fallback prices have no LiteLLM provider, so preserve this identity here too.
+	platform := pricing.pricingPlatform
+	if strings.Contains(strings.ToLower(model), "claude") {
+		platform = PlatformAnthropic
+	} else if platform == "" && openAIModelFastPricingRatio(model) > 0 {
+		platform = PlatformOpenAI
+	}
+	if platform != pricing.pricingPlatform {
+		cloned := *pricing
+		cloned.pricingPlatform = platform
+		if pricingHasNonOpenAIIdentity(&cloned) {
+			cloned.defaultFastMultiplier = 0
+		}
+		pricing = &cloned
+	}
 	// DeepSeek 模型：无论 JSON/远端价格表给什么价，一律强制官方低谷价
 	// （Flash 三档为 2026-09-10 官方降价后口径）。这是覆盖远端旧价的关键——远端
 	// 仓库不可改，生产会先拉到旧价，必须在此兜底修正；克隆后再覆盖，避免污染
@@ -1902,14 +1961,23 @@ func (s *BillingService) applyModelSpecificPricingPolicyEx(model string, pricing
 	usesCacheWritePremium := isOpenAIGPT56Model(normalized) || (openai.IsGPT6SolOrLunaModelSpelling(normalized) || openai.IsGPT61SolModelSpelling(normalized))
 	needsCacheCreationPolicy := usesCacheWritePremium && !pricing.CacheCreationPriceExplicit && (pricing.CacheCreationPricePerToken <= 0 ||
 		(pricing.InputPricePerTokenPriority > 0 && pricing.CacheCreationPricePerTokenPriority <= 0))
-	fastRatio := openAIModelFastPricingRatio(normalized)
+	fastRatio := 0.0
+	if !pricingHasNonOpenAIIdentity(pricing) {
+		fastRatio = openAIModelFastPricingRatio(model)
+		if fastRatio == 0 {
+			fastRatio = pricing.defaultFastMultiplier
+		}
+	}
 	needsOpus55FastMultiplier := claude.IsOpus55(model) && pricing.FastMultiplier == nil
 	if !needsCacheCreationPolicy && fastRatio <= 0 && !needsOpus55FastMultiplier {
 		return pricing
 	}
 	cloned := *pricing
-	if isOpenAIGPT6AstraModel(normalized) {
-		cloned.UltrafastMultiplier = 6
+	if fastRatio > 0 {
+		cloned.defaultFastMultiplier = fastRatio
+		if cloned.UltrafastMultiplier <= 0 {
+			cloned.UltrafastMultiplier = 8
+		}
 	}
 	if needsOpus55FastMultiplier {
 		multiplier := 2.0
@@ -1923,7 +1991,17 @@ func (s *BillingService) applyModelSpecificPricingPolicyEx(model string, pricing
 			cloned.CacheCreationPricePerTokenPriority = cloned.InputPricePerTokenPriority * 1.25
 		}
 	}
-	if fastRatio > 0 {
+	// Pricing defaults do not advertise a service tier the model never exposed.
+	// Models without a priority price still use the default multiplier if the
+	// actual upstream request reports Fast, without inventing catalog fields.
+	hasPriorityPrices := cloned.InputPricePerTokenPriority > 0 || cloned.OutputPricePerTokenPriority > 0 ||
+		cloned.CacheCreationPricePerTokenPriority > 0 || cloned.CacheReadPricePerTokenPriority > 0
+	knownPriorityModel := false
+	switch normalized {
+	case "gpt-5.4", "gpt-5.5", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna":
+		knownPriorityModel = true
+	}
+	if fastRatio > 0 && (hasPriorityPrices || knownPriorityModel) {
 		enforceOpenAIFastPricingRatio(&cloned, fastRatio)
 		if (openai.IsGPT6SolOrLunaModelSpelling(normalized) || openai.IsGPT61SolModelSpelling(normalized)) && cloned.CacheCreationPriceExplicit {
 			cloned.CacheCreationPricePerTokenPriority = cloned.CacheCreationPricePerToken * fastRatio
@@ -1933,27 +2011,27 @@ func (s *BillingService) applyModelSpecificPricingPolicyEx(model string, pricing
 }
 
 // openAIModelFastPricingRatio 返回业务口径下 OpenAI GPT 模型 Fast/priority
-// 的标准价倍率：gpt-5.6 / gpt-6-astra / gpt-5.4 为 2x，gpt-5.5 为 2.5x。未定义 Fast
-// 档的模型（如 gpt-5.5-pro、gpt-5.4-mini/nano）返回 0。
-func openAIModelFastPricingRatio(normalized string) float64 {
-	switch normalized {
-	case "gpt-5.4", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna":
-		return 2.0
-	case "gpt-5.5":
+// 的标准价倍率为 2.5x。未知别名也可由渠道平台或价格表 provider 声明 OpenAI。
+// 非 OpenAI 模型保留各自的 Fast 定价规则。
+func openAIModelFastPricingRatio(model string) float64 {
+	model = strings.ToLower(strings.TrimSpace(model))
+	if normalizeKnownOpenAICodexModel(model) != "" {
 		return 2.5
-	default:
-		if isOpenAIGPT6AstraModel(normalized) {
-			return 2.0
-		}
-		return 0
 	}
+	model = strings.TrimPrefix(model, "openai/")
+	for _, prefix := range []string{"gpt-", "chatgpt-", "codex-", "o1", "o3", "o4"} {
+		if model == prefix || strings.HasPrefix(model, prefix+"-") || (strings.HasSuffix(prefix, "-") && strings.HasPrefix(model, prefix)) {
+			return 2.5
+		}
+	}
+	return 0
 }
 
 // enforceOpenAIFastPricingRatio 把 priority 档价格改写为「标准价 × ratio」。
 // 本地/远程 LiteLLM 目录可能只带官方旧口径（如 gpt-5.5 priority 仍标 2x），
 // 直接采用会导致 Fast 模式少计费；这里按业务倍率兜底修正，且对已正确的
-// fallback 条目（2x/2.5x）是幂等的。computeTokenBreakdown 在 priority 价格
-// 存在时走显式档位价、不再叠加通用 tier 倍率，因此不会重复乘价。
+// fallback 条目也是幂等的。OpenAI 计费使用 Standard 单价及默认/显式倍率，
+// 此处同步展示用 priority 单价，不会在实际费用中重复乘价。
 func enforceOpenAIFastPricingRatio(pricing *ModelPricing, ratio float64) {
 	if pricing == nil || ratio <= 0 {
 		return

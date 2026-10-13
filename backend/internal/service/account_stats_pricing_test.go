@@ -536,7 +536,7 @@ func TestTryModelFilePricing_AppliesServiceTierPricing(t *testing.T) {
 		want        float64
 	}{
 		{name: "standard", serviceTier: "", want: 0.265},
-		{name: "priority", serviceTier: "priority", want: 0.53},
+		{name: "priority", serviceTier: "priority", want: 0.265 * 2.5},
 		{name: "flex", serviceTier: "flex", want: 0.1325},
 	}
 
@@ -576,7 +576,7 @@ func TestTryModelFilePricing_CombinesPriorityAndLongContextPricing(t *testing.T)
 
 	require.NotNil(t, result)
 	// priority 单价先应用，再叠加长上下文输入 2x、输出 1.5x。
-	require.InDelta(t, 0.534, *result, 1e-12)
+	require.InDelta(t, 0.267*2.5, *result, 1e-12)
 }
 
 func TestTryModelFilePricing_PricingNotFound(t *testing.T) {
@@ -1036,7 +1036,7 @@ func TestApplyAccountStatsCost_UsesUsageLogServiceTier(t *testing.T) {
 	)
 
 	require.NotNil(t, usageLog.AccountStatsCost)
-	require.InDelta(t, 0.4, *usageLog.AccountStatsCost, 1e-12)
+	require.InDelta(t, 0.2*2.5, *usageLog.AccountStatsCost, 1e-12)
 }
 
 func TestApplyAccountStatsCost_LongContextFollowsAccountGate(t *testing.T) {
@@ -1071,11 +1071,11 @@ func TestApplyAccountStatsCost_LongContextFollowsAccountGate(t *testing.T) {
 		wantCost float64
 	}{
 		{name: "account_off", gate: &accountOff, wantCost: 0.1215},
-		{name: "account_off_priority", gate: &accountOff, tier: "priority", wantCost: 0.243},
-		{name: "account_on_priority", gate: &accountOn, tier: "priority", wantCost: 0.466},
+		{name: "account_off_priority", gate: &accountOff, tier: "priority", wantCost: 0.1215 * 2.5},
+		{name: "account_on_priority", gate: &accountOn, tier: "priority", wantCost: 0.233 * 2.5},
 		// 非 OpenAI 平台没有账号开关，按官方阶梯计。
 		{name: "no_gate", wantCost: 0.233},
-		{name: "no_gate_priority", tier: "priority", wantCost: 0.466},
+		{name: "no_gate_priority", tier: "priority", wantCost: 0.233 * 2.5},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			usageLog := &UsageLog{ServiceTier: &tt.tier}
