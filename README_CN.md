@@ -20,7 +20,7 @@
 
 ## 香港生产发行版
 
-本仓库是基于 [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api) 的 **HK 生产发行版 fork**，保留上游归属并持续同步上游；当前发行版本为 **v0.2.15-hk.2**。
+本仓库是基于 [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api) 的 **HK 生产发行版 fork**，保留上游归属并持续同步上游；当前发行版本为 **v0.2.15-hk.3**。
 
 - **用户端：** portal / ink 工作区。密钥、用量、账户、卡密兑换和余额订阅沿用原有后端接口。自助在线支付已停用；支付回调页仍处理存量订单，管理端订单和手动支付宝确认保留。
 - **香港定制增量：** 生产部署安全边界、HeliosGen 与供应商适配，以及计费、会话和运维增强。上游合并入口是 `hk/sync-upstream.ps1`，不再保留的上游文件登记在 `hk/upstream-removed.json`。

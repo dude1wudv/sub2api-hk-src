@@ -10,7 +10,7 @@ docker run -d \
   -p 8080:8080 \
   -e DATABASE_URL="postgres://user:pass@host:5432/sub2api" \
   -e REDIS_URL="redis://host:6379" \
-  ghcr.io/dude1wudv/sub2api:0.2.15-hk.2
+  ghcr.io/dude1wudv/sub2api-hk-src:0.2.15-hk.3
 ```
 
 ## Docker Compose
@@ -20,7 +20,7 @@ version: '3.8'
 
 services:
   sub2api:
-    image: ghcr.io/dude1wudv/sub2api:0.2.15-hk.2
+    image: ghcr.io/dude1wudv/sub2api-hk-src:0.2.15-hk.3
     ports:
       - "8080:8080"
     environment:
