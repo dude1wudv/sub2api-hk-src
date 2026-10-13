@@ -12,7 +12,7 @@ type ServiceTierBillingResolution struct {
 	Requested  string // tier carried by the request sent upstream ("" when none)
 	Observed   string // tier declared by the upstream response ("" when none)
 	Billing    string // tier used for billing and the usage log
-	Downgraded bool   // Billing is cheaper than Requested
+	Downgraded bool   // authoritative upstream tier is cheaper than Requested
 }
 
 // ResolveBillingServiceTier picks the tier to bill. The upstream declaration is
@@ -88,10 +88,28 @@ func codexOAuthResponseTierIsNonAuthoritative(observed string) bool {
 // ApplyOpenAIServiceTierBillingResolution lowers result.ServiceTier only when
 // the selected credential's upstream response tier is authoritative.
 func ApplyOpenAIServiceTierBillingResolution(account *Account, result *OpenAIForwardResult) ServiceTierBillingResolution {
+	return ApplyOpenAIGroupServiceTierBillingResolution(account, nil, result)
+}
+
+// ApplyOpenAIGroupServiceTierBillingResolution preserves the configured forced
+// price only when the matching tier was actually sent. The response remains
+// independently observable, including authoritative upstream downgrades.
+func ApplyOpenAIGroupServiceTierBillingResolution(account *Account, group *Group, result *OpenAIForwardResult) ServiceTierBillingResolution {
 	if result == nil {
 		return ServiceTierBillingResolution{}
 	}
 	resolution := ResolveOpenAIServiceTierBilling(account, optionalStringValue(result.ServiceTier), result.UpstreamResponseServiceTier)
+	if account != nil && account.IsOpenAI() && IsGroupContextValid(group) && groupSupportsOpenAIFast(group.Platform) {
+		forced := ""
+		if group.ForceOpenAIUltrafast {
+			forced = OpenAIFastTierUltrafast
+		} else if group.ForceOpenAIFast {
+			forced = OpenAIFastTierPriority
+		}
+		if forced != "" && resolution.Requested == forced {
+			resolution.Billing = resolution.Requested
+		}
+	}
 	if resolution.Downgraded {
 		billing := resolution.Billing
 		result.ServiceTier = &billing
@@ -113,8 +131,19 @@ func ApplyForwardServiceTierBillingResolution(result *ForwardResult) ServiceTier
 	return resolution
 }
 
-// logServiceTierBillingDowngrade leaves an audit trail for every request billed
-// below the tier it asked for; unchanged tiers are not logged.
+// applyServiceTierUsageMetadata keeps observed tier evidence separate from the
+// billed tier. Missing upstream declarations remain unknown, including old rows.
+func applyServiceTierUsageMetadata(usageLog *UsageLog, resolution ServiceTierBillingResolution) {
+	usageLog.RequestedServiceTier = optionalTrimmedStringPtr(resolution.Requested)
+	usageLog.UpstreamServiceTier = optionalTrimmedStringPtr(resolution.Observed)
+	if resolution.Observed != "" {
+		downgraded := resolution.Downgraded
+		usageLog.ServiceTierDowngraded = &downgraded
+	}
+}
+
+// logServiceTierBillingDowngrade records authoritative upstream downgrades,
+// including forced groups that retain their configured billing tier.
 func logServiceTierBillingDowngrade(component string, account *Account, requestID string, resolution ServiceTierBillingResolution) {
 	if !resolution.Downgraded {
 		return

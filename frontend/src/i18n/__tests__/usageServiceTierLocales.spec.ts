@@ -19,4 +19,19 @@ describe('usage service tier locale keys', () => {
     expect(en.usage.serviceTierFlex).toBe('Flex')
     expect(en.usage.serviceTierStandard).toBe('Standard')
   })
+
+  it('exposes localized administrator-only downgrade audit labels', () => {
+    expect(zh.admin.usage).toMatchObject({
+      serviceTierDowngraded: '上游降档',
+      requestedServiceTier: '请求档位',
+      upstreamServiceTier: '上游档位',
+      billedServiceTier: '计费档位',
+    })
+    expect(en.admin.usage).toMatchObject({
+      serviceTierDowngraded: 'Upstream tier downgrade',
+      requestedServiceTier: 'Requested tier',
+      upstreamServiceTier: 'Upstream tier',
+      billedServiceTier: 'Billed tier',
+    })
+  })
 })

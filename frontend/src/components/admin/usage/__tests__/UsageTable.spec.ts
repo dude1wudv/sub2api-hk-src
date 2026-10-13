@@ -13,7 +13,7 @@ vi.mock('@/utils/ipGeoLookup', () => ipGeoMocks)
 vi.mock('@/stores/app', () => ({ useAppStore: () => appStoreMocks }))
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 import en from '@/i18n/locales/en/admin/resources'
@@ -25,10 +25,18 @@ const localizedMessages: Record<'en' | 'zh', Record<string, string>> = {
   en: {
     'admin.usage.longContext': en.usage.longContext,
     'admin.usage.longContextPricingTooltip': en.usage.longContextPricingTooltip,
+    'admin.usage.serviceTierDowngraded': en.usage.serviceTierDowngraded,
+    'admin.usage.requestedServiceTier': en.usage.requestedServiceTier,
+    'admin.usage.upstreamServiceTier': en.usage.upstreamServiceTier,
+    'admin.usage.billedServiceTier': en.usage.billedServiceTier,
   },
   zh: {
     'admin.usage.longContext': zh.usage.longContext,
     'admin.usage.longContextPricingTooltip': zh.usage.longContextPricingTooltip,
+    'admin.usage.serviceTierDowngraded': zh.usage.serviceTierDowngraded,
+    'admin.usage.requestedServiceTier': zh.usage.requestedServiceTier,
+    'admin.usage.upstreamServiceTier': zh.usage.upstreamServiceTier,
+    'admin.usage.billedServiceTier': zh.usage.billedServiceTier,
   },
 }
 
@@ -1214,5 +1222,114 @@ describe('admin UsageTable session markers and account switch warnings', () => {
     expect(tooltip?.textContent).toContain('#11 → #22')
 
     wrapper.unmount()
+  })
+})
+
+describe('admin UsageTable service tier downgrade audit', () => {
+  beforeEach(() => { locale = 'en' })
+
+  const auditRow = (id: number, overrides: Record<string, unknown> = {}) => ({
+    ...baseImageRow,
+    id,
+    request_id: `tier-audit-${id}`,
+    model: 'gpt-5.5',
+    image_count: 0,
+    billing_mode: 'token',
+    requested_service_tier: 'priority',
+    upstream_service_tier: 'default',
+    service_tier: 'priority',
+    service_tier_downgraded: true,
+    ...overrides,
+  })
+
+  const mountAuditTable = (data: ReturnType<typeof auditRow>[]) => mount(UsageTable, {
+    attachTo: document.body,
+    props: {
+      data,
+      loading: false,
+      columns: [{ key: 'model', label: 'Model' }, { key: 'cost', label: 'Cost' }],
+    },
+    global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true } },
+  })
+
+  it.each([
+    ['en', 'priority', 'default', 'priority', 'Fast', 'Standard', 'Fast', 2.5],
+    ['zh', 'priority', 'default', 'priority', 'Fast', 'Standard', 'Fast', 2.5],
+    ['en', 'ultrafast', 'priority', 'ultrafast', 'Ultrafast', 'Fast', 'Ultrafast', 8],
+    ['zh', 'ultrafast', 'priority', 'ultrafast', 'Ultrafast', 'Fast', 'Ultrafast', 8],
+    ['en', 'priority', 'flex', 'priority', 'Fast', 'Flex', 'Fast', 2.5],
+    ['zh', 'priority', 'flex', 'priority', 'Fast', 'Flex', 'Fast', 2.5],
+  ] as const)('shows %s audit for %s → %s while retaining %s billing', async (
+    language, requested, upstream, billed, requestedLabel, upstreamLabel, billedLabel, actualCost,
+  ) => {
+    locale = language
+    const row = auditRow(701, {
+      requested_service_tier: requested,
+      upstream_service_tier: upstream,
+      service_tier: billed,
+      actual_cost: actualCost,
+    })
+    const wrapper = mountAuditTable([row])
+    try {
+      const badge = wrapper.get('[data-testid="service-tier-downgrade-badge"]')
+      const labels = language === 'zh' ? zh.usage : en.usage
+      expect(badge.text()).toBe(labels.serviceTierDowngraded)
+      expect(badge.isVisible()).toBe(true)
+      expect(badge.attributes('title')).toBe([
+        labels.serviceTierDowngraded,
+        `${labels.requestedServiceTier}: ${requestedLabel}`,
+        `${labels.upstreamServiceTier}: ${upstreamLabel}`,
+        `${labels.billedServiceTier}: ${billedLabel}`,
+      ].join('\n'))
+      expect(badge.attributes('aria-label')).toBe(badge.attributes('title'))
+      const tooltip = document.getElementById(badge.attributes('aria-controls'))!
+      expect(tooltip.style.display).toBe('none')
+      expect(wrapper.element.contains(tooltip)).toBe(false)
+      await badge.trigger('keydown', { key: 'ArrowDown' })
+      await flushPromises()
+      expect(badge.attributes('aria-expanded')).toBe('true')
+      expect(tooltip.style.display).not.toBe('none')
+      expect(Array.from(tooltip.querySelectorAll('dt')).map(element => element.textContent)).toEqual([
+        labels.requestedServiceTier, labels.upstreamServiceTier, labels.billedServiceTier,
+      ])
+      expect(Array.from(tooltip.querySelectorAll('dd')).map(element => element.textContent)).toEqual([
+        requestedLabel, upstreamLabel, billedLabel,
+      ])
+      expect(wrapper.text()).toContain(`$${actualCost.toFixed(6)}`)
+      expect(row.service_tier).toBe(billed)
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('does not infer a downgrade from historical null, missing, or explicitly false flags', () => {
+    const wrapper = mountAuditTable([
+      auditRow(711, { service_tier_downgraded: null }),
+      auditRow(712, { service_tier_downgraded: undefined }),
+      auditRow(713, { service_tier_downgraded: false }),
+    ])
+    try {
+      expect(wrapper.find('[data-testid="service-tier-downgrade-badge"]').exists()).toBe(false)
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('leaves missing audit tiers unrecorded instead of inventing Standard', async () => {
+    const wrapper = mountAuditTable([auditRow(721, {
+      requested_service_tier: null,
+      upstream_service_tier: null,
+      service_tier: 'ultrafast',
+    })])
+    try {
+      const badge = wrapper.get('[data-testid="service-tier-downgrade-badge"]')
+      await badge.trigger('click')
+      await flushPromises()
+      const tooltip = document.getElementById(badge.attributes('aria-controls'))!
+      expect(tooltip.style.display).not.toBe('none')
+      expect(Array.from(tooltip.querySelectorAll('dd')).map(element => element.textContent)).toEqual(['—', '—', 'Ultrafast'])
+    } finally {
+      wrapper.unmount()
+    }
   })
 })

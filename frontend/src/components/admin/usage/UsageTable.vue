@@ -106,6 +106,42 @@
                 {{ isLikelyModelVariant(row) ? t('usage.modelVariant') : t('usage.modelMismatch') }}
               </span>
             </div>
+            <HelpTooltip
+              v-if="row.service_tier_downgraded === true"
+              :id="`usage-service-tier-${row.id}`"
+              :label="t('admin.usage.serviceTierDowngraded')"
+              trigger="click"
+              width-class="w-80"
+              class="!ml-0"
+            >
+              <template #trigger="{ triggerAttrs }">
+                <button
+                  v-bind="triggerAttrs"
+                  type="button"
+                  data-testid="service-tier-downgrade-badge"
+                  class="inline-flex min-h-6 items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30 dark:hover:bg-amber-500/20"
+                  :aria-label="serviceTierAuditTitle(row)"
+                  :title="serviceTierAuditTitle(row)"
+                >
+                  <Icon name="exclamationTriangle" size="xs" />
+                  {{ t('admin.usage.serviceTierDowngraded') }}
+                </button>
+              </template>
+              <dl class="space-y-1">
+                <div class="flex justify-between gap-4">
+                  <dt>{{ t('admin.usage.requestedServiceTier') }}</dt>
+                  <dd class="font-semibold">{{ serviceTierAuditLabel(row.requested_service_tier) }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt>{{ t('admin.usage.upstreamServiceTier') }}</dt>
+                  <dd class="font-semibold">{{ serviceTierAuditLabel(row.upstream_service_tier) }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt>{{ t('admin.usage.billedServiceTier') }}</dt>
+                  <dd class="font-semibold">{{ serviceTierAuditLabel(row.service_tier) }}</dd>
+                </div>
+              </dl>
+            </HelpTooltip>
           </div>
         </template>
 
@@ -763,6 +799,16 @@ const modelAuditTitle = (row: AdminUsageLog): string => [
   `${t('usage.requestedModel')}: ${row.model || '-'}`,
   `${t('usage.sentUpstreamModel')}: ${sentUpstreamModel(row) || '-'}`,
   `${t('usage.upstreamResponseModel')}: ${row.upstream_response_model || '-'}`,
+].join('\n')
+
+const serviceTierAuditLabel = (tier: string | null | undefined): string =>
+  tier?.trim() ? getUsageServiceTierLabel(tier, t) : '—'
+
+const serviceTierAuditTitle = (row: AdminUsageLog): string => [
+  t('admin.usage.serviceTierDowngraded'),
+  `${t('admin.usage.requestedServiceTier')}: ${serviceTierAuditLabel(row.requested_service_tier)}`,
+  `${t('admin.usage.upstreamServiceTier')}: ${serviceTierAuditLabel(row.upstream_service_tier)}`,
+  `${t('admin.usage.billedServiceTier')}: ${serviceTierAuditLabel(row.service_tier)}`,
 ].join('\n')
 
 const currentPageIps = computed(() =>

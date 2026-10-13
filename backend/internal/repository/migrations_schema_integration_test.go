@@ -82,6 +82,9 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 	requireColumn(t, tx, "usage_logs", "video_duration_seconds", "integer", 0, true)
 	requireColumn(t, tx, "usage_logs", "upstream_response_model", "character varying", 200, true)
 	requireColumn(t, tx, "usage_logs", "upstream_model_mismatch", "boolean", 0, true)
+	requireColumn(t, tx, "usage_logs", "requested_service_tier", "character varying", 32, true)
+	requireColumn(t, tx, "usage_logs", "upstream_service_tier", "character varying", 32, true)
+	requireColumn(t, tx, "usage_logs", "service_tier_downgraded", "boolean", 0, true)
 	requireIndex(t, tx, "usage_logs", usageLogsUpstreamModelMismatchIndex)
 
 	var mismatchIndexDef string

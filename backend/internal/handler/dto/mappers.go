@@ -772,6 +772,9 @@ func UsageLogFromServiceAdmin(l *service.UsageLog) *AdminUsageLog {
 	usageLog.UpstreamEndpoint = l.UpstreamEndpoint
 	return &AdminUsageLog{
 		UsageLog:                usageLog,
+		RequestedServiceTier:    l.RequestedServiceTier,
+		UpstreamServiceTier:     l.UpstreamServiceTier,
+		ServiceTierDowngraded:   l.ServiceTierDowngraded,
 		UpstreamModel:           l.UpstreamModel,
 		UpstreamReasoningEffort: adminUpstreamReasoningEffort(l),
 		ReasoningEffortSource:   l.ReasoningEffortSource,

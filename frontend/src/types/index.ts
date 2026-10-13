@@ -1853,6 +1853,9 @@ export interface UsageLogAccountSummary {
 }
 
 export interface AdminUsageLog extends UsageLog {
+  requested_service_tier?: string | null
+  upstream_service_tier?: string | null
+  service_tier_downgraded?: boolean | null
   session_account_switched?: boolean
   previous_account_id?: number | null
   previous_account?: UsageLogAccountSummary | null

@@ -131,6 +131,13 @@ type UsageLog struct {
 	// ServiceTier records the billable request tier, e.g. OpenAI "priority" / "flex"
 	// or Anthropic "fast".
 	ServiceTier *string
+	// RequestedServiceTier is the final service tier sent upstream, after group policy.
+	RequestedServiceTier *string
+	// UpstreamServiceTier is the tier explicitly reported by the upstream response.
+	UpstreamServiceTier *string
+	// ServiceTierDowngraded is nil for historical rows or absent upstream declarations.
+	// It remains true when a forced group tier is billed despite an upstream downgrade.
+	ServiceTierDowngraded *bool
 	// ReasoningEffort is the effective effort recorded for this request after
 	// group policy rewriting and model-family remapping (e.g. max -> xhigh).
 	// OpenAI: "low" / "medium" / "high" / "xhigh"; Claude: "low" / "medium" / "high" / "max".

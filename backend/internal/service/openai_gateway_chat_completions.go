@@ -433,11 +433,10 @@ func (s *OpenAIGatewayService) forwardAsChatCompletions(
 		return nil, handleErr
 	}
 
-	// Propagate ServiceTier and ReasoningEffort to result for billing.
-	// 计费 tier 优先采用上游回显值；上游未回显时回退到最终出站 body（经过
-	// fast policy filter/force 之后）里的 tier，policy filter 删掉字段后不再
-	// 按原请求 Fast 计费。
-	if handleErr == nil && result != nil {
+	// Partial streams can still contain billable usage. Preserve the actual
+	// outbound tier/effort even when reading or forwarding the stream failed;
+	// the separately observed response tier is reconciled during usage recording.
+	if result != nil {
 		if tier := resolvedOpenAIUpstreamServiceTier(c, extractOpenAIServiceTierFromBody(responsesBody)); tier != nil {
 			result.ServiceTier = tier
 		}

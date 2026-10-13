@@ -23,17 +23,18 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 327
+	candidateMigrationCount         = 328
 )
 
-// This release is additive to the 322-migration HK release. Keep the exact
-// historical sets fixed so both older and immediately previous upgrades run DDL.
+// Keep the 322-migration HK release fixed while later additive migrations evolve.
+// The immediately previous v0.2.16-hk1 release contains the first five entries.
 var currentReleaseMigrations = []string{
 	"243_gemini_cached_contents.sql",
 	"244_gemini_cached_contents_channel_usage.sql",
 	"245_gemini_cached_contents_mutation_lease.sql",
 	"246_group_openai_ultrafast.sql",
 	"247_channel_ultrafast_multiplier.sql",
+	"248_usage_log_service_tier_observation.sql",
 }
 
 var candidateOnlyMigrations = []string{
@@ -78,6 +79,7 @@ var candidateOnlyMigrations = []string{
 	"245_gemini_cached_contents_mutation_lease.sql",
 	"246_group_openai_ultrafast.sql",
 	"247_channel_ultrafast_multiplier.sql",
+	"248_usage_log_service_tier_observation.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {
@@ -129,22 +131,24 @@ func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *test
 	require.Zero(t, invalidIndexCount(t, legacyDB, "public"))
 }
 
-// The earlier HK release applied 245 before the constraint repair. Also test
-// the immediately previous 322-migration release before the five new migrations.
+// The earlier HK release applied 245 before the constraint repair. Preserve both
+// older baselines and verify the production v0.2.16-hk1 baseline upgrades via 248.
 func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testing.T) {
 	for _, baseline := range []struct {
-		name        string
-		count       int
-		skipRepairs bool
+		name           string
+		count          int
+		skipRepairs    bool
+		skipMigrations []string
 	}{
-		{name: "before_constraint_repairs", count: 320, skipRepairs: true},
-		{name: "v0215_hk3", count: 322},
+		{name: "before_constraint_repairs", count: 320, skipRepairs: true, skipMigrations: currentReleaseMigrations},
+		{name: "v0215_hk3", count: 322, skipMigrations: currentReleaseMigrations},
+		{name: "v0216_hk1", count: 327, skipMigrations: []string{"248_usage_log_service_tier_observation.sql"}},
 	} {
 		t.Run(baseline.name, func(t *testing.T) {
 			ctx := context.Background()
 			history := fstest.MapFS{}
 			for _, name := range migrationFiles(t, migrations.FS) {
-				if slices.Contains(currentReleaseMigrations, name) || (baseline.skipRepairs &&
+				if slices.Contains(baseline.skipMigrations, name) || (baseline.skipRepairs &&
 					(name == "242_drop_platform_check_constraints.sql" || name == "246_hk_platform_catalog_constraints.sql")) {
 					continue
 				}
@@ -165,9 +169,12 @@ func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testi
 			t.Cleanup(func() { _ = db.Close() })
 			require.NoError(t, applyMigrationsFS(ctx, db, history))
 			before := migrationChecksums(t, db, "public")
+			require.Len(t, before, baseline.count)
+			requireMigrationChecksumsMatchFiles(t, history, before)
 			require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
 			after := migrationChecksums(t, db, "public")
 			require.Len(t, after, candidateMigrationCount)
+			requireMigrationChecksumsMatchFiles(t, migrations.FS, after)
 			for name, checksum := range before {
 				require.Equal(t, checksum, after[name], name)
 			}
