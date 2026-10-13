@@ -718,7 +718,7 @@ install_service() {
     cat > /etc/systemd/system/sub2api.service << EOF
 [Unit]
 Description=Sub2API - AI API Gateway Platform
-Documentation=https://github.com/Wei-Shaw/sub2api
+Documentation=https://github.com/dude1wudv/sub2api-hk-src
 After=network.target postgresql.service redis.service
 Wants=postgresql.service redis.service
 

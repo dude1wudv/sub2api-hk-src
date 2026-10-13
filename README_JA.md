@@ -4,7 +4,7 @@
 
 # Sub2API
 
-[![Go](https://img.shields.io/badge/Go-1.27.0-00ADD8.svg)](https://golang.org/)
+[![Go](https://img.shields.io/badge/Go-1.27.2-00ADD8.svg)](https://golang.org/)
 [![Vue](https://img.shields.io/badge/Vue-3.4+-4FC08D.svg)](https://vuejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791.svg)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7+-DC382D.svg)](https://redis.io/)
@@ -17,6 +17,13 @@
 [English](README.md) | [中文](README_CN.md) | 日本語
 
 </div>
+
+## HK 版
+
+このリポジトリは [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api) を基にした **HK 本番版** です。上流の帰属を残し、継続して同期します。現在のリリースは **v0.2.15-hk.2** です。
+
+- ユーザー画面は portal / ink です。API キー、利用量、アカウント、カード引き換え、残高によるサブスクリプションは既存のバックエンド API を使います。セルフサービスのオンライン決済は停止しました。決済コールバックは既存注文を処理し、管理画面の注文と手動 Alipay 確認は残します。
+- 上流の同期は `hk/sync-upstream.ps1` から始めます。保持しない上流ファイルは `hk/upstream-removed.json` に記録します。
 
 ## ⚠️ 重要なお知らせ
 
@@ -201,7 +208,7 @@ Sub2API を拡張・統合するコミュニティプロジェクト:
 
 | コンポーネント | 技術 |
 |-----------|------------|
-| バックエンド | Go 1.27.0, Gin, Ent |
+| バックエンド | Go 1.27.2, Gin, Ent |
 | フロントエンド | Vue 3.4+, Vite 5+, TailwindCSS |
 | データベース | PostgreSQL 15+ |
 | キャッシュ/キュー | Redis 7+ |
