@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!isDesktopViewport" class="table-cards space-y-3">
+  <div v-if="!isDesktopViewport" class="table-cards min-w-0 max-w-full space-y-3">
     <div v-if="mobileSort && sortableColumns.length" class="table-mobile-sort flex min-w-0 items-center gap-2" data-test="mobile-sort">
       <label class="flex min-w-0 flex-1 items-center gap-2">
         <span class="shrink-0 text-sm text-gray-600 dark:text-gray-300">{{ t('common.sortBy') }}</span>
@@ -75,7 +75,7 @@
       <div
         v-for="(row, index) in sortedData"
         :key="resolveRowKey(row, index)"
-        class="table-record-card rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
+        class="table-record-card min-w-0 max-w-full rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
         :data-selected="selectable && isRowSelected(row, index) || undefined"
         :class="{
           'cursor-pointer': clickableRows,
@@ -106,7 +106,7 @@
             <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-dark-300">
               {{ column.label }}
             </span>
-            <div class="min-w-0 max-w-full text-right text-sm text-gray-900 dark:text-gray-100">
+            <div class="min-w-0 max-w-full [overflow-wrap:anywhere] text-right text-sm text-gray-900 dark:text-gray-100">
               <slot :name="`cell-${column.key}`" :row="row" :value="row[column.key]" :expanded="actionsExpanded">
                 {{ column.formatter ? column.formatter(row[column.key], row) : row[column.key] }}
               </slot>

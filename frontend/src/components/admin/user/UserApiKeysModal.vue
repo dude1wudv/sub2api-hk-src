@@ -54,10 +54,10 @@
     <div
       v-if="groupSelectorKeyId !== null && dropdownPosition"
       ref="dropdownRef"
-      class="animate-in fade-in slide-in-from-top-2 fixed z-[100000020] w-64 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-black/5 duration-200 dark:bg-dark-800 dark:ring-white/10"
-      :style="{ top: dropdownPosition.top + 'px', left: dropdownPosition.left + 'px' }"
+      class="animate-in fade-in slide-in-from-top-2 fixed z-[100000020] overflow-y-auto overscroll-contain rounded-xl bg-white shadow-lg ring-1 ring-black/5 duration-200 dark:bg-dark-800 dark:ring-white/10"
+      :style="dropdownPosition"
     >
-      <div class="max-h-64 overflow-y-auto p-1.5">
+      <div class="p-1.5">
         <!-- Unbind option -->
         <button
           @click="changeGroup(selectedKeyForGroup!, null)"
@@ -106,11 +106,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, type ComponentPublicInstance, type CSSProperties } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
 import { formatDateTime } from '@/utils/format'
+import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import type { AdminUser, AdminGroup, ApiKey } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import GroupBadge from '@/components/common/GroupBadge.vue'
@@ -127,7 +128,7 @@ const loading = ref(false)
 let requestVersion = 0
 const updatingKeyIds = ref(new Set<number>())
 const groupSelectorKeyId = ref<number | null>(null)
-const dropdownPosition = ref<{ top: number; left: number } | null>(null)
+const dropdownPosition = ref<CSSProperties | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const scrollContainerRef = ref<HTMLElement | null>(null)
 const groupButtonRefs = ref<Map<number, HTMLElement>>(new Map())
@@ -180,21 +181,29 @@ const loadGroups = async () => {
   }
 }
 
-const DROPDOWN_HEIGHT = 272 // max-h-64 = 16rem = 256px + padding
-const DROPDOWN_GAP = 4
-
 const openGroupSelector = (key: ApiKey) => {
   if (groupSelectorKeyId.value === key.id) {
     closeGroupSelector()
   } else {
     const buttonEl = groupButtonRefs.value.get(key.id)
     if (buttonEl) {
+      const viewport = window.visualViewport
+      const offsetLeft = viewport?.offsetLeft || 0
+      const offsetTop = viewport?.offsetTop || 0
       const rect = buttonEl.getBoundingClientRect()
-      const spaceBelow = window.innerHeight - rect.bottom
-      const openUpward = spaceBelow < DROPDOWN_HEIGHT && rect.top > spaceBelow
+      const height = viewport?.height || window.innerHeight
+      const position = getFloatingPanelPosition(
+        { top: rect.top - offsetTop, bottom: rect.bottom - offsetTop, right: rect.right - offsetLeft },
+        viewport?.width || window.innerWidth,
+        height,
+        { maxWidth: 256, viewportPadding: 8, gap: 4, maxHeightRatio: 0.8 }
+      )
       dropdownPosition.value = {
-        top: openUpward ? rect.top - DROPDOWN_HEIGHT - DROPDOWN_GAP : rect.bottom + DROPDOWN_GAP,
-        left: rect.left
+        top: position.top !== null ? `${position.top + offsetTop}px` : undefined,
+        bottom: position.bottom !== null ? `${window.innerHeight - offsetTop - height + position.bottom}px` : undefined,
+        left: `${position.left + offsetLeft}px`,
+        width: `${position.width}px`,
+        maxHeight: `${position.maxHeight}px`
       }
     }
     groupSelectorKeyId.value = key.id
@@ -204,6 +213,11 @@ const openGroupSelector = (key: ApiKey) => {
 const closeGroupSelector = () => {
   groupSelectorKeyId.value = null
   dropdownPosition.value = null
+}
+
+const handleViewportChange = (event: Event) => {
+  if (event.target instanceof Node && dropdownRef.value?.contains(event.target)) return
+  closeGroupSelector()
 }
 
 const changeGroup = async (key: ApiKey, newGroupId: number | null) => {
@@ -256,10 +270,18 @@ const handleClose = () => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('keydown', handleKeyDown, true)
+  window.addEventListener('resize', handleViewportChange)
+  window.addEventListener('scroll', handleViewportChange, true)
+  window.visualViewport?.addEventListener('resize', handleViewportChange)
+  window.visualViewport?.addEventListener('scroll', handleViewportChange)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('keydown', handleKeyDown, true)
+  window.removeEventListener('resize', handleViewportChange)
+  window.removeEventListener('scroll', handleViewportChange, true)
+  window.visualViewport?.removeEventListener('resize', handleViewportChange)
+  window.visualViewport?.removeEventListener('scroll', handleViewportChange)
 })
 </script>

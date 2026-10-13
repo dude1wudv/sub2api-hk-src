@@ -175,6 +175,62 @@ describe('HelpTooltip', () => {
     wrapper.unmount()
   })
 
+  it('pins a both-mode tooltip on click after hover or focus and closes through click, outside click, or Escape', async () => {
+    const wrapper = mount(HelpTooltip, {
+      attachTo: document.body,
+      props: { content: 'hybrid details', trigger: 'both', label: 'Hybrid help' },
+    })
+    const root = wrapper.get('.group')
+    const button = wrapper.get('button')
+    const tooltip = getTooltipElement()
+
+    expect(button.attributes('aria-haspopup')).toBe('dialog')
+    expect(button.attributes('aria-expanded')).toBe('false')
+
+    // Touch-oriented click opens and pins; a later touch/click closes it.
+    await button.trigger('click')
+    await nextTick()
+    expect(tooltip.style.display).not.toBe('none')
+    expect(button.attributes('aria-expanded')).toBe('true')
+    await root.trigger('mouseleave')
+    expect(tooltip.style.display).not.toBe('none')
+    await button.trigger('click')
+    await nextTick()
+    expect(tooltip.style.display).toBe('none')
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+
+    // Hover and focus open it; the first click pins the focused popover.
+    await root.trigger('mouseenter')
+    await nextTick()
+    expect(tooltip.style.display).not.toBe('none')
+    await root.trigger('mouseleave')
+    await nextTick()
+    expect(tooltip.style.display).toBe('none')
+
+    await button.trigger('focusin')
+    await nextTick()
+    expect(tooltip.style.display).not.toBe('none')
+    await button.trigger('click')
+    await root.trigger('mouseleave')
+    await nextTick()
+    expect(tooltip.style.display).not.toBe('none')
+    expect(button.attributes('aria-expanded')).toBe('true')
+
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+    expect(tooltip.style.display).toBe('none')
+
+    await button.trigger('click')
+    await nextTick()
+    expect(tooltip.style.display).not.toBe('none')
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+    expect(tooltip.style.display).toBe('none')
+    expect(button.attributes('aria-expanded')).toBe('false')
+
+    wrapper.unmount()
+  })
+
   it('clamps fixed coordinates to the viewport and flips below a trigger near its top edge', async () => {
     vi.stubGlobal('innerWidth', 390)
     vi.stubGlobal('innerHeight', 844)
@@ -200,6 +256,84 @@ describe('HelpTooltip', () => {
     expect(tooltip.style.top).toBe('47px')
     expect(tooltip.dataset.placement).toBe('bottom')
     wrapper.unmount()
+  })
+
+  it('positions against visualViewport offsets on a short screen and repositions after viewport changes', async () => {
+    const viewport = new EventTarget() as VisualViewport
+    Object.defineProperties(viewport, {
+      width: { configurable: true, value: 320, writable: true },
+      height: { configurable: true, value: 240, writable: true },
+      offsetLeft: { configurable: true, value: 30, writable: true },
+      offsetTop: { configurable: true, value: 100, writable: true },
+    })
+    vi.stubGlobal('visualViewport', viewport)
+
+    const wrapper = mount(HelpTooltip, {
+      attachTo: document.body,
+      props: { content: 'short viewport details', trigger: 'click', widthClass: 'w-96' },
+    })
+    const trigger = wrapper.get('.group')
+    const tooltip = getTooltipElement()
+    const triggerBounds = vi.spyOn(trigger.element, 'getBoundingClientRect').mockReturnValue(rect(300, 130, 24, 24))
+    vi.spyOn(tooltip, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 384, 500))
+
+    await trigger.trigger('click')
+    await flushPromises()
+    expect(tooltip.style.maxWidth).toBe('296px')
+    expect(tooltip.style.maxHeight).toBe('166px')
+    expect(tooltip.style.left).toBe('42px')
+    expect(tooltip.style.top).toBe('162px')
+    expect(tooltip.dataset.placement).toBe('bottom')
+
+    Object.defineProperties(viewport, {
+      offsetLeft: { configurable: true, value: 50, writable: true },
+      offsetTop: { configurable: true, value: 180, writable: true },
+    })
+    triggerBounds.mockReturnValue(rect(280, 230, 24, 24))
+    viewport.dispatchEvent(new Event('scroll'))
+    await flushPromises()
+    expect(tooltip.style.left).toBe('62px')
+    expect(tooltip.style.top).toBe('262px')
+    expect(tooltip.dataset.placement).toBe('bottom')
+
+    wrapper.unmount()
+  })
+
+  it('observes trigger and tooltip size changes while open and disconnects on unmount', async () => {
+    let onResize: ResizeObserverCallback | undefined
+    const observe = vi.fn()
+    const disconnect = vi.fn()
+    class TestResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        onResize = callback
+      }
+      observe = observe
+      disconnect = disconnect
+      unobserve = vi.fn()
+    }
+    vi.stubGlobal('ResizeObserver', TestResizeObserver)
+
+    const wrapper = mount(HelpTooltip, {
+      attachTo: document.body,
+      props: { content: 'resized details' },
+    })
+    const trigger = wrapper.get('.group')
+    const tooltip = getTooltipElement()
+    const bounds = vi.spyOn(trigger.element, 'getBoundingClientRect').mockReturnValue(rect(60, 160, 24, 24))
+    vi.spyOn(tooltip, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 256, 100))
+
+    expect(observe).toHaveBeenCalledTimes(2)
+    await trigger.trigger('mouseenter')
+    await flushPromises()
+    expect(tooltip.style.left).toBe('12px')
+
+    bounds.mockReturnValue(rect(250, 160, 24, 24))
+    onResize?.([], {} as ResizeObserver)
+    await flushPromises()
+    expect(tooltip.style.left).toBe('134px')
+
+    wrapper.unmount()
+    expect(disconnect).toHaveBeenCalledOnce()
   })
 
   it('keeps long interactive details scrollable and returns keyboard focus on Escape', async () => {

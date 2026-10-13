@@ -5,6 +5,7 @@ import ModelDistributionChart from '../ModelDistributionChart.vue'
 import GroupDistributionChart from '../GroupDistributionChart.vue'
 import EndpointDistributionChart from '../EndpointDistributionChart.vue'
 import UserBreakdownSubTable from '../UserBreakdownSubTable.vue'
+import DistributionChartLayout from '../DistributionChartLayout.vue'
 
 const { getUserBreakdown } = vi.hoisted(() => ({ getUserBreakdown: vi.fn() }))
 vi.mock('@/api/admin/dashboard', () => ({ getUserBreakdown }))
@@ -57,6 +58,48 @@ describe('shared distribution ranking', () => {
     expect(source).toEqual(rows)
     expect(source[0]).not.toHaveProperty('chartColor')
     wrapper.unmount()
+  })
+
+  it.each(cases)('keeps all $name columns and expanded users in a labelled keyboard scroll region', async ({ component, prop, rows, name }) => {
+    const email = `${'long-account-name-'.repeat(12)}@example.test`
+    getUserBreakdown.mockResolvedValue({ users: [{
+      ...values[0], user_id: 9, email, cache_tokens: 0, account_cost: 1234.56,
+    }] })
+    const wrapper = mount(component, { props: { [prop]: rows, showAccountCost: true } })
+    try {
+      const region = wrapper.get('[role="region"]')
+      expect(region.attributes('tabindex')).toBe('0')
+      expect(region.attributes('aria-label')).toBe(name === 'endpoints' ? 'usage.endpointDistribution' : `admin.dashboard.${name === 'models' ? 'model' : 'group'}Distribution`)
+      expect(region.find('table').exists()).toBe(true)
+      expect(region.find('.chart-stub').exists()).toBe(false)
+      expect(region.findAll('thead th')).toHaveLength(name === 'endpoints' ? 5 : 6)
+      await region.get('tbody tr').trigger('click')
+      await flushPromises()
+      expect(region.getComponent(UserBreakdownSubTable).text()).toContain(email)
+      expect(region.getComponent(UserBreakdownSubTable).findAll('td')).toHaveLength(name === 'endpoints' ? 5 : 6)
+      expect(wrapper.findAll('[role="region"]')).toHaveLength(1)
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('keeps the scroll label and column width policy when switching to user spending ranking', async () => {
+    const wrapper = mount(ModelDistributionChart, { props: {
+      modelStats: cases[0].rows,
+      enableRankingView: true,
+      rankingItems: [{ user_id: 1, email: 'long-name-'.repeat(20) + '@example.test', actual_cost: 12, requests: 1234567890123, tokens: 1e9 }],
+    } })
+    try {
+      expect(wrapper.getComponent(DistributionChartLayout).props('columns')).toBe(6)
+      await wrapper.findAll('button').find(button => button.text() === 'admin.dashboard.viewSpendingRanking')!.trigger('click')
+      expect(wrapper.getComponent(DistributionChartLayout).props('columns')).toBe(4)
+      const region = wrapper.get('[role="region"]')
+      expect(region.attributes('aria-label')).toBe('admin.dashboard.spendingRankingTitle')
+      expect(region.get('tbody tr').text()).toContain('1,234,567,890,123')
+      expect(region.get('td [title]').attributes('title')).toContain('@example.test')
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('uses the same unknown-endpoint fallback in the chart and table after sorting', async () => {

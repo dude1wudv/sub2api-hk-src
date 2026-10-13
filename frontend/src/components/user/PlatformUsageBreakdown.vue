@@ -1,43 +1,43 @@
 <template>
-  <div class="group/usage relative text-sm tabular-nums">
-    <div class="flex items-center gap-1.5">
+  <div class="text-sm tabular-nums">
+    <div class="flex flex-wrap items-center gap-1.5">
       <span class="text-gray-500 dark:text-dark-400">{{ t('admin.users.today') }}:</span>
       <span class="font-medium text-gray-900 dark:text-white">${{ today.toFixed(4) }}</span>
-      <Icon
+      <HelpTooltip
         v-if="hasBreakdown"
-        name="infoCircle"
-        size="xs"
-        class="text-gray-400 dark:text-dark-400"
-      />
+        trigger="both"
+        width-class="w-80"
+        class="!ml-0"
+        :label="t('admin.users.platformBreakdown')"
+      >
+        <template #default="{ open }">
+          <div v-if="open">
+            <div class="mb-1.5 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-1 text-[11px] opacity-80 dark:border-gray-700">
+              <span>{{ t('admin.users.platformBreakdown') }}</span>
+              <span class="font-mono tabular-nums">{{ t('admin.users.today') }} / {{ t('admin.users.total') }}</span>
+            </div>
+            <div
+              v-for="item in sortedBreakdown"
+              :key="item.platform"
+              class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-0.5"
+              :class="{ 'opacity-70 italic': item.isOther }"
+            >
+              <span class="capitalize">
+                {{ item.isOther ? t('admin.users.platformOther') : platformLabel(item.platform) }}
+              </span>
+              <span class="min-w-0 font-mono tabular-nums [overflow-wrap:anywhere]">
+                ${{ item.today_actual_cost.toFixed(4) }}
+                <span class="opacity-50">/</span>
+                ${{ item.total_actual_cost.toFixed(4) }}
+              </span>
+            </div>
+          </div>
+        </template>
+      </HelpTooltip>
     </div>
-    <div class="mt-0.5 flex items-center gap-1.5">
+    <div class="mt-0.5 flex flex-wrap items-center gap-1.5">
       <span class="text-gray-500 dark:text-dark-400">{{ t('admin.users.total') }}:</span>
       <span class="font-medium text-gray-900 dark:text-white">${{ total.toFixed(4) }}</span>
-    </div>
-
-    <div
-      v-if="hasBreakdown"
-      class="ui-popover pointer-events-none absolute left-full top-0 z-50 ml-2 min-w-[220px] whitespace-nowrap rounded-lg px-3 py-2 text-xs opacity-0 transition-opacity duration-100 group-hover/usage:opacity-100"
-    >
-      <div class="mb-1.5 flex items-center justify-between gap-3 border-b border-gray-200 pb-1 text-[11px] opacity-80 dark:border-gray-700">
-        <span>{{ t('admin.users.platformBreakdown') }}</span>
-        <span class="font-mono tabular-nums">{{ t('admin.users.today') }} / {{ t('admin.users.total') }}</span>
-      </div>
-      <div
-        v-for="item in sortedBreakdown"
-        :key="item.platform"
-        class="flex items-center justify-between gap-3 py-0.5"
-        :class="{ 'opacity-70 italic': item.isOther }"
-      >
-        <span class="capitalize">
-          {{ item.isOther ? t('admin.users.platformOther') : platformLabel(item.platform) }}
-        </span>
-        <span class="font-mono tabular-nums">
-          ${{ item.today_actual_cost.toFixed(4) }}
-          <span class="opacity-50">/</span>
-          ${{ item.total_actual_cost.toFixed(4) }}
-        </span>
-      </div>
     </div>
   </div>
 </template>
@@ -45,7 +45,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import Icon from '@/components/icons/Icon.vue'
+import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import type { PlatformUsage } from '@/api/admin/dashboard'
 
 const props = defineProps<{

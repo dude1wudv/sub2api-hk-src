@@ -99,6 +99,7 @@
                 @mouseleave="hideTooltip"
                 @focus="showTooltip($event, slot)"
                 @blur="hideTooltip"
+                @click.stop="toggleTooltip($event, slot)"
               >
                 <span class="pulse-tooltip" role="tooltip">
                   <template v-if="slot.bucket">
@@ -147,9 +148,11 @@
     <Teleport to="body">
       <div
         v-if="floatingTooltip.visible"
+        ref="tooltipRef"
         class="matrix-floating-tooltip"
-        :style="{ left: `${floatingTooltip.x}px`, top: `${floatingTooltip.y}px` }"
+        :style="tooltipPosition"
         role="tooltip"
+        @mouseleave="hideTooltip"
       >
         <span
           v-for="(line, index) in floatingTooltip.lines"
@@ -166,7 +169,8 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, reactive, ref, watch, type CSSProperties } from 'vue'
+import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import type {
   LatencyMetric,
   MonitorCoverage,
@@ -215,10 +219,12 @@ type AlignedSlot = { start: string; bucket?: MonitorMatrixBucket }
 
 const floatingTooltip = reactive({
   visible: false,
-  x: 0,
-  y: 0,
   lines: [] as string[],
 })
+const tooltipRef = ref<HTMLElement | null>(null)
+const tooltipPosition = ref<CSSProperties>({})
+let tooltipAnchor: HTMLElement | null = null
+let tooltipPinned = false
 
 const scrollRef = ref<HTMLElement | null>(null)
 const zoom = ref<ZoomState>(resetZoom())
@@ -403,32 +409,87 @@ function emptyTooltipLines(start: string): string[] {
 }
 
 function showTooltip(event: MouseEvent | FocusEvent, slot: AlignedSlot) {
+  if (tooltipPinned) return
+  tooltipAnchor = event.currentTarget as HTMLElement
   floatingTooltip.lines = slot.bucket ? bucketTooltipLines(slot.bucket) : emptyTooltipLines(slot.start)
   floatingTooltip.visible = true
   positionTooltip(event)
 }
 
 function moveTooltip(event: MouseEvent) {
-  if (!floatingTooltip.visible) return
+  if (!floatingTooltip.visible || tooltipPinned) return
   positionTooltip(event)
 }
 
-function hideTooltip() {
+function hideTooltip(event?: MouseEvent | FocusEvent) {
+  if (event && tooltipPinned) return
+  if (event?.relatedTarget instanceof Node && (tooltipRef.value?.contains(event.relatedTarget) || tooltipAnchor?.contains(event.relatedTarget))) return
   floatingTooltip.visible = false
+  tooltipPinned = false
+  tooltipAnchor = null
 }
 
 function positionTooltip(event: MouseEvent | FocusEvent) {
-  if ('clientX' in event) {
-    floatingTooltip.x = Math.min(window.innerWidth - 12, Math.max(12, event.clientX))
-    floatingTooltip.y = Math.min(window.innerHeight - 12, Math.max(12, event.clientY)) - 12
-    return
-  }
-  const target = event.target as HTMLElement | null
+  const target = event.currentTarget as HTMLElement | null
   const rect = target?.getBoundingClientRect()
   if (!rect) return
-  floatingTooltip.x = rect.left + rect.width / 2
-  floatingTooltip.y = rect.top - 10
+  const viewport = window.visualViewport
+  const offsetLeft = viewport?.offsetLeft || 0
+  const offsetTop = viewport?.offsetTop || 0
+  const height = viewport?.height || window.innerHeight
+  const position = getFloatingPanelPosition(
+    { top: rect.top - offsetTop, bottom: rect.bottom - offsetTop, right: rect.right - offsetLeft },
+    viewport?.width || window.innerWidth,
+    height,
+    { maxWidth: 288, viewportPadding: 12, mobileBreakpoint: 0, maxHeightRatio: 0.8 }
+  )
+  tooltipPosition.value = {
+    top: position.top !== null ? `${position.top + offsetTop}px` : undefined,
+    bottom: position.bottom !== null ? `${window.innerHeight - offsetTop - height + position.bottom}px` : undefined,
+    left: `${position.left + offsetLeft}px`,
+    width: `${position.width}px`,
+    maxHeight: `${position.maxHeight}px`
+  }
 }
+
+function toggleTooltip(event: MouseEvent, slot: AlignedSlot) {
+  if (tooltipPinned && tooltipAnchor === event.currentTarget) return hideTooltip()
+  tooltipPinned = false
+  showTooltip(event, slot)
+  tooltipPinned = true
+}
+
+function onTooltipOutside(event: MouseEvent) {
+  if (event.target instanceof Node && (tooltipRef.value?.contains(event.target) || tooltipAnchor?.contains(event.target))) return
+  hideTooltip()
+}
+
+function onTooltipKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') hideTooltip()
+}
+
+function onTooltipViewportChange(event: Event) {
+  if (event.target instanceof Node && tooltipRef.value?.contains(event.target)) return
+  hideTooltip()
+}
+
+onMounted(() => {
+  document.addEventListener('click', onTooltipOutside)
+  document.addEventListener('keydown', onTooltipKeydown)
+  window.addEventListener('resize', onTooltipViewportChange)
+  window.addEventListener('scroll', onTooltipViewportChange, true)
+  window.visualViewport?.addEventListener('resize', onTooltipViewportChange)
+  window.visualViewport?.addEventListener('scroll', onTooltipViewportChange)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onTooltipOutside)
+  document.removeEventListener('keydown', onTooltipKeydown)
+  window.removeEventListener('resize', onTooltipViewportChange)
+  window.removeEventListener('scroll', onTooltipViewportChange, true)
+  window.visualViewport?.removeEventListener('resize', onTooltipViewportChange)
+  window.visualViewport?.removeEventListener('scroll', onTooltipViewportChange)
+})
 
 function latencyPrivacy(metric: LatencyMetric) {
   return formatLatencyPrivacy(metric.p50_ms, metric.p90_ms, metric.avg_ms, metric.p95_ms)
@@ -613,18 +674,17 @@ function formatBucketRange(value: string) {
   display: none;
 }
 .matrix-floating-tooltip {
-  pointer-events: none;
   position: fixed;
   z-index: 9999;
-  min-width: 11.5rem;
-  max-width: min(18rem, calc(100vw - 1.5rem));
-  transform: translate(-50%, -100%);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: 0.75rem;
   border: 1px solid rgb(229 231 235);
   background: rgb(255 255 255);
   padding: 0.5rem 0.625rem;
   box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.28);
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 :global(.dark) .matrix-floating-tooltip {
   border-color: rgb(55 65 81);

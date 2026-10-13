@@ -1,15 +1,15 @@
 <template>
-  <div class="chart-panel card p-4 sm:p-5">
-    <div class="mb-4 flex items-center justify-between gap-3">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+  <div class="chart-panel card min-w-0 max-w-full p-4 sm:p-5">
+    <div class="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-3">
+      <h3 class="min-w-0 break-words text-sm font-semibold text-gray-900 dark:text-white">
         {{ !enableRankingView || activeView === 'model_distribution'
           ? t('admin.dashboard.modelDistribution')
           : t('admin.dashboard.spendingRankingTitle') }}
       </h3>
-      <div class="flex flex-wrap items-center justify-end gap-2">
+      <div class="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
         <div
           v-if="showSourceToggle"
-          class="inline-flex rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
+          class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
         >
           <button
             type="button"
@@ -44,7 +44,7 @@
         </div>
         <div
           v-if="showMetricToggle && activeView === 'model_distribution'"
-          class="inline-flex rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
+          class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
         >
           <button
             type="button"
@@ -67,7 +67,7 @@
             {{ t('admin.dashboard.metricActualCost') }}
           </button>
         </div>
-        <div v-if="enableRankingView" class="inline-flex rounded-lg bg-gray-100 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:bg-dark-800">
+        <div v-if="enableRankingView" class="inline-flex max-w-full flex-wrap rounded-lg bg-gray-100 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:bg-dark-800">
           <button
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
@@ -99,14 +99,13 @@
     <div v-if="activeView === 'model_distribution' && loading" class="flex h-48 items-center justify-center">
       <LoadingSpinner />
     </div>
-    <div
+    <DistributionChartLayout
       v-else-if="activeView === 'model_distribution' && displayModelStats.length > 0 && chartData"
-      class="distribution-body flex flex-col items-center gap-4 sm:flex-row sm:gap-6"
+      :table-label="t('admin.dashboard.modelDistribution')" :columns="distributionColspan"
     >
-      <div class="h-44 w-44 shrink-0 sm:h-48 sm:w-48">
+      <template #chart>
         <Doughnut :data="chartData" :options="doughnutOptions" />
-      </div>
-      <div class="max-h-48 w-full min-w-0 flex-1 overflow-auto">
+      </template>
         <table class="w-full text-xs">
           <thead>
             <tr class="text-gray-400 dark:text-dark-400">
@@ -126,14 +125,14 @@
                 @click="enableBreakdown && toggleBreakdown('model', model.model)"
               >
                 <td
-                  class="max-w-[100px] truncate py-1.5 font-mono font-medium"
+                  class="distribution-name py-1.5 font-mono font-medium"
                   :class="enableBreakdown ? 'text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300' : 'text-gray-900 dark:text-white'"
                   :title="model.model"
                 >
-                  <span class="inline-flex items-center gap-1">
+                  <span class="flex min-w-0 items-start gap-1">
                     <svg v-if="enableBreakdown && expandedKey === `model-${model.model}`" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     <svg v-else-if="enableBreakdown" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    {{ model.model }}
+                    <span class="min-w-0 [overflow-wrap:anywhere]">{{ model.model }}</span>
                   </span>
                 </td>
                 <td class="py-1.5 text-right font-mono tabular-nums text-gray-600 dark:text-dark-200">
@@ -165,8 +164,7 @@
             </template>
           </tbody>
         </table>
-      </div>
-    </div>
+    </DistributionChartLayout>
     <div
       v-else-if="activeView === 'model_distribution'"
       class="flex h-48 items-center justify-center text-xs text-gray-400 dark:text-dark-400"
@@ -183,11 +181,12 @@
     >
       {{ t('admin.dashboard.failedToLoad') }}
     </div>
-    <div v-else-if="rankingDisplayItems.length > 0 && rankingChartData" class="distribution-body flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
-      <div class="h-44 w-44 shrink-0 sm:h-48 sm:w-48">
+    <DistributionChartLayout v-else-if="rankingDisplayItems.length > 0 && rankingChartData"
+      :table-label="t('admin.dashboard.spendingRankingTitle')" :columns="4"
+    >
+      <template #chart>
         <Doughnut :data="rankingChartData" :options="rankingDoughnutOptions" />
-      </div>
-      <div class="max-h-48 w-full min-w-0 flex-1 overflow-auto">
+      </template>
         <table class="w-full text-xs">
           <thead>
             <tr class="text-gray-400 dark:text-dark-400">
@@ -213,7 +212,7 @@
                     {{ item.isOther ? 'Σ' : `#${index + 1}` }}
                   </span>
                   <span
-                    class="block max-w-[140px] truncate font-medium text-gray-900 dark:text-white"
+                    class="distribution-name block font-medium text-gray-900 dark:text-white"
                     :title="getRankingRowLabel(item)"
                   >
                     {{ getRankingRowLabel(item) }}
@@ -232,8 +231,7 @@
             </tr>
           </tbody>
         </table>
-      </div>
-    </div>
+    </DistributionChartLayout>
     <div
       v-else
       class="flex h-48 items-center justify-center text-sm text-gray-500 dark:text-gray-400"
@@ -251,6 +249,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Doughnut } from 'vue-chartjs'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
+import DistributionChartLayout from './DistributionChartLayout.vue'
 import type { ModelStat, UserSpendingRankingItem, UserBreakdownItem } from '@/types'
 import { getUserBreakdown } from '@/api/admin/dashboard'
 import { distributionValue, rankChartRows, sortDescending } from '@/utils/chartDistribution'

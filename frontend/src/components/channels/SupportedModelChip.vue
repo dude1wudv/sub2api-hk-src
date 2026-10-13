@@ -1,51 +1,39 @@
 <template>
-  <div class="relative inline-block">
-    <span
-      ref="triggerEl"
-      :class="[
-        'inline-flex cursor-help items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium transition-colors',
-        effectivePlatform
-          ? platformBadgeClass(effectivePlatform)
-          : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300',
-      ]"
-      @mouseenter="onEnter"
-      @mouseleave="onLeave"
-      @focusin="onEnter"
-      @focusout="onLeave"
-      tabindex="0"
-    >
-      <PlatformIcon
-        v-if="effectivePlatform"
-        :platform="effectivePlatform as GroupPlatform"
-        size="xs"
-      />
-      <span
-        v-if="showPlatform && model.platform"
-        class="rounded bg-gray-200/60 px-1 text-[10px] uppercase text-gray-600 dark:bg-dark-700 dark:text-gray-400"
+  <HelpTooltip trigger="both" width-class="w-80" class="!ml-0" :label="model.name">
+    <template #trigger="{ triggerAttrs }">
+      <button
+        v-bind="triggerAttrs"
+        type="button"
+        :class="[
+          'inline-flex max-w-full cursor-help items-center gap-1 [overflow-wrap:anywhere] rounded-md border px-2 py-0.5 text-xs font-medium transition-colors',
+          effectivePlatform
+            ? platformBadgeClass(effectivePlatform)
+            : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300',
+        ]"
+        tabindex="0"
       >
-        {{ model.platform }}
-      </span>
-      {{ model.name }}
-    </span>
-
-    <!-- Teleport to body so the popover is not clipped by card/overflow-hidden
-         ancestors. Fixed-position coords are computed from the trigger's
-         bounding rect; re-measured on enter / scroll / resize. -->
-    <Teleport to="body">
-      <div
-        v-show="show"
-        ref="popoverEl"
-        role="tooltip"
-        class="pointer-events-none fixed z-[99999] w-80 max-w-[min(22rem,calc(100vw-1rem))] rounded-lg border bg-white text-xs shadow-xl dark:bg-dark-800"
-        :class="[popoverBorderClass]"
-        :style="popoverStyle"
-      >
+        <PlatformIcon
+          v-if="effectivePlatform"
+          :platform="effectivePlatform as GroupPlatform"
+          size="xs"
+        />
+        <span
+          v-if="showPlatform && model.platform"
+          class="rounded bg-gray-200/60 px-1 text-[10px] uppercase text-gray-600 dark:bg-dark-700 dark:text-gray-400"
+        >
+          {{ model.platform }}
+        </span>
+        {{ model.name }}
+      </button>
+    </template>
+    <template #default="{ open }">
+      <div v-if="open" class="min-w-0 text-xs">
         <!-- Header：平台主题色背景，含模型名 + 平台徽章 -->
         <div
           class="flex items-center justify-between gap-2 rounded-t-lg border-b px-3 py-2"
           :class="[popoverHeaderClass, popoverBorderClass]"
         >
-          <span class="truncate font-semibold">{{ model.name }}</span>
+          <span class="min-w-0 font-semibold [overflow-wrap:anywhere]">{{ model.name }}</span>
           <span
             v-if="model.platform"
             class="flex-shrink-0 rounded bg-white/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wide dark:bg-dark-900/60"
@@ -155,7 +143,7 @@
                 <div
                   v-for="(iv, idx) in model.pricing.intervals"
                   :key="idx"
-                  class="flex justify-between text-[11px]"
+                  class="flex flex-wrap justify-between gap-x-2 text-[11px]"
                 >
                   <span class="text-gray-500 dark:text-gray-400">
                     <template v-if="iv.tier_label">{{ iv.tier_label }}</template>
@@ -168,14 +156,15 @@
           </div>
         </div>
       </div>
-    </Teleport>
-  </div>
+    </template>
+  </HelpTooltip>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PricingRow from './PricingRow.vue'
+import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import { formatScaled, resolveIntervalPrices } from '@/utils/pricing'
 import {
   BILLING_MODE_TOKEN,
@@ -269,61 +258,4 @@ function formatInterval(iv: UserPricingInterval, pricing: UserSupportedModelPric
   return `${input} / ${output}`
 }
 
-// ── Popover positioning ─────────────────────────────────────────────
-// Teleport-to-body + fixed positioning avoids being clipped by
-// overflow-hidden ancestors (the parent table card). We re-measure on
-// hover enter, scroll, and resize. Pinning to the trigger's top-center
-// with a flip when the viewport edge is near keeps it aligned without a
-// full-blown positioning lib.
-const show = ref(false)
-const triggerEl = ref<HTMLElement | null>(null)
-const popoverEl = ref<HTMLElement | null>(null)
-const popoverStyle = ref<Record<string, string>>({ top: '0px', left: '0px' })
-
-function updatePosition() {
-  const trigger = triggerEl.value
-  if (!trigger) return
-  const rect = trigger.getBoundingClientRect()
-  const margin = 8
-  const popover = popoverEl.value
-  const popWidth = popover?.offsetWidth ?? 320
-  const popHeight = popover?.offsetHeight ?? 240
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-
-  let top = rect.bottom + margin
-  // Flip upward if it would overflow below.
-  if (top + popHeight > vh - margin) {
-    top = Math.max(margin, rect.top - popHeight - margin)
-  }
-
-  let left = rect.left + rect.width / 2 - popWidth / 2
-  if (left < margin) left = margin
-  if (left + popWidth > vw - margin) left = vw - margin - popWidth
-
-  popoverStyle.value = {
-    top: `${Math.round(top)}px`,
-    left: `${Math.round(left)}px`,
-  }
-}
-
-function onEnter() {
-  show.value = true
-  nextTick(() => {
-    updatePosition()
-    window.addEventListener('scroll', updatePosition, true)
-    window.addEventListener('resize', updatePosition)
-  })
-}
-
-function onLeave() {
-  show.value = false
-  window.removeEventListener('scroll', updatePosition, true)
-  window.removeEventListener('resize', updatePosition)
-}
-
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', updatePosition, true)
-  window.removeEventListener('resize', updatePosition)
-})
 </script>

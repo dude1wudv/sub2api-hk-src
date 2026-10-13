@@ -40,9 +40,9 @@ describe('SupportedModelChip', () => {
         }
       })
       try {
-        await wrapper.find('[tabindex="0"]').trigger('mouseenter')
+        await wrapper.find('[tabindex="0"]').trigger('click')
         await nextTick()
-        const tooltip = document.body.querySelector('[role="tooltip"]')
+        const tooltip = document.body.querySelector('[role="dialog"]')
         expect(tooltip?.textContent).toContain(`${pricingKeyPrefix}.billingModeVideo`)
         expect(tooltip?.textContent).toContain(`${pricingKeyPrefix}.videoPrice`)
         expect(tooltip?.textContent).toContain(`$0.05 ${pricingKeyPrefix}.unitPerSecond`)
@@ -100,7 +100,7 @@ describe('SupportedModelChip', () => {
       }
     })
 
-    await wrapper.find('[tabindex="0"]').trigger('mouseenter')
+    await wrapper.find('[tabindex="0"]').trigger('click')
     await nextTick()
 
     expect(document.body.textContent).toContain('$20 / $75')

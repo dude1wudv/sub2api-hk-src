@@ -45,10 +45,13 @@ vi.mock('vue-i18n', async (importOriginal) => {
   }
 })
 
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it } from 'vitest'
 import RelayPulseMatrix from '../RelayPulseMatrix.vue'
 import type { MonitorHealth, MonitorMetric } from '@/api/channelMonitorV2'
+
+enableAutoUnmount(afterEach)
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 const health: MonitorHealth = {
   overall: 'warning',
@@ -82,6 +85,37 @@ function metrics(requestCount: number): MonitorMetric {
 }
 
 describe('RelayPulseMatrix', () => {
+  it.each([320, 360, 390, 1280])('bounds pinned matrix details at both edges of a %spx viewport', async (width) => {
+    vi.stubGlobal('innerWidth', width)
+    vi.stubGlobal('innerHeight', 300)
+    const wrapper = mount(RelayPulseMatrix, {
+      props: {
+        rows: [{ platform: 'openai', group_id: 7, group_name: 'Group', model: 'gpt-test', metrics: metrics(10), health,
+          buckets: [{ bucket_start: '2026-08-01T00:00:00Z', metrics: metrics(10), health }] }],
+        coverage: { requested_start: '2026-08-01T00:00:00Z', requested_end: '2026-08-01T00:01:00Z', coverage_start: '2026-08-01T00:00:00Z', data_through: '2026-08-01T00:01:00Z', computed_at: '2026-08-01T00:01:00Z', aggregation_lag_seconds: 0, coverage_complete: true, bucket_seconds: 60 },
+        healthMode: 'overall',
+      },
+    })
+    const cell = wrapper.get('.pulse-cell')
+    const rect = vi.spyOn(cell.element, 'getBoundingClientRect')
+    for (const left of [0, width - 10]) {
+      rect.mockReturnValue({ top: 10, bottom: 20, left, right: left + 10, width: 10, height: 10 } as DOMRect)
+      await cell.trigger('click')
+      const panel = document.body.querySelector<HTMLElement>('.matrix-floating-tooltip')!
+      expect(Number.parseFloat(panel.style.left)).toBeGreaterThanOrEqual(12)
+      expect(Number.parseFloat(panel.style.left) + Number.parseFloat(panel.style.width)).toBeLessThanOrEqual(width - 12)
+      expect(Number.parseFloat(panel.style.top)).toBeGreaterThanOrEqual(12)
+      expect(Number.parseFloat(panel.style.top) + Number.parseFloat(panel.style.maxHeight)).toBeLessThanOrEqual(288)
+      await cell.trigger('mouseleave')
+      expect(document.body.querySelector('.matrix-floating-tooltip')).not.toBeNull()
+      panel.dispatchEvent(new Event('scroll'))
+      await wrapper.vm.$nextTick()
+      expect(document.body.querySelector('.matrix-floating-tooltip')).not.toBeNull()
+      window.dispatchEvent(new Event('resize'))
+      await wrapper.vm.$nextTick()
+      expect(document.body.querySelector('.matrix-floating-tooltip')).toBeNull()
+    }
+  })
   it('shows privacy-safe hover tooltips and multi-band colors without click modal', async () => {
     const wrapper = mount(RelayPulseMatrix, {
       props: {

@@ -12,7 +12,7 @@ vi.mock('@/utils/format', () => ({ formatDateTime: (value: string) => value }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 enableAutoUnmount(afterEach)
 beforeEach(() => { getKeys.mockReset(); vi.spyOn(console, 'error').mockImplementation(() => {}) })
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 function deferred() {
   let resolve!: (value: unknown) => void
   let reject!: (error: Error) => void
@@ -38,6 +38,29 @@ async function switchUser(wrapper: Awaited<ReturnType<typeof open>>) {
 }
 
 describe('user API key loading', () => {
+  it.each([320, 360, 390, 1280])('bounds the selector at both edges of a %spx viewport and dismisses stale coordinates', async (width) => {
+    vi.stubGlobal('innerWidth', width)
+    vi.stubGlobal('innerHeight', 280)
+    getKeys.mockResolvedValueOnce(keys(1, 'test-key'))
+    const wrapper = await open(); await flushPromises()
+    const trigger = wrapper.get('button')
+    const rect = vi.spyOn(trigger.element, 'getBoundingClientRect')
+    for (const left of [0, width - 30]) {
+      rect.mockReturnValue({ left, right: left + 30, top: 125, bottom: 155, width: 30, height: 30 } as DOMRect)
+      await trigger.trigger('click')
+      const panel = document.body.querySelector<HTMLElement>('.fixed')!
+      expect(Number.parseFloat(panel.style.left)).toBeGreaterThanOrEqual(8)
+      expect(Number.parseFloat(panel.style.left) + Number.parseFloat(panel.style.width)).toBeLessThanOrEqual(width - 8)
+      expect(Number.parseFloat(panel.style.maxHeight)).toBeLessThanOrEqual(113)
+      expect(panel.classList.contains('overflow-y-auto')).toBe(true)
+      panel.dispatchEvent(new Event('scroll'))
+      await wrapper.vm.$nextTick()
+      expect(document.body.querySelector('.fixed')).not.toBeNull()
+      window.dispatchEvent(new Event('resize'))
+      await wrapper.vm.$nextTick()
+      expect(document.body.querySelector('.fixed')).toBeNull()
+    }
+  })
   it('does not display the previous user keys when the next load fails', async () => {
     getKeys.mockResolvedValueOnce(keys(1, 'first-user-key')).mockRejectedValueOnce(new Error('unavailable'))
     const wrapper = await open(); await flushPromises()

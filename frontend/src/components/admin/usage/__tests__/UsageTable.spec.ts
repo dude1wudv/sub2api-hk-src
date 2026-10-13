@@ -46,10 +46,17 @@ const messages: Record<string, string> = {
   'usage.outputTps': 'Output TPS',
   'admin.usage.userDeletedBadge': 'Deleted',
   'usage.costDetails': 'Cost Breakdown',
+  'usage.tokenDetails': 'Token Breakdown',
   'admin.usage.inputCost': 'Input Cost',
   'admin.usage.outputCost': 'Output Cost',
   'admin.usage.cacheCreationCost': 'Cache Creation Cost',
   'admin.usage.cacheReadCost': 'Cache Read Cost',
+  'admin.usage.inputTokens': 'Input Tokens',
+  'admin.usage.outputTokens': 'Output Tokens',
+  'admin.usage.cacheCreationTokens': 'Cache Creation Tokens',
+  'admin.usage.cacheCreation5mTokens': 'Cache Write',
+  'admin.usage.cacheCreation1hTokens': 'Cache Write',
+  'admin.usage.cacheReadTokens': 'Cache Read Tokens',
   'usage.inputTokenPrice': 'Input price',
   'usage.outputTokenPrice': 'Output price',
   'usage.perMillionTokens': '/ 1M tokens',
@@ -59,6 +66,13 @@ const messages: Record<string, string> = {
   'usage.serviceTierUltrafast': 'Ultrafast',
   'usage.serviceTierFlex': 'Flex',
   'usage.serviceTierStandard': 'Standard',
+  'usage.cacheTtlOverriddenLabel': 'TTL Override',
+  'usage.cacheTtlOverridden5m': 'Billed as 5m',
+  'usage.cacheTtlOverridden1h': 'Billed as 1h',
+  'usage.totalTokens': 'Total Tokens',
+  'usage.cacheReadRate': 'Cache Read Rate',
+  'usage.cacheReadRateFormula': 'Cache Read ÷ (Input + Cache Creation + Cache Read)',
+  'usage.outputPhaseTps': 'Output-phase TPS',
   'usage.rate': 'Rate',
   'usage.accountMultiplier': 'Account rate',
   'usage.original': 'Original',
@@ -165,6 +179,22 @@ const baseImageRow = {
   image_size_source: null,
   image_size_breakdown: null,
   session_account_switched: false,
+}
+
+function tooltipFor(trigger: VueWrapper) {
+  const id = trigger.attributes('aria-controls')
+  const tooltip = id ? document.getElementById(id) : null
+  if (!(tooltip instanceof HTMLDivElement)) {
+    throw new Error(`tooltip not found for trigger ${trigger.attributes('data-testid')}`)
+  }
+  return tooltip
+}
+
+async function openUsageDetails(wrapper: VueWrapper, testId: string) {
+  const trigger = wrapper.get(`[data-testid="${testId}"]`)
+  await trigger.trigger('click')
+  await flushPromises()
+  return { trigger, tooltip: tooltipFor(trigger) }
 }
 
 describe('admin UsageTable TPS metrics', () => {
@@ -366,14 +396,17 @@ describe('admin UsageTable tooltip', () => {
     [undefined, '1.00x'],
   ])('shows the stored user rate %s in cost details', async (rate, expected) => {
     const wrapper = mount(UsageTable, {
+      attachTo: document.body,
       props: { data: [{ ...baseImageRow, rate_multiplier: rate }], loading: false, columns: [] },
-      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true, Teleport: true } },
+      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true } },
     })
-    const triggers = wrapper.findAll('.group.relative')
-    await triggers[triggers.length - 1].trigger('mouseenter')
-    const rateLabel = wrapper.get('.fixed').findAll('span').find(span => span.text() === 'Rate')!
-    expect(rateLabel.element.parentElement?.textContent).toContain(expected)
-    wrapper.unmount()
+    try {
+      const { tooltip } = await openUsageDetails(wrapper, 'usage-cost-details-trigger')
+      const rateLabel = Array.from(tooltip.querySelectorAll('span')).find(span => span.textContent === 'Rate')!
+      expect(rateLabel.parentElement?.textContent).toContain(expected)
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('shows service tier and billing breakdown in cost tooltip', async () => {
@@ -394,6 +427,7 @@ describe('admin UsageTable tooltip', () => {
     }
 
     const wrapper = mount(UsageTable, {
+      attachTo: document.body,
       props: {
         data: [row],
         loading: false,
@@ -404,27 +438,26 @@ describe('admin UsageTable tooltip', () => {
           DataTable: DataTableStub,
           EmptyState: true,
           Icon: true,
-          Teleport: true,
         },
       },
     })
-
-    const tooltipTriggers = wrapper.findAll('.group.relative')
-    await tooltipTriggers[tooltipTriggers.length - 1].trigger('mouseenter')
-    await nextTick()
-
-    const text = wrapper.text()
-    expect(text).toContain('Service tier')
-    expect(text).toContain('Fast')
-    expect(text).toContain('Rate')
-    expect(text).toContain('1.00x')
-    expect(text).toContain('Account rate')
-    expect(text).toContain('User billed')
-    expect(text).toContain('Account billed')
-    expect(text).toContain('$0.092883')
-    expect(text).toContain('$5.0000 / 1M tokens')
-    expect(text).toContain('$30.0000 / 1M tokens')
-    expect(text).toContain('$0.069568')
+    try {
+      const { tooltip } = await openUsageDetails(wrapper, 'usage-cost-details-trigger')
+      const text = tooltip.textContent ?? ''
+      expect(text).toContain('Service tier')
+      expect(text).toContain('Fast')
+      expect(text).toContain('Rate')
+      expect(text).toContain('1.00x')
+      expect(text).toContain('Account rate')
+      expect(text).toContain('User billed')
+      expect(text).toContain('Account billed')
+      expect(text).toContain('$0.092883')
+      expect(text).toContain('$5.0000 / 1M tokens')
+      expect(text).toContain('$30.0000 / 1M tokens')
+      expect(text).toContain('$0.069568')
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it.each(['token', 'image', 'per_request'])('keeps eight decimal places in %s cost details', async (billingMode) => {
@@ -444,34 +477,115 @@ describe('admin UsageTable tooltip', () => {
       account_rate_multiplier: 1.5,
     }
     const wrapper = mount(UsageTable, {
+      attachTo: document.body,
       props: { data: [row], loading: false, columns: [] },
-      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true, Teleport: true } },
+      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true } },
     })
-    const triggers = wrapper.findAll('.group.relative')
-    await triggers[triggers.length - 1].trigger('mouseenter')
-    const amounts = wrapper.get('.fixed').findAll('span').map(span => span.text())
-    expect(amounts).toEqual(expect.arrayContaining([
-      '$0.00000001', '$0.00000002', '$0.00000003', '$0.00000004',
-      '$0.00000005', '$0.00000006', '$0.00000022', '$0.00000042', '$0.00000018',
-    ]))
-    if (billingMode === 'image') expect(amounts).toContain('$0.00000011')
-    wrapper.unmount()
+    try {
+      const { tooltip } = await openUsageDetails(wrapper, 'usage-cost-details-trigger')
+      const amounts = Array.from(tooltip.querySelectorAll('span')).map(span => span.textContent?.trim() ?? '')
+      expect(amounts).toEqual(expect.arrayContaining([
+        '$0.00000001', '$0.00000002', '$0.00000003', '$0.00000004',
+        '$0.00000005', '$0.00000006', '$0.00000022', '$0.00000042', '$0.00000018',
+      ]))
+      if (billingMode === 'image') expect(amounts).toContain('$0.00000011')
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('uses eight decimal places for missing cost values', async () => {
     const wrapper = mount(UsageTable, {
+      attachTo: document.body,
       props: {
         data: [{ ...baseImageRow, billing_mode: 'per_request', image_count: 0, total_cost: undefined, actual_cost: undefined }],
         loading: false,
         columns: [],
       },
-      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true, Teleport: true } },
+      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true } },
     })
-    const triggers = wrapper.findAll('.group.relative')
-    await triggers[triggers.length - 1].trigger('mouseenter')
-    const amounts = wrapper.get('.fixed').findAll('span').map(span => span.text()).filter(text => text.startsWith('$'))
-    expect(amounts).toEqual(['$0.00000000', '$0.00000000', '$0.00000000', '$0.00000000'])
-    wrapper.unmount()
+    try {
+      const { tooltip } = await openUsageDetails(wrapper, 'usage-cost-details-trigger')
+      const amounts = Array.from(tooltip.querySelectorAll('span')).map(span => span.textContent?.trim() ?? '').filter(text => text.startsWith('$'))
+      expect(amounts).toEqual(['$0.00000000', '$0.00000000', '$0.00000000', '$0.00000000'])
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it('opens the token details tooltip with full token, cache, rate, and total information', async () => {
+    const row = {
+      ...baseImageRow,
+      request_id: 'req-token-details',
+      billing_mode: 'token',
+      input_tokens: 1200,
+      output_tokens: 300,
+      cache_creation_tokens: 25,
+      cache_creation_5m_tokens: 25,
+      cache_creation_1h_tokens: 0,
+      cache_read_tokens: 500,
+      cache_ttl_overridden: false,
+      duration_ms: 20_000,
+      first_token_ms: 5_000,
+    }
+    const wrapper = mount(UsageTable, {
+      attachTo: document.body,
+      props: { data: [row], loading: false, columns: [] },
+      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true } },
+    })
+
+    try {
+      const { trigger, tooltip } = await openUsageDetails(wrapper, 'usage-token-details-trigger')
+      const text = tooltip.textContent ?? ''
+      expect(trigger.attributes('aria-expanded')).toBe('true')
+      expect(tooltip.getAttribute('role')).toBe('dialog')
+      expect(text).toContain('Token Breakdown')
+      expect(text).toContain('Input Tokens')
+      expect(text).toContain('1,200')
+      expect(text).toContain('Output Tokens')
+      expect(text).toContain('300')
+      expect(text).toContain('Cache Write')
+      expect(text).toContain('5m')
+      expect(text).toContain('25')
+      expect(text).toContain('Cache Read Tokens')
+      expect(text).toContain('500')
+      expect(text).toContain('Cache Read Rate')
+      expect(text).toContain('Output-phase TPS')
+      expect(text).toContain('Total Tokens')
+      expect(text).toContain('2,025')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it.each([
+    [0, 25, 'R-5m', 'Billed as 5m'],
+    [25, 0, 'R-1H', 'Billed as 1h'],
+  ] as const)('matches the TTL override marker and explanation to the %s 1h-token count', async (
+    cacheCreation1hTokens, cacheCreation5mTokens, marker, explanation,
+  ) => {
+    const row = {
+      ...baseImageRow,
+      request_id: `req-ttl-${marker}`,
+      billing_mode: 'token',
+      cache_creation_tokens: cacheCreation1hTokens + cacheCreation5mTokens,
+      cache_creation_5m_tokens: cacheCreation5mTokens,
+      cache_creation_1h_tokens: cacheCreation1hTokens,
+      cache_ttl_overridden: true,
+    }
+    const wrapper = mount(UsageTable, {
+      attachTo: document.body,
+      props: { data: [row], loading: false, columns: [] },
+      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true } },
+    })
+
+    try {
+      const { tooltip } = await openUsageDetails(wrapper, 'usage-token-details-trigger')
+      expect(tooltip.textContent).toContain(`R-${marker.slice(2)}`)
+      expect(tooltip.textContent).toContain(explanation)
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('shows requested and upstream models separately for admin rows', () => {

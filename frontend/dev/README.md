@@ -45,3 +45,7 @@ node dev/user-preview.mjs
 node --check dev/user-preview.mjs
 node --check dev/user-preview-fixtures.mjs
 ```
+
+## 分布卡片合成预览
+
+在 `frontend` 运行 `node dev/distribution-layout-preview.mjs`，打开 `http://127.0.0.1:3430/distribution-layout-preview.html`。它仅监听 loopback，端口占用即停止，不读取 `.env`，不连接后端，也不启动浏览器。四张真实模型、分组、端点和消费排名卡片使用超长名称与超大数字，并保留实际 CSS 加载顺序；可在页面手动选择 300、360、400、620、840px 卡片宽度，配合浏览器视口检查边界和表格滚动。消费排名样例需点击卡片的 `User Spending Ranking`；`Ctrl+C` 关闭预览。

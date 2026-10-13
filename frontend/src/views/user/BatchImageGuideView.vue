@@ -316,7 +316,7 @@
     <Teleport to="body">
       <div
         v-if="promptPopover.visible"
-        class="batch-prompt-popover fixed z-[9999] rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-800 shadow-xl ring-1 ring-black/5 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-100 dark:ring-white/10"
+        class="batch-prompt-popover fixed z-[9999] overflow-y-auto overscroll-contain [overflow-wrap:anywhere] rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-800 shadow-xl ring-1 ring-black/5 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-100 dark:ring-white/10"
         :style="promptPopover.style"
         @mouseenter="cancelPromptPopoverClose"
         @mouseleave="schedulePromptPopoverClose"
@@ -753,6 +753,7 @@
 </template>
 
 <script setup lang="ts">
+import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -1428,6 +1429,11 @@ function cancelPromptPopoverOpen() {
   promptPopoverOpenTimer = null
 }
 
+function onPromptPopoverViewportChange(event: Event) {
+  if (event.target instanceof Element && event.target.closest('.batch-prompt-popover')) return
+  closePromptPopover()
+}
+
 function closePromptPopover() {
   cancelPromptPopoverOpen()
   cancelPromptPopoverClose()
@@ -1473,20 +1479,23 @@ function showPromptPopover(event: MouseEvent | FocusEvent, text: string) {
 function openPromptPopover(target: HTMLElement, value: string) {
   const rect = target.getBoundingClientRect()
   if (!rect) return
-  const viewportWidth = window.innerWidth || 1280
-  const viewportHeight = window.innerHeight || 720
-  const width = Math.min(440, Math.max(320, viewportWidth - 32))
-  const left = Math.max(16, Math.min(rect.left, viewportWidth - width - 16))
-  const estimatedHeight = 178
-  const preferredTop = rect.bottom + 8
-  const top = preferredTop + estimatedHeight > viewportHeight
-    ? Math.max(16, rect.top - estimatedHeight - 8)
-    : preferredTop
+  const viewport = window.visualViewport
+  const offsetLeft = viewport?.offsetLeft || 0
+  const offsetTop = viewport?.offsetTop || 0
+  const height = viewport?.height || window.innerHeight
+  const position = getFloatingPanelPosition(
+    { top: rect.top - offsetTop, bottom: rect.bottom - offsetTop, right: rect.right - offsetLeft },
+    viewport?.width || window.innerWidth,
+    height,
+    { maxWidth: 440 }
+  )
   promptPopover.text = value
   promptPopover.style = {
-    left: `${left}px`,
-    top: `${top}px`,
-    width: `${width}px`,
+    ...(position.top !== null ? { top: `${position.top + offsetTop}px` } : {}),
+    ...(position.bottom !== null ? { bottom: `${window.innerHeight - offsetTop - height + position.bottom}px` } : {}),
+    left: `${position.left + offsetLeft}px`,
+    width: `${position.width}px`,
+    maxHeight: `${position.maxHeight}px`
   }
   promptPopover.visible = true
 }
@@ -2611,8 +2620,10 @@ onMounted(() => {
   document.addEventListener('click', closeMoreMenu)
   window.addEventListener('resize', closeMoreMenu)
   window.addEventListener('scroll', closeMoreMenu, true)
-  window.addEventListener('resize', closePromptPopover)
-  window.addEventListener('scroll', closePromptPopover, true)
+  window.addEventListener('resize', onPromptPopoverViewportChange)
+  window.visualViewport?.addEventListener('resize', onPromptPopoverViewportChange)
+  window.visualViewport?.addEventListener('scroll', onPromptPopoverViewportChange)
+  window.addEventListener('scroll', onPromptPopoverViewportChange, true)
 })
 
 watch(
@@ -2646,8 +2657,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', closeMoreMenu)
   window.removeEventListener('resize', closeMoreMenu)
   window.removeEventListener('scroll', closeMoreMenu, true)
-  window.removeEventListener('resize', closePromptPopover)
-  window.removeEventListener('scroll', closePromptPopover, true)
+  window.removeEventListener('resize', onPromptPopoverViewportChange)
+  window.visualViewport?.removeEventListener('resize', onPromptPopoverViewportChange)
+  window.visualViewport?.removeEventListener('scroll', onPromptPopoverViewportChange)
+  window.removeEventListener('scroll', onPromptPopoverViewportChange, true)
 })
 </script>
 

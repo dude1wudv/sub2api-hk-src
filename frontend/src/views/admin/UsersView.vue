@@ -347,60 +347,58 @@
 
           <template #cell-groups="{ row }">
             <div v-if="allGroups.length > 0" class="flex flex-col gap-1">
-              <!-- 专属分组行 -->
-              <span
+              <!-- 分组详情使用视口内浮层，手机可点击查看或替换。 -->
+              <HelpTooltip
                 v-if="getUserGroups(row).exclusive.length > 0"
-                class="group/ex relative inline-flex cursor-pointer items-center gap-1 whitespace-nowrap text-xs"
-                @click.stop="toggleExpandedGroup(row.id)"
+                :key="`${row.id}:${showGroupReplaceModal}`"
+                trigger="both"
+                width-class="w-64"
+                class="!ml-0"
+                :label="t('admin.users.exclusiveLabel')"
               >
-                <Icon name="shield" size="xs" class="h-3.5 w-3.5 text-purple-500 dark:text-purple-400" />
-                <span class="font-medium text-purple-600 dark:text-purple-400">{{ getUserGroups(row).exclusive.length }}</span>
-                <span class="text-gray-500 dark:text-dark-400">{{ t('admin.users.exclusiveLabel') }}</span>
-                <!-- Hover tooltip（操作菜单未打开时显示） -->
-                <div
-                  v-if="expandedGroupUserId !== row.id"
-                  class="ui-popover pointer-events-none absolute left-0 top-full z-50 mt-1.5 rounded px-2.5 py-1.5 text-xs opacity-0 transition-opacity duration-75 group-hover/ex:opacity-100"
-                >
-                  <div class="absolute left-4 bottom-full border-4 border-transparent border-b-[rgb(var(--surface-elevated))]"></div>
-                  <div class="flex flex-col gap-0.5 whitespace-nowrap">
-                    <span v-for="g in getUserGroups(row).exclusive" :key="g.id">{{ g.name }}</span>
+                <template #trigger="{ triggerAttrs }">
+                  <button v-bind="triggerAttrs" type="button" class="inline-flex min-h-8 items-center gap-1 text-xs max-md:min-h-11">
+                    <Icon name="shield" size="xs" class="h-3.5 w-3.5 text-purple-500 dark:text-purple-400" />
+                    <span class="font-medium text-purple-600 dark:text-purple-400">{{ getUserGroups(row).exclusive.length }}</span>
+                    <span class="text-gray-500 dark:text-dark-400">{{ t('admin.users.exclusiveLabel') }}</span>
+                  </button>
+                </template>
+                <template #default="{ open }">
+                  <div v-if="open">
+                    <div class="mb-1 text-[10px] font-medium text-gray-500 dark:text-dark-400">{{ t('admin.users.clickToReplace') }}</div>
+                    <button
+                      v-for="g in getUserGroups(row).exclusive"
+                      :key="g.id"
+                      type="button"
+                      class="flex min-h-10 w-full items-center gap-2 rounded px-2 py-2 text-left text-xs transition-colors hover:bg-primary-50 dark:hover:bg-primary-900/30"
+                      @click.stop="openGroupReplace(row, g)"
+                    >
+                      <Icon name="swap" size="xs" class="h-3.5 w-3.5 shrink-0 opacity-50" />
+                      <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">{{ g.name }}</span>
+                    </button>
                   </div>
-                </div>
-                <!-- 点击展开分组操作菜单 -->
-                <div
-                  v-if="expandedGroupUserId === row.id"
-                  class="absolute left-0 top-full z-50 mt-1.5 min-w-[160px] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-xs shadow-xl dark:border-dark-600 dark:bg-dark-700"
-                >
-                  <div class="border-b border-gray-100 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:border-dark-600 dark:text-dark-400">
-                    {{ t('admin.users.clickToReplace') }}
-                  </div>
-                  <div
-                    v-for="g in getUserGroups(row).exclusive"
-                    :key="g.id"
-                    class="flex cursor-pointer items-center gap-2 px-3 py-2 text-gray-700 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:text-dark-200 dark:hover:bg-primary-900/30 dark:hover:text-primary-400"
-                    @click.stop="openGroupReplace(row, g)"
-                  >
-                    <Icon name="swap" size="xs" class="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
-                    <span class="flex-1">{{ g.name }}</span>
-                  </div>
-                </div>
-              </span>
-              <!-- 公开分组行 -->
-              <span
+                </template>
+              </HelpTooltip>
+              <HelpTooltip
                 v-if="getUserGroups(row).publicGroups.length > 0"
-                class="group/pub relative inline-flex cursor-default items-center gap-1 whitespace-nowrap text-xs"
+                trigger="both"
+                width-class="w-64"
+                class="!ml-0"
+                :label="t('admin.users.publicLabel')"
               >
-                <Icon name="globe" size="xs" class="h-3.5 w-3.5 text-gray-400 dark:text-dark-500" />
-                <span class="font-medium text-gray-600 dark:text-dark-300">{{ getUserGroups(row).publicGroups.length }}</span>
-                <span class="text-gray-400 dark:text-dark-500">{{ t('admin.users.publicLabel') }}</span>
-                <!-- Tooltip: 向下弹出 -->
-                <div class="ui-popover pointer-events-none absolute left-0 top-full z-50 mt-1.5 rounded px-2.5 py-1.5 text-xs opacity-0 transition-opacity duration-75 group-hover/pub:opacity-100">
-                  <div class="absolute left-4 bottom-full border-4 border-transparent border-b-[rgb(var(--surface-elevated))]"></div>
-                  <div class="flex flex-col gap-0.5 whitespace-nowrap">
+                <template #trigger="{ triggerAttrs }">
+                  <button v-bind="triggerAttrs" type="button" class="inline-flex min-h-8 items-center gap-1 text-xs max-md:min-h-11">
+                    <Icon name="globe" size="xs" class="h-3.5 w-3.5 text-gray-400 dark:text-dark-500" />
+                    <span class="font-medium text-gray-600 dark:text-dark-300">{{ getUserGroups(row).publicGroups.length }}</span>
+                    <span class="text-gray-400 dark:text-dark-500">{{ t('admin.users.publicLabel') }}</span>
+                  </button>
+                </template>
+                <template #default="{ open }">
+                  <div v-if="open" class="flex flex-col gap-1">
                     <span v-for="g in getUserGroups(row).publicGroups" :key="g.id">{{ g.name }}</span>
                   </div>
-                </div>
-              </span>
+                </template>
+              </HelpTooltip>
               <!-- 都没有 -->
               <span
                 v-if="getUserGroups(row).exclusive.length === 0 && getUserGroups(row).publicGroups.length === 0"
@@ -437,19 +435,17 @@
 
           <template #cell-balance="{ value, row }">
             <div class="flex items-center gap-2">
-              <div class="group relative">
-                <button
-                  class="font-medium text-gray-900 tabular-nums underline decoration-dashed decoration-gray-300 underline-offset-4 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:text-white dark:decoration-dark-500 dark:hover:text-primary-400"
-                  @click="handleBalanceHistory(row)"
-                >
-                  ${{ value.toFixed(2) }}
-                </button>
-                <!-- Instant tooltip -->
-                <div class="ui-popover pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs opacity-0 transition-opacity duration-75 group-hover:opacity-100">
-                  {{ t('admin.users.balanceHistoryTip') }}
-                  <div class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[rgb(var(--surface-elevated))]"></div>
-                </div>
-              </div>
+              <HelpTooltip :content="t('admin.users.balanceHistoryTip')" class="!ml-0">
+                <template #trigger="{ triggerAttrs }">
+                  <button
+                    v-bind="triggerAttrs"
+                    class="font-medium text-gray-900 tabular-nums underline decoration-dashed decoration-gray-300 underline-offset-4 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:text-white dark:decoration-dark-500 dark:hover:text-primary-400"
+                    @click="handleBalanceHistory(row)"
+                  >
+                    ${{ value.toFixed(2) }}
+                  </button>
+                </template>
+              </HelpTooltip>
               <button
                 @click.stop="handleDeposit(row)"
                 class="rounded-lg px-2 py-0.5 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
@@ -680,8 +676,9 @@
     <Teleport to="body">
       <div
         v-if="activeMenuId !== null && menuPosition"
-        class="action-menu-content fixed z-[9999] w-52 overflow-hidden rounded-xl border border-gray-200/80 bg-white/95 py-1.5 shadow-xl ring-1 ring-black/5 backdrop-blur dark:border-dark-600 dark:bg-dark-800/95 dark:ring-white/10"
-        :style="{ top: menuPosition.top + 'px', left: menuPosition.left + 'px' }"
+        ref="actionMenuRef"
+        class="action-menu-content fixed z-[9999] overflow-y-auto overscroll-contain rounded-xl border border-gray-200/80 bg-white/95 py-1.5 shadow-xl ring-1 ring-black/5 backdrop-blur dark:border-dark-600 dark:bg-dark-800/95 dark:ring-white/10"
+        :style="menuPosition"
       >
         <div class="py-0.5">
           <template v-for="user in users" :key="user.id">
@@ -795,13 +792,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, type CSSProperties } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { useTableSelection } from '@/composables/useTableSelection'
 import { formatDateTime } from '@/utils/format'
+import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import Icon from '@/components/icons/Icon.vue'
+import HelpTooltip from '@/components/common/HelpTooltip.vue'
 
 const { t } = useI18n()
 import { adminAPI } from '@/api/admin'
@@ -1453,7 +1452,8 @@ const refreshCurrentPageSecondaryData = () => {
 
 // Action Menu State
 const activeMenuId = ref<number | null>(null)
-const menuPosition = ref<{ top: number; left: number } | null>(null)
+const menuPosition = ref<CSSProperties | null>(null)
+const actionMenuRef = ref<HTMLElement | null>(null)
 
 const openActionMenu = (user: AdminUser, e: MouseEvent) => {
   if (activeMenuId.value === user.id) {
@@ -1466,44 +1466,23 @@ const openActionMenu = (user: AdminUser, e: MouseEvent) => {
     }
 
     const rect = target.getBoundingClientRect()
-    const menuWidth = 200
-    const menuHeight = 240
-    const padding = 8
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-
-    let left, top
-
-    if (viewportWidth < 768) {
-      // 居中显示,水平位置
-      left = Math.max(padding, Math.min(
-        rect.left + rect.width / 2 - menuWidth / 2,
-        viewportWidth - menuWidth - padding
-      ))
-
-      // 优先显示在按钮下方
-      top = rect.bottom + 4
-
-      // 如果下方空间不够,显示在上方
-      if (top + menuHeight > viewportHeight - padding) {
-        top = rect.top - menuHeight - 4
-        // 如果上方也不够,就贴在视口顶部
-        if (top < padding) {
-          top = padding
-        }
-      }
-    } else {
-      left = Math.max(padding, Math.min(
-        e.clientX - menuWidth,
-        viewportWidth - menuWidth - padding
-      ))
-      top = e.clientY
-      if (top + menuHeight > viewportHeight - padding) {
-        top = viewportHeight - menuHeight - padding
-      }
+    const viewport = window.visualViewport
+    const offsetLeft = viewport?.offsetLeft || 0
+    const offsetTop = viewport?.offsetTop || 0
+    const height = viewport?.height || window.innerHeight
+    const position = getFloatingPanelPosition(
+      { top: rect.top - offsetTop, bottom: rect.bottom - offsetTop, right: rect.right - offsetLeft },
+      viewport?.width || window.innerWidth,
+      height,
+      { maxWidth: 208, viewportPadding: 8, gap: 4, maxHeightRatio: 0.8, mobileBreakpoint: 0 }
+    )
+    menuPosition.value = {
+      top: position.top !== null ? `${position.top + offsetTop}px` : undefined,
+      bottom: position.bottom !== null ? `${window.innerHeight - offsetTop - height + position.bottom}px` : undefined,
+      left: `${position.left + offsetLeft}px`,
+      width: `${position.width}px`,
+      maxHeight: `${position.maxHeight}px`
     }
-
-    menuPosition.value = { top, left }
     activeMenuId.value = user.id
   }
 }
@@ -1531,21 +1510,11 @@ const handleClickOutside = (event: MouseEvent) => {
   if (openUsageSortMenu.value !== null && !target.closest('.usage-sort-trigger')) {
     openUsageSortMenu.value = null
   }
-  // Close expanded group dropdown when clicking outside
-  if (expandedGroupUserId.value !== null) {
-    expandedGroupUserId.value = null
-  }
 }
 
 // Allowed groups modal state
 const showAllowedGroupsModal = ref(false)
 const allowedGroupsUser = ref<AdminUser | null>(null)
-
-// Expanded group dropdown state (click to show exclusive groups list)
-const expandedGroupUserId = ref<number | null>(null)
-const toggleExpandedGroup = (userId: number) => {
-  expandedGroupUserId.value = expandedGroupUserId.value === userId ? null : userId
-}
 
 // Group replace modal state
 const showGroupReplaceModal = ref(false)
@@ -1789,7 +1758,6 @@ const closeAllowedGroupsModal = () => {
 }
 
 const openGroupReplace = (user: AdminUser, group: { id: number; name: string }) => {
-  expandedGroupUserId.value = null
   groupReplaceUser.value = user
   groupReplaceOldGroup.value = group
   showGroupReplaceModal.value = true
@@ -1886,8 +1854,13 @@ const handleWithdrawFromHistory = () => {
 }
 
 // 滚动时关闭菜单
-const handleScroll = () => {
+const handleScroll = (event: Event) => {
+  if (event.target instanceof Node && actionMenuRef.value?.contains(event.target)) return
   closeActionMenu()
+}
+
+const handleMenuKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') closeActionMenu()
 }
 
 onMounted(async () => {
@@ -1903,11 +1876,19 @@ onMounted(async () => {
   }
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('scroll', handleScroll, true)
+  window.addEventListener('resize', handleScroll)
+  window.visualViewport?.addEventListener('resize', handleScroll)
+  window.visualViewport?.addEventListener('scroll', handleScroll)
+  document.addEventListener('keydown', handleMenuKeydown)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   window.removeEventListener('scroll', handleScroll, true)
+  window.removeEventListener('resize', handleScroll)
+  window.visualViewport?.removeEventListener('resize', handleScroll)
+  window.visualViewport?.removeEventListener('scroll', handleScroll)
+  document.removeEventListener('keydown', handleMenuKeydown)
   clearTimeout(searchTimeout)
   abortController?.abort()
 })

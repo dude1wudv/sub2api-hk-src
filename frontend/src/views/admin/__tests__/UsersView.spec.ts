@@ -207,6 +207,29 @@ describe('admin UsersView', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it.each([320, 360, 390, 1280])('keeps the user action menu scrollable and inside a %spx viewport', async (width) => {
+    vi.stubGlobal('innerWidth', width)
+    vi.stubGlobal('innerHeight', 280)
+    const wrapper = mountBulkDeleteView()
+    await flushPromises()
+    const trigger = wrapper.get('.action-menu-trigger')
+    vi.spyOn(trigger.element, 'getBoundingClientRect').mockReturnValue({ top: 130, bottom: 170, left: width - 40, right: width, width: 40, height: 40 } as DOMRect)
+    await trigger.trigger('click')
+    const panel = wrapper.get<HTMLElement>('.action-menu-content')
+    expect(Number.parseFloat(panel.element.style.left)).toBeGreaterThanOrEqual(8)
+    expect(Number.parseFloat(panel.element.style.left) + Number.parseFloat(panel.element.style.width)).toBeLessThanOrEqual(width - 8)
+    expect(Number.parseFloat(panel.element.style.maxHeight)).toBeLessThanOrEqual(118)
+    expect(panel.classes()).toContain('overflow-y-auto')
+    await panel.trigger('scroll')
+    expect(wrapper.find('.action-menu-content').exists()).toBe(true)
+    window.dispatchEvent(new Event('resize'))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.action-menu-content').exists()).toBe(false)
+    wrapper.unmount()
   })
 
   it('cancels bulk deletion without deleting or clearing selected users', async () => {
