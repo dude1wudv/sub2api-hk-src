@@ -196,7 +196,7 @@ onBeforeUnmount(() => {
         :data-placement="placement"
         tabindex="-1"
         :class="[
-          'fixed z-[99999] rounded-lg bg-gray-900 text-xs leading-relaxed text-white shadow-xl ring-1 ring-white/10 selection:bg-primary-200 selection:text-gray-900 before:absolute before:inset-x-0 before:h-2 dark:bg-gray-800 dark:selection:bg-primary-200 dark:selection:text-gray-900',
+          'ui-popover fixed z-[99999] rounded-lg text-xs leading-relaxed selection:bg-primary-200 selection:text-gray-900 before:absolute before:inset-x-0 before:h-2',
           placement === 'top' ? 'before:top-full' : 'before:bottom-full',
           props.widthClass,
         ]"
@@ -215,7 +215,7 @@ onBeforeUnmount(() => {
         <button
           v-if="props.trigger === 'click'"
           type="button"
-          class="absolute right-0 top-0 flex min-h-11 min-w-11 items-center justify-center rounded-lg text-gray-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          class="absolute right-0 top-0 flex min-h-11 min-w-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:ring-white"
           :aria-label="t('common.close')"
           @click.stop="closeTooltip(true)"
         >

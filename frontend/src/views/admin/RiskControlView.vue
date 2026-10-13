@@ -1132,7 +1132,7 @@
                 {{ inputDetailRow.group_name }}
               </span>
             </div>
-            <pre class="mt-4 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-950 p-4 text-sm leading-6 text-gray-100 shadow-inner dark:bg-black/50">{{ inputDetailText }}</pre>
+            <pre class="ui-code-panel mt-4 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-lg p-4 text-sm leading-6">{{ inputDetailText }}</pre>
           </div>
         </div>
 

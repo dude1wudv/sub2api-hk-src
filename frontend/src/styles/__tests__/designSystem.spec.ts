@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import postcss from 'postcss'
 
@@ -35,6 +35,68 @@ describe.each([['light', light], ['dark', dark]] as const)('%s semantic text con
     for (const status of ['ok', 'warn', 'err', 'link']) {
       expect(contrast(`--text-${status}`, `--status-${status}-bg`, palette)).toBeGreaterThanOrEqual(4.5)
     }
+  })
+  it('keeps popovers and code panels readable', () => {
+    expect(contrast('--ink', '--surface-elevated', palette)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast('--ink', '--surface-2', palette)).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+describe('theme surfaces', () => {
+  function hexLuminance(hex: string): number {
+    const channels = [0, 2, 4].map(offset => Number.parseInt(hex.slice(offset + 1, offset + 3), 16)).map(channel => {
+      const value = channel / 255
+      return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4
+    })
+    return channels.reduce((sum, channel, index) => sum + channel * [.2126, .7152, .0722][index], 0)
+  }
+  function hexContrast(foreground: string, background: string): number {
+    const a = hexLuminance(foreground)
+    const b = hexLuminance(background)
+    return (Math.max(a, b) + .05) / (Math.min(a, b) + .05)
+  }
+
+  it('uses light chart tooltip surfaces and keeps both modes readable', () => {
+    expect(light['--chart-tooltip-bg']).toBe('#fffffc')
+    expect(light['--chart-tooltip-text']).toBe('#22231f')
+    expect(light['--chart-tooltip-border']).toBe('#e8e4da')
+    expect(hexContrast(light['--chart-tooltip-text'], light['--chart-tooltip-bg'])).toBeGreaterThanOrEqual(4.5)
+    expect(hexContrast(dark['--chart-tooltip-text'], dark['--chart-tooltip-bg'])).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('defines popover and code panel colors from surface tokens', () => {
+    expect(stylesheet).toMatch(/\.ui-popover \{[^}]*rgb\(var\(--surface-elevated\)\)[^}]*rgb\(var\(--ink\)\)/)
+    expect(stylesheet).toMatch(/\.ui-popover-arrow \{[^}]*rgb\(var\(--surface-elevated\)\)/)
+    expect(stylesheet).toMatch(/\.ui-code-panel \{[^}]*rgb\(var\(--surface-2\)\)[^}]*rgb\(var\(--ink\)\)/)
+  })
+})
+
+describe('light mode surfaces', () => {
+  const solidDarkBackground = /(?:[\w-]+:)*!?(?:bg-(?:gray|dark)-(?:700|800|900|950)|bg-black)(?![\w/-])/g
+  // Video letterboxing stays black in both modes.
+  const allowedVideoSurface = 'components/admin/account/AccountTestModal.vue'
+
+  function vueFiles(dir: string): string[] {
+    return readdirSync(dir).flatMap(name => {
+      const full = resolve(dir, name)
+      return statSync(full).isDirectory() ? vueFiles(full) : name.endsWith('.vue') ? [full] : []
+    })
+  }
+
+  it('does not use a solid dark background without a dark-mode prefix', () => {
+    const root = resolve(process.cwd(), 'src')
+    const violations: string[] = []
+    for (const file of vueFiles(root)) {
+      const rel = relative(root, file).replaceAll('\\', '/')
+      readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+        for (const match of line.matchAll(solidDarkBackground)) {
+          if (match[0].includes('dark:')) continue
+          if (rel === allowedVideoSurface && match[0] === 'bg-black' && line.includes('border-gray-200 bg-black')) continue
+          violations.push(`${rel}:${index + 1} ${match[0]}`)
+        }
+      })
+    }
+    expect(violations).toEqual([])
   })
 })
 

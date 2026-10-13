@@ -503,12 +503,12 @@
             </button>
           </template>
           <div class="font-semibold mb-1">{{ t('admin.accounts.gemini.quotaPolicy.title') }}</div>
-          <div class="mb-2 text-gray-300">{{ t('admin.accounts.gemini.quotaPolicy.note') }}</div>
+          <div class="mb-2 text-gray-700 dark:text-gray-300">{{ t('admin.accounts.gemini.quotaPolicy.note') }}</div>
           <div class="space-y-1">
             <div><strong>{{ geminiQuotaPolicyChannel }}:</strong></div>
             <div class="pl-2">• {{ geminiQuotaPolicyLimits }}</div>
             <div class="mt-2">
-              <a :href="geminiQuotaPolicyDocsUrl" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">
+              <a :href="geminiQuotaPolicyDocsUrl" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">
                 {{ t('admin.accounts.gemini.quotaPolicy.columns.docs') }} →
               </a>
             </div>
