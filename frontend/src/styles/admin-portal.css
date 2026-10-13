@@ -194,6 +194,8 @@ body.admin-navigation-open { overflow:hidden; }
 .admin-page .operations-links a { display:inline-flex; align-items:center; gap:7px; min-height:44px; padding:8px 14px; border:1px solid rgb(var(--line)); border-radius:999px; background:rgb(var(--surface)); color:rgb(var(--ink-2)); text-decoration:none; }
 .admin-page .operations-links a:hover { border-color:rgb(var(--brand-moss) / .5); background:rgb(var(--surface-2)); color:rgb(var(--ink)); }
 .admin-chart-panel { min-width:0; align-self:start; border:1px solid rgb(var(--line)); border-radius:20px; background:rgb(var(--surface)); box-shadow:0 4px 18px rgb(var(--ink) / .035); }
+.admin-chart-panel--trend { display:flex; flex-direction:column; align-self:stretch; }
+.admin-chart-panel--trend > .admin-chart-footer { flex:none; margin-top:auto; }
 :root body[data-admin-surface='true'] .admin-chart-panel > .card { border:0; box-shadow:none; background:transparent; }
 .admin-chart-scope { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:16px; padding-top:16px; border-top:1px solid rgb(var(--line)); }
 .admin-chart-scope > span { flex:1 1 240px; color:rgb(var(--ink-2)); font-size:13px; }

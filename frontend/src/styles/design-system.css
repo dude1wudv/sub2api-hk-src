@@ -217,7 +217,7 @@ tbody .sticky-col { background: rgb(var(--table-surface)); }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 12px; color: rgb(var(--ink-3)); font-size: 13px; }
 .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { height: 7px; width: 7px; border-radius: 50%; }
-.dashboard-analytics { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(0,1fr); gap: 20px; }
+.dashboard-analytics { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
 .dashboard-analytics > .dashboard-analytics-controls { grid-column: 1 / -1; margin: 0; }
 .dashboard-analytics > .dashboard-chart-row { display: contents; }
 .dashboard-analytics > :not([hidden]) ~ :not([hidden]) { margin-top: 0; }
@@ -225,7 +225,17 @@ tbody .sticky-col { background: rgb(var(--table-surface)); }
 .dashboard-analytics .dashboard-models { grid-column: 2; grid-row: 2; }
 .dashboard-analytics .dashboard-groups { grid-column: 2; grid-row: 3; }
 .dashboard-analytics .dashboard-endpoints { grid-column: 1; grid-row: 3; }
-.dashboard-trend > .h-48 { height: 258px; }
+/* Shared header/body rows keep paired charts aligned even when controls wrap. */
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 1200px) {
+    .dashboard-analytics .dashboard-chart-row > .chart-panel { container-type: normal; display: grid; grid-template-rows: subgrid; row-gap: 16px; }
+    .dashboard-analytics :is(.dashboard-trend,.dashboard-models) { grid-row: 2 / span 2; }
+    .dashboard-analytics :is(.dashboard-endpoints,.dashboard-groups) { grid-row: 4 / span 2; }
+    .dashboard-analytics .chart-panel > .mb-4 { margin-bottom: 0; align-self: start; }
+    .dashboard-analytics .chart-panel > div.mb-4 { flex-direction: column; align-items: stretch; }
+    .dashboard-analytics .chart-panel > div.mb-4 > div { align-self: flex-end; }
+  }
+}
 .table-pagination { padding: 16px 20px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); background: rgb(var(--surface)); }
 .table-pagination nav { gap: 5px; box-shadow: none; }
 .table-pagination button { min-width: 36px; min-height: 36px; border-radius: 999px; }

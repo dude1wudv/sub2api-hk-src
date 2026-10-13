@@ -81,7 +81,10 @@ export function adminPreview(method, path, params, fixtures, settings) {
     total_cache_tokens: 427040000, total_cache_creation_tokens: 12000000, total_cache_read_tokens: 415040000,
     total_cost: 1643.9282, total_actual_cost: 1283.5106,
     total_account_cost: 1442.9282, average_duration_ms: 23130,
-    endpoints: [], upstream_endpoints: [], endpoint_paths: []
+    endpoints: ['/v1/messages', '/v1/responses', '/v1/chat/completions'].map((endpoint, i) => ({
+      endpoint, requests: 1600 - i * 500, total_tokens: 397000000 / (i + 1),
+      actual_cost: 15.14 / (i + 1), cost: 66.95 / (i + 1),
+    })), upstream_endpoints: [], endpoint_paths: []
   }
   if (/^\/admin\/(announcements|subscriptions|redeem|promo-codes|audit-logs)$/.test(path)) return page([],params)
   if (path === '/admin/models' || path === '/admin/tls-fingerprints') return []

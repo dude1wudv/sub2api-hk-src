@@ -385,8 +385,8 @@
                 </ul>
               </details>
             </section>
-            <section class="admin-chart-panel">
-              <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
+            <section class="admin-chart-panel admin-chart-panel--trend">
+              <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" fill />
               <div v-if="trendDays.length" class="admin-chart-footer">
                 <label class="admin-inline-field"><span>{{ zh ? '选择日期' : 'Choose a day' }}</span><select v-model="drillDate" class="input" data-test="dashboard-drill-date"><option v-for="day in trendDays" :key="day" :value="day">{{ day }}</option></select></label>
                 <button type="button" class="btn btn-secondary" :disabled="!drillDate" data-test="trend-usage-drill" @click="goToUsage(drillModel, drillDate)">{{ zh ? '查看当天明细' : 'View this day' }}<Icon name="arrowRight" size="sm" /></button>

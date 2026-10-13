@@ -1,19 +1,22 @@
 <template>
-  <div class="chart-panel card p-4 sm:p-5">
+  <div
+    class="token-usage-trend chart-panel card p-4 sm:p-5"
+    :class="{ 'token-usage-trend--fill': fill }"
+  >
     <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
       {{ t('admin.dashboard.tokenUsageTrend') }}
     </h3>
-    <div v-if="loading" class="flex h-48 items-center justify-center">
-      <LoadingSpinner />
-    </div>
-    <div v-else-if="trendData.length > 0 && chartData" class="h-48">
-      <Line :data="chartData" :options="lineOptions" />
-    </div>
-    <div
-      v-else
-      class="flex h-48 items-center justify-center text-xs text-gray-400 dark:text-dark-400"
-    >
-      {{ t('admin.dashboard.noDataAvailable') }}
+    <div class="token-usage-trend__body">
+      <div v-if="loading" class="flex h-full items-center justify-center">
+        <LoadingSpinner />
+      </div>
+      <Line v-else-if="trendData.length > 0 && chartData" :data="chartData" :options="lineOptions" />
+      <div
+        v-else
+        class="flex h-full items-center justify-center text-xs text-gray-400 dark:text-dark-400"
+      >
+        {{ t('admin.dashboard.noDataAvailable') }}
+      </div>
     </div>
   </div>
 </template>
@@ -51,10 +54,13 @@ ChartJS.register(
 const chartTheme = useChartTheme()
 const { t } = useI18n()
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   trendData: TrendDataPoint[]
   loading?: boolean
-}>()
+  fill?: boolean
+}>(), {
+  fill: false
+})
 
 const palette = useChartPalette()
 const chartColors = computed(() => ({
@@ -228,3 +234,35 @@ const formatCost = (value: number): string => {
   return value.toFixed(4)
 }
 </script>
+
+<style scoped>
+.token-usage-trend__body {
+  position: relative;
+  min-width: 0;
+  height: 12rem;
+}
+
+.token-usage-trend--fill {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-self: stretch;
+  min-height: 0;
+}
+
+.token-usage-trend--fill > h3 {
+  flex: none;
+}
+
+.token-usage-trend--fill .token-usage-trend__body {
+  flex: 1 1 12rem;
+  height: auto;
+  min-height: 12rem;
+}
+
+/* Let the available panel space size Chart.js, not the canvas's intrinsic height. */
+.token-usage-trend--fill .token-usage-trend__body :deep(canvas) {
+  position: absolute;
+  inset: 0;
+}
+</style>
