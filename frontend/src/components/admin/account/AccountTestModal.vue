@@ -174,7 +174,7 @@
       <div class="group relative">
         <div
           ref="terminalRef"
-          class="max-h-[240px] min-h-[120px] overflow-y-auto rounded-xl border border-gray-700 bg-gray-900 p-4 font-mono text-sm dark:border-gray-800 dark:bg-black"
+          class="ui-code-panel max-h-[240px] min-h-[120px] overflow-y-auto rounded-xl p-4 font-mono text-sm"
         >
           <!-- Status Line -->
           <div v-if="status === 'idle'" class="flex items-center gap-2 text-gray-500">
@@ -199,14 +199,14 @@
           <!-- Result Status -->
           <div
             v-if="status === 'success'"
-            class="mt-3 flex items-center gap-2 border-t border-gray-700 pt-3 text-green-400"
+            class="mt-3 flex items-center gap-2 border-t border-gray-300 pt-3 dark:border-gray-700 text-green-400"
           >
             <Icon name="check" size="sm" :stroke-width="2" />
             <span>{{ t('admin.accounts.testCompleted') }}</span>
           </div>
           <div
             v-else-if="status === 'error'"
-            class="mt-3 flex items-center gap-2 border-t border-gray-700 pt-3 text-red-400"
+            class="mt-3 flex items-center gap-2 border-t border-gray-300 pt-3 dark:border-gray-700 text-red-400"
           >
             <Icon name="x" size="sm" :stroke-width="2" />
             <span>{{ errorMessage }}</span>
@@ -217,7 +217,7 @@
         <button
           v-if="outputLines.length > 0"
           @click="copyOutput"
-          class="absolute right-2 top-2 rounded-lg bg-gray-800/80 p-1.5 text-gray-400 opacity-0 transition-all hover:bg-gray-700 hover:text-white group-hover:opacity-100"
+          class="absolute right-2 top-2 rounded-lg bg-gray-200/80 p-1.5 text-gray-600 opacity-0 transition-all hover:bg-gray-300 hover:text-gray-900 group-hover:opacity-100 dark:bg-gray-800/80 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
           :title="t('admin.accounts.copyOutput')"
         >
           <Icon name="link" size="sm" :stroke-width="2" />
@@ -813,7 +813,7 @@ const abortStream = () => {
   }
 }
 
-const addLine = (text: string, className: string = 'text-gray-300') => {
+const addLine = (text: string, className: string = 'text-gray-700 dark:text-gray-300') => {
   outputLines.value.push({ text, class: className })
   scrollToBottom()
 }
@@ -831,13 +831,13 @@ const startTest = async () => {
   resetState()
   status.value = 'connecting'
   addLine(t('admin.accounts.startingTestForAccount', { name: props.account.name }), 'text-blue-400')
-  addLine(t('admin.accounts.testAccountTypeLabel', { type: props.account.type }), 'text-gray-400')
+  addLine(t('admin.accounts.testAccountTypeLabel', { type: props.account.type }), 'text-gray-500 dark:text-gray-400')
   if (isGrokAccount.value) {
     const modeLabel =
       grokTestModeOptions.value.find((o) => o.value === grokTestMode.value)?.label || grokTestMode.value
-    addLine(t('admin.accounts.grok.selectedTestMode', { mode: modeLabel }), 'text-gray-400')
+    addLine(t('admin.accounts.grok.selectedTestMode', { mode: modeLabel }), 'text-gray-500 dark:text-gray-400')
   }
-  addLine('', 'text-gray-300')
+  addLine('', 'text-gray-700 dark:text-gray-300')
 
   abortStream()
 
@@ -973,9 +973,9 @@ const handleEvent = (event: {
           : supportsImageTest.value
             ? t('admin.accounts.sendingImageRequest')
             : t('admin.accounts.sendingTestMessage'),
-        'text-gray-400'
+        'text-gray-500 dark:text-gray-400'
       )
-      addLine('', 'text-gray-300')
+      addLine('', 'text-gray-700 dark:text-gray-300')
       addLine(t('admin.accounts.response'), 'text-yellow-400')
       break
 
@@ -992,7 +992,7 @@ const handleEvent = (event: {
           url: event.image_url,
           mimeType: event.mime_type
         })
-        addLine(t('admin.accounts.imageReceived', { count: generatedImages.value.length }), 'text-purple-300')
+        addLine(t('admin.accounts.imageReceived', { count: generatedImages.value.length }), 'text-purple-600')
       }
       break
 
@@ -1002,7 +1002,7 @@ const handleEvent = (event: {
           url: event.audio_url,
           mimeType: event.mime_type
         })
-        addLine(t('admin.accounts.audioReceived', { count: generatedAudios.value.length }), 'text-purple-300')
+        addLine(t('admin.accounts.audioReceived', { count: generatedAudios.value.length }), 'text-purple-600')
       }
       break
 
@@ -1012,20 +1012,20 @@ const handleEvent = (event: {
           url: event.video_url,
           mimeType: event.mime_type
         })
-        addLine(t('admin.accounts.videoReceived', { count: generatedVideos.value.length }), 'text-purple-300')
+        addLine(t('admin.accounts.videoReceived', { count: generatedVideos.value.length }), 'text-purple-600')
       }
       break
 
     case 'status':
       if (event.text) {
-        addLine(event.text, 'text-cyan-300')
+        addLine(event.text, 'text-cyan-600')
       }
       break
 
     case 'test_complete':
       // Move streaming content to output lines
       if (streamingContent.value) {
-        addLine(streamingContent.value, 'text-green-300')
+        addLine(streamingContent.value, 'text-green-600')
         streamingContent.value = ''
       }
       if (event.success) {
@@ -1040,7 +1040,7 @@ const handleEvent = (event: {
       status.value = 'error'
       errorMessage.value = event.error || t('common.unknownError')
       if (streamingContent.value) {
-        addLine(streamingContent.value, 'text-green-300')
+        addLine(streamingContent.value, 'text-green-600')
         streamingContent.value = ''
       }
       break

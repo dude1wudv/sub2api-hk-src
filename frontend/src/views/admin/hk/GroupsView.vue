@@ -433,26 +433,26 @@
 <AdminFormTabs v-model="createTab" id="create-group-form" :tabs="authStore.isSimpleMode ? createTabOptions.slice(0, 1) : createTabOptions" />
 <section v-show="createTab === 'basic'" id="create-group-form-basic-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-group-form-basic-tab" data-admin-tab="basic">
 <div>
-          <label class="input-label">{{ t("admin.groups.form.name") }}</label>
-          <input
+          <GroupI18nField
             v-model="createForm.name"
-            type="text"
+            v-model:i18n="createForm.i18n"
+            :label="t('admin.groups.form.name')"
+            field="name"
             required
-            class="input"
             :placeholder="t('admin.groups.enterGroupName')"
             data-tour="group-form-name"
           />
         </div>
 <div>
-          <label class="input-label">{{
-            t("admin.groups.form.description")
-          }}</label>
-          <textarea
+          <GroupI18nField
             v-model="createForm.description"
+            v-model:i18n="createForm.i18n"
+            :label="t('admin.groups.form.description')"
+            field="description"
+            multiline
             rows="3"
-            class="input"
             :placeholder="t('admin.groups.optionalDescription')"
-          ></textarea>
+          />
         </div>
 <div>
           <label class="input-label">{{
@@ -482,13 +482,13 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
-                  <p class="text-xs leading-relaxed text-gray-300">
+                  <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.copyAccounts.tooltip") }}
                   </p>
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -578,16 +578,16 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
                   <p class="mb-2 text-xs font-medium">
                     {{ t("admin.groups.exclusiveTooltip.title") }}
                   </p>
-                  <p class="mb-2 text-xs leading-relaxed text-gray-300">
+                  <p class="mb-2 text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.exclusiveTooltip.description") }}
                   </p>
-                  <div class="rounded bg-gray-800 p-2 dark:bg-gray-700">
-                    <p class="text-xs leading-relaxed text-gray-300">
+                  <div class="rounded bg-gray-100 p-2 dark:bg-gray-700">
+                    <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                       <span
                         class="inline-flex items-center gap-1 text-primary-400"
                         ><Icon name="lightbulb" size="xs" />
@@ -598,7 +598,7 @@
                   </div>
                   <!-- Arrow -->
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -1324,13 +1324,13 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-80 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
-                  <p class="text-xs leading-relaxed text-gray-300">
+                  <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.modelRouting.tooltip") }}
                   </p>
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -1509,13 +1509,13 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
-                  <p class="text-xs leading-relaxed text-gray-300">
+                  <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.supportedScopes.tooltip") }}
                   </p>
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -1580,13 +1580,13 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
-                  <p class="text-xs leading-relaxed text-gray-300">
+                  <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.mcpXml.tooltip") }}
                   </p>
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -1620,13 +1620,13 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
-                  <p class="text-xs leading-relaxed text-gray-300">
+                  <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.claudeCode.tooltip") }}
                   </p>
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -2050,24 +2050,24 @@
 <AdminFormTabs v-model="editTab" id="edit-group-form" :tabs="authStore.isSimpleMode ? editTabOptions.slice(0, 1) : editTabOptions" />
 <section v-show="editTab === 'basic'" id="edit-group-form-basic-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="edit-group-form-basic-tab" data-admin-tab="basic">
 <div>
-          <label class="input-label">{{ t("admin.groups.form.name") }}</label>
-          <input
+          <GroupI18nField
             v-model="editForm.name"
-            type="text"
+            v-model:i18n="editForm.i18n"
+            :label="t('admin.groups.form.name')"
+            field="name"
             required
-            class="input"
             data-tour="edit-group-form-name"
           />
         </div>
 <div>
-          <label class="input-label">{{
-            t("admin.groups.form.description")
-          }}</label>
-          <textarea
+          <GroupI18nField
             v-model="editForm.description"
+            v-model:i18n="editForm.i18n"
+            :label="t('admin.groups.form.description')"
+            field="description"
+            multiline
             rows="3"
-            class="input"
-          ></textarea>
+          />
         </div>
 <div>
           <label class="input-label">{{
@@ -2100,13 +2100,13 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
-                  <p class="text-xs leading-relaxed text-gray-300">
+                  <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.copyAccounts.tooltipEdit") }}
                   </p>
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -2192,16 +2192,16 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
                   <p class="mb-2 text-xs font-medium">
                     {{ t("admin.groups.exclusiveTooltip.title") }}
                   </p>
-                  <p class="mb-2 text-xs leading-relaxed text-gray-300">
+                  <p class="mb-2 text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.exclusiveTooltip.description") }}
                   </p>
-                  <div class="rounded bg-gray-800 p-2 dark:bg-gray-700">
-                    <p class="text-xs leading-relaxed text-gray-300">
+                  <div class="rounded bg-gray-100 p-2 dark:bg-gray-700">
+                    <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                       <span
                         class="inline-flex items-center gap-1 text-primary-400"
                         ><Icon name="lightbulb" size="xs" />
@@ -2212,7 +2212,7 @@
                   </div>
                   <!-- Arrow -->
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -2942,13 +2942,13 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-80 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
-                  <p class="text-xs leading-relaxed text-gray-300">
+                  <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.modelRouting.tooltip") }}
                   </p>
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -3127,13 +3127,13 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
-                  <p class="text-xs leading-relaxed text-gray-300">
+                  <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.supportedScopes.tooltip") }}
                   </p>
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -3198,13 +3198,13 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
-                  <p class="text-xs leading-relaxed text-gray-300">
+                  <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.mcpXml.tooltip") }}
                   </p>
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -3238,13 +3238,13 @@
                 class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
               >
                 <div
-                  class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
+                  class="ui-popover rounded-lg p-3"
                 >
-                  <p class="text-xs leading-relaxed text-gray-300">
+                  <p class="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
                     {{ t("admin.groups.claudeCode.tooltip") }}
                   </p>
                   <div
-                    class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
+                    class="ui-popover-arrow absolute -bottom-1.5 left-3 h-3 w-3 rotate-45"
                   ></div>
                 </div>
               </div>
@@ -4181,6 +4181,7 @@ import type {
   CompositeRouteDecision,
   CompositeRouteEndpoint,
   CompositeRouteMatchType,
+  GroupI18n,
   GroupPlatform,
   SubscriptionType,
 } from "@/types";
@@ -4200,6 +4201,7 @@ import Select from "@/components/common/Select.vue";
 import PlatformIcon from "@/components/common/PlatformIcon.vue";
 import { platformLabel } from "@/utils/platformColors";
 import Icon from "@/components/icons/Icon.vue";
+import GroupI18nField from "@/components/admin/group/GroupI18nField.vue";
 import GroupRateMultipliersModal from "@/components/admin/group/GroupRateMultipliersModal.vue";
 import GroupRPMOverridesModal from "@/components/admin/group/GroupRPMOverridesModal.vue";
 import GroupCapacityBadge from "@/components/common/GroupCapacityBadge.vue";
@@ -4842,6 +4844,7 @@ const submitEditAllowlistCustomEntry = () => {
 const createForm = reactive({
   name: "",
   description: "",
+  i18n: {} as GroupI18n,
   platform: "anthropic" as GroupPlatform,
   rate_multiplier: 1.0,
   is_exclusive: false,
@@ -5206,6 +5209,7 @@ const convertApiFormatToRoutingRules = async (
 const editForm = reactive({
   name: "",
   description: "",
+  i18n: {} as GroupI18n,
   platform: "anthropic" as GroupPlatform,
   rate_multiplier: 1.0,
   is_exclusive: false,
@@ -5669,6 +5673,7 @@ const closeCreateModal = () => {
   clearAllAccountSearchState();
   createForm.name = "";
   createForm.description = "";
+  createForm.i18n = {};
   createForm.platform = "anthropic";
   createForm.rate_multiplier = 1.0;
   createForm.is_exclusive = false;
@@ -5929,6 +5934,7 @@ const handleCreateGroup = async () => {
       ? {
           name: createForm.name,
           description: createForm.description,
+          i18n: createForm.i18n,
           platform: createForm.platform,
         }
       : requestData;
@@ -5955,6 +5961,12 @@ const handleEdit = async (group: AdminGroup) => {
   editingGroup.value = group;
   editForm.name = group.name;
   editForm.description = group.description || "";
+  editForm.i18n = Object.fromEntries(
+    Object.entries(group.i18n ?? {}).map(([locale, text]) => [
+      locale,
+      { ...text },
+    ]),
+  );
   editForm.platform = group.platform;
   editForm.rate_multiplier = group.rate_multiplier;
   editForm.is_exclusive = group.is_exclusive;
@@ -6286,6 +6298,7 @@ const handleUpdateGroup = async () => {
       ? {
           name: editForm.name,
           description: editForm.description,
+          i18n: editForm.i18n,
         }
       : payload;
     await adminAPI.groups.update(editingGroup.value.id, requestData);

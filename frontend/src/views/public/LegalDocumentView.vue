@@ -242,7 +242,10 @@ onMounted(async () => {
 }
 
 .legal-document-content :deep(pre) {
-  @apply my-5 overflow-x-auto rounded-xl border border-dark-800 bg-gray-950 p-4 font-mono text-xs sm:text-sm text-gray-100;
+  @apply my-5 overflow-x-auto rounded-xl p-4 font-mono text-xs sm:text-sm;
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--line));
 }
 
 .legal-document-content :deep(pre code) {

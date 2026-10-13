@@ -26,16 +26,16 @@ export function useChartTheme() {
     const dark = isDark.value
     const tokens = typeof document === 'undefined' ? undefined : getComputedStyle(document.documentElement)
     const text = readColor(tokens, '--chart-text', dark ? '#b3b4a9' : '#6f7068')
-    const tooltipText = readColor(tokens, '--chart-tooltip-text', dark ? '#22231f' : '#fffdf7')
+    const tooltipText = readColor(tokens, '--chart-tooltip-text', '#22231f')
     return {
       text,
       grid: readColor(tokens, '--chart-grid', dark ? '#393b34' : '#e8e4da'),
       tooltip: {
-        backgroundColor: readColor(tokens, '--chart-tooltip-bg', dark ? '#f4f1e8' : '#22231f'),
+        backgroundColor: readColor(tokens, '--chart-tooltip-bg', dark ? '#f4f1e8' : '#fffffc'),
         titleColor: tooltipText,
         bodyColor: tooltipText,
         footerColor: tooltipText,
-        borderColor: readColor(tokens, '--chart-tooltip-border', dark ? '#cdcdbf' : '#393b33'),
+        borderColor: readColor(tokens, '--chart-tooltip-border', dark ? '#cdcdbf' : '#e8e4da'),
         borderWidth: 1,
       },
     }

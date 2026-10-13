@@ -49,7 +49,7 @@
         >
           {{ t('admin.accounts.upstreamBilling.nextProbeAt', { value: formatDate(nextProbeAt) }) }}
         </p>
-        <p class="mt-2 border-t border-white/15 pt-2" data-testid="upstream-billing-probe-state">
+        <p class="mt-2 border-t border-gray-200 pt-2 dark:border-white/15" data-testid="upstream-billing-probe-state">
           {{ t('admin.accounts.upstreamBilling.accountProbeState') }}
           <span :class="probeEnabled ? 'text-emerald-400' : 'text-red-400'">
             {{ probeEnabled ? t('admin.accounts.upstreamBilling.enabled') : t('admin.accounts.upstreamBilling.disabled') }}

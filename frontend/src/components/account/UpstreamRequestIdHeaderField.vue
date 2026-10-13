@@ -58,10 +58,10 @@ const examples = computed<HeaderExample[]>(() => {
           <ul class="mt-1 space-y-1.5">
             <li v-for="item in examples" :key="item.label">
               <div class="flex items-center justify-between gap-3">
-                <span class="text-gray-300">{{ item.label }}</span>
-                <code class="select-all rounded bg-white/10 px-1.5 py-0.5 font-mono text-[11px] text-white">{{ item.header }}</code>
+                <span class="text-gray-700 dark:text-gray-300">{{ item.label }}</span>
+                <code class="select-all rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-900 dark:bg-white/10 dark:text-white">{{ item.header }}</code>
               </div>
-              <p v-if="item.note" class="mt-0.5 text-gray-400">{{ item.note }}</p>
+              <p v-if="item.note" class="mt-0.5 text-gray-500 dark:text-gray-400">{{ item.note }}</p>
             </li>
           </ul>
         </template>

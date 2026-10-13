@@ -46,7 +46,7 @@
           </svg>
         </button>
       </template>
-      <div class="whitespace-pre-wrap break-words leading-relaxed text-gray-300">
+      <div class="whitespace-pre-wrap break-words leading-relaxed text-gray-700 dark:text-gray-300">
         {{ account.error_message }}
       </div>
     </HelpTooltip>

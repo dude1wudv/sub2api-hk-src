@@ -23,11 +23,12 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 321
+	candidateMigrationCount         = 322
 )
 
 var candidateOnlyMigrations = []string{
 	"242_drop_platform_check_constraints.sql",
+	"242_group_i18n.sql",
 	"246_hk_platform_catalog_constraints.sql",
 	"222_group_usage_daily_rollups.sql",
 	"223_group_usage_rollup_timezone.sql",
@@ -126,7 +127,7 @@ func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testi
 		require.NoError(t, err)
 		history[name] = &fstest.MapFile{Data: content}
 	}
-	require.Len(t, history, 319)
+	require.Len(t, history, 320)
 	container, err := tcpostgres.Run(ctx, selectDockerImage(ctx, postgresImageTag),
 		tcpostgres.WithDatabase("hk_014_history"), tcpostgres.WithUsername("postgres"),
 		tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
