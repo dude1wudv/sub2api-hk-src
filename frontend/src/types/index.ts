@@ -1760,7 +1760,6 @@ export interface UsageLog {
   model: string
   service_tier?: string | null
   reasoning_effort?: string | null
-  reasoning_effort_source?: string | null
   inbound_endpoint?: string | null
   upstream_endpoint?: string | null
 
@@ -1832,6 +1831,7 @@ export interface AdminUsageLog extends UsageLog {
   previous_account?: UsageLogAccountSummary | null
   upstream_model?: string | null
   upstream_reasoning_effort?: string | null
+  reasoning_effort_source?: string | null
   upstream_response_model?: string | null
   upstream_model_mismatch?: boolean | null
   model_mapping_chain?: string | null

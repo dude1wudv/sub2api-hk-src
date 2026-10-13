@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AdminGroup } from '@/types'
-import GroupsView from '@/views/admin/GroupsView.vue'
+import GroupsView from '@/views/admin/hk/GroupsView.vue'
 import { adminAPI } from '@/api/admin'
 
 const {

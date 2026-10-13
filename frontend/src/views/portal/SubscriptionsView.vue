@@ -52,7 +52,7 @@ function features(plan: SubscriptionPlan): string[] {
   return []
 }
 function unavailable(plan: SubscriptionPlan) {
-  if (!['balance', 'both'].includes(plan.purchase_mode || '')) return copy('暂未开放余额订阅', 'Balance purchase unavailable')
+  if (!['balance', 'both'].includes(plan.purchase_mode || '')) return copy('在线支付已停用', 'Online payment is unavailable')
   if (plan.sale_ends_at && Date.parse(plan.sale_ends_at) <= Date.now()) return copy('销售已结束', 'Sale ended')
   if (plan.fixed_expires_at && Date.parse(plan.fixed_expires_at) <= Date.now()) return copy('套餐已到期', 'Plan expired')
   if (plan.one_purchase_per_user && owned.value.some(subscription => subscription.group_id === plan.group_id)) return copy('已购买', 'Already purchased')
@@ -138,6 +138,7 @@ onMounted(async () => {
 <template>
   <div class="portal-page subscription-page">
     <PortalPageHeader :title="copy('订阅', 'Subscriptions')" />
+    <p v-if="route.query.online_payment === 'retired'" class="portal-error" role="status">{{ copy('在线支付已停用。未完成的订单不会继续结算，订阅仍可使用余额购买。', 'Online payment is no longer available. Unfinished orders will not be completed. Subscriptions can still be bought with account balance.') }}</p>
     <div v-if="!enabled" class="portal-empty">{{ copy('订阅服务暂未开放。', 'Subscriptions are not available.') }}</div>
     <div v-else-if="loading" class="portal-empty" role="status">{{ copy('正在加载订阅信息…', 'Loading subscriptions…') }}</div>
     <template v-else>

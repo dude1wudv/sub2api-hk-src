@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const groupsViewSource = readFileSync(
-  resolve(currentDir, "../GroupsView.vue"),
+  resolve(currentDir, "../hk/GroupsView.vue"),
   "utf8",
 );
 

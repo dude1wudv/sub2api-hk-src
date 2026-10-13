@@ -1,0 +1,220 @@
+{
+  "description": "Upstream paths this fork does not keep. hk/sync-upstream.ps1 deletes modify/delete conflicts for these paths and writes a porting report. A path ending in /** covers that directory.",
+  "removed": [
+    {
+      "replacement": "",
+      "reason": "datamanagementd is retired. Backup stays on BackupService.",
+      "path": "frontend/src/api/admin/dataManagement.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/ApiView.vue",
+      "reason": "Replaced by the portal API key page. UseKeyModal stays.",
+      "path": "frontend/src/components/keys/__tests__/BulkEditKeysModal.spec.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/ApiView.vue",
+      "reason": "Replaced by the portal API key page. UseKeyModal stays.",
+      "path": "frontend/src/components/keys/__tests__/EndpointPopover.spec.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/ApiView.vue",
+      "reason": "Replaced by the portal API key page. UseKeyModal stays.",
+      "path": "frontend/src/components/keys/__tests__/SmartRoutingEditor.spec.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/ApiView.vue",
+      "reason": "Replaced by the portal API key page. UseKeyModal stays.",
+      "path": "frontend/src/components/keys/BulkEditKeysModal.vue"
+    },
+    {
+      "replacement": "frontend/src/views/portal/ApiView.vue",
+      "reason": "Replaced by the portal API key page. UseKeyModal stays.",
+      "path": "frontend/src/components/keys/EndpointPopover.vue"
+    },
+    {
+      "replacement": "frontend/src/views/portal/ApiView.vue",
+      "reason": "Replaced by the portal API key page. UseKeyModal stays.",
+      "path": "frontend/src/components/keys/SmartRoutingEditor.vue"
+    },
+    {
+      "replacement": "frontend/src/components/layout/__tests__/UserShell.spec.ts",
+      "reason": "Covers the replacement shells.",
+      "path": "frontend/src/components/layout/__tests__/AppSidebar.spec.ts"
+    },
+    {
+      "replacement": "frontend/src/components/layout/UserShell.vue",
+      "reason": "Replaced by UserShell and AdminShell.",
+      "path": "frontend/src/components/layout/AppHeader.vue"
+    },
+    {
+      "replacement": "frontend/src/hk/WorkspaceHost.vue",
+      "reason": "Replaced by WorkspaceHost plus UserShell and AdminShell.",
+      "path": "frontend/src/components/layout/AppLayout.vue"
+    },
+    {
+      "replacement": "frontend/src/components/layout/UserShell.vue",
+      "reason": "Replaced by the navigation inside UserShell and AdminShell.",
+      "path": "frontend/src/components/layout/AppSidebar.vue"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/__tests__/alipayDeepLink.spec.ts"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/__tests__/PaymentMethodSelector.spec.ts"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/__tests__/PaymentQRDialog.spec.ts"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/__tests__/PaymentStatusPanel.spec.ts"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/__tests__/StripePaymentInline.spec.ts"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/__tests__/SubscriptionPlanCard.spec.ts"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/alipayDeepLink.ts"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/PaymentMethodSelector.vue"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/PaymentQRDialog.vue"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/PaymentStatusPanel.vue"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/StripePaymentInline.vue"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/components/payment/SubscriptionPlanCard.vue"
+    },
+    {
+      "replacement": "frontend/src/views/portal/UsageView.vue",
+      "reason": "Replaced by the portal usage page.",
+      "path": "frontend/src/components/user/__tests__/UserErrorDetailModal.spec.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/AccountView.vue",
+      "reason": "Directory removed with the old profile page. New upstream files here are deleted on sync.",
+      "path": "frontend/src/components/user/profile/**"
+    },
+    {
+      "replacement": "frontend/src/views/portal/UsageView.vue",
+      "reason": "Replaced by the portal usage page.",
+      "path": "frontend/src/components/user/UserErrorDetailModal.vue"
+    },
+    {
+      "replacement": "frontend/src/views/portal/UsageView.vue",
+      "reason": "Replaced by the portal usage page.",
+      "path": "frontend/src/components/user/UserErrorRequestsTable.vue"
+    },
+    {
+      "replacement": "frontend/src/views/admin/hk/GroupsView.vue",
+      "reason": "Fork rewrite lives in a fork-owned path so upstream edits are reported instead of merged line by line.",
+      "path": "frontend/src/views/admin/GroupsView.vue"
+    },
+    {
+      "replacement": "frontend/src/views/portal/ApiView.vue",
+      "reason": "Replaced by the portal API key page. UseKeyModal stays.",
+      "path": "frontend/src/views/user/__tests__/KeysView.spec.ts"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/views/user/__tests__/PaymentView.spec.ts"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/views/user/__tests__/paymentWechatResume.spec.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/AccountView.vue",
+      "reason": "Replaced by the portal account page.",
+      "path": "frontend/src/views/user/__tests__/ProfileView.spec.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/PurchaseView.vue",
+      "reason": "Card redemption replaced the old redeem and payment-order pages. /orders is redemption history.",
+      "path": "frontend/src/views/user/__tests__/RedeemView.spec.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/UsageView.vue",
+      "reason": "Replaced by the portal usage page.",
+      "path": "frontend/src/views/user/__tests__/UsageView.spec.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/PurchaseView.vue",
+      "reason": "Card redemption replaced the old redeem and payment-order pages. /orders is redemption history.",
+      "path": "frontend/src/views/user/__tests__/UserOrdersView.filters.spec.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/ApiView.vue",
+      "reason": "Replaced by the portal API key page. UseKeyModal stays.",
+      "path": "frontend/src/views/user/KeysView.vue"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/views/user/PaymentView.vue"
+    },
+    {
+      "replacement": "",
+      "reason": "Self-serve gateway checkout is retired. Callback pages under /payment/* stay for existing orders.",
+      "path": "frontend/src/views/user/paymentWechatResume.ts"
+    },
+    {
+      "replacement": "frontend/src/views/portal/AccountView.vue",
+      "reason": "Replaced by the portal account page.",
+      "path": "frontend/src/views/user/ProfileView.vue"
+    },
+    {
+      "replacement": "frontend/src/views/portal/PurchaseView.vue",
+      "reason": "Card redemption replaced the old redeem and payment-order pages. /orders is redemption history.",
+      "path": "frontend/src/views/user/RedeemView.vue"
+    },
+    {
+      "replacement": "frontend/src/views/portal/SubscriptionsView.vue",
+      "reason": "Replaced by the portal subscriptions page. Balance purchase stays; gateway checkout does not.",
+      "path": "frontend/src/views/user/SubscriptionsView.vue"
+    },
+    {
+      "replacement": "frontend/src/views/portal/UsageView.vue",
+      "reason": "Replaced by the portal usage page.",
+      "path": "frontend/src/views/user/UsageView.vue"
+    },
+    {
+      "replacement": "frontend/src/views/portal/PurchaseView.vue",
+      "reason": "Card redemption replaced the old redeem and payment-order pages. /orders is redemption history.",
+      "path": "frontend/src/views/user/UserOrdersView.vue"
+    }
+  ]
+}

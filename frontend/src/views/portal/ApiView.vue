@@ -10,7 +10,7 @@
       <div class="portal-api-header-actions">
         <button type="button" class="portal-api-icon-button" :disabled="keysLoading || groupsLoading" :aria-label="text('刷新', 'Refresh')" data-test="refresh-keys" @click="refreshPage"><Icon name="refresh" size="sm" aria-hidden="true" /></button>
         <button type="button" class="portal-button secondary" :aria-pressed="bulkMode" data-test="bulk-mode-toggle" @click="toggleBulkMode">{{ bulkMode ? text('退出批量管理', 'Exit bulk management') : text('批量管理', 'Bulk management') }}</button>
-        <button type="button" class="portal-button" :disabled="creationDisabled" @click="openCreate()"><Icon name="plus" size="sm" aria-hidden="true" />{{ text('创建密钥', 'Create key') }}</button>
+        <button type="button" class="portal-button" data-tour="keys-create-btn" :disabled="creationDisabled" @click="openCreate()"><Icon name="plus" size="sm" aria-hidden="true" />{{ text('创建密钥', 'Create key') }}</button>
       </div>
     </header>
     <div class="portal-api-access-strip">

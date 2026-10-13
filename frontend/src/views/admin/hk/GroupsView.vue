@@ -4230,11 +4230,11 @@ import {
   resetMessagesDispatchFormState,
   supportsMessagesDispatchPlatform,
   type MessagesDispatchMappingRow,
-} from "./groupsMessagesDispatch";
+} from "../groupsMessagesDispatch";
 import {
   normalizeGroupOpenAIFast,
   supportsGroupOpenAIFast,
-} from "./groupsOpenAIFast";
+} from "../groupsOpenAIFast";
 import {
   addCustomModelAllowlistItem,
   buildModelAllowlistConfig,
@@ -4243,16 +4243,16 @@ import {
   moveModelAllowlistItem,
   selectAllModelAllowlistItems,
   setModelAllowlistCandidates,
-} from "./groupModelAllowlist";
-import { createModelAllowlistCandidatesTracker } from "./modelAllowlistCandidates";
-import { normalizeSupportedModelScopesForPlatform } from "./groupsSupportedModelScopes";
+} from "../groupModelAllowlist";
+import { createModelAllowlistCandidatesTracker } from "../modelAllowlistCandidates";
+import { normalizeSupportedModelScopesForPlatform } from "../groupsSupportedModelScopes";
 import {
   isProfitControlPlatform,
   profitPercentToDecimal,
   profitDecimalToPercent,
   validateProfitControlFormState,
   type ProfitControlFormState,
-} from "./groupsProfitControl";
+} from "../groupsProfitControl";
 import {
   normalizeReasoningEffortForPlatform,
   normalizeReasoningEffortOverLimit,
@@ -4261,7 +4261,7 @@ import {
   reasoningEffortOverLimitDowngrade,
   supportsReasoningEffortPolicyPlatform,
   type ReasoningEffortMappingRow,
-} from "./groupsReasoningEffort";
+} from "../groupsReasoningEffort";
 import {
   getDefaultImagePreviewPrice,
   getDefaultVideoPreviewPrice,
@@ -4271,13 +4271,13 @@ import {
   supportsImagePricingPlatform,
   supportsVideoPricingPlatform,
   videoPricingI18nKey,
-} from "./groupsImagePricing";
+} from "../groupsImagePricing";
 import {
   createVideoModelPricesForm,
   grokVideoPriceResolutions,
   serializeVideoModelPrices,
   videoModelPriceFamilyRows,
-} from "./groupsVideoModelPricing";
+} from "../groupsVideoModelPricing";
 
 const supportsLivePlatform = (platform: string): boolean =>
   platform === "openai" || platform === "composite";

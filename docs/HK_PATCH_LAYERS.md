@@ -22,9 +22,9 @@ Generated files are outputs, not standalone patches.
 
 Long-term local business rules:
 
-- Manual Alipay static-QR provider, administrator confirmation, step-up authentication, and audit trail.
+- Manual Alipay static-QR provider, administrator confirmation, step-up authentication, and audit trail. The user-facing gateway checkout page is retired; payment callbacks, existing orders, and the admin order console stay.
 - Balance-funded subscription purchases.
-- Subscription purchase modes: `external`, `balance`, and `both`.
+- Subscription purchase modes remain `external`, `balance`, and `both` in the backend. The user portal only offers `balance` and `both`.
 - Sale windows and fixed subscription expiry snapshots.
 - One-purchase-per-user claims.
   - A successful purchase permanently consumes the claim.
@@ -39,7 +39,8 @@ Primary paths:
 - `backend/ent/schema/payment_order.go`
 - `backend/ent/schema/subscription_plan.go`
 - `backend/ent/schema/subscription_purchase_claim.go`
-- `frontend/src/views/user/PaymentView.vue`
+- `frontend/src/views/portal/PurchaseView.vue` (card redemption)
+- `frontend/src/views/portal/SubscriptionsView.vue` (balance purchase only)
 
 ## 2. `provider-adapters`
 
@@ -65,7 +66,10 @@ Primary paths:
 
 Long-term local product surfaces:
 
-- Warm-paper theme. Theme tokens and component overrides live in `frontend/src/styles/themes/warm-paper.css`; avoid mixing them into upstream layout code.
+- Portal and ink workspace. New UI lives in fork-owned directories (`frontend/src/views/portal/`, `frontend/src/components/portal/`, `frontend/src/components/layout/UserShell.vue`, `frontend/src/components/layout/AdminShell.vue`, `frontend/src/styles/patrick*.css`). `frontend/src/hk/` only mounts shells, styles, and route adjustments.
+- A upstream file rewritten by more than half moves to a fork-owned path. The old path is recorded in `hk/upstream-removed.json`. `frontend/src/views/admin/hk/GroupsView.vue` is the current example.
+- Small edits to an upstream file stay as mount lines. New copy goes in a fork locale module or `copy(zh, en)`, not into upstream locale files.
+- Self-serve gateway checkout is not linked from the user shell. Card redemption and balance-funded subscriptions stay. `/settings/profile` redirects to `/profile`.
 - HK account operations summaries and upstream-balance widgets, kept as separable components/composables.
 - Image2 workbench as a pinned submodule plus reproducible embedded build.
   - Sidebar links open `/image2/` in a new tab.
@@ -74,9 +78,13 @@ Long-term local product surfaces:
 
 Primary paths:
 
-- `frontend/src/styles/themes/warm-paper.css`
-- `frontend/src/components/layout/AppSidebar.vue`
+- `frontend/src/hk/`
+- `frontend/src/views/portal/`
+- `frontend/src/components/layout/UserShell.vue`
+- `frontend/src/components/layout/AdminShell.vue`
+- `frontend/src/views/admin/hk/GroupsView.vue`
 - `frontend/src/views/user/Image2RedirectView.vue`
+- `hk/upstream-removed.json`
 - `backend/internal/web/embed_on.go`
 - `backend/internal/web/image2-dist/`
 - `image2-playground`
@@ -127,10 +135,13 @@ Do not maintain these as independent features:
 
 ## Upstream merge checklist
 
-1. Fetch and merge `upstream/main` without rewriting published migrations. HK migration 246 converges the platform constraints after immutable HK 245; verify both existing-HK upgrades and fresh installs.
-2. Rebase every `upstream-owned` area onto the upstream implementation.
-3. Review local diffs by the four layers above; reject unclassified changes.
-4. Regenerate Ent/Wire/Image2 outputs when their sources change.
-5. Run money-path tests first: payment claims, subscriptions, DeepSeek pricing, and usage-log contracts.
-6. Run provider protocol, frontend typecheck/lint, and critical Vitest suites.
-7. Keep Git push, production deployment, and database operations as separate approved steps.
+Run `pwsh -NoProfile -File hk/sync-upstream.ps1 -DryRun`, read `hk/reports/`, then run the script without `-DryRun`. It fetches through `http://127.0.0.1:7890`, disables rename detection, and does not commit or push. Proxy failure stops the sync.
+
+1. Do not rewrite published migrations. HK migration 246 converges the platform constraints after immutable HK 245; verify both existing-HK upgrades and fresh installs. The report lists overlapping migration numbers.
+2. Let the script delete conflicts for paths in `hk/upstream-removed.json`. Port the listed upstream commits into the replacement file instead of restoring the old path.
+3. Rebase every `upstream-owned` area onto the upstream implementation.
+4. Review local diffs by the four layers above; reject unclassified changes.
+5. Regenerate Ent/Wire/Image2 outputs when their sources change. Do not hand-merge `backend/ent/**` or `wire_gen.go`.
+6. Run money-path tests first: payment claims, subscriptions, DeepSeek pricing, and usage-log contracts.
+7. Run `pnpm typecheck`, `pnpm lint:check`, `pnpm test:run`, and `pnpm build` in `frontend/`. The removed-path and backend-linked-route specs must pass.
+8. Keep Git push, production deployment, and database operations as separate approved steps.

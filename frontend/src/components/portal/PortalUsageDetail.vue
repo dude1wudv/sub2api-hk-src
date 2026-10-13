@@ -24,7 +24,7 @@ const metadata = computed(() => {
     [copy('分组', 'Group'), row.group?.name || (row.group_id ? `#${row.group_id}` : '—')],
     [copy('模型', 'Model'), row.model], [copy('请求类型', 'Request type'), usageRowRequestLabel(row, !zh.value)], [copy('计费模式', 'Billing mode'), usageBillingLabel(row, !zh.value)],
     [copy('扣费方式', 'Billing source'), row.billing_type === 1 ? copy('订阅额度', 'Subscription quota') : copy('账户余额', 'Account balance')],
-    [copy('推理强度', 'Reasoning effort'), row.reasoning_effort || '—'], [copy('推理强度来源', 'Reasoning source'), row.reasoning_effort_source || '—'],
+    [copy('推理强度', 'Reasoning effort'), row.reasoning_effort || '—'],
     [copy('服务等级', 'Service tier'), row.service_tier || '—'], [copy('入站端点', 'Inbound endpoint'), row.inbound_endpoint || '—'],
     ['IP', row.ip_address || '—'], [copy('原生压缩', 'Native compaction'), row.native_compaction_v2 ? copy('是', 'Yes') : copy('否', 'No')],
   ]

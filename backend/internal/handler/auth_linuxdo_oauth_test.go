@@ -142,7 +142,7 @@ func TestLinuxDoOAuthBindStartRedirectsAndSetsBindCookies(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/linuxdo/bind/start?intent=bind_current_user&redirect=/settings/connections", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/linuxdo/bind/start?intent=bind_current_user&redirect=/profile", nil)
 	c.Request = req
 	c.Set(string(servermiddleware.ContextKeyUser), servermiddleware.AuthSubject{UserID: 42})
 
@@ -294,7 +294,7 @@ func TestLinuxDoOAuthBindStartAcceptsAccessTokenCookie(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/linuxdo/start?intent=bind_current_user&redirect=/settings/connections", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/linuxdo/start?intent=bind_current_user&redirect=/profile", nil)
 	req.AddCookie(&http.Cookie{Name: oauthBindAccessTokenCookieName, Value: token, Path: oauthBindAccessTokenCookiePath})
 	c.Request = req
 
@@ -853,7 +853,7 @@ func TestLinuxDoOAuthCallbackCreatesBindPendingSessionForCurrentUser(t *testing.
 	c, _ := gin.CreateTestContext(recorder)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/linuxdo/callback?code=code-bind&state=state-bind", nil)
 	req.AddCookie(encodedCookie(linuxDoOAuthStateCookieName, "state-bind"))
-	req.AddCookie(encodedCookie(linuxDoOAuthRedirectCookie, "/settings/connections"))
+	req.AddCookie(encodedCookie(linuxDoOAuthRedirectCookie, "/profile"))
 	req.AddCookie(encodedCookie(linuxDoOAuthVerifierCookie, "verifier-bind"))
 	req.AddCookie(encodedCookie(linuxDoOAuthIntentCookieName, oauthIntentBindCurrentUser))
 	req.AddCookie(encodedCookie(linuxDoOAuthBindUserCookieName, buildEncodedOAuthBindUserCookie(t, currentUser.ID, "test-secret")))
@@ -879,7 +879,7 @@ func TestLinuxDoOAuthCallbackCreatesBindPendingSessionForCurrentUser(t *testing.
 
 	completion, ok := session.LocalFlowState[oauthCompletionResponseKey].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "/settings/connections", completion["redirect"])
+	require.Equal(t, "/profile", completion["redirect"])
 	require.Empty(t, completion["access_token"])
 	require.Equal(t, "Bind Display", session.UpstreamIdentityClaims["suggested_display_name"])
 

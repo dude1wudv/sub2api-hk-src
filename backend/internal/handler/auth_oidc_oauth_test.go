@@ -157,7 +157,7 @@ func TestOIDCOAuthBindStartRedirectsAndSetsBindCookies(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/oidc/bind/start?intent=bind_current_user&redirect=/settings/connections", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/oidc/bind/start?intent=bind_current_user&redirect=/profile", nil)
 	c.Request = req
 	c.Set(string(servermiddleware.ContextKeyUser), servermiddleware.AuthSubject{UserID: 84})
 
@@ -485,7 +485,7 @@ func TestOIDCOAuthCallbackAllowsCompatEmailBindWhenUpstreamEmailIsUnverified(t *
 	c, _ := gin.CreateTestContext(recorder)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/oidc/callback?code=oidc-code&state=state-unverified-compat", nil)
 	req.AddCookie(encodedCookie(oidcOAuthStateCookieName, "state-unverified-compat"))
-	req.AddCookie(encodedCookie(oidcOAuthRedirectCookie, "/settings/connections"))
+	req.AddCookie(encodedCookie(oidcOAuthRedirectCookie, "/profile"))
 	req.AddCookie(encodedCookie(oidcOAuthVerifierCookie, "verifier-unverified-compat"))
 	req.AddCookie(encodedCookie(oidcOAuthNonceCookie, "nonce-oidc-subject-unverified-compat"))
 	req.AddCookie(encodedCookie(oidcOAuthIntentCookieName, oauthIntentLogin))
@@ -579,7 +579,7 @@ func TestOIDCOAuthCallbackCreatesBindPendingSessionForCurrentUser(t *testing.T) 
 	c, _ := gin.CreateTestContext(recorder)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/oidc/callback?code=oidc-code&state=state-bind", nil)
 	req.AddCookie(encodedCookie(oidcOAuthStateCookieName, "state-bind"))
-	req.AddCookie(encodedCookie(oidcOAuthRedirectCookie, "/settings/connections"))
+	req.AddCookie(encodedCookie(oidcOAuthRedirectCookie, "/profile"))
 	req.AddCookie(encodedCookie(oidcOAuthVerifierCookie, "verifier-bind"))
 	req.AddCookie(encodedCookie(oidcOAuthNonceCookie, "nonce-oidc-subject-bind"))
 	req.AddCookie(encodedCookie(oidcOAuthIntentCookieName, oauthIntentBindCurrentUser))
@@ -607,7 +607,7 @@ func TestOIDCOAuthCallbackCreatesBindPendingSessionForCurrentUser(t *testing.T) 
 
 	completion, ok := session.LocalFlowState[oauthCompletionResponseKey].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "/settings/connections", completion["redirect"])
+	require.Equal(t, "/profile", completion["redirect"])
 	require.Empty(t, completion["access_token"])
 
 	userCount, err := client.User.Query().Count(ctx)

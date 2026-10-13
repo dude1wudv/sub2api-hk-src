@@ -32,7 +32,7 @@
           <button
             class="btn btn-primary mt-4"
             type="button"
-            @click="goBackToPayment"
+            @click="goToRetiredOnlinePayment"
           >
             {{ backToPaymentText }}
           </button>
@@ -81,27 +81,11 @@ function parseFragmentParams(): URLSearchParams {
   return new URLSearchParams(hash)
 }
 
-function normalizeRedirectPath(path: string | null | undefined): string {
-  const value = (path || '').trim()
-  if (!value) return '/purchase'
-  if (!value.startsWith('/')) return '/purchase'
-  if (value.startsWith('//') || value.includes('://')) return '/purchase'
-  if (value === '/payment') return '/purchase'
-  if (value.startsWith('/payment?')) return '/purchase' + value.slice('/payment'.length)
-  return value
+function goToRetiredOnlinePayment() {
+  void router.replace({ path: '/subscriptions', query: { online_payment: 'retired' } })
 }
 
-function appendQueryParam(query: Record<string, string>, key: string, value: string) {
-  if (value) {
-    query[key] = value
-  }
-}
-
-function goBackToPayment() {
-  void router.replace('/purchase')
-}
-
-onMounted(async () => {
+onMounted(() => {
   const fragment = parseFragmentParams()
   const readParam = (key: string) => fragment.get(key) || readQueryString(key)
 
@@ -115,42 +99,13 @@ onMounted(async () => {
 
   const resumeToken = readParam('wechat_resume_token')
   const openid = readParam('openid')
-  const state = readParam('state')
-  const scope = readParam('scope')
-  const paymentType = readParam('payment_type')
-  const amount = readParam('amount')
-  const orderType = readParam('order_type')
-  const planId = readParam('plan_id')
-  const redirectURL = new URL(
-    normalizeRedirectPath(readParam('redirect')),
-    window.location.origin,
-  )
 
   if (!resumeToken && !openid) {
     errorMessage.value = t('auth.wechatPayment.callbackMissingResumeToken')
     return
   }
 
-  const query: Record<string, string> = {
-    ...Object.fromEntries(redirectURL.searchParams.entries()),
-    wechat_resume: '1',
-  }
-
-  if (resumeToken) {
-    query.wechat_resume_token = resumeToken
-  } else {
-    query.openid = openid
-    appendQueryParam(query, 'state', state)
-    appendQueryParam(query, 'scope', scope)
-    appendQueryParam(query, 'payment_type', paymentType)
-    appendQueryParam(query, 'amount', amount)
-    appendQueryParam(query, 'order_type', orderType)
-    appendQueryParam(query, 'plan_id', planId)
-  }
-
-  await router.replace({
-    path: redirectURL.pathname,
-    query,
-  })
+  // Gateway checkout is retired. Do not forward resume tokens into a page that can spend them.
+  goToRetiredOnlinePayment()
 })
 </script>

@@ -2,7 +2,7 @@
   <PortalDialog :open="open" :title="editing ? text('编辑 API Key', 'Edit API key') : text('创建 API Key', 'Create API key')" wide @close="!saving && $emit('close')">
     <form class="key-editor" @submit.prevent="submit">
       <div class="key-editor-body">
-        <section class="key-picker" :aria-label="text('选择分组', 'Choose a group')">
+        <section class="key-picker" data-tour="key-form-group" :aria-label="text('选择分组', 'Choose a group')">
           <h3><span class="key-step">1</span>{{ text('选择分组', 'Choose a group') }}</h3>
           <div class="key-mode" role="group" :aria-label="text('接入模式', 'Connection mode')">
             <button type="button" :aria-pressed="!form.smart" @click="setMode(false)">{{ text('固定分组', 'Fixed group') }}</button>
@@ -36,7 +36,7 @@
             <p class="key-hint">{{ text('候选按顺序回退；不同分组的模型与接口支持范围可能不同。', 'Candidates are tried in order. Model and endpoint support can differ by group.') }}</p>
           </div>
           <div v-else class="key-selected"><h4>{{ text('所选分组', 'Selected group') }}</h4><div v-if="selectedGroup" class="key-selected-summary"><strong>{{ selectedGroup.name }}</strong><span>{{ text('分组倍率 ', 'Group rate ') }}{{ rate(selectedGroup) }}×</span><small v-if="selectedGroup.description">{{ selectedGroup.description }}</small><small v-if="selectedGroup.peak_rate_enabled">{{ peakText(selectedGroup) }}</small></div><p v-else class="key-selected-empty">{{ text('从左侧选择分组，查看分组倍率与说明。', 'Choose a group to view its rate and description.') }}</p></div>
-          <label class="portal-field">{{ text('名称', 'Name') }}<input v-model="form.name" required maxlength="100" :placeholder="text('为密钥起一个便于识别的名称', 'A memorable name for this key')" data-test="key-name" /></label>
+          <label class="portal-field">{{ text('名称', 'Name') }}<input v-model="form.name" required maxlength="100" :placeholder="text('为密钥起一个便于识别的名称', 'A memorable name for this key')" data-test="key-name" data-tour="key-form-name" /></label>
           <div class="key-common-fields">
             <label v-if="!editing" class="portal-field">{{ text('有效期', 'Expiry') }}<input v-model.number="form.days" type="number" min="1" step="1" :placeholder="text('永久有效', 'Never expires')" data-test="key-days" /><small>{{ text('有效天数，留空为永久', 'Days until expiry; empty means never') }}</small></label>
             <label v-else class="portal-field">{{ text('有效期', 'Expiry') }}<input v-model="form.expiry" type="datetime-local" /><small>{{ text('留空为永久有效', 'Empty means never expires') }}</small></label>
@@ -51,7 +51,7 @@
           </details>
         </section>
       </div>
-      <footer class="key-editor-footer"><span aria-live="polite">{{ form.smart ? text(`已选择 ${form.routing.length} 个路由分组`, `${form.routing.length} routing groups selected`) : selectedGroup?.name || text('请选择分组', 'Select a group') }}</span><button type="button" class="portal-button secondary" :disabled="saving" @click="$emit('close')">{{ text('取消', 'Cancel') }}</button><button class="portal-button" :disabled="saving">{{ saving ? text('保存中…', 'Saving…') : editing ? text('保存修改', 'Save changes') : text('确认并创建', 'Create API key') }}</button></footer>
+      <footer class="key-editor-footer"><span aria-live="polite">{{ form.smart ? text(`已选择 ${form.routing.length} 个路由分组`, `${form.routing.length} routing groups selected`) : selectedGroup?.name || text('请选择分组', 'Select a group') }}</span><button type="button" class="portal-button secondary" :disabled="saving" @click="$emit('close')">{{ text('取消', 'Cancel') }}</button><button class="portal-button" data-tour="key-form-submit" :disabled="saving">{{ saving ? text('保存中…', 'Saving…') : editing ? text('保存修改', 'Save changes') : text('确认并创建', 'Create API key') }}</button></footer>
     </form>
   </PortalDialog>
 </template>
@@ -60,12 +60,14 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PortalDialog from './PortalDialog.vue'
 import { keysAPI } from '@/api/keys'
+import { useOnboardingStore } from '@/stores/onboarding'
 import { isSmartRoutingGroup } from '@/utils/smartRouting'
 import { getKeyGroupProvider, type KeyGroupProvider } from '@/utils/keyGroupProviders'
 import type { ApiKey, Group } from '@/types'
 const props = withDefaults(defineProps<{ open: boolean; editing: ApiKey | null; groups: Group[]; selectedGroup?: number; groupRates?: Record<number, number> }>(), { groupRates: () => ({}) })
 const emit = defineEmits<{ close: []; saved: [key: ApiKey] }>()
 const { locale } = useI18n()
+const onboardingStore = useOnboardingStore()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const saving = ref(false)
 const error = ref('')
@@ -137,6 +139,7 @@ async function submit() {
       ? await keysAPI.update(props.editing.id, { name:form.name.trim(), group_id:groupId, quota:Number(form.quota), expires_at:form.expiry ? new Date(form.expiry).toISOString() : '', ip_whitelist:lines(form.allow), ip_blacklist:lines(form.block), routing_group_ids:routing, ...limits, ...(form.resetQuota ? { reset_quota:true } : {}), ...(form.resetRates ? { reset_rate_limit_usage:true } : {}) })
       : await keysAPI.create(form.name.trim(), groupId, form.custom || undefined, lines(form.allow), lines(form.block), Number(form.quota), form.days ? Number(form.days) : undefined, limits, routing)
     emit('saved', key)
+    if (!props.editing && onboardingStore.isCurrentStep('[data-tour="key-form-submit"]')) void onboardingStore.nextStep(500)
   } catch (e) { error.value = (e as {message?: string}).message || text('保存失败，请重试。', 'Could not save. Please retry.') }
   finally { saving.value = false }
 }

@@ -4,7 +4,7 @@ import { createPinia, setActivePinia, type Pinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AdminGroup, CodexModelsManifestConfig } from "@/types";
-import GroupsView from "@/views/admin/GroupsView.vue";
+import GroupsView from "@/views/admin/hk/GroupsView.vue";
 let pinia: Pinia;
 
 const {

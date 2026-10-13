@@ -5,17 +5,12 @@ import router from './router'
 import i18n, { initI18n } from './i18n'
 import { useAppStore } from '@/stores/app'
 import { updateFavicon } from '@/utils/branding'
-import { initColorMode } from '@/composables/useColorMode'
-import { initMotionPreferences } from '@/composables/useMotionPreferences'
+import { initHkFrontend } from './hk/bootstrap'
 import './style.css'
-import './styles/design-system.css'
-import './styles/patrick.css'
-import './styles/portal.css'
 
 async function bootstrap() {
   // Apply theme class globally before app mount to keep all routes consistent.
-  initColorMode()
-  initMotionPreferences()
+  initHkFrontend()
 
   const app = createApp(App)
   const pinia = createPinia()

@@ -1,9 +1,11 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, ref } from 'vue'
 
-import UserUsageView from '@/views/user/UsageView.vue'
 import AdminUsageView from '@/views/admin/UsageView.vue'
+import PortalUsageTable from '@/components/portal/PortalUsageTable.vue'
 
 const {
   userQuery,
@@ -247,17 +249,24 @@ describe('usage reasoning effort page display', () => {
     localStorage.clear()
   })
 
-  it('user usage page only shows the requested reasoning effort', async () => {
-    const wrapper = mount(UserUsageView, {
-      global: { stubs: sharedPageStubs },
+  it('user usage surfaces show the requested effort without the admin-only source', async () => {
+    const row = { ...userMappedLog, reasoning_effort_source: 'default', upstream_reasoning_effort: 'xhigh' }
+    const table = mount(PortalUsageTable, {
+      props: {
+        rows: [row as never],
+        columns: ['model', 'reasoning_effort'],
+        sortBy: 'created_at',
+        sortOrder: 'desc',
+      },
+      global: { stubs: { Icon: iconStub } },
     })
-    await flushPromises()
+    expect(table.text()).toContain('max')
+    expect(table.text()).not.toContain('xhigh')
+    expect(table.text()).not.toContain('default')
 
-    const cell = reasoningCellText(wrapper)
-    expect(cell).toContain('Max')
-    expect(cell).not.toContain('XHigh')
-    expect(cell).not.toContain('↳')
-    expect(wrapper.text()).not.toContain('XHigh')
+    const detailSource = readFileSync(resolve(process.cwd(), 'src/components/portal/PortalUsageDetail.vue'), 'utf8')
+    expect(detailSource).toContain('reasoning_effort')
+    expect(detailSource).not.toContain('reasoning_effort_source')
   })
 
   it('admin usage page shows requested and mapped effort after the column is enabled', async () => {

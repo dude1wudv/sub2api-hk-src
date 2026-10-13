@@ -263,20 +263,16 @@ psql -U sub2api -h 127.0.0.1 -d sub2api -f migration.sql
 
 ### Git 操作
 
-```bash
-# 同步上游
-git fetch upstream
-git checkout main
-git merge upstream/main
-git push origin main
+同步上游不要直接 `git merge upstream/main`。在仓库根目录运行：
 
-# 创建功能分支
-git checkout -b feature/xxx
-
-# Rebase 到最新 main
-git fetch upstream
-git rebase upstream/main
+```powershell
+pwsh -NoProfile -File hk/sync-upstream.ps1 -DryRun
+pwsh -NoProfile -File hk/sync-upstream.ps1
 ```
+
+脚本会经本机代理 `127.0.0.1:7890` 执行 `git fetch upstream`。代理失败就停止，不改直连。`-DryRun` 只写 `hk/reports/` 里的预览。正式运行会建备份分支和 `merge/upstream-<version>-hk`，合并但不提交、不推送。
+
+`hk/upstream-removed.json` 里的路径在冲突时删除，上游对那些文件的改动写进报告，再移植到 portal 或 `frontend/src/hk/`。`backend/ent/**` 冲突不手改，先处理 `ent/schema`，再 `go generate ./ent`。`wire_gen.go` 用 `go generate ./cmd/server`。
 
 ### 前端操作
 
@@ -337,18 +333,14 @@ sub2api-bmai/
 └── AGENTS.md                # 仓库级 Agent 指令
 ```
 
-## 前端工作区主题（2026-09-09）
+## 前端工作区（portal / ink）
 
-- 用户端采用 API 驾驶舱，管理端采用运营指挥台；原有 API、路由守卫、功能开关、支付与 OAuth 流程保持不变。
-- 顶部 `AppearanceSwitcher.vue` 提供星澜（Astra / `aurora`）、苔砂（Grove / `lagoon`）、墨铜（Ember / `graphite`）、冰川（Glacier / `glacier`）四种风格及独立明暗切换。登录、首页和公开密钥查询也使用同一选择器。默认仍为星澜，不迁移已有偏好。
-- `src/composables/useAppearance.ts` 是外观状态入口。风格保存为 `appearance-style`，明暗沿用 `theme`；首次访问遵循系统明暗设置。组件与图表必须订阅该状态，不能用无响应依赖的 `computed(() => document.documentElement.classList.contains('dark'))`。
-- `src/styles/themes/workspace.css` 定义完整色板、语义表面、控件与响应式工作区。`main.ts` 在 `style.css` 后加载它，避免 Tailwind 同级规则覆盖主题。`tailwind.config.js` 的 gray/dark/primary 色板读取 CSS 变量。固定表头、固定列和弹窗使用 surface/line 语义变量，不写死旧配色。
-- 冰川是第四套可选外观：`src/styles/themes/glacier.css` 在 `workspace.css` 后加载，所有规则限定 `[data-style='glacier']`，不改写前三套主题。浅色为通透冰蓝/雾白，深色为蓝黑/极光蓝；桌面浮动侧栏、玻璃页头与全景数字星球共同构成工作区，保留原侧栏宽度、抽屉行为及页头高度。`glacier-orbit.svg` 是本地静态渐变/网格星球，位于工作区背景与登录装饰层，不是地图数据，不拦截交互、不包含动画或外链。
-- 指标卡使用 `data-metric`（requests / tokens / cost / latency / keys / accounts / users / performance / balance）映射蓝、金、青、紫表面，`metric-icon` / `metric-value` 分别控制图标与主数值；不按 `nth-child` 分配颜色，简单模式隐藏卡片后不会串色。`chart-panel` 仅改变真实图表的容器层级，沿用现有 Chart.js 数据、图例、提示与明暗反应，不制造趋势线或示例指标。以上 hooks 在非冰川模式下不附加样式。
-- 玻璃模糊只应用页头，卡片与表格接近不透明、图表画布不加滤镜。冰川的移动布局、减少透明度与强制颜色规则保留可读性；新增颜色需核对实际渐变叠加后的文字对比度，不能仅检查纯色 token。
-- 冰川回归验证入口：`pnpm exec vitest run src/components/common/__tests__/AppearanceSwitcher.spec.ts`；构建使用 `pnpm build`。自动化状态测试和对比度计算不等同于浏览器视觉验收。
-- 侧栏搜索仅过滤已通过权限与功能开关的导航集合。移动抽屉支持 Esc、焦点回归、焦点循环、背景滚动锁定；桌面收起状态不会隐藏移动端导航标签。
-- 验证使用独立本地 PostgreSQL/Redis 与真实后端，不接入生产数据。已验证用户创建、密钥创建、权限拒绝、主题持久化、桌面与移动页面；支付结算及第三方 OAuth 仍需各自沙箱凭据，不能将路由呈现验证视为真实支付或上游调用成功。
+- 用户页面在 `frontend/src/views/portal/`，外壳是 `UserShell.vue` 和 `AdminShell.vue`，由 `frontend/src/hk/WorkspaceHost.vue` 选择。样式从 `frontend/src/hk/bootstrap.ts` 挂到 `main.ts`。
+- 明暗由 `useColorMode` 管，不再使用星澜、苔砂、墨铜、冰川或 `useAppearance`。
+- 密钥、用量、账户、卡密兑换和余额订阅走 portal。`/settings/profile` 重定向到 `/profile`。自助在线支付已停用；`/payment/result` 等回调页仍处理存量订单。管理端订单和手动支付宝确认保留。
+- 重写超过半个文件的上游页面迁到 fork 自有目录，原路径写入 `hk/upstream-removed.json`。当前例子是 `frontend/src/views/admin/hk/GroupsView.vue`。
+- 新文案放在 fork 自有 locale 或组件内的 `copy(zh, en)`，不要为了清理去改上游 i18n 文件。
+- 守卫测试：`src/__tests__/hkUpstreamRemoved.spec.ts`、`src/router/__tests__/backendLinkedPaths.spec.ts`。
 
 ## 管理员登录邮箱域名限制
 
