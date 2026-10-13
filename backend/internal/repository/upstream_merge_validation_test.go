@@ -23,8 +23,18 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 322
+	candidateMigrationCount         = 327
 )
+
+// This release is additive to the 322-migration HK release. Keep the exact
+// historical sets fixed so both older and immediately previous upgrades run DDL.
+var currentReleaseMigrations = []string{
+	"243_gemini_cached_contents.sql",
+	"244_gemini_cached_contents_channel_usage.sql",
+	"245_gemini_cached_contents_mutation_lease.sql",
+	"246_group_openai_ultrafast.sql",
+	"247_channel_ultrafast_multiplier.sql",
+}
 
 var candidateOnlyMigrations = []string{
 	"242_drop_platform_check_constraints.sql",
@@ -63,6 +73,11 @@ var candidateOnlyMigrations = []string{
 	"244_restore_account_global_priority.sql",
 	"245_add_typesafe_platform.sql",
 	"246_add_usage_log_reasoning_effort_source.sql",
+	"243_gemini_cached_contents.sql",
+	"244_gemini_cached_contents_channel_usage.sql",
+	"245_gemini_cached_contents_mutation_lease.sql",
+	"246_group_openai_ultrafast.sql",
+	"247_channel_ultrafast_multiplier.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {
@@ -114,40 +129,52 @@ func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *test
 	require.Zero(t, invalidIndexCount(t, legacyDB, "public"))
 }
 
-// The current HK release already applied 245 before upstream's new 242 is
-// introduced. Exercise that history separately from the older production baseline.
+// The earlier HK release applied 245 before the constraint repair. Also test
+// the immediately previous 322-migration release before the five new migrations.
 func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testing.T) {
-	ctx := context.Background()
-	history := fstest.MapFS{}
-	for _, name := range migrationFiles(t, migrations.FS) {
-		if name == "242_drop_platform_check_constraints.sql" || name == "246_hk_platform_catalog_constraints.sql" {
-			continue
-		}
-		content, err := migrations.FS.ReadFile(name)
-		require.NoError(t, err)
-		history[name] = &fstest.MapFile{Data: content}
+	for _, baseline := range []struct {
+		name        string
+		count       int
+		skipRepairs bool
+	}{
+		{name: "before_constraint_repairs", count: 320, skipRepairs: true},
+		{name: "v0215_hk3", count: 322},
+	} {
+		t.Run(baseline.name, func(t *testing.T) {
+			ctx := context.Background()
+			history := fstest.MapFS{}
+			for _, name := range migrationFiles(t, migrations.FS) {
+				if slices.Contains(currentReleaseMigrations, name) || (baseline.skipRepairs &&
+					(name == "242_drop_platform_check_constraints.sql" || name == "246_hk_platform_catalog_constraints.sql")) {
+					continue
+				}
+				content, err := migrations.FS.ReadFile(name)
+				require.NoError(t, err)
+				history[name] = &fstest.MapFile{Data: content}
+			}
+			require.Len(t, history, baseline.count)
+			container, err := tcpostgres.Run(ctx, selectDockerImage(ctx, postgresImageTag),
+				tcpostgres.WithDatabase("hk_014_history"), tcpostgres.WithUsername("postgres"),
+				tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = container.Terminate(ctx) })
+			dsn, err := container.ConnectionString(ctx, "sslmode=disable", "TimeZone=UTC")
+			require.NoError(t, err)
+			db, err := openSQLWithRetry(ctx, dsn, 30*time.Second)
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = db.Close() })
+			require.NoError(t, applyMigrationsFS(ctx, db, history))
+			before := migrationChecksums(t, db, "public")
+			require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
+			after := migrationChecksums(t, db, "public")
+			require.Len(t, after, candidateMigrationCount)
+			for name, checksum := range before {
+				require.Equal(t, checksum, after[name], name)
+			}
+			require.Equal(t, schemaFingerprint(t, integrationDB, "public"), schemaFingerprint(t, db, "public"))
+			require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
+		})
 	}
-	require.Len(t, history, 320)
-	container, err := tcpostgres.Run(ctx, selectDockerImage(ctx, postgresImageTag),
-		tcpostgres.WithDatabase("hk_014_history"), tcpostgres.WithUsername("postgres"),
-		tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = container.Terminate(ctx) })
-	dsn, err := container.ConnectionString(ctx, "sslmode=disable", "TimeZone=UTC")
-	require.NoError(t, err)
-	db, err := openSQLWithRetry(ctx, dsn, 30*time.Second)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-	require.NoError(t, applyMigrationsFS(ctx, db, history))
-	before := migrationChecksums(t, db, "public")
-	require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
-	after := migrationChecksums(t, db, "public")
-	require.Len(t, after, candidateMigrationCount)
-	for name, checksum := range before {
-		require.Equal(t, checksum, after[name], name)
-	}
-	require.Equal(t, schemaFingerprint(t, integrationDB, "public"), schemaFingerprint(t, db, "public"))
-	require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
 }
 
 func TestUpstreamMergeValidation_RequiredContractsAndLegacyExclusions(t *testing.T) {
