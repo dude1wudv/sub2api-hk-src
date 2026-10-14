@@ -1435,6 +1435,9 @@ func (a *Account) IsOpenAIApiKey() bool {
 // 适用 openai、国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）与 OpenCode Go；
 // grok 走 GetGrokBaseURL，此处对 grok 返回 "" 以保持原有行为。
 func (a *Account) GetOpenAIBaseURL() string {
+	if a.UsesGeminiChatCompletions() {
+		return strings.TrimSpace(a.GetCredential("base_url"))
+	}
 	if !a.IsOpenAI() && !a.IsMultiProtocolAPIKey() {
 		return ""
 	}
@@ -1775,6 +1778,9 @@ func (a *Account) GetOpenAIApiKey() string {
 func (a *Account) GetOpenAIProtocolAPIKey() string {
 	if a == nil {
 		return ""
+	}
+	if a.UsesGeminiChatCompletions() {
+		return a.GetCredential("api_key")
 	}
 	if a.IsMultiProtocolAPIKey() {
 		if a.Type != AccountTypeAPIKey {

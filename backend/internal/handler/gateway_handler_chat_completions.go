@@ -296,7 +296,17 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		}
 		var result *service.ForwardResult
 		setActualUpstreamEndpoint(c, "")
-		if account.Platform == service.PlatformGemini {
+		service.ClearActualOpenAIUpstreamEndpoint(c)
+		if account.UsesGeminiChatCompletions() {
+			if h.openAIGatewayService == nil {
+				h.chatCompletionsErrorResponse(c, http.StatusBadGateway, "upstream_error", "Chat Completions passthrough service is not configured")
+				if accountReleaseFunc != nil {
+					accountReleaseFunc()
+				}
+				return
+			}
+			result, err = h.openAIGatewayService.ForwardGeminiChatCompletions(c.Request.Context(), c, account, forwardBody)
+		} else if account.Platform == service.PlatformGemini {
 			if h.geminiCompatService == nil {
 				h.chatCompletionsErrorResponse(c, http.StatusBadGateway, "upstream_error", "Gemini compatibility service is not configured")
 				if accountReleaseFunc != nil {

@@ -329,9 +329,10 @@ func GetInboundEndpoint(c *gin.Context) string {
 // account, passing account.Platform.
 func GetUpstreamEndpoint(c *gin.Context, platform string) string {
 	// OpenAI 转发服务维护独立的运行时端点上下文，覆盖普通入站推导。
+	// 显式启用 Chat 直转的 Gemini 账号也复用此服务，不能再推导成 /v1beta/models。
 	// 这对 force_chat_completions 的错误路径尤为重要：此时可能没有
 	// ForwardResult，不能把入站 /v1/responses 误报成上游端点。
-	if platform == service.PlatformOpenAI || platform == service.PlatformGrok || service.IsMultiProtocolAPIKeyProvider(platform) {
+	if platform == service.PlatformOpenAI || platform == service.PlatformGrok || platform == service.PlatformGemini || service.IsMultiProtocolAPIKeyProvider(platform) {
 		if endpoint := service.GetActualOpenAIUpstreamEndpoint(c); endpoint != "" {
 			return endpoint
 		}
