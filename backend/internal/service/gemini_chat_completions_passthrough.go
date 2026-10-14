@@ -33,7 +33,7 @@ func (s *OpenAIGatewayService) ForwardGeminiChatCompletions(
 ) (*ForwardResult, error) {
 	if !account.UsesGeminiChatCompletions() {
 		writeChatCompletionsError(c, http.StatusBadRequest, "invalid_request_error", "Gemini Chat Completions passthrough is not enabled for this account")
-		return nil, fmt.Errorf("Gemini Chat Completions passthrough is not enabled")
+		return nil, fmt.Errorf("gemini chat completions passthrough is not enabled")
 	}
 	beginUpstreamResponseModelObservation(c)
 	result, err := s.forwardAsRawChatCompletions(ctx, c, account, body, "")
