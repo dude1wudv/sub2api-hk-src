@@ -8,7 +8,7 @@
 |------|------|
 | **上游仓库** | Wei-Shaw/sub2api |
 | **HK 仓库** | dude1wudv/sub2api-hk-src |
-| **当前发行** | v0.2.16-hk.2 |
+| **当前发行** | v0.2.17-hk.1 |
 | **技术栈** | Go 后端 (Ent ORM + Gin) + Vue3 前端 (pnpm) |
 | **数据库** | PostgreSQL 16 + Redis |
 | **包管理** | 后端: go modules, 前端: **pnpm**（不是 npm） |

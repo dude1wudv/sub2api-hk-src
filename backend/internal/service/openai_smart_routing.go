@@ -52,7 +52,9 @@ func (s *OpenAIGatewayService) SmartRoutingModels(ctx context.Context, key *APIK
 			}
 		}
 	}
-	return dedupeAndSortModelIDs(models), nil
+	// These are already public aliases. Match the regular catalogs' retirement
+	// policy, retaining an alias when an API-key account can still serve it.
+	return dedupeAndSortModelIDs(filterRetiredOpenAIModelIDs(accounts, models)), nil
 }
 
 // SmartRoutingAvailable uses the existing account health/capability checks

@@ -599,6 +599,7 @@ func TestAPIContracts(t *testing.T) {
 								"subscription_id": null,
 							"input_tokens": 10,
 							"output_tokens": 20,
+							"output_tokens_estimated": false,
 							"cache_creation_tokens": 1,
 							"cache_read_tokens": 2,
 							"cache_creation_5m_tokens": 0,

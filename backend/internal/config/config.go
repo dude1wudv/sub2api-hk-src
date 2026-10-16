@@ -998,6 +998,9 @@ type GatewayConfig struct {
 	// UpstreamErrorProtection hides provider error details from gateway clients.
 	// It is enabled by default; disabling restores legacy passthrough behavior.
 	UpstreamErrorProtection bool `mapstructure:"upstream_error_protection"`
+	// MinOutputTokens is the minimum max_output_tokens used when
+	// converting Chat Completions or Anthropic requests to Responses.
+	MinOutputTokens int `mapstructure:"min_output_tokens"`
 	// 等待上游响应头的超时时间（秒），0表示无超时
 	// 注意：这不影响流式数据传输，只控制等待响应头的时间
 	ResponseHeaderTimeout int `mapstructure:"response_header_timeout"`
@@ -2069,6 +2072,7 @@ func setDefaults() {
 	viper.SetDefault("helios_workbench.group_id", 0)
 	viper.SetDefault("helios_workbench.client_secret", "")
 	viper.SetDefault("helios_workbench.grant_ttl_seconds", 90)
+	viper.SetDefault("gateway.min_output_tokens", 128)
 	viper.SetDefault("simple_mode.auto_create_default_groups", true)
 	viper.SetDefault("simple_mode_key_rate_limit_enabled", false)
 
@@ -2791,6 +2795,9 @@ func (c *Config) Validate() error {
 		if len([]byte(c.HeliosWorkbench.ClientSecret)) < 32 {
 			return fmt.Errorf("helios_workbench.client_secret must be at least 32 bytes")
 		}
+	}
+	if c.Gateway.MinOutputTokens < 16 {
+		return fmt.Errorf("gateway.min_output_tokens must be at least 16")
 	}
 	forwardedClientIPHeaders, err := NormalizeForwardedClientIPHeaders(c.Security.ForwardedClientIPHeaders)
 	if err != nil {
