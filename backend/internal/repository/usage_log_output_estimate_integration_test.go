@@ -9,28 +9,30 @@ import (
 	"testing"
 	"time"
 
+	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
 func TestUsageLogOutputTokensEstimatedMigrationAndRoundTrip(t *testing.T) {
-	ctx := context.Background()
-	client := testEntClient(t)
-	repo := newUsageLogRepositoryWithSQL(client, integrationDB)
+	tx := testEntTx(t)
+	ctx := dbent.NewTxContext(context.Background(), tx)
+	client := tx.Client()
+	repo := newUsageLogRepositoryWithSQL(client, tx)
 	user := mustCreateUser(t, client, &service.User{Email: "output-estimate-" + uuid.NewString() + "@example.com"})
 	apiKey := mustCreateApiKey(t, client, &service.APIKey{UserID: user.ID, Key: "sk-output-estimate-" + uuid.NewString(), Name: "output-estimate"})
 	account := mustCreateAccount(t, client, &service.Account{Name: "output-estimate-" + uuid.NewString()})
 
 	var nullable string
 	var defaultValue sql.NullString
-	err := integrationDB.QueryRowContext(ctx, `
+	err := scanSingleRow(ctx, tx, `
 		SELECT is_nullable, column_default
 		FROM information_schema.columns
 		WHERE table_schema = current_schema()
 		  AND table_name = 'usage_logs'
 		  AND column_name = 'output_tokens_estimated'
-	`).Scan(&nullable, &defaultValue)
+	`, nil, &nullable, &defaultValue)
 	require.NoError(t, err, "migration must add the output_tokens_estimated column")
 	require.Equal(t, "NO", nullable)
 	require.True(t, defaultValue.Valid)
@@ -39,11 +41,11 @@ func TestUsageLogOutputTokensEstimatedMigrationAndRoundTrip(t *testing.T) {
 	// A historical insert that omits the new column reads as false through the
 	// repository's full SELECT/scan path.
 	var historicalID int64
-	require.NoError(t, integrationDB.QueryRowContext(ctx, `
+	require.NoError(t, scanSingleRow(ctx, tx, `
 		INSERT INTO usage_logs (user_id, api_key_id, account_id, request_id, model, created_at)
 		VALUES ($1, $2, $3, $4, 'claude-sonnet-4', $5)
 		RETURNING id
-	`, user.ID, apiKey.ID, account.ID, uuid.NewString(), time.Now().UTC()).Scan(&historicalID))
+	`, []any{user.ID, apiKey.ID, account.ID, uuid.NewString(), time.Now().UTC()}, &historicalID))
 	historical, err := repo.GetByID(ctx, historicalID)
 	require.NoError(t, err)
 	require.False(t, historical.OutputTokensEstimated)
