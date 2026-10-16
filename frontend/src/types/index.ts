@@ -1795,6 +1795,8 @@ export interface UsageLog {
 
   input_tokens: number
   output_tokens: number
+  // Missing on older API responses; true only when received output was estimated.
+  output_tokens_estimated?: boolean
   cache_creation_tokens: number
   cache_read_tokens: number
   cache_creation_5m_tokens: number

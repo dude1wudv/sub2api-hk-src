@@ -411,11 +411,14 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 	}
 
 	usage := &ClaudeUsage{}
+	var outputUsage anthropicStreamOutputUsage
+	defer outputUsage.ApplyFallback(usage)
 	var firstTokenMs *int
 	clientDisconnected := false
 	sawTerminalEvent := false
 
-	scanner := bufio.NewScanner(resp.Body)
+	var lastReadAt int64
+	scanner := bufio.NewScanner(newStreamActivityReader(resp.Body, &lastReadAt))
 	maxLineSize := defaultMaxLineSize
 	if s.cfg != nil && s.cfg.Gateway.MaxLineSize > 0 {
 		maxLineSize = s.cfg.Gateway.MaxLineSize
@@ -437,13 +440,10 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 			return false
 		}
 	}
-	var lastReadAt int64
-	atomic.StoreInt64(&lastReadAt, time.Now().UnixNano())
 	go func(scanBuf *sseScannerBuf64K) {
 		defer putSSEScannerBuf64K(scanBuf)
 		defer close(events)
 		for scanner.Scan() {
-			atomic.StoreInt64(&lastReadAt, time.Now().UnixNano())
 			if !sendEvent(scanEvent{line: scanner.Text()}) {
 				return
 			}
@@ -535,6 +535,7 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 			line := ev.line
 			if data, ok := extractAnthropicSSEDataLine(line); ok {
 				trimmed := strings.TrimSpace(data)
+				outputUsage.Observe(trimmed)
 				observer.ObserveAnthropic([]byte(trimmed))
 				if anthropicStreamEventIsTerminal("", trimmed) {
 					sawTerminalEvent = true
@@ -625,7 +626,9 @@ func extractAnthropicSSEDataLine(line string) (string, bool) {
 // parseSSEUsagePassthrough 从 Anthropic SSE data 行提取 usage（包级函数：
 // Anthropic 平台 passthrough 与国产供应商原生 Anthropic 直通共用）。
 func parseSSEUsagePassthrough(data string, usage *ClaudeUsage) {
-	if usage == nil || data == "" || data == "[DONE]" {
+	// A truncated final event must not turn a partial numeric value into billed
+	// usage. The stream fallback only counts earlier complete semantic events.
+	if usage == nil || data == "" || data == "[DONE]" || !gjson.Valid(data) {
 		return
 	}
 

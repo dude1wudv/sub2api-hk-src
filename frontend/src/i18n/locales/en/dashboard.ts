@@ -451,6 +451,8 @@ export default {
     cacheReadRateFormula: 'Cache read ÷ (input + cache creation + cache read)',
     outputPhaseTps: 'Output-phase TPS',
     outputTpsShort: 'Output phase',
+    outputTokensEstimated: 'Estimated output',
+    outputTokensEstimatedHint: 'Final upstream usage was unavailable. Output tokens are estimated from received content only and may differ from upstream.',
     outputTpsFormula: 'Output tokens ÷ (total duration − time to first token); unavailable without first-token data',
     inputTokenPrice: 'Input price',
     outputTokenPrice: 'Output price',

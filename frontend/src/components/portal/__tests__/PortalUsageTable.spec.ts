@@ -34,6 +34,22 @@ function row(first_token_ms: number | null, duration_ms: number | null) {
 describe('PortalUsageTable latency states', () => {
   beforeEach(() => { mobile.value = false })
 
+  it.each([false, true])('labels estimated output in desktop/mobile usage (mobile=%s)', (isMobile) => {
+    mobile.value = isMobile
+    const wrapper = mount(PortalUsageTable, {
+      props: {
+        rows: [{ ...row(1_000, 3_000), output_tokens_estimated: true }, { ...row(2_000, 4_000), output_tokens_estimated: false }],
+        columns: ['tokens'], sortBy: 'created_at', sortOrder: 'desc',
+      },
+    })
+    const badges = wrapper.findAll('[data-testid="output-tokens-estimated"]')
+    expect(badges).toHaveLength(1)
+    expect(badges[0].text()).toBe('usage.outputTokensEstimated')
+    expect(badges[0].attributes('title')).toBe('usage.outputTokensEstimatedHint')
+    expect(wrapper.findAll('.usage-estimate-note')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
   it('shows provider and semantic token icons without losing cache, pricing, or request details', () => {
     const wrapper = mount(PortalUsageTable, {
       props: {

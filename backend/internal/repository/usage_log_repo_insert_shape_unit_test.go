@@ -116,7 +116,7 @@ func TestUsageLogStaticInsertShape_PlaceholdersMatchArgTypes(t *testing.T) {
 }
 
 // TestPrepareUsageLogInsert_UpstreamRequestIDArgWiring pins upstream_request_id
-// before session_id; created_at and reasoning_effort_source follow both.
+// before session_id; the newer provenance columns remain after it.
 func TestPrepareUsageLogInsert_UpstreamRequestIDArgWiring(t *testing.T) {
 	upstreamRequestID := "req_upstream_123"
 	prepared := prepareUsageLogInsert(&service.UsageLog{
@@ -129,7 +129,7 @@ func TestPrepareUsageLogInsert_UpstreamRequestIDArgWiring(t *testing.T) {
 	})
 	require.Len(t, prepared.args, len(usageLogInsertArgTypes))
 
-	idx := len(prepared.args) - 8
+	idx := len(prepared.args) - 9
 	arg, ok := prepared.args[idx].(sql.NullString)
 	require.True(t, ok, "upstream_request_id arg should be sql.NullString, got %T", prepared.args[idx])
 	require.True(t, arg.Valid)

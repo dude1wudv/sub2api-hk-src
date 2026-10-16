@@ -28,6 +28,15 @@ function usage(overrides: Record<string, unknown> = {}) {
 }
 
 describe('portal usage calculations', () => {
+  it('exports the estimate marker separately from the output count', () => {
+    const csv = usageLogsCsv([usage({ output_tokens_estimated: true }), usage()], true)
+    const lines = csv.split('\n').map(line => line.trim().split(','))
+    const column = lines[0].indexOf('"Estimated output"')
+    expect(column).toBeGreaterThan(0)
+    expect(lines[1][column]).toBe('"Yes"')
+    expect(lines[2][column]).toBe('"No"')
+    expect(lines[1][column - 1]).toBe('"80"')
+  })
   it('uses all input and cache tokens as the cache-hit-rate denominator', () => {
     expect(usageCacheRate(usage())).toBe(60)
     expect(usageCacheRate(usage({ input_tokens: 0, cache_creation_tokens: 0, cache_read_tokens: 0 }))).toBeNull()

@@ -156,10 +156,11 @@ type UsageLog struct {
 	GroupID        *int64
 	SubscriptionID *int64
 
-	InputTokens         int
-	OutputTokens        int
-	CacheCreationTokens int
-	CacheReadTokens     int
+	InputTokens           int
+	OutputTokens          int
+	OutputTokensEstimated bool
+	CacheCreationTokens   int
+	CacheReadTokens       int
 
 	CacheCreation5mTokens int `gorm:"column:cache_creation_5m_tokens"`
 	CacheCreation1hTokens int `gorm:"column:cache_creation_1h_tokens"`

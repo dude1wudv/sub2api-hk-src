@@ -80,6 +80,9 @@ func (UsageLog) Fields() []ent.Field {
 			Default(0),
 		field.Int("output_tokens").
 			Default(0),
+		field.Bool("output_tokens_estimated").
+			Default(false).
+			Comment("Output tokens estimated from received content because final upstream usage was missing"),
 		field.Int("cache_creation_tokens").
 			Default(0),
 		field.Int("cache_read_tokens").

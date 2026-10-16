@@ -1320,6 +1320,7 @@ func (s *GatewayService) buildRecordUsageLog(
 		UpstreamEndpoint:         optionalTrimmedStringPtr(input.UpstreamEndpoint),
 		InputTokens:              result.Usage.InputTokens,
 		OutputTokens:             result.Usage.OutputTokens,
+		OutputTokensEstimated:    result.Usage.OutputTokensEstimated,
 		CacheCreationTokens:      result.Usage.CacheCreationInputTokens,
 		CacheReadTokens:          result.Usage.CacheReadInputTokens,
 		CacheCreation5mTokens:    result.Usage.CacheCreation5mTokens,

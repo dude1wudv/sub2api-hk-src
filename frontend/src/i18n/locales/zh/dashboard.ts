@@ -456,6 +456,8 @@ export default {
     cacheReadRateFormula: '缓存读取 ÷（输入 + 缓存创建 + 缓存读取）',
     outputPhaseTps: '输出阶段 TPS',
     outputTpsShort: '输出阶段',
+    outputTokensEstimated: '输出估算',
+    outputTokensEstimatedHint: '未收到上游最终用量，仅按已收到的输出内容估算 Token，可能与上游不同。',
     outputTpsFormula: '输出 Token ÷（总耗时 − 首字时间）；无首字数据时不可计算',
     inputTokenPrice: '输入单价',
     outputTokenPrice: '输出单价',
