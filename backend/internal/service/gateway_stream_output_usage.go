@@ -20,8 +20,11 @@ const (
 type anthropicStreamOutputUsage struct {
 	semanticBytes       uint64
 	initialOutput       int
+	initialEstimated    bool
 	authoritative       bool
 	authoritativeOutput int
+	reportedAtBytes     uint64
+	reportedEstimated   bool
 }
 
 // Observe accepts only complete JSON events received from the upstream. Call it
@@ -33,13 +36,23 @@ func (u *anthropicStreamOutputUsage) Observe(data string) {
 	event := gjson.Parse(data)
 	switch event.Get("type").String() {
 	case "message_start":
-		if tokens, ok := streamOutputUsageTokenCount(event.Get("message.usage.output_tokens")); ok && tokens > u.initialOutput {
+		if tokens, ok := streamOutputUsageTokenCount(event.Get("message.usage.output_tokens")); ok && tokens >= u.initialOutput {
 			u.initialOutput = tokens
+			u.initialEstimated = event.Get("message.usage.output_tokens_estimated").Bool() && tokens > 0
 		}
-	case "message_delta":
+	case "message_delta", "error":
 		if tokens, ok := streamOutputUsageTokenCount(event.Get("usage.output_tokens")); ok {
+			estimated := event.Get("usage.output_tokens_estimated").Bool()
+			// Usage is cumulative. A later placeholder zero or regressing
+			// snapshot must not erase a previously observed positive count.
+			// An exact count may replace a larger local/provider estimate.
+			if u.authoritative && !u.reportedEstimated && tokens < u.authoritativeOutput {
+				break
+			}
 			u.authoritative = true
 			u.authoritativeOutput = tokens
+			u.reportedAtBytes = u.semanticBytes
+			u.reportedEstimated = estimated
 		}
 	case "content_block_start":
 		block := event.Get("content_block")
@@ -108,25 +121,48 @@ func streamOutputUsageTokenCount(value gjson.Result) (int, bool) {
 	return int(n), true
 }
 
-// ApplyFallback is called once forwarding has ended. A declared message_delta
-// count always wins, including an explicit zero. Otherwise estimate only the
-// semantic output actually received, rounding once across all fragments.
+// ApplyFallback can be called after every complete upstream event and on exit.
+// Positive exact usage wins for the output it covers. If more output follows,
+// retain that count and estimate the unmetered tail. A placeholder zero cannot
+// make observed output free. No semantic output means no invented charge.
 func (u *anthropicStreamOutputUsage) ApplyFallback(usage *ClaudeUsage) {
 	if u == nil || usage == nil {
 		return
 	}
-	if u.authoritative {
-		usage.OutputTokens = u.authoritativeOutput
-		usage.OutputTokensEstimated = false
-		return
+	if u.authoritative && !u.reportedEstimated {
+		tailBytes := u.semanticBytes - u.reportedAtBytes
+		if tailBytes == 0 && (u.authoritativeOutput > 0 || u.semanticBytes == 0) {
+			usage.OutputTokens = u.authoritativeOutput
+			usage.OutputTokensEstimated = false
+			return
+		}
+		if u.authoritativeOutput > 0 {
+			// Do not re-estimate the already metered prefix. In particular, a
+			// tokenizer may report far fewer tokens than the byte heuristic.
+			tailTokens := int((tailBytes + streamOutputEstimateBytesPerToken - 1) / streamOutputEstimateBytesPerToken)
+			usage.OutputTokens = min(maxStreamOutputUsageTokens, u.authoritativeOutput+tailTokens)
+			usage.OutputTokensEstimated = true
+			return
+		}
 	}
 	if usage.OutputTokens < u.initialOutput {
 		usage.OutputTokens = u.initialOutput
 	}
 	if u.semanticBytes == 0 {
+		if u.authoritative {
+			usage.OutputTokens = max(usage.OutputTokens, u.authoritativeOutput)
+			usage.OutputTokensEstimated = u.reportedEstimated
+		} else if u.initialEstimated {
+			usage.OutputTokensEstimated = true
+		}
 		return
 	}
 	estimated := int((u.semanticBytes + streamOutputEstimateBytesPerToken - 1) / streamOutputEstimateBytesPerToken)
+	if u.authoritative {
+		tailBytes := u.semanticBytes - u.reportedAtBytes
+		tailTokens := int((tailBytes + streamOutputEstimateBytesPerToken - 1) / streamOutputEstimateBytesPerToken)
+		estimated = max(estimated, min(maxStreamOutputUsageTokens, u.authoritativeOutput+tailTokens))
+	}
 	if estimated > usage.OutputTokens {
 		usage.OutputTokens = estimated
 	}

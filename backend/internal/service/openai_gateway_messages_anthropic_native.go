@@ -302,7 +302,7 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 	upstreamModel string,
 	reasoningEffort *string,
 	startTime time.Time,
-) (*OpenAIForwardResult, error) {
+) (result *OpenAIForwardResult, retErr error) {
 	observer := upstreamResponseModelObserverFromContext(c)
 	if observer == nil {
 		observer = beginUpstreamResponseModelObservation(c)
@@ -336,11 +336,16 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 	}
 
 	usage := &ClaudeUsage{}
+	var outputUsage anthropicStreamOutputUsage
 	var firstTokenMs *int
 	clientDisconnected := false
 	sawTerminalEvent := false
+	defer func() {
+		outputUsage.LogRecovery(ctx, account.ID, "provider_anthropic_native", usage, sawTerminalEvent, clientDisconnected, retErr)
+	}()
 
-	scanner := bufio.NewScanner(resp.Body)
+	var lastReadAt int64
+	scanner := bufio.NewScanner(newStreamActivityReader(resp.Body, &lastReadAt))
 	maxLineSize := defaultMaxLineSize
 	if s.cfg != nil && s.cfg.Gateway.MaxLineSize > 0 {
 		maxLineSize = s.cfg.Gateway.MaxLineSize
@@ -362,13 +367,10 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 			return false
 		}
 	}
-	var lastReadAt int64
-	atomic.StoreInt64(&lastReadAt, time.Now().UnixNano())
 	go func(scanBuf *sseScannerBuf64K) {
 		defer putSSEScannerBuf64K(scanBuf)
 		defer close(events)
 		for scanner.Scan() {
-			atomic.StoreInt64(&lastReadAt, time.Now().UnixNano())
 			if !sendEvent(scanEvent{line: scanner.Text()}) {
 				return
 			}
@@ -457,6 +459,7 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 			line := ev.line
 			if data, ok := extractAnthropicSSEDataLine(line); ok {
 				trimmed := strings.TrimSpace(data)
+				outputUsage.Observe(trimmed)
 				observer.ObserveAnthropic([]byte(trimmed))
 				if anthropicStreamEventIsTerminal("", trimmed) {
 					sawTerminalEvent = true
@@ -466,6 +469,9 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 					firstTokenMs = &ms
 				}
 				parseSSEUsagePassthrough(data, usage)
+				// Keep the received-output snapshot current before every possible
+				// stream exit. nativeAnthropicStreamResult copies usage by value.
+				outputUsage.ApplyFallback(usage)
 			} else {
 				trimmed := strings.TrimSpace(line)
 				if strings.HasPrefix(trimmed, "event:") && anthropicStreamEventIsTerminal(strings.TrimSpace(strings.TrimPrefix(trimmed, "event:")), "") {
@@ -576,6 +582,7 @@ func claudeUsageToOpenAIUsage(u *ClaudeUsage) OpenAIUsage {
 	return OpenAIUsage{
 		InputTokens:              u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens,
 		OutputTokens:             u.OutputTokens,
+		OutputTokensEstimated:    u.OutputTokensEstimated,
 		CacheCreationInputTokens: u.CacheCreationInputTokens,
 		CacheReadInputTokens:     u.CacheReadInputTokens,
 	}

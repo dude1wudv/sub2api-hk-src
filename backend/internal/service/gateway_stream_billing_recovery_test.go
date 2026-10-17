@@ -272,3 +272,48 @@ func TestRecordUsageBillsEstimatedOutputAndPersistsProvenance(t *testing.T) {
 	require.Equal(t, 3, billingRepo.lastCmd.OutputTokens)
 	require.InDelta(t, 0.000033, billingRepo.lastCmd.BalanceCost, 1e-12, "the billing repository receives the amount including estimated output")
 }
+
+func TestAnthropicStreamBillingCumulativeFallbackAcrossRoutes(t *testing.T) {
+	for _, passthrough := range []bool{false, true} {
+		for _, tc := range []struct {
+			name      string
+			tail      string
+			output    int
+			input     int
+			cacheRead int
+		}{
+			{
+				name:   "zero usage after real output",
+				tail:   `data: {"type":"message_delta","usage":{"output_tokens":0}}`,
+				output: 3, input: 23, cacheRead: 7,
+			},
+			{
+				name: "output following intermediate usage",
+				tail: "data: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":10}}\n\n" +
+					`data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"abcde"}}`,
+				output: 12, input: 23, cacheRead: 7,
+			},
+			{
+				name:   "proxy error carries received usage",
+				tail:   `data: {"type":"error","error":{"type":"api_error","message":"stream interrupted"},"usage":{"input_tokens":31,"cache_read_input_tokens":9,"output_tokens":8,"output_tokens_estimated":true}}`,
+				output: 8, input: 31, cacheRead: 9,
+			},
+			{
+				name:   "named proxy error carries received usage",
+				tail:   "event: error\n" + `data: {"type":"error","error":{"type":"api_error","message":"stream interrupted"},"usage":{"input_tokens":31,"cache_read_input_tokens":9,"output_tokens":8,"output_tokens_estimated":true}}`,
+				output: 8, input: 31, cacheRead: 9,
+			},
+		} {
+			t.Run(fmt.Sprintf("passthrough=%t/%s", passthrough, tc.name), func(t *testing.T) {
+				payload := append(newBillingPartialSSE("\n\n"), []byte(tc.tail+"\n\n")...)
+				result, err := runAnthropicBillingStream(t, passthrough, &streamReadCloser{payload: payload, err: io.ErrUnexpectedEOF}, false)
+				require.Error(t, err, "usage recovery must not disguise a failed stream as success")
+				require.NotNil(t, result)
+				require.Equal(t, tc.output, result.usage.OutputTokens)
+				require.True(t, result.usage.OutputTokensEstimated)
+				require.Equal(t, tc.input, result.usage.InputTokens)
+				require.Equal(t, tc.cacheRead, result.usage.CacheReadInputTokens)
+			})
+		}
+	}
+}

@@ -377,7 +377,7 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 	account *Account,
 	startTime time.Time,
 	model string,
-) (*streamingResult, error) {
+) (result *streamingResult, retErr error) {
 	observer := upstreamResponseModelObserverFromContext(c)
 	if observer == nil {
 		observer = beginUpstreamResponseModelObservation(c)
@@ -412,10 +412,13 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 
 	usage := &ClaudeUsage{}
 	var outputUsage anthropicStreamOutputUsage
-	defer outputUsage.ApplyFallback(usage)
 	var firstTokenMs *int
 	clientDisconnected := false
 	sawTerminalEvent := false
+	defer func() {
+		outputUsage.ApplyFallback(usage)
+		outputUsage.LogRecovery(ctx, account.ID, "anthropic_passthrough", usage, sawTerminalEvent, clientDisconnected, retErr)
+	}()
 
 	var lastReadAt int64
 	scanner := bufio.NewScanner(newStreamActivityReader(resp.Body, &lastReadAt))
@@ -545,6 +548,7 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 					firstTokenMs = &ms
 				}
 				parseSSEUsagePassthrough(data, usage)
+				outputUsage.ApplyFallback(usage)
 			} else {
 				trimmed := strings.TrimSpace(line)
 				if strings.HasPrefix(trimmed, "event:") && anthropicStreamEventIsTerminal(strings.TrimSpace(strings.TrimPrefix(trimmed, "event:")), "") {
@@ -649,7 +653,7 @@ func parseSSEUsagePassthrough(data string, usage *ClaudeUsage) {
 				usage.CacheCreation1hTokens = int(cc1h.Int())
 			}
 		}
-	case "message_delta":
+	case "message_delta", "error":
 		deltaUsage := parsed.Get("usage")
 		if deltaUsage.Exists() {
 			if v := deltaUsage.Get("input_tokens").Int(); v > 0 {
@@ -657,6 +661,7 @@ func parseSSEUsagePassthrough(data string, usage *ClaudeUsage) {
 			}
 			if v := deltaUsage.Get("output_tokens").Int(); v > 0 {
 				usage.OutputTokens = int(v)
+				usage.OutputTokensEstimated = deltaUsage.Get("output_tokens_estimated").Bool()
 			}
 			if v := deltaUsage.Get("cache_creation_input_tokens").Int(); v > 0 {
 				usage.CacheCreationInputTokens = int(v)
@@ -778,6 +783,7 @@ func parseClaudeUsageFromResponseBody(body []byte) *ClaudeUsage {
 
 	usage.InputTokens = int(usageNode.Get("input_tokens").Int())
 	usage.OutputTokens = int(usageNode.Get("output_tokens").Int())
+	usage.OutputTokensEstimated = usageNode.Get("output_tokens_estimated").Bool()
 	usage.CacheCreationInputTokens = int(usageNode.Get("cache_creation_input_tokens").Int())
 	usage.CacheReadInputTokens = int(usageNode.Get("cache_read_input_tokens").Int())
 

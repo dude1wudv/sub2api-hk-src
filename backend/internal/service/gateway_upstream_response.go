@@ -853,6 +853,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	sawTerminalEvent := false
 	defer func() {
 		outputUsage.ApplyFallback(usage)
+		outputUsage.LogRecovery(ctx, account.ID, "anthropic", usage, sawTerminalEvent, clientDisconnected, retErr)
 		// A stream error can follow semantic output even when no input usage was
 		// supplied. Preserve the estimated partial result without billing failover.
 		if result == nil && retErr != nil && usage.hasObservedTokens() {
@@ -887,6 +888,12 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 		}
 
 		if eventName == "error" {
+			// A proxy may include its last usage snapshot on the error frame.
+			// Collect it before returning the error; the ordinary patch merge
+			// below is intentionally bypassed for failed SSE events.
+			outputUsage.Observe(dataLine)
+			parseSSEUsagePassthrough(dataLine, usage)
+			outputUsage.ApplyFallback(usage)
 			return nil, dataLine, nil, &sseStreamErrorEventError{RawData: dataLine}
 		}
 
@@ -915,6 +922,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			return []string{block}, dataLine, nil, nil
 		}
 		outputUsage.Observe(dataLine)
+		outputUsage.ApplyFallback(usage)
 
 		eventType, _ := event["type"].(string)
 		observer.ObserveAnthropic([]byte(dataLine))
@@ -1270,7 +1278,7 @@ func (s *GatewayService) extractSSEUsagePatch(event map[string]any) *sseUsagePat
 		}
 		return patch
 
-	case "message_delta":
+	case "message_delta", "error":
 		usageObj, _ := event["usage"].(map[string]any)
 		if len(usageObj) == 0 {
 			return nil

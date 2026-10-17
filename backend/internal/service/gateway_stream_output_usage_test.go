@@ -3,6 +3,7 @@
 package service
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -57,16 +58,96 @@ func TestAnthropicStreamOutputUsagePreservesExistingOutputAndMarksEstimate(t *te
 	require.True(t, usage.OutputTokensEstimated)
 }
 
-func TestAnthropicStreamOutputUsageAuthoritativeZeroWins(t *testing.T) {
+func TestAnthropicStreamOutputUsageZeroCannotEraseObservedOutput(t *testing.T) {
 	var observed anthropicStreamOutputUsage
 	observed.Observe(`{"type":"message_start","message":{"usage":{"output_tokens":11}}}`)
 	observed.Observe(`{"type":"content_block_delta","delta":{"type":"text_delta","text":"substantial output"}}`)
 	observed.Observe(`{"type":"message_delta","usage":{"output_tokens":0}}`)
 
-	usage := &ClaudeUsage{OutputTokens: 22, OutputTokensEstimated: true}
+	usage := &ClaudeUsage{}
+	observed.ApplyFallback(usage)
+	require.Equal(t, 11, usage.OutputTokens)
+	require.True(t, usage.OutputTokensEstimated)
+}
+
+func TestAnthropicStreamOutputUsageEmptyZeroRemainsFree(t *testing.T) {
+	var observed anthropicStreamOutputUsage
+	observed.Observe(`{"type":"message_delta","usage":{"output_tokens":0}}`)
+	usage := &ClaudeUsage{}
 	observed.ApplyFallback(usage)
 	require.Zero(t, usage.OutputTokens)
 	require.False(t, usage.OutputTokensEstimated)
+}
+
+func TestAnthropicStreamOutputUsageAccumulatesAfterUsageSnapshot(t *testing.T) {
+	var observed anthropicStreamOutputUsage
+	usage := &ClaudeUsage{}
+	observed.Observe(`{"type":"content_block_delta","delta":{"type":"text_delta","text":"abcd"}}`)
+	observed.Observe(`{"type":"message_delta","usage":{"output_tokens":10}}`)
+	observed.ApplyFallback(usage)
+	require.Equal(t, 10, usage.OutputTokens)
+	require.False(t, usage.OutputTokensEstimated)
+
+	for range 5 {
+		observed.Observe(`{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"x"}}`)
+		observed.ApplyFallback(usage)
+	}
+	require.Equal(t, 12, usage.OutputTokens, "round the unmetered tail once, not per fragment")
+	require.True(t, usage.OutputTokensEstimated)
+
+	observed.Observe(`{"type":"message_delta","usage":{"output_tokens":11}}`)
+	observed.ApplyFallback(usage)
+	require.Equal(t, 11, usage.OutputTokens, "a complete exact count replaces the estimate")
+	require.False(t, usage.OutputTokensEstimated)
+}
+
+func TestAnthropicStreamOutputUsagePreservesProxyErrorEstimate(t *testing.T) {
+	var observed anthropicStreamOutputUsage
+	observed.Observe(`{"type":"content_block_delta","delta":{"type":"text_delta","text":"abcd"}}`)
+	observed.Observe(`{"type":"error","error":{"type":"api_error"},"usage":{"output_tokens":8,"output_tokens_estimated":true}}`)
+	usage := &ClaudeUsage{}
+	observed.ApplyFallback(usage)
+	require.Equal(t, 8, usage.OutputTokens)
+	require.True(t, usage.OutputTokensEstimated)
+}
+
+func TestAnthropicStreamOutputUsageRegressingSnapshotDoesNotEraseTail(t *testing.T) {
+	var observed anthropicStreamOutputUsage
+	observed.Observe(`{"type":"message_delta","usage":{"output_tokens":10}}`)
+	observed.Observe(`{"type":"content_block_delta","delta":{"type":"text_delta","text":"abcd"}}`)
+	observed.Observe(`{"type":"message_delta","usage":{"output_tokens":0}}`)
+	usage := &ClaudeUsage{}
+	observed.ApplyFallback(usage)
+	require.Equal(t, 11, usage.OutputTokens)
+	require.True(t, usage.OutputTokensEstimated)
+}
+
+func TestAnthropicStreamOutputUsageDoesNotReestimateMeasuredPrefix(t *testing.T) {
+	var observed anthropicStreamOutputUsage
+	usage := &ClaudeUsage{}
+	observed.Observe(`{"type":"content_block_delta","delta":{"type":"text_delta","text":"` + strings.Repeat("x", 100) + `"}}`)
+	observed.ApplyFallback(usage)
+	require.Equal(t, 25, usage.OutputTokens)
+	observed.Observe(`{"type":"message_delta","usage":{"output_tokens":4}}`)
+	observed.ApplyFallback(usage)
+	require.Equal(t, 4, usage.OutputTokens)
+	observed.Observe(`{"type":"content_block_delta","delta":{"type":"text_delta","text":"abcd"}}`)
+	observed.ApplyFallback(usage)
+	require.Equal(t, 5, usage.OutputTokens, "only the four unmetered tail bytes may be estimated")
+	require.True(t, usage.OutputTokensEstimated)
+}
+
+func TestAnthropicStreamOutputUsageInitialEstimateIsAFloorNotAPrefix(t *testing.T) {
+	var observed anthropicStreamOutputUsage
+	observed.Observe(`{"type":"message_start","message":{"usage":{"output_tokens":3,"output_tokens_estimated":true}}}`)
+	usage := &ClaudeUsage{}
+	observed.ApplyFallback(usage)
+	require.Equal(t, 3, usage.OutputTokens)
+	require.True(t, usage.OutputTokensEstimated)
+	observed.Observe(`{"type":"content_block_delta","delta":{"type":"text_delta","text":"abcdefghijkl"}}`)
+	observed.ApplyFallback(usage)
+	require.Equal(t, 3, usage.OutputTokens, "the buffered first block is already included in the start estimate")
+	require.True(t, usage.OutputTokensEstimated)
 }
 
 func TestAnthropicStreamOutputUsageAuthoritativeCountWinsOverEstimate(t *testing.T) {
