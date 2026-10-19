@@ -3,9 +3,11 @@ package service
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"net/url"
 	"strings"
+	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 )
 
 var codexToolCapabilityFields = []string{
@@ -184,9 +186,15 @@ func groupCodexModelMetadata(
 	// 因此不再失败即关闭；能力回落到与单账号无快照时相同的按名推导。
 	explicitTargetsConflict := explicitClaims && !routed &&
 		codexExplicitModelTargetsConflictForPlatform(accounts, platform, modelID)
+	// A dated DeepSeek name and its base model share the existing family defaults.
+	// Keep the original mapping targets for metadata lookup and request forwarding.
+	datedAliasTargetsCompatible := explicitTargetsConflict &&
+		codexDeepSeekDatedAliasTargetsCompatible(accounts, platform, modelID)
 	publicAlias := upstreamModel != modelID
 	candidates := make([]UpstreamModelMetadata, 0)
 	missingMetadata := false
+	hasKnownReasoning := false
+	hasUnknownReasoning := false
 	for i := range accounts {
 		account := &accounts[i]
 		if !codexAccountServesPlatformModel(account, platform, modelID) {
@@ -212,13 +220,18 @@ func groupCodexModelMetadata(
 		}
 		metadata, ok := account.GetUpstreamModelMetadata(lookupModel)
 		if !ok {
-			if explicitTargetsConflict {
+			if explicitTargetsConflict && !datedAliasTargetsCompatible {
 				return codexModelMetadataOverride{
 					reasoningConflict:       true,
 					inputModalitiesConflict: true,
 				}, true
 			}
 			missingMetadata = true
+		}
+		if metadata.Reasoning == nil {
+			hasUnknownReasoning = true
+		} else {
+			hasKnownReasoning = true
 		}
 		metadata.CodexToolCapabilities = accountCodexToolCapabilities(account, lookupModel)
 		candidates = append(candidates, metadata)
@@ -232,11 +245,62 @@ func groupCodexModelMetadata(
 			CodexToolCapabilities: metadata.CodexToolCapabilities,
 		}}
 	}
+	if datedAliasTargetsCompatible && hasKnownReasoning && hasUnknownReasoning {
+		// Family defaults must not erase a known account's reasoning restrictions
+		// while another account's capabilities are still unknown.
+		metadata.reasoningConflict = true
+	}
 	if publicAlias {
 		metadata.DisplayName = modelID
 		metadata.Description = configuredCodexCustomDescription
 	}
 	return metadata, true
+}
+
+func codexDeepSeekDatedAliasTargetsCompatible(accounts []Account, platform, modelID string) bool {
+	if platform != PlatformOpenAI || !isDeepSeekCodexModel(modelID) {
+		return false
+	}
+	family, hasDate := codexDeepSeekDatedModelFamily(modelID)
+	claims := 0
+	for i := range accounts {
+		account := &accounts[i]
+		if !codexAccountServesPlatformModel(account, platform, modelID) {
+			continue
+		}
+		target, matched := account.ResolveMappedModel(modelID)
+		if !matched || strings.TrimSpace(target) == "" {
+			continue
+		}
+		targetFamily, targetHasDate := codexDeepSeekDatedModelFamily(target)
+		if targetFamily != family {
+			return false
+		}
+		hasDate = hasDate || targetHasDate
+		claims++
+	}
+	return claims > 1 && hasDate
+}
+
+func codexDeepSeekDatedModelFamily(modelID string) (string, bool) {
+	modelID = strings.ToLower(strings.TrimSpace(modelID))
+	separator := strings.LastIndexByte(modelID, '-')
+	if separator < 0 {
+		return modelID, false
+	}
+	date := modelID[separator+1:]
+	switch len(date) {
+	case 4:
+		// A fixed leap year allows MMDD aliases such as 0229 without using today's date.
+		date = "2000" + date
+	case 8:
+	default:
+		return modelID, false
+	}
+	if _, err := time.Parse("20060102", date); err != nil {
+		return modelID, false
+	}
+	return modelID[:separator], true
 }
 
 func codexExplicitModelTargetsConflict(accounts []Account, modelID string) bool {
