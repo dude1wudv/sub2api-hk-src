@@ -132,8 +132,8 @@ func TestAccountTestService_OpenAISuccessPersistsSnapshotFromHeaders(t *testing.
 	require.Len(t, upstream.requests, 1)
 	req := upstream.requests[0]
 	require.Equal(t, HTTPUpstreamProfileOpenAI, HTTPUpstreamProfileFromContext(req.Context()))
-	require.Equal(t, "codex-tui/0.153.4 (Ubuntu 22.4.0; x86_64) xterm-256color", req.Header.Get("User-Agent"))
-	require.Equal(t, "codex-tui", req.Header.Get("Originator"))
+	require.Equal(t, "codex_cli_rs/0.153.4 (Ubuntu 22.4.0; x86_64) xterm-256color", req.Header.Get("User-Agent"))
+	require.Equal(t, "codex_cli_rs", req.Header.Get("Originator"))
 	require.Equal(t, "0.153.4", req.Header.Get("Version"))
 	require.NotEmpty(t, repo.updatedExtra)
 	require.Equal(t, 42.0, repo.updatedExtra["codex_5h_used_percent"])
