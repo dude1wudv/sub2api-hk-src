@@ -23,7 +23,7 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 330
+	candidateMigrationCount         = 332
 )
 
 // Keep the 322-migration HK release fixed while later additive migrations evolve.
@@ -144,10 +144,10 @@ func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testi
 		skipRepairs    bool
 		skipMigrations []string
 	}{
-		{name: "before_constraint_repairs", count: 320, skipRepairs: true, skipMigrations: currentReleaseMigrations},
-		{name: "v0215_hk3", count: 322, skipMigrations: currentReleaseMigrations},
-		{name: "v0216_hk1", count: 327, skipMigrations: []string{"248_usage_log_service_tier_observation.sql", "249_add_usage_log_output_tokens_estimated.sql", "250_enable_gemini_image_generation_groups.sql"}},
-		{name: "v0216_hk4", count: 328, skipMigrations: []string{"249_add_usage_log_output_tokens_estimated.sql", "250_enable_gemini_image_generation_groups.sql"}},
+		{name: "before_constraint_repairs", count: 322, skipRepairs: true, skipMigrations: currentReleaseMigrations},
+		{name: "v0215_hk3", count: 324, skipMigrations: currentReleaseMigrations},
+		{name: "v0216_hk1", count: 329, skipMigrations: []string{"248_usage_log_service_tier_observation.sql", "249_add_usage_log_output_tokens_estimated.sql", "250_enable_gemini_image_generation_groups.sql"}},
+		{name: "v0216_hk4", count: 330, skipMigrations: []string{"249_add_usage_log_output_tokens_estimated.sql", "250_enable_gemini_image_generation_groups.sql"}},
 	} {
 		t.Run(baseline.name, func(t *testing.T) {
 			ctx := context.Background()
