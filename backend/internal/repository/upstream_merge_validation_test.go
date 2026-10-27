@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	productionHistoryMigrationCount = 286
+	productionHistoryMigrationCount = 288
 	candidateMigrationCount         = 332
 )
 

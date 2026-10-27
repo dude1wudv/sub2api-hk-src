@@ -16,7 +16,7 @@
 - Integration review found scheduler Redis metadata filters out unlisted Extra fields. Preserve the scoped tool key in that projection; a JSON round-trip admission test covers allowed/shared groups and malformed permissions.
 - The same-family assumption sweep closed A-005/A-006/A-009/A-013 and clarified A-001 as production configuration; result is provisional rather than cross-family independent correctness proof.
 - Native usage accounting skips chat 403 recovery and pins AccountStatsCost to the explicit per-call total, including zero for successful empty results.
-- CI integration validation exposed stale migration-count fixtures (the repository contains 332 migrations while the fixture expected 330); only the historical fixture counts were synchronized, with migration files and assertions otherwise unchanged. Targeted `go test -tags=integration ./internal/repository -run '^TestUpstreamMergeValidation_' -count=1` passed.
+- CI integration validation exposed stale migration-count fixtures (the repository contains 332 migrations and the current production-history slice 288 while fixtures expected 330/286); only the historical fixture counts were synchronized, with migration files and assertions otherwise unchanged. Targeted `go test -tags=integration ./internal/repository -run '^TestUpstreamMergeValidation_' -count=1` passed.
 
 ## Deferred
 
