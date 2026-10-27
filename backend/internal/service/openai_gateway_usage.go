@@ -165,7 +165,10 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	if result == nil {
 		return errors.New("openai usage result is nil")
 	}
-	if s.rateLimitService != nil && input.Account != nil && input.Account.Platform == PlatformOpenAI {
+	// Native DeepSeek tools share the OpenAI account pool but do not represent a
+	// chat completion.  A successful tool call therefore must not clear the
+	// account's chat-specific 403 health counter.
+	if result.DeepSeekToolKind == "" && s.rateLimitService != nil && input.Account != nil && input.Account.Platform == PlatformOpenAI {
 		s.rateLimitService.ResetOpenAI403Counter(ctx, input.Account.ID)
 	}
 
@@ -444,7 +447,9 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		usageLog.ActualCost = cost.ActualCost
 		usageLog.LongContextBillingApplied = cost.LongContextBillingApplied
 	}
-	if isVideoUsage && (cost == nil || cost.BillingMode != string(BillingModeToken)) {
+	if result.DeepSeekToolKind != "" {
+		usageLog.RateMultiplier = baseMultiplier
+	} else if isVideoUsage && (cost == nil || cost.BillingMode != string(BillingModeToken)) {
 		usageLog.RateMultiplier = videoMultiplier
 	} else if result.ImageCount > 0 && (cost == nil || cost.BillingMode != string(BillingModeToken)) {
 		usageLog.RateMultiplier = imageMultiplier
@@ -498,8 +503,19 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		usageLog.SubscriptionID = &subscription.ID
 	}
 
-	// 计算账号统计定价费用（使用最终上游模型匹配自定义规则）
-	if apiKey.GroupID != nil {
+	// Native DeepSeek tools have no model/token pricing.  Keep the already
+	// calculated per-call total as the account-statistics baseline so custom
+	// model rules cannot turn an empty result into a charge (or reprice a
+	// successful call).  The dashboard still applies AccountRateMultiplier to
+	// this baseline in the existing way.
+	if result.DeepSeekToolKind != "" {
+		statsCost := 0.0
+		if cost != nil {
+			statsCost = cost.TotalCost
+		}
+		usageLog.AccountStatsCost = &statsCost
+	} else if apiKey.GroupID != nil {
+		// 计算账号统计定价费用（使用最终上游模型匹配自定义规则）
 		applyAccountStatsCost(ctx, usageLog, s.channelService, s.billingService,
 			account.ID, *apiKey.GroupID, result.UpstreamModel, result.Model,
 			tokens, cost.TotalCost, pricingAt,
@@ -612,6 +628,17 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 	upstreamPlatforms ...string,
 ) (*CostBreakdown, error) {
 	billingModel := firstUsageBillingModel(billingModels)
+	if result != nil && result.DeepSeekToolKind != "" {
+		if result.DeepSeekToolKind != DeepSeekToolSearch && result.DeepSeekToolKind != DeepSeekToolFetch {
+			return nil, fmt.Errorf("unsupported native DeepSeek tool kind: %s", result.DeepSeekToolKind)
+		}
+		if result.BillableToolCalls < 0 || result.BillableToolCalls > 1 {
+			return nil, fmt.Errorf("invalid native DeepSeek tool call count: %d", result.BillableToolCalls)
+		}
+		cost := s.billingService.CalculateWebSearchCost(result.BillableToolCalls, webSearchPricePerCallFromAPIKey(apiKey), webSearchMultiplier)
+		cost.BillingMode = string(BillingModePerRequest)
+		return cost, nil
+	}
 	if result != nil && result.WebSearchCalls > 0 {
 		// Codex alpha/search 网页搜索按次计费：上游不返回 usage/token 字段，单价只取
 		// 分组覆盖价（nil 时默认 0.01 = 官方 $10/1000 次），不参与渠道级模型定价。

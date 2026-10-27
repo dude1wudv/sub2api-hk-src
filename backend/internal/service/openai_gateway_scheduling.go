@@ -451,6 +451,9 @@ func openAICompatibleAccountEligibilityFailureReasonBeforeProfit(ctx context.Con
 	if requestedModel != "" && !supportsOpenAIRequestModel(account, requestedModel, requireCompact) {
 		return "model_not_supported"
 	}
+	if requiredCapability == OpenAIEndpointCapabilityDeepSeekTools && !account.DeepSeekToolsAllowedForGroup(deepSeekToolsSchedulingGroup(ctx)) {
+		return "deepseek_tools_group_not_allowed"
+	}
 	if !account.SupportsOpenAIEndpointCapability(requiredCapability) {
 		if account.IsGrok() && requiredCapability == OpenAIEndpointCapabilityGrokMediaGeneration {
 			_, reason := account.GrokMediaGenerationEligibility()
@@ -1145,6 +1148,7 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 }
 
 func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, requiredCapability OpenAIEndpointCapability, useUpstreamTokenCost bool) (*AccountSelectionResult, error) {
+	ctx = withDeepSeekToolsSchedulingGroup(ctx, groupID, requiredCapability)
 	platform = NormalizeOpenAICompatiblePlatform(platform)
 	if s.checkChannelPricingRestriction(ctx, groupID, requestedModel) {
 		slog.Warn("channel pricing restriction blocked request",
@@ -1621,12 +1625,13 @@ func (s *OpenAIGatewayService) recheckSelectedOpenAIAccountFromDB(ctx context.Co
 }
 
 func (s *OpenAIGatewayService) recheckSelectedOpenAIAccountFromDBBeforeProfit(ctx context.Context, account *Account, groupID *int64, platform string, requestedModel string, requireCompact bool, requiredCapability OpenAIEndpointCapability) *Account {
+	ctx = withDeepSeekToolsSchedulingGroup(ctx, groupID, requiredCapability)
 	if account == nil {
 		return nil
 	}
 	account = accountForSlowTTFTContext(ctx, account)
 	platform = NormalizeOpenAICompatiblePlatform(platform)
-	if s.schedulerSnapshot == nil || s.accountRepo == nil {
+	if s.accountRepo == nil || (s.schedulerSnapshot == nil && requiredCapability != OpenAIEndpointCapabilityDeepSeekTools) {
 		if s.openAIGroupRequiresPrivacySet(ctx, groupID) && !account.IsPrivacySet() {
 			return nil
 		}

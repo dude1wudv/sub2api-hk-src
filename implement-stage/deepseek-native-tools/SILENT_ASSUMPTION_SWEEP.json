@@ -1,0 +1,13 @@
+{
+  "undeclared": [],
+  "stale_rows": [],
+  "semantic_undeclared": 0,
+  "verdict": "clean",
+  "review_independence": "same-family",
+  "acceptance_status": "provisional",
+  "notes": [
+    "A-001 now describes account 1112 as the production deployment configuration; the implementation remains generic and fail-closed on the explicit per-account group allowlist.",
+    "Search response type and documented numeric ranges are checked before billing; the original JSON remains byte-for-byte forwarded to the client.",
+    "The review is a same-model-family provisional assumption sweep, not an independent cross-family correctness certification."
+  ]
+}

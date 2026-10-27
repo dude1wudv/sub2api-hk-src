@@ -383,6 +383,7 @@ func (s *defaultOpenAIAccountScheduler) Select(
 	ctx context.Context,
 	req OpenAIAccountScheduleRequest,
 ) (selection *AccountSelectionResult, decision OpenAIAccountScheduleDecision, err error) {
+	ctx = withDeepSeekToolsSchedulingGroup(ctx, req.GroupID, req.RequiredCapability)
 	if s != nil && s.service != nil && s.service.openAIGroupRequiresPrivacySet(ctx, req.GroupID) {
 		req.RequirePrivacySet = true
 	}
@@ -1820,7 +1821,10 @@ func (s *defaultOpenAIAccountScheduler) isAccountRequestCompatibleReason(ctx con
 		s.service.isUpstreamModelRestrictedByChannel(ctx, *req.GroupID, account, req.RequestedModel, req.RequireCompact) {
 		return false, "channel_upstream_restricted"
 	}
-	if !accountSupportsOpenAICapabilities(account, req.RequiredCapability, req.RequiredImageCapability) {
+	if req.RequiredCapability == OpenAIEndpointCapabilityDeepSeekTools && !account.DeepSeekToolsAllowedForGroup(req.GroupID) {
+		return false, "deepseek_tools_group_not_allowed"
+	}
+	if !accountSupportsOpenAICapabilities(account, req.RequiredCapability, req.RequiredImageCapability, req.GroupID) {
 		return false, "capability_mismatch"
 	}
 	// 分组利润控制：不合格账号在候选过滤与抢槽后终检阶段即被排除，
@@ -2128,7 +2132,22 @@ func (s *OpenAIGatewayService) SelectAccountWithSchedulerForCapability(
 	platformOverride ...string,
 ) (*AccountSelectionResult, OpenAIAccountScheduleDecision, error) {
 	if selection := takeSmartRoutingSelection(ctx, groupID, requestedModel); selection != nil {
-		return selection, OpenAIAccountScheduleDecision{Layer: "smart_routing", SelectedAccountID: selection.Account.ID, SelectedAccountType: selection.Account.Type}, nil
+		if requiredCapability != OpenAIEndpointCapabilityDeepSeekTools {
+			return selection, OpenAIAccountScheduleDecision{Layer: "smart_routing", SelectedAccountID: selection.Account.ID, SelectedAccountType: selection.Account.Type}, nil
+		}
+		// A reserved selection predates the capability request. Revalidate its
+		// current scoped permission before returning it, and release rejected slots.
+		_, excluded := excludedIDs[selection.Account.ID]
+		if !excluded && s.openAIAccountMatchesSchedulingGroup(selection.Account, groupID) &&
+			s.isOpenAIAccountTransportCompatible(selection.Account, requiredTransport) {
+			if latest := s.recheckSelectedOpenAIAccountFromDB(ctx, selection.Account, groupID, selection.Account.Platform, requestedModel, requireCompact, requiredCapability); latest != nil {
+				selection.Account = latest
+				return selection, OpenAIAccountScheduleDecision{Layer: "smart_routing", SelectedAccountID: latest.ID, SelectedAccountType: latest.Type}, nil
+			}
+		}
+		if selection.ReleaseFunc != nil {
+			selection.ReleaseFunc()
+		}
 	}
 
 	platform := PlatformOpenAI
@@ -2319,6 +2338,7 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 	previousResponseCanMove bool,
 	useUpstreamTokenCost bool,
 ) (*AccountSelectionResult, OpenAIAccountScheduleDecision, error) {
+	ctx = withDeepSeekToolsSchedulingGroup(ctx, groupID, requiredCapability)
 	ctx = s.withOpenAIQuotaAutoPauseContext(ctx)
 	ctx = s.withOpenAIGroupPrivacyRequirement(ctx, groupID)
 	ctx, _ = withSlowTTFTGroup(ctx, s.accountRepo, groupID)
@@ -2394,7 +2414,7 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 				if selection == nil || selection.Account == nil {
 					return selection, decision, nil
 				}
-				if accountSupportsOpenAICapabilities(selection.Account, requiredCapability, requiredImageCapability) {
+				if accountSupportsOpenAICapabilities(selection.Account, requiredCapability, requiredImageCapability, groupID) {
 					applyLegacySelectionDecision(&decision, selection)
 					return selection, decision, nil
 				}
@@ -2421,7 +2441,7 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 				return selection, decision, nil
 			}
 			if s.isOpenAIAccountTransportCompatible(selection.Account, requiredTransport) &&
-				accountSupportsOpenAICapabilities(selection.Account, requiredCapability, requiredImageCapability) {
+				accountSupportsOpenAICapabilities(selection.Account, requiredCapability, requiredImageCapability, groupID) {
 				applyLegacySelectionDecision(&decision, selection)
 				return selection, decision, nil
 			}
@@ -2458,7 +2478,7 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 		stickyPreviousAccountID = s.ResolveAccountIDByPreviousResponseIDForScheduler(ctx, groupID, previousResponseID, requestedModel, excludedIDs, requiredCapability, requireCompact)
 	}
 
-	return scheduler.Select(ctx, OpenAIAccountScheduleRequest{
+	selection, decision, err := scheduler.Select(ctx, OpenAIAccountScheduleRequest{
 		GroupID:                 groupID,
 		Platform:                platform,
 		SessionHash:             sessionHash,
@@ -2479,10 +2499,21 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 		RequireCompact:          requireCompact,
 		ExcludedIDs:             excludedIDs,
 	})
+	if requiredCapability == OpenAIEndpointCapabilityDeepSeekTools && selection != nil &&
+		!accountSupportsOpenAICapabilities(selection.Account, requiredCapability, requiredImageCapability, groupID) {
+		if selection.ReleaseFunc != nil {
+			selection.ReleaseFunc()
+		}
+		return nil, decision, ErrNoAvailableAccounts
+	}
+	return selection, decision, err
 }
 
-func accountSupportsOpenAICapabilities(account *Account, requiredCapability OpenAIEndpointCapability, requiredImageCapability OpenAIImagesCapability) bool {
+func accountSupportsOpenAICapabilities(account *Account, requiredCapability OpenAIEndpointCapability, requiredImageCapability OpenAIImagesCapability, groupID *int64) bool {
 	if account == nil {
+		return false
+	}
+	if requiredCapability == OpenAIEndpointCapabilityDeepSeekTools && !account.DeepSeekToolsAllowedForGroup(groupID) {
 		return false
 	}
 	return account.SupportsOpenAIEndpointCapability(requiredCapability) &&

@@ -365,6 +365,9 @@ const (
 	InflightEstimateVideo
 	// InflightEstimateAudio 语音（tts/stt/realtime）：按 AudioMode/AudioUnits 计。
 	InflightEstimateAudio
+	// InflightEstimateDeepSeekTool reserves one native tool call using the same
+	// group per-call price and base multiplier as final settlement.
+	InflightEstimateDeepSeekTool
 )
 
 // InflightEstimateRequest 单请求估算输入。
@@ -489,6 +492,10 @@ func inflightBillingModelCandidates(ctx context.Context, deps inflightEstimateDe
 }
 
 func (d inflightEstimateDeps) rates(ctx context.Context, apiKey *APIKey) (text, image float64) {
+	return computePeakAwareMultipliers(apiKey, d.baseRate(ctx, apiKey), timezone.Now())
+}
+
+func (d inflightEstimateDeps) baseRate(ctx context.Context, apiKey *APIKey) float64 {
 	rate := 1.0
 	if d.cfg != nil && d.cfg.Default.RateMultiplier > 0 {
 		rate = d.cfg.Default.RateMultiplier
@@ -499,7 +506,7 @@ func (d inflightEstimateDeps) rates(ctx context.Context, apiKey *APIKey) (text, 
 			rate = d.userGroupRate(ctx, apiKey.User.ID, *apiKey.GroupID, rate)
 		}
 	}
-	return computePeakAwareMultipliers(apiKey, rate, timezone.Now())
+	return rate
 }
 
 func tokenCounts(cfg config.InflightReservationConfig, bodyBytes, maxTokens int) (int, int) {
@@ -638,6 +645,13 @@ func (d inflightEstimateDeps) estimateOne(ctx context.Context, apiKey *APIKey, m
 func (d inflightEstimateDeps) estimate(ctx context.Context, apiKey *APIKey, req InflightEstimateRequest) (float64, bool) {
 	if apiKey == nil || apiKey.User == nil {
 		return 0, false
+	}
+	if req.Kind == InflightEstimateDeepSeekTool {
+		if d.billing == nil {
+			return 0, false
+		}
+		cost := d.billing.CalculateWebSearchCost(1, webSearchPricePerCallFromAPIKey(apiKey), d.baseRate(ctx, apiKey))
+		return cost.ActualCost, !math.IsNaN(cost.ActualCost) && !math.IsInf(cost.ActualCost, 0) && cost.ActualCost >= 0
 	}
 	if req.Model == "" || (req.Kind == InflightEstimateAudio && req.AudioUnits <= 0) {
 		// 非计量请求（媒体状态查询、custom-voices 等）：无需预留，也不算「无法定价」。

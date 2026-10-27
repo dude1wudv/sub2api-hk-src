@@ -98,7 +98,9 @@ const (
 	OpenAIEndpointCapabilityChatCompletions OpenAIEndpointCapability = "chat_completions"
 	OpenAIEndpointCapabilityEmbeddings      OpenAIEndpointCapability = "embeddings"
 	OpenAIEndpointCapabilityAlphaSearch     OpenAIEndpointCapability = "alpha_search"
-	OpenAIEndpointCapabilityLive            OpenAIEndpointCapability = "live"
+	// DeepSeek native tools are explicitly scoped to groups in accounts.extra.
+	OpenAIEndpointCapabilityDeepSeekTools OpenAIEndpointCapability = "deepseek_tools"
+	OpenAIEndpointCapabilityLive          OpenAIEndpointCapability = "live"
 	// OpenAIEndpointCapabilityQwenAudio is an operator-configured native
 	// DashScope audio transport.  It is deliberately narrower than the generic
 	// API-key Chat Completions capability: both native endpoints and an explicit
@@ -1948,6 +1950,9 @@ func (a *Account) GetOpenAISessionID() string {
 func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapability) bool {
 	if a == nil {
 		return false
+	}
+	if capability == OpenAIEndpointCapabilityDeepSeekTools {
+		return a.deepSeekToolsEnabled()
 	}
 	if capability == OpenAIEndpointCapabilitySeedance {
 		configured, _ := a.openAIEndpointCapabilitySet()

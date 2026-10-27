@@ -201,6 +201,13 @@ func RegisterGatewayRoutes(
 		})
 	}
 
+	// Native DeepSeek tools are model-free JSON endpoints with fixed-group keys.
+	// Keep their error envelope and policy separate from model/composite routing.
+	deepseekTools := r.Group("/v1/tools")
+	deepseekTools.Use(textBodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupOpenAI)
+	deepseekTools.POST("/search", h.OpenAIGateway.DeepSeekSearch)
+	deepseekTools.POST("/fetch", h.OpenAIGateway.DeepSeekFetch)
+
 	// API网关（Claude API兼容）
 	gateway := r.Group("/v1")
 	gateway.Use(bodyLimit)

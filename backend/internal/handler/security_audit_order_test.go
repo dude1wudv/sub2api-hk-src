@@ -32,6 +32,7 @@ func TestPromptAuditGatePrecedesAccountBillingAndUpstreamSideEffects(t *testing.
 		{file: "grok_media.go", function: "handleGrokMedia", auditToken: "checkSecurityAudit"},
 		{file: "openai_embeddings.go", function: "Embeddings", auditToken: "checkSecurityAudit"},
 		{file: "openai_alpha_search.go", function: "AlphaSearch", auditToken: "checkSecurityAudit"},
+		{file: "deepseek_tools.go", function: "handleDeepSeekTool", auditToken: "checkSecurityAudit"},
 		{file: "image_task_handler.go", function: "Submit", auditToken: "checkSecurityAuditBeforeSubmit"},
 		{file: "batch_image_handler.go", function: "Submit", auditToken: "checkSecurityAuditBeforeSubmit"},
 	}
