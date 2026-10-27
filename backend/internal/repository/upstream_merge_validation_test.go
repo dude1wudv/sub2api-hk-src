@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	productionHistoryMigrationCount = 288
+	productionHistoryMigrationCount = 286
 	candidateMigrationCount         = 332
 )
 
@@ -40,6 +40,8 @@ var currentReleaseMigrations = []string{
 }
 
 var candidateOnlyMigrations = []string{
+	"247_scoped_admin_api_keys.sql",
+	"248_group_image_count_billing.sql",
 	"242_drop_platform_check_constraints.sql",
 	"242_group_i18n.sql",
 	"246_hk_platform_catalog_constraints.sql",
@@ -144,16 +146,17 @@ func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testi
 		skipRepairs    bool
 		skipMigrations []string
 	}{
-		{name: "before_constraint_repairs", count: 322, skipRepairs: true, skipMigrations: currentReleaseMigrations},
-		{name: "v0215_hk3", count: 324, skipMigrations: currentReleaseMigrations},
-		{name: "v0216_hk1", count: 329, skipMigrations: []string{"248_usage_log_service_tier_observation.sql", "249_add_usage_log_output_tokens_estimated.sql", "250_enable_gemini_image_generation_groups.sql"}},
-		{name: "v0216_hk4", count: 330, skipMigrations: []string{"249_add_usage_log_output_tokens_estimated.sql", "250_enable_gemini_image_generation_groups.sql"}},
+		{name: "before_constraint_repairs", count: 320, skipRepairs: true, skipMigrations: currentReleaseMigrations},
+		{name: "v0215_hk3", count: 322, skipMigrations: currentReleaseMigrations},
+		{name: "v0216_hk1", count: 327, skipMigrations: []string{"248_usage_log_service_tier_observation.sql", "249_add_usage_log_output_tokens_estimated.sql", "250_enable_gemini_image_generation_groups.sql"}},
+		{name: "v0216_hk4", count: 328, skipMigrations: []string{"249_add_usage_log_output_tokens_estimated.sql", "250_enable_gemini_image_generation_groups.sql"}},
 	} {
 		t.Run(baseline.name, func(t *testing.T) {
 			ctx := context.Background()
 			history := fstest.MapFS{}
 			for _, name := range migrationFiles(t, migrations.FS) {
-				if slices.Contains(baseline.skipMigrations, name) || (baseline.skipRepairs &&
+				if name == "247_scoped_admin_api_keys.sql" || name == "248_group_image_count_billing.sql" ||
+					slices.Contains(baseline.skipMigrations, name) || (baseline.skipRepairs &&
 					(name == "242_drop_platform_check_constraints.sql" || name == "246_hk_platform_catalog_constraints.sql")) {
 					continue
 				}
