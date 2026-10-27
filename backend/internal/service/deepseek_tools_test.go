@@ -360,7 +360,7 @@ func TestForwardDeepSeekToolReadTimeout(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
 		writer.WriteHeader(http.StatusOK)
-		writer.(http.Flusher).Flush()
+		_ = writer.(http.Flusher).Flush()
 		<-request.Context().Done()
 	}))
 	defer server.Close()
