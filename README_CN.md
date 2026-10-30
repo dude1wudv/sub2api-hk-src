@@ -20,13 +20,13 @@
 
 ## 香港生产发行版
 
-本仓库是基于 [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api) 的 **HK 生产发行版 fork**，保留上游归属并持续同步上游；当前发行版本为 **v0.2.17-hk.1**。
+本仓库是基于 [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api) 的 **HK 生产发行版 fork**，保留上游归属并持续同步上游；源码基线包含上游 **v0.2.19** 和近期安全依赖修复，本次源码发行版本为 **[v0.2.19-hk.1](hk/reports/2026-10-29-v0.2.19-hk.1.md)**。源码发行不代表已部署到生产。
 
 - **用户端：** portal / ink 工作区。密钥、用量、账户、卡密兑换和余额订阅沿用原有后端接口。自助在线支付已停用；支付回调页仍处理存量订单，管理端订单和手动支付宝确认保留。
 - **香港定制增量：** 生产部署安全边界、HeliosGen 与供应商适配，以及计费、会话和运维增强。上游合并入口是 `hk/sync-upstream.ps1`，不再保留的上游文件登记在 `hk/upstream-removed.json`。
 - **源码与发行：** [HK 源码](https://github.com/dude1wudv/sub2api-hk-src) · [Releases](https://github.com/dude1wudv/sub2api-hk-src/releases)
 - **部署入口：** [deploy/README.md](deploy/README.md) 区分**全新部署**（使用部署模板/脚本创建新的自管整套服务）与**托管共享服务器更新**（仅更新应用，保留运营方管理的 PostgreSQL、Redis 及运行时配置）。在托管共享服务器上不要执行全新整栈脚本，也不要替换 Compose/env 文件。
-- **本次发行：** [v0.2.17-hk.1 说明](hk/reports/2026-10-16-v0.2.17-hk.1.md)，包含上游 v0.2.17、Anthropic 断流输出计费、估算来源、迁移与升级边界。
+- **此前发行：** [v0.2.17-hk.1 说明](hk/reports/2026-10-16-v0.2.17-hk.1.md)，包含上游 v0.2.17、Anthropic 断流输出计费、估算来源、迁移与升级边界。
 
 ## ⚠️ 重要提醒
 
