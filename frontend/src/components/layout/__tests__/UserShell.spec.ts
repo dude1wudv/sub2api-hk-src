@@ -146,6 +146,20 @@ describe('personal workspace navigation', () => {
     expect(router.currentRoute.value.query).toEqual({ embedded: '1' })
   })
 
+  it('shows MCP in the current workspace only when the deployment enables it', async () => {
+    const { wrapper } = await mountShell()
+    expect(navPaths(wrapper)).not.toContain('/settings/mcp')
+
+    appStore.cachedPublicSettings.mcp_enabled = true
+    await nextTick()
+    expect(navPaths(wrapper)).toContain('/settings/mcp')
+    expect(wrapper.get('[data-nav-path="/settings/mcp"]').text()).toContain('mcp.title')
+
+    appStore.cachedPublicSettings.mcp_enabled = false
+    await nextTick()
+    expect(navPaths(wrapper)).not.toContain('/settings/mcp')
+  })
+
   it('applies feature switches and the batch image permission', async () => {
     Object.assign(appStore.cachedPublicSettings, {
       subscription_enabled: false, payment_enabled: false, channel_monitor_enabled: false,

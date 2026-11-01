@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 
-type UserNavigationIcon = 'home' | 'key' | 'chart' | 'server' | 'bolt' | 'sparkles' | 'cube' | 'creditCard' | 'document' | 'gift' | 'users' | 'user' | 'link'
+type UserNavigationIcon = 'home' | 'key' | 'chart' | 'server' | 'bolt' | 'sparkles' | 'cube' | 'creditCard' | 'document' | 'gift' | 'users' | 'user' | 'link' | 'mcp'
 type UserNavigationGroup = 'primary' | 'services' | 'tools' | 'billing' | 'custom'
 
 export interface UserNavigationItem {
@@ -44,6 +44,7 @@ export function useUserNavigation() {
       { path: '/purchase', activePaths: ['/purchase', '/redeem', '/orders'], label: purchaseLabel.value, icon: 'creditCard', group: 'primary', hideInSimpleMode: true },
       { path: '/subscriptions', label: zh.value ? '订阅' : 'Subscriptions', icon: 'document', group: 'primary', hideInSimpleMode: true, enabled: enabled('subscription') },
       { path: '/profile', label: zh.value ? '账户' : 'Account', icon: 'user', group: 'primary' },
+      { path: '/settings/mcp', label: t('mcp.title'), icon: 'mcp', group: 'tools', enabled: enabled('mcp') },
       { path: '/model-plaza', query: { embedded: '1' }, label: t('nav.modelPlaza'), icon: 'cube', group: 'services', enabled: enabled('modelPlaza') },
       { path: '/available-channels', label: t('nav.availableChannels'), icon: 'server', group: 'services', hideInSimpleMode: true, enabled: enabled('availableChannels') },
       { path: '/monitor', label: t('nav.channelStatus'), icon: 'bolt', group: 'services', enabled: enabled('channelMonitor') },

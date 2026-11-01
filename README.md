@@ -20,7 +20,7 @@ English | [中文](README_CN.md) | [日本語](README_JA.md)
 
 ## HK Edition
 
-This repository is the **HK production edition**, a fork based on [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api), with upstream attribution and ongoing synchronization. The source baseline includes upstream **v0.2.19** and recent security dependency fixes; this source release is **[v0.2.19-hk.1](hk/reports/2026-10-29-v0.2.19-hk.1.md)**. A source release does not imply a production deployment.
+This repository is the **HK production edition**, a fork based on [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api), with upstream attribution and ongoing synchronization. The source baseline includes upstream **v0.2.19** and recent security dependency fixes; this source release is **[v0.2.19-hk.2](hk/reports/2026-11-01-d851a3847.md)**. A source release does not imply a production deployment.
 
 - **User workspace:** portal / ink. API keys, usage, account, card redemption, and balance-funded subscriptions keep the existing backend APIs. Self-serve online payment is retired; payment callback pages still handle existing orders, and the admin order console plus manual Alipay confirmation remain.
 - **HK-focused changes:** Production deployment safety boundaries; HeliosGen and vendor adapters; billing, session, and operations enhancements. Upstream sync starts at `hk/sync-upstream.ps1`. Paths this fork no longer keeps are listed in `hk/upstream-removed.json`.

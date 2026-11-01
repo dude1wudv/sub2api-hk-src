@@ -1,6 +1,12 @@
 .PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical secret-scan
 
 FRONTEND_CRITICAL_VITEST := \
+	src/components/layout/__tests__/UserShell.spec.ts \
+	src/views/user/__tests__/MCPView.spec.ts \
+	src/views/auth/__tests__/MCPOAuthAuthorizeView.spec.ts \
+	src/views/auth/__tests__/MCPLoginRedirect.spec.ts \
+	src/router/__tests__/mcp-route.spec.ts \
+	src/utils/__tests__/featureFlags.spec.ts \
 	src/i18n/__tests__/localeKeyCompleteness.spec.ts \
 	src/api/__tests__/client.spec.ts \
 	src/api/__tests__/tokenRefresh.spec.ts \

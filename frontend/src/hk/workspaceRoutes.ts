@@ -12,6 +12,7 @@ const workspacePaths = new Set([
   '/affiliate',
   '/available-channels',
   '/profile',
+  '/settings/mcp',
   '/subscriptions',
   '/purchase',
   '/orders',
