@@ -23,7 +23,8 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 332
+	candidateMigrationCount         = 333
+	mcpOAuthMigration               = "249_mcp_oauth.sql"
 )
 
 // Keep the 322-migration HK release fixed while later additive migrations evolve.
@@ -40,6 +41,7 @@ var currentReleaseMigrations = []string{
 }
 
 var candidateOnlyMigrations = []string{
+	mcpOAuthMigration,
 	"247_scoped_admin_api_keys.sql",
 	"248_group_image_count_billing.sql",
 	"242_drop_platform_check_constraints.sql",
@@ -141,21 +143,24 @@ func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *test
 // older baselines and verify the production v0.2.16-hk1 baseline upgrades via 248.
 func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testing.T) {
 	for _, baseline := range []struct {
-		name           string
-		count          int
-		skipRepairs    bool
-		skipMigrations []string
+		name                            string
+		count                           int
+		skipRepairs                     bool
+		skipMigrations                  []string
+		includesScopedKeysAndImageCount bool
 	}{
 		{name: "before_constraint_repairs", count: 320, skipRepairs: true, skipMigrations: currentReleaseMigrations},
 		{name: "v0215_hk3", count: 322, skipMigrations: currentReleaseMigrations},
 		{name: "v0216_hk1", count: 327, skipMigrations: []string{"248_usage_log_service_tier_observation.sql", "249_add_usage_log_output_tokens_estimated.sql", "250_enable_gemini_image_generation_groups.sql"}},
 		{name: "v0216_hk4", count: 328, skipMigrations: []string{"249_add_usage_log_output_tokens_estimated.sql", "250_enable_gemini_image_generation_groups.sql"}},
+		{name: "v0219_hk1", count: 332, includesScopedKeysAndImageCount: true},
 	} {
 		t.Run(baseline.name, func(t *testing.T) {
 			ctx := context.Background()
 			history := fstest.MapFS{}
 			for _, name := range migrationFiles(t, migrations.FS) {
-				if name == "247_scoped_admin_api_keys.sql" || name == "248_group_image_count_billing.sql" ||
+				if name == mcpOAuthMigration || (!baseline.includesScopedKeysAndImageCount &&
+					(name == "247_scoped_admin_api_keys.sql" || name == "248_group_image_count_billing.sql")) ||
 					slices.Contains(baseline.skipMigrations, name) || (baseline.skipRepairs &&
 					(name == "242_drop_platform_check_constraints.sql" || name == "246_hk_platform_catalog_constraints.sql")) {
 					continue
@@ -178,10 +183,12 @@ func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testi
 			require.NoError(t, applyMigrationsFS(ctx, db, history))
 			before := migrationChecksums(t, db, "public")
 			require.Len(t, before, baseline.count)
+			require.NotContains(t, before, mcpOAuthMigration)
 			requireMigrationChecksumsMatchFiles(t, history, before)
 			require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
 			after := migrationChecksums(t, db, "public")
 			require.Len(t, after, candidateMigrationCount)
+			require.Contains(t, after, mcpOAuthMigration)
 			requireMigrationChecksumsMatchFiles(t, migrations.FS, after)
 			for name, checksum := range before {
 				require.Equal(t, checksum, after[name], name)
@@ -206,6 +213,9 @@ func TestUpstreamMergeValidation_RequiredContractsAndLegacyExclusions(t *testing
 		"payment_orders",
 		"subscription_plans",
 		"subscription_purchase_claims",
+		"mcp_oauth_grants",
+		"mcp_oauth_codes",
+		"mcp_oauth_credentials",
 	} {
 		requireTable(t, tx, table)
 	}
