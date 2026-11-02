@@ -38,7 +38,8 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/HomeView.vue'),
     meta: {
       requiresAuth: false,
-      title: 'Home'
+      title: '首页',
+      titleKey: 'nav.home'
     }
   },
   {
@@ -334,7 +335,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Purchase Subscription',
-      titleKey: 'nav.buySubscription',
+      titleKey: 'nav.recharge',
       descriptionKey: 'purchase.description',
       requiresPayment: true
     }
@@ -746,7 +747,8 @@ const routes: RouteRecordRaw[] = [
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue'),
     meta: {
-      title: '404 Not Found'
+      requiresAuth: false,
+      title: '404'
     }
   }
 ]

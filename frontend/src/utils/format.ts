@@ -58,20 +58,11 @@ export function formatNumber(num: number | null | undefined): string {
  * @param currency 货币代码，默认 USD
  * @returns 格式化后的字符串，如 "$1.25"
  */
-export function formatCurrency(amount: number | null | undefined, currency: string = 'USD'): string {
-  if (amount === null || amount === undefined) return '$0.00'
-
-  const locale = getLocale()
-
-  // For very small amounts, show more decimals
-  const fractionDigits = amount > 0 && amount < 0.01 ? 6 : 2
-
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits
-  }).format(amount)
+export function formatCurrency(amount: number | null | undefined, currency: string = 'USD', minimumDigits = 2): string {
+  if (amount == null || !Number.isFinite(amount)) return '—'
+  const digits = amount !== 0 && Math.abs(amount) < 0.01 ? Math.max(6, minimumDigits) : minimumDigits
+  if (amount !== 0 && Math.abs(amount) < Math.pow(10, -digits)) return `${amount < 0 ? '−' : ''}< ${currency} ${Math.pow(10, -digits).toFixed(digits)}`
+  return `${currency} ${new Intl.NumberFormat(getLocale(), { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(amount)}`
 }
 
 /**

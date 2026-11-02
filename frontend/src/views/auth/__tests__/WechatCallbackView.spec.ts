@@ -691,7 +691,7 @@ describe('WechatCallbackView', () => {
     expect(checkboxes).toHaveLength(2)
     await checkboxes[1].setValue(false)
     await wrapper.get('[data-testid="wechat-create-account-email"]').setValue('  new@example.com  ')
-    await wrapper.get('[data-testid="wechat-create-account-password"]').setValue('secret-123')
+    await wrapper.get('[data-testid="wechat-create-account-password"]').setValue('secret-12345')
     await wrapper.get('[data-testid="wechat-create-account-verify-code"]').setValue('246810')
     await wrapper.get('[data-testid="wechat-create-account-invitation-code"]').setValue(' INVITE123 ')
     await wrapper.get('[data-testid="wechat-create-account-submit"]').trigger('click')
@@ -699,7 +699,7 @@ describe('WechatCallbackView', () => {
 
     expect(apiClientPostMock).toHaveBeenCalledWith('/auth/oauth/pending/create-account', {
       email: 'new@example.com',
-      password: 'secret-123',
+      password: 'secret-12345',
       verify_code: '246810',
       invitation_code: 'INVITE123',
       adopt_display_name: true,
@@ -763,7 +763,7 @@ describe('WechatCallbackView', () => {
 
     await flushPromises()
     await wrapper.get('[data-testid="wechat-create-account-email"]').setValue('existing@example.com')
-    await wrapper.get('[data-testid="wechat-create-account-password"]').setValue('secret-123')
+    await wrapper.get('[data-testid="wechat-create-account-password"]').setValue('secret-12345')
     await wrapper.get('[data-testid="wechat-create-account-submit"]').trigger('click')
     await flushPromises()
 
@@ -792,7 +792,7 @@ describe('WechatCallbackView', () => {
 
     await flushPromises()
     await wrapper.get('[data-testid="wechat-create-account-email"]').setValue('new@example.com')
-    await wrapper.get('[data-testid="wechat-create-account-password"]').setValue('secret-123')
+    await wrapper.get('[data-testid="wechat-create-account-password"]').setValue('secret-12345')
     await wrapper.get('[data-testid="wechat-create-account-submit"]').trigger('click')
     await flushPromises()
 
@@ -868,13 +868,13 @@ describe('WechatCallbackView', () => {
     expect(checkboxes).toHaveLength(2)
     await checkboxes[0].setValue(false)
     await wrapper.get('[data-testid="wechat-bind-login-email"]').setValue('existing@example.com')
-    await wrapper.get('[data-testid="wechat-bind-login-password"]').setValue('secret-password')
+    await wrapper.get('[data-testid="wechat-bind-login-password"]').setValue('secret-password-12')
     await wrapper.get('[data-testid="wechat-bind-login-submit"]').trigger('click')
     await flushPromises()
 
     expect(apiClientPostMock).toHaveBeenCalledWith('/auth/oauth/pending/bind-login', {
       email: 'existing@example.com',
-      password: 'secret-password',
+      password: 'secret-password-12',
       adopt_display_name: false,
       adopt_avatar: true,
     })
@@ -1010,7 +1010,7 @@ describe('WechatCallbackView', () => {
 
     await flushPromises()
 
-    await wrapper.get('[data-testid="wechat-bind-login-password"]').setValue('secret-password')
+    await wrapper.get('[data-testid="wechat-bind-login-password"]').setValue('secret-password-12')
     await wrapper.get('[data-testid="wechat-bind-login-submit"]').trigger('click')
     await flushPromises()
 

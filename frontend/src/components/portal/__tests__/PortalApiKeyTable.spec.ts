@@ -71,6 +71,18 @@ function render(apiKey = key(), props: Record<string, unknown> = {}) {
 describe('PortalApiKeyTable groups and mobile cards', () => {
   beforeEach(() => { mobile.value = false })
 
+  it('distinguishes measured zero concurrency from unavailable metrics', () => {
+    const available = render(key({ current_concurrency: 0, current_concurrency_status: 'available' }))
+    expect(available.get('.portal-api-concurrency').text()).toBe('0')
+    available.unmount()
+    const unavailable = render(key({ current_concurrency: 0, current_concurrency_status: 'unavailable' }))
+    expect(unavailable.get('.portal-api-concurrency').text()).toBe('暂不可用')
+    unavailable.unmount()
+    const legacy = render(key({ current_concurrency: 0 }))
+    expect(legacy.get('.portal-api-concurrency').text()).toBe('暂不可用')
+    legacy.unmount()
+  })
+
   it('opens the editor when the group is clicked on desktop', async () => {
     const apiKey = key()
     const wrapper = render(apiKey)

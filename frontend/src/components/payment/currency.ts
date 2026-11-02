@@ -49,7 +49,7 @@ export function formatPaymentAmount(amount: number, currency?: string | null, lo
     return new Intl.NumberFormat(locale || undefined, {
       style: 'currency',
       currency: normalized,
-      currencyDisplay: 'narrowSymbol',
+      currencyDisplay: 'code',
       minimumFractionDigits: fractionDigits,
       maximumFractionDigits: fractionDigits,
     }).format(Number.isFinite(amount) ? amount : 0)

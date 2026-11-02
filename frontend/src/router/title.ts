@@ -46,16 +46,12 @@ export const PURCHASE_ROUTE_NAME = 'PurchaseSubscription'
  */
 export function resolveRouteMetaKeys(
   route: Pick<RouteLocationNormalizedLoaded, 'name' | 'meta'>,
-  options: RouteTitleOptions = {},
+  _options: RouteTitleOptions = {},
 ): RouteMetaKeys {
   if (route.name === PURCHASE_ROUTE_NAME) {
-    if (options.billingMode === 'recharge_only') {
-      return { titleKey: 'nav.recharge', descriptionKey: 'purchase.rechargeDescription' }
-    }
-    if (options.billingMode === 'subscription_only') {
-      return { titleKey: 'nav.subscribe', descriptionKey: 'purchase.subscriptionDescription' }
-    }
+    return { titleKey: 'nav.recharge', descriptionKey: 'purchase.rechargeDescription' }
   }
+
   return {
     titleKey: typeof route.meta.titleKey === 'string' ? route.meta.titleKey : undefined,
     descriptionKey: typeof route.meta.descriptionKey === 'string' ? route.meta.descriptionKey : undefined,

@@ -11,6 +11,7 @@
         </p>
       </div>
       <!-- Login Form -->
+      <p v-if="retryAfter > 0" class="text-sm text-gray-500" role="status">{{ isChinese ? `请在 ${retryAfter} 秒后重试。` : `Try again in ${retryAfter} seconds.` }}</p>
       <form @submit.prevent="handleLogin" class="space-y-5">
         <!-- Email Input -->
         <div>
@@ -262,8 +263,12 @@ import type {
 } from '@/types'
 import { extractApiErrorCode, extractI18nErrorMessage } from '@/utils/apiError'
 import { clearAllAffiliateReferralCodes } from '@/utils/oauthAffiliate'
+import { userFacingError } from '@/utils/userFacingError'
+import { useRetryCooldown } from '@/composables/useRetryCooldown'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const { remaining: retryAfter, start: startRetry } = useRetryCooldown()
+const isChinese = computed(() => (locale?.value || 'en').startsWith('zh'))
 const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
 
 // ==================== Router & Stores ====================
@@ -358,7 +363,7 @@ const agreementGateActive = computed(
 )
 
 const authActionDisabled = computed(
-  () => isLoading.value || passkeyLoading.value || !publicSettingsLoaded.value || agreementGateActive.value
+  () => isLoading.value || passkeyLoading.value || retryAfter.value > 0 || !publicSettingsLoaded.value || agreementGateActive.value
 )
 
 const showPasskeyLogin = computed(
@@ -577,9 +582,7 @@ function validateForm(): boolean {
   if (!formData.password) {
     errors.password = t('auth.passwordRequired')
     isValid = false
-  } else if (formData.password.length < 6) {
-    errors.password = t('auth.passwordMinLength')
-    isValid = false
+
   }
 
   // Turnstile validation
@@ -595,7 +598,7 @@ function validateForm(): boolean {
 
 async function handleLogin(): Promise<void> {
   // Guard programmatic/Enter submissions too, not just the disabled button.
-  if (isLoading.value || passkeyLoading.value || !publicSettingsLoaded.value) return
+  if (isLoading.value || passkeyLoading.value || retryAfter.value > 0 || !publicSettingsLoaded.value) return
   // Clear previous error
   errorMessage.value = ''
 
@@ -647,7 +650,9 @@ async function handleLogin(): Promise<void> {
       publicSettingsLoaded.value = false
       await loadLoginSettings()
     }
-    errorMessage.value = extractI18nErrorMessage(error, t, 'auth.errors', t('auth.loginFailed'))
+    startRetry(error)
+    const translated = extractI18nErrorMessage(error, t, 'auth.errors', t('auth.loginFailed'))
+    errorMessage.value = userFacingError(Object.assign({}, error, { message: translated }), locale?.value || 'en', t('auth.loginFailed'))
 
     // Also show error toast
     appStore.showError(errorMessage.value)
@@ -660,6 +665,7 @@ async function handleLogin(): Promise<void> {
 }
 
 async function handlePasskeyLogin(): Promise<void> {
+  if (isLoading.value || passkeyLoading.value || retryAfter.value > 0 || !publicSettingsLoaded.value) return
   if (agreementGateActive.value) {
     appStore.showWarning(t('legal.loginAgreementPrompt.loginRequiredWarning'))
     if (loginAgreementMode.value !== 'checkbox') {
@@ -742,6 +748,7 @@ async function handleOAuthStart(request: OAuthLoginStart): Promise<void> {
 // ==================== 2FA Handlers ====================
 
 async function handle2FAVerify(code: string): Promise<void> {
+  if (retryAfter.value > 0) return
   if (totpModalRef.value) {
     totpModalRef.value.setVerifying(true)
   }
@@ -758,8 +765,8 @@ async function handle2FAVerify(code: string): Promise<void> {
     const redirectTo = resolveAuthLanding(router.currentRoute.value.query.redirect, authStore.isAdmin)
     await router.push(redirectTo)
   } catch (error: unknown) {
-    const err = error as { message?: string; response?: { data?: { message?: string } } }
-    const message = err.response?.data?.message || err.message || t('profile.totp.loginFailed')
+    startRetry(error)
+    const message = userFacingError(error, locale?.value || 'en', t('profile.totp.loginFailed'))
 
     if (totpModalRef.value) {
       totpModalRef.value.setError(message)

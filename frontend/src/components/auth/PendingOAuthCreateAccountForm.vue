@@ -1,5 +1,7 @@
 <template>
   <form class="space-y-3" @submit.prevent="handleSubmit">
+    <div v-if="settingsError" class="text-sm text-red-600" role="alert">{{ settingsError }} <button type="button" :disabled="settingsLoading || retryAfter > 0" @click="loadPendingSettings">{{ isChinese ? '重试设置' : 'Retry settings' }}</button></div>
+    <p v-else-if="!settingsLoaded" class="text-sm text-gray-500" role="status">{{ isChinese ? '正在读取注册设置…' : 'Loading registration settings…' }}</p>
     <input
       v-model="email"
       :data-testid="`${testIdPrefix}-create-account-email`"
@@ -12,10 +14,15 @@
       v-model="password"
       :data-testid="`${testIdPrefix}-create-account-password`"
       type="password"
+      autocomplete="new-password"
+      :minlength="passwordPolicy.min_length"
+      aria-describedby="pending-password-hint"
       class="input w-full"
       :placeholder="t('auth.passwordPlaceholder')"
       :disabled="isSubmitting"
     />
+    <p v-if="retryAfter > 0" class="text-sm text-gray-500" role="status">{{ isChinese ? `请在 ${retryAfter} 秒后重试。` : `Try again in ${retryAfter} seconds.` }}</p>
+    <p id="pending-password-hint" class="text-xs text-gray-500">{{ passwordHint }}</p>
     <div v-if="captchaEnabled" class="space-y-2">
       <TurnstileWidget
         ref="turnstileRef"
@@ -49,7 +56,7 @@
         :data-testid="`${testIdPrefix}-create-account-send-code`"
         type="button"
         class="btn btn-secondary shrink-0"
-        :disabled="isSubmitting || isSendingCode || countdown > 0 || !email.trim() || (turnstileEnabled && !turnstileToken)"
+        :disabled="isSubmitting || !settingsLoaded || retryAfter > 0 || isSendingCode || countdown > 0 || !email.trim() || (turnstileEnabled && !turnstileToken)"
         @click="handleSendCode"
       >
         {{
@@ -80,7 +87,7 @@
       :data-testid="`${testIdPrefix}-create-account-submit`"
       type="button"
       class="btn btn-primary w-full"
-      :disabled="isSubmitting || !email.trim() || password.length < 6 || (invitationCodeEnabled && !invitationCode.trim()) || (turnstileEnabled && !turnstileToken)"
+      :disabled="isSubmitting || !settingsLoaded || retryAfter > 0 || !email.trim() || validateNewPassword(password, passwordPolicy) !== null || (invitationCodeEnabled && !invitationCode.trim()) || (turnstileEnabled && !turnstileToken)"
       @click="handleSubmit"
     >
       {{ isSubmitting ? t('common.processing') : t('auth.createAccount') }}
@@ -99,9 +106,12 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { resolvePasswordPolicy, validateNewPassword, newPasswordError, passwordPolicyHint } from '@/utils/passwordPolicy'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'
 import { getPublicSettings, sendPendingOAuthVerifyCode } from '@/api/auth'
 import { useAppStore } from '@/stores'
+import { userFacingError } from '@/utils/userFacingError'
+import { useRetryCooldown } from '@/composables/useRetryCooldown'
 
 export type PendingOAuthCreateAccountPayload = {
   email: string
@@ -125,9 +135,16 @@ const emit = defineEmits<{
   switchToBind: [email: string]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const { remaining: retryAfter, start: startRetry } = useRetryCooldown()
+const isChinese = computed(() => (locale?.value || 'en').startsWith('zh'))
 const appStore = useAppStore()
+const passwordPolicy = computed(() => resolvePasswordPolicy(appStore.cachedPublicSettings))
+const passwordHint = computed(() => passwordPolicyHint(locale?.value || 'en', passwordPolicy.value))
 
+const settingsLoaded = ref(false)
+const settingsLoading = ref(false)
+const settingsError = ref('')
 const email = ref('')
 const password = ref('')
 const verifyCode = ref('')
@@ -223,8 +240,8 @@ function startCountdown(seconds: number) {
 }
 
 function getRequestErrorMessage(error: unknown, fallback: string): string {
-  const err = error as { message?: string; response?: { data?: { detail?: string; message?: string } } }
-  return err.response?.data?.detail || err.response?.data?.message || err.message || fallback
+  startRetry(error)
+  return userFacingError(error, locale?.value || 'en', fallback)
 }
 
 function resetTurnstile() {
@@ -263,6 +280,7 @@ async function acquireActionProof(): Promise<boolean> {
 }
 
 async function handleSendCode() {
+  if (!settingsLoaded.value || isSendingCode.value || props.isSubmitting || countdown.value > 0 || retryAfter.value > 0) return
   const trimmedEmail = email.value.trim()
   if (!trimmedEmail) {
     return
@@ -303,8 +321,10 @@ async function handleSendCode() {
 }
 
 async function handleSubmit() {
+  if (!settingsLoaded.value || props.isSubmitting || retryAfter.value > 0) return
   const trimmedEmail = email.value.trim()
-  if (!trimmedEmail || password.value.length < 6) {
+  if (!trimmedEmail || validateNewPassword(password.value, passwordPolicy.value) !== null) {
+    sendCodeError.value = !trimmedEmail ? t('auth.emailRequired') : newPasswordError(password.value, locale?.value || 'en', passwordPolicy.value)
     return
   }
 
@@ -345,9 +365,13 @@ function emitSwitchToBind() {
   emit('switchToBind', email.value.trim())
 }
 
-onMounted(async () => {
+async function loadPendingSettings() {
+  if (settingsLoading.value || retryAfter.value > 0) return
+  settingsLoading.value = true
+  settingsError.value = ''
   try {
     const settings = await getPublicSettings()
+    if (disposed) return
     invitationCodeEnabled.value = settings.invitation_code_enabled === true
     emailVerifyEnabled.value = settings.email_verify_enabled !== false
     turnstileEnabled.value = settings.turnstile_enabled === true
@@ -359,20 +383,13 @@ onMounted(async () => {
     aliyunCaptchaSceneId.value = settings.aliyun_captcha_scene_id || ''
     aliyunCaptchaPrefix.value = settings.aliyun_captcha_prefix || ''
     aliyunCaptchaRegion.value = settings.aliyun_captcha_region || 'cn'
-  } catch {
-    invitationCodeEnabled.value = false
-    emailVerifyEnabled.value = true
-    turnstileEnabled.value = false
-    turnstileSiteKey.value = ''
-    tencentCaptchaEnabled.value = false
-    tencentCaptchaAppId.value = ''
-    tencentCaptchaRegion.value = 'cn'
-    aliyunCaptchaEnabled.value = false
-    aliyunCaptchaSceneId.value = ''
-    aliyunCaptchaPrefix.value = ''
-    aliyunCaptchaRegion.value = 'cn'
-  }
-})
+    settingsLoaded.value = true
+  } catch (error) {
+    startRetry(error)
+    settingsError.value = userFacingError(error, locale?.value || 'en', isChinese.value ? '注册设置读取失败，请重试。' : 'Could not load registration settings. Please retry.')
+  } finally { settingsLoading.value = false }
+}
+onMounted(() => { void loadPendingSettings() })
 
 onUnmounted(() => {
   disposed = true

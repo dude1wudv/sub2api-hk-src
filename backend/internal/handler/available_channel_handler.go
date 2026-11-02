@@ -185,7 +185,7 @@ func (h *AvailableChannelHandler) List(c *gin.Context) {
 // localizeUserAvailableGroups 把分组名称就地换成请求首选语言的版本。
 func localizeUserAvailableGroups(groups []userAvailableGroup, acceptLanguage string) {
 	for i := range groups {
-		groups[i].Name = groups[i].i18n.LocalizeName(acceptLanguage, groups[i].Name)
+		groups[i].Name, _ = groups[i].i18n.PublicText(acceptLanguage, groups[i].Platform, groups[i].SubscriptionType, groups[i].RateMultiplier)
 	}
 }
 

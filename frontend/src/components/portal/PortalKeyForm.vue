@@ -9,8 +9,8 @@
             <button type="button" :aria-pressed="form.smart" @click="setMode(true)">{{ text('智能路由', 'Smart routing') }}</button>
           </div>
           <p v-if="form.smart" class="key-hint">{{ text('点击分组添加候选，再在右侧调整顺序。最多 10 个，按实际命中的分组计费。', 'Add candidate groups, then arrange their order on the right. Up to 10; billing uses the group that serves the request.') }}</p>
-          <label class="key-search"><span aria-hidden="true">⌕</span><input v-model="search" type="search" :aria-label="text('搜索分组', 'Search groups')" :placeholder="text('搜索分组名称或说明', 'Search group names or descriptions')" /></label>
-          <div class="key-providers" role="group" :aria-label="text('分组类别', 'Group categories')"><button v-for="provider in providers" :key="provider.value" type="button" :aria-pressed="category === provider.value" @click="category = provider.value">{{ provider.label }} <span>{{ provider.count }}</span></button></div>
+          <label v-if="eligibleGroups.length > 1" class="key-search"><span aria-hidden="true">⌕</span><input v-model="search" type="search" :aria-label="text('搜索分组', 'Search groups')" :placeholder="text('搜索分组名称或说明', 'Search group names or descriptions')" /></label>
+          <div v-if="eligibleGroups.length > 1" class="key-providers" role="group" :aria-label="text('分组类别', 'Group categories')"><button v-for="provider in providers" :key="provider.value" type="button" :aria-pressed="category === provider.value" @click="category = provider.value">{{ provider.label }} <span>{{ provider.count }}</span></button></div>
           <div class="key-group-list">
             <button v-for="group in filteredGroups" :key="group.id" type="button" class="key-group-card" :class="{ selected: isSelected(group.id) }" :aria-pressed="isSelected(group.id)" :disabled="form.smart && (form.routing.includes(group.id) || form.routing.length >= 10)" :data-group-id="group.id" @click="selectGroup(group.id)">
               <span class="key-radio" aria-hidden="true">{{ isSelected(group.id) ? '✓' : '+' }}</span>
@@ -56,6 +56,7 @@
   </PortalDialog>
 </template>
 <script setup lang="ts">
+import { userFacingError } from '@/utils/userFacingError'
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PortalDialog from './PortalDialog.vue'
@@ -140,7 +141,7 @@ async function submit() {
       : await keysAPI.create(form.name.trim(), groupId, form.custom || undefined, lines(form.allow), lines(form.block), Number(form.quota), form.days ? Number(form.days) : undefined, limits, routing)
     emit('saved', key)
     if (!props.editing && onboardingStore.isCurrentStep('[data-tour="key-form-submit"]')) void onboardingStore.nextStep(500)
-  } catch (e) { error.value = (e as {message?: string}).message || text('保存失败，请重试。', 'Could not save. Please retry.') }
+  } catch (e) { error.value = userFacingError(e, locale.value, text('保存失败，请重试。', 'Could not save. Please retry.')) }
   finally { saving.value = false }
 }
 </script>

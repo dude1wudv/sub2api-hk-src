@@ -40,7 +40,7 @@
         <div class="home-hero-copy">
           <h1>{{ text('多模型 API', 'Model APIs.') }}<br /><span>{{ text('统一接入', 'One endpoint.') }}</span></h1>
           <div class="home-hero-actions">
-            <router-link v-slot="{ href, navigate }" :to="auth.isAuthenticated ? '/keys?create=1' : '/login'" custom><InkSurface as="a" :href="href" magnetic class="home-primary-action" @click="navigate"><span>{{ text('创建密钥', 'Create API key') }}</span><span class="home-action-arrow" aria-hidden="true">↗</span></InkSurface></router-link>
+            <router-link v-slot="{ href, navigate }" :to="consolePath" custom><InkSurface as="a" :href="href" magnetic class="home-primary-action" @click="navigate"><span>{{ auth.isAuthenticated ? text('进入控制台', 'Open console') : text('开始使用', 'Get started') }}</span><span class="home-action-arrow" aria-hidden="true">↗</span></InkSurface></router-link>
             <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="home-secondary-action">{{ text('阅读文档', 'Read the docs') }}<Icon name="arrowRight" size="sm" /></a>
             <a v-else href="#home-examples" class="home-secondary-action">{{ text('调用示例', 'API examples') }}<Icon name="arrowRight" size="sm" /></a>
           </div>
@@ -57,7 +57,7 @@
       </section>
       <section id="home-examples" class="home-examples">
         <div class="home-section-intro"><h2>{{ text('API 接入', 'API access') }}</h2></div>
-        <PortalApiExamples v-model:model="exampleModel" v-model:protocol="protocol" />
+        <PortalApiExamples :show-endpoint="false" v-model:model="exampleModel" v-model:protocol="protocol" />
       </section>
       <section v-if="!compact" id="home-services" class="home-services">
         <div class="home-section-intro"><h2>{{ text('控制台', 'Console') }}</h2></div>

@@ -14,13 +14,14 @@
         <label class="input-label">{{ t('admin.users.password') }}</label>
         <div class="flex gap-2">
           <div class="relative flex-1">
-            <input v-model="form.password" type="text" required class="input pr-10" :placeholder="t('admin.users.enterPassword')" />
+            <input v-model="form.password" type="text" autocomplete="new-password" required class="input pr-10" :placeholder="t('admin.users.enterPassword')" />
           </div>
           <button type="button" @click="generateRandomPassword" class="btn btn-secondary px-3">
             <Icon name="refresh" size="md" />
           </button>
         </div>
       </div>
+      <p class="input-hint">{{ passwordPolicyHint(locale) }}</p>
       <div>
         <label class="input-label">{{ t('admin.users.username') }}</label>
         <input v-model="form.username" type="text" class="input" :placeholder="t('admin.users.enterUsername')" />
@@ -70,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { newPasswordError, passwordPolicyHint } from '@/utils/passwordPolicy'
 import { reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'; import { adminAPI } from '@/api/admin'
 import { useAppStore } from '@/stores/app'
@@ -79,7 +81,7 @@ import { useStepUp, isStepUpBlocked, isStepUpCancelled, stepUpBlockReason } from
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
 
 const props = defineProps<{ show: boolean }>()
-const emit = defineEmits(['close', 'success']); const { t } = useI18n()
+const emit = defineEmits(['close', 'success']); const { t, locale } = useI18n()
 const appStore = useAppStore()
 
 const form = reactive({ email: '', password: '', username: '', notes: '', role: 'user' as 'user' | 'admin', balance: '', concurrency: 1, rpm_limit: 0 })
@@ -89,6 +91,8 @@ const loading = ref(false)
 
 const submit = async () => {
   if (loading.value) return
+  const passwordError = newPasswordError(form.password, locale.value)
+  if (passwordError) { appStore.showError(passwordError); return }
   loading.value = true
   try {
     const { balance: rawBalance, ...rest } = { ...form }

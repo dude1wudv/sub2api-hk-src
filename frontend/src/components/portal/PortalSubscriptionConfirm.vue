@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { paymentAPI } from '@/api/payment'
 import { useAuthStore } from '@/stores/auth'
 import { useSubscriptionStore } from '@/stores/subscriptions'
+import { formatCurrency } from '@/utils/format'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import type { SubscriptionPlan } from '@/types/payment'
 import PortalDialog from './PortalDialog.vue'
@@ -17,7 +18,7 @@ const subscriptions = useSubscriptionStore()
 const submitting = ref(false)
 const error = ref('')
 const attempts = new Map<number, string>()
-const usd = (value: number) => new Intl.NumberFormat(locale.value, { style: 'currency', currency: 'USD' }).format(value)
+const usd = (value: number) => formatCurrency(value)
 const balance = computed(() => auth.user?.balance ?? 0)
 const validation = computed(() => {
   if (!props.plan) return ''
@@ -36,6 +37,7 @@ async function purchase() {
   try {
     await paymentAPI.purchaseSubscriptionWithBalance(plan.id, attempts.get(plan.id)!)
     attempts.delete(plan.id)
+    subscriptions.invalidateCache()
     const refresh = await Promise.allSettled([auth.refreshUser(), subscriptions.fetchActiveSubscriptions(true)])
     const warning = refresh.some(result => result.status === 'rejected')
       ? text('订阅已购买，账户信息暂未刷新，请重新加载。', 'Subscription purchased. Refresh the page to update account information.') : ''

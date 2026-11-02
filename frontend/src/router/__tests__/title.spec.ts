@@ -4,7 +4,7 @@ import { PURCHASE_ROUTE_NAME, resolveDocumentTitle, resolveRouteDocumentTitle, r
 // 语言包在测试环境是懒加载的，这里只提供本文件用到的几个 key，其余原样返回 key（触发 meta.title 回退）。
 vi.mock('@/i18n', () => {
   const messages: Record<string, string> = {
-    'nav.recharge': '充值',
+    'nav.recharge': '充值与兑换',
     'nav.subscribe': '订阅',
     'nav.buySubscription': '充值/订阅',
   }
@@ -64,14 +64,14 @@ describe('resolveRouteMetaKeys', () => {
     meta: { titleKey: 'nav.buySubscription', descriptionKey: 'purchase.description' }
   }
 
-  it('默认（充值 & 订阅或未知）沿用路由 meta 的标题/描述 key', () => {
+  it('卡网充值入口不再混用订阅标题', () => {
     expect(resolveRouteMetaKeys(purchaseRoute)).toEqual({
-      titleKey: 'nav.buySubscription',
-      descriptionKey: 'purchase.description'
+      titleKey: 'nav.recharge',
+      descriptionKey: 'purchase.rechargeDescription'
     })
     expect(resolveRouteMetaKeys(purchaseRoute, { billingMode: 'recharge_and_subscription' })).toEqual({
-      titleKey: 'nav.buySubscription',
-      descriptionKey: 'purchase.description'
+      titleKey: 'nav.recharge',
+      descriptionKey: 'purchase.rechargeDescription'
     })
   })
 
@@ -82,10 +82,10 @@ describe('resolveRouteMetaKeys', () => {
     })
   })
 
-  it('仅订阅时 /purchase 切换为纯订阅文案', () => {
+  it('历史订阅计费设置不改变卡网兑换页面标题', () => {
     expect(resolveRouteMetaKeys(purchaseRoute, { billingMode: 'subscription_only' })).toEqual({
-      titleKey: 'nav.subscribe',
-      descriptionKey: 'purchase.subscriptionDescription'
+      titleKey: 'nav.recharge',
+      descriptionKey: 'purchase.rechargeDescription'
     })
   })
 
@@ -107,16 +107,16 @@ describe('resolveRouteDocumentTitle 站点类型', () => {
 
   it('仅充值时 document.title 不再带「订阅」', () => {
     const title = resolveRouteDocumentTitle(purchaseRoute, 'EzouAPI', [], { billingMode: 'recharge_only' })
-    expect(title).toBe('充值 - EzouAPI')
+    expect(title).toBe('充值与兑换 - EzouAPI')
   })
 
-  it('仅订阅时 document.title 只剩「订阅」', () => {
+  it('历史订阅计费设置下仍展示充值与兑换', () => {
     const title = resolveRouteDocumentTitle(purchaseRoute, 'EzouAPI', [], { billingMode: 'subscription_only' })
-    expect(title).toBe('订阅 - EzouAPI')
+    expect(title).toBe('充值与兑换 - EzouAPI')
   })
 
-  it('充值 & 订阅时保留原标题', () => {
+  it('混合计费设置不再产生充值订阅混合标题', () => {
     const title = resolveRouteDocumentTitle(purchaseRoute, 'EzouAPI', [], { billingMode: 'recharge_and_subscription' })
-    expect(title).toBe('充值/订阅 - EzouAPI')
+    expect(title).toBe('充值与兑换 - EzouAPI')
   })
 })

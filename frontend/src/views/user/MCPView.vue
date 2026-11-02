@@ -84,9 +84,10 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import { Icon } from '@/components/icons'
 import { useClipboard } from '@/composables/useClipboard'
 import { useAppStore } from '@/stores/app'
+import { userFacingError } from '@/utils/userFacingError'
 import { formatDate } from '@/utils/format'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const appStore = useAppStore()
 const { copyToClipboard } = useClipboard()
 const endpoint = ref('')
@@ -101,8 +102,7 @@ const revokeError = ref('')
 let unmounted = false
 
 function errorMessage(error: unknown, fallback: string): string {
-  const message = (error as { message?: unknown } | null)?.message
-  return typeof message === 'string' && message ? message : fallback
+  return userFacingError(error, locale.value, fallback)
 }
 
 async function loadConnection(): Promise<void> {
@@ -112,7 +112,9 @@ async function loadConnection(): Promise<void> {
   endpoint.value = ''
   try {
     const result = await mcpAPI.getConnectionConfig()
-    if (!unmounted) endpoint.value = result.resource
+    const resource = new URL(result.resource)
+    if (resource.protocol !== 'https:' || resource.username || resource.password || resource.search || resource.hash || resource.pathname !== '/api/v1/mcp') throw new Error('Invalid MCP resource')
+    if (!unmounted) endpoint.value = resource.href
   } catch (error) {
     if (!unmounted) connectionError.value = errorMessage(error, t('mcp.connectionLoadFailed'))
   } finally {

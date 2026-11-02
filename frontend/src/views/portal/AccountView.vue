@@ -4,20 +4,24 @@
     <PortalPageHeader :title="copy('账户设置', 'Account settings')" />
     <p v-if="notice" class="portal-account-success" role="status">{{ notice }}</p>
     <p v-if="loadError" class="portal-account-error" role="alert">
-      {{ loadError }}
-      <button type="button" class="portal-account-action" :disabled="loading" @click="loadAccount">{{ copy('重试', 'Retry') }}</button>
+      {{ copy('账户资料读取失败：', 'Could not load your profile: ') }}{{ loadError }}
+      <button type="button" class="portal-account-action" :disabled="loading || profileRetryAfter > 0" @click="loadProfile">{{ profileRetryAfter > 0 ? `${profileRetryAfter}s` : copy('重试资料', 'Retry profile') }}</button>
+    </p>
+    <p v-if="settingsError" class="portal-account-error" role="alert">
+      {{ copy('账户功能设置读取失败：', 'Could not load account settings: ') }}{{ settingsError }}
+      <button type="button" class="portal-account-action" :disabled="settingsLoading || settingsRetryAfter > 0" @click="loadSettings(true)">{{ settingsRetryAfter > 0 ? `${settingsRetryAfter}s` : copy('重试设置', 'Retry settings') }}</button>
     </p>
     <p v-if="loading && !user" class="portal-account-note" role="status">{{ copy('正在读取账户…', 'Loading account…') }}</p>
 
     <div v-if="user" class="portal-account-layout">
-      <aside class="portal-account-guide"><span class="portal-account-guide-avatar" aria-hidden="true">{{ initial }}</span><strong>{{ user.username || 'patrickapi' }}</strong><span>{{ displayEmail }}</span><nav :aria-label="copy('账户设置分区', 'Account settings sections')"><a href="#account-identity">{{ copy('资料与登录', 'Profile & sign-in') }} <span aria-hidden="true">↗</span></a><a href="#account-security">{{ copy('账户安全', 'Account security') }} <span aria-hidden="true">↗</span></a><a href="#account-appearance">{{ copy('动效偏好', 'Motion preferences') }} <span aria-hidden="true">↗</span></a><a v-if="settings?.balance_low_notify_enabled" href="#account-notifications">{{ copy('余额通知', 'Balance notifications') }} <span aria-hidden="true">↗</span></a></nav></aside>
+      <aside class="portal-account-guide"><span class="portal-account-guide-avatar" aria-hidden="true">{{ initial }}</span><strong>{{ user.username?.trim() || copy('未设置昵称', 'Display name not set') }}</strong><span>{{ displayEmail }}</span><nav :aria-label="copy('账户设置分区', 'Account settings sections')"><a href="#account-identity">{{ copy('资料与登录', 'Profile & sign-in') }} <span aria-hidden="true">↗</span></a><a href="#account-security">{{ copy('账户安全', 'Account security') }} <span aria-hidden="true">↗</span></a><a href="#account-appearance">{{ copy('动效偏好', 'Motion preferences') }} <span aria-hidden="true">↗</span></a><a v-if="settings?.balance_low_notify_enabled" href="#account-notifications">{{ copy('余额通知', 'Balance notifications') }} <span aria-hidden="true">↗</span></a></nav></aside>
       <div class="portal-account-panel">
-      <section id="account-identity" class="portal-account-section" :aria-label="copy('账户信息', 'Account information')"><h2>{{ copy('资料与登录', 'Profile & sign-in') }}</h2>
+      <section id="account-identity" class="portal-account-section" :aria-label="copy('账户信息', 'Account information')"><h2>{{ copy('资料与登录', 'Profile & sign-in') }}</h2><p v-if="bindingError" class="portal-account-error" role="alert">{{ bindingError }}</p>
         <div class="portal-account-row">
           <div class="portal-account-row__identity">
             <span class="portal-account-avatar" aria-hidden="true">{{ initial }}</span>
             <div class="portal-account-row__text">
-              <strong>{{ user.username || 'patrickapi' }}</strong>
+              <strong>{{ user.username?.trim() || copy('未设置昵称', 'Display name not set') }}</strong>
               <small>{{ copy('账户昵称', 'Display name') }}</small>
             </div>
           </div>
@@ -45,7 +49,7 @@
             </div>
           </div>
           <button v-if="item.canUnbind" type="button" class="portal-account-action" :disabled="busy" @click="openUnbind(item.provider)">{{ copy('解绑', 'Disconnect') }}</button>
-          <button v-else-if="item.canBind" type="button" class="portal-account-action" :disabled="busy" @click="bindProvider(item.provider)">{{ copy('绑定', 'Connect') }}</button>
+          <button v-else-if="item.canBind" type="button" class="portal-account-action" :disabled="busy || actionRetryAfter > 0" @click="bindProvider(item.provider)">{{ copy('绑定', 'Connect') }}</button>
           <span v-else class="portal-account-status">{{ item.bound ? copy('已关联', 'Connected') : copy('暂不可用', 'Unavailable') }}</span>
         </div>
       </section>
@@ -67,10 +71,10 @@
       <section id="account-appearance" class="portal-account-section"><h2>{{ copy('动效偏好', 'Motion preferences') }}</h2><div class="portal-account-row"><div class="portal-account-row__text"><strong>{{ copy('减少装饰动效', 'Reduce decorative motion') }}</strong><small>{{ copy('停止流动、跟随和位移，保留操作反馈。', 'Stop flow, pointer and movement effects while keeping action feedback.') }}</small></div><MotionPreferenceToggle show-label /></div></section>
       </div>
     </div>
-    <p v-if="settings?.contact_info" class="portal-account-support">{{ settings.contact_info }}</p>
 
     <PortalAccountDialog v-if="editor" :title="editorTitle" :busy="busy" :close-label="copy('关闭', 'Close')" @close="closeEditor">
       <p v-if="error" class="portal-account-error" role="alert">{{ error }}</p>
+      <p v-if="actionRetryAfter > 0" class="portal-account-note" role="status">{{ copy(`请在 ${actionRetryAfter} 秒后重试。`, `Try again in ${actionRetryAfter} seconds.`) }}</p>
       <form class="portal-account-form" @submit.prevent="submit">
         <label v-if="editor === 'name'">
           {{ copy('账户昵称', 'Display name') }}
@@ -87,26 +91,27 @@
             {{ copy('邮箱验证码', 'Email verification code') }}
             <span class="portal-account-inline">
               <input v-model="emailCode" class="portal-account-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required />
-              <button type="button" class="portal-account-action" :disabled="busy || cooldown > 0 || !validEmail" @click="sendEmailCode">{{ cooldown > 0 ? `${cooldown}s` : copy('发送验证码', 'Send code') }}</button>
+              <button type="button" class="portal-account-action" :disabled="busy || cooldown > 0 || actionRetryAfter > 0 || !validEmail" @click="sendEmailCode">{{ cooldown > 0 ? `${cooldown}s` : copy('发送验证码', 'Send code') }}</button>
             </span>
           </label>
           <label>
             {{ emailBound ? copy('当前密码', 'Current password') : copy('设置密码', 'Set password') }}
-            <input v-model="password" class="portal-account-input" type="password" :autocomplete="emailBound ? 'current-password' : 'new-password'" :minlength="emailBound ? undefined : 6" required />
+            <input v-model="password" class="portal-account-input" type="password" :autocomplete="emailBound ? 'current-password' : 'new-password'" :minlength="emailBound ? undefined : passwordPolicy.min_length" required />
+            <span v-if="!emailBound" class="portal-account-note">{{ passwordHint }}</span>
           </label>
         </template>
 
         <template v-else-if="editor === 'password'">
           <label>{{ copy('当前密码', 'Current password') }}<input v-model="password" class="portal-account-input" type="password" autocomplete="current-password" required autofocus /></label>
-          <label>{{ copy('新密码', 'New password') }}<input v-model="newPassword" class="portal-account-input" type="password" autocomplete="new-password" minlength="8" required /><span class="portal-account-note">{{ copy('至少 8 个字符', 'At least 8 characters') }}</span></label>
-          <label>{{ copy('确认新密码', 'Confirm new password') }}<input v-model="confirmPassword" class="portal-account-input" type="password" autocomplete="new-password" minlength="8" required /></label>
+          <label>{{ copy('新密码', 'New password') }}<input v-model="newPassword" class="portal-account-input" type="password" autocomplete="new-password" :minlength="passwordPolicy.min_length" required /><span class="portal-account-note">{{ passwordHint }}</span></label>
+          <label>{{ copy('确认新密码', 'Confirm new password') }}<input v-model="confirmPassword" class="portal-account-input" type="password" autocomplete="new-password" :minlength="passwordPolicy.min_length" required /></label>
         </template>
 
         <p v-else-if="editor === 'unbind'">{{ copy(`确认解除与 ${selectedProvider?.label} 的关联？解除后无法再使用这一身份登录。`, `Disconnect ${selectedProvider?.label}? You will no longer be able to use this identity to sign in.`) }}</p>
 
         <div class="portal-account-form__actions">
           <button type="button" class="portal-account-action" :disabled="busy" @click="closeEditor">{{ copy('取消', 'Cancel') }}</button>
-          <button type="submit" class="portal-account-action portal-account-action--primary" :disabled="busy">{{ busy ? copy('处理中…', 'Processing…') : editor === 'unbind' ? copy('确认解绑', 'Disconnect') : editor === 'email' ? copy('确认', 'Confirm') : copy('保存', 'Save') }}</button>
+          <button type="submit" class="portal-account-action portal-account-action--primary" :disabled="busy || actionRetryAfter > 0">{{ busy ? copy('处理中…', 'Processing…') : editor === 'unbind' ? copy('确认解绑', 'Disconnect') : editor === 'email' ? copy('确认', 'Confirm') : copy('保存', 'Save') }}</button>
         </div>
       </form>
     </PortalAccountDialog>
@@ -126,7 +131,9 @@ import { hasExplicitWeChatOAuthCapabilities, resolveWeChatOAuthStartStrict, type
 import { startOAuthBinding, type BindableOAuthProvider } from '@/api/user'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
-import { extractApiErrorMessage } from '@/utils/apiError'
+import { userFacingError } from '@/utils/userFacingError'
+import { useRetryCooldown } from '@/composables/useRetryCooldown'
+import { resolvePasswordPolicy, newPasswordError, passwordPolicyHint } from '@/utils/passwordPolicy'
 import type { User, UserAuthBindingStatus, UserAuthProvider } from '@/types'
 import PortalAccountDialog from '@/components/portal/PortalAccountDialog.vue'
 import PortalAccountSecurity from '@/components/portal/PortalAccountSecurity.vue'
@@ -141,9 +148,17 @@ const app = useAppStore()
 const auth = useAuthStore()
 const user = computed(() => auth.user)
 const settings = computed(() => app.cachedPublicSettings)
-const initial = computed(() => (user.value?.username || user.value?.email || 'P').slice(0, 1).toUpperCase())
+const passwordPolicy = computed(() => resolvePasswordPolicy(settings.value))
+const passwordHint = computed(() => passwordPolicyHint(locale.value, passwordPolicy.value))
+const { remaining: profileRetryAfter, start: startProfileRetry } = useRetryCooldown()
+const { remaining: settingsRetryAfter, start: startSettingsRetry } = useRetryCooldown()
+const { remaining: actionRetryAfter, start: startActionRetry } = useRetryCooldown()
+const initial = computed(() => (user.value?.username || user.value?.email || '?').slice(0, 1).toUpperCase())
 const loading = ref(false)
 const loadError = ref('')
+const settingsLoading = ref(false)
+const settingsError = ref('')
+const bindingError = ref('')
 const editor = ref<'name' | 'email' | 'password' | 'unbind' | null>(null)
 const busy = ref(false)
 const error = ref('')
@@ -227,25 +242,45 @@ function openUnbind(provider: SupportedProvider) {
   notice.value = ''
   editor.value = 'unbind'
 }
-async function loadAccount() {
-  if (loading.value) return
+async function loadProfile() {
+  if (loading.value || profileRetryAfter.value > 0) return
   loading.value = true
   loadError.value = ''
-  const results = await Promise.allSettled([auth.refreshUser(), app.fetchPublicSettings()])
-  if (results.some(result => result.status === 'rejected') || !settings.value) loadError.value = copy('部分账户信息读取失败，请重试。', 'Some account information could not be loaded. Please retry.')
-  loading.value = false
+  try { await auth.refreshUser() }
+  catch (cause) {
+    if (!disposed) loadError.value = userFacingError(cause, locale.value, copy('暂时无法读取，请重试。', 'Temporarily unavailable. Please retry.'))
+    startProfileRetry(cause)
+  } finally { loading.value = false }
+}
+async function loadSettings(force = false) {
+  if (settingsLoading.value || settingsRetryAfter.value > 0) return
+  settingsLoading.value = true
+  settingsError.value = ''
+  try {
+    const result = await app.fetchPublicSettings(force)
+    if (!result && !disposed) {
+      settingsError.value = userFacingError(app.publicSettingsError, locale.value, copy('暂时无法读取，请重试。', 'Temporarily unavailable. Please retry.'))
+      startSettingsRetry(app.publicSettingsError)
+    }
+  } catch (cause) {
+    if (!disposed) settingsError.value = userFacingError(cause, locale.value, copy('暂时无法读取，请重试。', 'Temporarily unavailable. Please retry.'))
+    startSettingsRetry(cause)
+  } finally { settingsLoading.value = false }
+}
+async function loadAccount() {
+  await Promise.all([loadProfile(), loadSettings()])
 }
 async function bindProvider(provider: BindableOAuthProvider) {
   const item = providers.value.find(value => value.provider === provider)
-  if (!item?.canBind || busy.value) return
+  if (!item?.canBind || busy.value || actionRetryAfter.value > 0) return
   busy.value = true
-  loadError.value = ''
+  bindingError.value = ''
   try { await startOAuthBinding(provider, { redirectTo: route.fullPath || '/profile', wechatOAuthSettings: provider === 'wechat' ? wechatSettings.value : undefined }) }
-  catch (cause) { loadError.value = extractApiErrorMessage(cause, copy('无法开始绑定，请重试。', 'Could not start the connection. Please retry.')) }
+  catch (cause) { startActionRetry(cause); bindingError.value = userFacingError(cause, locale.value, copy('无法开始绑定，请重试。', 'Could not start the connection. Please retry.')) }
   finally { busy.value = false }
 }
 async function sendEmailCode() {
-  if (!validEmail.value || busy.value || cooldown.value > 0) return
+  if (!validEmail.value || busy.value || cooldown.value > 0 || actionRetryAfter.value > 0) return
   busy.value = true
   error.value = ''
   try {
@@ -257,15 +292,21 @@ async function sendEmailCode() {
       cooldown.value = Math.max(0, cooldown.value - 1)
       if (cooldown.value === 0) { clearInterval(timer); timer = undefined }
     }, 1000)
-  } catch (cause) { error.value = extractApiErrorMessage(cause, copy('验证码发送失败，请重试。', 'Could not send the verification code.')) }
+  } catch (cause) { startActionRetry(cause); error.value = userFacingError(cause, locale.value, copy('验证码发送失败，请重试。', 'Could not send the verification code.')) }
   finally { busy.value = false }
 }
 async function submit() {
-  if (busy.value) return
+  if (busy.value || actionRetryAfter.value > 0) return
   error.value = ''
   if (editor.value === 'name' && !name.value.trim()) { error.value = copy('请输入昵称。', 'Enter a display name.'); return }
-  if (editor.value === 'email' && (!validEmail.value || !/^\d{6}$/.test(emailCode.value) || !password.value || (!emailBound.value && password.value.length < 6))) { error.value = copy('请填写有效邮箱、6 位验证码和密码。', 'Enter a valid email, 6-digit verification code, and password.'); return }
-  if (editor.value === 'password' && (!password.value || newPassword.value.length < 8 || newPassword.value !== confirmPassword.value)) { error.value = copy('新密码至少 8 个字符，且两次输入必须一致。', 'The new password must be at least 8 characters and match the confirmation.'); return }
+  if (editor.value === 'email' && (!validEmail.value || !/^\d{6}$/.test(emailCode.value) || !password.value)) { error.value = copy('请填写有效邮箱、6 位验证码和密码。', 'Enter a valid email, 6-digit verification code, and password.'); return }
+  if (editor.value === 'email' && !emailBound.value) { error.value = newPasswordError(password.value, locale.value, passwordPolicy.value); if (error.value) return }
+  if (editor.value === 'password') {
+    if (!password.value) { error.value = copy('请输入当前密码。', 'Enter your current password.'); return }
+    error.value = newPasswordError(newPassword.value, locale.value, passwordPolicy.value)
+    if (error.value) return
+    if (newPassword.value !== confirmPassword.value) { error.value = copy('两次输入的密码必须一致。', 'The passwords must match.'); return }
+  }
   if (editor.value === 'unbind' && !selectedProvider.value?.canUnbind) { error.value = copy('当前登录方式无法解除，请先绑定另一种登录方式。', 'Connect another sign-in method before disconnecting this one.'); return }
   busy.value = true
   try {
@@ -276,7 +317,7 @@ async function submit() {
     notice.value = copy('账户设置已更新。', 'Account settings updated.')
     editor.value = null
     resetSecrets()
-  } catch (cause) { error.value = extractApiErrorMessage(cause, copy('更新失败，请重试。', 'Could not update the account. Please retry.')) }
+  } catch (cause) { startActionRetry(cause); error.value = userFacingError(cause, locale.value, copy('更新失败，请重试。', 'Could not update the account. Please retry.')) }
   finally { busy.value = false }
 }
 

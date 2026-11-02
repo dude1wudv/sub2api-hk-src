@@ -10,7 +10,7 @@ const { purchaseSubscriptionWithBalance, refreshUser, fetchActiveSubscriptions }
 
 vi.mock('@/api/payment', () => ({ paymentAPI: { purchaseSubscriptionWithBalance } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { balance: 50 }, refreshUser }) }))
-vi.mock('@/stores/subscriptions', () => ({ useSubscriptionStore: () => ({ fetchActiveSubscriptions }) }))
+vi.mock('@/stores/subscriptions', () => ({ useSubscriptionStore: () => ({ fetchActiveSubscriptions, invalidateCache: vi.fn() }) }))
 vi.mock('@/components/portal/PortalDialog.vue', () => ({ default: { props: ['open', 'title'], template: '<div class="portal-dialog-test"><slot /></div>' } }))
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')

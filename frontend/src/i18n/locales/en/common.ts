@@ -168,6 +168,7 @@ export default {
 
   // Navigation
   nav: {
+    home: 'Home',
     dashboard: 'Dashboard',
     announcements: 'Announcements',
     apiKeys: 'API Keys',
@@ -185,7 +186,7 @@ export default {
     users: 'Users',
     groups: 'Groups',
     channels: 'Channels',
-    availableChannels: 'Available Channels',
+    availableChannels: 'Access & availability',
     modelPlaza: 'Model Plaza',
     subscriptions: 'Subscriptions',
     accounts: 'Accounts',
@@ -204,10 +205,10 @@ export default {
     github: 'GitHub',
     mySubscriptions: 'My Subscriptions',
     buySubscription: 'Recharge / Subscription',
-    recharge: 'Recharge',
+    recharge: 'Top up & redeem',
     subscribe: 'Subscription',
     docs: 'Docs',
-    myOrders: 'My Orders',
+    myOrders: 'Redemption history',
     orderManagement: 'Orders',
     paymentDashboard: 'Payment Dashboard',
     paymentConfig: 'Payment Config',

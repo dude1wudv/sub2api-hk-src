@@ -25,6 +25,7 @@ export const useAppStore = defineStore('app', () => {
 
   // Public settings cache state
   const publicSettingsLoaded = ref<boolean>(false)
+  const publicSettingsError = ref<unknown>(null)
   const publicSettingsLoading = ref<boolean>(false)
   const siteName = ref<string>('Sub2API')
   const siteLogo = ref<string>('')
@@ -385,10 +386,12 @@ export const useAppStore = defineStore('app', () => {
     }
 
     publicSettingsLoading.value = true
+    publicSettingsError.value = null
     let apiRequest: Promise<PublicSettings>
     try {
       apiRequest = fetchPublicSettingsAPI()
     } catch (error) {
+      publicSettingsError.value = error
       console.error('Failed to fetch public settings:', error)
       publicSettingsLoading.value = false
       return Promise.resolve(null)
@@ -400,6 +403,7 @@ export const useAppStore = defineStore('app', () => {
         return data
       })
       .catch((error) => {
+        publicSettingsError.value = error
         console.error('Failed to fetch public settings:', error)
         return null
       })
@@ -418,6 +422,7 @@ export const useAppStore = defineStore('app', () => {
    * Clear public settings cache
    */
   function clearPublicSettingsCache(): void {
+    publicSettingsError.value = null
     publicSettingsLoaded.value = false
     cachedPublicSettings.value = null
   }
@@ -447,6 +452,7 @@ export const useAppStore = defineStore('app', () => {
 
     // Public settings state
     publicSettingsLoaded,
+    publicSettingsError,
     siteName,
     siteLogo,
     siteVersion,

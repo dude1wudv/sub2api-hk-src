@@ -20,8 +20,8 @@
           <h3 class="break-words text-sm font-semibold text-gray-900 dark:text-white">
             {{ channel.name }}
           </h3>
-          <p class="mt-1 break-words text-xs leading-5 text-gray-500 dark:text-gray-400">
-            {{ channel.description || '-' }}
+          <p v-if="channel.description" class="mt-1 break-words text-xs leading-5 text-gray-500 dark:text-gray-400">
+            {{ channel.description }}
           </p>
         </header>
 
@@ -33,12 +33,12 @@
           >
             <span
               :class="[
-                'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium uppercase',
+                'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium',
                 platformBadgeClass(section.platform),
               ]"
             >
               <PlatformIcon :platform="section.platform as GroupPlatform" size="xs" />
-              {{ section.platform }}
+              {{ platformLabel(section.platform) }}
             </span>
 
             <dl class="channel-section">
@@ -155,6 +155,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { platformLabel } from '@/utils/platformLabel'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'

@@ -2,6 +2,7 @@
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { formatPortalBalance, PATRICK_CARD_ORDER_URL, PATRICK_CARD_SHOP_URL } from '@/utils/portalPurchase'
 import PortalRedeemForm from '@/components/portal/PortalRedeemForm.vue'
@@ -9,6 +10,8 @@ import PortalRedeemHistory from '@/components/portal/PortalRedeemHistory.vue'
 
 const { locale } = useI18n()
 const auth = useAuthStore()
+const app = useAppStore()
+const denominations = computed(() => app.cachedPublicSettings?.card_shop_denominations_usd ?? [1, 10, 50])
 const copy = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const balance = computed(() => auth.user ? formatPortalBalance(auth.user.balance, locale.value) : '—')
 const historyVersion = ref(0)
@@ -16,9 +19,9 @@ const historyVersion = ref(0)
 
 <template>
   <div class="portal-page purchase-page">
-    <PortalPageHeader :title="copy('充值', 'Top up')" />
+    <PortalPageHeader :title="copy('充值与兑换', 'Top up & redeem')" />
     <nav class="purchase-tabs" :aria-label="copy('充值与兑换记录', 'Top up and redemption history')">
-      <RouterLink to="/purchase" class="active" aria-current="page">{{ copy('充值', 'Top up') }}</RouterLink>
+      <RouterLink to="/purchase" class="active" aria-current="page">{{ copy('充值与兑换', 'Top up & redeem') }}</RouterLink>
       <RouterLink to="/orders">{{ copy('兑换记录', 'Redemption history') }}</RouterLink>
     </nav>
 
@@ -31,6 +34,7 @@ const historyVersion = ref(0)
       <section class="portal-panel purchase-shop" aria-labelledby="purchase-shop-title">
         <div class="purchase-step-heading"><span aria-hidden="true">01</span><h2 id="purchase-shop-title">{{ copy('购买兑换码', 'Purchase a code') }}</h2></div>
         <p class="portal-muted">{{ copy('在发卡网 patrickapi 店铺购买兑换码，完成后返回本站兑换。', 'Buy a code from the patrickapi card shop, then return here to redeem it.') }}</p>
+        <div class="purchase-denominations"><span>{{ copy('到账面额', 'Balance denominations') }}</span><strong v-for="amount in denominations" :key="amount">{{ formatPortalBalance(amount, locale) }}</strong></div>
         <a :href="PATRICK_CARD_SHOP_URL" target="_blank" rel="noopener noreferrer" class="portal-button purchase-shop-button">
           {{ copy('前往发卡网购买', 'Visit card shop') }} <span aria-hidden="true">↗</span>
         </a>
@@ -62,6 +66,8 @@ const historyVersion = ref(0)
 .purchase-step-heading > span { display: grid; place-items: center; width: 29px; height: 29px; background:rgb(var(--brand-moss) / .12); color:rgb(var(--ink)); border:1px solid rgb(var(--brand-moss) / .2); border-radius:45% 50% 55% 45%; font-size:13px; }
 .purchase-step-heading h2 { margin: 0; font-size: 18px; font-weight: 400; }
 .purchase-shop > p { margin: 0; font-size: 13px; line-height: 1.8; }
+.purchase-denominations { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:20px; font-size:13px; }
+.purchase-denominations strong { padding:8px 12px; border:1px solid rgb(var(--line-strong)); border-radius:12px; font-weight:500; }
 .purchase-shop-button { margin-top: 28px; }
 .purchase-shop .purchase-shop-note { margin-top: 14px; color: rgb(var(--ink-3)); font-size: 13px; }
 .purchase-order-help { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid rgb(var(--line)); color: rgb(var(--ink-3)); font-size: 13px; line-height: 1.8; }

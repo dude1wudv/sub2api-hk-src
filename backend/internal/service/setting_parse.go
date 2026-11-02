@@ -320,6 +320,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		}
 	}
 	result := &SystemSettings{
+		CardShopDenominationsUSD:               parseCardShopDenominations(settings[SettingKeyCardShopDenominationsUSD]),
 		RegistrationEnabled:                    settings[SettingKeyRegistrationEnabled] == "true",
 		EmailVerifyEnabled:                     emailVerifyEnabled,
 		RegistrationEmailSuffixWhitelist:       ParseRegistrationEmailSuffixWhitelist(settings[SettingKeyRegistrationEmailSuffixWhitelist]),

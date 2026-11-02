@@ -9,6 +9,17 @@ import type { UserSubscription, SubscriptionProgress } from '@/types'
 /**
  * Subscription summary for user dashboard
  */
+export interface SubscriptionAvailability {
+  has_sale_plans: boolean
+  has_active_subscriptions: boolean
+  has_subscription_history: boolean
+}
+
+export async function getAvailability(): Promise<SubscriptionAvailability> {
+  const { data } = await apiClient.get<SubscriptionAvailability>('/subscriptions/availability')
+  return data
+}
+
 export interface SubscriptionSummary {
   active_count: number
   subscriptions: Array<{
@@ -68,6 +79,7 @@ export async function getSubscriptionProgress(
 }
 
 export default {
+  getAvailability,
   getMySubscriptions,
   getActiveSubscriptions,
   getSubscriptionsProgress,

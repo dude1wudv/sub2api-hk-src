@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
-  HELIOS_WORKBENCH_BOOTSTRAP_PATH,
-  HELIOS_WORKBENCH_ORIGIN,
   launchHeliosWorkbench,
   parseHeliosLaunchUrl
 } from '../heliosLaunch'
+
+const HELIOS_WORKBENCH_ORIGIN = 'https://patrickapi.microedulab.com'
+const HELIOS_WORKBENCH_BOOTSTRAP_PATH = '/cancas/bootstrap'
+const bootstrapUrl = HELIOS_WORKBENCH_ORIGIN + HELIOS_WORKBENCH_BOOTSTRAP_PATH
 
 function makeBrowserWindow(open: (url: string, target: string) => Window | null, replace = vi.fn()) {
   return {
@@ -21,7 +23,7 @@ describe('parseHeliosLaunchUrl', () => {
     [`${HELIOS_WORKBENCH_ORIGIN}/workflow#code=one-time`, false],
     [`https://user:secret@canvas.sub.sunmmyapi.xyz${HELIOS_WORKBENCH_BOOTSTRAP_PATH}`, false]
   ])('accepts only the fixed origin and bootstrap path: %s', (value, accepted) => {
-    const result = parseHeliosLaunchUrl(value)
+    const result = parseHeliosLaunchUrl(value, bootstrapUrl)
     if (accepted) {
       expect(result).toEqual(expect.any(URL))
     } else {
@@ -49,20 +51,20 @@ describe('launchHeliosWorkbench', () => {
     const request = vi.fn(async () => {
       events.push('request')
       expect(opener).toBeNull()
-      return { launch_url: `${HELIOS_WORKBENCH_ORIGIN}/bootstrap#code=one-time`, expires_in: 90 }
+      return { launch_url: `${HELIOS_WORKBENCH_ORIGIN}${HELIOS_WORKBENCH_BOOTSTRAP_PATH}#code=one-time`, expires_in: 90 }
     })
     const browserWindow = makeBrowserWindow((url, target) => {
       events.push(`open:${url}:${target}`)
       return child
     })
 
-    await expect(launchHeliosWorkbench({ window: browserWindow, request })).resolves.toBe(true)
+    await expect(launchHeliosWorkbench({ bootstrapUrl, window: browserWindow, request })).resolves.toBe(true)
 
     expect(events).toEqual([
       'open:about:blank:_blank',
       'opener:null',
       'request',
-      'replace:https://canvas.sub.sunmmyapi.xyz/bootstrap#code=one-time'
+      'replace:https://patrickapi.microedulab.com/cancas/bootstrap#code=one-time'
     ])
     expect(request).toHaveBeenCalledOnce()
     expect(child.close).not.toHaveBeenCalled()
@@ -73,7 +75,7 @@ describe('launchHeliosWorkbench', () => {
     const notify = vi.fn()
     const browserWindow = makeBrowserWindow(() => null)
 
-    await expect(launchHeliosWorkbench({ window: browserWindow, request, notify })).resolves.toBe(false)
+    await expect(launchHeliosWorkbench({ bootstrapUrl, window: browserWindow, request, notify })).resolves.toBe(false)
 
     expect(request).not.toHaveBeenCalled()
     expect(notify).toHaveBeenCalledWith('popup-blocked')
@@ -89,7 +91,7 @@ describe('launchHeliosWorkbench', () => {
     const browserWindow = makeBrowserWindow(() => child)
 
     await expect(
-      launchHeliosWorkbench({
+      launchHeliosWorkbench({ bootstrapUrl,
         window: browserWindow,
         request: async () => ({ launch_url: launchUrl, expires_in: 90 }),
         notify
@@ -105,15 +107,15 @@ describe('launchHeliosWorkbench', () => {
     const replace = vi.fn()
     const browserWindow = makeBrowserWindow(open, replace)
     const request = vi.fn(async () => ({
-      launch_url: `${HELIOS_WORKBENCH_ORIGIN}/bootstrap#code=one-time`,
+      launch_url: `${HELIOS_WORKBENCH_ORIGIN}${HELIOS_WORKBENCH_BOOTSTRAP_PATH}#code=one-time`,
       expires_in: 90
     }))
 
-    await expect(launchHeliosWorkbench({ mode: 'current', window: browserWindow, request })).resolves.toBe(true)
+    await expect(launchHeliosWorkbench({ bootstrapUrl, mode: 'current', window: browserWindow, request })).resolves.toBe(true)
 
     expect(open).not.toHaveBeenCalled()
     expect(request).toHaveBeenCalledOnce()
-    expect(replace).toHaveBeenCalledWith(`${HELIOS_WORKBENCH_ORIGIN}/bootstrap#code=one-time`)
+    expect(replace).toHaveBeenCalledWith(`${HELIOS_WORKBENCH_ORIGIN}${HELIOS_WORKBENCH_BOOTSTRAP_PATH}#code=one-time`)
   })
 
   it('reports API failures and closes the temporary popup', async () => {
@@ -123,7 +125,7 @@ describe('launchHeliosWorkbench', () => {
     const browserWindow = makeBrowserWindow(() => child)
 
     await expect(
-      launchHeliosWorkbench({
+      launchHeliosWorkbench({ bootstrapUrl,
         window: browserWindow,
         request: async () => {
           throw new Error('network failure')

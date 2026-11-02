@@ -11,10 +11,7 @@ export function maskPortalRedeemCode(code: string | null | undefined): string {
 
 export function formatPortalBalance(value: number, locale: string): string {
   if (!Number.isFinite(value)) return '—'
-  return new Intl.NumberFormat(locale.startsWith('zh') ? 'zh-CN' : 'en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 4
-  }).format(value)
+  const digits = value !== 0 && Math.abs(value) < 0.01 ? 6 : 2
+  if (value !== 0 && Math.abs(value) < 10 ** -digits) return `${value < 0 ? '−' : ''}< USD ${(10 ** -digits).toFixed(digits)}`
+  return `USD ${new Intl.NumberFormat(locale.startsWith('zh') ? 'zh-CN' : 'en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value)}`
 }

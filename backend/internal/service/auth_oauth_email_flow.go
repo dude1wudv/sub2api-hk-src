@@ -145,7 +145,7 @@ func (s *AuthService) RegisterOAuthEmailAccount(
 		return nil, nil, err
 	}
 
-	hashedPassword, err := s.HashPassword(password)
+	hashedPassword, err := s.HashNewPassword(password)
 	if err != nil {
 		return nil, nil, fmt.Errorf("hash password: %w", err)
 	}
@@ -228,7 +228,7 @@ func (s *AuthService) RegisterVerifiedOAuthEmailAccount(
 		return nil, nil, err
 	}
 
-	hashedPassword, err := s.HashPassword(password)
+	hashedPassword, err := s.HashNewPassword(password)
 	if err != nil {
 		return nil, nil, fmt.Errorf("hash password: %w", err)
 	}

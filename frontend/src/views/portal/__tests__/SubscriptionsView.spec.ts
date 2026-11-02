@@ -2,18 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import SubscriptionsView from '../SubscriptionsView.vue'
 
-const { getMySubscriptions, getCheckoutInfo, getSubscriptionsProgress, purchaseSubscriptionWithBalance, fetchActiveSubscriptions } = vi.hoisted(() => ({
+const { getMySubscriptions, getCheckoutInfo, getSubscriptionsProgress, purchaseSubscriptionWithBalance, fetchActiveSubscriptions, invalidateCache } = vi.hoisted(() => ({
   getMySubscriptions: vi.fn(),
   getCheckoutInfo: vi.fn(),
   getSubscriptionsProgress: vi.fn(),
   purchaseSubscriptionWithBalance: vi.fn(),
   fetchActiveSubscriptions: vi.fn(),
+  invalidateCache: vi.fn(),
 }))
 
 vi.mock('@/api/subscriptions', () => ({ default: { getMySubscriptions, getSubscriptionsProgress } }))
 vi.mock('@/api/payment', () => ({ paymentAPI: { getCheckoutInfo, purchaseSubscriptionWithBalance } }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ cachedPublicSettings: { subscription_enabled: true, server_utc_offset: '+00:00' } }) }))
-vi.mock('@/stores/subscriptions', () => ({ useSubscriptionStore: () => ({ fetchActiveSubscriptions }) }))
+vi.mock('@/stores/subscriptions', () => ({ useSubscriptionStore: () => ({ fetchActiveSubscriptions, invalidateCache }) }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { balance: 50 }, refreshUser: vi.fn().mockResolvedValue(undefined) }) }))
 vi.mock('@/components/portal/PortalDialog.vue', () => ({ default: { props: ['open', 'title'], template: '<div class="portal-dialog-test"><slot /></div>' } }))
 vi.mock('vue-router', async () => {
@@ -76,7 +77,7 @@ describe('portal SubscriptionsView purchase completion', () => {
   it('closes the confirmation after a completed purchase even if post-purchase refresh fails', async () => {
     const wrapper = mount(SubscriptionsView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
-    expect(wrapper.get('.subscription-quota').text()).toContain('$3.00 / $8.00')
+    expect(wrapper.get('.subscription-quota').text()).toContain('USD\u00a03.00 / USD\u00a08.00')
     expect(wrapper.get('.subscription-quota').text()).toContain('Resets in 20d')
     await wrapper.get('.plan-button').trigger('click')
     await flushPromises()

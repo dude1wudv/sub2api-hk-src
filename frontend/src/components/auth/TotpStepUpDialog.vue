@@ -71,13 +71,14 @@ import { ref, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 import { totpAPI } from '@/api'
+import { userFacingError } from '@/utils/userFacingError'
 import type { StepUpController } from '@/composables/useStepUp'
 
 const props = defineProps<{
   controller: StepUpController
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const appStore = useAppStore()
 
 const verifying = ref(false)
@@ -115,7 +116,7 @@ async function submit(otp: string) {
     props.controller.onVerified()
   } catch (err: any) {
     verifying.value = false
-    appStore.showError(err?.message || t('stepUp.verifyFailed'))
+    appStore.showError(userFacingError(err, locale?.value || 'en', t('stepUp.verifyFailed')))
     resetInputs()
     nextTick(() => inputRefs.value[0]?.focus())
   }

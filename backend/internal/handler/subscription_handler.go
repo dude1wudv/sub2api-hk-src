@@ -111,7 +111,7 @@ func (h *SubscriptionHandler) GetProgress(c *gin.Context) {
 			continue
 		}
 		if sub.Group != nil {
-			progress.GroupName = sub.Group.I18n.LocalizeName(c.GetHeader("Accept-Language"), progress.GroupName)
+			progress.GroupName, _ = sub.Group.I18n.PublicText(c.GetHeader("Accept-Language"), sub.Group.Platform, sub.Group.SubscriptionType, sub.Group.RateMultiplier)
 		}
 		result = append(result, SubscriptionProgressInfo{
 			Subscription: dto.UserSubscriptionFromService(sub).Localized(c.GetHeader("Accept-Language")),
@@ -153,7 +153,7 @@ func (h *SubscriptionHandler) GetSummary(c *gin.Context) {
 
 		// Add group info if preloaded
 		if sub.Group != nil {
-			item.GroupName = sub.Group.I18n.LocalizeName(c.GetHeader("Accept-Language"), sub.Group.Name)
+			item.GroupName, _ = sub.Group.I18n.PublicText(c.GetHeader("Accept-Language"), sub.Group.Platform, sub.Group.SubscriptionType, sub.Group.RateMultiplier)
 			if sub.Group.DailyLimitUSD != nil {
 				item.DailyLimitUSD = *sub.Group.DailyLimitUSD
 			}
@@ -187,5 +187,20 @@ func (h *SubscriptionHandler) GetSummary(c *gin.Context) {
 		Subscriptions: items,
 	}
 
+	response.Success(c, summary)
+}
+
+// Availability returns the small navigation capability summary for the signed-in user.
+func (h *SubscriptionHandler) Availability(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	summary, err := h.subscriptionService.Availability(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
 	response.Success(c, summary)
 }

@@ -157,6 +157,7 @@ apiClient.interceptors.response.use(
           code: apiData.code,
           message: apiData.message || error.message,
           metadata: apiData.metadata,
+        retry_after: error.response.headers?.['retry-after'],
         })
       }
 
@@ -262,6 +263,7 @@ apiClient.interceptors.response.use(
         error: apiData.error,
         message: apiData.message || apiData.detail || error.message,
         metadata: apiData.metadata,
+        retry_after: error.response.headers?.['retry-after'],
       })
     }
 

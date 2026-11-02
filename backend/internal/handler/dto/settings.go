@@ -153,6 +153,7 @@ type SystemSettings struct {
 	SiteLogo                    string           `json:"site_logo"`
 	SiteSubtitle                string           `json:"site_subtitle"`
 	APIBaseURL                  string           `json:"api_base_url"`
+	CardShopDenominationsUSD    []float64        `json:"card_shop_denominations_usd"`
 	ContactInfo                 string           `json:"contact_info"`
 	DocURL                      string           `json:"doc_url"`
 	HomeContent                 string           `json:"home_content"`
@@ -366,6 +367,9 @@ type DefaultSubscriptionSetting struct {
 }
 
 type PublicSettings struct {
+	HeliosWorkbenchBootstrapURL         string                   `json:"helios_workbench_bootstrap_url"`
+	PasswordPolicy                      service.PasswordPolicy   `json:"password_policy"`
+	CardShopDenominationsUSD            []float64                `json:"card_shop_denominations_usd"`
 	RegistrationEnabled                 bool                     `json:"registration_enabled"`
 	EmailVerifyEnabled                  bool                     `json:"email_verify_enabled"`
 	ForceEmailOnThirdPartySignup        bool                     `json:"force_email_on_third_party_signup"`

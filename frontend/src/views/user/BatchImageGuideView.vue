@@ -1,6 +1,7 @@
 <template>
   <div class="portal-page user-service-page">
     <PortalPageHeader :title="t('nav.batchImage')" />
+    <details v-if="lastErrorReference" class="portal-muted"><summary>{{ isZhLocale() ? '错误详情' : 'Error details' }}</summary><code>{{ lastErrorReference }}</code></details>
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col gap-3">
@@ -755,6 +756,8 @@
 <script setup lang="ts">
 import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import { formatCurrency } from '@/utils/format'
+import { userFacingError } from '@/utils/userFacingError'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -840,6 +843,7 @@ const batchPageSizeOptions: SelectOption[] = [20, 50, 100].map(size => ({ value:
 const appStore = useAppStore()
 const { copyToClipboard } = useClipboard()
 const { t, locale } = useI18n()
+const lastErrorReference = ref('')
 
 const columns = computed<Column[]>(() => [
   { key: 'select', label: '', sortable: false, class: 'w-12 text-center' },
@@ -2392,12 +2396,12 @@ function friendlyItemError(error: BatchImageItem['error']) {
   if (!error) return '-'
   if (error.code === 'EMPTY_IMAGE_OUTPUT') return t('batchImage.itemResult.emptyImageOutput')
   if (error.code === 'PROVIDER_ITEM_FAILED') return t('batchImage.itemResult.providerItemFailed')
-  return error.message || error.code || '-'
+  return userFacingError(error, locale.value, t('batchImage.itemResult.providerItemFailed'))
 }
 
 function formatMoney(value: number | null | undefined) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '$0.00'
-  return `$${Number(value).toFixed(2)}`
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—'
+  return formatCurrency(Number(value))
 }
 
 function terminalZeroCost(job: Pick<BatchImageJob, 'status' | 'actual_cost'>) {
@@ -2489,16 +2493,15 @@ function batchImageErrorReference(error: any) {
   return parts.length ? `（${parts.join(isZhLocale() ? '，' : ', ')}）` : ''
 }
 
-function batchImageAdminError(base: string, error: any) {
-  const reference = batchImageErrorReference(error)
-  return `${base}${reference ? ` ${reference}` : ''} ${batchImageText('adminReference')}`
-}
+function batchImageAdminError(base: string, _error: unknown) { return `${base} ${batchImageText('adminReference')}` }
 
 function batchImagePlainError(base: string) {
   return base
 }
 
 function batchImageErrorMessage(error: any, fallback: string) {
+  lastErrorReference.value = batchImageErrorReference(error)
+  if (error?.status === 429 || String(error?.code || error?.reason || '').includes('RATE_LIMIT') || /too many requests|rate.limit/i.test(String(error?.message || ''))) return userFacingError(error, locale.value, fallback)
   const code = String(error?.code || '').trim()
   const message = String(error?.message || '').trim()
   if (code === 'API_KEY_REQUIRED' || code === '401') {
@@ -2593,10 +2596,7 @@ function batchImageErrorMessage(error: any, fallback: string) {
   if (code === 'INTERNAL_ERROR' || code === '500') {
     return batchImageAdminError(fallback, error)
   }
-  if (isZhLocale()) {
-    const detail = message ? `${batchImageText('errorReference')}：${message}` : batchImageText('adminReference')
-    return `${fallback}。${detail} ${batchImageErrorReference(error)}`
-  }
+  if (isZhLocale()) return userFacingError(error, locale.value, fallback)
   return message || fallback
 }
 

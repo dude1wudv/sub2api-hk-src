@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/passwordpolicy"
 	"net/mail"
 	"strconv"
 	"strings"
@@ -231,7 +232,7 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	}
 
 	// 密码哈希
-	hashedPassword, err := s.HashPassword(password)
+	hashedPassword, err := s.HashNewPassword(password)
 	if err != nil {
 		return "", nil, fmt.Errorf("hash password: %w", err)
 	}
@@ -1478,6 +1479,13 @@ func (s *AuthService) GetAccessTokenExpiresIn() int {
 }
 
 // HashPassword 使用bcrypt加密密码
+func (s *AuthService) HashNewPassword(password string) (string, error) {
+	if err := passwordpolicy.Validate(password); err != nil {
+		return "", err
+	}
+	return s.HashPassword(password)
+}
+
 func (s *AuthService) HashPassword(password string) (string, error) {
 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -1661,7 +1669,7 @@ func (s *AuthService) ResetPassword(ctx context.Context, email, token, newPasswo
 	}
 
 	// Hash new password
-	hashedPassword, err := s.HashPassword(newPassword)
+	hashedPassword, err := s.HashNewPassword(newPassword)
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)
 	}

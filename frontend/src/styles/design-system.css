@@ -28,7 +28,7 @@
   --table-head: var(--surface-2);
   --table-hover: 247 244 235;
   --radius-control: 12px;
-  --radius-card: 20px;
+  --radius-card: 12px;
   --radius-overlay: 20px;
   --motion-fast: 160ms;
   --motion-menu: 180ms;

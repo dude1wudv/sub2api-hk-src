@@ -39,6 +39,12 @@
         </div>
       </div>
 
+      <div v-else-if="settingsError" role="alert" class="rounded-xl border border-red-200 p-4 text-sm">
+        <p>{{ settingsError }}</p>
+        <button type="button" class="btn btn-secondary mt-3" :disabled="retryAfter > 0" @click="loadResetSettings(true)">{{ retryAfter > 0 ? `${retryAfter}s` : copy('重试', 'Retry') }}</button>
+      </div>
+      <p v-else-if="!settingsLoaded" role="status" class="text-sm text-gray-500">{{ copy('正在读取密码重置设置…', 'Loading password reset settings…') }}</p>
+      <div v-else-if="!resetEnabled" role="status" class="rounded-xl border border-gray-200 p-4 text-sm">{{ copy('本站暂未开放密码重置，请联系帮助与客服。', 'Password reset is not available on this site. Please contact support.') }}</div>
       <!-- Success State -->
       <div v-else-if="isSuccess" class="space-y-6">
         <div class="rounded-xl border border-green-200 bg-green-50 p-6 dark:border-green-800/50 dark:bg-green-900/20">
@@ -121,6 +127,7 @@
           </div>
         </div>
 
+        <p class="text-sm text-gray-500">{{ passwordHint }}</p>
         <!-- Confirm Password Input -->
         <div>
           <label for="confirmPassword" class="input-label">
@@ -139,7 +146,7 @@
               :disabled="isLoading"
               class="input pl-11 pr-11"
               :class="{ 'input-error': errors.confirmPassword }"
-              :placeholder="t('auth.confirmPasswordPlaceholder')"
+              :placeholder="(isChinese ? '请再次输入密码' : 'Enter the password again')"
             />
             <button
               type="button"
@@ -152,10 +159,11 @@
           </div>
         </div>
 
+        <p v-if="retryAfter > 0" role="status" class="text-sm text-gray-500">{{ copy(`请在 ${retryAfter} 秒后重试。`, `Try again in ${retryAfter} seconds.`) }}</p>
         <!-- Submit Button -->
         <button
           type="submit"
-          :disabled="isLoading"
+          :disabled="isLoading || retryAfter > 0"
           class="btn btn-primary w-full"
         >
           <svg
@@ -203,17 +211,30 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { resolvePasswordPolicy, validateNewPassword, newPasswordError, passwordPolicyHint } from '@/utils/passwordPolicy'
 import { AuthLayout } from '@/components/layout'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores'
-import { resetPassword } from '@/api/auth'
+import { resetPassword, getPublicSettings } from '@/api/auth'
+import { userFacingError } from '@/utils/userFacingError'
+import { extractApiErrorCode } from '@/utils/apiError'
+import { useRetryCooldown } from '@/composables/useRetryCooldown'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const isChinese = computed(() => (locale?.value || 'en').startsWith('zh'))
+const copy = (zh: string, en: string) => isChinese.value ? zh : en
+const { remaining: retryAfter, start: startRetry } = useRetryCooldown()
+const settingsLoaded = ref(false)
+const settingsLoading = ref(false)
+const settingsError = ref('')
+const resetEnabled = ref(false)
 
 // ==================== Router & Stores ====================
 
 const route = useRoute()
 const appStore = useAppStore()
+const passwordPolicy = computed(() => resolvePasswordPolicy(appStore.cachedPublicSettings))
+const passwordHint = computed(() => passwordPolicyHint(locale?.value || 'en', passwordPolicy.value))
 
 // ==================== State ====================
 
@@ -259,8 +280,24 @@ onMounted(() => {
 
   if (!email.value || !token.value) {
     appStore.showError(t('auth.invalidResetLink'))
+  } else {
+    void loadResetSettings()
   }
 })
+
+async function loadResetSettings(force = false) {
+  if (settingsLoading.value || retryAfter.value > 0) return
+  settingsLoading.value = true
+  settingsError.value = ''
+  try {
+    const settings = (!force && (appStore.cachedPublicSettings || window.__APP_CONFIG__)) || await getPublicSettings()
+    resetEnabled.value = settings.password_reset_enabled === true && settings.backend_mode_enabled !== true
+    settingsLoaded.value = true
+  } catch (cause) {
+    startRetry(cause)
+    settingsError.value = userFacingError(cause, locale?.value || 'en', copy('密码重置设置读取失败，请重试。', 'Could not load password reset settings. Please retry.'))
+  } finally { settingsLoading.value = false }
+}
 
 // ==================== Validation ====================
 
@@ -274,8 +311,8 @@ function validateForm(): boolean {
   if (!formData.password) {
     errors.password = t('auth.passwordRequired')
     isValid = false
-  } else if (formData.password.length < 6) {
-    errors.password = t('auth.passwordMinLength')
+  } else if (validateNewPassword(formData.password, passwordPolicy.value) !== null) {
+    errors.password = newPasswordError(formData.password, locale?.value || 'en', passwordPolicy.value)
     isValid = false
   }
 
@@ -294,6 +331,7 @@ function validateForm(): boolean {
 // ==================== Form Handlers ====================
 
 async function handleSubmit(): Promise<void> {
+  if (isLoading.value || isInvalidLink.value || !settingsLoaded.value || !resetEnabled.value || retryAfter.value > 0) return
   errorMessage.value = ''
 
   if (!validateForm()) {
@@ -312,19 +350,10 @@ async function handleSubmit(): Promise<void> {
     isSuccess.value = true
     appStore.showSuccess(t('auth.passwordResetSuccess'))
   } catch (error: unknown) {
-    const err = error as { message?: string; response?: { data?: { detail?: string; code?: string } } }
-
-    // Check for invalid/expired token error
-    if (err.response?.data?.code === 'INVALID_RESET_TOKEN') {
-      errorMessage.value = t('auth.invalidOrExpiredToken')
-    } else if (err.response?.data?.detail) {
-      errorMessage.value = err.response.data.detail
-    } else if (err.message) {
-      errorMessage.value = err.message
-    } else {
-      errorMessage.value = t('auth.resetPasswordFailed')
-    }
-
+    startRetry(error)
+    errorMessage.value = extractApiErrorCode(error) === 'INVALID_RESET_TOKEN'
+      ? t('auth.invalidOrExpiredToken')
+      : userFacingError(error, locale?.value || 'en', t('auth.resetPasswordFailed'))
     appStore.showError(errorMessage.value)
   } finally {
     isLoading.value = false

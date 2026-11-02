@@ -28,6 +28,22 @@ func TestHeliosWorkbenchConfigValidation(t *testing.T) {
 		want   string
 	}{
 		{name: "valid production contract"},
+		{name: "valid main-site prefix", mutate: func(cfg *HeliosWorkbenchConfig) {
+			cfg.PublicURL = "https://patrickapi.microedulab.com/cancas"
+			cfg.RedirectURI = cfg.PublicURL + "/bootstrap"
+		}},
+		{name: "reject encoded separator", mutate: func(cfg *HeliosWorkbenchConfig) {
+			cfg.PublicURL = "https://patrickapi.microedulab.com/cancas%2fother"
+			cfg.RedirectURI = "https://patrickapi.microedulab.com/cancas/other/bootstrap"
+		}, want: "invalid path prefix"},
+		{name: "reject path traversal", mutate: func(cfg *HeliosWorkbenchConfig) {
+			cfg.PublicURL = "https://patrickapi.microedulab.com/cancas/../other"
+			cfg.RedirectURI = cfg.PublicURL + "/bootstrap"
+		}, want: "invalid path prefix"},
+		{name: "reject bootstrap outside prefix", mutate: func(cfg *HeliosWorkbenchConfig) {
+			cfg.PublicURL = "https://patrickapi.microedulab.com/cancas"
+			cfg.RedirectURI = "https://patrickapi.microedulab.com/bootstrap"
+		}, want: "bootstrap path under"},
 		{
 			name: "public URL must use HTTPS",
 			mutate: func(cfg *HeliosWorkbenchConfig) {
@@ -47,14 +63,14 @@ func TestHeliosWorkbenchConfigValidation(t *testing.T) {
 			mutate: func(cfg *HeliosWorkbenchConfig) {
 				cfg.RedirectURI = "https://other.example/bootstrap"
 			},
-			want: "redirect_uri must be /bootstrap on the public URL origin",
+			want: "redirect_uri must be the bootstrap path under the public URL",
 		},
 		{
 			name: "redirect URL must use bootstrap path",
 			mutate: func(cfg *HeliosWorkbenchConfig) {
 				cfg.RedirectURI = "https://canvas.sub.sunmmyapi.xyz/other"
 			},
-			want: "redirect_uri must be /bootstrap on the public URL origin",
+			want: "redirect_uri must be the bootstrap path under the public URL",
 		},
 		{
 			name: "API base must use HTTPS",

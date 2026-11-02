@@ -12,7 +12,7 @@ const copy = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
   <div class="portal-page redemption-page">
     <PortalPageHeader :title="copy('兑换记录', 'Redemption history')" />
     <nav class="redemption-tabs" :aria-label="copy('充值与兑换记录', 'Top up and redemption history')">
-      <RouterLink to="/purchase">{{ copy('充值', 'Top up') }}</RouterLink>
+      <RouterLink to="/purchase">{{ copy('充值与兑换', 'Top up & redeem') }}</RouterLink>
       <RouterLink to="/orders" class="active" aria-current="page">{{ copy('兑换记录', 'Redemption history') }}</RouterLink>
     </nav>
     <aside class="redemption-orders-note">
@@ -30,7 +30,7 @@ const copy = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 .redemption-tabs { display: flex; gap: 28px; border-bottom: 1px solid rgb(var(--line)); margin-bottom: 28px; }
 .redemption-tabs a { padding-bottom: 15px; color: rgb(var(--ink-3)); font:15px/1.5 var(--font-sans); text-decoration: none; }
 .redemption-tabs .active { color: rgb(var(--ink)); border-bottom: 2px solid rgb(var(--ink)); margin-bottom: -1px; }
-.redemption-orders-note { display: flex; align-items: center; justify-content: space-between; gap: 26px; padding: 24px; margin-bottom: 34px; border: 1px solid rgb(var(--line)); border-radius:20px; background:rgb(var(--brand-moss) / .05); }
+.redemption-orders-note { display: flex; align-items: center; justify-content: space-between; gap: 26px; padding: 24px; margin-bottom: 34px; border: 1px solid rgb(var(--line)); border-radius:12px; background:rgb(var(--brand-moss) / .05); }
 .redemption-orders-note h2 { margin: 0 0 10px; font:600 18px/1.4 var(--font-sans); }
 .redemption-orders-note p { max-width: 720px; margin: 0; color: rgb(var(--ink-3)); font-size: 13px; line-height: 1.8; }
 .redemption-orders-note > a { flex-shrink: 0; }

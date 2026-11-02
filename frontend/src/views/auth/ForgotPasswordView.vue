@@ -11,6 +11,16 @@
         </p>
       </div>
 
+      <p v-if="settingsLoading" role="status" class="text-sm text-gray-500">{{ copy('正在读取密码重置设置…', 'Loading password reset settings…') }}</p>
+      <div v-else-if="settingsError" role="alert" class="rounded-xl border border-red-200 p-4 text-sm">
+        <p>{{ settingsError }}</p>
+        <button type="button" class="btn btn-secondary mt-3" :disabled="retryAfter > 0" @click="loadSettings(true)">{{ retryAfter > 0 ? `${retryAfter}s` : copy('重试', 'Retry') }}</button>
+      </div>
+      <div v-else-if="settingsLoaded && !passwordResetEnabled" role="status" class="rounded-xl border border-gray-200 p-4 text-sm">
+        {{ copy('本站暂未开放密码重置，请联系帮助与客服。', 'Password reset is not available on this site. Please contact support.') }}
+      </div>
+      <p v-if="errorMessage" role="alert" class="text-sm text-red-600">{{ errorMessage }}</p>
+      <p v-if="retryAfter > 0 && !settingsError" role="status" class="text-sm text-gray-500">{{ copy(`请在 ${retryAfter} 秒后重试。`, `Try again in ${retryAfter} seconds.`) }}</p>
       <!-- Success State -->
       <div v-if="isSubmitted" class="space-y-6">
         <div class="rounded-xl border border-green-200 bg-green-50 p-6 dark:border-green-800/50 dark:bg-green-900/20">
@@ -41,7 +51,7 @@
       </div>
 
       <!-- Form State -->
-      <form v-else @submit.prevent="handleSubmit" class="space-y-5">
+      <form v-else-if="settingsLoaded && passwordResetEnabled" @submit.prevent="handleSubmit" class="space-y-5">
         <!-- Email Input -->
         <div>
           <label for="email" class="input-label">
@@ -88,7 +98,7 @@
         <!-- Submit Button -->
         <button
           type="submit"
-          :disabled="isLoading || (turnstileEnabled && !turnstileToken)"
+          :disabled="isLoading || retryAfter > 0 || (turnstileEnabled && !turnstileToken)"
           class="btn btn-primary w-full"
         >
           <svg
@@ -140,8 +150,16 @@ import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'
 import { useAppStore } from '@/stores'
 import { getPublicSettings, forgotPassword } from '@/api/auth'
+import { userFacingError } from '@/utils/userFacingError'
+import { useRetryCooldown } from '@/composables/useRetryCooldown'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const copy = (zh: string, en: string) => locale?.value?.startsWith('zh') ? zh : en
+const { remaining: retryAfter, start: startRetry } = useRetryCooldown()
+const settingsLoading = ref(false)
+const settingsLoaded = ref(false)
+const settingsError = ref('')
+const passwordResetEnabled = ref(false)
 
 // ==================== Stores ====================
 
@@ -204,9 +222,14 @@ watch(validationToastMessage, (value, previousValue) => {
 
 // ==================== Lifecycle ====================
 
-onMounted(async () => {
+async function loadSettings(force = false) {
+  if (settingsLoading.value || retryAfter.value > 0) return
+  settingsLoading.value = true
+  settingsError.value = ''
   try {
-    const settings = await getPublicSettings()
+    const settings = (!force && (appStore.cachedPublicSettings || window.__APP_CONFIG__)) || await getPublicSettings()
+    passwordResetEnabled.value = settings.password_reset_enabled === true && settings.backend_mode_enabled !== true
+    settingsLoaded.value = true
     turnstileEnabled.value = settings.turnstile_enabled
     turnstileSiteKey.value = settings.turnstile_site_key || ''
     tencentCaptchaEnabled.value = settings.tencent_captcha_enabled === true
@@ -217,9 +240,11 @@ onMounted(async () => {
     aliyunCaptchaPrefix.value = settings.aliyun_captcha_prefix || ''
     aliyunCaptchaRegion.value = settings.aliyun_captcha_region || 'cn'
   } catch (error) {
-    console.error('Failed to load public settings:', error)
-  }
-})
+    settingsError.value = userFacingError(error, locale?.value || 'en', copy('密码重置设置读取失败，请重试。', 'Could not load password reset settings. Please retry.'))
+    startRetry(error)
+  } finally { settingsLoading.value = false }
+}
+onMounted(() => { void loadSettings() })
 
 // ==================== Turnstile Handlers ====================
 
@@ -288,6 +313,7 @@ function validateForm(): boolean {
 // ==================== Form Handlers ====================
 
 async function handleSubmit(): Promise<void> {
+  if (isLoading.value || !settingsLoaded.value || !passwordResetEnabled.value || retryAfter.value > 0) return
   errorMessage.value = ''
 
   if (!validateForm()) {
@@ -312,17 +338,8 @@ async function handleSubmit(): Promise<void> {
     isSubmitted.value = true
     appStore.showSuccess(t('auth.resetEmailSent'))
   } catch (error: unknown) {
-    const err = error as { message?: string; response?: { data?: { detail?: string } } }
-
-    if (err.response?.data?.detail) {
-      errorMessage.value = err.response.data.detail
-    } else if (err.message) {
-      errorMessage.value = err.message
-    } else {
-      errorMessage.value = t('auth.sendResetLinkFailed')
-    }
-
-    appStore.showError(errorMessage.value)
+    startRetry(error)
+    errorMessage.value = userFacingError(error, locale?.value || 'en', t('auth.sendResetLinkFailed'))
   } finally {
     if (captchaEnabled.value) {
       resetCaptchaProof()

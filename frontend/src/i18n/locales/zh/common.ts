@@ -168,6 +168,7 @@ export default {
 
   // Navigation
   nav: {
+    home: '首页',
     dashboard: '仪表盘',
     announcements: '公告',
     apiKeys: 'API 密钥',
@@ -185,7 +186,7 @@ export default {
     users: '用户管理',
     groups: '分组管理',
     channels: '渠道管理',
-    availableChannels: '可用渠道',
+    availableChannels: '接入与可用性',
     modelPlaza: '模型广场',
     subscriptions: '订阅管理',
     accounts: '账号管理',
@@ -204,10 +205,10 @@ export default {
     github: 'GitHub',
     mySubscriptions: '我的订阅',
     buySubscription: '充值/订阅',
-    recharge: '充值',
+    recharge: '充值与兑换',
     subscribe: '订阅',
     docs: '文档',
-    myOrders: '我的订单',
+    myOrders: '兑换记录',
     orderManagement: '订单管理',
     paymentDashboard: '支付概览',
     paymentConfig: '支付配置',

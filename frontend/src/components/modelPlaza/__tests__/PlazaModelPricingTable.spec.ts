@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import PlazaModelPricingTable from '../PlazaModelPricingTable.vue'
 import type { PlazaModel } from '@/api/modelPlaza'
 
@@ -53,8 +54,13 @@ function mountTable(
   }
 ) {
   return mount(PlazaModelPricingTable, {
-    props: { models, rateMultiplier, userRateMultiplier: userRateMultiplier ?? null, ...extraProps }
+    props: { models, rateMultiplier, userRateMultiplier: userRateMultiplier ?? null, ...extraProps },
+    global: { plugins: [createPinia()] }
   })
+}
+
+function modelIdCell(row: any): string {
+  return row.find('span[title="API model ID"]').text()
 }
 
 describe('PlazaModelPricingTable', () => {
@@ -185,7 +191,7 @@ describe('PlazaModelPricingTable', () => {
     const noOfficial = tokenModel({ name: 'model-no-official', official_pricing: null })
 
     const wrapper = mountTable([cheap, noOfficial, expensive], 1)
-    const names = wrapper.findAll('tbody tr').map((tr) => tr.find('td').text())
+    const names = wrapper.findAll('tbody tr').map(modelIdCell)
     expect(names).toEqual(['model-expensive', 'model-cheap', 'model-no-official'])
   })
 
@@ -194,7 +200,7 @@ describe('PlazaModelPricingTable', () => {
     const newer = tokenModel({ name: 'gpt-5.6-sol' })
 
     const wrapper = mountTable([older, newer], 1)
-    const names = wrapper.findAll('tbody tr').map((tr) => tr.find('td').text())
+    const names = wrapper.findAll('tbody tr').map(modelIdCell)
     expect(names).toEqual(['gpt-5.6-sol', 'gpt-5.5'])
   })
 
@@ -243,7 +249,7 @@ describe('PlazaModelPricingTable', () => {
     })
 
     const wrapper = mountTable([pricier, image, cheaper], 1)
-    const names = wrapper.findAll('tbody tr').map((tr) => tr.find('td').text())
+    const names = wrapper.findAll('tbody tr').map(modelIdCell)
     expect(names[0]).toBe('gpt-5.6-terra')
     expect(names[1]).toBe('gpt-5.6-luna')
     // 首列含「按图片计费」徽章文本,只断言模型名
@@ -522,12 +528,13 @@ describe('PlazaModelPricingTable', () => {
         models: [anthropic, openai],
         platform: 'composite',
         rateMultiplier: 1
-      }
+      },
+      global: { plugins: [createPinia()] }
     })
 
     const rows = wrapper.findAll('tbody tr')
     expect(rows).toHaveLength(2)
-    expect(rows.map((row) => row.find('td').text())).toEqual([
+    expect(rows.map((row) => row.find('td').text().replace('Copy ID', ''))).toEqual([
       'shared-modelAnthropic',
       'shared-modelOpenAI'
     ])
@@ -686,7 +693,7 @@ describe('PlazaModelPricingTable 分时计价', () => {
 
     // 标准行:输入 3 × 0.8
     const baseCells = trs[0].findAll('td')
-    expect(baseCells[0].text()).toBe('deepseek-chat')
+    expect(modelIdCell(trs[0])).toBe('deepseek-chat')
     expect(baseCells[1].text()).toContain('$2.40')
     expect(baseCells[7].text()).toContain('0.8x')
 

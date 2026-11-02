@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/Wei-Shaw/sub2api/internal/pkg/passwordpolicy"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -97,6 +98,9 @@ func (u *User) CanBindGroup(groupID int64, isExclusive bool) bool {
 }
 
 func (u *User) SetPassword(password string) error {
+	if err := passwordpolicy.Validate(password); err != nil {
+		return err
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err

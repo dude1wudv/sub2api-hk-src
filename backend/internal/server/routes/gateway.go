@@ -65,6 +65,14 @@ func RegisterGatewayRoutes(
 		dispatchCodexModelsGateway(c, h.OpenAIGateway.CodexModels, h.Gateway.CodexModels)
 	}
 	modelsHandler := func(c *gin.Context) {
+		if c.Request.Method == http.MethodGet && c.Request.URL.Path == "/models" &&
+			c.GetHeader("Sec-Fetch-Mode") == "navigate" && c.GetHeader("Sec-Fetch-Dest") == "document" &&
+			strings.Contains(strings.ToLower(c.GetHeader("Accept")), "text/html") &&
+			c.GetHeader("Authorization") == "" && c.GetHeader("X-Api-Key") == "" && c.Query("key") == "" && c.Query("api_key") == "" {
+			c.Header("Cache-Control", "no-store")
+			c.Redirect(http.StatusFound, "/model-plaza")
+			return
+		}
 		if c.Query("client_version") != "" {
 			codexModelsHandler(c)
 			return

@@ -12,6 +12,7 @@ func firstNonEmpty(values ...string) string {
 }
 
 type SystemSettings struct {
+	CardShopDenominationsUSD            []float64
 	RegistrationEnabled                 bool
 	EmailVerifyEnabled                  bool
 	RegistrationEmailSuffixWhitelist    []string
@@ -328,6 +329,9 @@ type DefaultSubscriptionSetting struct {
 }
 
 type PublicSettings struct {
+	HeliosWorkbenchBootstrapURL         string
+	PasswordPolicy                      PasswordPolicy
+	CardShopDenominationsUSD            []float64
 	RegistrationEnabled                 bool
 	EmailVerifyEnabled                  bool
 	ForceEmailOnThirdPartySignup        bool

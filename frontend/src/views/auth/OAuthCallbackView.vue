@@ -47,12 +47,13 @@
             />
           </div>
           <div>
+            <p class="text-xs text-gray-500">{{ passwordHint }}</p>
             <label class="input-label">{{ t('auth.confirmPassword') }}</label>
             <input
               v-model="confirmPassword"
               type="password"
               class="input w-full"
-              :placeholder="t('auth.confirmPasswordPlaceholder')"
+              :placeholder="(isChinese ? '请再次输入密码' : 'Enter the password again')"
               :disabled="isSubmitting"
               autocomplete="new-password"
               @keyup.enter="handleSubmitRegistration"
@@ -152,6 +153,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { resolvePasswordPolicy, validateNewPassword, newPasswordError, passwordPolicyHint } from '@/utils/passwordPolicy'
 import { useRoute, useRouter } from 'vue-router'
 import { useClipboard } from '@/composables/useClipboard'
 import { useAppStore, useAuthStore } from '@/stores'
@@ -173,9 +175,12 @@ import {
 
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const isChinese = computed(() => (locale?.value || 'en').startsWith('zh'))
 const { copyToClipboard } = useClipboard()
 const appStore = useAppStore()
+const passwordPolicy = computed(() => resolvePasswordPolicy(appStore.cachedPublicSettings))
+const passwordHint = computed(() => passwordPolicyHint(locale?.value || 'en', passwordPolicy.value))
 const authStore = useAuthStore()
 const isProcessing = ref(false)
 const isSubmitting = ref(false)
@@ -220,7 +225,7 @@ const registrationHint = computed(() =>
 )
 const canSubmitRegistration = computed(() => {
   if (!registrationEmail.value.trim()) return false
-  if (password.value.length < 6) return false
+  if (validateNewPassword(password.value, passwordPolicy.value) !== null) return false
   if (password.value !== confirmPassword.value) return false
   if (invitationRequired.value && !invitationCode.value.trim()) return false
   return true
@@ -328,8 +333,8 @@ async function handleSubmitRegistration() {
     registrationError.value = t('auth.emailRequired')
     return
   }
-  if (password.value.length < 6) {
-    registrationError.value = t('auth.passwordMinLength')
+  if (validateNewPassword(password.value, passwordPolicy.value) !== null) {
+    registrationError.value = newPasswordError(password.value, locale?.value || 'en', passwordPolicy.value)
     return
   }
   if (password.value !== confirmPassword.value) {

@@ -1,8 +1,7 @@
+import { useAppStore } from '@/stores/app'
 import { launchHelios } from '@/api/helios'
 import type { HeliosLaunchResponse } from '@/api/helios'
 
-export const HELIOS_WORKBENCH_ORIGIN = 'https://canvas.sub.sunmmyapi.xyz'
-export const HELIOS_WORKBENCH_BOOTSTRAP_PATH = '/bootstrap'
 
 export type HeliosLaunchFailure = 'popup-blocked' | 'launch-failed'
 export type HeliosLaunchMode = 'popup' | 'current'
@@ -10,6 +9,8 @@ export type HeliosLaunchMode = 'popup' | 'current'
 export interface HeliosLaunchOptions {
   /** Open an isolated tab, or replace the current tab. */
   mode?: HeliosLaunchMode
+  /** Trusted public configuration, injectable for isolated tests. */
+  bootstrapUrl?: string
   /** Injectable for focused tests; production uses the API wrapper above. */
   request?: () => Promise<HeliosLaunchResponse>
   /** Injectable browser window; production uses the current window. */
@@ -22,14 +23,19 @@ export interface HeliosLaunchOptions {
  * Validate the only cross-origin destination the frontend is allowed to open.
  * Credentials are rejected even though URL.origin intentionally excludes them.
  */
-export function parseHeliosLaunchUrl(value: unknown): URL | null {
+export function parseHeliosLaunchUrl(value: unknown, bootstrapUrl?: string): URL | null {
   if (typeof value !== 'string') return null
 
   try {
+    if (!bootstrapUrl) return null
+    const trusted = new URL(bootstrapUrl)
+    if (trusted.protocol !== 'https:' || trusted.username || trusted.password || trusted.search || trusted.hash) return null
     const url = new URL(value)
     if (
-      url.origin !== HELIOS_WORKBENCH_ORIGIN ||
-      url.pathname !== HELIOS_WORKBENCH_BOOTSTRAP_PATH ||
+      url.protocol !== 'https:' ||
+      url.origin !== trusted.origin ||
+      url.pathname !== trusted.pathname ||
+      url.search !== '' ||
       url.username !== '' ||
       url.password !== ''
     ) {
@@ -83,8 +89,15 @@ export async function launchHeliosWorkbench(options: HeliosLaunchOptions = {}): 
   }
 
   try {
+    let bootstrapUrl = options.bootstrapUrl
+    if (!bootstrapUrl) {
+      const app = useAppStore()
+      if (!app.cachedPublicSettings?.helios_workbench_bootstrap_url) await app.fetchPublicSettings()
+      bootstrapUrl = app.cachedPublicSettings?.helios_workbench_bootstrap_url
+    }
+    if (!bootstrapUrl) throw new Error('Workbench configuration unavailable')
     const response = await request()
-    const launchUrl = parseHeliosLaunchUrl(response?.launch_url)
+    const launchUrl = parseHeliosLaunchUrl(response?.launch_url, bootstrapUrl)
     if (!launchUrl) throw new Error('Invalid Helios launch URL')
 
     const target = child ?? browserWindow

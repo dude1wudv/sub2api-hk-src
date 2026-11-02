@@ -251,6 +251,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		SiteSubtitle:                                           settings.SiteSubtitle,
 		APIBaseURL:                                             settings.APIBaseURL,
 		ContactInfo:                                            settings.ContactInfo,
+		CardShopDenominationsUSD:                               settings.CardShopDenominationsUSD,
 		DocURL:                                                 settings.DocURL,
 		HomeContent:                                            settings.HomeContent,
 		CompactHomeEnabled:                                     settings.CompactHomeEnabled,

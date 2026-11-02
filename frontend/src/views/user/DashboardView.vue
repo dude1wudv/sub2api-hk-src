@@ -7,6 +7,8 @@
     <div v-if="error" role="alert" class="portal-error workspace-error"><p>{{ error }}</p><button class="portal-button secondary" :disabled="loading" @click="refreshAll">{{ zh ? '重试' : 'Retry' }}</button></div>
     <div v-if="loading && !stats" class="portal-panel flex items-center justify-center py-12" role="status"><LoadingSpinner /></div>
     <template v-if="stats">
+      <UserOnboardingChecklist v-if="stats.total_requests === 0" :key-count="stats.total_api_keys" />
+      <template v-else>
       <UserDashboardStats :stats="stats" :balance="user?.balance || 0" :is-simple="authStore.isSimpleMode" :platform-quotas="platformQuotas" />
       <section class="workspace-activity">
         <header class="workspace-section-title"><div><h2>{{ zh ? '用量统计' : 'Usage statistics' }}</h2></div><RouterLink to="/usage" class="portal-inline-button">{{ zh ? '用量明细' : 'Usage details' }} <Icon name="arrowRight" size="sm" /></RouterLink></header>
@@ -17,6 +19,7 @@
         <div class="min-w-0"><p v-if="recentError" class="portal-error" role="alert">{{ recentError }} <button @click="loadRecent">{{ zh ? '重试' : 'Retry' }}</button></p><UserDashboardRecentUsage :data="recentUsage" :loading="loadingUsage" /></div>
         <UserDashboardQuickActions />
       </div>
+      </template>
     </template>
   </div>
 </template>
@@ -31,6 +34,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usageAPI, type UserDashboardStats as UserStatsType } from '@/api/usage'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
+import UserOnboardingChecklist from '@/components/user/dashboard/UserOnboardingChecklist.vue'
 import UserDashboardStats from '@/components/user/dashboard/UserDashboardStats.vue'
 import UserDashboardCharts from '@/components/user/dashboard/UserDashboardCharts.vue'
 import UserDashboardRecentUsage from '@/components/user/dashboard/UserDashboardRecentUsage.vue'

@@ -6,6 +6,7 @@ import { PATRICK_CARD_ORDER_URL, PATRICK_CARD_SHOP_URL } from '@/utils/portalPur
 
 const authState = vi.hoisted(() => ({ user: { balance: 12.5 } }))
 
+vi.mock('@/stores/app', () => ({ useAppStore: () => ({ cachedPublicSettings: { card_shop_denominations_usd: [1, 10, 50] } }) }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => authState }))
 vi.mock('@/components/portal/PortalRedeemForm.vue', () => ({
   default: {
@@ -34,7 +35,7 @@ describe('portal purchase and order links', () => {
     const orders = wrapper.findAll('a').find(link => link.text().includes('Find your card-shop order'))!
     expect(shop.attributes()).toMatchObject({ href: PATRICK_CARD_SHOP_URL, target: '_blank', rel: 'noopener noreferrer' })
     expect(orders.attributes()).toMatchObject({ href: PATRICK_CARD_ORDER_URL, target: '_blank', rel: 'noopener noreferrer' })
-    expect(wrapper.get('.purchase-balance strong').text()).toContain('$12.50')
+    expect(wrapper.get('.purchase-balance strong').text()).toContain('USD 12.50')
     expect(wrapper.get('.mock-history').attributes('data-compact')).toBe('')
 
     await wrapper.get('.mock-redeem-success').trigger('click')

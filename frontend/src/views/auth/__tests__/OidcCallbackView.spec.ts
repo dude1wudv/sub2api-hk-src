@@ -471,7 +471,7 @@ describe('OidcCallbackView', () => {
     expect(checkboxes).toHaveLength(2)
     await checkboxes[1].setValue(false)
     await wrapper.get('[data-testid="oidc-create-account-email"]').setValue('  new@example.com  ')
-    await wrapper.get('[data-testid="oidc-create-account-password"]').setValue('secret-123')
+    await wrapper.get('[data-testid="oidc-create-account-password"]').setValue('secret-12345')
     await wrapper.get('[data-testid="oidc-create-account-verify-code"]').setValue('246810')
     await wrapper.get('[data-testid="oidc-create-account-invitation-code"]').setValue(' INVITE123 ')
     await wrapper.get('[data-testid="oidc-create-account-submit"]').trigger('click')
@@ -479,7 +479,7 @@ describe('OidcCallbackView', () => {
 
     expect(apiClientPost).toHaveBeenCalledWith('/auth/oauth/pending/create-account', {
       email: 'new@example.com',
-      password: 'secret-123',
+      password: 'secret-12345',
       verify_code: '246810',
       invitation_code: 'INVITE123',
       adopt_display_name: true,
@@ -516,7 +516,7 @@ describe('OidcCallbackView', () => {
 
     await flushPromises()
     await wrapper.get('[data-testid="oidc-create-account-email"]').setValue('existing@example.com')
-    await wrapper.get('[data-testid="oidc-create-account-password"]').setValue('secret-123')
+    await wrapper.get('[data-testid="oidc-create-account-password"]').setValue('secret-12345')
     await wrapper.get('[data-testid="oidc-create-account-submit"]').trigger('click')
     await flushPromises()
 
@@ -545,7 +545,7 @@ describe('OidcCallbackView', () => {
 
     await flushPromises()
     await wrapper.get('[data-testid="oidc-create-account-email"]').setValue('new@example.com')
-    await wrapper.get('[data-testid="oidc-create-account-password"]').setValue('secret-123')
+    await wrapper.get('[data-testid="oidc-create-account-password"]').setValue('secret-12345')
     await wrapper.get('[data-testid="oidc-create-account-submit"]').trigger('click')
     await flushPromises()
 
@@ -621,13 +621,13 @@ describe('OidcCallbackView', () => {
     expect(checkboxes).toHaveLength(2)
     await checkboxes[0].setValue(false)
     await wrapper.get('[data-testid="oidc-bind-login-email"]').setValue('existing@example.com')
-    await wrapper.get('[data-testid="oidc-bind-login-password"]').setValue('secret-password')
+    await wrapper.get('[data-testid="oidc-bind-login-password"]').setValue('secret-password-12')
     await wrapper.get('[data-testid="oidc-bind-login-submit"]').trigger('click')
     await flushPromises()
 
     expect(apiClientPost).toHaveBeenCalledWith('/auth/oauth/pending/bind-login', {
       email: 'existing@example.com',
-      password: 'secret-password',
+      password: 'secret-password-12',
       adopt_display_name: false,
       adopt_avatar: true
     })
@@ -669,7 +669,7 @@ describe('OidcCallbackView', () => {
 
     await flushPromises()
 
-    await wrapper.get('[data-testid="oidc-bind-login-password"]').setValue('secret-password')
+    await wrapper.get('[data-testid="oidc-bind-login-password"]').setValue('secret-password-12')
     await wrapper.get('[data-testid="oidc-bind-login-submit"]').trigger('click')
     await flushPromises()
 

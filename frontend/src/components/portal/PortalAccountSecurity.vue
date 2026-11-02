@@ -5,7 +5,7 @@
       <small>{{ loadingStatus ? copy('正在读取安全设置…', 'Loading security settings…') : status?.enabled ? copy('已启用验证器保护', 'Authenticator protection is enabled') : copy('使用验证器为登录增加一道保护', 'Add an authenticator to protect sign-in') }}</small>
       <small v-if="statusError" role="alert">{{ statusError }}</small>
     </div>
-    <button v-if="statusError" type="button" class="portal-account-action" @click="loadStatus">{{ copy('重试', 'Retry') }}</button>
+    <button v-if="statusError" type="button" class="portal-account-action" :disabled="statusRetryAfter > 0 || loadingStatus" @click="loadStatus">{{ statusRetryAfter > 0 ? `${statusRetryAfter}s` : copy('重试', 'Retry') }}</button>
     <button v-else type="button" class="portal-account-action" :disabled="loadingStatus" @click="openTotp">
       {{ status?.enabled ? copy('关闭', 'Disable') : copy('开启', 'Enable') }}
     </button>
@@ -21,6 +21,7 @@
 
   <PortalAccountDialog v-if="view" :title="dialogTitle" :busy="busy" :close-label="copy('关闭', 'Close')" @close="close">
     <p v-if="error" class="portal-account-error" role="alert">{{ error }}</p>
+    <p v-if="actionRetryAfter > 0" class="portal-account-note" role="status">{{ copy(`请在 ${actionRetryAfter} 秒后重试。`, `Try again in ${actionRetryAfter} seconds.`) }}</p>
 
     <form v-if="view === 'totp'" class="portal-account-form" @submit.prevent="submitTotp">
       <p v-if="methodLoading" class="portal-account-note" role="status">{{ copy('正在获取验证方式…', 'Loading verification method…') }}</p>
@@ -45,21 +46,22 @@
             {{ copy('邮箱验证码', 'Email verification code') }}
             <span class="portal-account-inline">
               <input v-model="emailCode" class="portal-account-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required />
-              <button type="button" class="portal-account-action" :disabled="busy || cooldown > 0" @click="sendTotpCode">{{ cooldown > 0 ? `${cooldown}s` : copy('发送验证码', 'Send code') }}</button>
+              <button type="button" class="portal-account-action" :disabled="busy || cooldown > 0 || actionRetryAfter > 0" @click="sendTotpCode">{{ cooldown > 0 ? `${cooldown}s` : copy('发送验证码', 'Send code') }}</button>
             </span>
           </label>
         </template>
         <div class="portal-account-form__actions">
           <button type="button" class="portal-account-action" :disabled="busy" @click="close">{{ copy('取消', 'Cancel') }}</button>
-          <button type="submit" class="portal-account-action portal-account-action--primary" :disabled="busy || !canSubmitTotp">{{ busy ? copy('处理中…', 'Processing…') : status?.enabled ? copy('确认关闭', 'Disable protection') : setup ? copy('确认开启', 'Enable protection') : copy('下一步', 'Continue') }}</button>
+          <button type="submit" class="portal-account-action portal-account-action--primary" :disabled="busy || !canSubmitTotp || actionRetryAfter > 0">{{ busy ? copy('处理中…', 'Processing…') : status?.enabled ? copy('确认关闭', 'Disable protection') : setup ? copy('确认开启', 'Enable protection') : copy('下一步', 'Continue') }}</button>
         </div>
       </template>
-      <button v-else type="button" class="portal-account-action" @click="loadVerificationMethod">{{ copy('重新获取验证方式', 'Retry verification method') }}</button>
+      <button v-else type="button" class="portal-account-action" :disabled="methodLoading || actionRetryAfter > 0" @click="loadVerificationMethod">{{ copy('重新获取验证方式', 'Retry verification method') }}</button>
     </form>
 
     <template v-else-if="view === 'passkeys'">
       <p v-if="!supported" class="portal-account-note">{{ copy('此浏览器不支持创建 Passkey。你仍可管理已有密钥。', 'This browser cannot create passkeys. Existing keys can still be managed.') }}</p>
       <p v-if="loadingKeys" class="portal-account-note" role="status">{{ copy('正在读取…', 'Loading…') }}</p>
+      <p v-else-if="keysError" class="portal-account-error" role="alert">{{ keysError }}</p>
       <p v-else-if="credentials.length === 0" class="portal-account-note">{{ copy('尚未添加通行密钥。', 'No passkeys have been added.') }}</p>
       <ul v-else class="portal-account-list">
         <li v-for="credential in credentials" :key="credential.id">
@@ -75,7 +77,7 @@
         </li>
       </ul>
       <div class="portal-account-form__actions" style="margin-top: 24px">
-        <button type="button" class="portal-account-action" @click="loadKeys">{{ copy('刷新', 'Refresh') }}</button>
+        <button type="button" class="portal-account-action" :disabled="loadingKeys || actionRetryAfter > 0" @click="loadKeys">{{ copy('刷新', 'Refresh') }}</button>
         <button v-if="supported" type="button" class="portal-account-action portal-account-action--primary" @click="view = 'add'; error = ''; name = ''; password = ''">{{ copy('添加 Passkey', 'Add passkey') }}</button>
       </div>
     </template>
@@ -92,7 +94,7 @@
       </label>
       <div class="portal-account-form__actions">
         <button type="button" class="portal-account-action" :disabled="busy" @click="backToKeys">{{ copy('返回', 'Back') }}</button>
-        <button type="submit" class="portal-account-action portal-account-action--primary" :disabled="busy || (view === 'rename' ? !name.trim() : !password)">{{ busy ? copy('处理中…', 'Processing…') : view === 'remove' ? copy('确认移除', 'Remove passkey') : view === 'rename' ? copy('保存', 'Save') : copy('继续', 'Continue') }}</button>
+        <button type="submit" class="portal-account-action portal-account-action--primary" :disabled="busy || actionRetryAfter > 0 || (view === 'rename' ? !name.trim() : !password)">{{ busy ? copy('处理中…', 'Processing…') : view === 'remove' ? copy('确认移除', 'Remove passkey') : view === 'rename' ? copy('保存', 'Save') : copy('继续', 'Continue') }}</button>
       </div>
     </form>
   </PortalAccountDialog>
@@ -104,17 +106,19 @@ import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { passkeyAPI, totpAPI, type PasskeyCredentialSummary } from '@/api'
 import type { TotpSetupResponse, TotpStatus } from '@/types'
-import { extractApiErrorMessage } from '@/utils/apiError'
+import { userFacingError } from '@/utils/userFacingError'
+import { useRetryCooldown } from '@/composables/useRetryCooldown'
 import PortalAccountDialog from './PortalAccountDialog.vue'
 
 const props = defineProps<{ passkeyEnabled: boolean }>()
 const { locale } = useI18n()
 const copy = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const status = ref<TotpStatus | null>(null)
-const loadingStatus = ref(true)
+const loadingStatus = ref(false)
 const statusError = ref('')
 const credentials = ref<PasskeyCredentialSummary[]>([])
 const loadingKeys = ref(false)
+const keysError = ref('')
 const supported = passkeyAPI.isSupported()
 const view = ref<'totp' | 'passkeys' | 'add' | 'rename' | 'remove' | null>(null)
 const busy = ref(false)
@@ -141,7 +145,10 @@ const dialogTitle = computed(() => {
 })
 const canSubmitTotp = computed(() => setup.value ? /^\d{6}$/.test(totpCode.value) : verificationMethod.value === 'email' ? /^\d{6}$/.test(emailCode.value) : verificationMethod.value === 'password' && password.value.length > 0)
 const date = (value: string) => new Date(value).toLocaleDateString(locale.value)
-const errorMessage = (cause: unknown) => extractApiErrorMessage(cause, copy('操作失败，请重试。', 'The operation failed. Please try again.'))
+const { remaining: statusRetryAfter, start: startStatusRetry } = useRetryCooldown()
+const { remaining: actionRetryAfter, start: startActionRetry } = useRetryCooldown()
+const errorMessage = (cause: unknown) => userFacingError(cause, locale.value, copy('操作失败，请重试。', 'The operation failed. Please try again.'))
+const actionError = (cause: unknown) => { startActionRetry(cause); return errorMessage(cause) }
 
 function clearSensitiveData() {
   password.value = ''
@@ -157,10 +164,11 @@ function close() {
   clearSensitiveData()
 }
 async function loadStatus() {
+  if (loadingStatus.value || statusRetryAfter.value > 0) return
   loadingStatus.value = true
   statusError.value = ''
   try { status.value = await totpAPI.getStatus() }
-  catch (cause) { statusError.value = errorMessage(cause) }
+  catch (cause) { startStatusRetry(cause); if (!disposed) statusError.value = errorMessage(cause) }
   finally { loadingStatus.value = false }
 }
 async function openTotp() {
@@ -170,16 +178,17 @@ async function openTotp() {
   await loadVerificationMethod()
 }
 async function loadVerificationMethod() {
+  if (methodLoading.value || actionRetryAfter.value > 0) return
   methodLoading.value = true
   busy.value = true
   verificationMethod.value = null
   error.value = ''
   try { verificationMethod.value = (await totpAPI.getVerificationMethod()).method }
-  catch (cause) { error.value = errorMessage(cause) }
+  catch (cause) { error.value = actionError(cause) }
   finally { methodLoading.value = false; busy.value = false }
 }
 async function sendTotpCode() {
-  if (busy.value || cooldown.value > 0) return
+  if (busy.value || cooldown.value > 0 || actionRetryAfter.value > 0) return
   busy.value = true
   error.value = ''
   try {
@@ -191,11 +200,11 @@ async function sendTotpCode() {
       cooldown.value = Math.max(0, cooldown.value - 1)
       if (cooldown.value === 0) { clearInterval(timer); timer = undefined }
     }, 1000)
-  } catch (cause) { error.value = errorMessage(cause) }
+  } catch (cause) { error.value = actionError(cause) }
   finally { busy.value = false }
 }
 async function submitTotp() {
-  if (!canSubmitTotp.value || busy.value) return
+  if (!canSubmitTotp.value || busy.value || actionRetryAfter.value > 0) return
   busy.value = true
   error.value = ''
   try {
@@ -220,14 +229,15 @@ async function submitTotp() {
     clearSensitiveData()
     view.value = null
     await loadStatus()
-  } catch (cause) { error.value = errorMessage(cause) }
+  } catch (cause) { error.value = actionError(cause) }
   finally { busy.value = false }
 }
 async function loadKeys() {
-  if (!props.passkeyEnabled) return
+  if (!props.passkeyEnabled || loadingKeys.value || actionRetryAfter.value > 0) return
   loadingKeys.value = true
+  keysError.value = ''
   try { credentials.value = await passkeyAPI.list() }
-  catch (cause) { error.value = errorMessage(cause) }
+  catch (cause) { keysError.value = actionError(cause) }
   finally { loadingKeys.value = false }
 }
 function openPasskeys() {
@@ -248,7 +258,7 @@ function backToKeys() {
   view.value = 'passkeys'
 }
 async function submitPasskey() {
-  if (busy.value) return
+  if (busy.value || actionRetryAfter.value > 0) return
   if (view.value === 'rename' ? !name.value.trim() : !password.value) return
   busy.value = true
   error.value = ''
@@ -259,7 +269,7 @@ async function submitPasskey() {
     backToKeys()
     await loadKeys()
   } catch (cause) {
-    if (!(cause instanceof DOMException && cause.name === 'NotAllowedError')) error.value = errorMessage(cause)
+    if (!(cause instanceof DOMException && cause.name === 'NotAllowedError')) error.value = actionError(cause)
   } finally { busy.value = false }
 }
 

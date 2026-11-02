@@ -448,33 +448,40 @@ func (s *ConcurrencyService) TrackAPIKeySlot(ctx context.Context, apiKeyID int64
 	}
 }
 
-// GetAPIKeyConcurrencyBatch gets real-time active request counts for API keys.
-// Stats are best-effort: missing Redis support or Redis errors return zeroes.
+const (
+	APIKeyConcurrencyAvailable   = "available"
+	APIKeyConcurrencyUnavailable = "unavailable"
+	APIKeyConcurrencyUnsupported = "unsupported"
+)
+
+// GetAPIKeyConcurrencyBatch preserves the legacy best-effort API for schedulers.
 func (s *ConcurrencyService) GetAPIKeyConcurrencyBatch(ctx context.Context, apiKeyIDs []int64) (map[int64]int, error) {
+	counts, _, _ := s.GetAPIKeyConcurrencySnapshot(ctx, apiKeyIDs)
+	return counts, nil
+}
+
+// GetAPIKeyConcurrencySnapshot never represents a failed Redis read as a measured zero.
+func (s *ConcurrencyService) GetAPIKeyConcurrencySnapshot(ctx context.Context, apiKeyIDs []int64) (map[int64]int, string, *time.Time) {
 	result := zeroAPIKeyConcurrencyMap(apiKeyIDs)
-	if len(apiKeyIDs) == 0 {
-		return result, nil
-	}
 	if s == nil || s.cache == nil {
-		return result, nil
+		return result, APIKeyConcurrencyUnsupported, nil
 	}
 	cache, ok := s.cache.(APIKeyConcurrencyCache)
 	if !ok {
-		return result, nil
+		return result, APIKeyConcurrencyUnsupported, nil
 	}
-
-	redisCtx, cancel := context.WithTimeout(context.Background(), apiKeyConcurrencyFetchTimeout)
+	redisCtx, cancel := context.WithTimeout(ctx, apiKeyConcurrencyFetchTimeout)
 	defer cancel()
-
 	counts, err := cache.GetAPIKeyConcurrencyBatch(redisCtx, apiKeyIDs)
 	if err != nil {
 		logger.LegacyPrintf("service.concurrency", "Warning: get api key concurrency batch failed: %v", err)
-		return result, nil
+		return result, APIKeyConcurrencyUnavailable, nil
 	}
-	for _, apiKeyID := range apiKeyIDs {
-		result[apiKeyID] = counts[apiKeyID]
+	for _, id := range apiKeyIDs {
+		result[id] = counts[id]
 	}
-	return result, nil
+	now := time.Now().UTC()
+	return result, APIKeyConcurrencyAvailable, &now
 }
 
 func zeroAPIKeyConcurrencyMap(apiKeyIDs []int64) map[int64]int {

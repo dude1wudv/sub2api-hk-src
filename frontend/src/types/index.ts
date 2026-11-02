@@ -209,6 +209,9 @@ export interface LoginAgreementDocument {
 }
 
 export interface PublicSettings {
+  helios_workbench_bootstrap_url?: string
+  password_policy?: { min_length: number; max_bytes: number }
+  card_shop_denominations_usd?: number[]
   registration_enabled: boolean
   email_verify_enabled: boolean
   force_email_on_third_party_signup: boolean
@@ -748,6 +751,8 @@ export interface CompositeRouteDecision {
 }
 
 export interface ApiKey {
+  current_concurrency_status?: 'available' | 'unavailable' | 'unsupported'
+  current_concurrency_updated_at?: string
   routing_group_ids?: number[]
   id: number
   user_id: number

@@ -13,6 +13,7 @@ const auth = useAuthStore()
 const subscriptions = useSubscriptionStore()
 const copy = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const code = ref('')
+const codeVisible = ref(false)
 const submitting = ref(false)
 const refreshing = ref(false)
 const error = ref('')
@@ -69,6 +70,7 @@ async function submit() {
     // Keep only the fields needed for the acknowledgement; the API may include the raw code.
     completed.value = { type: result.type, value: result.value }
     code.value = ''
+    codeVisible.value = false
     if (!disposed) emit('redeemed')
     await refreshAccount()
   } catch (cause) {
@@ -91,8 +93,9 @@ onBeforeUnmount(() => { disposed = true; code.value = '' })
     <form class="redeem-form" @submit.prevent="submit">
       <label class="portal-field" for="portal-redeem-code">
         {{ copy('兑换码', 'Redemption code') }}
-        <input id="portal-redeem-code" v-model="code" type="password" autocomplete="off" autocapitalize="off" :spellcheck="false" :disabled="submitting || refreshing" :placeholder="copy('请输入或粘贴兑换码', 'Enter or paste your code')" :aria-invalid="Boolean(error)" :aria-describedby="error ? 'portal-redeem-error' : undefined" />
+        <input id="portal-redeem-code" v-model="code" :type="codeVisible ? 'text' : 'password'" autocomplete="off" autocapitalize="off" :spellcheck="false" :disabled="submitting || refreshing" :placeholder="copy('请输入或粘贴兑换码', 'Enter or paste your code')" :aria-invalid="Boolean(error)" :aria-describedby="error ? 'portal-redeem-error' : undefined" />
       </label>
+      <button type="button" class="portal-inline-button" :aria-pressed="codeVisible" aria-controls="portal-redeem-code" @click="codeVisible = !codeVisible">{{ codeVisible ? copy('隐藏兑换码', 'Hide code') : copy('显示兑换码', 'Show code') }}</button>
       <p v-if="error" id="portal-redeem-error" class="portal-error" role="alert">{{ error }}</p>
       <button type="submit" class="portal-button" :disabled="submitting || refreshing || !code.trim()">
         {{ submitting ? copy('正在兑换…', 'Redeeming…') : copy('确认兑换', 'Redeem code') }}

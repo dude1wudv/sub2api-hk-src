@@ -616,3 +616,28 @@ func TestIncrementAccountWaitCount_NilCache(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, allowed)
 }
+
+func TestAPIKeyConcurrencySnapshotAvailability(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		service *ConcurrencyService
+		status  string
+		count   int
+	}{
+		{name: "unsupported", service: &ConcurrencyService{}, status: APIKeyConcurrencyUnsupported},
+		{name: "redis failed", service: NewConcurrencyService(&stubConcurrencyCacheForTest{apiKeyConcurrencyErr: errors.New("unavailable")}), status: APIKeyConcurrencyUnavailable},
+		{name: "measured zero", service: NewConcurrencyService(&stubConcurrencyCacheForTest{apiKeyConcurrency: map[int64]int{1: 0}}), status: APIKeyConcurrencyAvailable},
+		{name: "measured count", service: NewConcurrencyService(&stubConcurrencyCacheForTest{apiKeyConcurrency: map[int64]int{1: 2}}), status: APIKeyConcurrencyAvailable, count: 2},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			counts, status, updated := tt.service.GetAPIKeyConcurrencySnapshot(context.Background(), []int64{1})
+			require.Equal(t, tt.status, status)
+			require.Equal(t, tt.count, counts[1])
+			if status == APIKeyConcurrencyAvailable {
+				require.NotNil(t, updated)
+			} else {
+				require.Nil(t, updated)
+			}
+		})
+	}
+}

@@ -122,6 +122,7 @@
         </RouterLink>
       </nav>
 
+      <details v-if="appStore.contactInfo" class="user-support"><summary>{{ zh ? '帮助与客服' : 'Help & support' }}</summary><a v-if="supportEmail" :href="`mailto:${supportEmail}`">{{ supportEmail }}</a><p v-else>{{ appStore.contactInfo.replace(/群管理员/g, zh ? '客服' : 'Support') }}</p></details>
       <div class="user-sidebar-bottom">
         <RouterLink
           v-if="authStore.isAdmin"
@@ -231,7 +232,7 @@
               </div>
               <RouterLink to="/profile" class="user-account-action" @click="accountOpen = false"><Icon name="user" size="md" aria-hidden="true" />{{ zh ? '个人资料' : 'Profile' }}</RouterLink>
               <button v-if="!authStore.isAdmin && !authStore.isSimpleMode" type="button" class="user-account-action" @click="replayUserGuide"><Icon name="questionCircle" size="md" aria-hidden="true" />{{ zh ? 'API 接入引导' : 'API quick start' }}</button>
-              <p v-if="appStore.contactInfo" class="user-contact-info">{{ appStore.contactInfo }}</p>
+              <p v-if="appStore.contactInfo" class="user-contact-info">{{ appStore.contactInfo.replace(/群管理员/g, zh ? '客服' : 'Support') }}</p>
               <button type="button" class="user-account-action user-signout" :disabled="loggingOut" @click="logout"><Icon name="arrowRight" size="md" aria-hidden="true" />{{ zh ? '退出登录' : 'Sign out' }}</button>
             </div>
           </div>
@@ -325,6 +326,7 @@ const localeMenuRef = ref<HTMLElement | null>(null)
 const user = computed(() => authStore.user)
 const displayName = computed(() => user.value?.username || user.value?.email?.split('@')[0] || (zh.value ? '我的账户' : 'My account'))
 const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
+const supportEmail = computed(() => appStore.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '')
 const availableBalance = computed(() => Number(user.value?.balance || 0))
 const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
 const currentLocaleCode = computed(() => zh.value ? 'zh' : 'en')
@@ -340,7 +342,7 @@ const pageTitle = computed(() => {
 })
 
 function formatMoney(value: number) {
-  return '$' + (Number.isFinite(value) ? value : 0).toFixed(2)
+  return 'USD ' + (Number.isFinite(value) ? value : 0).toFixed(2)
 }
 
 function isActive(item: UserNavigationItem) {

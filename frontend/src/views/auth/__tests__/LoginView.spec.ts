@@ -107,6 +107,28 @@ describe('LoginView registration entry', () => {
     getPublicSettingsMock.mockResolvedValue(publicSettings)
   })
 
+  it('allows an existing short password to reach credential verification unchanged', async () => {
+    const wrapper = mountLogin()
+    await flushPromises()
+    await wrapper.get('#email').setValue('existing@example.com')
+    await wrapper.get('#password').setValue('old')
+    await wrapper.get('form').trigger('submit')
+    expect(loginMock).toHaveBeenCalledWith(expect.objectContaining({ password: 'old' }))
+    wrapper.unmount()
+  })
+
+  it('shows the forgot password entry only when effectively enabled', async () => {
+    getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, password_reset_enabled: true })
+    const enabled = mountLogin()
+    await flushPromises()
+    expect(enabled.text()).toContain('auth.forgotPassword')
+    enabled.unmount()
+    const disabled = mountLogin()
+    await flushPromises()
+    expect(disabled.text()).not.toContain('auth.forgotPassword')
+    disabled.unmount()
+  })
+
   it('shows the registration entry when registration is enabled', async () => {
     const wrapper = mountLogin()
     await flushPromises()

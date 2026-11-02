@@ -8,7 +8,8 @@
         ></div>
       </div>
 
-      <template v-else-if="detail">
+      <div v-if="loadError" class="portal-error" role="alert">{{ loadError }} <button type="button" :disabled="loading || retryAfter > 0" @click="loadAffiliateDetail()">{{ retryAfter > 0 ? `${retryAfter}s` : copy('重试', 'Retry') }}</button></div>
+      <template v-if="detail">
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div class="card p-5">
             <p class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-dark-400">
@@ -92,14 +93,21 @@
             </div>
             <button
               class="btn btn-primary"
-              :disabled="transferring || detail.aff_quota <= 0"
-              @click="transferQuota"
+              :disabled="transferring || refreshRequired || retryAfter > 0 || detail.aff_quota <= 0"
+              @click="openTransferConfirmation"
             >
               <Icon v-if="transferring" name="refresh" size="sm" class="animate-spin" />
               <Icon v-else name="dollar" size="sm" />
               <span>{{ transferring ? t('affiliate.transfer.transferring') : t('affiliate.transfer.button') }}</span>
             </button>
           </div>
+          <p v-if="transferNotice" class="portal-muted mt-3" role="status">{{ transferNotice }}</p>
+          <p v-if="transferError" class="portal-error mt-3" role="alert">{{ transferError }}</p>
+          <div v-if="refreshRequired" class="portal-error mt-3" role="alert">
+            {{ copy('账户信息尚未刷新，请刷新并核对后再操作。', 'Account information could not be refreshed. Refresh and check before another transfer.') }}
+            <button type="button" :disabled="transferring || retryAfter > 0" @click="refreshAfterTransfer">{{ retryAfter > 0 ? `${retryAfter}s` : copy('刷新返利与余额', 'Refresh rebate and balance') }}</button>
+          </div>
+          <p v-if="retryAfter > 0" class="portal-muted mt-3" role="status">{{ copy(`请在 ${retryAfter} 秒后重试。`, `Try again in ${retryAfter} seconds.`) }}</p>
           <p v-if="detail.aff_quota <= 0" class="mt-3 text-sm text-amber-600 dark:text-amber-400">
             {{ t('affiliate.transfer.empty') }}
           </p>
@@ -137,6 +145,14 @@
         </div>
       </template>
     </div>
+    <BaseDialog :show="confirmTransfer" :title="copy('确认转入余额', 'Confirm balance transfer')" :busy="transferring" width="narrow" @close="cancelTransfer">
+      <p>{{ copy(`将当前可用返利 ${formatCurrency(detail?.aff_quota ?? 0)} 全部转入 API 账户余额，用于本站消费。`, `Transfer all currently available rebate (${formatCurrency(detail?.aff_quota ?? 0)}) to your API account balance for use on this site.`) }}</p>
+      <p class="portal-muted mt-2">{{ copy('到账金额以实际处理结果为准。', 'The credited amount is determined when the transfer is processed.') }}</p>
+      <template #footer><div class="flex justify-end gap-3">
+        <button type="button" class="btn btn-secondary" :disabled="transferring" @click="cancelTransfer">{{ copy('取消', 'Cancel') }}</button>
+        <button type="button" class="btn btn-primary" data-testid="confirm-transfer" :disabled="transferring || refreshRequired || retryAfter > 0" @click="transferQuota">{{ transferring ? copy('正在转入…', 'Transferring…') : copy('确认转入', 'Confirm transfer') }}</button>
+      </div></template>
+    </BaseDialog>
   </div>
 </template>
 
@@ -151,9 +167,14 @@ import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboard } from '@/composables/useClipboard'
 import { formatCurrency, formatDateTime } from '@/utils/format'
-import { extractApiErrorMessage } from '@/utils/apiError'
+import BaseDialog from '@/components/common/BaseDialog.vue'
+import { userFacingError } from '@/utils/userFacingError'
+import { useRetryCooldown } from '@/composables/useRetryCooldown'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const currentLocale = computed(() => locale?.value || 'en')
+const copy = (zh: string, en: string) => currentLocale.value.startsWith('zh') ? zh : en
+const { remaining: retryAfter, start: startRetry } = useRetryCooldown()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const { copyToClipboard } = useClipboard()
@@ -161,6 +182,11 @@ const { copyToClipboard } = useClipboard()
 const loading = ref(true)
 const transferring = ref(false)
 const detail = ref<UserAffiliateDetail | null>(null)
+const confirmTransfer = ref(false)
+const refreshRequired = ref(false)
+const loadError = ref('')
+const transferError = ref('')
+const transferNotice = ref('')
 
 const inviteLink = computed(() => {
   if (!detail.value) return ''
@@ -181,13 +207,16 @@ function formatCount(value: number): string {
 }
 
 async function loadAffiliateDetail(silent = false): Promise<void> {
+  if (retryAfter.value > 0) return
+  loadError.value = ''
   if (!silent) {
     loading.value = true
   }
   try {
     detail.value = await userAPI.getAffiliateDetail()
   } catch (error) {
-    appStore.showError(extractApiErrorMessage(error, t('affiliate.loadFailed')))
+    loadError.value = userFacingError(error, currentLocale.value, t('affiliate.loadFailed'))
+    startRetry(error)
   } finally {
     if (!silent) {
       loading.value = false
@@ -205,18 +234,44 @@ async function copyInviteLink(): Promise<void> {
   await copyToClipboard(inviteLink.value, t('affiliate.linkCopied'))
 }
 
+function openTransferConfirmation() {
+  if (!detail.value || detail.value.aff_quota <= 0 || transferring.value || refreshRequired.value || retryAfter.value > 0) return
+  transferError.value = ''
+  transferNotice.value = ''
+  confirmTransfer.value = true
+}
+function cancelTransfer() {
+  if (!transferring.value) confirmTransfer.value = false
+}
+async function refreshAfterTransfer() {
+  refreshRequired.value = true
+  const results = await Promise.allSettled([userAPI.getAffiliateDetail(), authStore.refreshUser()])
+  if (results[0].status === 'fulfilled') detail.value = results[0].value
+  refreshRequired.value = results.some(result => result.status === 'rejected')
+  for (const result of results) if (result.status === 'rejected') startRetry(result.reason)
+}
 async function transferQuota(): Promise<void> {
-  if (!detail.value || detail.value.aff_quota <= 0 || transferring.value) return
+  if (!confirmTransfer.value || !detail.value || detail.value.aff_quota <= 0 || transferring.value || refreshRequired.value || retryAfter.value > 0) return
   transferring.value = true
+  transferError.value = ''
+  transferNotice.value = ''
   try {
     const resp = await userAPI.transferAffiliateQuota()
-    appStore.showSuccess(t('affiliate.transfer.success', { amount: formatCurrency(resp.transferred_quota) }))
-    await Promise.all([
-      loadAffiliateDetail(true),
-      authStore.refreshUser().catch(() => undefined),
-    ])
+    confirmTransfer.value = false
+    const message = t('affiliate.transfer.success', { amount: formatCurrency(resp.transferred_quota) })
+    transferNotice.value = message
+    appStore.showSuccess(message)
+    await refreshAfterTransfer()
   } catch (error) {
-    appStore.showError(extractApiErrorMessage(error, t('affiliate.transferFailed')))
+    confirmTransfer.value = false
+    const status = (error as { status?: number; response?: { status?: number } } | null)?.status ?? (error as { response?: { status?: number } } | null)?.response?.status
+    if (!status || status >= 500) {
+      transferNotice.value = copy('请求结果尚未确认，正在查询返利与余额；请核对后再操作，不要重复提交。', 'The transfer result is uncertain. Checking your rebate and balance; verify them before trying again.')
+      await refreshAfterTransfer()
+    } else {
+      transferError.value = userFacingError(error, currentLocale.value, t('affiliate.transferFailed'))
+    }
+    startRetry(error)
   } finally {
     transferring.value = false
   }

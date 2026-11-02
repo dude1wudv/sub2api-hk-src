@@ -288,7 +288,11 @@ func (h *MCPOAuthHandler) resource(c *gin.Context, protocol bool) (string, bool)
 		if protocol {
 			mcpOAuthErrorResponse(c, http.StatusServiceUnavailable, "server_error", err.Error())
 		} else {
-			response.Error(c, http.StatusServiceUnavailable, err.Error())
+			reason := "MCP_CONFIG_INVALID"
+			if h.cfg == nil || !h.cfg.MCP.Enabled() {
+				reason = "MCP_DISABLED"
+			}
+			c.JSON(http.StatusServiceUnavailable, response.Response{Code: http.StatusServiceUnavailable, Message: "MCP is currently unavailable", Reason: reason})
 		}
 		return "", false
 	}

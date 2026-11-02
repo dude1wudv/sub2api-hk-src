@@ -190,7 +190,7 @@ func toLocalizedModelPlazaGroups(visible []service.PlazaGroup, userRates map[int
 	out := make([]modelPlazaGroup, 0, len(visible))
 	for i := range visible {
 		group := toModelPlazaGroupDTO(&visible[i], userRates)
-		group.Name, group.Description = visible[i].I18n.Localize(acceptLanguage, group.Name, group.Description)
+		group.Name, group.Description = visible[i].I18n.PublicText(acceptLanguage, visible[i].Platform, visible[i].SubscriptionType, visible[i].RateMultiplier)
 		out = append(out, group)
 	}
 	return out

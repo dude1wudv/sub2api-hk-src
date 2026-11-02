@@ -5,7 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import subscriptionsAPI from '@/api/subscriptions'
+import subscriptionsAPI, { type SubscriptionAvailability } from '@/api/subscriptions'
 import type { UserSubscription } from '@/types'
 
 // Cache TTL: 60 seconds
@@ -15,6 +15,22 @@ const CACHE_TTL_MS = 60_000
 let requestGeneration = 0
 
 export const useSubscriptionStore = defineStore('subscriptions', () => {
+  const availability = ref<SubscriptionAvailability | null>(null)
+  const availabilityError = ref(false)
+  let availabilityAt = 0
+  let availabilityGeneration = 0
+  let availabilityPromise: Promise<SubscriptionAvailability> | null = null
+  async function fetchAvailability(force = false): Promise<SubscriptionAvailability> {
+    if (!force && availability.value && Date.now() - availabilityAt < CACHE_TTL_MS) return availability.value
+    if (availabilityPromise) return availabilityPromise
+    const generation = ++availabilityGeneration
+    const pending = subscriptionsAPI.getAvailability().then(data => {
+      if (generation === availabilityGeneration) { availability.value = data; availabilityAt = Date.now(); availabilityError.value = false }
+      return data
+    }).catch(cause => { if (generation === availabilityGeneration) availabilityError.value = true; throw cause }).finally(() => { if (availabilityPromise === pending) availabilityPromise = null })
+    availabilityPromise = pending
+    return pending
+  }
   // State
   const activeSubscriptions = ref<UserSubscription[]>([])
   const loading = ref(false)
@@ -109,6 +125,11 @@ export const useSubscriptionStore = defineStore('subscriptions', () => {
    * Clear all subscription data and stop polling
    */
   function clear() {
+    availabilityGeneration++
+    availability.value = null
+    availabilityError.value = false
+    availabilityAt = 0
+    availabilityPromise = null
     requestGeneration++
     activePromise = null
     loading.value = false
@@ -122,12 +143,18 @@ export const useSubscriptionStore = defineStore('subscriptions', () => {
    * Invalidate cache (force next fetch to reload)
    */
   function invalidateCache() {
+    availabilityAt = 0
+    availabilityGeneration++
+    availabilityPromise = null
     lastFetchedAt.value = null
+    void fetchAvailability(true).catch(() => undefined)
   }
 
   return {
-    // State
     activeSubscriptions,
+    availability,
+    availabilityError,
+    fetchAvailability,
     loading,
     hasActiveSubscriptions,
 

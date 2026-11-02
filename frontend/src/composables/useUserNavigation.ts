@@ -1,6 +1,7 @@
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
+import { useSubscriptionStore } from '@/stores/subscriptions'
 import { useAuthStore } from '@/stores/auth'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
@@ -30,7 +31,16 @@ export function useUserNavigation() {
   const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
   const zh = computed(() => locale.value.startsWith('zh'))
   const settings = computed(() => appStore.cachedPublicSettings)
-  const purchaseLabel = computed(() => zh.value ? '充值' : 'Recharge')
+  const purchaseLabel = computed(() => zh.value ? '充值与兑换' : 'Top up & redeem')
+  const subscriptions = useSubscriptionStore()
+  watch(() => authStore.isAuthenticated && resolveFeatureFlag(settings.value, FeatureFlags.subscription), enabled => {
+    if (enabled) void subscriptions.fetchAvailability().catch(() => undefined)
+  }, { immediate: true })
+  const subscriptionVisible = computed(() => {
+    const state = subscriptions.availability
+    return !state || subscriptions.availabilityError || state.has_sale_plans || state.has_active_subscriptions || state.has_subscription_history
+  })
+  const subscriptionLabel = computed(() => subscriptions.availability && !subscriptions.availability.has_sale_plans ? (zh.value ? '我的订阅' : 'My subscriptions') : (zh.value ? '订阅' : 'Subscriptions'))
 
   const items = computed<UserNavigationItem[]>(() => {
     if (!authStore.isAuthenticated || (appStore.backendModeEnabled && !authStore.isAdmin)) return []
@@ -42,18 +52,17 @@ export function useUserNavigation() {
       { path: '/usage', label: zh.value ? '用量信息' : 'Usage', icon: 'chart', group: 'primary', hideInSimpleMode: true },
       // Card redemption, not a payment gateway. Self-serve checkout is retired.
       { path: '/purchase', activePaths: ['/purchase', '/redeem', '/orders'], label: purchaseLabel.value, icon: 'creditCard', group: 'primary', hideInSimpleMode: true },
-      { path: '/subscriptions', label: zh.value ? '订阅' : 'Subscriptions', icon: 'document', group: 'primary', hideInSimpleMode: true, enabled: enabled('subscription') },
+      { path: '/subscriptions', label: subscriptionLabel.value, icon: 'document', group: 'primary', hideInSimpleMode: true, enabled: enabled('subscription') && subscriptionVisible.value },
       { path: '/profile', label: zh.value ? '账户' : 'Account', icon: 'user', group: 'primary' },
       { path: '/settings/mcp', label: t('mcp.title'), icon: 'mcp', group: 'tools', enabled: enabled('mcp') },
       { path: '/model-plaza', query: { embedded: '1' }, label: t('nav.modelPlaza'), icon: 'cube', group: 'services', enabled: enabled('modelPlaza') },
-      { path: '/available-channels', label: t('nav.availableChannels'), icon: 'server', group: 'services', hideInSimpleMode: true, enabled: enabled('availableChannels') },
       { path: '/monitor', label: t('nav.channelStatus'), icon: 'bolt', group: 'services', enabled: enabled('channelMonitor') },
       { path: '/image2', href: '/image2/', label: t('nav.image2'), icon: 'sparkles', group: 'tools', hideInSimpleMode: true },
       { path: '/helios', action: 'helios', label: t('nav.infiniteCanvas'), icon: 'cube', group: 'tools', hideInSimpleMode: true },
       { path: '/batch-image', label: t('nav.batchImage'), icon: 'sparkles', group: 'tools', hideInSimpleMode: true, enabled: canUseBatchImage.value },
       { path: '/affiliate', label: t('nav.affiliate'), icon: 'users', group: 'billing', hideInSimpleMode: true, enabled: enabled('affiliate') },
       ...(settings.value?.custom_menu_items ?? [])
-        .filter(item => item.visibility === 'user')
+        .filter(item => item.visibility === 'user' && !/云猫|卡网|catfk/i.test(item.label))
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((item): UserNavigationItem => ({
           path: '/custom/' + item.id,

@@ -16,6 +16,7 @@ function isClipboardSupported(): boolean {
  * 使用 textarea 而非 input，以正确处理多行文本
  */
 function fallbackCopy(text: string): boolean {
+  const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const textarea = document.createElement('textarea')
   textarea.value = text
   textarea.setAttribute('readonly', 'true')
@@ -30,6 +31,7 @@ function fallbackCopy(text: string): boolean {
     return false
   } finally {
     document.body.removeChild(textarea)
+    previousFocus?.focus({ preventScroll: true })
   }
 }
 

@@ -690,21 +690,21 @@ func apiKeyPaginationResult(total int64, params pagination.PaginationParams) *pa
 }
 
 func (s *APIKeyService) fillCurrentConcurrency(ctx context.Context, keys []APIKey) {
-	if s == nil || s.concurrencyService == nil || len(keys) == 0 {
-		return
-	}
 	ids := make([]int64, 0, len(keys))
 	for i := range keys {
 		if keys[i].ID > 0 {
 			ids = append(ids, keys[i].ID)
 		}
 	}
-	counts, err := s.concurrencyService.GetAPIKeyConcurrencyBatch(ctx, ids)
-	if err != nil {
-		return
+	var concurrency *ConcurrencyService
+	if s != nil {
+		concurrency = s.concurrencyService
 	}
+	counts, status, updatedAt := concurrency.GetAPIKeyConcurrencySnapshot(ctx, ids)
 	for i := range keys {
 		keys[i].CurrentConcurrency = counts[keys[i].ID]
+		keys[i].CurrentConcurrencyStatus = status
+		keys[i].CurrentConcurrencyUpdatedAt = updatedAt
 	}
 }
 
@@ -739,7 +739,11 @@ func (s *APIKeyService) GetByID(ctx context.Context, id int64) (*APIKey, error) 
 	}
 	s.compileAPIKeyIPRules(apiKey)
 	if apiKey != nil {
-		apiKey.CurrentConcurrency = s.currentConcurrencyForAPIKey(ctx, apiKey.ID)
+		snapshot := []APIKey{*apiKey}
+		s.fillCurrentConcurrency(ctx, snapshot)
+		apiKey.CurrentConcurrency = snapshot[0].CurrentConcurrency
+		apiKey.CurrentConcurrencyStatus = snapshot[0].CurrentConcurrencyStatus
+		apiKey.CurrentConcurrencyUpdatedAt = snapshot[0].CurrentConcurrencyUpdatedAt
 	}
 	return apiKey, nil
 }

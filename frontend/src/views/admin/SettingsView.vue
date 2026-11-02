@@ -6614,6 +6614,12 @@
                 </button>
               </div>
 
+              <div>
+                <label for="card-shop-denominations" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ isZhLocale ? '卡网到账面额（USD）' : 'Card-shop balance denominations (USD)' }}</label>
+                <input id="card-shop-denominations" v-model="cardDenominationsInput" type="text" class="input" placeholder="1, 10, 50" />
+                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ isZhLocale ? '用逗号分隔正数；留空则隐藏面额。仅展示到账金额，售价和库存以卡网为准。' : 'Comma-separated positive amounts; leave empty to hide. These are balance amounts, not prices or stock.' }}</p>
+              </div>
+
               <!-- Contact Info -->
               <div>
                 <label
@@ -9041,7 +9047,7 @@ const appStore = useAppStore();
 // 关闭 step-up 开关是敏感操作：后端返回 STEP_UP_REQUIRED 时弹 TOTP 码重试
 const settingsStepUp = useStepUp();
 const adminSettingsStore = useAdminSettingsStore();
-const isZhLocale = computed(() => locale.value.startsWith("zh"));
+const isZhLocale = computed(() => String(locale?.value ?? locale).startsWith("zh"));
 
 function localText(zh: string, en: string): string {
   return isZhLocale.value ? zh : en;
@@ -9146,6 +9152,7 @@ const registrationEmailSuffixWhitelistTags = ref<string[]>([]);
 const registrationEmailSuffixWhitelistDraft = ref("");
 const forwardedClientIpHeaderDraft = ref("");
 const tablePageSizeOptionsInput = ref("10, 20, 50, 100");
+const cardDenominationsInput = ref("1, 10, 50");
 
 // Admin API Key 状态
 const adminApiKeyLoading = ref(true);
@@ -9781,6 +9788,7 @@ const form = reactive<SettingsForm>({
   site_subtitle: "Subscription to API Conversion Platform",
   api_base_url: "",
   contact_info: "",
+  card_shop_denominations_usd: [1, 10, 50],
   doc_url: "",
   home_content: "",
   compact_home_enabled: false,
@@ -11029,6 +11037,7 @@ async function loadSettings() {
         (form as Record<string, unknown>)[key] = value;
       }
     }
+    cardDenominationsInput.value = form.card_shop_denominations_usd.join(', ');
     // For this optional override, null explicitly selects per-account rates.
     if (settings.openai_oauth_scheduling_rate_multiplier === null) {
       form.openai_oauth_scheduling_rate_multiplier = null;
@@ -11294,6 +11303,12 @@ async function saveSettings() {
   if (saving.value) return;
   saving.value = true;
   try {
+    const amounts = cardDenominationsInput.value.trim() ? cardDenominationsInput.value.trim().split(/[,，\s]+/).map(Number) : [];
+    if (amounts.some(value => !Number.isFinite(value) || value <= 0)) {
+      appStore.showError(locale.value.startsWith('zh') ? '卡网面额必须为以逗号分隔的正数，或留空隐藏。' : 'Enter comma-separated positive denominations, or leave empty to hide.');
+      return;
+    }
+    form.card_shop_denominations_usd = [...new Set(amounts)].sort((a, b) => a - b);
     const normalizedTableDefaultPageSize = Math.floor(
       Number(form.table_default_page_size),
     );
@@ -11493,6 +11508,7 @@ async function saveSettings() {
       site_subtitle: form.site_subtitle,
       api_base_url: form.api_base_url,
       contact_info: form.contact_info,
+      card_shop_denominations_usd: form.card_shop_denominations_usd,
       doc_url: form.doc_url,
       home_content: form.home_content,
       compact_home_enabled: form.compact_home_enabled,

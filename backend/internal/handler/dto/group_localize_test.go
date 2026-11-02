@@ -28,11 +28,11 @@ func TestGroupLocalized_ReplacesTextAndDropsTranslations(t *testing.T) {
 	require.NotContains(t, decoded, "i18n", "user-facing output must not carry the translation table")
 }
 
-func TestGroupLocalized_KeepsOriginalWhenLanguageHasNoTranslation(t *testing.T) {
+func TestGroupLocalized_UsesPublicFallbackWhenLanguageHasNoTranslation(t *testing.T) {
 	g := localizableGroup().Localized("zh")
 
-	require.Equal(t, "标准", g.Name)
-	require.Equal(t, "号池", g.Description)
+	require.Equal(t, "API · 按量计费", g.Name)
+	require.Empty(t, g.Description)
 	require.Nil(t, g.I18n)
 }
 

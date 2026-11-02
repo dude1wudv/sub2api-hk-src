@@ -11,6 +11,7 @@ import (
 	"net/textproto"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -2118,8 +2119,8 @@ func setDefaults() {
 	// Hosted HeliosGen workbench handoff. Defaults are registered explicitly so
 	// AutomaticEnv includes every key in Viper's AllKeys set.
 	viper.SetDefault("helios_workbench.enabled", false)
-	viper.SetDefault("helios_workbench.public_url", "https://canvas.sub.sunmmyapi.xyz")
-	viper.SetDefault("helios_workbench.redirect_uri", "https://canvas.sub.sunmmyapi.xyz/bootstrap")
+	viper.SetDefault("helios_workbench.public_url", "https://patrickapi.microedulab.com/cancas")
+	viper.SetDefault("helios_workbench.redirect_uri", "https://patrickapi.microedulab.com/cancas/bootstrap")
 	viper.SetDefault("helios_workbench.api_base_url", "https://sub.sunmmyapi.xyz/v1")
 	viper.SetDefault("helios_workbench.client_id", "heliosgen-web")
 	viper.SetDefault("helios_workbench.group_id", 0)
@@ -2816,7 +2817,7 @@ func (c *Config) Validate() error {
 		parseWorkbenchURL := func(field, raw string, requireHTTPS bool) (*url.URL, error) {
 			parsed, err := url.Parse(strings.TrimSpace(raw))
 			if err != nil || parsed.Scheme == "" || parsed.Host == "" ||
-				parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+				parsed.User != nil || parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" {
 				return nil, fmt.Errorf("helios_workbench.%s must be an absolute URL without credentials, query, or fragment", field)
 			}
 			if !isHTTPScheme(parsed.Scheme) {
@@ -2835,10 +2836,14 @@ func (c *Config) Validate() error {
 		if err != nil {
 			return err
 		}
+		prefix := strings.TrimRight(publicURL.Path, "/")
+		if strings.Contains(publicURL.EscapedPath(), "%") || strings.Contains(prefix, "\\") || (prefix != "" && path.Clean(prefix) != prefix) {
+			return fmt.Errorf("helios_workbench.public_url has an invalid path prefix")
+		}
 		if !strings.EqualFold(publicURL.Scheme, redirectURL.Scheme) ||
 			!strings.EqualFold(publicURL.Host, redirectURL.Host) ||
-			redirectURL.Path != "/bootstrap" {
-			return fmt.Errorf("helios_workbench.redirect_uri must be /bootstrap on the public URL origin")
+			redirectURL.Path != prefix+"/bootstrap" || redirectURL.RawPath != "" {
+			return fmt.Errorf("helios_workbench.redirect_uri must be the bootstrap path under the public URL")
 		}
 		apiBaseURL, err := parseWorkbenchURL("api_base_url", c.HeliosWorkbench.APIBaseURL, true)
 		if err != nil {

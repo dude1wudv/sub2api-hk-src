@@ -40,6 +40,7 @@ const onboardingStore = {
 }
 
 vi.mock('@/stores', () => ({ useAppStore: () => appStore, useAuthStore: () => authStore, useOnboardingStore: () => onboardingStore }))
+vi.mock('@/stores/subscriptions', () => ({ useSubscriptionStore: () => ({ availability: null, availabilityError: false, fetchAvailability: vi.fn().mockResolvedValue({ has_sale_plans: true, has_active_subscriptions: false, has_subscription_history: false }) }) }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => appStore }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => authStore }))
 vi.mock('vue-i18n', async () => {
@@ -127,7 +128,7 @@ describe('personal workspace navigation', () => {
   it('shows every personal feature and only sorted user custom menus without disclosure', async () => {
     const { wrapper, router } = await mountShell()
     expect(navPaths(wrapper)).toEqual([
-      '/dashboard', '/keys', '/usage', '/purchase', '/subscriptions', '/profile', '/model-plaza', '/available-channels', '/monitor',
+      '/dashboard', '/keys', '/usage', '/purchase', '/subscriptions', '/profile', '/model-plaza', '/monitor',
       '/image2', '/helios', '/batch-image', '/affiliate',
       '/custom/first', '/custom/later',
     ])
@@ -219,7 +220,7 @@ describe('personal workspace navigation', () => {
   it('keeps the recharge label when subscriptions are disabled', async () => {
     appStore.cachedPublicSettings.subscription_enabled = false
     const { wrapper } = await mountShell()
-    expect(wrapper.get('[data-nav-path="/purchase"]').text()).toBe('充值')
+    expect(wrapper.get('[data-nav-path="/purchase"]').text()).toBe('充值与兑换')
   })
 
   it('opens API quick start at the real key guide without invoking the onboarding tour', async () => {
@@ -290,7 +291,7 @@ describe('personal workspace navigation at narrow widths', () => {
     expect(wrapper.get('.user-sidebar').attributes('role')).toBe('dialog')
     expect(wrapper.get('.user-sidebar').attributes('aria-modal')).toBe('true')
     expect(wrapper.get('.user-drawer-scrim').exists()).toBe(true)
-    expect(navPaths(wrapper)).toHaveLength(15)
+    expect(navPaths(wrapper)).toHaveLength(14)
     expect(wrapper.findAll('[data-nav-path]').every(item => item.isVisible())).toBe(true)
     expect(wrapper.findAll('.user-nav-heading')).toHaveLength(4)
     expect(wrapper.get('.user-doc-link').isVisible()).toBe(true)
@@ -332,7 +333,7 @@ describe('personal workspace navigation at rail widths (768–1199px)', () => {
     expect(wrapper.get('.user-sidebar').attributes('aria-modal')).toBeUndefined()
     expect(wrapper.get('.user-workspace').attributes('inert')).toBeUndefined()
     const railPaths = navPaths(wrapper)
-    expect(railPaths).toHaveLength(15)
+    expect(railPaths).toHaveLength(14)
     wrapper.findAll('[data-nav-path]').forEach(item => {
       expect(item.isVisible()).toBe(true)
       expect(item.attributes('aria-label')).toBeTruthy()

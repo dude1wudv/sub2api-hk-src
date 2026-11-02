@@ -47,6 +47,33 @@ describe('API key workspace', () => {
     usage.batch.mockResolvedValue({ stats: {} })
   })
 
+  it('keeps an unknown count when the first list request fails', async () => {
+    api.list.mockRejectedValueOnce({ status: 429, message: 'Too many requests' })
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.get('.portal-api-count').text()).toBe('—')
+    expect(wrapper.text()).toContain('操作过于频繁')
+    expect(wrapper.text()).not.toContain('还没有 API Key')
+    wrapper.unmount()
+  })
+
+  it('retains the key list and exposes a separate usage retry after statistics fail', async () => {
+    api.list.mockResolvedValue({ items: [{ id: 3, key: 'sk-test-key-value', name: 'pro' }], total: 1 })
+    usage.batch.mockRejectedValueOnce(new Error('temporary network error'))
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.get('.portal-api-count').text()).toBe('1')
+    expect(wrapper.getComponent(PortalApiKeyTable).props('keys')).toHaveLength(1)
+    expect(wrapper.text()).toContain('用量加载失败')
+    const retry = wrapper.findAll('button').find(button => button.text().includes('重试用量'))!
+    usage.batch.mockResolvedValueOnce({ stats: { '3': { today_actual_cost: 0, total_actual_cost: 0 } } })
+    await retry.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('用量加载失败')
+    expect(wrapper.getComponent(PortalApiKeyTable).props('usageStats')['3'].today_actual_cost).toBe(0)
+    wrapper.unmount()
+  })
+
   it('waits for available groups before opening and consuming a create shortcut', async () => {
     navigation.route.query = { create: '1', source: 'command' }
     let finishGroups!: (value: unknown) => void
@@ -121,7 +148,7 @@ describe('API key workspace', () => {
     expect(wrapper.getComponent(UseKeyModal).props()).toMatchObject({
       show: true,
       apiKey: 'sk-test-key-value',
-      baseUrl: 'https://api.example.com',
+      baseUrl: 'https://api.example.com/v1',
       platform: 'openai',
       claudeCodeOnly: true,
     })

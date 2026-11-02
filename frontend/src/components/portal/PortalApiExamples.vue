@@ -1,7 +1,7 @@
 <template>
   <section id="portal-api-examples" class="portal-section portal-api-examples" aria-labelledby="portal-api-examples-title">
     <div class="portal-section-heading"><h2 id="portal-api-examples-title">{{ text('调用示例', 'Request examples') }}</h2><div ref="protocolTabs" class="portal-api-protocols" role="group" :aria-label="text('API 协议', 'API protocol')"><ActiveIndicator :container="protocolTabs" :active-key="protocol" /><button type="button" data-active-indicator-item="openai" :aria-pressed="protocol === 'openai'" @click="protocol = 'openai'">OpenAI</button><button type="button" data-active-indicator-item="anthropic" :aria-pressed="protocol === 'anthropic'" @click="protocol = 'anthropic'">Anthropic</button></div></div>
-    <div class="portal-api-endpoint">
+    <div v-if="showEndpoint !== false" class="portal-api-endpoint">
       <span>{{ protocol === 'openai' ? 'OpenAI Base URL' : 'Anthropic Base URL' }}</span><code>{{ baseURL }}</code><button type="button" class="portal-inline-button" :aria-label="text('复制接口地址', 'Copy base URL')" @click="copyToClipboard(baseURL)"><Icon name="copy" size="sm" aria-hidden="true" /></button>
     </div>
     <label class="portal-api-example-model"><span>{{ text('模型', 'Model') }}</span><input :value="model" :placeholder="text('填写当前分组支持的模型', 'A model supported by this group')" @input="$emit('update:model', ($event.target as HTMLInputElement).value)" /></label>
@@ -20,7 +20,7 @@ import Icon from '@/components/icons/Icon.vue'
 import ActiveIndicator from '@/components/common/ActiveIndicator.vue'
 import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
 import { useClipboard } from '@/composables/useClipboard'
-const props = defineProps<{ model: string; protocol?: 'openai' | 'anthropic' }>()
+const props = defineProps<{ model: string; protocol?: 'openai' | 'anthropic'; showEndpoint?: boolean }>()
 const emit = defineEmits<{ 'update:model': [value: string]; 'update:protocol': [value: 'openai' | 'anthropic'] }>()
 const { locale } = useI18n()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en

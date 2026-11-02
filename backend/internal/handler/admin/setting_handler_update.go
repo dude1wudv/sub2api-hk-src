@@ -22,6 +22,7 @@ import (
 
 // UpdateSettingsRequest 更新设置请求
 type UpdateSettingsRequest struct {
+	CardShopDenominationsUSD []float64 `json:"card_shop_denominations_usd"`
 	// 注册设置
 	RegistrationEnabled                 bool                         `json:"registration_enabled"`
 	EmailVerifyEnabled                  bool                         `json:"email_verify_enabled"`
@@ -1654,6 +1655,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		SiteSubtitle:                           req.SiteSubtitle,
 		APIBaseURL:                             req.APIBaseURL,
 		ContactInfo:                            req.ContactInfo,
+		CardShopDenominationsUSD:               req.CardShopDenominationsUSD,
 		DocURL:                                 req.DocURL,
 		HomeContent:                            req.HomeContent,
 		CompactHomeEnabled:                     req.CompactHomeEnabled,
@@ -2324,6 +2326,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		SiteSubtitle:                                           updatedSettings.SiteSubtitle,
 		APIBaseURL:                                             updatedSettings.APIBaseURL,
 		ContactInfo:                                            updatedSettings.ContactInfo,
+		CardShopDenominationsUSD:                               updatedSettings.CardShopDenominationsUSD,
 		DocURL:                                                 updatedSettings.DocURL,
 		HomeContent:                                            updatedSettings.HomeContent,
 		CompactHomeEnabled:                                     updatedSettings.CompactHomeEnabled,

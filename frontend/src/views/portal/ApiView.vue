@@ -4,13 +4,13 @@
       <div>
         <div class="portal-api-title-row">
           <h1>{{ text('API 密钥', 'API keys') }}</h1>
-          <span class="portal-api-count">{{ keyTotal }}</span>
+          <span class="portal-api-count">{{ keysKnown ? keyTotal : "—" }}</span>
         </div>
       </div>
       <div class="portal-api-header-actions">
         <button type="button" class="portal-api-icon-button" :disabled="keysLoading || groupsLoading" :aria-label="text('刷新', 'Refresh')" data-test="refresh-keys" @click="refreshPage"><Icon name="refresh" size="sm" aria-hidden="true" /></button>
         <button type="button" class="portal-button secondary" :aria-pressed="bulkMode" data-test="bulk-mode-toggle" @click="toggleBulkMode">{{ bulkMode ? text('退出批量管理', 'Exit bulk management') : text('批量管理', 'Bulk management') }}</button>
-        <button type="button" class="portal-button" data-tour="keys-create-btn" :disabled="creationDisabled" @click="openCreate()"><Icon name="plus" size="sm" aria-hidden="true" />{{ text('创建密钥', 'Create key') }}</button>
+        <button type="button" class="portal-button" data-tour="keys-create-btn" :disabled="creationDisabled" aria-describedby="key-creation-state" @click="openCreate()"><Icon name="plus" size="sm" aria-hidden="true" />{{ text('创建密钥', 'Create key') }}</button>
       </div>
     </header>
     <div class="portal-api-access-strip">
@@ -18,9 +18,9 @@
       <button type="button" class="portal-button secondary" @click="docsOpen = true"><Icon name="book" size="sm" />{{ text('接入指南', 'Connection guide') }}<Icon name="arrowRight" size="sm" /></button>
       <svg viewBox="0 0 170 90" class="portal-api-ink-route" aria-hidden="true"><path d="M2 72C45 72 43 18 82 18s25 54 62 54h26" /><circle cx="82" cy="18" r="12"/><circle cx="143" cy="72" r="5"/></svg>
     </div>
-    <p v-if="groupsLoading" class="portal-api-inline-state" role="status">{{ text('正在读取可绑定分组…', 'Loading groups available for your keys…') }}</p>
-    <div v-else-if="groupsError" class="portal-error portal-api-inline-state" role="alert">{{ groupsError }} <button type="button" class="portal-inline-button" @click="loadGroups">{{ text('重试分组加载', 'Retry groups') }}</button></div>
-    <p v-else-if="!groups.length" class="portal-api-inline-state">{{ text('当前账户没有可绑定分组，暂时无法创建 API Key。', 'Your account has no available group for creating an API key.') }} <button type="button" class="portal-inline-button" @click="loadGroups">{{ text('刷新分组', 'Refresh groups') }}</button></p>
+    <p id="key-creation-state" v-if="groupsLoading" class="portal-api-inline-state" role="status">{{ text('正在读取可绑定分组…', 'Loading groups available for your keys…') }}</p>
+    <div id="key-creation-state" v-else-if="groupsError" class="portal-error portal-api-inline-state" role="alert">{{ groupsError }} <button type="button" class="portal-inline-button" :disabled="retryRemaining > 0" @click="loadGroups">{{ retryRemaining > 0 ? `${retryRemaining}s` : text('重试分组加载', 'Retry groups') }}</button></div>
+    <p id="key-creation-state" v-else-if="!groups.length" class="portal-api-inline-state">{{ text('当前账户没有可绑定分组，暂时无法创建 API Key。', 'Your account has no available group for creating an API key.') }} <button type="button" class="portal-inline-button" @click="loadGroups">{{ text('刷新分组', 'Refresh groups') }}</button></p>
 
     <section id="portal-api-keys" class="portal-section portal-api-keys" aria-labelledby="portal-api-keys-title">
       <h2 id="portal-api-keys-title" class="portal-api-table-heading">{{ text('密钥列表', 'Key list') }}</h2>
@@ -30,13 +30,13 @@
         <button type="button" class="portal-inline-button" :aria-label="text('关闭创建提示', 'Dismiss creation message')" @click="lastCreated = null">✕</button>
       </div>
 
-      <form class="portal-api-key-filters" @submit.prevent="applyKeyFilters">
+      <form v-if="keysKnown && (keyTotal > 0 || hasKeyFilters)" class="portal-api-key-filters" @submit.prevent="applyKeyFilters">
         <label class="portal-api-key-search"><Icon name="search" size="sm" aria-hidden="true" /><input v-model="keySearch" type="search" :aria-label="text('搜索 API Key', 'Search API keys')" :placeholder="text('搜索名称或密钥', 'Search name or key')" /><button type="submit" class="portal-inline-button">{{ text('搜索', 'Search') }}</button></label>
         <select v-model="keyStatusFilter" :aria-label="text('密钥状态', 'Key status')" @change="applyKeyFilters"><option value="">{{ text('全部状态', 'All statuses') }}</option><option value="active">{{ text('已启用', 'Active') }}</option><option value="inactive">{{ text('已停用', 'Inactive') }}</option><option value="expired">{{ text('已过期', 'Expired') }}</option><option value="quota_exhausted">{{ text('额度用尽', 'Quota exhausted') }}</option></select>
-        <select v-model="keyGroupFilter" :aria-label="text('密钥分组', 'Key group')" @change="applyKeyFilters"><option value="">{{ text('全部分组', 'All groups') }}</option><option value="0">{{ text('未绑定分组', 'No group') }}</option><option v-for="group in groups" :key="group.id" :value="String(group.id)">{{ group.name }}</option></select>
+        <input v-if="groups.length > 1" v-model="groupSearch" type="search" :placeholder="text('搜索分组', 'Search groups')" :aria-label="text('搜索可绑定分组', 'Search available groups')" /><select v-if="groups.length > 1" v-model="keyGroupFilter" :aria-label="text('密钥分组', 'Key group')" @change="applyKeyFilters"><option value="">{{ text('全部分组', 'All groups') }}</option><option value="0">{{ text('未绑定分组', 'No group') }}</option><option v-for="group in filteredGroups" :key="group.id" :value="String(group.id)">{{ group.name }}</option></select>
       </form>
       <div class="portal-api-endpoint">
-        <span>{{ text('API 端点', 'API endpoint') }}</span>
+        <span>{{ text('OpenAI 兼容 Base URL', 'OpenAI-compatible Base URL') }}</span>
         <span class="portal-api-endpoint-tag">{{ text('默认', 'Default') }}</span>
         <code :title="apiBaseUrl">{{ apiBaseUrl || '—' }}</code>
         <button type="button" :disabled="!apiBaseUrl" :aria-label="text('复制 API 端点', 'Copy API endpoint')" data-test="copy-endpoint" @click="copyEndpoint"><Icon name="copy" size="sm" aria-hidden="true" /></button>
@@ -51,15 +51,18 @@
       </div>
 
       <p v-if="actionError" class="portal-error" role="alert">{{ actionError }}</p>
-      <div v-if="keysLoading" class="portal-api-key-state" role="status">{{ text('正在加载密钥…', 'Loading API keys…') }}</div>
-      <div v-else-if="keysError" class="portal-error" role="alert">{{ keysError }} <button type="button" class="portal-inline-button" @click="loadKeys">{{ text('重试', 'Retry') }}</button></div>
-      <div v-else-if="!keys.length" class="portal-api-key-state">
+      <div v-if="keysLoading && !keys.length" class="portal-api-key-state" role="status">{{ text('正在加载密钥…', 'Loading API keys…') }}</div>
+      <div v-if="keysError" class="portal-error" role="alert">{{ keysError }} <button type="button" class="portal-inline-button" :disabled="retryRemaining > 0" @click="loadKeys">{{ retryRemaining > 0 ? `${retryRemaining}s` : text('重试', 'Retry') }}</button></div>
+      <div v-if="!keysLoading && !keysError && !keys.length" class="portal-api-key-state">
         <p>{{ hasKeyFilters ? text('没有符合筛选条件的密钥。', 'No keys match these filters.') : text('还没有 API Key。创建一个密钥，开始接入你的应用。', 'No API keys yet. Create one to connect your application.') }}</p>
         <button v-if="hasKeyFilters" type="button" class="portal-button secondary" @click="resetKeyFilters">{{ text('清除筛选', 'Clear filters') }}</button>
-        <button v-else type="button" class="portal-button" :disabled="creationDisabled" @click="openCreate()">{{ text('创建密钥', 'Create key') }}</button>
+        <button v-else type="button" class="portal-button" :disabled="creationDisabled" aria-describedby="key-creation-state" @click="openCreate()">{{ text('创建密钥', 'Create key') }}</button>
       </div>
+      <p v-if="keysError && keys.length" class="portal-muted">{{ text('以下为上次成功加载的数据。', 'Showing the last successfully loaded data.') }}</p>
+      <PortalDataState v-if="usageError" :error="usageError" :retry-label="text('重试用量', 'Retry usage')" :retry-disabled="usageLoading" @retry="retryUsage" />
+      <p v-if="usageLoading" role="status" class="portal-muted">{{ text('正在刷新密钥用量…', 'Refreshing key usage…') }}</p>
       <PortalApiKeyTable
-        v-else
+        v-if="keys.length"
         :keys="keys"
         :groups="groups"
         :group-rates="groupRates"
@@ -78,7 +81,7 @@
         @delete="confirmDelete"
       />
 
-      <nav v-if="keyTotal > 0" class="portal-api-pager" :aria-label="text('密钥分页', 'API key pages')">
+      <nav v-if="keyTotal > 0 && !keysError" class="portal-api-pager" :aria-label="text('密钥分页', 'API key pages')">
         <div class="portal-api-pager-summary">
           <span>{{ text('显示 ', 'Showing ') }}{{ rangeStart }}{{ text(' 至 ', '–') }}{{ rangeEnd }}{{ text(' 共 ', ' of ') }}{{ keyTotal }}{{ text(' 条结果', ' results') }}</span>
           <label>{{ text('每页', 'Per page') }}
@@ -155,6 +158,10 @@ import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboard } from '@/composables/useClipboard'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
+import PortalDataState from '@/components/portal/PortalDataState.vue'
+import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
+import { useRetryCooldown } from '@/composables/useRetryCooldown'
+import { userFacingError } from '@/utils/userFacingError'
 import { sanitizeUrl } from '@/utils/url'
 import type { ApiKey, Group } from '@/types'
 
@@ -169,6 +176,9 @@ const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const plazaEnabled = computed(() => resolveFeatureFlag(appStore.cachedPublicSettings, FeatureFlags.modelPlaza))
 
 const groups = ref<Group[]>([])
+const groupSearch = ref('')
+const filteredGroups = computed(() => groups.value.filter(group => `${group.name} ${group.description || ''}`.toLowerCase().includes(groupSearch.value.trim().toLowerCase())))
+const { remaining: retryRemaining, start: startRetryCooldown } = useRetryCooldown()
 const groupsLoading = ref(true)
 const groupsError = ref('')
 const groupRates = ref<Record<number, number>>({})
@@ -186,6 +196,7 @@ const keyGroupFilter = ref('')
 const keyPage = ref(1)
 const keyPageSize = ref(20)
 const keyTotal = ref(0)
+const keysKnown = ref(false)
 const keyPages = computed(() => Math.max(1, Math.ceil(keyTotal.value / keyPageSize.value)))
 const rangeStart = computed(() => keyTotal.value === 0 ? 0 : (keyPage.value - 1) * keyPageSize.value + 1)
 const rangeEnd = computed(() => Math.min(keyPage.value * keyPageSize.value, keyTotal.value))
@@ -199,11 +210,9 @@ function pageSeparated(index: number) {
   return previous != null && current != null && current - previous > 1
 }
 const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
-const apiBaseUrl = computed(() => {
-  const configured = appStore.cachedPublicSettings?.api_base_url?.trim()
-  if (configured) return configured
-  return typeof window === 'undefined' ? '' : window.location.origin
-})
+const usageLoading = ref(false)
+const usageError = ref('')
+const { openAIBase: apiBaseUrl } = usePatrickApiBase()
 const hideCcsImport = computed(() => !!appStore.cachedPublicSettings?.hide_ccs_import_button)
 const useKeyTarget = ref<ApiKey | null>(null)
 const ccsClientOpen = ref(false)
@@ -233,7 +242,8 @@ let keyRequest = 0
 let keyController: AbortController | undefined
 
 function errorMessage(error: unknown, fallback: string) {
-  return (error as { message?: string })?.message || fallback
+  startRetryCooldown(error)
+  return userFacingError(error, locale.value, fallback)
 }
 async function loadGroups() {
   const request = ++groupRequest
@@ -270,7 +280,9 @@ async function loadKeys() {
     keys.value = result.items || []
     selectedKeyIds.value = selectedKeyIds.value.filter(id => keys.value.some(key => key.id === id))
     keyTotal.value = result.total || 0
-    usageStats.value = {}
+    keysKnown.value = true
+    const visible = new Set(keys.value.map(key => String(key.id)))
+    usageStats.value = Object.fromEntries(Object.entries(usageStats.value).filter(([id]) => visible.has(id)))
     if (keyPage.value > keyPages.value) {
       clearSelection()
       keyPage.value = keyPages.value
@@ -285,15 +297,22 @@ async function loadKeys() {
   }
 }
 async function loadUsage(ids: number[], signal: AbortSignal, request: number) {
-  if (!ids.length) return
+  if (!ids.length) { usageStats.value = {}; usageError.value = ''; return }
+  usageLoading.value = true
+  usageError.value = ''
   try {
     const usageResponse = await usageAPI.getDashboardApiKeysUsage(ids, { signal })
     if (disposed || request !== keyRequest) return
     usageStats.value = usageResponse.stats || {}
-  } catch {
+  } catch (cause) {
     if (signal.aborted || disposed || request !== keyRequest) return
-    usageStats.value = {}
+    usageError.value = errorMessage(cause, text('用量加载失败；已加载的统计保留，请重试。', 'Usage could not be refreshed. Previous statistics are retained; please retry.'))
+  } finally {
+    if (!disposed && request === keyRequest) usageLoading.value = false
   }
+}
+function retryUsage() {
+  if (keyController && !usageLoading.value) void loadUsage(keys.value.map(key => key.id), keyController.signal, keyRequest)
 }
 function refreshPage() {
   void loadGroups()

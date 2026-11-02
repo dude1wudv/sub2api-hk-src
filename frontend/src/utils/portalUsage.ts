@@ -115,7 +115,13 @@ export function usageOutputRate(row: UsageLog): number | null {
 export function formatUsageRate(value: number | null): string { return value == null ? '—' : `${value.toFixed(1)} tok/s` }
 export function formatUsagePercent(value: number | null): string { return value == null ? '—' : `${value.toFixed(1)}%` }
 export function formatUsageNumber(value: unknown): string { return finiteNumber(value).toLocaleString('zh-CN') }
-export function formatUsageMoney(value: unknown, digits = 6): string { return `$${finiteNumber(value).toFixed(digits)}` }
+export function formatUsageMoney(value: unknown, digits = 6): string {
+  if (value == null || !Number.isFinite(Number(value))) return '—'
+  const number = Number(value)
+  const precision = number !== 0 && Math.abs(number) < 0.01 ? Math.max(digits, 6) : digits
+  if (number !== 0 && Math.abs(number) < 10 ** -precision) return `${number < 0 ? '−' : ''}< USD ${(10 ** -precision).toFixed(precision)}`
+  return `USD ${number.toFixed(precision)}`
+}
 export function formatUsageDuration(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value) || value < 0) return '—'
   if (value < 1000) return `${Math.round(value)}ms`

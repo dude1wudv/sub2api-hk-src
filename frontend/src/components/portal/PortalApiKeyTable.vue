@@ -55,15 +55,15 @@
       <dl class="portal-api-facts">
         <div>
           <dt>{{ text('今日', 'Today') }}</dt>
-          <dd>{{ usageFor(apiKey.id) ? '$' + money(usageFor(apiKey.id)?.today_actual_cost ?? 0) : '—' }}</dd>
+          <dd>{{ usageFor(apiKey.id) ? money(usageFor(apiKey.id)?.today_actual_cost ?? 0) : '—' }}</dd>
         </div>
         <div>
           <dt>{{ text('累计', 'Total') }}</dt>
-          <dd>{{ usageFor(apiKey.id) ? '$' + money(usageFor(apiKey.id)?.total_actual_cost ?? 0) : '—' }}</dd>
+          <dd>{{ usageFor(apiKey.id) ? money(usageFor(apiKey.id)?.total_actual_cost ?? 0) : '—' }}</dd>
         </div>
         <div>
-          <dt>{{ text('当前并发', 'Concurrency') }}</dt>
-          <dd>{{ apiKey.current_concurrency || 0 }}</dd>
+          <dt>{{ text('此 Key 当前请求数', 'Active requests for this key') }}</dt>
+          <dd>{{ concurrency(apiKey) }}</dd>
         </div>
         <div>
           <dt>{{ text('过期时间', 'Expires') }}</dt>
@@ -118,7 +118,7 @@
           <th>{{ text('名称', 'Name') }}</th>
           <th>{{ text('API 密钥', 'API key') }}</th>
           <th>{{ text('分组', 'Group') }}</th>
-          <th>{{ text('当前并发', 'Concurrency') }}</th>
+          <th>{{ text('此 Key 当前请求数', 'Active requests for this key') }}</th>
           <th>{{ text('用量', 'Usage') }}</th>
           <th>{{ text('过期时间', 'Expires') }}</th>
           <th>{{ text('状态', 'Status') }}</th>
@@ -178,11 +178,11 @@
               <span v-if="routingCount(apiKey)" class="portal-api-routing">{{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}</span>
             </InkSurface>
           </td>
-          <td><span class="portal-api-concurrency">{{ apiKey.current_concurrency || 0 }}</span></td>
+          <td><span class="portal-api-concurrency">{{ concurrency(apiKey) }}</span></td>
           <td>
             <div v-if="usageFor(apiKey.id)" class="portal-api-usage">
-              <span>{{ text('今日', 'Today') }} <strong>${{ money(usageFor(apiKey.id)?.today_actual_cost ?? 0) }}</strong></span>
-              <span>{{ text('累计', 'Total') }} <strong>${{ money(usageFor(apiKey.id)?.total_actual_cost ?? 0) }}</strong></span>
+              <span>{{ text('今日', 'Today') }} <strong>{{ money(usageFor(apiKey.id)?.today_actual_cost ?? 0) }}</strong></span>
+              <span>{{ text('累计', 'Total') }} <strong>{{ money(usageFor(apiKey.id)?.total_actual_cost ?? 0) }}</strong></span>
             </div>
             <span v-else class="portal-api-muted">—</span>
           </td>
@@ -230,6 +230,7 @@ import { useMediaQuery } from '@vueuse/core'
 import GroupBadge from '@/components/common/GroupBadge.vue'
 import InkSurface from '@/components/common/InkSurface.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { formatUsageMoney } from '@/utils/portalUsage'
 import { maskApiKey } from '@/utils/maskApiKey'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import type { ApiKey, Group } from '@/types'
@@ -267,6 +268,9 @@ const selectedOnPage = computed(() => props.keys.filter(key => props.selectedIds
 const allSelected = computed(() => props.keys.length > 0 && selectedOnPage.value.length === props.keys.length)
 const someSelected = computed(() => selectedOnPage.value.length > 0 && !allSelected.value)
 
+function concurrency(key: ApiKey) {
+  return key.current_concurrency_status === 'available' ? key.current_concurrency : key.current_concurrency_status === 'unsupported' ? text('未支持', 'Unsupported') : text('暂不可用', 'Unavailable')
+}
 function usageFor(id: number) {
   return props.usageStats[String(id)]
 }
@@ -304,7 +308,7 @@ function date(value: string) {
   })
 }
 function money(value: number) {
-  return (Number.isFinite(value) ? value : 0).toFixed(4)
+  return formatUsageMoney(value, 4)
 }
 </script>
 

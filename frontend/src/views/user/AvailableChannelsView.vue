@@ -34,7 +34,11 @@
       </template>
 
       <template #table>
+        <PortalDataState v-if="loadError" :error="loadError" :retry-label="copy('重试', 'Retry')" @retry="loadChannels" />
+        <PortalDataState v-if="ratesError" :error="ratesError" :retry-label="copy('刷新价格', 'Refresh pricing')" @retry="loadChannels" />
+        <button v-if="!loading && !loadError && searchQuery.trim() && !filteredChannels.length" type="button" class="portal-inline-button" @click="searchQuery = ''">{{ copy('清除搜索', 'Clear search') }}</button>
         <AvailableChannelsTable
+          v-if="!loadError || channels.length"
           :columns="columnLabels"
           :rows="filteredChannels"
           :search-query="searchQuery"
@@ -43,7 +47,7 @@
           pricing-key-prefix="availableChannels.pricing"
           :no-pricing-label="t('availableChannels.noPricing')"
           :no-models-label="t('availableChannels.noModels')"
-          :empty-label="t('availableChannels.empty')"
+          :empty-label="searchQuery.trim() ? copy('没有符合搜索条件的渠道，请调整或清除搜索。', 'No channels match this search. Change or clear the search.') : t('availableChannels.empty')"
         />
       </template>
     </TablePageLayout>
@@ -59,11 +63,13 @@ import Icon from '@/components/icons/Icon.vue'
 import AvailableChannelsTable from '@/components/channels/AvailableChannelsTable.vue'
 import userChannelsAPI, { type UserAvailableChannel } from '@/api/channels'
 import userGroupsAPI from '@/api/groups'
-import { useAppStore } from '@/stores/app'
-import { extractApiErrorMessage } from '@/utils/apiError'
+import PortalDataState from '@/components/portal/PortalDataState.vue'
+import { userFacingError } from '@/utils/userFacingError'
 
-const { t } = useI18n()
-const appStore = useAppStore()
+const { t, locale } = useI18n()
+const copy = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
+const loadError = ref('')
+const ratesError = ref('')
 
 const channels = ref<UserAvailableChannel[]>([])
 const userGroupRates = ref<Record<number, number>>({})
@@ -106,20 +112,22 @@ const filteredChannels = computed(() => {
 
 async function loadChannels() {
   loading.value = true
+  loadError.value = ''
+  ratesError.value = ''
   try {
     // 渠道列表和用户专属倍率并发拉取。专属倍率失败不阻塞渠道展示——
     // 失败时只是无法渲染专属倍率角标，降级为仅显示默认倍率。
     const [list, rates] = await Promise.all([
       userChannelsAPI.getAvailable(),
       userGroupsAPI.getUserGroupRates().catch((err: unknown) => {
-        console.error('Failed to load user group rates:', err)
+        ratesError.value = userFacingError(err, locale.value, copy('个人价格暂未加载，当前价格仅供参考。', 'Your account pricing is unavailable; displayed prices are a preview.'))
         return {} as Record<number, number>
       }),
     ])
     channels.value = list
     userGroupRates.value = rates
   } catch (err: unknown) {
-    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+    loadError.value = userFacingError(err, locale.value, copy('接入信息加载失败，请重试。', 'Access information could not be loaded. Please retry.'))
   } finally {
     loading.value = false
   }

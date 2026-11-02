@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/passwordpolicy"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 )
 
@@ -156,6 +157,7 @@ func (s *SettingService) GetFrontendURL(ctx context.Context) string {
 // GetPublicSettings 获取公开设置（无需登录）
 func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings, error) {
 	keys := []string{
+		SettingKeyCardShopDenominationsUSD,
 		SettingKeyRegistrationEnabled,
 		SettingKeyEmailVerifyEnabled,
 		SettingKeyForceEmailOnThirdPartySignup,
@@ -300,6 +302,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 	}
 
 	return &PublicSettings{
+		HeliosWorkbenchBootstrapURL:         s.heliosBootstrapURL(),
+		PasswordPolicy:                      passwordpolicy.Public(),
+		CardShopDenominationsUSD:            parseCardShopDenominations(settings[SettingKeyCardShopDenominationsUSD]),
 		RegistrationEnabled:                 settings[SettingKeyRegistrationEnabled] == "true",
 		EmailVerifyEnabled:                  emailVerifyEnabled,
 		ForceEmailOnThirdPartySignup:        settings[SettingKeyForceEmailOnThirdPartySignup] == "true",
@@ -561,6 +566,9 @@ func (s *SettingService) IsUserErrorViewAllowed(ctx context.Context) bool {
 // A unit test diffs this struct's JSON keys against dto.PublicSettings to catch
 // drift automatically (see setting_service_injection_test.go).
 type PublicSettingsInjectionPayload struct {
+	HeliosWorkbenchBootstrapURL         string                   `json:"helios_workbench_bootstrap_url"`
+	PasswordPolicy                      PasswordPolicy           `json:"password_policy"`
+	CardShopDenominationsUSD            []float64                `json:"card_shop_denominations_usd"`
 	RegistrationEnabled                 bool                     `json:"registration_enabled"`
 	EmailVerifyEnabled                  bool                     `json:"email_verify_enabled"`
 	RegistrationEmailSuffixWhitelist    []string                 `json:"registration_email_suffix_whitelist"`
@@ -656,6 +664,9 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 	}
 
 	return &PublicSettingsInjectionPayload{
+		HeliosWorkbenchBootstrapURL:         settings.HeliosWorkbenchBootstrapURL,
+		PasswordPolicy:                      settings.PasswordPolicy,
+		CardShopDenominationsUSD:            settings.CardShopDenominationsUSD,
 		RegistrationEnabled:                 settings.RegistrationEnabled,
 		EmailVerifyEnabled:                  settings.EmailVerifyEnabled,
 		RegistrationEmailSuffixWhitelist:    settings.RegistrationEmailSuffixWhitelist,

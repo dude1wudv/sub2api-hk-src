@@ -110,7 +110,7 @@ onBeforeUnmount(() => { request++ })
         </tbody>
       </table>
     </div>
-    <div v-if="!compact" class="portal-pagination redeem-history-pagination">
+    <div v-if="!compact && total > 0" class="portal-pagination redeem-history-pagination">
       <label>{{ copy('每页', 'Per page') }} <select v-model.number="selectedPageSize" :disabled="loading" @change="load(1, selectedPageSize)"><option :value="20">20</option><option :value="50">50</option><option :value="100">100</option></select></label>
       <span class="portal-muted">{{ copy(`共 ${total} 条`, `${total} records`) }} · {{ page }} / {{ pages }}</span>
       <button type="button" :disabled="loading || page <= 1" @click="load(page - 1)">{{ copy('上一页', 'Previous') }}</button>

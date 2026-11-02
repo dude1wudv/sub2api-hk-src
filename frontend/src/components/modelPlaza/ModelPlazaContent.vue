@@ -6,6 +6,7 @@
       <p class="mt-1.5 text-sm text-gray-500 dark:text-dark-400">{{ t('modelPlaza.description') }}</p>
     </div>
 
+    <RouterLink v-if="isAuthenticated" to="/available-channels" class="portal-inline-button">{{ t('nav.availableChannels') }} ↗</RouterLink>
     <!-- 全局价格说明(管理员配置,Markdown) -->
     <div
       v-if="descriptionHtml"

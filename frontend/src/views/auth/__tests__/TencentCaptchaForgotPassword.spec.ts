@@ -12,7 +12,7 @@ vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   return {
     ...actual,
-    useI18n: () => ({ t: (key: string) => key })
+    useI18n: () => ({ t: (key: string) => key, locale: { value: 'zh-CN' } })
   }
 })
 
@@ -63,6 +63,8 @@ describe('忘记密码腾讯验证码门禁', () => {
     verifyActionMock.mockReset()
     captchaResetMock.mockReset()
     getPublicSettingsMock.mockResolvedValue({
+      password_reset_enabled: true,
+      backend_mode_enabled: false,
       turnstile_enabled: false,
       turnstile_site_key: '',
       tencent_captcha_enabled: true,
@@ -72,6 +74,28 @@ describe('忘记密码腾讯验证码门禁', () => {
     })
     verifyActionMock.mockResolvedValue({ token: 'ticket-value', randstr: '@rand-value' })
     forgotPasswordMock.mockResolvedValue({ message: 'ok' })
+  })
+
+  it('关闭时直达页面不渲染可提交的表单', async () => {
+    getPublicSettingsMock.mockResolvedValueOnce({ password_reset_enabled: false })
+    const wrapper = mountForgotPassword()
+    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.text()).toContain('本站暂未开放密码重置')
+    expect(forgotPasswordMock).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('设置读取失败后保持关闭并允许重试恢复', async () => {
+    getPublicSettingsMock.mockRejectedValueOnce({ status: 503, message: 'internal configuration error' })
+    const wrapper = mountForgotPassword()
+    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.get('[role="alert"]').text()).not.toContain('internal configuration error')
+    await wrapper.get('[role="alert"] button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(true)
+    wrapper.unmount()
   })
 
   it('把公开设置中的站点传给验证码组件', async () => {
