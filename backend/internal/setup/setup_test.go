@@ -622,7 +622,7 @@ func TestBootstrapAdminUserCreatesAdminWithGeneratedCredentials(t *testing.T) {
 func TestPrepareAdminCredentialsAcceptsMinimumLengthPassword(t *testing.T) {
 	t.Parallel()
 
-	admin := AdminConfig{Password: "12345678"}
+	admin := AdminConfig{Password: "123456789012"}
 	emailGenerated, passwordGenerated, err := prepareAdminCredentials(&admin)
 	if err != nil {
 		t.Fatalf("prepareAdminCredentials() error = %v", err)
@@ -630,7 +630,7 @@ func TestPrepareAdminCredentialsAcceptsMinimumLengthPassword(t *testing.T) {
 	if !emailGenerated || passwordGenerated {
 		t.Fatalf("generated flags = (%v, %v), want (true, false)", emailGenerated, passwordGenerated)
 	}
-	if admin.Password != "12345678" {
+	if admin.Password != "123456789012" {
 		t.Fatalf("password = %q, want unchanged", admin.Password)
 	}
 }

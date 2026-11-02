@@ -32,7 +32,9 @@ vi.mock('vue-i18n', () => ({ useI18n: () => ({ locale: { value: 'zh-CN' }, t: (k
 function render() {
   return mount(ApiView, { global: { stubs: {
     RouterLink: RouterLinkStub, Icon: true, PortalKeyForm: true, PortalApiKeyTable: true,
-    UseKeyModal: true, PortalApiBulkForm: true, PortalDialog: true, PortalApiExamples: true,
+    UseKeyModal: true, PortalApiBulkForm: true,
+    PortalDialog: { props: ['open', 'title'], template: '<div v-if="open"><slot /></div>' },
+    PortalApiExamples: true,
   } } })
 }
 
@@ -41,6 +43,7 @@ describe('API key workspace', () => {
     vi.clearAllMocks()
     navigation.route.query = {}
     app.cachedPublicSettings.hide_ccs_import_button = false
+    app.cachedPublicSettings.api_base_url = 'https://api.example.com'
     api.list.mockResolvedValue({ items: [], total: 0 })
     api.groups.mockResolvedValue([{ id: 7, name: 'OpenAI', rate_multiplier: 1 }])
     api.rates.mockResolvedValue({ 7: 0.7 })
@@ -71,6 +74,39 @@ describe('API key workspace', () => {
     await flushPromises()
     expect(wrapper.text()).not.toContain('用量加载失败')
     expect(wrapper.getComponent(PortalApiKeyTable).props('usageStats')['3'].today_actual_cost).toBe(0)
+    wrapper.unmount()
+  })
+
+  it('shows the usage retry cooldown and prevents another request before Retry-After elapses', async () => {
+    api.list.mockResolvedValue({ items: [{ id: 3, key: 'sk-test-key-value', name: 'pro' }], total: 1 })
+    usage.batch.mockRejectedValueOnce({ status: 429, retry_after: 60 })
+    const wrapper = render()
+    await flushPromises()
+    const retry = wrapper.findAll('button').find(button => button.text().includes('重试用量'))!
+    expect(retry.text()).toContain('60s')
+    expect(retry.attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-test="refresh-keys"]').attributes('disabled')).toBeDefined()
+    await retry.trigger('click')
+    expect(usage.batch).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it.each(['empty', 'failure'])('clears obsolete usage loading when the next key result is %s', async (result) => {
+    let finishUsage!: (value: unknown) => void
+    api.list.mockResolvedValueOnce({ items: [{ id: 3, key: 'sk-test-key-value', name: 'pro' }], total: 1 })
+    usage.batch.mockImplementationOnce(() => new Promise(resolve => { finishUsage = resolve }))
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.text()).toContain('正在刷新密钥用量')
+    if (result === 'empty') api.list.mockResolvedValueOnce({ items: [], total: 0 })
+    else api.list.mockRejectedValueOnce(new Error('list unavailable'))
+    await wrapper.get('[data-test="refresh-keys"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('正在刷新密钥用量')
+    finishUsage({ stats: { '3': { today_actual_cost: 123 } } })
+    await flushPromises()
+    if (result === 'empty') expect(wrapper.findComponent(PortalApiKeyTable).exists()).toBe(false)
+    else expect(wrapper.getComponent(PortalApiKeyTable).props('usageStats')).toEqual({})
     wrapper.unmount()
   })
 
@@ -148,11 +184,47 @@ describe('API key workspace', () => {
     expect(wrapper.getComponent(UseKeyModal).props()).toMatchObject({
       show: true,
       apiKey: 'sk-test-key-value',
-      baseUrl: 'https://api.example.com/v1',
+      baseUrl: 'https://api.example.com',
       platform: 'openai',
       claudeCodeOnly: true,
     })
     wrapper.unmount()
+  })
+
+  it.each([
+    ['anthropic', 'claude', 'https://api.example.com'],
+    ['gemini', 'gemini', 'https://api.example.com'],
+    ['antigravity', 'claude', 'https://api.example.com/antigravity'],
+    ['antigravity', 'gemini', 'https://api.example.com/antigravity'],
+    ['openai', 'codex', 'https://api.example.com'],
+    ['grok', 'grokbuild', 'https://api.example.com/v1'],
+  ])('keeps protocol-specific base paths for %s / %s imports', async (platform, client, endpoint) => {
+    // The public setting may already contain /v1; the display is OpenAI-specific,
+    // while both integrations expect a root and select their own protocol paths.
+    app.cachedPublicSettings.api_base_url = 'https://api.example.com/v1/'
+    const key = { id: 3, key: 'sk-test-key-value', name: 'pro', group: { platform } }
+    api.list.mockResolvedValue({ items: [key], total: 1 })
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.get('.portal-api-endpoint code').text()).toBe('https://api.example.com/v1')
+    wrapper.getComponent(PortalApiKeyTable).vm.$emit('use', key)
+    await flushPromises()
+    expect(wrapper.getComponent(UseKeyModal).props('baseUrl')).toBe('https://api.example.com')
+    wrapper.getComponent(PortalApiKeyTable).vm.$emit('import-ccs', key)
+    await flushPromises()
+    if (platform === 'antigravity') {
+      const choiceKey = client === 'gemini' ? 'keys.ccsClientSelect.geminiCli' : 'keys.ccsClientSelect.claudeCode'
+      await wrapper.findAll('.portal-api-ccs-choices button').find(button => button.text().includes(choiceKey))!.trigger('click')
+    }
+    expect(open).toHaveBeenCalledOnce()
+    const link = new URL(String(open.mock.calls[0][0]))
+    expect(link.searchParams.get('app')).toBe(client)
+    expect(link.searchParams.get('endpoint')).toBe(endpoint)
+    expect(link.searchParams.get('apiKey')).toBe(key.key)
+    expect(link.searchParams.get('endpoint')).not.toContain('/v1/v1')
+    wrapper.unmount()
+    open.mockRestore()
   })
 
   it('hides CCS import when the public setting disables it', async () => {

@@ -11,6 +11,7 @@ import ModelIcon from '@/components/common/ModelIcon.vue'
 import type { UsageDrilldown } from '@/views/portal/usageRoute'
 import { validUsageDate } from '@/views/portal/usageRoute'
 import { distributionValue, rankChartRows } from '@/utils/chartDistribution'
+import { formatUsageMoney } from '@/utils/portalUsage'
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 const { locale, t } = useI18n()
@@ -36,7 +37,7 @@ let requestSequence = 0
 const colors = useChartPalette()
 const chartTheme = useChartTheme()
 const number = (value: number) => !Number.isFinite(value) ? '—' : value >= 1e9 ? `${(value / 1e9).toFixed(2)}B` : value >= 1e6 ? `${(value / 1e6).toFixed(2)}M` : value >= 1e3 ? `${(value / 1e3).toFixed(2)}K` : value.toLocaleString()
-const money = (value: number) => Number.isFinite(value) ? `$${value.toFixed(value < 0.01 && value > 0 ? 6 : 4)}` : '—'
+const money = (value: number) => formatUsageMoney(value, 4)
 const duration = (value: number) => Number.isFinite(value) ? `${(value / 1000).toFixed(2)}s` : '—'
 const metricNumberStyle = (value: string) => ({ '--metric-width': Math.max(value.length * 0.64, 1) })
 const selectedDay = ref('')
@@ -108,7 +109,9 @@ function hasDistribution(id: string, rows: DistributionRow[]) {
 }
 const doughnutOptions = computed<ChartOptions<'doughnut'>>(() => ({ responsive: true, maintainAspectRatio: false, animation: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { ...chartTheme.value.tooltip, callbacks: { label: context => `${context.label}: ${Number(context.raw).toLocaleString(undefined, { maximumFractionDigits: 6 })}` } } } }))
 function distributionOptions(id: string, rows: DistributionRow[]): ChartOptions<'doughnut'> {
-  return { ...doughnutOptions.value, onClick: (_event, items) => {
+  return { ...doughnutOptions.value, plugins: { ...doughnutOptions.value.plugins, tooltip: { ...chartTheme.value.tooltip, callbacks: {
+    label: context => `${context.label}: ${metrics.value[id] === 'actual_cost' ? money(Number(context.raw)) : number(Number(context.raw))}`,
+  } } }, onClick: (_event, items) => {
     const row = rows[items[0]?.index ?? -1]
     if (id === 'models' && row) openModel(row.name)
   } }

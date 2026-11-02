@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"fmt"
 	"net/http"
 	"net/mail"
 	"regexp"
@@ -9,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/passwordpolicy"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/sysutil"
 
@@ -97,18 +97,9 @@ func validateEmail(email string) bool {
 	return binding.Validator.ValidateStruct(&loginReq) == nil
 }
 
-// maxPasswordBytes is bcrypt's input limit; longer passwords fail to hash.
-const maxPasswordBytes = 72
-
 // validatePassword checks password strength
 func validatePassword(password string) error {
-	if len(password) < 8 {
-		return fmt.Errorf("password must be at least 8 characters")
-	}
-	if len(password) > maxPasswordBytes {
-		return fmt.Errorf("password must be at most %d bytes", maxPasswordBytes)
-	}
-	return nil
+	return passwordpolicy.Validate(password)
 }
 
 // validatePort checks if port is in valid range

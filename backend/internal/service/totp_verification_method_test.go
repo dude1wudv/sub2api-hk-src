@@ -99,9 +99,12 @@ func TestTotpDisableAdminUsesPasswordEvenWithEmailVerifyEnabled(t *testing.T) {
 
 func TestTotpDisableRegularUserStillRequiresEmailCode(t *testing.T) {
 	user := &User{ID: 2, Email: "user@example.com", Role: RoleUser, TotpEnabled: true}
-	require.NoError(t, user.SetPassword("whatever"))
+	// Existing passwords are still accepted when disabling TOTP.
+	passwordHash, err := (&AuthService{}).HashPassword("whatever")
+	require.NoError(t, err)
+	user.PasswordHash = passwordHash
 	svc, _ := newTotpVMService(t, user, true)
 
-	err := svc.Disable(context.Background(), user.ID, "", "whatever")
+	err = svc.Disable(context.Background(), user.ID, "", "whatever")
 	require.ErrorIs(t, err, ErrVerifyCodeRequired)
 }

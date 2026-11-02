@@ -327,8 +327,12 @@
               v-model="formData.admin.password"
               type="password"
               class="input"
-              :placeholder="t('setup.admin.passwordPlaceholder')"
+              :placeholder="passwordPolicyHint(locale)"
+              autocomplete="new-password"
+              aria-describedby="setup-password-hint"
             />
+            <p id="setup-password-hint" class="mt-2 text-sm text-gray-500">{{ passwordPolicyHint(locale) }}</p>
+            <p v-if="formData.admin.password && newPasswordError(formData.admin.password, locale)" class="input-error-text">{{ newPasswordError(formData.admin.password, locale) }}</p>
           </div>
 
           <div>
@@ -506,8 +510,9 @@ import { buildGatewayUrl } from '@/api/client'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { newPasswordError, passwordPolicyHint, validateNewPassword } from '@/utils/passwordPolicy'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const steps = computed(() => [
   { id: 'database', title: t('setup.database.title') },
@@ -576,7 +581,7 @@ const canProceed = computed(() => {
     case 2:
       return (
         formData.admin.email &&
-        formData.admin.password.length >= 8 &&
+        validateNewPassword(formData.admin.password) === null &&
         formData.admin.password === confirmPassword.value
       )
     default:

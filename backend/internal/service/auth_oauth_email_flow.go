@@ -12,6 +12,7 @@ import (
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/redeemcode"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/passwordpolicy"
 )
 
 func normalizeOAuthSignupSource(signupSource string) string {
@@ -115,6 +116,9 @@ func (s *AuthService) RegisterOAuthEmailAccount(
 	}
 	if s.settingService == nil || (!s.settingService.IsRegistrationEnabled(ctx) && !s.canBypassRegistrationDisabledForOAuth(ctx, signupSource)) {
 		return nil, nil, ErrRegDisabled
+	}
+	if err := passwordpolicy.Validate(password); err != nil {
+		return nil, nil, err
 	}
 
 	email = strings.TrimSpace(strings.ToLower(email))

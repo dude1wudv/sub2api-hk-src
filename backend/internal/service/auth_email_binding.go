@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/passwordpolicy"
 	"net/mail"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/passwordpolicy"
 )
 
 // BindEmailIdentity verifies and binds a local email/password identity to the
@@ -38,13 +38,6 @@ func (s *AuthService) BindEmailIdentity(
 	if strings.TrimSpace(password) == "" {
 		return nil, ErrPasswordRequired
 	}
-	if err := s.VerifyOAuthEmailCode(ctx, normalizedEmail, verifyCode); err != nil {
-		return nil, err
-	}
-	if err := s.validateRegistrationEmailPolicy(ctx, normalizedEmail); err != nil {
-		return nil, err
-	}
-
 	currentUser, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -57,6 +50,14 @@ func (s *AuthService) BindEmailIdentity(
 	}
 	if !firstRealEmailBind && !s.CheckPassword(password, currentUser.PasswordHash) {
 		return nil, ErrPasswordIncorrect
+	}
+	// Password errors must not consume the code. Existing email identities only
+	// verify their current password and keep compatibility with older passwords.
+	if err := s.VerifyOAuthEmailCode(ctx, normalizedEmail, verifyCode); err != nil {
+		return nil, err
+	}
+	if err := s.validateRegistrationEmailPolicy(ctx, normalizedEmail); err != nil {
+		return nil, err
 	}
 
 	if err := s.ensureEmailIdentityAvailableForUser(ctx, currentUser, normalizedEmail); err != nil {

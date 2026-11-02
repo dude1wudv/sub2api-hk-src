@@ -155,7 +155,7 @@ describe('AvailableChannelsTable responsive surfaces', () => {
     const mobile = wrapper.get('[data-testid="available-channels"]')
 
     expect(mobile.text()).toContain('Fallback channel')
-    expect(mobile.text()).toContain('openai')
+    expect(mobile.text()).toContain('OpenAI')
     expect(mobile.text()).toContain('No models')
     expect(mobile.findAll('dd')[0].text()).toBe('-')
   })

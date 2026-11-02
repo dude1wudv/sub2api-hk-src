@@ -23,7 +23,7 @@ describe('portal purchase helpers', () => {
   })
 
   it('formats balances by locale while rejecting invalid numeric values', () => {
-    expect(formatPortalBalance(12.5, 'en-US')).toBe('$12.50')
+    expect(formatPortalBalance(12.5, 'en-US')).toBe('USD 12.50')
     expect(formatPortalBalance(12.5, 'zh-CN')).toContain('12.50')
     expect(formatPortalBalance(Number.NaN, 'en-US')).toBe('—')
   })

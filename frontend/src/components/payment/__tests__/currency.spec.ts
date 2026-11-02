@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { currencySymbol, formatPaymentAmount } from '../currency'
 
 describe('formatPaymentAmount', () => {
+  it('uses the USD code without changing other payment currency symbols', () => {
+    expect(formatPaymentAmount(1.25, 'USD', 'en-US').replace(/\s/g, ' ')).toBe('USD 1.25')
+    expect(formatPaymentAmount(71.43, 'CNY', 'zh-CN')).toBe('¥71.43')
+  })
   it('uses the currency default fraction digits', () => {
     expect(formatPaymentAmount(100, 'JPY', 'en-US')).not.toContain('.00')
     expect(formatPaymentAmount(100, 'KRW', 'en-US')).not.toContain('.00')

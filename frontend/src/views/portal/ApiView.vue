@@ -8,7 +8,7 @@
         </div>
       </div>
       <div class="portal-api-header-actions">
-        <button type="button" class="portal-api-icon-button" :disabled="keysLoading || groupsLoading" :aria-label="text('刷新', 'Refresh')" data-test="refresh-keys" @click="refreshPage"><Icon name="refresh" size="sm" aria-hidden="true" /></button>
+        <button type="button" class="portal-api-icon-button" :disabled="keysLoading || groupsLoading || retryRemaining > 0" :aria-label="text('刷新', 'Refresh')" data-test="refresh-keys" @click="refreshPage"><Icon name="refresh" size="sm" aria-hidden="true" /></button>
         <button type="button" class="portal-button secondary" :aria-pressed="bulkMode" data-test="bulk-mode-toggle" @click="toggleBulkMode">{{ bulkMode ? text('退出批量管理', 'Exit bulk management') : text('批量管理', 'Bulk management') }}</button>
         <button type="button" class="portal-button" data-tour="keys-create-btn" :disabled="creationDisabled" aria-describedby="key-creation-state" @click="openCreate()"><Icon name="plus" size="sm" aria-hidden="true" />{{ text('创建密钥', 'Create key') }}</button>
       </div>
@@ -59,7 +59,7 @@
         <button v-else type="button" class="portal-button" :disabled="creationDisabled" aria-describedby="key-creation-state" @click="openCreate()">{{ text('创建密钥', 'Create key') }}</button>
       </div>
       <p v-if="keysError && keys.length" class="portal-muted">{{ text('以下为上次成功加载的数据。', 'Showing the last successfully loaded data.') }}</p>
-      <PortalDataState v-if="usageError" :error="usageError" :retry-label="text('重试用量', 'Retry usage')" :retry-disabled="usageLoading" @retry="retryUsage" />
+      <PortalDataState v-if="usageError" :error="usageError" :retry-label="text('重试用量', 'Retry usage') + (retryRemaining > 0 ? ` (${retryRemaining}s)` : '')" :retry-disabled="usageLoading || retryRemaining > 0" @retry="retryUsage" />
       <p v-if="usageLoading" role="status" class="portal-muted">{{ text('正在刷新密钥用量…', 'Refreshing key usage…') }}</p>
       <PortalApiKeyTable
         v-if="keys.length"
@@ -112,7 +112,7 @@
     <PortalApiExamples v-if="examplesOpen" v-model:model="exampleModel" />
 
     <PortalKeyForm :open="keyFormOpen" :editing="editingKey" :groups="groups" :group-rates="groupRates" :selected-group="formGroupId" @close="keyFormOpen = false" @saved="onKeySaved" />
-    <UseKeyModal :show="!!useKeyTarget" :api-key="useKeyTarget?.key || ''" :base-url="apiBaseUrl" :platform="useKeyTarget?.group?.platform || null" :claude-code-only="useKeyTarget?.group?.claude_code_only || false" :allow-messages-dispatch="useKeyTarget?.group?.allow_messages_dispatch || false" @close="useKeyTarget = null" />
+    <UseKeyModal :show="!!useKeyTarget" :api-key="useKeyTarget?.key || ''" :base-url="apiRoot" :platform="useKeyTarget?.group?.platform || null" :claude-code-only="useKeyTarget?.group?.claude_code_only || false" :allow-messages-dispatch="useKeyTarget?.group?.allow_messages_dispatch || false" @close="useKeyTarget = null" />
     <PortalDialog :open="ccsClientOpen" :title="t('keys.ccsClientSelect.title')" @close="closeCcsClient">
       <p>{{ t('keys.ccsClientSelect.description') }}</p>
       <div class="portal-api-ccs-choices">
@@ -212,7 +212,7 @@ function pageSeparated(index: number) {
 const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
 const usageLoading = ref(false)
 const usageError = ref('')
-const { openAIBase: apiBaseUrl } = usePatrickApiBase()
+const { apiRoot, openAIBase: apiBaseUrl } = usePatrickApiBase()
 const hideCcsImport = computed(() => !!appStore.cachedPublicSettings?.hide_ccs_import_button)
 const useKeyTarget = ref<ApiKey | null>(null)
 const ccsClientOpen = ref(false)
@@ -266,6 +266,8 @@ async function loadKeys() {
   keyController?.abort()
   const controller = new AbortController()
   keyController = controller
+  usageLoading.value = false
+  usageError.value = ''
   keysLoading.value = true
   keysError.value = ''
   try {
@@ -297,7 +299,7 @@ async function loadKeys() {
   }
 }
 async function loadUsage(ids: number[], signal: AbortSignal, request: number) {
-  if (!ids.length) { usageStats.value = {}; usageError.value = ''; return }
+  if (!ids.length) { usageStats.value = {}; usageError.value = ''; usageLoading.value = false; return }
   usageLoading.value = true
   usageError.value = ''
   try {
@@ -312,7 +314,7 @@ async function loadUsage(ids: number[], signal: AbortSignal, request: number) {
   }
 }
 function retryUsage() {
-  if (keyController && !usageLoading.value) void loadUsage(keys.value.map(key => key.id), keyController.signal, keyRequest)
+  if (keyController && !usageLoading.value && retryRemaining.value <= 0) void loadUsage(keys.value.map(key => key.id), keyController.signal, keyRequest)
 }
 function refreshPage() {
   void loadGroups()
@@ -336,7 +338,7 @@ function importToCcs(key: ApiKey) {
 function executeCcsImport(key: ApiKey, clientType: CcSwitchClientType) {
   const providerName = (appStore.cachedPublicSettings?.site_name || appStore.siteName || 'sub2api').trim() || 'sub2api'
   const deeplink = buildCcSwitchImportDeeplink({
-    baseUrl: apiBaseUrl.value || window.location.origin,
+    baseUrl: apiRoot.value || window.location.origin,
     platform: key.group?.platform || 'anthropic',
     clientType,
     providerName,

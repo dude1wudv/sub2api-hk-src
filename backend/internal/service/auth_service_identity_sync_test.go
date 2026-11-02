@@ -147,7 +147,7 @@ func TestAuthServiceRegisterDualWritesEmailIdentity(t *testing.T) {
 	}, nil)
 	ctx := context.Background()
 
-	token, user, err := svc.Register(ctx, "user@example.com", "password")
+	token, user, err := svc.Register(ctx, "user@example.com", "new-password")
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	require.NotNil(t, user)
@@ -243,7 +243,10 @@ func TestAuthServiceRecordSuccessfulLoginBackfillsEmailIdentity(t *testing.T) {
 		Balance:     1,
 		Concurrency: 1,
 	}
-	require.NoError(t, user.SetPassword("password"))
+	// Model an account created before the new-password policy, retaining legacy login coverage.
+	passwordHash, err := svc.HashPassword("password")
+	require.NoError(t, err)
+	user.PasswordHash = passwordHash
 	require.NoError(t, repo.Create(ctx, user))
 
 	svc.RecordSuccessfulLogin(ctx, user.ID)

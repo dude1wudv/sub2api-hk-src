@@ -176,6 +176,10 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 		return "", nil, ErrRegDisabled
 	}
+	// Reject unusable passwords before consuming the email verification code.
+	if err := passwordpolicy.Validate(password); err != nil {
+		return "", nil, err
+	}
 
 	// 防止用户注册 LinuxDo OAuth 合成邮箱，避免第三方登录与本地账号发生碰撞。
 	if isReservedEmail(email) {
@@ -1646,6 +1650,10 @@ func (s *AuthService) ResetPassword(ctx context.Context, email, token, newPasswo
 
 	if s.emailService == nil {
 		return ErrServiceUnavailable
+	}
+	// A policy error must leave the one-time reset token available for correction.
+	if err := passwordpolicy.Validate(newPassword); err != nil {
+		return err
 	}
 
 	// Verify and consume the reset token (one-time use)

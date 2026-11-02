@@ -417,7 +417,7 @@
 
 <script setup lang="ts">
 import ColorModeToggle from '@/components/common/ColorModeToggle.vue'
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
@@ -529,6 +529,15 @@ const RING_GRADIENTS = [
 
 const ringAnimated = ref(false)
 const displayPcts = ref<number[]>([])
+let ringAnimationTimer: ReturnType<typeof setTimeout> | undefined
+let ringAnimationFrame = 0
+let ringAnimationActive = false
+
+onBeforeUnmount(() => {
+  ringAnimationActive = false
+  if (ringAnimationTimer) clearTimeout(ringAnimationTimer)
+  if (ringAnimationFrame) cancelAnimationFrame(ringAnimationFrame)
+})
 
 const ringTrackColor = '#e7eef6'
 
@@ -548,12 +557,17 @@ function getRingOffset(ring: RingItem): number {
 }
 
 function triggerRingAnimation(items: RingItem[]) {
+  ringAnimationActive = true
+  if (ringAnimationTimer) clearTimeout(ringAnimationTimer)
+  if (ringAnimationFrame) cancelAnimationFrame(ringAnimationFrame)
   ringAnimated.value = false
   displayPcts.value = items.map(() => 0)
 
   nextTick(() => {
-    requestAnimationFrame(() => {
-      setTimeout(() => {
+    ringAnimationFrame = requestAnimationFrame(() => {
+      if (!ringAnimationActive) return
+      ringAnimationTimer = setTimeout(() => {
+        if (!ringAnimationActive) return
         ringAnimated.value = true
 
         // Animate percentage numbers
@@ -566,9 +580,9 @@ function triggerRingAnimation(items: RingItem[]) {
           const p = Math.min(elapsed / duration, 1)
           const ease = 1 - Math.pow(1 - p, 3)
           displayPcts.value = targets.map(target => Math.round(ease * target))
-          if (p < 1) requestAnimationFrame(tick)
+          if (p < 1 && ringAnimationActive) ringAnimationFrame = requestAnimationFrame(tick)
         }
-        requestAnimationFrame(tick)
+        ringAnimationFrame = requestAnimationFrame(tick)
       }, 50)
     })
   })
