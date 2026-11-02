@@ -9,7 +9,7 @@ func (g *Group) Localized(acceptLanguage string) *Group {
 	if g == nil {
 		return nil
 	}
-	g.Name, g.Description = g.I18n.PublicText(acceptLanguage, g.Platform, g.SubscriptionType, g.RateMultiplier, g.Description)
+	g.Name, g.Description = g.I18n.Localize(acceptLanguage, g.Name, g.Description)
 	g.I18n = nil
 	return g
 }

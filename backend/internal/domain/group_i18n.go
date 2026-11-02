@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -111,34 +110,4 @@ func preferredLanguage(acceptLanguage string) string {
 		}
 	}
 	return best
-}
-
-// PublicText uses a neutral name when no public translation exists. Descriptions
-// are user-facing group notes, so missing translations preserve the original.
-// IDs and routing names are unchanged; explicit public translations take priority.
-func (m GroupI18n) PublicText(acceptLanguage, platform, subscriptionType string, rate float64, description string) (string, string) {
-	zh := strings.HasPrefix(strings.ToLower(preferredLanguage(acceptLanguage)), "zh")
-	platforms := map[string]string{"openai": "OpenAI", "anthropic": "Anthropic", "gemini": "Gemini", "grok": "Grok", "composite": "Multi-platform", "antigravity": "Antigravity", "typesafe": "TypeSafe"}
-	label := platforms[strings.ToLower(platform)]
-	if label == "" {
-		label = "API"
-	}
-	if zh && strings.EqualFold(platform, "composite") {
-		label = "多平台"
-	}
-	billing := "Pay as you go"
-	if zh {
-		billing = "按量计费"
-	}
-	if subscriptionType == "subscription" {
-		billing = "Subscription"
-		if zh {
-			billing = "订阅"
-		}
-	}
-	fallback := label + " · " + billing
-	if rate > 0 {
-		fallback += fmt.Sprintf(" · %g×", rate)
-	}
-	return m.Localize(acceptLanguage, fallback, description)
 }

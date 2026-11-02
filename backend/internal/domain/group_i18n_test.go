@@ -2,23 +2,23 @@ package domain
 
 import "testing"
 
-func TestGroupI18nPublicTextPreservesNotes(t *testing.T) {
+func TestGroupI18nLocalizePreservesOriginalNameAndNotes(t *testing.T) {
 	const notes = "支持长上下文\n请使用兼容接口"
 	cases := []struct {
 		name, language, wantName, wantNotes string
 		i18n                                GroupI18n
 	}{
-		{"no translations", "zh-CN", "OpenAI · 按量计费 · 1×", notes, nil},
-		{"untranslated language", "zh", "OpenAI · 按量计费 · 1×", notes, GroupI18n{"en": {Name: "Coding", Description: "Translated notes"}}},
+		{"no translations", "zh-CN", "原分组名称", notes, nil},
+		{"untranslated language", "zh", "原分组名称", notes, GroupI18n{"en": {Name: "Coding", Description: "Translated notes"}}},
 		{"name translation only", "en-US", "Coding", notes, GroupI18n{"en": {Name: "Coding"}}},
-		{"description translation only", "en-US", "OpenAI · Pay as you go · 1×", "Translated notes", GroupI18n{"en": {Description: "Translated notes"}}},
+		{"description translation only", "en-US", "原分组名称", "Translated notes", GroupI18n{"en": {Description: "Translated notes"}}},
 		{"both translations", "en", "Coding", "Translated notes", GroupI18n{"en": {Name: "Coding", Description: "Translated notes"}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			name, description := tc.i18n.PublicText(tc.language, "openai", "standard", 1, notes)
+			name, description := tc.i18n.Localize(tc.language, "原分组名称", notes)
 			if name != tc.wantName || description != tc.wantNotes {
-				t.Fatalf("PublicText = (%q, %q), want (%q, %q)", name, description, tc.wantName, tc.wantNotes)
+				t.Fatalf("Localize = (%q, %q), want (%q, %q)", name, description, tc.wantName, tc.wantNotes)
 			}
 		})
 	}
