@@ -23,6 +23,16 @@ const editing = { id: 42, name: 'Production key', group_id: 3, quota: 18, expire
 const render = (props: Record<string, unknown> = {}) => mount(PortalKeyForm, { props: { open: true, groups, editing: null, ...props } as any })
 describe('PortalKeyForm', () => {
   beforeEach(() => { vi.clearAllMocks(); create.mockResolvedValue({ id: 43 }); update.mockResolvedValue({ id: 42 }) })
+  it.each([null, editing])('shows multiline group notes in cards and the selected summary when editing=%s', async (key) => {
+    const description = 'Supports long context\nUse the compatible endpoint'
+    const wrapper = render({ groups: [{ ...groups[0], description }, groups[1]], editing: key })
+    expect(wrapper.get('[data-group-id="3"] .key-description').element.textContent).toContain(description)
+    if (!key) await wrapper.get('[data-group-id="3"]').trigger('click')
+    expect(wrapper.get('.key-selected-summary small').element.textContent).toContain(description)
+    await wrapper.get('[aria-label="Search groups"]').setValue('compatible endpoint')
+    expect(wrapper.findAll('.key-group-card').map(card => card.attributes('data-group-id'))).toEqual(['3'])
+    wrapper.unmount()
+  })
   it('uses searchable group cards, description search and provider filters with user-specific rates', async () => {
     const wrapper = render({ groupRates: { 3: 0.8 } })
     expect(wrapper.get('[data-group-id="3"]').text()).toContain('0.8×')

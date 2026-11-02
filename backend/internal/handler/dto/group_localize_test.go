@@ -32,7 +32,7 @@ func TestGroupLocalized_UsesPublicFallbackWhenLanguageHasNoTranslation(t *testin
 	g := localizableGroup().Localized("zh")
 
 	require.Equal(t, "API · 按量计费", g.Name)
-	require.Empty(t, g.Description)
+	require.Equal(t, "号池", g.Description)
 	require.Nil(t, g.I18n)
 }
 

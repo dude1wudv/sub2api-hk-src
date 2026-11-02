@@ -113,9 +113,10 @@ func preferredLanguage(acceptLanguage string) string {
 	return best
 }
 
-// PublicText never falls back to operator-only pool names or descriptions.
+// PublicText uses a neutral name when no public translation exists. Descriptions
+// are user-facing group notes, so missing translations preserve the original.
 // IDs and routing names are unchanged; explicit public translations take priority.
-func (m GroupI18n) PublicText(acceptLanguage, platform, subscriptionType string, rate float64) (string, string) {
+func (m GroupI18n) PublicText(acceptLanguage, platform, subscriptionType string, rate float64, description string) (string, string) {
 	zh := strings.HasPrefix(strings.ToLower(preferredLanguage(acceptLanguage)), "zh")
 	platforms := map[string]string{"openai": "OpenAI", "anthropic": "Anthropic", "gemini": "Gemini", "grok": "Grok", "composite": "Multi-platform", "antigravity": "Antigravity", "typesafe": "TypeSafe"}
 	label := platforms[strings.ToLower(platform)]
@@ -139,5 +140,5 @@ func (m GroupI18n) PublicText(acceptLanguage, platform, subscriptionType string,
 	if rate > 0 {
 		fallback += fmt.Sprintf(" · %g×", rate)
 	}
-	return m.Localize(acceptLanguage, fallback, "")
+	return m.Localize(acceptLanguage, fallback, description)
 }

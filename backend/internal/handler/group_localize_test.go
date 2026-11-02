@@ -25,11 +25,11 @@ func TestToLocalizedModelPlazaGroups(t *testing.T) {
 	require.Equal(t, "Standard", english[0].Name)
 	require.Equal(t, "Pro + Max pool", english[0].Description)
 	require.Equal(t, "OpenAI · Pay as you go", english[1].Name)
-	require.Empty(t, english[1].Description)
+	require.Equal(t, "原描述", english[1].Description)
 
 	chinese := toLocalizedModelPlazaGroups(visible, nil, "zh")
 	require.Equal(t, "Anthropic · 按量计费", chinese[0].Name)
-	require.Empty(t, chinese[0].Description)
+	require.Equal(t, "号池", chinese[0].Description)
 
 	// service 层对象不被改写，同一批分组可继续按别的语言输出
 	require.Equal(t, "标准", visible[0].Name)

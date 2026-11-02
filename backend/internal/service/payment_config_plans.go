@@ -310,6 +310,6 @@ func (s *PaymentConfigService) GetPlan(ctx context.Context, id int64) (*dbent.Su
 
 // PublicName keeps operator pool names out of user-facing checkout responses.
 func (g PlanGroupInfo) PublicName(language string) string {
-	name, _ := g.I18n.PublicText(language, g.Platform, "subscription", g.RateMultiplier)
+	name, _ := g.I18n.PublicText(language, g.Platform, "subscription", g.RateMultiplier, "")
 	return name
 }

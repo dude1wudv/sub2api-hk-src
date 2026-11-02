@@ -184,7 +184,7 @@ async function submit() {
 .key-selected { margin-bottom:22px; }
 .key-selected-summary { display:flex; flex-wrap:wrap; gap:8px 16px; padding:15px; border:1px solid rgb(var(--line-strong)); border-radius:8px; background:rgb(var(--surface-2)); font-size:13px; }
 .key-selected-summary strong { flex:1; overflow-wrap:anywhere; font-weight:600; }
-.key-selected-summary small { flex-basis:100%; color:rgb(var(--ink-3)); line-height:1.6; }
+.key-selected-summary small { flex-basis:100%; color:rgb(var(--ink-3)); line-height:1.6; white-space:pre-line; overflow-wrap:anywhere; }
 .key-selected-empty { margin:0 0 20px; padding:22px 16px; border:1px dashed rgb(var(--line-strong)); border-radius:8px; color:rgb(var(--ink-3)); font-size:13px; line-height:1.7; }
 .key-common-fields { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 .key-editor .portal-field { margin-bottom:18px; font-size:13px; gap:9px; }

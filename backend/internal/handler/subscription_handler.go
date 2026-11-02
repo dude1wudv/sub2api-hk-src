@@ -111,7 +111,7 @@ func (h *SubscriptionHandler) GetProgress(c *gin.Context) {
 			continue
 		}
 		if sub.Group != nil {
-			progress.GroupName, _ = sub.Group.I18n.PublicText(c.GetHeader("Accept-Language"), sub.Group.Platform, sub.Group.SubscriptionType, sub.Group.RateMultiplier)
+			progress.GroupName, _ = sub.Group.I18n.PublicText(c.GetHeader("Accept-Language"), sub.Group.Platform, sub.Group.SubscriptionType, sub.Group.RateMultiplier, "")
 		}
 		result = append(result, SubscriptionProgressInfo{
 			Subscription: dto.UserSubscriptionFromService(sub).Localized(c.GetHeader("Accept-Language")),
@@ -153,7 +153,7 @@ func (h *SubscriptionHandler) GetSummary(c *gin.Context) {
 
 		// Add group info if preloaded
 		if sub.Group != nil {
-			item.GroupName, _ = sub.Group.I18n.PublicText(c.GetHeader("Accept-Language"), sub.Group.Platform, sub.Group.SubscriptionType, sub.Group.RateMultiplier)
+			item.GroupName, _ = sub.Group.I18n.PublicText(c.GetHeader("Accept-Language"), sub.Group.Platform, sub.Group.SubscriptionType, sub.Group.RateMultiplier, "")
 			if sub.Group.DailyLimitUSD != nil {
 				item.DailyLimitUSD = *sub.Group.DailyLimitUSD
 			}

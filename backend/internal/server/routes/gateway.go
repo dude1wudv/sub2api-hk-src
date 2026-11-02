@@ -65,14 +65,6 @@ func RegisterGatewayRoutes(
 		dispatchCodexModelsGateway(c, h.OpenAIGateway.CodexModels, h.Gateway.CodexModels)
 	}
 	modelsHandler := func(c *gin.Context) {
-		if c.Request.Method == http.MethodGet && c.Request.URL.Path == "/models" &&
-			c.GetHeader("Sec-Fetch-Mode") == "navigate" && c.GetHeader("Sec-Fetch-Dest") == "document" &&
-			strings.Contains(strings.ToLower(c.GetHeader("Accept")), "text/html") &&
-			c.GetHeader("Authorization") == "" && c.GetHeader("X-Api-Key") == "" && c.Query("key") == "" && c.Query("api_key") == "" {
-			c.Header("Cache-Control", "no-store")
-			c.Redirect(http.StatusFound, "/model-plaza")
-			return
-		}
 		if c.Query("client_version") != "" {
 			codexModelsHandler(c)
 			return
@@ -412,7 +404,7 @@ func RegisterGatewayRoutes(
 	// 根路径别名共用中间件链：白名单准入在 apiKeyAuth 之后、compositeTarget
 	// 之前，避免逐条路由手工维护链导致漏挂。
 	rootRoute := func(method, path string, limit gin.HandlerFunc, handler gin.HandlerFunc) {
-		r.Handle(method, path, limit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), groupModelAllowlist, compositeTarget, requireGroupAnthropic, handler)
+		r.Handle(method, path, limit, clientRequestID, opsErrorLogger, endpointNorm, redirectModelsBrowserNavigation, gin.HandlerFunc(apiKeyAuth), groupModelAllowlist, compositeTarget, requireGroupAnthropic, handler)
 	}
 	for _, prefix := range []string{"/api/v3", "/v3", "/v1", ""} {
 		rootRoute(http.MethodPost, prefix+"/contents/generations/tasks", bodyLimit, h.OpenAIGateway.SeedanceTasks)
@@ -716,6 +708,21 @@ func compositeGeminiModelFromParams(c *gin.Context) string {
 		return strings.TrimSpace(modelAction[:idx])
 	}
 	return modelAction
+}
+
+// Browser navigation must be handled before API key authentication, while any
+// credential-bearing request keeps the normal gateway authentication chain.
+func redirectModelsBrowserNavigation(c *gin.Context) {
+	if c.Request.Method != http.MethodGet || c.Request.URL.Path != "/models" ||
+		c.GetHeader("Sec-Fetch-Mode") != "navigate" || c.GetHeader("Sec-Fetch-Dest") != "document" ||
+		!strings.Contains(strings.ToLower(c.GetHeader("Accept")), "text/html") ||
+		c.GetHeader("Authorization") != "" || c.GetHeader("X-Api-Key") != "" || c.GetHeader("X-Goog-Api-Key") != "" ||
+		c.Query("key") != "" || c.Query("api_key") != "" {
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	c.Redirect(http.StatusFound, "/model-plaza")
+	c.Abort()
 }
 
 func compositeRouteEndpointForPath(path string) string {
