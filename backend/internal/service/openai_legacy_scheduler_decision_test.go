@@ -263,3 +263,30 @@ func TestLegacySchedulerDecision_PreviousResponseRouting(t *testing.T) {
 		require.True(t, decision.StickyPreviousHit)
 	})
 }
+
+func TestLegacySchedulerDecision_PreviousResponseRoutingOpenAICompatibleAPIKey(t *testing.T) {
+	resetOpenAIAdvancedSchedulerSettingCacheForTest()
+	ctx := context.Background()
+	groupID := int64(38120)
+	responseID := "resp_deepseek_legacy_route"
+	accounts := newLegacySchedulerDecisionTestAccounts(groupID, true)
+	for i := range accounts {
+		accounts[i].Platform = PlatformDeepseek
+	}
+
+	svc := newLegacySchedulerDecisionTestService(accounts, true, schedulerTestConcurrencyCache{})
+	require.NoError(t, svc.getOpenAIWSStateStore().BindResponseAccount(ctx, groupID, responseID, 38102, time.Hour))
+
+	selection, decision, err := svc.SelectAccountWithSchedulerForCapability(
+		ctx, &groupID, responseID, "deepseek-session", "", nil,
+		OpenAIUpstreamTransportAny, OpenAIEndpointCapabilityChatCompletions, false, true, true,
+		PlatformDeepseek,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	releaseLegacySchedulerDecisionSelection(selection)
+	require.Equal(t, int64(38102), selection.Account.ID, "OpenAI-compatible API-key groups must honor previous_response_id account affinity")
+	require.Equal(t, openAIAccountScheduleLayerPreviousResponse, decision.Layer)
+	require.True(t, decision.StickyPreviousHit)
+}

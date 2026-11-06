@@ -395,8 +395,7 @@ func (s *defaultOpenAIAccountScheduler) Select(
 	}()
 
 	previousResponseID := strings.TrimSpace(req.PreviousResponseID)
-	if previousResponseID != "" && NormalizeOpenAICompatiblePlatform(req.Platform) == PlatformOpenAI &&
-		(!req.StickyWeighted || !req.PreviousResponseCanMove) {
+	if previousResponseID != "" && (!req.StickyWeighted || !req.PreviousResponseCanMove) {
 		selection, err := s.service.selectAccountByPreviousResponseIDForCapability(
 			ctx,
 			req.GroupID,
@@ -2285,7 +2284,7 @@ func (s *OpenAIGatewayService) selectLegacyAccountByPreviousResponse(
 	requireCompact bool,
 	platform string,
 ) (*AccountSelectionResult, bool, error) {
-	if strings.TrimSpace(previousResponseID) == "" || platform != PlatformOpenAI {
+	if strings.TrimSpace(previousResponseID) == "" {
 		return nil, false, nil
 	}
 	if s.checkChannelPricingRestriction(ctx, groupID, requestedModel) {
@@ -2474,7 +2473,7 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 	stickyWeighted := s.isOpenAIAdvancedSchedulerStickyWeightedEnabled(ctx)
 	subscriptionPriority := s.isOpenAIAdvancedSchedulerSubscriptionPriorityEnabled(ctx)
 	stickyPreviousAccountID := int64(0)
-	if stickyWeighted && previousResponseCanMove && strings.TrimSpace(previousResponseID) != "" && platform == PlatformOpenAI {
+	if stickyWeighted && previousResponseCanMove && strings.TrimSpace(previousResponseID) != "" {
 		stickyPreviousAccountID = s.ResolveAccountIDByPreviousResponseIDForScheduler(ctx, groupID, previousResponseID, requestedModel, excludedIDs, requiredCapability, requireCompact)
 	}
 
