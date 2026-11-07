@@ -366,7 +366,7 @@ func TestProgressiveLoginLimiterExpiredAttemptCannotChangeNewerState(t *testing.
 	key := loginEmailKeyPrefix + hashLoginEmail("stale@example.com")
 	for _, status := range []int{http.StatusOK, http.StatusUnauthorized} {
 		server.HSet(key, "failures", "6", "cooldown_until_ms", "12345")
-		server.Set(key+":lease", "newer-attempt")
+		require.NoError(t, server.Set(key+":lease", "newer-attempt"))
 		result, err := loginAttemptFinishScript.Run(context.Background(), client, []string{key, key + ":lease"},
 			"expired-attempt", status, loginFailureWindow.Milliseconds(), loginDelayThreshold, 2,
 			loginDelayInitial.Milliseconds(), loginDelayMax.Milliseconds()).Int()
