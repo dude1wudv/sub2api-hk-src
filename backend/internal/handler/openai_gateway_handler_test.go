@@ -29,6 +29,18 @@ import (
 	"github.com/tidwall/sjson"
 )
 
+func TestOpenAIResponsesSessionHash_APIKeyFallbackStaysStableAcrossGrowingConversation(t *testing.T) {
+	groupID := int64(179)
+	apiKey := &service.APIKey{ID: 275, GroupID: &groupID}
+	h := &OpenAIGatewayHandler{gatewayService: &service.OpenAIGatewayService{}}
+
+	first := h.generateResponsesSessionHash(nil, apiKey, "deepseek/deepseek-v4.1-flash-fast", service.PlatformDeepseek, []byte(`{"model":"deepseek/deepseek-v4.1-flash-fast","input":"first"}`))
+	second := h.generateResponsesSessionHash(nil, apiKey, "deepseek/deepseek-v4.1-flash-fast", service.PlatformDeepseek, []byte(`{"model":"deepseek/deepseek-v4.1-flash-fast","input":"first","output":"longer conversation"}`))
+
+	require.NotEmpty(t, first)
+	require.Equal(t, first, second)
+}
+
 func TestOpenAIHandleStreamingAwareError_JSONEscaping(t *testing.T) {
 	tests := []struct {
 		name    string

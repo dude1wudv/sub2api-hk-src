@@ -288,6 +288,38 @@ func openAICompatibleRequestPlatform(ctx context.Context, apiKey *service.APIKey
 	return service.PlatformOpenAI
 }
 
+func (h *OpenAIGatewayHandler) generateResponsesSessionHash(
+	c *gin.Context,
+	apiKey *service.APIKey,
+	requestedModel string,
+	platform string,
+	body []byte,
+) string {
+	if h == nil || h.gatewayService == nil {
+		return ""
+	}
+
+	// Explicit client supplied identifiers remain the strongest affinity signal.
+	if sessionHash := h.gatewayService.GenerateExplicitSessionHash(c, body); sessionHash != "" {
+		return sessionHash
+	}
+
+	// Multi-protocol API-key providers commonly receive a full conversation on
+	// every request and omit prompt_cache_key. Content-derived affinity changes
+	// as the conversation grows, so scope the fallback to this API key, group and
+	// model to keep the upstream cache on one account.
+	if apiKey != nil && apiKey.ID > 0 && service.IsMultiProtocolAPIKeyProvider(platform) {
+		groupID := int64(0)
+		if apiKey.GroupID != nil {
+			groupID = *apiKey.GroupID
+		}
+		seed := fmt.Sprintf("responses-api-key:%d:group:%d:model:%s", apiKey.ID, groupID, strings.TrimSpace(requestedModel))
+		return service.DeriveSessionHashFromSeed(seed)
+	}
+
+	return h.gatewayService.GenerateSessionHash(c, body)
+}
+
 func openAIResponsesRequiredCapability(imageIntent bool, platform string) service.OpenAIEndpointCapability {
 	if imageIntent && platform == service.PlatformOpenAI {
 		return service.OpenAIEndpointCapabilityResponses
@@ -636,8 +668,12 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 	}
 	defer inflightRelease()
 
-	// Generate session hash (header first; fallback to prompt_cache_key)
-	sessionHash := h.gatewayService.GenerateSessionHash(c, sessionHashBody)
+	// Generate session hash. Multi-protocol API-key clients such as Magpie often
+	// resend the full conversation without a stable session header or
+	// prompt_cache_key. A content-derived hash then changes on every turn and
+	// defeats account affinity, so use an API-key scoped fallback after honoring
+	// all explicit session signals.
+	sessionHash := h.generateResponsesSessionHash(c, apiKey, reqModel, requestPlatform, sessionHashBody)
 	if h.rejectIfCyberSessionBlocked(c, apiKey, sessionHashBody, reqModel, cyberBlockFormatResponses) {
 		return
 	}
