@@ -172,12 +172,13 @@ func TestPrepareSmartRoutingReusesReservationAndReleasesOnce(t *testing.T) {
 	svc := &OpenAIGatewayService{openaiScheduler: scheduler}
 	key := &APIKey{UserID: 7, GroupID: &groupID, Group: group}
 
-	ctx, ok, err := svc.PrepareSmartRouting(context.Background(), key, "gpt-4o", "", OpenAIEndpointCapabilityChatCompletions, false)
+	ctx, ok, err := svc.PrepareSmartRouting(WithSmartRoutingSessionHash(context.Background(), "stable-smart-routing-session"), key, "gpt-4o", "", OpenAIEndpointCapabilityChatCompletions, false)
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, 1, scheduler.calls)
 	require.Equal(t, "gpt-4o", scheduler.request.RequestedModel)
 	require.Equal(t, OpenAIUpstreamTransportAny, scheduler.request.RequiredTransport)
+	require.Equal(t, "stable-smart-routing-session", scheduler.request.SessionHash)
 
 	selected, decision, err := svc.SelectAccountWithSchedulerForCapability(ctx, &groupID, "", "", "gpt-4o", nil, OpenAIUpstreamTransportAny, OpenAIEndpointCapabilityChatCompletions, false, false, true, PlatformOpenAI)
 	require.NoError(t, err)

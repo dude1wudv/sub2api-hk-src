@@ -57,6 +57,22 @@ func (s *GatewayService) SmartRoutingModels(ctx context.Context, key *APIKey) ([
 	return dedupeAndSortModelIDs(models), nil
 }
 
+// smartRoutingSessionHashContextKey carries the request-level affinity chosen
+// by the API-key smart-routing middleware into the normal schedulers.
+type smartRoutingSessionHashContextKey struct{}
+
+func WithSmartRoutingSessionHash(ctx context.Context, sessionHash string) context.Context {
+	if strings.TrimSpace(sessionHash) == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, smartRoutingSessionHashContextKey{}, strings.TrimSpace(sessionHash))
+}
+
+func SmartRoutingSessionHashFromContext(ctx context.Context) string {
+	hash, _ := ctx.Value(smartRoutingSessionHashContextKey{}).(string)
+	return strings.TrimSpace(hash)
+}
+
 // PrepareSmartRouting uses the real Claude scheduler, including sticky and
 // session limits. Count-tokens selects an account without acquiring a generation
 // slot. The handler consumes this selection once; retries stay in this group.
@@ -68,7 +84,10 @@ func (s *GatewayService) PrepareSmartRouting(ctx context.Context, key *APIKey, p
 	ctx = context.WithValue(ctx, ctxkey.UserID, key.UserID)
 	ctx = context.WithValue(ctx, ctxkey.Group, key.Group)
 	ctx = WithSmartRouting(ctx)
-	sessionHash := s.GenerateSessionHash(parsed)
+	sessionHash := SmartRoutingSessionHashFromContext(ctx)
+	if sessionHash == "" {
+		sessionHash = s.GenerateSessionHash(parsed)
+	}
 	ctx = context.WithValue(ctx, smartRoutingSessionsContextKey{}, &smartRoutingSessions{
 		gateway: s, sessionHash: sessionHash, accounts: make(map[int64]*Account),
 	})

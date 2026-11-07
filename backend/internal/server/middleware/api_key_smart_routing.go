@@ -88,6 +88,19 @@ func resolveSmartRoutingKey(c *gin.Context, keys *service.APIKeyService, gateway
 		parsed.SessionContext = &service.SessionContext{
 			ClientIP: ip.GetClientIP(c), UserAgent: c.GetHeader("User-Agent"), APIKeyID: key.ID,
 		}
+		// Keep the selected group/account stable for stateless API-key clients.
+		// Explicit session identifiers remain strongest; otherwise use a key/model
+		// scoped fallback so a growing conversation does not rotate every turn.
+		sessionHash := ""
+		if gateway != nil {
+			sessionHash = gateway.GenerateSmartRoutingSessionHash(c, key.ID, model, body)
+		}
+		if sessionHash == "" && parsed.MetadataUserID != "" {
+			if metadata := service.ParseMetadataUserID(parsed.MetadataUserID); metadata != nil && metadata.SessionID != "" {
+				sessionHash = service.DeriveSessionHashFromSeed(metadata.SessionID)
+			}
+		}
+		c.Request = c.Request.WithContext(service.WithSmartRoutingSessionHash(c.Request.Context(), sessionHash))
 		if messages {
 			service.SetClaudeCodeClientContext(c, body, parsed)
 		} else {
@@ -179,23 +192,20 @@ func resolveSmartRoutingKey(c *gin.Context, keys *service.APIKeyService, gateway
 		if needsResponses && candidate.Group.Platform == service.PlatformOpenAI {
 			capability = service.OpenAIEndpointCapabilityResponses
 		}
-		available, err := gateway.SmartRoutingAvailable(c.Request.Context(), candidate, model, capability, compact)
+		// PrepareSmartRouting performs the authoritative scheduler selection and
+		// reservation. Avoid a separate availability scan here: doing both races
+		// the live capacity check and can turn a transient account change into an
+		// unnecessary jump to the next billing group.
+		prepared, selected, err := gateway.PrepareSmartRouting(c.Request.Context(), candidate, model, previousResponseID, capability, compact)
 		if err != nil {
-			abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to check routing availability")
+			abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to select a routing account")
 			return nil, false
 		}
-		if available {
-			prepared, selected, err := gateway.PrepareSmartRouting(c.Request.Context(), candidate, model, previousResponseID, capability, compact)
-			if err != nil {
-				abortSmartRoutingError(c, 503, "SMART_ROUTING_UNAVAILABLE", "Unable to select a routing account")
-				return nil, false
-			}
-			if !selected {
-				continue
-			}
-			c.Request = c.Request.WithContext(prepared)
-			return candidate, true
+		if !selected {
+			continue
 		}
+		c.Request = c.Request.WithContext(prepared)
+		return candidate, true
 	}
 	abortSmartRoutingError(c, 503, "SMART_ROUTING_NO_AVAILABLE_GROUP", "No routing group currently has an available account for this model")
 	return nil, false

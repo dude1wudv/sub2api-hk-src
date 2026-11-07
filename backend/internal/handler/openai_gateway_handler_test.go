@@ -41,6 +41,15 @@ func TestOpenAIResponsesSessionHash_APIKeyFallbackStaysStableAcrossGrowingConver
 	require.Equal(t, first, second)
 }
 
+func TestOpenAISmartRoutingSessionHash_APIKeyFallbackStaysStableAcrossGrowingConversation(t *testing.T) {
+	h := &OpenAIGatewayHandler{gatewayService: &service.OpenAIGatewayService{}}
+	first := h.gatewayService.GenerateSmartRoutingSessionHash(nil, 275, "deepseek-v4.1-flash-fast", []byte(`{"model":"deepseek-v4.1-flash-fast","messages":[{"role":"user","content":"first"}]}`))
+	second := h.gatewayService.GenerateSmartRoutingSessionHash(nil, 275, "deepseek-v4.1-flash-fast", []byte(`{"model":"deepseek-v4.1-flash-fast","messages":[{"role":"user","content":"first"},{"role":"assistant","content":"longer conversation"}]}`))
+
+	require.NotEmpty(t, first)
+	require.Equal(t, first, second)
+}
+
 func TestOpenAIHandleStreamingAwareError_JSONEscaping(t *testing.T) {
 	tests := []struct {
 		name    string

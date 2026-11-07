@@ -219,6 +219,21 @@ func (s *OpenAIGatewayService) GenerateSessionHashWithFallback(c *gin.Context, b
 	return currentHash
 }
 
+// GenerateSmartRoutingSessionHash preserves explicit client affinity and gives
+// stateless smart-routing API keys a stable key/model fallback. The fallback
+// is intentionally independent of conversation contents: many API-key clients
+// resend the entire conversation, so content-derived hashes change every turn.
+func (s *OpenAIGatewayService) GenerateSmartRoutingSessionHash(c *gin.Context, apiKeyID int64, requestedModel string, body []byte) string {
+	if sessionHash := s.GenerateExplicitSessionHash(c, body); sessionHash != "" {
+		return sessionHash
+	}
+	if apiKeyID <= 0 {
+		return ""
+	}
+	seed := fmt.Sprintf("smart-routing-api-key:%d:model:%s", apiKeyID, strings.TrimSpace(requestedModel))
+	return DeriveSessionHashFromSeed(seed)
+}
+
 func resolveOpenAIUpstreamOriginator(c *gin.Context, isOfficialClient bool) string {
 	if c != nil {
 		if originator := strings.TrimSpace(c.GetHeader("originator")); originator != "" {

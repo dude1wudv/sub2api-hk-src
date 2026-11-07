@@ -117,7 +117,7 @@ func (s *OpenAIGatewayService) PrepareSmartRouting(ctx context.Context, key *API
 	}
 	ctx = WithOpenAIForwardModel(ctx, forwardModel, compact)
 	ctx, _ = s.WithOpenAIRequestPricingContext(ctx, key.GroupID)
-	selection, _, err := s.SelectAccountWithSchedulerForCapability(ctx, key.GroupID, previousID, "", forwardModel, nil, OpenAIUpstreamTransportAny, capability, compact, false, true, key.Group.Platform)
+	selection, _, err := s.SelectAccountWithSchedulerForCapability(ctx, key.GroupID, previousID, SmartRoutingSessionHashFromContext(ctx), forwardModel, nil, OpenAIUpstreamTransportAny, capability, compact, false, true, key.Group.Platform)
 	if errors.Is(err, ErrNoAvailableAccounts) || errors.Is(err, ErrNoAvailableCompactAccounts) {
 		return ctx, false, nil
 	}

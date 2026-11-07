@@ -298,6 +298,9 @@ func (h *OpenAIGatewayHandler) generateResponsesSessionHash(
 	if h == nil || h.gatewayService == nil {
 		return ""
 	}
+	if apiKey != nil && len(apiKey.RoutingGroupIDs) > 0 {
+		return h.gatewayService.GenerateSmartRoutingSessionHash(c, apiKey.ID, requestedModel, body)
+	}
 
 	// Explicit client supplied identifiers remain the strongest affinity signal.
 	if sessionHash := h.gatewayService.GenerateExplicitSessionHash(c, body); sessionHash != "" {
