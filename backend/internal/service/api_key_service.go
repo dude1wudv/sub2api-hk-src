@@ -709,17 +709,6 @@ func (s *APIKeyService) fillCurrentConcurrency(ctx context.Context, keys []APIKe
 	}
 }
 
-func (s *APIKeyService) currentConcurrencyForAPIKey(ctx context.Context, apiKeyID int64) int {
-	if s == nil || s.concurrencyService == nil || apiKeyID <= 0 {
-		return 0
-	}
-	counts, err := s.concurrencyService.GetAPIKeyConcurrencyBatch(ctx, []int64{apiKeyID})
-	if err != nil {
-		return 0
-	}
-	return counts[apiKeyID]
-}
-
 func (s *APIKeyService) VerifyOwnership(ctx context.Context, userID int64, apiKeyIDs []int64) ([]int64, error) {
 	if len(apiKeyIDs) == 0 {
 		return []int64{}, nil

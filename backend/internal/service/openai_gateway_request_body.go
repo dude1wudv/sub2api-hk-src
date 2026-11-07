@@ -2187,14 +2187,6 @@ func openAIFastPolicySettingsFromContext(ctx context.Context) *OpenAIFastPolicyS
 	return nil
 }
 
-func openAIGroupForcesFast(ctx context.Context, account *Account) bool {
-	if ctx == nil || account == nil || account.Platform != PlatformOpenAI {
-		return false
-	}
-	group, _ := ctx.Value(ctxkey.Group).(*Group)
-	return IsGroupContextValid(group) && groupSupportsOpenAIFast(group.Platform) && group.ForceOpenAIFast
-}
-
 func openAIGroupForcedServiceTier(ctx context.Context, account *Account) string {
 	if ctx == nil || account == nil || account.Platform != PlatformOpenAI {
 		return ""
