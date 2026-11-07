@@ -309,19 +309,53 @@ func (h *OpenAIGatewayHandler) generateResponsesSessionHash(
 		return sessionHash
 	}
 
-	// Multi-protocol API-key providers commonly receive a full conversation on
-	// every request and omit prompt_cache_key. Content-derived affinity changes
-	// as the conversation grows, so scope the fallback to this API key, group and
-	// model to keep the upstream cache on one account.
-	if apiKey != nil && apiKey.ID > 0 && service.IsMultiProtocolAPIKeyProvider(platform) {
-		groupID := int64(0)
-		if apiKey.GroupID != nil {
-			groupID = *apiKey.GroupID
-		}
-		seed := fmt.Sprintf("responses-api-key:%d:group:%d:model:%s", apiKey.ID, groupID, strings.TrimSpace(requestedModel))
-		return service.DeriveSessionHashFromSeed(seed)
+	if sessionHash := apiKeyScopedSessionHash(apiKey, requestedModel, platform); sessionHash != "" {
+		return sessionHash
 	}
 
+	return h.gatewayService.GenerateSessionHash(c, body)
+}
+
+func apiKeyScopedSessionHash(apiKey *service.APIKey, requestedModel, platform string) string {
+	if apiKey == nil || apiKey.ID <= 0 || !service.IsMultiProtocolAPIKeyProvider(platform) {
+		return ""
+	}
+	// Stateless clients may send only the current turn, so content-derived seeds
+	// cannot identify the conversation reliably across requests.
+	groupID := int64(0)
+	if apiKey.GroupID != nil {
+		groupID = *apiKey.GroupID
+	}
+	seed := fmt.Sprintf("responses-api-key:%d:group:%d:model:%s", apiKey.ID, groupID, strings.TrimSpace(requestedModel))
+	return service.DeriveSessionHashFromSeed(seed)
+}
+
+func deepSeekAPIKeySessionHash(apiKey *service.APIKey, requestedModel, platform string) string {
+	if platform != service.PlatformDeepseek {
+		return ""
+	}
+	return apiKeyScopedSessionHash(apiKey, requestedModel, platform)
+}
+
+func (h *OpenAIGatewayHandler) generateOpenAIRequestSessionHash(
+	c *gin.Context,
+	apiKey *service.APIKey,
+	requestedModel string,
+	platform string,
+	body []byte,
+) string {
+	if h == nil || h.gatewayService == nil {
+		return ""
+	}
+	if apiKey != nil && len(apiKey.RoutingGroupIDs) > 0 {
+		return h.gatewayService.GenerateSmartRoutingSessionHash(c, apiKey.ID, requestedModel, body)
+	}
+	if sessionHash := h.gatewayService.GenerateExplicitSessionHash(c, body); sessionHash != "" {
+		return sessionHash
+	}
+	if sessionHash := deepSeekAPIKeySessionHash(apiKey, requestedModel, platform); sessionHash != "" {
+		return sessionHash
+	}
 	return h.gatewayService.GenerateSessionHash(c, body)
 }
 
@@ -1349,9 +1383,15 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 	}
 	defer inflightDone()
 
-	sessionHash := h.gatewayService.GenerateSessionHash(c, body)
+	sessionHash := h.gatewayService.GenerateExplicitSessionHash(c, body)
 	promptCacheKey := h.gatewayService.ExtractSessionID(c, body)
 	sessionHash, promptCacheKey = resolveOpenAIMessagesMetadataSession(c, sessionHash, promptCacheKey, reqModel, body)
+	if sessionHash == "" {
+		sessionHash = deepSeekAPIKeySessionHash(apiKey, reqModel, requestPlatform)
+	}
+	if sessionHash == "" {
+		sessionHash = h.gatewayService.GenerateSessionHash(c, body)
+	}
 	if h.rejectIfCyberSessionBlocked(c, apiKey, body, reqModel, cyberBlockFormatAnthropic) {
 		return
 	}

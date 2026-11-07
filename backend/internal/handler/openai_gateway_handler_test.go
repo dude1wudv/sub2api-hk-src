@@ -50,6 +50,52 @@ func TestOpenAISmartRoutingSessionHash_APIKeyFallbackStaysStableAcrossGrowingCon
 	require.Equal(t, first, second)
 }
 
+func TestOpenAIRequestSessionHash_MultiProtocolAPIKeyFallbackStaysStableAcrossChangingChatBodies(t *testing.T) {
+	groupID := int64(179)
+	apiKey := &service.APIKey{ID: 275, GroupID: &groupID}
+	h := &OpenAIGatewayHandler{gatewayService: &service.OpenAIGatewayService{}}
+
+	first := h.generateOpenAIRequestSessionHash(nil, apiKey, "deepseek-v4.1-flash-fast", service.PlatformDeepseek, []byte(`{"model":"deepseek-v4.1-flash-fast","messages":[{"role":"user","content":"first turn"}]}`))
+	second := h.generateOpenAIRequestSessionHash(nil, apiKey, "deepseek-v4.1-flash-fast", service.PlatformDeepseek, []byte(`{"model":"deepseek-v4.1-flash-fast","messages":[{"role":"user","content":"later turn only"}]}`))
+
+	require.NotEmpty(t, first)
+	require.Equal(t, first, second)
+	require.Equal(t,
+		apiKeyScopedSessionHash(apiKey, "deepseek-v4.1-flash-fast", service.PlatformDeepseek),
+		h.generateResponsesSessionHash(nil, apiKey, "deepseek-v4.1-flash-fast", service.PlatformDeepseek, []byte(`{"model":"deepseek-v4.1-flash-fast","input":"different body"}`)),
+		"DeepSeek Chat/Messages fallback must preserve existing Responses key/group/model affinity",
+	)
+	require.NotEqual(t, apiKeyScopedSessionHash(&service.APIKey{ID: 276, GroupID: &groupID}, "deepseek-v4.1-flash-fast", service.PlatformDeepseek), first)
+	require.NotEqual(t, apiKeyScopedSessionHash(apiKey, "deepseek-v4.1-chat", service.PlatformDeepseek), first)
+}
+
+func TestOpenAIRequestSessionHash_ExplicitSessionOverridesProviderAPIKeyFallback(t *testing.T) {
+	groupID := int64(179)
+	apiKey := &service.APIKey{ID: 275, GroupID: &groupID}
+	h := &OpenAIGatewayHandler{gatewayService: &service.OpenAIGatewayService{}}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	c.Request.Header.Set("session-id", "deepseek-session-1")
+
+	got := h.generateOpenAIRequestSessionHash(c, apiKey, "deepseek-v4.1-flash-fast", service.PlatformDeepseek, []byte(`{"model":"deepseek-v4.1-flash-fast","messages":[{"role":"user","content":"turn"}]}`))
+	require.Equal(t, service.DeriveSessionHashFromSeed("deepseek-session-1"), got)
+}
+
+func TestOpenAIRequestSessionHash_OpenAIFallbackRemainsContentDerived(t *testing.T) {
+	groupID := int64(179)
+	apiKey := &service.APIKey{ID: 275, GroupID: &groupID}
+	h := &OpenAIGatewayHandler{gatewayService: &service.OpenAIGatewayService{}}
+	newContext := func() *gin.Context {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+		return c
+	}
+	first := h.generateOpenAIRequestSessionHash(newContext(), apiKey, "gpt-5.4", service.PlatformOpenAI, []byte(`{"model":"gpt-5.4","messages":[{"role":"user","content":"first"}]}`))
+	second := h.generateOpenAIRequestSessionHash(newContext(), apiKey, "gpt-5.4", service.PlatformOpenAI, []byte(`{"model":"gpt-5.4","messages":[{"role":"user","content":"second"}]}`))
+	require.NotEmpty(t, first)
+	require.NotEqual(t, first, second)
+}
+
 func TestOpenAIHandleStreamingAwareError_JSONEscaping(t *testing.T) {
 	tests := []struct {
 		name    string

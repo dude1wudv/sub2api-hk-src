@@ -164,10 +164,7 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 	}
 	defer inflightRelease()
 
-	sessionHash := h.gatewayService.GenerateSessionHash(c, body)
-	if len(apiKey.RoutingGroupIDs) > 0 {
-		sessionHash = h.gatewayService.GenerateSmartRoutingSessionHash(c, apiKey.ID, reqModel, body)
-	}
+	sessionHash := h.generateOpenAIRequestSessionHash(c, apiKey, reqModel, requestPlatform, body)
 	promptCacheKey := h.gatewayService.ExtractSessionID(c, body)
 
 	maxAccountSwitches := h.maxAccountSwitches

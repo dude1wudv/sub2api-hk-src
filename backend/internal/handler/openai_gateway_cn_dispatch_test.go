@@ -18,10 +18,16 @@ import (
 func TestAllowOpenAICompatibleMessagesDispatch_CNProvidersExempt(t *testing.T) {
 	require.True(t, allowOpenAICompatibleMessagesDispatch(nil, nil), "无 key 保持放行")
 
-	for _, platform := range []string{service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek, service.PlatformMiniMax, service.PlatformStepFun, service.PlatformOpenCodeGo, service.PlatformGrok} {
+	for _, platform := range []string{service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek, service.PlatformMiniMax, service.PlatformOpenCodeGo, service.PlatformGrok} {
 		apiKey := &service.APIKey{Group: &service.Group{Platform: platform, AllowMessagesDispatch: false}}
 		require.True(t, allowOpenAICompatibleMessagesDispatch(nil, apiKey),
 			"%s 分组必须豁免 allow_messages_dispatch 闸门", platform)
+	}
+
+	for _, platform := range []string{service.PlatformStepFun, service.PlatformMirasim} {
+		apiKey := &service.APIKey{Group: &service.Group{Platform: platform, AllowMessagesDispatch: false}}
+		require.False(t, allowOpenAICompatibleMessagesDispatch(nil, apiKey),
+			"%s 已退役，不得沿 CN provider 豁免重新开放", platform)
 	}
 
 	// 非回归：openai 分组仍受开关控制。
@@ -42,11 +48,13 @@ func TestAllowOpenAICompatibleMessagesDispatch_CompositeResolvedTargets(t *testi
 		return c, apiKey
 	}
 
-	// 解析到 grok/CN 目标：与对应独立分组同语义豁免。
-	for _, model := range []string{"grok-4.3", "kimi-k2-thinking", "glm-5.2", "deepseek-v3.2", "step-3.5-flash"} {
+	// 解析到 grok/仍受支持的 CN 目标：与对应独立分组同语义豁免。
+	for _, model := range []string{"grok-4.3", "kimi-k2-thinking", "glm-5.2", "deepseek-v3.2"} {
 		c, apiKey := newCompositeCtx(model, false)
 		require.True(t, allowOpenAICompatibleMessagesDispatch(c, apiKey), "model=%s", model)
 	}
+	cRetired, retiredKey := newCompositeCtx("step-3.5-flash", false)
+	require.False(t, allowOpenAICompatibleMessagesDispatch(cRetired, retiredKey), "retired StepFun target must remain blocked")
 
 	// 解析到 openai 目标：受 composite 分组自身开关控制。
 	c, apiKey := newCompositeCtx("gpt-5.5", false)
