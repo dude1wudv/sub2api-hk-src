@@ -26,8 +26,26 @@
         <p class="input-hint">{{ t('admin.accounts.notesHint') }}</p>
       </div>
 
+      <div v-if="account.platform === 'mirasim'" class="space-y-4">
+        <div>
+          <label class="input-label">Mirasim 请求地址</label>
+          <input class="input" type="text" readonly value="https://relay.mirasim.ai/v1" />
+          <p class="input-hint">Sub2API 按模型选择上游协议，并转换 Chat、Messages、Responses 请求。当前默认模型使用 Chat Completions。</p>
+        </div>
+        <div>
+          <label class="input-label">授权凭据</label>
+          <input class="input" type="text" readonly value="OAuth 自动签名，无需 API Key" />
+          <p class="input-hint">刷新令牌与设备私钥保存在服务器，由 Sub2API 自动签名请求。</p>
+        </div>
+        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+          <label class="input-label">支持模型</label>
+          <ModelWhitelistSelector v-model="allowedModels" platform="mirasim" :account-id="account.id" />
+          <p class="text-xs text-gray-500 dark:text-gray-400">已选择 {{ allowedModels.length }} 个模型</p>
+        </div>
+      </div>
+
       <!-- API Key fields (only for apikey type) -->
-      <div v-if="account.type === 'apikey'" class="space-y-4">
+      <div v-else-if="account.type === 'apikey'" class="space-y-4">
         <div v-if="!isCNApiKeyAccount || editApiProtocol !== 'adaptive'">
           <label class="input-label">{{ t('admin.accounts.baseUrl') }}</label>
           <input
@@ -3286,7 +3304,7 @@
             </span>
             <!-- Tooltip（向下显示避免被弹窗裁剪） -->
             <div
-              class="pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+              class="ui-popover pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded px-3 py-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
             >
               {{ t('admin.accounts.mixedSchedulingTooltip') }}
               <div
@@ -3313,7 +3331,7 @@
               ?
             </span>
             <div
-              class="pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+              class="ui-popover pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded px-3 py-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
             >
               {{ t('admin.accounts.allowOveragesTooltip') }}
               <div
@@ -3487,6 +3505,7 @@ import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiErro
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import { supportsAccountQuota } from '@/utils/accountQuota'
 import { getAccountExpiryTimestamp } from '@/components/account/accountExpiry'
+import { singleFlight } from '@/utils/singleFlight'
 import { allSelectedGroupsEnableLongContextPricing } from '@/components/account/longContextBilling'
 import { VERTEX_LOCATION_OPTIONS } from '@/constants/account'
 import {
@@ -3501,6 +3520,7 @@ import {
 } from '@/utils/openaiWsMode'
 import {
   getPresetMappingsByPlatform,
+  getModelsByPlatform,
   commonErrorCodes,
   buildModelMappingObject,
   splitModelMappingObject,
@@ -4947,6 +4967,10 @@ const syncFormFromAccount = (newAccount: Account | null) => {
 
     // Load model mappings and detect mode
     loadModelRestrictionFromMapping(credentials.model_mapping as Record<string, unknown> | undefined)
+    if (newAccount.platform === 'mirasim' && allowedModels.value.length === 0) {
+      allowedModels.value = getModelsByPlatform('mirasim')
+      modelRestrictionMode.value = 'whitelist'
+    }
 
     // Load pool mode
     poolModeEnabled.value = credentials.pool_mode === true
@@ -5641,7 +5665,8 @@ const submitUpdateAccount = async (accountID: number, updatePayload: Record<stri
   }
 }
 
-const handleSubmit = async () => {
+const handleSubmit = singleFlight(async () => {
+  if (submitting.value) return
   if (!props.account) return
   const accountID = props.account.id
 
@@ -5672,7 +5697,7 @@ const handleSubmit = async () => {
       updatePayload.load_factor = 0
     }
     updatePayload.auto_pause_on_expired = autoPauseOnExpired.value
-    if (props.account.type === 'apikey') {
+    if (props.account.type === 'apikey' && props.account.platform !== 'mirasim') {
       updatePayload.upstream_billing_probe_enabled = upstreamBillingAutoProbeEnabled.value
       updatePayload.upstream_billing_rate_sync_enabled = upstreamBillingRateSyncEnabled.value
       if (upstreamBillingRateSyncEnabled.value) {
@@ -5681,7 +5706,23 @@ const handleSubmit = async () => {
     }
 
     // For apikey type, handle credentials update
-    if (props.account.type === 'apikey') {
+    if (props.account.platform === 'mirasim') {
+      if (allowedModels.value.length === 0) {
+        appStore.showError('Mirasim 至少需要选择一个支持模型')
+        return
+      }
+      updatePayload.credentials = {
+        oauth_provider: props.account.credentials?.oauth_provider,
+        base_url: 'https://relay.mirasim.ai/v1',
+        api_base_urls: {
+          chat_completions: 'https://relay.mirasim.ai/v1',
+          anthropic: 'https://relay.mirasim.ai',
+          responses: 'https://relay.mirasim.ai/v1'
+        },
+        api_protocol: 'adaptive',
+        model_mapping: Object.fromEntries(allowedModels.value.map(model => [model, model]))
+      }
+    } else if (props.account.type === 'apikey') {
       const currentCredentials = (props.account.credentials as Record<string, unknown>) || {}
       const newBaseUrl = editBaseUrl.value.trim() || defaultBaseUrl.value
       const shouldApplyModelMapping = !(props.account.platform === 'openai' && openaiPassthroughEnabled.value)
@@ -6419,7 +6460,7 @@ const handleSubmit = async () => {
   } catch (error: any) {
     appStore.showError(error.message || t('admin.accounts.failedToUpdate'))
   }
-}
+})
 
 // Handle mixed channel warning confirmation
 const handleMixedChannelConfirm = async () => {

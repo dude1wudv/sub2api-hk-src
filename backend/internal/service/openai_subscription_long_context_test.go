@@ -250,10 +250,13 @@ func TestOpenAIGatewayServiceRecordUsage_GPT61TerraLongContextBoundary(t *testin
 				t.Run(fmt.Sprintf("%s/%d/%s", accountType, totalInput, tier), func(t *testing.T) {
 					usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
 					svc := newOpenAIRecordUsageServiceForTest(usageRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+					apiKey := openAIRecordUsageAPIKeyWithGroup(svc, 1, true)
+					apiKey.Group.RateMultiplier = 1
+					apiKey.Group.PeakRateEnabled = false
 					err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
 						Result: &OpenAIForwardResult{RequestID: "terra-boundary", Model: "gpt-6.1-terra", ServiceTier: &tier, Duration: time.Second,
 							Usage: OpenAIUsage{InputTokens: totalInput, OutputTokens: 1000}},
-						APIKey: openAIRecordUsageAPIKeyWithGroup(svc, 1, true), User: &User{ID: 2},
+						APIKey: apiKey, User: &User{ID: 2},
 						Account: &Account{ID: 3, Platform: PlatformOpenAI, Type: accountType,
 							Extra: map[string]any{openAILongContextBillingEnabledKey: true}},
 					})
@@ -265,8 +268,8 @@ func TestOpenAIGatewayServiceRecordUsage_GPT61TerraLongContextBoundary(t *testin
 						wantOutput *= 1.5
 					}
 					if tier == "priority" {
-						wantInput *= 2
-						wantOutput *= 2
+						wantInput *= 2.5
+						wantOutput *= 2.5
 					}
 					require.Equal(t, wantLong, usageRepo.lastLog.LongContextBillingApplied)
 					require.InDelta(t, wantInput, usageRepo.lastLog.InputCost, 1e-12)

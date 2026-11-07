@@ -228,6 +228,19 @@
             <PlatformIcon platform="minimax" size="sm" />
             MiniMax
           </button>
+          <button
+            type="button"
+            @click="selectCNPlatform('stepfun')"
+            :class="[
+              'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
+              form.platform === 'stepfun'
+                ? 'bg-white text-violet-600 shadow-sm dark:bg-dark-600 dark:text-violet-400'
+                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+            ]"
+          >
+            <PlatformIcon platform="stepfun" size="sm" />
+            StepFun
+          </button>
         </div>
 
         <!-- 多模型聚合平台：OpenCode 与平台清单中登记的其他多协议供应商 -->
@@ -246,6 +259,20 @@
             <PlatformIcon platform="opencode_go" size="sm" />
             OpenCode
           </button>
+          <button
+            type="button"
+            data-testid="platform-button-mirasim"
+            @click="selectMirasimPlatform()"
+            :class="[
+              'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
+              form.platform === 'mirasim'
+                ? 'bg-white text-blue-700 shadow-sm dark:bg-dark-600 dark:text-blue-300'
+                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+            ]"
+          >
+            <PlatformIcon platform="mirasim" size="sm" />
+            Mirasim
+          </button>
           <!-- 没有专属界面的多协议供应商：通用表单（模式 / 协议 / 端点来自 profile） -->
           <button
             v-for="spec in extraMultiProtocolPlatforms"
@@ -263,6 +290,17 @@
             <PlatformIcon :platform="spec.id" size="sm" />
             {{ spec.display_name }}
           </button>
+        </div>
+      </div>
+
+      <div v-if="form.platform === 'mirasim'" class="space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+        <p class="text-sm text-gray-700 dark:text-gray-200">Mirasim 使用 OAuth 自动签名。授权返回后可选择代理、分组和并发数，再导入账号。</p>
+        <p class="text-xs text-gray-600 dark:text-gray-300">首次使用时，在浏览器所在电脑运行本地回调助手，再点击授权。Mirasim 要求 OAuth 回调到该电脑的 127.0.0.1。</p>
+        <a href="/mirasim-oauth-helper.ps1" download="mirasim-oauth-helper.ps1" class="text-sm text-primary-600 underline dark:text-primary-400">下载本地回调助手</a>
+        <p class="text-xs text-gray-600 dark:text-gray-300">下载后右键脚本，选择“使用 PowerShell 运行”，保持窗口打开。</p>
+        <div class="flex flex-wrap gap-3">
+          <button type="button" class="btn btn-primary" @click="beginMirasimOAuth('github')">GitHub OAuth</button>
+          <button type="button" class="btn btn-primary" @click="beginMirasimOAuth('google')">Google OAuth</button>
         </div>
       </div>
 
@@ -626,14 +664,14 @@
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.cnProviders.accountMode.paygDesc') }}</span>
             </div>
           </button>
-          <!-- Coding Plan (kimi / zhipu only — DeepSeek has no coding plan) -->
+          <!-- Coding Plan (kimi / zhipu); StepFun uses Step Plan and DeepSeek has no plan -->
           <button
             v-if="form.platform !== 'deepseek'"
             type="button"
-            @click="accountMode = 'coding'"
+            @click="accountMode = form.platform === 'stepfun' ? 'step_plan' : 'coding'"
             :class="[
               'flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-all',
-              accountMode === 'coding'
+              accountMode === (form.platform === 'stepfun' ? 'step_plan' : 'coding')
                 ? cnAccentActiveClass
                 : 'border-gray-200 hover:border-gray-400 dark:border-dark-600 dark:hover:border-gray-600'
             ]"
@@ -641,7 +679,7 @@
             <div
               :class="[
                 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                accountMode === 'coding'
+                accountMode === (form.platform === 'stepfun' ? 'step_plan' : 'coding')
                   ? cnAccentIconClass
                   : 'bg-gray-100 text-gray-500 dark:bg-dark-600 dark:text-gray-400'
               ]"
@@ -649,8 +687,8 @@
               <Icon name="bolt" size="sm" />
             </div>
             <div>
-              <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.accounts.cnProviders.accountMode.coding') }}</span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.cnProviders.accountMode.codingDesc') }}</span>
+              <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ form.platform === 'stepfun' ? 'Step Plan' : t('admin.accounts.cnProviders.accountMode.coding') }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ form.platform === 'stepfun' ? '订阅通道，支持 step-router-v1 与图示全模型' : t('admin.accounts.cnProviders.accountMode.codingDesc') }}</span>
             </div>
           </button>
         </div>
@@ -1500,7 +1538,7 @@
       </div>
 
       <!-- API Key input (only for apikey type, excluding Antigravity which has its own fields) -->
-      <div v-if="form.type === 'apikey' && form.platform !== 'antigravity'" class="space-y-4">
+      <div v-if="form.type === 'apikey' && form.platform !== 'antigravity' && form.platform !== 'mirasim'" class="space-y-4">
         <div v-if="!isMultiProtocolPlatform || apiProtocol !== 'adaptive'">
           <label class="input-label">{{ t('admin.accounts.baseUrl') }}</label>
           <input
@@ -3719,7 +3757,7 @@
             </span>
             <!-- Tooltip（向下显示避免被弹窗裁剪） -->
             <div
-              class="pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+              class="ui-popover pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded px-3 py-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
             >
               {{ t('admin.accounts.mixedSchedulingTooltip') }}
               <div
@@ -3746,7 +3784,7 @@
               ?
             </span>
             <div
-              class="pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+              class="ui-popover pointer-events-none absolute left-0 top-full z-[100] mt-1.5 w-72 rounded px-3 py-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
             >
               {{ t('admin.accounts.allowOveragesTooltip') }}
               <div
@@ -4336,6 +4374,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   close: []
   created: []
+  'mirasim-oauth': [provider: 'github' | 'google']
 }>()
 
 const appStore = useAppStore()
@@ -4438,7 +4477,7 @@ const isGenericMultiProtocolPlatform = computed(
   () => isMultiProtocolPlatform.value && !isCNPlatform.value && !isOpenCodeGoPlatform.value
 )
 const extraMultiProtocolPlatforms = computed(() =>
-  listPlatforms().filter(spec => !!spec.multi_protocol && !isCNProviderPlatform(spec.id) && spec.id !== 'opencode_go')
+  listPlatforms().filter(spec => !!spec.multi_protocol && !isCNProviderPlatform(spec.id) && spec.id !== 'opencode_go' && spec.id !== 'mirasim')
 )
 const genericAccountModes = computed(() => providerAccountModes(form.platform))
 // 按模型分流的供应商（OpenCode 等）：adaptive 账号携带 protocol_rules。
@@ -4455,7 +4494,9 @@ const cnPresetPlatform = computed<CnProviderPlatform>(() => {
   return 'kimi'
 })
 // 国产厂商的接入模式只有 payg / coding（selectCNPlatform 已按 profile 规范化）。
-const cnPresetMode = computed<CnAccountMode>(() => (accountMode.value === 'coding' ? 'coding' : 'payg'))
+const cnPresetMode = computed<CnAccountMode>(() =>
+  accountMode.value === 'step_plan' ? 'step_plan' : accountMode.value === 'coding' ? 'coding' : 'payg'
+)
 const adaptivePresetPlatform = computed<string>(() => {
   if (isMultiProtocolPlatform.value) return form.platform
   return cnPresetPlatform.value
@@ -4521,10 +4562,19 @@ function selectCNPlatform(platform: CnProviderPlatform) {
   form.type = 'apikey'
   accountCategory.value = 'apikey'
   apiProtocol.value = 'adaptive'
-  // deepseek 无 coding 套餐（profile 仅 payg）；从其他供应商切换来的未知模式回落默认模式。
-  accountMode.value = resolveProviderAccountMode(platform, accountMode.value)
+  // StepFun 默认使用 Step Plan；DeepSeek 无 coding 套餐，其余平台按 profile 规范化。
+  accountMode.value = platform === 'stepfun' ? 'step_plan' : resolveProviderAccountMode(platform, accountMode.value)
   apiKeyBaseUrl.value = defaultCNBaseUrl(platform, accountMode.value, apiProtocol.value)
   resetAdaptiveBaseUrls(platform, accountMode.value)
+}
+function selectMirasimPlatform() {
+  form.platform = 'mirasim'
+  form.type = 'apikey'
+  accountCategory.value = 'apikey'
+}
+function beginMirasimOAuth(provider: 'github' | 'google') {
+  emit('mirasim-oauth', provider)
+  handleClose()
 }
 function selectOpenCodeGoPlatform() {
   form.platform = 'opencode_go'

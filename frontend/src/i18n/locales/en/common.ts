@@ -23,6 +23,11 @@ export default {
     reset: 'Reset',
     search: 'Search',
     filter: 'Filter',
+    sortBy: 'Sort by',
+    ascending: 'Ascending',
+    descending: 'Descending',
+    switchToAscending: 'Switch to ascending order',
+    switchToDescending: 'Switch to descending order',
     export: 'Export',
     import: 'Import',
     actions: 'Actions',
@@ -163,10 +168,13 @@ export default {
 
   // Navigation
   nav: {
+    home: 'Home',
     dashboard: 'Dashboard',
     announcements: 'Announcements',
     apiKeys: 'API Keys',
     batchImage: 'Batch Images',
+    image2: 'Image Workbench',
+    infiniteCanvas: 'Infinite Canvas',
     usage: 'Usage',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
@@ -216,6 +224,12 @@ export default {
     auditLogs: 'Audit Logs',
   },
 
+  helios: {
+    starting: 'Opening Infinite Canvas…',
+    popupBlocked: 'Allow pop-ups to open Infinite Canvas.',
+    launchFailed: 'Unable to open Infinite Canvas. Please try again.'
+  },
+
   // Auth
   auth: {
     welcomeBack: 'Welcome Back',
@@ -248,6 +262,8 @@ export default {
     loginFailed: 'Login failed. Please check your credentials and try again.',
     errors: {
       USER_NOT_ACTIVE: 'Account has been disabled.',
+      TURNSTILE_VERIFICATION_FAILED: 'Complete the Cloudflare verification below, then sign in again.',
+      TURNSTILE_NOT_CONFIGURED: 'Verification is not configured. Please contact the administrator.',
       EMAIL_BLOCKED: 'This email address is not allowed. Please use a different one.',
     },
     registrationFailed: 'Registration failed. Please try again.',
@@ -264,6 +280,9 @@ export default {
     turnstileFailed: 'Verification failed, please try again',
     captchaVerified: 'Verification completed',
     captchaLoading: 'Loading verification…',
+    captchaLoadFailed: 'Cloudflare verification could not load. Check your connection or browser blocking settings and retry.',
+    captchaRetry: 'Reload verification',
+    loginSettingsFailed: 'Login verification settings could not load. Reload them before signing in.',
     captchaClickToVerify: 'Click to complete verification',
     captchaVerifying: 'Verifying…',
     completeVerification: 'Please complete the verification',

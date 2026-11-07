@@ -11,6 +11,13 @@
         </p>
       </div>
 
+      <p v-if="retryAfter > 0" class="text-sm text-gray-500" role="status">{{ isChinese ? `请在 ${retryAfter} 秒后重试。` : `Try again in ${retryAfter} seconds.` }}</p>
+      <div v-if="settingsError" role="alert" class="rounded-xl border border-red-200 p-3 text-sm">
+        {{ settingsError }}
+        <button type="button" class="btn btn-secondary mt-2" :disabled="settingsLoading || retryAfter > 0" @click="loadRegistrationSettings(true)">{{ retryAfter > 0 ? `${retryAfter}s` : (isChinese ? '重试注册设置' : 'Retry registration settings') }}</button>
+      </div>
+      <p v-else-if="!settingsLoaded" class="text-sm text-gray-500" role="status">{{ isChinese ? '正在读取注册设置…' : 'Loading registration settings…' }}</p>
+
       <!-- Registration Disabled Message -->
       <div
         v-if="!registrationEnabled && settingsLoaded"
@@ -26,8 +33,13 @@
         </div>
       </div>
 
+      <div v-if="(registrationEnabled || !settingsLoaded) && affiliateEnabled && referralCode" data-testid="affiliate-referral-notice" class="rounded-xl border border-gray-200 p-3 text-sm" role="note">
+        <p>{{ isChinese ? '此注册链接已填写推荐码：' : 'This registration link includes a referral code:' }} <code class="break-all">{{ referralCode }}</code></p>
+        <p class="mt-1 text-xs text-gray-500">{{ isChinese ? '推荐关系以注册时的系统验证为准。' : 'Referral attribution is subject to validation when you register.' }}</p>
+      </div>
+
       <!-- Registration Form -->
-      <form v-else @submit.prevent="handleRegister" class="space-y-5">
+      <form v-if="registrationEnabled || !settingsLoaded" @submit.prevent="handleRegister" class="space-y-5">
         <!-- Email Input -->
         <div>
           <label for="email" class="input-label">
@@ -83,7 +95,7 @@
             </button>
           </div>
           <p class="input-hint">
-            {{ t('auth.passwordHint') }}
+            {{ passwordHint }}
           </p>
         </div>
 
@@ -365,9 +377,11 @@
 </template>
 
 <script setup lang="ts">
+import { resolveAuthLanding } from '@/utils/authLanding'
 import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { resolvePasswordPolicy, validateNewPassword, newPasswordError, passwordPolicyHint } from '@/utils/passwordPolicy'
 import { AuthLayout } from '@/components/layout'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
 import OidcOAuthSection from '@/components/auth/OidcOAuthSection.vue'
@@ -387,6 +401,8 @@ import {
   validateInvitationCode
 } from '@/api/auth'
 import { buildAuthErrorMessage } from '@/utils/authError'
+import { userFacingError } from '@/utils/userFacingError'
+import { useRetryCooldown } from '@/composables/useRetryCooldown'
 import { extractApiErrorCode, extractI18nErrorMessage } from '@/utils/apiError'
 import {
   formatRegistrationEmailSuffixWhitelistForMessage,
@@ -396,12 +412,15 @@ import {
 import {
   clearAffiliateReferralCode,
   loadAffiliateReferralCode,
-  resolveAffiliateReferralCode
+  resolveAffiliateReferralCode,
+  pickOAuthAffiliateCode
 } from '@/utils/oauthAffiliate'
 import type { LoginAgreementDocument } from '@/types'
 
 const { t, locale } = useI18n()
+const isChinese = computed(() => (locale?.value || 'en').startsWith('zh'))
 const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
+const { remaining: retryAfter, start: startRetry } = useRetryCooldown()
 
 // ==================== Router & Stores ====================
 
@@ -409,11 +428,15 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const appStore = useAppStore()
+const passwordPolicy = computed(() => resolvePasswordPolicy(appStore.cachedPublicSettings))
+const passwordHint = computed(() => passwordPolicyHint(locale?.value || 'en', passwordPolicy.value))
 
 // ==================== State ====================
 
 const isLoading = ref<boolean>(false)
 const settingsLoaded = ref<boolean>(false)
+const settingsLoading = ref(false)
+const settingsError = ref('')
 const errorMessage = ref<string>('')
 const showPassword = ref<boolean>(false)
 const showConfirmPassword = ref<boolean>(false)
@@ -431,6 +454,7 @@ const promoCodeEnabled = ref<boolean>(
 )
 const invitationCodeEnabled = ref<boolean>(false)
 const affiliateEnabled = ref<boolean>(false)
+const referralCode = computed(() => pickOAuthAffiliateCode(route.query.aff, route.query.aff_code) || loadAffiliateReferralCode())
 const turnstileEnabled = ref<boolean>(false)
 const turnstileSiteKey = ref<string>('')
 const tencentCaptchaEnabled = ref<boolean>(false)
@@ -539,7 +563,7 @@ const agreementGateActive = computed(
 )
 
 const registrationActionDisabled = computed(
-  () => isLoading.value || !settingsLoaded.value || agreementGateActive.value
+  () => isLoading.value || retryAfter.value > 0 || !settingsLoaded.value || agreementGateActive.value
 )
 
 watch(validationToastMessage, (value, previousValue) => {
@@ -558,11 +582,14 @@ function syncAffiliateReferralCode(): string {
 
 // ==================== Lifecycle ====================
 
-onMounted(async () => {
+async function loadRegistrationSettings(force = false) {
+  if (settingsLoading.value || retryAfter.value > 0) return
+  settingsLoading.value = true
+  settingsError.value = ''
   syncAffiliateReferralCode()
 
   try {
-    const settings = await getPublicSettings()
+    const settings = (!force && appStore.cachedPublicSettings?.registration_enabled !== undefined ? appStore.cachedPublicSettings : null) || await getPublicSettings()
     registrationEnabled.value = settings.registration_enabled
     emailVerifyEnabled.value = settings.email_verify_enabled
     promoCodeEnabled.value = settings.promo_code_enabled
@@ -600,14 +627,15 @@ onMounted(async () => {
       }
     }
     syncAffiliateReferralCode()
-  } catch (error) {
-    console.error('Failed to load public settings:', error)
-    loginAgreementEnabled.value = false
-    agreementAccepted.value = true
-  } finally {
     settingsLoaded.value = true
+  } catch (error) {
+    startRetry(error)
+    settingsError.value = userFacingError(error, locale?.value || 'en', isChinese.value ? '注册设置读取失败，请重试。' : 'Could not load registration settings. Please retry.')
+  } finally {
+    settingsLoading.value = false
   }
-})
+}
+onMounted(() => { void loadRegistrationSettings() })
 
 watch(
   () => [route.query.aff, route.query.aff_code],
@@ -960,8 +988,8 @@ function validateForm(): boolean {
   if (!formData.password) {
     errors.password = t('auth.passwordRequired')
     isValid = false
-  } else if (formData.password.length < 6) {
-    errors.password = t('auth.passwordMinLength')
+  } else if (validateNewPassword(formData.password, passwordPolicy.value) !== null) {
+    errors.password = newPasswordError(formData.password, locale?.value || 'en', passwordPolicy.value)
     isValid = false
   }
 
@@ -994,6 +1022,7 @@ function validateForm(): boolean {
 // ==================== Form Handlers ====================
 
 async function handleRegister(): Promise<void> {
+  if (isLoading.value || retryAfter.value > 0 || !settingsLoaded.value || !registrationEnabled.value) return
   // Clear previous error
   errorMessage.value = ''
 
@@ -1093,9 +1122,10 @@ async function handleRegister(): Promise<void> {
     appStore.showSuccess(t('auth.accountCreatedSuccess', { siteName: siteName.value }))
 
     // Redirect to dashboard
-    await router.push('/dashboard')
+    await router.push(resolveAuthLanding(route.query.redirect, authStore.isAdmin))
   } catch (error: unknown) {
     // Handle registration error
+    startRetry(error)
     errorMessage.value = buildRegistrationErrorMessage(error, t('auth.registrationFailed'))
 
     // Also show error toast
@@ -1115,7 +1145,8 @@ function buildRegistrationErrorMessage(error: unknown, fallback: string): string
   if (extractApiErrorCode(error) === 'EMAIL_BLOCKED') {
     return t('auth.errors.EMAIL_BLOCKED')
   }
-  return buildAuthErrorMessage(error, { fallback })
+  const message = buildAuthErrorMessage(error, { fallback })
+  return userFacingError(Object.assign({}, error, { message }), locale?.value || 'en', fallback)
 }
 </script>
 

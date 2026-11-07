@@ -75,11 +75,7 @@ func shouldPreserveOpenAIResponsesNoneReasoningEffort(account *Account) bool {
 	if account.IsOpenAIOAuthLike() {
 		return true
 	}
-	if !account.IsOpenAIApiKey() {
-		return false
-	}
-	baseURL := strings.TrimSpace(account.GetCredential("base_url"))
-	return baseURL == "" || isOfficialOpenAIModelsBaseURL(baseURL)
+	return account.Type == AccountTypeAPIKey
 }
 
 // Codex 0.149.0 needs a single advertised effort to directly select a visible
@@ -1892,6 +1888,9 @@ func explicitRequestedReasoningEffortFromBody(body []byte) string {
 	if raw == "" {
 		raw = strings.TrimSpace(gjson.GetBytes(body, "output_config.effort").String())
 	}
+	if raw == "" && strings.EqualFold(strings.TrimSpace(gjson.GetBytes(body, "thinking.type").String()), "disabled") {
+		raw = "none"
+	}
 	return raw
 }
 
@@ -1901,7 +1900,7 @@ func explicitRequestedReasoningEffortFromBody(body []byte) string {
 // later persist "xhigh".
 func CanonicalRequestedReasoningEffort(body []byte, modelCandidates ...string) *string {
 	if raw := explicitRequestedReasoningEffortFromBody(body); raw != "" {
-		canonical := NormalizeMaxReasoningEffort(raw)
+		canonical := normalizeOpenAIReasoningEffort(raw)
 		if canonical == "" {
 			return nil
 		}
@@ -2232,12 +2231,12 @@ func (s *OpenAIGatewayService) applyOpenAIFastPolicyToBody(ctx context.Context, 
 	if len(body) == 0 {
 		return body, nil
 	}
-	if openAIGroupForcesFast(ctx, account) {
-		updated, err := sjson.SetBytes(body, "service_tier", OpenAIFastTierPriority)
+	if forcedTier := openAIGroupForcedServiceTier(ctx, account); forcedTier != "" {
+		updated, err := sjson.SetBytes(body, "service_tier", forcedTier)
 		if err != nil {
-			return body, fmt.Errorf("force group service_tier priority on body: %w", err)
+			return body, fmt.Errorf("force group service_tier %s on body: %w", forcedTier, err)
 		}
-		body = updated
+		return updated, nil
 	}
 	rawTier := gjson.GetBytes(body, "service_tier").String()
 	if rawTier == "" {
@@ -2358,12 +2357,12 @@ func (s *OpenAIGatewayService) applyOpenAIFastPolicyToWSResponseCreate(
 	if frameType != "response.create" {
 		return frame, nil, nil
 	}
-	if openAIGroupForcesFast(ctx, account) {
-		updated, err := sjson.SetBytes(frame, "service_tier", OpenAIFastTierPriority)
+	if forcedTier := openAIGroupForcedServiceTier(ctx, account); forcedTier != "" {
+		updated, err := sjson.SetBytes(frame, "service_tier", forcedTier)
 		if err != nil {
-			return frame, nil, fmt.Errorf("force group service_tier priority in ws frame: %w", err)
+			return frame, nil, fmt.Errorf("force group service_tier %s in ws frame: %w", forcedTier, err)
 		}
-		frame = updated
+		return updated, nil, nil
 	}
 	rawTier := gjson.GetBytes(frame, "service_tier").String()
 	if rawTier == "" {
@@ -2701,8 +2700,22 @@ func CanonicalRequestedReasoningEffortFromReqBody(reqBody map[string]any, modelC
 			raw = strings.TrimSpace(effort)
 		}
 	}
+	if raw == "" {
+		if outputConfig, ok := reqBody["output_config"].(map[string]any); ok {
+			if effort, ok := outputConfig["effort"].(string); ok {
+				raw = strings.TrimSpace(effort)
+			}
+		}
+	}
+	if raw == "" {
+		if thinking, ok := reqBody["thinking"].(map[string]any); ok {
+			if kind, ok := thinking["type"].(string); ok && strings.EqualFold(strings.TrimSpace(kind), "disabled") {
+				raw = "none"
+			}
+		}
+	}
 	if raw != "" {
-		canonical := NormalizeMaxReasoningEffort(raw)
+		canonical := normalizeOpenAIReasoningEffort(raw)
 		if canonical == "" {
 			return nil
 		}
@@ -2721,9 +2734,9 @@ func normalizeOpenAIReasoningEffort(raw string) string {
 	value = strings.NewReplacer("-", "", "_", "", " ", "").Replace(value)
 
 	switch value {
-	case "none", "minimal", "low", "medium", "high":
+	case "none", "minimal", "low", "medium", "high", "max", "ultra":
 		return value
-	case "xhigh", "extrahigh", "max":
+	case "xhigh", "extrahigh":
 		return "xhigh"
 	default:
 		// Only store known effort levels for now to keep UI consistent.
@@ -2731,13 +2744,7 @@ func normalizeOpenAIReasoningEffort(raw string) string {
 	}
 }
 
-func normalizeOpenAIReasoningEffortForModel(raw, model string) string {
-	if strings.EqualFold(strings.TrimSpace(raw), "none") && openai.IsGPT6SolOrLunaModelSpelling(model) {
-		return "none"
-	}
-	if strings.EqualFold(strings.TrimSpace(raw), "max") && supportsOpenAIReasoningEffortMax(model) {
-		return "max"
-	}
+func normalizeOpenAIReasoningEffortForModel(raw, _ string) string {
 	return normalizeOpenAIReasoningEffort(raw)
 }
 

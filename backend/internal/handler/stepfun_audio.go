@@ -75,11 +75,17 @@ func (h *OpenAIGatewayHandler) StepFunAudio(c *gin.Context) {
 	if result.AudioUsage == nil || result.AudioUsage.DurationOrUnits <= 0 {
 		return
 	}
+	quotaPlatform := service.QuotaPlatform(c.Request.Context(), apiKey)
+	resultAPIKey := apiKey
+	resultUser := apiKey.User
+	resultAccount := selection.Account
+	resultSubscription := subscription
+	apiKeyService := h.apiKeyService
 	h.submitMandatoryUsageRecordTask(c.Request.Context(), func(ctx context.Context) {
 		_ = h.gatewayService.RecordUsage(ctx, &service.OpenAIRecordUsageInput{
-			Result: result, APIKey: apiKey, User: apiKey.User, Account: selection.Account, Subscription: subscription,
+			Result: result, APIKey: resultAPIKey, User: resultUser, Account: resultAccount, Subscription: resultSubscription,
 			InboundEndpoint: req.Endpoint, UpstreamEndpoint: req.Endpoint, RequestPayloadHash: req.BodyHash,
-			APIKeyService: h.apiKeyService, QuotaPlatform: service.QuotaPlatform(c.Request.Context(), apiKey),
+			APIKeyService: apiKeyService, QuotaPlatform: quotaPlatform,
 		})
 	})
 }
