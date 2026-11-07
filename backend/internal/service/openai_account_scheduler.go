@@ -2128,6 +2128,22 @@ func (s *OpenAIGatewayService) SelectAccountWithSchedulerForCapability(
 	useUpstreamTokenCost bool,
 	platformOverride ...string,
 ) (*AccountSelectionResult, OpenAIAccountScheduleDecision, error) {
+	if selection := takeSmartRoutingSelection(ctx, groupID, requestedModel); selection != nil {
+		if requiredCapability != OpenAIEndpointCapabilityDeepSeekTools {
+			return selection, OpenAIAccountScheduleDecision{Layer: "smart_routing", SelectedAccountID: selection.Account.ID, SelectedAccountType: selection.Account.Type}, nil
+		}
+		_, excluded := excludedIDs[selection.Account.ID]
+		if !excluded && s.openAIAccountMatchesSchedulingGroup(selection.Account, groupID) &&
+			s.isOpenAIAccountTransportCompatible(selection.Account, requiredTransport) {
+			if latest := s.recheckSelectedOpenAIAccountFromDB(ctx, selection.Account, groupID, selection.Account.Platform, requestedModel, requireCompact, requiredCapability); latest != nil {
+				selection.Account = latest
+				return selection, OpenAIAccountScheduleDecision{Layer: "smart_routing", SelectedAccountID: latest.ID, SelectedAccountType: latest.Type}, nil
+			}
+		}
+		if selection.ReleaseFunc != nil {
+			selection.ReleaseFunc()
+		}
+	}
 	platform := PlatformOpenAI
 	if len(platformOverride) > 0 {
 		platform = platformOverride[0]
