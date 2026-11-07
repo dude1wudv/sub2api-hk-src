@@ -453,11 +453,13 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 		"upstream_error",
 		"Upstream request failed",
 	); matched {
-		if IsUpstreamErrorProtectionEnabled(c) {
-			WriteProtectedUpstreamError(c, resp.StatusCode)
-		} else {
-			c.JSON(status, gin.H{"type": "error", "error": gin.H{"type": errType, "message": errMsg}})
-		}
+		c.JSON(status, gin.H{
+			"type": "error",
+			"error": gin.H{
+				"type":    errType,
+				"message": errMsg,
+			},
+		})
 
 		summary := upstreamMsg
 		if summary == "" {
@@ -475,11 +477,7 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 
 	switch resp.StatusCode {
 	case 400:
-		if IsUpstreamErrorProtectionEnabled(c) {
-			WriteProtectedUpstreamError(c, resp.StatusCode)
-		} else {
-			c.Data(http.StatusBadRequest, "application/json", body)
-		}
+		c.Data(http.StatusBadRequest, "application/json", body)
 		summary := upstreamMsg
 		if summary == "" {
 			summary = truncateForLog(body, 512)
@@ -626,11 +624,13 @@ func (s *GatewayService) handleRetryExhaustedError(ctx context.Context, resp *ht
 		"upstream_error",
 		"Upstream request failed after retries",
 	); matched {
-		if IsUpstreamErrorProtectionEnabled(c) {
-			WriteProtectedUpstreamError(c, resp.StatusCode)
-		} else {
-			c.JSON(status, gin.H{"type": "error", "error": gin.H{"type": errType, "message": errMsg}})
-		}
+		c.JSON(status, gin.H{
+			"type": "error",
+			"error": gin.H{
+				"type":    errType,
+				"message": errMsg,
+			},
+		})
 
 		summary := upstreamMsg
 		if summary == "" {
@@ -706,7 +706,7 @@ func partialStreamUsageResult(c *gin.Context, resp *http.Response, streamResult 
 	}
 }
 
-func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http.Response, c *gin.Context, account *Account, startTime time.Time, originalModel, mappedModel string, mimicClaudeCode bool) (result *streamingResult, retErr error) {
+func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http.Response, c *gin.Context, account *Account, startTime time.Time, originalModel, mappedModel string, mimicClaudeCode bool) (*streamingResult, error) {
 	observer := upstreamResponseModelObserverFromContext(c)
 	if observer == nil {
 		observer = beginUpstreamResponseModelObservation(c)
@@ -736,10 +736,8 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	}
 
 	usage := &ClaudeUsage{}
-	var outputUsage anthropicStreamOutputUsage
 	var firstTokenMs *int
-	var lastReadAt int64
-	scanner := bufio.NewScanner(newStreamActivityReader(resp.Body, &lastReadAt))
+	scanner := bufio.NewScanner(resp.Body)
 	// 设置更大的buffer以处理长行
 	maxLineSize := defaultMaxLineSize
 	if s.cfg != nil && s.cfg.Gateway.MaxLineSize > 0 {
@@ -747,6 +745,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	}
 	scanBuf := getSSEScannerBuf64K()
 	scanner.Buffer(scanBuf[:0], maxLineSize)
+	scanner.Split(newBoundedSSESplit(s.cfg, maxLineSize, nil))
 
 	type scanEvent struct {
 		line string
@@ -755,18 +754,26 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	// 独立 goroutine 读取上游，避免读取阻塞导致超时/keepalive无法处理
 	events := make(chan scanEvent, 16)
 	done := make(chan struct{})
+	queueBudget := newSSEQueueBudget(s.cfg)
 	sendEvent := func(ev scanEvent) bool {
+		if !queueBudget.acquire(len(ev.line), done) {
+			return false
+		}
 		select {
 		case events <- ev:
 			return true
 		case <-done:
+			queueBudget.release(len(ev.line))
 			return false
 		}
 	}
+	var lastReadAt int64
+	atomic.StoreInt64(&lastReadAt, time.Now().UnixNano())
 	go func(scanBuf *sseScannerBuf64K) {
 		defer putSSEScannerBuf64K(scanBuf)
 		defer close(events)
 		for scanner.Scan() {
+			atomic.StoreInt64(&lastReadAt, time.Now().UnixNano())
 			if !sendEvent(scanEvent{line: scanner.Text()}) {
 				return
 			}
@@ -851,18 +858,6 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	needModelReplace := originalModel != mappedModel
 	clientDisconnected := false // 客户端断开标志，断开后继续读取上游以获取完整usage
 	sawTerminalEvent := false
-	defer func() {
-		outputUsage.ApplyFallback(usage)
-		outputUsage.LogRecovery(ctx, account.ID, "anthropic", usage, sawTerminalEvent, clientDisconnected, retErr)
-		// A stream error can follow semantic output even when no input usage was
-		// supplied. Preserve the estimated partial result without billing failover.
-		if result == nil && retErr != nil && usage.hasObservedTokens() {
-			var failoverErr *UpstreamFailoverError
-			if !errors.As(retErr, &failoverErr) {
-				result = &streamingResult{usage: usage, firstTokenMs: firstTokenMs, clientDisconnect: clientDisconnected}
-			}
-		}
-	}()
 	useNoopDeltaKeepalive := c != nil && c.Request != nil && shouldUseClaudeCodeNoopDeltaKeepalive(c.GetHeader("User-Agent"))
 	noopDeltaKeepaliveBlockIndex := -1
 	noopDeltaKeepaliveDeltaType := ""
@@ -888,12 +883,6 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 		}
 
 		if eventName == "error" {
-			// A proxy may include its last usage snapshot on the error frame.
-			// Collect it before returning the error; the ordinary patch merge
-			// below is intentionally bypassed for failed SSE events.
-			outputUsage.Observe(dataLine)
-			parseSSEUsagePassthrough(dataLine, usage)
-			outputUsage.ApplyFallback(usage)
 			return nil, dataLine, nil, &sseStreamErrorEventError{RawData: dataLine}
 		}
 
@@ -921,8 +910,6 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			block += "data: " + dataLine + "\n\n"
 			return []string{block}, dataLine, nil, nil
 		}
-		outputUsage.Observe(dataLine)
-		outputUsage.ApplyFallback(usage)
 
 		eventType, _ := event["type"].(string)
 		observer.ObserveAnthropic([]byte(dataLine))
@@ -1038,65 +1025,13 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 		return []string{block}, string(newData), usagePatch, nil
 	}
 
-	flushPendingSSEEvent := func(onlyComplete bool) error {
-		if len(pendingEventLines) == 0 {
-			return nil
-		}
-		if onlyComplete {
-			data := ""
-			for _, line := range pendingEventLines {
-				trimmed := strings.TrimSpace(line)
-				if sseDataRe.MatchString(trimmed) {
-					data = sseDataRe.ReplaceAllString(trimmed, "")
-					break
-				}
-			}
-			if data != "[DONE]" && !json.Valid([]byte(data)) {
-				// Never turn a truncated JSON fragment into a downstream SSE event.
-				pendingEventLines = pendingEventLines[:0]
-				return nil
-			}
-		}
-		outputBlocks, data, usagePatch, err := processSSEEvent(pendingEventLines)
-		pendingEventLines = pendingEventLines[:0]
-		if err != nil {
-			return err
-		}
-		for _, block := range outputBlocks {
-			if !clientDisconnected {
-				restored := reverseToolNamesIfPresent(c, []byte(block))
-				if _, werr := fmt.Fprint(w, string(restored)); werr != nil {
-					clientDisconnected = true
-					logger.LegacyPrintf("service.gateway", "Client disconnected during streaming, continuing to drain upstream for billing")
-					// Still merge this event's usage and continue draining after a write failure.
-				} else {
-					flusher.Flush()
-					lastDataAt = time.Now()
-					resetKeepaliveTimer()
-				}
-			}
-			if data != "" {
-				if firstTokenMs == nil && data != "[DONE]" {
-					ms := int(time.Since(startTime).Milliseconds())
-					firstTokenMs = &ms
-				}
-				if usagePatch != nil {
-					mergeSSEUsagePatch(usage, usagePatch)
-				}
-			}
-		}
-		return nil
-	}
-
 	for {
 		select {
 		case ev, ok := <-events:
+			if ok {
+				queueBudget.release(len(ev.line))
+			}
 			if !ok {
-				// Scanner may emit the final data line without a trailing SSE blank
-				// line. Preserve its usage, while still requiring a terminal event.
-				if err := flushPendingSSEEvent(true); err != nil {
-					return nil, err
-				}
 				// 上游完成，返回结果
 				if !sawTerminalEvent {
 					return &streamingResult{usage: usage, firstTokenMs: firstTokenMs, clientDisconnect: clientDisconnected}, fmt.Errorf("stream usage incomplete: missing terminal event")
@@ -1104,11 +1039,6 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 				return &streamingResult{usage: usage, firstTokenMs: firstTokenMs, clientDisconnect: clientDisconnected}, nil
 			}
 			if ev.err != nil {
-				// A read error can follow a complete final JSON line without the
-				// blank separator. Collect it before deciding whether usage is missing.
-				if err := flushPendingSSEEvent(true); err != nil {
-					return nil, err
-				}
 				if sawTerminalEvent {
 					return &streamingResult{usage: usage, firstTokenMs: firstTokenMs, clientDisconnect: clientDisconnected}, nil
 				}
@@ -1155,11 +1085,44 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			trimmed := strings.TrimSpace(line)
 
 			if trimmed == "" {
-				if err := flushPendingSSEEvent(false); err != nil {
+				if len(pendingEventLines) == 0 {
+					continue
+				}
+
+				outputBlocks, data, usagePatch, err := processSSEEvent(pendingEventLines)
+				clear(pendingEventLines)
+				pendingEventLines = pendingEventLines[:0]
+				if err != nil {
 					if clientDisconnected {
 						return &streamingResult{usage: usage, firstTokenMs: firstTokenMs, clientDisconnect: true}, nil
 					}
 					return nil, err
+				}
+
+				for _, block := range outputBlocks {
+					if !clientDisconnected {
+						restored := reverseToolNamesIfPresent(c, []byte(block))
+						if _, werr := fmt.Fprint(w, string(restored)); werr != nil {
+							clientDisconnected = true
+							logger.LegacyPrintf("service.gateway", "Client disconnected during streaming, continuing to drain upstream for billing")
+							// 不 break：客户端断开后仍需继续合并本事件及后续事件的 usage，
+							// 否则会漏计当前事件携带的 usage 导致少计费。后续写入由
+							// clientDisconnected 守卫跳过。
+						} else {
+							flusher.Flush()
+							lastDataAt = time.Now()
+							resetKeepaliveTimer()
+						}
+					}
+					if data != "" {
+						if firstTokenMs == nil && data != "[DONE]" {
+							ms := int(time.Since(startTime).Milliseconds())
+							firstTokenMs = &ms
+						}
+						if usagePatch != nil {
+							mergeSSEUsagePatch(usage, usagePatch)
+						}
+					}
 				}
 				continue
 			}
@@ -1278,7 +1241,7 @@ func (s *GatewayService) extractSSEUsagePatch(event map[string]any) *sseUsagePat
 		}
 		return patch
 
-	case "message_delta", "error":
+	case "message_delta":
 		usageObj, _ := event["usage"].(map[string]any)
 		if len(usageObj) == 0 {
 			return nil

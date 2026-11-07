@@ -23,11 +23,6 @@ export default {
     reset: '重置',
     search: '搜索',
     filter: '筛选',
-    sortBy: '排序',
-    ascending: '升序',
-    descending: '降序',
-    switchToAscending: '切换为升序',
-    switchToDescending: '切换为降序',
     export: '导出',
     import: '导入',
     actions: '操作',
@@ -168,13 +163,10 @@ export default {
 
   // Navigation
   nav: {
-    home: '首页',
     dashboard: '仪表盘',
     announcements: '公告',
     apiKeys: 'API 密钥',
     batchImage: '批量生图',
-    image2: '图像工作台',
-    infiniteCanvas: '无限画布',
     usage: '使用记录',
     redeem: '兑换',
     affiliate: '邀请返利',
@@ -186,7 +178,7 @@ export default {
     users: '用户管理',
     groups: '分组管理',
     channels: '渠道管理',
-    availableChannels: '接入与可用性',
+    availableChannels: '可用渠道',
     modelPlaza: '模型广场',
     subscriptions: '订阅管理',
     accounts: '账号管理',
@@ -205,10 +197,10 @@ export default {
     github: 'GitHub',
     mySubscriptions: '我的订阅',
     buySubscription: '充值/订阅',
-    recharge: '充值与兑换',
+    recharge: '充值',
     subscribe: '订阅',
     docs: '文档',
-    myOrders: '兑换记录',
+    myOrders: '我的订单',
     orderManagement: '订单管理',
     paymentDashboard: '支付概览',
     paymentConfig: '支付配置',
@@ -222,12 +214,6 @@ export default {
     contentModeration: '内容审计',
     promptAudit: '提示词审计',
     auditLogs: '操作日志',
-  },
-
-  helios: {
-    starting: '正在打开无限画布…',
-    popupBlocked: '请允许弹出窗口以打开无限画布。',
-    launchFailed: '无法打开无限画布，请稍后重试。'
   },
 
   // Auth
@@ -262,8 +248,7 @@ export default {
     loginFailed: '登录失败，请检查您的凭据后重试。',
     errors: {
       USER_NOT_ACTIVE: '账号已被禁用',
-      TURNSTILE_VERIFICATION_FAILED: '请先完成下方 Cloudflare 人机验证，再重新登录。',
-      TURNSTILE_NOT_CONFIGURED: '人机验证配置暂不可用，请联系管理员。',
+      EMAIL_BLOCKED: '该邮箱不允许注册，请更换其他邮箱。',
     },
     registrationFailed: '注册失败，请重试。',
     emailDomainRegistrationLimit:
@@ -278,9 +263,6 @@ export default {
     turnstileFailed: '验证失败，请重试',
     captchaVerified: '验证已完成',
     captchaLoading: '正在加载验证码…',
-    captchaLoadFailed: 'Cloudflare 人机验证加载失败，请检查网络或浏览器拦截设置后重试。',
-    captchaRetry: '重新加载验证',
-    loginSettingsFailed: '登录验证设置加载失败，请重新加载后再登录。',
     captchaClickToVerify: '点击完成人机验证',
     captchaVerifying: '验证中…',
     completeVerification: '请完成验证',

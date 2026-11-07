@@ -66,33 +66,6 @@ export default {
 
   // API Keys
   keys: {
-    smartRouting: {
-      "title": "智能路由",
-      "fixed": "固定分组",
-      "mode": "路由模式",
-      "order": "按顺序选择可用分组",
-      "description": "从上到下匹配模型；模型不在目录中或当前没有可调度账号时，自动尝试下一组。最多添加 10 个分组。",
-      "first": "优先尝试",
-      "add": "添加分组",
-      "noGroups": "没有更多兼容分组",
-      "limit": "已达到 10 个分组上限",
-      "empty": "添加第一个路由分组",
-      "emptyHint": "可混排 Claude 与不同的 OpenAI 兼容平台分组",
-      "billing": "按实际命中的分组计费，沿用该组订阅与专属倍率。",
-      "scope": "支持 HTTP Messages、token 统计、Chat / Responses 文本请求。Messages 选择 Claude 分组；Chat / Responses 可调用 Claude。按模型与可用账号顺序选组，选定后沿用组内重试。Claude Responses 请携带完整上下文；续接与压缩请求保留原有平台能力。",
-      "unavailable": "分组 #{id} 已不可用，请移除或重新选择",
-      "up": "上移",
-      "down": "下移",
-      "remove": "移除",
-      "moveUp": "上移 {name}",
-      "moveDown": "下移 {name}",
-      "removeGroup": "移除 {name}",
-      "added": "已添加分组",
-      "removed": "已移除分组",
-      "moved": "已移到第 {position} 位",
-      "required": "请选择 1–10 个可用的 Claude 或 OpenAI 兼容分组",
-      "edit": "编辑智能路由顺序"
-},
     title: 'API 密钥',
     description: '管理您的 API 密钥和访问令牌',
     searchPlaceholder: '搜索名称或Key...',
@@ -195,10 +168,10 @@ export default {
       openai: {
         description: '将以下配置文件添加到 Codex CLI 配置目录中。',
         authModeTitle: 'Codex 认证模式',
-        authModeDescription: '兼容模式保留旧版 Codex 配置；API Key Mode 用于授权客户端图片执行器。',
+        authModeDescription: '配置默认启用实时联网搜索；API Key 模式支持 Codex 原生生图，旧版客户端可选择兼容模式。',
         authModeLegacy: '兼容模式',
-        authModeApiKey: 'API Key Mode',
-        authModeApiKeyRestartNotice: '保存此配置后，必须完全退出并重启 Codex Desktop 或 CLI，然后新建 task，以重新构建工具注册表。',
+        authModeApiKey: 'API Key 模式（推荐）',
+        authModeApiKeyRestartNotice: '此配置包含 API 密钥，请勿共享或提交到仓库。保存后新建会话验证；若配置未加载，再重启 Codex。生图仍需分组权限、可用余额和上游支持。',
         configTomlHint: '请确保以下内容位于 config.toml 文件的开头部分',
         note: '请确保配置目录存在。macOS/Linux 用户可运行 mkdir -p ~/.codex 创建目录。',
         noteWindows:
@@ -234,9 +207,9 @@ export default {
       },
       grok: {
         description:
-          '配置 Grok CLI、Claude Code、Codex 或 OpenCode，通过当前 Sub2API Grok 分组发送请求。文本模型走 Responses；图片/视频使用 Imagine 模型 ID 与媒体端点。',
-        claudeDescription: '配置 Claude Code，通过当前 Sub2API Grok 分组发送 Messages API 请求。',
-        codexDescription: '配置 Codex，通过当前 Sub2API Grok 分组发送 Responses API 请求。',
+          '配置 Grok CLI、Claude Code、Codex 或 OpenCode，让请求通过当前 Sub2API Grok 分组发送。文本模型走 Responses；图片/视频使用 Imagine 模型 ID 与媒体端点。',
+        claudeDescription: '配置 Claude Code，让 Messages API 请求通过当前 Sub2API Grok 分组发送。',
+        codexDescription: '配置 Codex，让 Responses API 请求通过当前 Sub2API Grok 分组发送。',
         configTomlHint:
           '官方路径：~/.grok/config.toml（或 $GROK_HOME）。请填写 [endpoints]（models_base_url / models_list_url / xai_api_base_url / cli_chat_proxy_base_url）、[auth] preferred_method=api_key、[models]、[session]、[features] 图片/视频覆盖。优先 env_key，勿硬编码 api_key；文本模型必须 api_backend=responses。合并前备份，保存后运行 grok inspect。',
         codexConfigTomlHint:
@@ -246,7 +219,7 @@ export default {
         noteWindows:
           '设置 GROK_MODELS_BASE_URL 与 XAI_API_KEY，将完整 config.toml 保存为 %USERPROFILE%\\.grok\\config.toml，运行 grok inspect，再用 /model 选择 grok-4.5（编程场景可用 grok-build-0.1）。',
         claudeNote:
-          '二选一：终端环境变量仅当前会话；~/.claude/settings.json 可持久化。请勿将含 API Key 的文件提交到仓库。',
+          '二选一：终端环境变量仅当前会话；~/.claude/settings.json 可持久化。请勿把含 API Key 的文件提交到仓库。',
         codexNote:
           '导出 SUB2API_API_KEY，将 config.toml 保存到 ~/.codex（可用 mkdir -p ~/.codex）。优先 env_key，勿提交密钥。',
         codexNoteWindows:
@@ -411,12 +384,6 @@ export default {
 	  modelMismatch: '模型不一致',
     reasoningEffort: '推理强度',
     requestedReasoningEffort: '请求推理强度',
-    reasoningEffortSource: '推理来源',
-    reasoningEffortSources: {
-      explicit: '客户端显式',
-      default: '网关缺省',
-      modelSuffix: '模型后缀',
-    },
     endpoint: '端点',
     endpointDistribution: '端点分布',
     inbound: '入站',
@@ -451,14 +418,6 @@ export default {
     cacheHit: '缓存命中',
     cacheCreate: '缓存创建',
     cacheHitRate: '缓存命中率',
-    cacheReadRate: '缓存读取率',
-    cacheReadRateShort: '缓存',
-    cacheReadRateFormula: '缓存读取 ÷（输入 + 缓存创建 + 缓存读取）',
-    outputPhaseTps: '输出阶段 TPS',
-    outputTpsShort: '输出阶段',
-    outputTokensEstimated: '输出估算',
-    outputTokensEstimatedHint: '未收到上游最终用量，仅按已收到的输出内容估算 Token，可能与上游不同。',
-    outputTpsFormula: '输出 Token ÷（总耗时 − 首字时间）；无首字数据时不可计算',
     inputTokenPrice: '输入单价',
     outputTokenPrice: '输出单价',
     perMillionTokens: '/ 1M Token',
@@ -500,6 +459,7 @@ export default {
     noDataToExport: '没有可导出的数据',
     exportSuccess: '使用数据导出成功',
     exportFailed: '使用数据导出失败',
+    exportRateLimited: '请求过于频繁，{seconds} 秒后自动继续导出',
     exportExcelSuccess: '使用数据导出成功（Excel格式）',
     exportExcelFailed: '使用数据导出失败',
     imageUnit: '张',
@@ -559,7 +519,6 @@ export default {
       zhipu: '智谱 GLM',
       deepseek: 'DeepSeek',
       minimax: 'MiniMax',
-      stepfun: 'StepFun',
       opencode_go: 'OpenCode'
     },
     // 检查模式（监控条目的工作方式）
@@ -745,7 +704,7 @@ export default {
       paidPrice: '实付价格(折后)',
       officialPrice: '官方价格',
       rate: '折扣倍率',
-      unitPerMillion: 'USD / 1M token',
+      unitPerMillion: '$ / 1M token',
       perUnitRequest: '/ 次',
       perUnitImage: '/ 张',
       perRequest: '按次计费',

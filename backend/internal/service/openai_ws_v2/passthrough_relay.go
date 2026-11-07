@@ -140,7 +140,6 @@ type observedUpstreamEvent struct {
 
 type relayTurnTiming struct {
 	startAt               time.Time
-	requestStartAt        time.Time
 	firstTokenMs          *int
 	firstResponseModel    string
 	terminalResponseModel string
@@ -769,16 +768,10 @@ func observeUpstreamMessage(
 	}
 	now := nowFn()
 
-	if state.firstTokenMs == nil && isTokenEvent(eventType, message) {
+	if state.firstTokenMs == nil && isTokenEvent(eventType) {
 		ms := int(now.Sub(startAt).Milliseconds())
 		if ms >= 0 {
 			state.firstTokenMs = &ms
-		}
-		if state.activeTurn != nil && state.activeTurn.firstTokenMs == nil {
-			tms := int(now.Sub(state.activeTurn.startAt).Milliseconds())
-			if tms >= 0 {
-				state.activeTurn.firstTokenMs = &tms
-			}
 		}
 	}
 	parsedUsage := parseUsageAndAccumulate(state, message, eventType, onUsageParseFailure)
@@ -790,14 +783,16 @@ func observeUpstreamMessage(
 	var turnTiming *relayTurnTiming
 	if responseID != "" {
 		turnTiming = openAIWSRelayGetOrInitTurnTiming(state, responseID, now)
-		if turnTiming != nil && turnTiming.firstTokenMs == nil && isTokenEvent(eventType, message) {
-			ms := int(now.Sub(turnTiming.startAt).Milliseconds())
-			if ms >= 0 {
-				turnTiming.firstTokenMs = &ms
-			}
-		}
 	} else {
+		// delta 等 token 事件不携带 response.id，归属当前活跃 turn。
 		turnTiming = state.activeTurn
+	}
+	// 每个 turn 独立记录首 token；连接级 firstTokenMs 只反映整条连接的第一个 token。
+	if turnTiming != nil && turnTiming.firstTokenMs == nil && isTokenEvent(eventType) {
+		ms := int(now.Sub(turnTiming.startAt).Milliseconds())
+		if ms >= 0 {
+			turnTiming.firstTokenMs = &ms
+		}
 	}
 	observeRelayTurnResponseModel(turnTiming, firstRelayResponseModel(message), isTerminalEvent(eventType))
 	if !isTerminalEvent(eventType) {
@@ -996,7 +991,7 @@ func openAIWSRelayGetOrInitTurnTiming(state *relayState, responseID string, now 
 		if startAt.IsZero() {
 			startAt = now
 		}
-		timing = &relayTurnTiming{startAt: startAt, requestStartAt: startAt}
+		timing = &relayTurnTiming{startAt: startAt}
 		state.turnTimingByID[responseID] = timing
 		state.activeTurn = timing
 		return timing
@@ -1331,49 +1326,11 @@ func shouldParseUsage(eventType string) bool {
 	return strings.HasPrefix(eventType, "response.") && !strings.HasSuffix(eventType, ".delta")
 }
 
-func isTokenEvent(eventType string, message ...[]byte) bool {
+func isTokenEvent(eventType string) bool {
 	eventType = strings.TrimSpace(eventType)
-	if strings.HasSuffix(eventType, ".delta") {
-		if len(message) == 0 || len(message[0]) == 0 {
-			return true
-		}
-		return gjson.GetBytes(message[0], "delta").String() != ""
-	}
-	switch eventType {
-	case "response.output_text.done", "response.reasoning_summary_text.done", "response.reasoning_text.done", "response.audio_transcript.done":
-		if len(message) == 0 || len(message[0]) == 0 {
-			return true
-		}
-		return gjson.GetBytes(message[0], "text").String() != ""
-	case "response.function_call_arguments.done":
-		if len(message) == 0 || len(message[0]) == 0 {
-			return true
-		}
-		return gjson.GetBytes(message[0], "arguments").String() != ""
-	case "response.image_generation_call.partial_image":
-		if len(message) == 0 || len(message[0]) == 0 {
-			return true
-		}
-		return gjson.GetBytes(message[0], "partial_image_b64").String() != ""
-	case "response.output_item.done":
-		if len(message) == 0 || len(message[0]) == 0 {
-			return true
-		}
-		content := gjson.GetBytes(message[0], "item.content")
-		if !content.IsArray() {
-			return false
-		}
-		foundText := false
-		content.ForEach(func(_, item gjson.Result) bool {
-			if item.Get("text").String() != "" {
-				foundText = true
-				return false
-			}
-			return true
-		})
-		return foundText
-	}
-	return false
+	return strings.HasSuffix(eventType, ".delta") ||
+		eventType == "response.output_text.done" ||
+		eventType == "response.function_call_arguments.done"
 }
 
 func minDuration(a, b time.Duration) time.Duration {

@@ -11,7 +11,7 @@ overrides:
   dompurify@<3.4.17: '>=3.4.17'
   source-map-js@<1.2.2: '>=1.2.2'
   follow-redirects@<1.16.2: '>=1.16.2'
-  decode-uri-component@<0.5.1: 0.5.1
+  decode-uri-component@<0.5.1: '>=0.5.1'
 
 importers:
 
