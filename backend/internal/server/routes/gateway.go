@@ -78,8 +78,6 @@ func RegisterGatewayRoutes(
 		switch getGroupPlatform(c) {
 		case service.PlatformOpenAI:
 			h.OpenAIGateway.Images(c)
-		case service.PlatformStepFun:
-			h.OpenAIGateway.Images(c)
 		case service.PlatformGrok:
 			h.OpenAIGateway.GrokImages(c)
 		default:
@@ -186,17 +184,9 @@ func RegisterGatewayRoutes(
 	qwenAudio.Use(clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupOpenAI)
 	{
 		qwenAudio.POST("/transcriptions", func(c *gin.Context) {
-			if getGroupPlatform(c) == service.PlatformStepFun {
-				h.OpenAIGateway.StepFunAudio(c)
-				return
-			}
 			h.OpenAIGateway.QwenAudioTranscriptions(c)
 		})
 		qwenAudio.POST("/speech", func(c *gin.Context) {
-			if getGroupPlatform(c) == service.PlatformStepFun {
-				h.OpenAIGateway.StepFunAudio(c)
-				return
-			}
 			h.OpenAIGateway.QwenAudioSpeech(c)
 		})
 	}
@@ -341,10 +331,6 @@ func RegisterGatewayRoutes(
 		gateway.PATCH("/custom-voices/:voice_id", customVoicePathHandler)
 		gateway.DELETE("/custom-voices/:voice_id", customVoicePathHandler)
 		gateway.GET("/realtime", func(c *gin.Context) {
-			if getGroupPlatform(c) == service.PlatformStepFun {
-				h.OpenAIGateway.StepFunRealtime(c)
-				return
-			}
 			if getGroupPlatform(c) != service.PlatformGrok {
 				service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
 				c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Realtime API is not supported for this platform"}})
@@ -499,10 +485,6 @@ func RegisterGatewayRoutes(
 	rootRoute(http.MethodPatch, "/custom-voices/:voice_id", bodyLimit, rootCustomVoicePathHandler)
 	rootRoute(http.MethodDelete, "/custom-voices/:voice_id", bodyLimit, rootCustomVoicePathHandler)
 	rootRoute(http.MethodGet, "/realtime", bodyLimit, func(c *gin.Context) {
-		if getGroupPlatform(c) == service.PlatformStepFun {
-			h.OpenAIGateway.StepFunRealtime(c)
-			return
-		}
 		if getGroupPlatform(c) != service.PlatformGrok {
 			service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
 			c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Realtime API is not supported for this platform"}})

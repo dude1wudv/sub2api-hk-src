@@ -159,18 +159,6 @@ function mountModal(groups: any[] = []) {
   })
 }
 
-describe('Mirasim account authorization', () => {
-  it('starts OAuth from the Mirasim platform in the add account dialog', async () => {
-    const wrapper = mountModal()
-    await selectButtonByText(wrapper, 'Mirasim')
-    expect(wrapper.text()).toContain('下载本地回调助手')
-    expect(wrapper.find('form#create-account-form input[type="password"]').exists()).toBe(false)
-    await selectButtonByText(wrapper, 'GitHub OAuth')
-    expect(wrapper.emitted('mirasim-oauth')).toEqual([['github']])
-    expect(wrapper.emitted('close')).toBeTruthy()
-  })
-})
-
 async function selectButtonByText(wrapper: ReturnType<typeof mountModal>, text: string) {
   const button = wrapper.findAll('button').find((candidate) => candidate.text().includes(text))
   expect(button).toBeDefined()
@@ -690,8 +678,8 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
     const wrapper = mountModal()
     const labels = (testid: string) =>
       wrapper.get(`[data-testid="${testid}"]`).findAll('button').map(button => button.text().trim())
-    expect(labels('platform-row-cn')).toEqual(['Kimi', 'Zhipu GLM', 'DeepSeek', 'MiniMax', 'StepFun'])
-    expect(labels('platform-row-aggregators')).toEqual(['OpenCode', 'Mirasim', 'Command Code', 'Cline'])
+    expect(labels('platform-row-cn')).toEqual(['Kimi', 'Zhipu GLM', 'DeepSeek', 'MiniMax'])
+    expect(labels('platform-row-aggregators')).toEqual(['OpenCode', 'Command Code', 'Cline'])
   })
 
   it('creates a Cline account without an account type and with only the Chat Completions endpoint', async () => {
@@ -716,25 +704,6 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
     expect(payload?.credentials).not.toHaveProperty('protocol_rules')
     expect(payload?.credentials?.api_base_urls).not.toHaveProperty('responses')
     expect(payload?.credentials?.api_base_urls).not.toHaveProperty('anthropic')
-  })
-
-  it('preserves Step Plan mode and all protocol endpoints when creating an account', async () => {
-    const wrapper = mountModal()
-    await selectButtonByText(wrapper, 'StepFun')
-    await wrapper.get('form#create-account-form input[type="text"]').setValue('Step Plan')
-    await wrapper.get('form#create-account-form input[type="password"]').setValue('sk-step-test')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
-    await flushPromises()
-    expect(createAccountMock.mock.calls[0]?.[0]?.credentials).toMatchObject({
-      account_mode: 'step_plan',
-      api_protocol: 'adaptive',
-      base_url: 'https://api.stepfun.com/step_plan/v1',
-      api_base_urls: {
-        chat_completions: 'https://api.stepfun.com/step_plan/v1',
-        responses: 'https://api.stepfun.com/step_plan/v1',
-        anthropic: 'https://api.stepfun.com/step_plan'
-      }
-    })
   })
 
   it('submits adaptive Kimi protocol endpoints', async () => {

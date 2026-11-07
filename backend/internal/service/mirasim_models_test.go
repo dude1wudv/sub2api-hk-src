@@ -2,23 +2,12 @@ package service
 
 import "testing"
 
-func TestMirasimNativeProtocolByModel(t *testing.T) {
-	account := &Account{Platform: PlatformMirasim, Type: AccountTypeAPIKey}
-	tests := []struct {
-		model string
-		want  string
-	}{
-		{model: "mirasim/glm-5.3-flash", want: APIProtocolChatCompletions},
-		{model: "kimi-k3", want: APIProtocolChatCompletions},
-		{model: "claude-opus-5-5", want: APIProtocolAnthropic},
-		{model: "gpt-6-astra", want: APIProtocolResponses},
+func TestMirasimIsNotRegisteredForModelRouting(t *testing.T) {
+	if IsMultiProtocolAPIKeyProvider(PlatformMirasim) {
+		t.Fatal("retired Mirasim platform must not participate in model routing")
 	}
-	for _, tt := range tests {
-		t.Run(tt.model, func(t *testing.T) {
-			if got := account.resolveModelRoutedProtocol(tt.model); got != tt.want {
-				t.Fatalf("resolveModelRoutedProtocol(%q) = %q, want %q", tt.model, got, tt.want)
-			}
-		})
+	if _, ok := DetectModelPlatform("mirasim/glm-5.3-flash"); ok {
+		t.Fatal("retired Mirasim model prefix must not create a composite route")
 	}
 }
 

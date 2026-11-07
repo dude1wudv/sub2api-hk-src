@@ -27,7 +27,7 @@ func bindGroupPlatformJSON(t *testing.T, target any, body string) error {
 func TestGroupPlatformBinding_AllowedPlatforms(t *testing.T) {
 	allowed := []string{
 		"anthropic", "openai", "gemini", "antigravity", "grok",
-		"kimi", "zhipu", "deepseek", "minimax", "stepfun", "opencode_go", "mirasim", "composite",
+		"kimi", "zhipu", "deepseek", "minimax", "opencode_go", "composite",
 		"typesafe",
 		"command_code", "cline",
 	}
@@ -51,6 +51,8 @@ func TestGroupPlatformBinding_AllowedPlatforms(t *testing.T) {
 
 func TestGroupPlatformBinding_RejectsInvalidPlatforms(t *testing.T) {
 	invalid := []string{
+		"stepfun", // retained in storage, retired for new configuration
+		"mirasim",
 		"moonshot", // 厂商别名,不是平台标识
 		"Kimi",     // 大小写敏感
 		"openai ",  // 尾随空格
@@ -73,8 +75,17 @@ func TestGroupPlatformBinding_RejectsInvalidPlatforms(t *testing.T) {
 	}
 }
 
+func TestAccountPlatformBinding_RejectsRetiredProviders(t *testing.T) {
+	for _, platform := range []string{"stepfun", "mirasim"} {
+		var req CreateAccountRequest
+		body := fmt.Sprintf(`{"name":"legacy","platform":%q,"type":"apikey","credentials":{}}`, platform)
+		require.Error(t, bindGroupPlatformJSON(t, &req, body),
+			"retired platform %q must not create new accounts", platform)
+	}
+}
+
 func TestCompositeRouteTargetPlatform_AllowsConcreteProviders(t *testing.T) {
-	for _, platform := range []string{"kimi", "zhipu", "deepseek", "minimax", "stepfun", "opencode_go", "mirasim", "typesafe", "command_code", "cline"} {
+	for _, platform := range []string{"kimi", "zhipu", "deepseek", "minimax", "opencode_go", "typesafe", "command_code", "cline"} {
 		var req CompositeRouteRequest
 		body := fmt.Sprintf(`{"public_model":"m","target_platform":%q}`, platform)
 		require.NoError(t, bindGroupPlatformJSON(t, &req, body))

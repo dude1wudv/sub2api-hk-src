@@ -12,7 +12,7 @@ const MaxSmartRoutingGroups = 10
 
 func SmartRoutingPlatformSupported(platform string) bool {
 	switch platform {
-	case PlatformAnthropic, PlatformOpenAI, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformStepFun:
+	case PlatformAnthropic, PlatformOpenAI, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax:
 		return true
 	}
 	return false

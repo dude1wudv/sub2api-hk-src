@@ -123,7 +123,7 @@ func NewAccountHandler(
 type CreateAccountRequest struct {
 	Name                    string         `json:"name" binding:"required"`
 	Notes                   *string        `json:"notes"`
-	Platform                string         `json:"platform" binding:"required"`
+	Platform                string         `json:"platform" binding:"required,concrete_platform"`
 	Type                    string         `json:"type" binding:"required,oneof=oauth setup-token apikey upstream bedrock service_account"`
 	Credentials             map[string]any `json:"credentials" binding:"required"`
 	Extra                   map[string]any `json:"extra"`
@@ -1019,6 +1019,10 @@ func (h *AccountHandler) CheckMixedChannel(c *gin.Context) {
 	var req CheckMixedChannelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if domain.IsRetiredPlatform(req.Platform) {
+		response.BadRequest(c, "This provider has been retired")
 		return
 	}
 
@@ -3157,6 +3161,10 @@ func (h *AccountHandler) SyncUpstreamModelsPreview(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if domain.IsRetiredPlatform(req.Platform) {
+		response.BadRequest(c, "This provider has been retired")
 		return
 	}
 	modelMapping := make(map[string]any, len(req.ModelMapping))

@@ -88,42 +88,6 @@ func (p *ProviderProfile) SupportsProtocol(mode, protocol string) bool {
 // 上游协议分流方式、Responses 路径约定与 IsMultiProtocolAPIKeyProvider 归属。
 // 默认端点需与前端 credentialsBuilder.ts 的预设保持一致。
 var providerProfiles = map[string]*ProviderProfile{
-	PlatformStepFun: {
-		Platform:    PlatformStepFun,
-		DefaultMode: AccountModePayG,
-		Routing:     ProviderRoutingByInbound,
-		Modes: map[string]ProviderEndpoints{
-			AccountModePayG: {BaseURLs: map[string]string{
-				APIProtocolChatCompletions: DefaultStepFunPayGBaseURL,
-				APIProtocolResponses:       DefaultStepFunPayGBaseURL,
-				APIProtocolAnthropic:       DefaultStepFunPayGAnthropicBaseURL,
-			}},
-			AccountModeStepPlan: {BaseURLs: map[string]string{
-				APIProtocolChatCompletions: DefaultStepFunPlanBaseURL,
-				APIProtocolResponses:       DefaultStepFunPlanBaseURL,
-				APIProtocolAnthropic:       DefaultStepFunPlanAnthropicBaseURL,
-			}},
-		},
-	},
-	PlatformMirasim: {
-		Platform:         PlatformMirasim,
-		DefaultMode:      AccountModePayG,
-		Routing:          ProviderRoutingByModel,
-		DefaultTestModel: "glm-5.3-flash",
-		Modes: map[string]ProviderEndpoints{
-			AccountModePayG: {
-				BaseURLs: map[string]string{
-					APIProtocolChatCompletions: "https://relay.mirasim.ai/v1",
-					APIProtocolResponses:       "https://relay.mirasim.ai/v1",
-					APIProtocolAnthropic:       "https://relay.mirasim.ai",
-				},
-				ProtocolRules: []ProtocolRule{
-					{Pattern: "claude-*", Protocol: APIProtocolAnthropic},
-					{Pattern: "gpt-*", Protocol: APIProtocolResponses},
-				},
-			},
-		},
-	},
 	PlatformKimi: {
 		Platform:    PlatformKimi,
 		DefaultMode: AccountModePayG,

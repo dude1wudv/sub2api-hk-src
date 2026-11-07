@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +29,7 @@ func compositeTargetPlatformAllowed(c *gin.Context, apiKey *service.APIKey, mode
 	}
 	ensureCompositeTargetPlatform(c, apiKey, model)
 	platform, ok := service.ResolvedTargetPlatformFromContext(c.Request.Context())
-	if !ok {
+	if !ok || domain.IsRetiredPlatform(platform) {
 		return false
 	}
 	for _, allowedPlatform := range allowed {
@@ -44,8 +45,8 @@ func compositeTargetPlatformResolved(c *gin.Context, apiKey *service.APIKey, mod
 		return true
 	}
 	ensureCompositeTargetPlatform(c, apiKey, model)
-	_, ok := service.ResolvedTargetPlatformFromContext(c.Request.Context())
-	return ok
+	platform, ok := service.ResolvedTargetPlatformFromContext(c.Request.Context())
+	return ok && !domain.IsRetiredPlatform(platform)
 }
 
 func effectiveAPIKeyPlatform(c *gin.Context, apiKey *service.APIKey) string {

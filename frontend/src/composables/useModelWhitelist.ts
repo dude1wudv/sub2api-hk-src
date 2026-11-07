@@ -292,8 +292,12 @@ const perplexityModels = [
   'llama-3-sonar-small-32k-chat', 'llama-3-sonar-large-32k-chat'
 ]
 
-const mirasimModels = [
-  'glm-5.3-flash', 'kimi-k3'
+// Keep the legacy account editor accurate for retained, non-routable records.
+const mirasimModels = ['glm-5.3-flash', 'kimi-k3']
+const stepFunModels = [
+  'step-3.5-flash', 'step-3.5-flash-2603', 'step-3.7-flash', 'step-5-preview',
+  'step-image-edit-2', 'step-router-v1', 'stepaudio-2.5-asr', 'stepaudio-2.5-chat',
+  'stepaudio-2.5-realtime', 'stepaudio-2.5-tts'
 ]
 
 // 所有模型（去重）
@@ -316,8 +320,7 @@ const allModelsList: string[] = Array.from(new Set([
   ...baiduModels,
   ...sparkModels,
   ...hunyuanModels,
-  ...perplexityModels,
-  ...mirasimModels
+  ...perplexityModels
 ]))
 
 // 转换为下拉选项格式
@@ -541,21 +544,10 @@ export function getModelsByPlatform(platform: string): string[] {
       'qwen3.8-max', 'qwen3.8-flash', 'qwen3.7-max', 'qwen3.7-plus', 'qwen3.6-plus',
       'hy4-preview', 'hy3', 'omen-alpha'
     ]
-    case 'stepfun': return [
-      'step-3.5-flash',
-      'step-3.5-flash-2603',
-      'step-3.7-flash',
-      'step-5-preview',
-      'step-image-edit-2',
-      'step-router-v1',
-      'stepaudio-2.5-asr',
-      'stepaudio-2.5-chat',
-      'stepaudio-2.5-realtime',
-      'stepaudio-2.5-tts'
-    ]
     case 'typesafe': return ['jev-latest']
     case 'doubao': return doubaoModels
     case 'minimax': return minimaxModels
+    case 'stepfun': return stepFunModels
     case 'baidu': return baiduModels
     case 'spark': return sparkModels
     case 'hunyuan': return hunyuanModels

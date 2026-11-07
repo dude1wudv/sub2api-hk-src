@@ -209,9 +209,10 @@ func TestDetectModelPlatform(t *testing.T) {
 		{name: "minimax prefix", model: "minimax/MiniMax-M2.5", platform: PlatformMiniMax, ok: true},
 		{name: "abab legacy", model: "abab6.5-chat", platform: PlatformMiniMax, ok: true},
 		{name: "abab7 legacy", model: "abab7-chat-preview", platform: PlatformMiniMax, ok: true},
-		{name: "stepfun", model: "step-3.5-flash", platform: PlatformStepFun, ok: true},
-		{name: "stepfun audio", model: "stepaudio-2.5-asr", platform: PlatformStepFun, ok: true},
-		{name: "stepfun provider prefix", model: "stepfun/step-3.5-flash", platform: PlatformStepFun, ok: true},
+		{name: "retired stepfun", model: "step-3.5-flash", ok: false},
+		{name: "retired stepfun audio", model: "stepaudio-2.5-asr", ok: false},
+		{name: "retired stepfun prefix", model: "stepfun/step-3.5-flash", ok: false},
+		{name: "retired mirasim prefix", model: "mirasim/glm-5.3-flash", ok: false},
 		{name: "jev", model: "jev-latest", platform: PlatformTypeSafe, ok: true},
 		{name: "typesafe prefix", model: "typesafe/jev-latest", platform: PlatformTypeSafe, ok: true},
 		{name: "abab unrelated namespace", model: "abab-other", ok: false},
@@ -250,14 +251,18 @@ func TestCompositeGroupSchedulerHasAllCanonicalPlatformBuckets(t *testing.T) {
 		platforms = append(platforms, platform)
 	}
 	require.ElementsMatch(t,
-		[]string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformStepFun, PlatformOpenCodeGo, PlatformMirasim, PlatformTypeSafe, PlatformCommandCode, PlatformCline},
+		[]string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformOpenCodeGo, PlatformTypeSafe, PlatformCommandCode, PlatformCline},
 		platforms,
 	)
 }
 
 func TestCompositeConcretePlatformsIncludeCNProviders(t *testing.T) {
-	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformStepFun, PlatformOpenCodeGo, PlatformMirasim, PlatformTypeSafe, PlatformCommandCode, PlatformCline} {
+	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformOpenCodeGo, PlatformTypeSafe, PlatformCommandCode, PlatformCline} {
 		require.True(t, isConcreteRequestPlatform(platform))
 		require.True(t, canCopyAccountsFromGroupPlatform(PlatformComposite, platform))
+	}
+	for _, platform := range []string{PlatformStepFun, PlatformMirasim} {
+		require.False(t, isConcreteRequestPlatform(platform))
+		require.False(t, canCopyAccountsFromGroupPlatform(PlatformComposite, platform))
 	}
 }

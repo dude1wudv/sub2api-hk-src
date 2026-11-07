@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/googleapi"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -152,7 +153,24 @@ func OpenAIModelNotFoundErrorWriter(c *gin.Context, status int, message string) 
 func RequireGroupAssignment(settingService *service.SettingService, writeError GatewayErrorWriter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		apiKey, ok := GetAPIKeyFromContext(c)
-		if !ok || apiKey.GroupID != nil {
+		if !ok {
+			c.Next()
+			return
+		}
+		platform := ""
+		if apiKey.Group != nil {
+			platform = apiKey.Group.Platform
+		}
+		if resolved, found := service.ResolvedTargetPlatformFromContext(c.Request.Context()); found {
+			platform = resolved
+		}
+		if domain.IsRetiredPlatform(platform) {
+			service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
+			writeError(c, http.StatusServiceUnavailable, "This provider has been retired")
+			c.Abort()
+			return
+		}
+		if apiKey.GroupID != nil {
 			c.Next()
 			return
 		}

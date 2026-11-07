@@ -1297,18 +1297,3 @@ export const accountsAPI = {
 }
 
 export default accountsAPI
-export interface MirasimImportOptions {
-  name?: string
-  proxy_id?: number | null
-  group_ids?: number[]
-  concurrency?: number
-}
-
-export async function createMirasimOAuthAccount(refreshToken: string, provider: 'github' | 'google', options: MirasimImportOptions = {}): Promise<{ id: number; name: string }> {
-  const { data } = await apiClient.post<{ id: number; name: string }>('/admin/accounts/mirasim/oauth', {
-    refresh_token: refreshToken,
-    provider,
-    ...options
-  })
-  return data
-}

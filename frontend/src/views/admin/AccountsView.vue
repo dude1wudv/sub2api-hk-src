@@ -682,9 +682,8 @@
       <template #pagination><Pagination v-if="pagination.total > 0" :page="pagination.page" :total="pagination.total" :page-size="pagination.page_size" @update:page="handlePageChange" @update:pageSize="handlePageSizeChange" /></template>
     </TablePageLayout>
     <AccountDetailsDrawer :account-id="detailAccountId" @close="detailAccountId = null" @edit="account => { detailAccountId = null; handleEdit(account) }" @stats="account => { detailAccountId = null; handleViewStats(account) }" />
-    <CreateAccountModal :show="showCreate" :proxies="proxies" :groups="groups" @close="showCreate = false" @created="reload" @mirasim-oauth="startMirasimOAuth" />
+    <CreateAccountModal :show="showCreate" :proxies="proxies" :groups="groups" @close="showCreate = false" @created="reload" />
     <EditAccountModal :show="showEdit" :account="edAcc" :proxies="proxies" :groups="groups" @close="showEdit = false" @updated="handleAccountUpdated" />
-    <MirasimImportModal :show="pendingMirasimOAuth !== null" :submitting="mirasimImportSubmitting" :proxies="proxies" :groups="groups" @close="pendingMirasimOAuth = null" @submit="submitMirasimImport" />
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
     <AccountStatsModal :show="showStats" :account="statsAcc" @close="closeStatsModal" />
@@ -729,8 +728,6 @@ import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { adminAPI } from '@/api/admin'
-import { createMirasimOAuthAccount, type MirasimImportOptions } from '@/api/admin/accounts'
-import MirasimImportModal from '@/components/account/MirasimImportModal.vue'
 import { CONCRETE_PLATFORM_OPTIONS } from '@/constants/platforms'
 import { useTableLoader } from '@/composables/useTableLoader'
 import { useSwipeSelect, type SwipeSelectVirtualContext } from '@/composables/useSwipeSelect'
@@ -778,45 +775,6 @@ import type { Account, AccountListItem, AccountPlatform, AccountSchedulerGroupSc
 const { t } = useI18n()
 const appStore = useAppStore()
 const authStore = useAuthStore()
-
-let mirasimChannel: BroadcastChannel | null = null
-const pendingMirasimOAuth = ref<{ token: string; provider: 'github' | 'google' } | null>(null)
-const mirasimImportSubmitting = ref(false)
-const startMirasimOAuth = (provider: 'github' | 'google') => {
-  const popup = window.open(`http://127.0.0.1:8788/start?provider=${provider}`, 'mirasim-oauth', 'width=560,height=720')
-  if (!popup) appStore.showError('浏览器拦截了 Mirasim 授权窗口，请允许弹窗后重试')
-}
-
-const completeMirasimOAuthFromCallback = async () => {
-  const hash = window.location.hash.replace(/^#/, '')
-  if (!hash.startsWith('mirasim_provider=')) return
-  window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
-  const params = new URLSearchParams(hash)
-  const provider = params.get('mirasim_provider')
-  const token = params.get('refresh_token')
-  if ((provider !== 'github' && provider !== 'google') || !token) {
-    appStore.showError('Mirasim 授权回调无效')
-    return
-  }
-  pendingMirasimOAuth.value = { token, provider }
-}
-
-const submitMirasimImport = async (options: MirasimImportOptions) => {
-  if (!pendingMirasimOAuth.value || mirasimImportSubmitting.value) return
-  mirasimImportSubmitting.value = true
-  const { token, provider } = pendingMirasimOAuth.value
-  try {
-    await createMirasimOAuthAccount(token, provider, options)
-    pendingMirasimOAuth.value = null
-    appStore.showSuccess('Mirasim 账号已加入 Sub2API')
-    mirasimChannel?.postMessage('created')
-    await reload()
-  } catch (error) {
-    appStore.showError(extractApiErrorMessage(error, 'Mirasim 账号接入失败'))
-  } finally {
-    mirasimImportSubmitting.value = false
-  }
-}
 
 const proxies = ref<AccountProxy[]>([])
 const route = useRoute()
@@ -3014,11 +2972,6 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(async () => {
   applyRouteStatus()
-  if (typeof BroadcastChannel !== 'undefined') {
-    mirasimChannel = new BroadcastChannel('sub2api-mirasim-oauth')
-    mirasimChannel.onmessage = () => { void reload() }
-  }
-  void completeMirasimOAuthFromCallback()
   if (typeof window !== 'undefined') {
     desktopViewportMediaQuery = window.matchMedia(desktopViewportQuery)
     isDesktopViewport.value = desktopViewportMediaQuery.matches
@@ -3061,8 +3014,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  mirasimChannel?.close()
-  mirasimChannel = null
   upstreamBillingRateAbortController?.abort()
   if (usageBatchFlushTimer !== null) {
     clearTimeout(usageBatchFlushTimer)

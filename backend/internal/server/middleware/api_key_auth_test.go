@@ -927,6 +927,56 @@ func TestRequireGroupAssignmentMarksUngroupedKeyBusinessLimited(t *testing.T) {
 	require.Equal(t, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnassigned, businessLimitedReason)
 }
 
+func TestRequireGroupAssignmentRejectsRetiredProviders(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	settingService := service.NewSettingService(fakeSettingRepo{values: map[string]string{
+		service.SettingKeyAllowUngroupedKeyScheduling: "false",
+	}}, &config.Config{})
+
+	for _, platform := range []string{service.PlatformStepFun, service.PlatformMirasim} {
+		t.Run(platform, func(t *testing.T) {
+			group := &service.Group{ID: 12, Platform: platform}
+			apiKey := &service.APIKey{ID: 100, GroupID: &group.ID, Group: group}
+			router := gin.New()
+			router.Use(func(c *gin.Context) {
+				c.Set(string(ContextKeyAPIKey), apiKey)
+				c.Next()
+			})
+			router.Use(RequireGroupAssignment(settingService, OpenAIErrorWriter))
+			router.GET("/t", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/t", nil))
+
+			require.Equal(t, http.StatusServiceUnavailable, w.Code)
+			require.Contains(t, w.Body.String(), "provider has been retired")
+		})
+	}
+}
+
+func TestRequireGroupAssignmentRejectsRetiredCompositeTarget(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	settingService := service.NewSettingService(fakeSettingRepo{values: map[string]string{
+		service.SettingKeyAllowUngroupedKeyScheduling: "false",
+	}}, &config.Config{})
+	group := &service.Group{ID: 13, Platform: service.PlatformComposite}
+	apiKey := &service.APIKey{ID: 101, GroupID: &group.ID, Group: group}
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Request = c.Request.WithContext(service.WithResolvedTargetPlatform(c.Request.Context(), service.PlatformStepFun))
+		c.Set(string(ContextKeyAPIKey), apiKey)
+		c.Next()
+	})
+	router.Use(RequireGroupAssignment(settingService, OpenAIErrorWriter))
+	router.GET("/t", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/t", nil))
+
+	require.Equal(t, http.StatusServiceUnavailable, w.Code)
+	require.Contains(t, w.Body.String(), "provider has been retired")
+}
+
 func TestAPIKeyAuthIPRestrictionUsesTrustedPathWhenSwitchDisabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

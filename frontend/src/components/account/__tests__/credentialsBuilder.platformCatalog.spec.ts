@@ -6,6 +6,7 @@ import {
   setPlatformCatalog,
   type PlatformCatalog
 } from '@/constants/platformCatalog'
+import { getProviderProfile } from '@/constants/platformCatalog'
 import {
   DEFAULT_OPENCODE_GO_PROTOCOL_RULES,
   DEFAULT_OPENCODE_ZEN_PROTOCOL_RULES,
@@ -58,15 +59,15 @@ const legacyZenRules = [
 ]
 
 function legacyIsMultiProtocol(platform: string): boolean {
-  return ['kimi', 'zhipu', 'deepseek', 'minimax', 'stepfun', 'opencode_go', 'mirasim', 'command_code', 'cline'].includes(platform)
+  return ['kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go', 'command_code', 'cline'].includes(platform)
 }
 
 function legacySupportsResponses(platform: string): boolean {
-  return ['deepseek', 'kimi', 'minimax', 'stepfun', 'opencode_go', 'mirasim', 'command_code'].includes(platform)
+  return ['deepseek', 'kimi', 'minimax', 'opencode_go', 'command_code'].includes(platform)
 }
 
 function legacyHeaderOverride(platform: string, type: string): boolean {
-  if (['anthropic', 'openai', 'kimi', 'zhipu', 'deepseek', 'minimax', 'stepfun', 'opencode_go', 'mirasim', 'command_code', 'cline'].includes(platform)) {
+  if (['anthropic', 'openai', 'kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go', 'command_code', 'cline'].includes(platform)) {
     return type === 'apikey'
   }
   if (platform === 'grok') return type === 'apikey' || type === 'oauth'
@@ -314,22 +315,9 @@ describe('credentialsBuilder picks up newly registered providers from the catalo
   })
 })
 
-describe('HK provider profiles', () => {
-  it('keeps Step Plan endpoints and native protocols distinct from payg', () => {
-    expect(resolveProviderAccountMode('stepfun', 'step_plan')).toBe('step_plan')
-    expect(defaultCNBaseUrl('stepfun', 'step_plan', 'anthropic')).toBe('https://api.stepfun.com/step_plan')
-    expect(defaultCNBaseUrl('stepfun', 'step_plan', 'responses')).toBe('https://api.stepfun.com/step_plan/v1')
-    expect(defaultCNBaseUrl('stepfun', 'payg', 'responses')).toBe('https://api.stepfun.com/v1')
-    expect(providerNativeProtocols('stepfun', 'step_plan')).toEqual(['chat_completions', 'anthropic', 'responses'])
-  })
-
-  it('uses Mirasim model routing with protocol-specific default endpoints', () => {
-    expect(providerRoutesByModel('mirasim')).toBe(true)
-    expect(defaultCNBaseUrl('mirasim', 'payg', 'anthropic')).toBe('https://relay.mirasim.ai')
-    expect(defaultCNBaseUrl('mirasim', 'payg', 'responses')).toBe('https://relay.mirasim.ai/v1')
-    expect(defaultProviderProtocolRules('mirasim', 'payg')).toEqual([
-      { pattern: 'claude-*', protocol: 'anthropic' },
-      { pattern: 'gpt-*', protocol: 'responses' }
-    ])
+describe('retired HK provider profiles', () => {
+  it.each(['stepfun', 'mirasim'])('%s no longer has a creation profile', platform => {
+    expect(getProviderProfile(platform)).toBeUndefined()
+    expect(providerRoutesByModel(platform)).toBe(false)
   })
 })

@@ -81,13 +81,7 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 		routingModel = resolvedModel
 	}
 	requestPlatform := service.PlatformOpenAI
-	if apiKey.Group != nil && apiKey.Group.Platform == service.PlatformStepFun {
-		requestPlatform = service.PlatformStepFun
-	}
-	if resolved, ok := service.ResolvedTargetPlatformFromContext(c.Request.Context()); ok && resolved == service.PlatformStepFun {
-		requestPlatform = service.PlatformStepFun
-	}
-	if !compositeTargetPlatformAllowed(c, apiKey, requestModel, service.PlatformOpenAI, service.PlatformStepFun) {
+	if !compositeTargetPlatformAllowed(c, apiKey, requestModel, service.PlatformOpenAI) {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Model is not supported by this OpenAI-compatible endpoint for composite groups")
 		return
 	}

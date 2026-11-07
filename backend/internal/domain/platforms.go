@@ -44,9 +44,7 @@ var platformList = []PlatformSpec{
 	{ID: PlatformZhipu, DisplayName: "Zhipu GLM", Gateway: PlatformGatewayOpenAI, CNProvider: true, LiteLLMProvider: "zhipu"},
 	{ID: PlatformDeepseek, DisplayName: "DeepSeek", Gateway: PlatformGatewayOpenAI, CNProvider: true, LiteLLMProvider: "deepseek"},
 	{ID: PlatformMiniMax, DisplayName: "MiniMax", Gateway: PlatformGatewayOpenAI, CNProvider: true, LiteLLMProvider: "minimax"},
-	{ID: PlatformStepFun, DisplayName: "StepFun", Gateway: PlatformGatewayOpenAI, CNProvider: true},
 	{ID: PlatformOpenCodeGo, DisplayName: "OpenCode", Gateway: PlatformGatewayOpenAI, LiteLLMProvider: "opencode-go"},
-	{ID: PlatformMirasim, DisplayName: "Mirasim", Gateway: PlatformGatewayOpenAI},
 	{ID: PlatformTypeSafe, DisplayName: "TypeSafe / Jev", Gateway: PlatformGatewayAnthropic, LiteLLMProvider: "typesafe"},
 	{ID: PlatformCommandCode, DisplayName: "Command Code", Gateway: PlatformGatewayOpenAI},
 	{ID: PlatformCline, DisplayName: "Cline", Gateway: PlatformGatewayOpenAI},
@@ -80,6 +78,17 @@ func LookupPlatform(id string) (PlatformSpec, bool) {
 func IsConcretePlatform(id string) bool {
 	_, ok := platformIndex[id]
 	return ok
+}
+
+// IsRetiredPlatform identifies legacy providers whose persisted groups and accounts
+// remain readable but must no longer be configured or routed.
+func IsRetiredPlatform(id string) bool {
+	switch id {
+	case PlatformStepFun, PlatformMirasim:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsGroupPlatform 报告 id 是否可作为分组平台（具体平台或 composite）。
