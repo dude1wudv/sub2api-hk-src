@@ -684,6 +684,10 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 				h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 				return
 			}
+			// Smart routing may rebind the request to a different group before
+			// this attempt is forwarded. Keep group-scoped channel features on
+			// the selected route instead of the original API-key group.
+			attemptParsedReq.GroupID = currentAPIKey.GroupID
 
 			// 选择支持该模型的账号
 			reqLog.Info("sticky.selecting_account",
@@ -918,7 +922,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 				}
 			}
 			// Bedrock CC 兼容：清理 body 专有字段 + 过滤 anthropic-beta header，适用于所有转发路径
-			if err := attemptParsedReq.ReplaceBody(h.gatewayService.ApplyBedrockCCCompat(c, attemptParsedReq.Body.Bytes(), attemptParsedReq.Model, account, apiKey.GroupID)); err != nil {
+			if err := attemptParsedReq.ReplaceBody(h.gatewayService.ApplyBedrockCCCompat(c, attemptParsedReq.Body.Bytes(), attemptParsedReq.Model, account, currentAPIKey.GroupID)); err != nil {
 				h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 				return
 			}
