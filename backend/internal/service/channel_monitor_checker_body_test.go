@@ -571,3 +571,11 @@ func TestExtractMonitorStreamText_DoesNotDuplicateLegacyTextAlias(t *testing.T) 
 		t.Fatalf("stream parser duplicated delta/text aliases: got %q", got)
 	}
 }
+
+func TestExtractMonitorStreamText_CollapsesRepeatedAccumulatedDeltas(t *testing.T) {
+	body := []byte("data: {\"choices\":[{\"delta\":{\"content\":\"18\"}}]}\n\ndata: {\"choices\":[{\"delta\":{\"content\":\"18\"}}]}\n\ndata: [DONE]\n\n")
+	got := extractMonitorStreamText(MonitorProviderOpenAI, MonitorAPIModeChatCompletions, providerOpenAIChatAdapter, body)
+	if got != "18" {
+		t.Fatalf("stream parser should collapse repeated accumulated deltas: got %q", got)
+	}
+}
