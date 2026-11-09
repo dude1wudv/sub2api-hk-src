@@ -1060,3 +1060,57 @@ describe('CreateAccountModal Vertex API key auth', () => {
     expect(wrapper.find('[data-testid="vertex-api-key-input"]').exists()).toBe(false)
   })
 })
+
+
+describe('CreateAccountModal slow first-token pause policy', () => {
+  beforeEach(() => {
+    authIsSimpleMode.value = true
+    createAccountMock.mockReset().mockResolvedValue({ id: 42, platform: 'openai', type: 'apikey' })
+    probeUpstreamBillingMock.mockReset().mockResolvedValue({})
+    syncUpstreamModelsMock.mockReset().mockResolvedValue({ models: [], metadata: {} })
+    importCodexSessionMock.mockReset().mockResolvedValue({ created: 1, updated: 0, skipped: 0, failed: 0, errors: [], warnings: [] })
+  })
+
+  it('keeps new accounts explicitly disabled by default', async () => {
+    const wrapper = await submitApiKeyAccount('openai')
+    expect(createAccountMock.mock.calls[0][0].extra.slow_ttft_protection).toEqual({
+      enabled: false, threshold_seconds: 15, consecutive_count: 2,
+      window_seconds: 300, window_count: 3, pause_seconds: 1800
+    })
+    wrapper.unmount()
+  })
+
+  it('submits operator thresholds, counts and pause duration through the create API', async () => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    await selectButtonByText(wrapper, 'API Key')
+    await wrapper.get('form#create-account-form input[type="text"]').setValue('Slow TTFT account')
+    await wrapper.get('form#create-account-form input[type="password"]').setValue('test-api-key')
+    const policy = wrapper.get('[data-testid="slow-ttft-settings"]')
+    expect((policy.get('input[type="checkbox"]').element as HTMLInputElement).checked).toBe(false)
+    await policy.get('input[type="checkbox"]').setValue(true)
+    for (const [key, value] of Object.entries({ threshold_seconds: 27, consecutive_count: 4, window_seconds: 120, window_count: 6, pause_seconds: 900 })) {
+      await policy.get(`[data-testid="${key}"]`).setValue(value)
+    }
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(createAccountMock.mock.calls[0][0].extra.slow_ttft_protection).toEqual({
+      enabled: true, threshold_seconds: 27, consecutive_count: 4,
+      window_seconds: 120, window_count: 6, pause_seconds: 900
+    })
+    wrapper.unmount()
+  })
+
+  it('carries the same policy into the Codex session import flow', async () => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    await wrapper.get('form#create-account-form input[type="text"]').setValue('Codex slow TTFT account')
+    await wrapper.get('[data-testid="slow-ttft-settings"] input[type="checkbox"]').setValue(true)
+    await wrapper.get('[data-testid="threshold_seconds"]').setValue(22)
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await wrapper.get('[data-testid="import-codex-session"]').trigger('click')
+    await flushPromises()
+    expect(importCodexSessionMock.mock.calls[0][0].extra.slow_ttft_protection).toMatchObject({ enabled: true, threshold_seconds: 22, pause_seconds: 1800 })
+    wrapper.unmount()
+  })
+})

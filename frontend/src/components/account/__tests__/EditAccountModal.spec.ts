@@ -2150,3 +2150,61 @@ describe('EditAccountModal temp-unschedulable rule scope', () => {
     wrapper.unmount()
   })
 })
+
+
+describe('EditAccountModal slow first-token pause policy', () => {
+  const savedPolicy = { enabled: true, threshold_seconds: 19, consecutive_count: 4, window_seconds: 240, window_count: 7, pause_seconds: 180, generation: '46bb83ee26494683a5f53c7282823889' }
+  beforeEach(() => {
+    authIsSimpleMode.value = true
+    checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
+    updateAccountMock.mockReset().mockResolvedValue(buildAccount())
+  })
+
+  it('reads stored policy values and saves edits without discarding unrelated extra or generation', async () => {
+    const account = buildAccount()
+    account.extra = { unrelated_setting: 'keep', slow_ttft_protection: { ...savedPolicy } }
+    const wrapper = mountModal(account)
+    await flushPromises()
+    const policy = wrapper.get('[data-testid="slow-ttft-settings"]')
+    expect((policy.get('input[type="checkbox"]').element as HTMLInputElement).checked).toBe(true)
+    for (const [key, value] of Object.entries(savedPolicy)) {
+      if (key === 'enabled' || key === 'generation') continue
+      expect((policy.get(`[data-testid="${key}"]`).element as HTMLInputElement).value).toBe(String(value))
+    }
+    await policy.get('[data-testid="threshold_seconds"]').setValue(23)
+    await policy.get('[data-testid="pause_seconds"]').setValue(600)
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(updateAccountMock.mock.calls[0][1].extra).toMatchObject({
+      unrelated_setting: 'keep', slow_ttft_protection: { ...savedPolicy, threshold_seconds: 23, pause_seconds: 600 }
+    })
+    wrapper.unmount()
+  })
+
+  it('writes an explicit disabled policy while retaining its previous settings', async () => {
+    const account = buildAccount()
+    account.extra = { unrelated_setting: 'keep', slow_ttft_protection: { ...savedPolicy } }
+    const wrapper = mountModal(account)
+    await wrapper.get('[data-testid="slow-ttft-settings"] input[type="checkbox"]').setValue(false)
+    expect(wrapper.find('[data-testid="threshold_seconds"]').exists()).toBe(false)
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(updateAccountMock.mock.calls[0][1].extra.slow_ttft_protection).toEqual({ ...savedPolicy, enabled: false })
+    wrapper.unmount()
+  })
+
+  it('preserves the saved generation on an unrelated edit and defaults missing policies off', async () => {
+    const account = buildAccount()
+    account.extra = { slow_ttft_protection: { ...savedPolicy } }
+    const wrapper = mountModal(account)
+    await wrapper.get('form#edit-account-form input[type="text"]').setValue('Renamed account')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+    const extra = updateAccountMock.mock.calls[0][1].extra
+    if (extra?.slow_ttft_protection) expect(extra.slow_ttft_protection).toEqual(savedPolicy)
+    wrapper.unmount()
+    const empty = mountModal(buildAccount())
+    expect((empty.get('[data-testid="slow-ttft-settings"] input[type="checkbox"]').element as HTMLInputElement).checked).toBe(false)
+    empty.unmount()
+  })
+})
