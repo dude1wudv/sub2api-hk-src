@@ -358,14 +358,17 @@ func extractMonitorStreamText(provider, apiMode string, adapter providerAdapter,
 			parts = append(parts, text)
 		}
 	}
-	return collapseRepeatedMonitorText(strings.Join(parts, ""))
+	return collapseRepeatedMonitorText(strings.Join(parts, ""), len(parts))
 }
 
 // A few OpenAI-compatible relays emit the complete accumulated answer in more
 // than one SSE delta. Collapse only an exact whole-string repetition so normal
 // incremental text remains untouched (for example, "1" + "4" stays "14").
-func collapseRepeatedMonitorText(text string) string {
+func collapseRepeatedMonitorText(text string, partCount int) string {
 	for repetitions := 4; repetitions >= 2; repetitions-- {
+		if repetitions > partCount {
+			continue
+		}
 		if len(text)%repetitions != 0 {
 			continue
 		}
