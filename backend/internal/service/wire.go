@@ -469,6 +469,9 @@ func ProvideDeferredService(accountRepo AccountRepository, timingWheel *TimingWh
 // ProvideConcurrencyService creates ConcurrencyService and starts slot cleanup worker.
 func ProvideConcurrencyService(cache ConcurrencyCache, accountRepo AccountRepository, cfg *config.Config) *ConcurrencyService {
 	svc := NewConcurrencyService(cache)
+	if cfg != nil {
+		svc.SetAPIKeyQueuePolicy(APIKeyQueuePolicy{MaxWaiting: cfg.Gateway.APIKeyQueue.MaxWaiting, Timeout: time.Duration(cfg.Gateway.APIKeyQueue.TimeoutSeconds) * time.Second})
+	}
 	if err := svc.CleanupStaleProcessSlots(context.Background()); err != nil {
 		logger.LegacyPrintf("service.concurrency", "Warning: startup cleanup stale process slots failed: %v", err)
 	}
@@ -1081,6 +1084,7 @@ func ProvideChannelMonitorRunner(
 func ProvideChannelMonitorV2Service(repo ChannelMonitorV2Repository, settingService *SettingService) *ChannelMonitorV2Service {
 	svc := NewChannelMonitorV2Service(repo)
 	svc.SetRuntimeReader(settingService)
+	SetDefaultGroupRouteQualityCache(NewGroupRouteQualityCache(NewChannelMonitorRouteQualitySource(svc)))
 	return svc
 }
 

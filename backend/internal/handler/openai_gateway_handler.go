@@ -704,7 +704,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		h.handleStreamingAwareError(c, status, code, message, streamStarted)
 		return
 	}
-	defer inflightRelease()
+	defer func() { inflightRelease() }()
 
 	// Generate session hash. Multi-protocol API-key clients such as Magpie often
 	// resend the full conversation without a stable session header or
@@ -760,20 +760,31 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		}
 		// Select account supporting the requested model
 		reqLog.Debug("openai.account_selecting", zap.Int("excluded_account_count", len(failedAccountIDs)))
-		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithSchedulerForCapability(
-			c.Request.Context(),
-			apiKey.GroupID,
-			previousResponseID,
-			sessionHash,
-			forwardModel,
-			failedAccountIDs,
-			service.OpenAIUpstreamTransportAny,
-			requiredCapability,
-			requireCompact,
-			false,
-			!imageIntent,
-			requestPlatform,
-		)
+		selection, scheduleDecision, err := selectAcrossSmartRoutes(c, h.apiKeyService, h.billingCacheService, h.gatewayService,
+			smartRouteBinding{Key: &apiKey, Subscription: &subscription, Mapping: &channelMapping, InflightDone: &inflightRelease, Model: reqModel, Body: body,
+				Accept: func(candidate *service.APIKey) bool {
+					return candidate.Group.Platform != service.PlatformAnthropic && !candidate.Group.ClaudeCodeOnly
+				}},
+			func(routeCtx context.Context, candidate *service.APIKey, routeModel string) (*service.AccountSelectionResult, service.OpenAIAccountScheduleDecision, error) {
+				if previousResponseID != "" && len(apiKey.RoutingGroupIDs) > 0 {
+					owned, err := h.gatewayService.ValidateOpenAIHTTPResponseOwner(routeCtx, *candidate.GroupID, previousResponseID, candidate.UserID, candidate.ID)
+					if err != nil {
+						return nil, service.OpenAIAccountScheduleDecision{}, err
+					}
+					if !owned {
+						return nil, service.OpenAIAccountScheduleDecision{}, service.ErrNoAvailableAccounts
+					}
+				}
+				routePlatform := openAICompatibleRequestPlatform(routeCtx, candidate)
+				capability := openAIResponsesRequiredCapabilityForRequest(imageIntent, needsResponses, routePlatform)
+				routeCtx = service.WithOpenAIForwardModel(routeCtx, routeModel, requireCompact)
+				return h.gatewayService.SelectAccountWithSchedulerForCapability(routeCtx, candidate.GroupID, previousResponseID, sessionHash, routeModel, failedAccountIDs, service.OpenAIUpstreamTransportAny, capability, requireCompact, false, !imageIntent, routePlatform)
+			})
+		requestPlatform = openAICompatibleRequestPlatform(c.Request.Context(), apiKey)
+		forwardModel = openAIChannelForwardModel(channelMapping, reqModel)
+		forwardBody = openAIModelMappedBody(body, channelMapping.Mapped, channelMapping.MappedModel, h.gatewayService.ReplaceModelInBody)
+		requiredCapability = openAIResponsesRequiredCapabilityForRequest(imageIntent, needsResponses, requestPlatform)
+		c.Request = c.Request.WithContext(service.WithOpenAIForwardModel(c.Request.Context(), forwardModel, requireCompact))
 		if err != nil {
 			if failoverClientGone(c) {
 				reqLog.Info("openai.account_select_aborted_client_disconnected", zap.Error(err))
@@ -1418,20 +1429,30 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 			currentRoutingModel = effectiveMappedModel
 		}
 		reqLog.Debug("openai_messages.account_selecting", zap.Int("excluded_account_count", len(failedAccountIDs)))
-		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithSchedulerForCapability(
-			c.Request.Context(),
-			apiKey.GroupID,
-			"", // no previous_response_id
-			sessionHash,
-			currentRoutingModel,
-			failedAccountIDs,
-			service.OpenAIUpstreamTransportAny,
-			service.OpenAIEndpointCapabilityChatCompletions,
-			false,
-			false,
-			true,
-			requestPlatform,
-		)
+		selection, scheduleDecision, err := selectAcrossSmartRoutes(c, h.apiKeyService, h.billingCacheService, h.gatewayService,
+			smartRouteBinding{Key: &apiKey, Subscription: &subscription, Mapping: &channelMappingMsg, InflightDone: &inflightDone, Model: reqModel, FixedModel: currentRoutingModel, Body: body,
+				Accept: func(candidate *service.APIKey) bool {
+					return candidate.Group.Platform != service.PlatformAnthropic && allowOpenAICompatibleMessagesDispatch(c, candidate)
+				},
+				ResolveModel: func(candidate *service.APIKey, mapping service.ChannelMappingResult) string {
+					if mapping.Mapped {
+						return mapping.MappedModel
+					}
+					if mapped := resolveOpenAIMessagesDispatchMappedModel(c, candidate, reqModel); mapped != "" {
+						return mapped
+					}
+					return service.NormalizeOpenAICompatRequestedModel(reqModel)
+				}},
+			func(routeCtx context.Context, candidate *service.APIKey, routeModel string) (*service.AccountSelectionResult, service.OpenAIAccountScheduleDecision, error) {
+				return h.gatewayService.SelectAccountWithSchedulerForCapability(routeCtx, candidate.GroupID, "", sessionHash, routeModel, failedAccountIDs, service.OpenAIUpstreamTransportAny, service.OpenAIEndpointCapabilityChatCompletions, false, false, true, openAICompatibleRequestPlatform(routeCtx, candidate))
+			})
+		requestPlatform = openAICompatibleRequestPlatform(c.Request.Context(), apiKey)
+		if len(apiKey.RoutingGroupIDs) > 0 {
+			effectiveMappedModel = resolveOpenAIMessagesDispatchMappedModel(c, apiKey, reqModel)
+			if channelMappingMsg.Mapped {
+				effectiveMappedModel = channelMappingMsg.MappedModel
+			}
+		}
 		if err != nil {
 			if failoverClientGone(c) {
 				reqLog.Info("openai_messages.account_select_aborted_client_disconnected", zap.Error(err))
@@ -2215,14 +2236,13 @@ func (h *OpenAIGatewayHandler) acquireResponsesUserSlot(
 	streamStarted *bool,
 	reqLog *zap.Logger,
 ) (func(), bool) {
-	ctx := c.Request.Context()
 	userReleaseFunc, err := h.concurrencyHelper.AcquireUserSlotWithWait(c, userID, userConcurrency, reqStream, streamStarted)
 	if err != nil {
 		reqLog.Warn("openai.user_slot_acquire_failed", zap.Error(err))
 		h.handleConcurrencyError(c, err, "user", *streamStarted)
 		return nil, false
 	}
-	return wrapReleaseOnDone(ctx, userReleaseFunc), true
+	return userReleaseFunc, true
 }
 
 // openAISlotAcquireResult 是账号槽位获取的三态结果。
@@ -2787,7 +2807,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 	// 必须尽早注册，确保任何 early return 都能释放已获取的并发槽位。
 	defer releaseTurnSlots()
 
-	userReleaseFunc, userAcquired, err := h.concurrencyHelper.TryAcquireUserSlotForAPIKey(ctx, subject.UserID, subject.Concurrency, apiKey.ID)
+	userReleaseFunc, userAcquired, err := h.concurrencyHelper.TryAcquireUserSlotForAPIKeyFromGin(c, subject.UserID, subject.Concurrency, apiKey.ID)
 	if err != nil {
 		reqLog.Warn("openai.websocket_user_slot_acquire_failed", zap.Error(err))
 		closeOpenAIClientWS(wsConn, coderws.StatusInternalError, "failed to acquire user concurrency slot")
@@ -2797,12 +2817,12 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 		closeOpenAIClientWS(wsConn, coderws.StatusTryAgainLater, "too many concurrent requests, please retry later")
 		return
 	}
-	currentUserRelease = wrapReleaseOnDone(ctx, userReleaseFunc)
+	currentUserRelease = userReleaseFunc
 	ensureUserSlotHeld := func() bool {
 		if currentUserRelease != nil {
 			return true
 		}
-		userReleaseFunc, userAcquired, err := h.concurrencyHelper.TryAcquireUserSlotForAPIKey(ctx, subject.UserID, subject.Concurrency, apiKey.ID)
+		userReleaseFunc, userAcquired, err := h.concurrencyHelper.TryAcquireUserSlotForAPIKeyFromGin(c, subject.UserID, subject.Concurrency, apiKey.ID)
 		if err != nil {
 			reqLog.Warn("openai.websocket_user_slot_reacquire_failed", zap.Error(err))
 			closeOpenAIClientWS(wsConn, coderws.StatusInternalError, "failed to acquire user concurrency slot")
@@ -2812,7 +2832,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 			closeOpenAIClientWS(wsConn, coderws.StatusTryAgainLater, "too many concurrent requests, please retry later")
 			return false
 		}
-		currentUserRelease = wrapReleaseOnDone(ctx, userReleaseFunc)
+		currentUserRelease = userReleaseFunc
 		return true
 	}
 
@@ -3229,7 +3249,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				// 防御式清理：避免异常路径下旧槽位覆盖导致泄漏。
 				releaseTurnSlots()
 				// 非首轮 turn 需要重新抢占并发槽位，避免长连接空闲占槽。
-				userReleaseFunc, userAcquired, err := h.concurrencyHelper.TryAcquireUserSlotForAPIKey(ctx, subject.UserID, subject.Concurrency, apiKey.ID)
+				userReleaseFunc, userAcquired, err := h.concurrencyHelper.TryAcquireUserSlotForAPIKeyFromGin(c, subject.UserID, subject.Concurrency, apiKey.ID)
 				if err != nil {
 					return service.NewOpenAIWSClientCloseError(coderws.StatusInternalError, "failed to acquire user concurrency slot", err)
 				}
@@ -3263,7 +3283,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				}
 				admittedPolicy := turnAccount.SlowTTFTConfig()
 				turnSlowTTFT.Store(&admittedPolicy)
-				currentUserRelease = wrapReleaseOnDone(ctx, userReleaseFunc)
+				currentUserRelease = userReleaseFunc
 				currentAccountRelease = wrapReleaseOnDone(ctx, accountReleaseFunc)
 				return checkSimpleModeTurnBilling()
 			},

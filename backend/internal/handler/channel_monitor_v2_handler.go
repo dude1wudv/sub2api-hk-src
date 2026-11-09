@@ -99,6 +99,26 @@ func (h *ChannelMonitorV2Handler) AdminMatrix(c *gin.Context)   { h.matrix(c, tr
 func (h *ChannelMonitorV2Handler) Users(c *gin.Context)         { h.users(c, false) }
 func (h *ChannelMonitorV2Handler) AdminUsers(c *gin.Context)    { h.users(c, true) }
 
+// ExternalQuality is intentionally read-only. The external monitor sites do
+// not expose a server-to-server credential, so this endpoint reports the
+// unavailable state until an operator supplies an explicit import snapshot.
+// It never triggers a provider request or fabricates a local quality result.
+func (h *ChannelMonitorV2Handler) ExternalQuality(c *gin.Context) {
+	groupIDs, err := parseChannelMonitorV2GroupIDs(queryList(c, "group_id"))
+	if err != nil || len(groupIDs) != 1 {
+		response.BadRequest(c, "exactly one group_id is required")
+		return
+	}
+	filter := service.ChannelMonitorV2Filter{GroupIDs: groupIDs}
+	if !h.scopeFilter(c, &filter, false) {
+		return
+	}
+	response.Success(c, gin.H{
+		"group_id": groupIDs[0], "model": "", "updated_at": nil,
+		"last_success_at": nil, "status": "unavailable", "events": []any{},
+	})
+}
+
 func (h *ChannelMonitorV2Handler) snapshot(c *gin.Context, admin bool) {
 	filter, ok := h.parseFilter(c)
 	if !ok {

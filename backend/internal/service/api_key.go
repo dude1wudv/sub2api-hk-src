@@ -46,6 +46,8 @@ type APIKey struct {
 	UpdatedAt                   time.Time
 	User                        *User
 	Group                       *Group
+	ConcurrencyLimit            int
+	CurrentWaiting              int
 	CurrentConcurrency          int
 	CurrentConcurrencyStatus    string
 	CurrentConcurrencyUpdatedAt *time.Time

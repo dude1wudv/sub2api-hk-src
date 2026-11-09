@@ -107,6 +107,20 @@ func (_c *APIKeyCreate) SetRoutingGroupIds(v []int64) *APIKeyCreate {
 	return _c
 }
 
+// SetConcurrencyLimit sets the "concurrency_limit" field.
+func (_c *APIKeyCreate) SetConcurrencyLimit(v int) *APIKeyCreate {
+	_c.mutation.SetConcurrencyLimit(v)
+	return _c
+}
+
+// SetNillableConcurrencyLimit sets the "concurrency_limit" field if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableConcurrencyLimit(v *int) *APIKeyCreate {
+	if v != nil {
+		_c.SetConcurrencyLimit(*v)
+	}
+	return _c
+}
+
 // SetStatus sets the "status" field.
 func (_c *APIKeyCreate) SetStatus(v string) *APIKeyCreate {
 	_c.mutation.SetStatus(v)
@@ -421,6 +435,10 @@ func (_c *APIKeyCreate) defaults() error {
 		v := apikey.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.ConcurrencyLimit(); !ok {
+		v := apikey.DefaultConcurrencyLimit
+		_c.mutation.SetConcurrencyLimit(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := apikey.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -485,6 +503,14 @@ func (_c *APIKeyCreate) check() error {
 	if v, ok := _c.mutation.Name(); ok {
 		if err := apikey.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "APIKey.name": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.ConcurrencyLimit(); !ok {
+		return &ValidationError{Name: "concurrency_limit", err: errors.New(`ent: missing required field "APIKey.concurrency_limit"`)}
+	}
+	if v, ok := _c.mutation.ConcurrencyLimit(); ok {
+		if err := apikey.ConcurrencyLimitValidator(v); err != nil {
+			return &ValidationError{Name: "concurrency_limit", err: fmt.Errorf(`ent: validator failed for field "APIKey.concurrency_limit": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
@@ -572,6 +598,10 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RoutingGroupIds(); ok {
 		_spec.SetField(apikey.FieldRoutingGroupIds, field.TypeJSON, value)
 		_node.RoutingGroupIds = value
+	}
+	if value, ok := _c.mutation.ConcurrencyLimit(); ok {
+		_spec.SetField(apikey.FieldConcurrencyLimit, field.TypeInt, value)
+		_node.ConcurrencyLimit = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(apikey.FieldStatus, field.TypeString, value)
@@ -870,6 +900,24 @@ func (u *APIKeyUpsert) UpdateRoutingGroupIds() *APIKeyUpsert {
 // ClearRoutingGroupIds clears the value of the "routing_group_ids" field.
 func (u *APIKeyUpsert) ClearRoutingGroupIds() *APIKeyUpsert {
 	u.SetNull(apikey.FieldRoutingGroupIds)
+	return u
+}
+
+// SetConcurrencyLimit sets the "concurrency_limit" field.
+func (u *APIKeyUpsert) SetConcurrencyLimit(v int) *APIKeyUpsert {
+	u.Set(apikey.FieldConcurrencyLimit, v)
+	return u
+}
+
+// UpdateConcurrencyLimit sets the "concurrency_limit" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateConcurrencyLimit() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldConcurrencyLimit)
+	return u
+}
+
+// AddConcurrencyLimit adds v to the "concurrency_limit" field.
+func (u *APIKeyUpsert) AddConcurrencyLimit(v int) *APIKeyUpsert {
+	u.Add(apikey.FieldConcurrencyLimit, v)
 	return u
 }
 
@@ -1316,6 +1364,27 @@ func (u *APIKeyUpsertOne) UpdateRoutingGroupIds() *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) ClearRoutingGroupIds() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearRoutingGroupIds()
+	})
+}
+
+// SetConcurrencyLimit sets the "concurrency_limit" field.
+func (u *APIKeyUpsertOne) SetConcurrencyLimit(v int) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetConcurrencyLimit(v)
+	})
+}
+
+// AddConcurrencyLimit adds v to the "concurrency_limit" field.
+func (u *APIKeyUpsertOne) AddConcurrencyLimit(v int) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.AddConcurrencyLimit(v)
+	})
+}
+
+// UpdateConcurrencyLimit sets the "concurrency_limit" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateConcurrencyLimit() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateConcurrencyLimit()
 	})
 }
 
@@ -1975,6 +2044,27 @@ func (u *APIKeyUpsertBulk) UpdateRoutingGroupIds() *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) ClearRoutingGroupIds() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearRoutingGroupIds()
+	})
+}
+
+// SetConcurrencyLimit sets the "concurrency_limit" field.
+func (u *APIKeyUpsertBulk) SetConcurrencyLimit(v int) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetConcurrencyLimit(v)
+	})
+}
+
+// AddConcurrencyLimit adds v to the "concurrency_limit" field.
+func (u *APIKeyUpsertBulk) AddConcurrencyLimit(v int) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.AddConcurrencyLimit(v)
+	})
+}
+
+// UpdateConcurrencyLimit sets the "concurrency_limit" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateConcurrencyLimit() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateConcurrencyLimit()
 	})
 }
 

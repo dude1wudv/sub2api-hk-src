@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { ref } from 'vue'
 
 import TokenUsageTrend from '../TokenUsageTrend.vue'
 
@@ -13,6 +14,7 @@ vi.mock('vue-i18n', async () => {
   return {
     ...actual,
     useI18n: () => ({
+      locale: ref('en'),
       t: (key: string) => messages[key] ?? key,
     }),
   }
@@ -26,6 +28,17 @@ vi.mock('vue-chartjs', () => ({
 }))
 
 describe('TokenUsageTrend', () => {
+  it('switches to a total curve that includes cache reads and writes', async () => {
+    const wrapper = mount(TokenUsageTrend, {
+      props: { trendData: [{ date: '2026-11-09', requests: 1, input_tokens: 100, output_tokens: 50, cache_creation_tokens: 200, cache_read_tokens: 650, cost: 0.1, actual_cost: 0.05 }] },
+      global: { stubs: { LoadingSpinner: true } },
+    })
+    await wrapper.findAll('.token-trend-modes button')[1].trigger('click')
+    const data = JSON.parse(wrapper.get('.chart-data').text())
+    expect(data.datasets).toHaveLength(1)
+    expect(data.datasets[0].data).toEqual([1000])
+    wrapper.unmount()
+  })
   it('calculates cache hit rate against all prompt tokens', () => {
     const wrapper = mount(TokenUsageTrend, {
       props: {

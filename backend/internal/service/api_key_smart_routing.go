@@ -83,5 +83,5 @@ func (s *APIKeyService) SmartRoutingKeys(ctx context.Context, key *APIKey) ([]*A
 		candidate.Group = group
 		result = append(result, &candidate)
 	}
-	return result, nil
+	return OrderSmartRoutingKeysByQuality(ctx, result), nil
 }

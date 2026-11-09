@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"log"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"time"
 
@@ -38,6 +40,16 @@ func SetupRouter(
 	redisClient *redis.Client,
 ) *gin.Engine {
 	middleware2.SetIngressRejectRecorder(opsService)
+	if handlers != nil && handlers.Admin != nil && handlers.Admin.Usage != nil {
+		handlers.Admin.Usage.ConfigureTrafficDelivery(func() string {
+			dir := os.Getenv("DATA_DIR")
+			if dir == "" {
+				dir = "./data"
+			}
+			return filepath.Join(dir, "user-traffic-pending")
+		})
+		r.Use(middleware2.UserTraffic(handlers.Admin.Usage))
+	}
 	// 缓存 iframe 页面的 origin 列表，用于动态注入 CSP frame-src
 	var cachedFrameOrigins atomic.Pointer[[]string]
 	emptyOrigins := []string{}

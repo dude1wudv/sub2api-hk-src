@@ -124,6 +124,8 @@ type APIKeyMutation struct {
 	name                           *string
 	routing_group_ids              *[]int64
 	appendrouting_group_ids        []int64
+	concurrency_limit              *int
+	addconcurrency_limit           *int
 	status                         *string
 	last_used_at                   *time.Time
 	ip_whitelist                   *[]string
@@ -608,6 +610,62 @@ func (m *APIKeyMutation) ResetRoutingGroupIds() {
 	m.routing_group_ids = nil
 	m.appendrouting_group_ids = nil
 	delete(m.clearedFields, apikey.FieldRoutingGroupIds)
+}
+
+// SetConcurrencyLimit sets the "concurrency_limit" field.
+func (m *APIKeyMutation) SetConcurrencyLimit(i int) {
+	m.concurrency_limit = &i
+	m.addconcurrency_limit = nil
+}
+
+// ConcurrencyLimit returns the value of the "concurrency_limit" field in the mutation.
+func (m *APIKeyMutation) ConcurrencyLimit() (r int, exists bool) {
+	v := m.concurrency_limit
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConcurrencyLimit returns the old "concurrency_limit" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldConcurrencyLimit(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConcurrencyLimit is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConcurrencyLimit requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConcurrencyLimit: %w", err)
+	}
+	return oldValue.ConcurrencyLimit, nil
+}
+
+// AddConcurrencyLimit adds i to the "concurrency_limit" field.
+func (m *APIKeyMutation) AddConcurrencyLimit(i int) {
+	if m.addconcurrency_limit != nil {
+		*m.addconcurrency_limit += i
+	} else {
+		m.addconcurrency_limit = &i
+	}
+}
+
+// AddedConcurrencyLimit returns the value that was added to the "concurrency_limit" field in this mutation.
+func (m *APIKeyMutation) AddedConcurrencyLimit() (r int, exists bool) {
+	v := m.addconcurrency_limit
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetConcurrencyLimit resets all changes to the "concurrency_limit" field.
+func (m *APIKeyMutation) ResetConcurrencyLimit() {
+	m.concurrency_limit = nil
+	m.addconcurrency_limit = nil
 }
 
 // SetStatus sets the "status" field.
@@ -1719,7 +1777,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 24)
+	fields := make([]string, 0, 25)
 	if m.created_at != nil {
 		fields = append(fields, apikey.FieldCreatedAt)
 	}
@@ -1743,6 +1801,9 @@ func (m *APIKeyMutation) Fields() []string {
 	}
 	if m.routing_group_ids != nil {
 		fields = append(fields, apikey.FieldRoutingGroupIds)
+	}
+	if m.concurrency_limit != nil {
+		fields = append(fields, apikey.FieldConcurrencyLimit)
 	}
 	if m.status != nil {
 		fields = append(fields, apikey.FieldStatus)
@@ -1816,6 +1877,8 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.GroupID()
 	case apikey.FieldRoutingGroupIds:
 		return m.RoutingGroupIds()
+	case apikey.FieldConcurrencyLimit:
+		return m.ConcurrencyLimit()
 	case apikey.FieldStatus:
 		return m.Status()
 	case apikey.FieldLastUsedAt:
@@ -1873,6 +1936,8 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldGroupID(ctx)
 	case apikey.FieldRoutingGroupIds:
 		return m.OldRoutingGroupIds(ctx)
+	case apikey.FieldConcurrencyLimit:
+		return m.OldConcurrencyLimit(ctx)
 	case apikey.FieldStatus:
 		return m.OldStatus(ctx)
 	case apikey.FieldLastUsedAt:
@@ -1969,6 +2034,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRoutingGroupIds(v)
+		return nil
+	case apikey.FieldConcurrencyLimit:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConcurrencyLimit(v)
 		return nil
 	case apikey.FieldStatus:
 		v, ok := value.(string)
@@ -2090,6 +2162,9 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *APIKeyMutation) AddedFields() []string {
 	var fields []string
+	if m.addconcurrency_limit != nil {
+		fields = append(fields, apikey.FieldConcurrencyLimit)
+	}
 	if m.addquota != nil {
 		fields = append(fields, apikey.FieldQuota)
 	}
@@ -2122,6 +2197,8 @@ func (m *APIKeyMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *APIKeyMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case apikey.FieldConcurrencyLimit:
+		return m.AddedConcurrencyLimit()
 	case apikey.FieldQuota:
 		return m.AddedQuota()
 	case apikey.FieldQuotaUsed:
@@ -2147,6 +2224,13 @@ func (m *APIKeyMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *APIKeyMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case apikey.FieldConcurrencyLimit:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddConcurrencyLimit(v)
+		return nil
 	case apikey.FieldQuota:
 		v, ok := value.(float64)
 		if !ok {
@@ -2316,6 +2400,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 		return nil
 	case apikey.FieldRoutingGroupIds:
 		m.ResetRoutingGroupIds()
+		return nil
+	case apikey.FieldConcurrencyLimit:
+		m.ResetConcurrencyLimit()
 		return nil
 	case apikey.FieldStatus:
 		m.ResetStatus()

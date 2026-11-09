@@ -62,6 +62,8 @@
       <PortalDataState v-if="usageError" :error="usageError" :retry-label="text('重试用量', 'Retry usage') + (retryRemaining > 0 ? ` (${retryRemaining}s)` : '')" :retry-disabled="usageLoading || retryRemaining > 0" @retry="retryUsage" />
       <p v-if="usageLoading" role="status" class="portal-muted">{{ text('正在刷新密钥用量…', 'Refreshing key usage…') }}</p>
       <PortalApiKeyTable
+        :queue-counts="queueCounts"
+        :queue-unavailable="queueUnavailable"
         v-if="keys.length"
         :keys="keys"
         :groups="groups"
@@ -151,6 +153,7 @@ import PortalApiBulkForm from '@/components/portal/PortalApiBulkForm.vue'
 import PortalDialog from '@/components/portal/PortalDialog.vue'
 import PortalKeyForm from '@/components/portal/PortalKeyForm.vue'
 import { keysAPI } from '@/api/keys'
+import { useApiKeyQueue } from '@/composables/useApiKeyQueue'
 import { usageAPI, type BatchApiKeyUsageStats } from '@/api/usage'
 import { userGroupsAPI } from '@/api/groups'
 import { CC_SWITCH_USAGE_SCRIPT, buildCcSwitchImportDeeplink, type CcSwitchClientType } from '@/utils/ccswitchImport'
@@ -187,6 +190,7 @@ const examplesOpen = ref(false)
 const creationDisabled = computed(() => groupsLoading.value || !!groupsError.value || !groups.value.length)
 
 const keys = ref<ApiKey[]>([])
+const { counts: queueCounts, unavailable: queueUnavailable } = useApiKeyQueue(keys)
 const keysLoading = ref(true)
 const keysError = ref('')
 const keySearch = ref('')

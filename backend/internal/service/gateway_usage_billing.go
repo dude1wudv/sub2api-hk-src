@@ -603,12 +603,18 @@ func detachStreamUpstreamContext(ctx context.Context, stream bool) (context.Cont
 	if !stream {
 		return ctx, func() {}
 	}
+	if HasAPIKeyAdmissionOwner(ctx) {
+		return detachAPIKeyUpstreamContext(ctx)
+	}
 	return pkghttputil.DetachUpstreamContext(ctx), func() {}
 }
 
 func detachUpstreamContext(ctx context.Context, drainTimeout ...time.Duration) (context.Context, context.CancelFunc) {
 	if ctx == nil {
 		return context.Background(), func() {}
+	}
+	if HasAPIKeyAdmissionOwner(ctx) {
+		return detachAPIKeyUpstreamContext(ctx)
 	}
 	return pkghttputil.DetachUpstreamContext(ctx, drainTimeout...), func() {}
 }

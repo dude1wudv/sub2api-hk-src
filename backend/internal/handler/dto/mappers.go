@@ -83,6 +83,7 @@ func APIKeyFromService(k *service.APIKey) *APIKey {
 	}
 	out := &APIKey{
 		RoutingGroupIDs:             append([]int64{}, k.RoutingGroupIDs...),
+		ConcurrencyLimit:            k.ConcurrencyLimit,
 		ID:                          k.ID,
 		UserID:                      k.UserID,
 		Key:                         k.Key,

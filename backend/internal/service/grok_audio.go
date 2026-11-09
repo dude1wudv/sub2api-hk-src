@@ -284,7 +284,12 @@ func (s *OpenAIGatewayService) ProxyGrokRealtimeConn(ctx context.Context, c *gin
 		}
 	}()
 
-	return awaitGrokRealtimeAudioObserved(errCh, &audioObserved)
+	// Keep the admission lease until both transports have stopped. Returning
+	// after only one direction can admit a successor while upstream still drains.
+	err := <-errCh
+	cancel()
+	<-errCh
+	return audioObserved.Load(), err
 }
 
 // ProxyStepFunRealtimeConn relays StepFun Realtime events and retains the

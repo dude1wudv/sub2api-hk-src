@@ -71,6 +71,17 @@ function render(apiKey = key(), props: Record<string, unknown> = {}) {
 describe('PortalApiKeyTable groups and mobile cards', () => {
   beforeEach(() => { mobile.value = false })
 
+  it('shows independent concurrency, queue length and quota warning progress', () => {
+    const wrapper = render(key({ concurrency_limit: 2, quota: 10, quota_used: 8 }), {
+      queueCounts: { 3: { id: 3, current_concurrency: 2, current_waiting: 4 } },
+    })
+    expect(wrapper.get('.portal-api-concurrency').text()).toBe('2 / 2')
+    expect(wrapper.get('.portal-api-waiting').text()).toBe('排队 4')
+    expect(wrapper.get('.key-limit').attributes('data-level')).toBe('warning')
+    expect(wrapper.get('[role="progressbar"]').attributes('aria-valuenow')).toBe('80')
+    wrapper.unmount()
+  })
+
   it('distinguishes measured zero concurrency from unavailable metrics', () => {
     const available = render(key({ current_concurrency: 0, current_concurrency_status: 'available' }))
     expect(available.get('.portal-api-concurrency').text()).toBe('0')

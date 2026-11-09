@@ -189,6 +189,10 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
+  { path: '/traffic', name: 'Traffic', component: () => import('@/views/TrafficView.vue'), meta: { requiresAuth: true, title: 'Traffic records', titleKey: 'nav.traffic' } },
+  { path: '/admin/traffic', name: 'AdminTraffic', component: () => import('@/views/TrafficView.vue'), props: { admin: true }, meta: { requiresAuth: true, requiresAdmin: true, title: 'Traffic records', titleKey: 'nav.traffic' } },
+  { path: '/admin/group-cache-tests', name: 'AdminGroupCacheTests', component: () => import('@/views/admin/GroupCacheTestView.vue'), meta: { requiresAuth: true, requiresAdmin: true, title: 'Group cache tests', titleKey: 'nav.groupCacheTests' } },
+
   // ==================== User Routes ====================
   {
     path: '/',

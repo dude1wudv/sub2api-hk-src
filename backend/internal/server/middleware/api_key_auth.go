@@ -174,6 +174,8 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			AbortWithError(c, 401, "USER_INACTIVE", "User account is not active")
 			return
 		}
+		admissionCleanup := InstallAPIKeyAdmissionOwner(c, apiKeyService, apiKeyString, ip.GetSecurityClientIP(c, cfg.TrustForwardedIPForAPIKeyACL()), apiKey, false)
+		defer admissionCleanup()
 		if len(apiKey.RoutingGroupIDs) > 0 {
 			var gateway smartRoutingGateways
 			if len(gateways) > 0 {

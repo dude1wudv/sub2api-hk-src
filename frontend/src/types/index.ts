@@ -751,6 +751,8 @@ export interface CompositeRouteDecision {
 }
 
 export interface ApiKey {
+  concurrency_limit?: number
+  current_waiting?: number
   current_concurrency_status?: 'available' | 'unavailable' | 'unsupported'
   current_concurrency_updated_at?: string
   routing_group_ids?: number[]
@@ -786,6 +788,7 @@ export interface ApiKey {
 }
 
 export interface CreateApiKeyRequest {
+  concurrency_limit?: number
   routing_group_ids?: number[]
   name: string
   group_id?: number | null
@@ -800,6 +803,7 @@ export interface CreateApiKeyRequest {
 }
 
 export interface UpdateApiKeyRequest {
+  concurrency_limit?: number
   routing_group_ids?: number[]
   name?: string
   group_id?: number | null

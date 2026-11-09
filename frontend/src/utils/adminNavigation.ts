@@ -27,6 +27,7 @@ export const adminNavigation: AdminNavGroup[] = [
     { path: '/admin/groups', key: 'nav.groups', icon: 'grid' },
     { path: '/admin/channels/pricing', key: 'nav.channelPricing', icon: 'dollar', standardOnly: true },
     { path: '/admin/channels/monitor', key: 'nav.channelMonitor', icon: 'bolt', standardOnly: true, flag: 'channelMonitor' },
+    { path: '/admin/group-cache-tests', key: 'nav.groupCacheTests', icon: 'bolt' },
     { path: '/admin/proxies', key: 'nav.proxies', icon: 'globe' }
   ] },
   { id: 'billing', zh: '用户与计费', en: 'Users & billing', items: [
@@ -44,6 +45,7 @@ export const adminNavigation: AdminNavGroup[] = [
   { id: 'security', zh: '安全与审计', en: 'Security & audit', items: [
     { path: '/admin/risk-control', key: 'nav.contentModeration', icon: 'shield', flag: 'riskControl' },
     { path: '/admin/prompt-audit', key: 'nav.promptAudit', icon: 'document', flag: 'riskControl' },
+    { path: '/admin/traffic', key: 'nav.traffic', icon: 'chart' },
     { path: '/admin/usage', key: 'nav.usage', icon: 'chartBar' },
     { path: '/admin/audit-logs', key: 'nav.auditLogs', icon: 'clipboard', standardOnly: true }
   ] },

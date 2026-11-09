@@ -36,6 +36,8 @@ type APIKey struct {
 	GroupID *int64 `json:"group_id,omitempty"`
 	// Ordered smart routing groups; empty means fixed group
 	RoutingGroupIds []int64 `json:"routing_group_ids,omitempty"`
+	// API key concurrency limit (0 = no additional limit)
+	ConcurrencyLimit int `json:"concurrency_limit,omitempty"`
 	// Status holds the value of the "status" field.
 	Status string `json:"status,omitempty"`
 	// Last usage time of this API key
@@ -149,7 +151,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case apikey.FieldQuota, apikey.FieldQuotaUsed, apikey.FieldRateLimit5h, apikey.FieldRateLimit1d, apikey.FieldRateLimit7d, apikey.FieldUsage5h, apikey.FieldUsage1d, apikey.FieldUsage7d:
 			values[i] = new(sql.NullFloat64)
-		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID:
+		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID, apikey.FieldConcurrencyLimit:
 			values[i] = new(sql.NullInt64)
 		case apikey.FieldKey, apikey.FieldName, apikey.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -227,6 +229,12 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &_m.RoutingGroupIds); err != nil {
 					return fmt.Errorf("unmarshal field routing_group_ids: %w", err)
 				}
+			}
+		case apikey.FieldConcurrencyLimit:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field concurrency_limit", values[i])
+			} else if value.Valid {
+				_m.ConcurrencyLimit = int(value.Int64)
 			}
 		case apikey.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -421,6 +429,9 @@ func (_m *APIKey) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("routing_group_ids=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RoutingGroupIds))
+	builder.WriteString(", ")
+	builder.WriteString("concurrency_limit=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ConcurrencyLimit))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(_m.Status)

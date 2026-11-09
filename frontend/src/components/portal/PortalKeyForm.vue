@@ -28,12 +28,12 @@
             <div class="key-routing-heading"><h4>{{ text('候选分组顺序', 'Routing order') }}</h4><span>{{ form.routing.length }} / 10</span></div>
             <ol v-if="form.routing.length" class="routing-order">
               <li v-for="(id, index) in form.routing" :key="id" :class="{ unavailable: !routingGroups.some(group => group.id === id) }">
-                <span class="route-number">{{ index + 1 }}</span><div class="route-copy"><strong>{{ groups.find(group => group.id === id)?.name || `#${id}` }}</strong><small v-if="!routingGroups.some(group => group.id === id)">{{ text('不可用，请移除或替换', 'Unavailable — remove or replace') }}</small><small v-else-if="index === 0">{{ text('首选分组', 'Primary group') }}</small><small v-else>{{ text('回退候选', 'Fallback group') }}</small></div>
+                <span class="route-number">{{ index + 1 }}</span><div class="route-copy"><strong>{{ groups.find(group => group.id === id)?.name || `#${id}` }}</strong><small v-if="!routingGroups.some(group => group.id === id)">{{ text('不可用，请移除或替换', 'Unavailable — remove or replace') }}</small><small v-else-if="index === 0">{{ text('同分时首选', 'First when tied') }}</small><small v-else>{{ text('回退候选', 'Fallback group') }}</small></div>
                 <div class="route-actions"><button type="button" :disabled="index === 0" :aria-label="text(`上移第${index + 1}个分组`, `Move group ${index + 1} up`)" @click="moveRouting(index, -1)">↑</button><button type="button" :disabled="index === form.routing.length - 1" :aria-label="text(`下移第${index + 1}个分组`, `Move group ${index + 1} down`)" @click="moveRouting(index, 1)">↓</button><button type="button" :aria-label="text(`移除第${index + 1}个分组`, `Remove group ${index + 1}`)" @click="removeRouting(index)">×</button></div>
               </li>
             </ol>
             <p v-else class="key-selected-empty">{{ text('从左侧添加路由候选分组。', 'Add routing candidates from the group list.') }}</p>
-            <p class="key-hint">{{ text('候选按顺序回退；不同分组的模型与接口支持范围可能不同。', 'Candidates are tried in order. Model and endpoint support can differ by group.') }}</p>
+            <p class="key-hint">{{ text('候选会根据本站成功率、缓存率和首字延迟排序；同分时使用此处顺序。', 'Candidates are ranked by local success rate, cache rate and first-token latency. This order breaks ties.') }}</p>
           </div>
           <div v-else class="key-selected"><h4>{{ text('所选分组', 'Selected group') }}</h4><div v-if="selectedGroup" class="key-selected-summary"><strong>{{ selectedGroup.name }}</strong><span>{{ text('分组倍率 ', 'Group rate ') }}{{ rate(selectedGroup) }}×</span><small v-if="selectedGroup.description">{{ selectedGroup.description }}</small><small v-if="selectedGroup.peak_rate_enabled">{{ peakText(selectedGroup) }}</small></div><p v-else class="key-selected-empty">{{ text('从左侧选择分组，查看分组倍率与说明。', 'Choose a group to view its rate and description.') }}</p></div>
           <label class="portal-field">{{ text('名称', 'Name') }}<input v-model="form.name" required maxlength="100" :placeholder="text('为密钥起一个便于识别的名称', 'A memorable name for this key')" data-test="key-name" data-tour="key-form-name" /></label>
@@ -42,6 +42,7 @@
             <label v-else class="portal-field">{{ text('有效期', 'Expiry') }}<input v-model="form.expiry" type="datetime-local" /><small>{{ text('留空为永久有效', 'Empty means never expires') }}</small></label>
             <label class="portal-field">{{ text('额度（USD）', 'Quota (USD)') }}<input v-model.number="form.quota" type="number" min="0" step="0.01" required data-test="key-quota" /><small>{{ text('0 为不限额度', '0 means unlimited') }}</small></label>
           </div>
+          <label class="portal-field">{{ text('Key 并发上限', 'Key concurrency limit') }}<input v-model.number="form.concurrency" type="number" min="0" step="1" required data-test="key-concurrency" /><small>{{ text('0 为不额外限制，仍受用户和账号并发限制。', '0 adds no key limit; user and account limits still apply.') }}</small></label>
           <details class="key-advanced"><summary>{{ text('高级设置', 'Advanced settings') }}</summary>
             <div class="key-rate-fields"><label v-for="field in rateFields" :key="field.key" class="portal-field">{{ field.label }}<input v-model.number="form[field.key]" type="number" min="0" step="0.01" required /></label></div><p class="key-hint">{{ text('窗口限额按 USD 计算，0 为不限。', 'Window limits are in USD; 0 means unlimited.') }}</p>
             <div v-if="editing" class="key-resets"><label><input v-model="form.resetQuota" type="checkbox" />{{ text('重置已用额度', 'Reset used quota') }}</label><label><input v-model="form.resetRates" type="checkbox" />{{ text('重置限流计数', 'Reset rate-limit usage') }}</label><small>{{ text('仅勾选后保存才会重置。', 'Resets apply only when selected and saved.') }}</small></div>
@@ -75,7 +76,7 @@ const error = ref('')
 const search = ref('')
 const category = ref<'all' | KeyGroupProvider>('all')
 const routingGroups = computed(() => props.groups.filter(isSmartRoutingGroup))
-const form = reactive({ name: '', group: '', smart: false, quota: 0, days: '' as number | string, expiry: '', limit5h: 0, limit1d: 0, limit7d: 0, allow: '', block: '', custom: '', routing: [] as number[], resetQuota: false, resetRates: false })
+const form = reactive({ name: '', group: '', smart: false, quota: 0, concurrency: 0, days: '' as number | string, expiry: '', limit5h: 0, limit1d: 0, limit7d: 0, allow: '', block: '', custom: '', routing: [] as number[], resetQuota: false, resetRates: false })
 const eligibleGroups = computed(() => form.smart ? routingGroups.value : props.groups)
 const selectedGroup = computed(() => props.groups.find(group => String(group.id) === form.group))
 const providers = computed(() => [
@@ -91,7 +92,7 @@ function localDate(iso: string | null) { if (!iso) return ''; const date = new D
 watch(() => props.open, (open) => {
   if (!open) return
   const key = props.editing
-  Object.assign(form, { name:key?.name || '', group:String(key?.group_id ?? props.selectedGroup ?? ''), smart:!!key?.routing_group_ids?.length, quota:key?.quota || 0, days:'', expiry:localDate(key?.expires_at ?? null), limit5h:key?.rate_limit_5h || 0, limit1d:key?.rate_limit_1d || 0, limit7d:key?.rate_limit_7d || 0, allow:key?.ip_whitelist?.join('\n') || '', block:key?.ip_blacklist?.join('\n') || '', custom:'', routing:[...(key?.routing_group_ids || [])], resetQuota:false, resetRates:false })
+  Object.assign(form, { name:key?.name || '', group:String(key?.group_id ?? props.selectedGroup ?? ''), smart:!!key?.routing_group_ids?.length, quota:key?.quota || 0, concurrency:key?.concurrency_limit ?? 0, days:'', expiry:localDate(key?.expires_at ?? null), limit5h:key?.rate_limit_5h || 0, limit1d:key?.rate_limit_1d || 0, limit7d:key?.rate_limit_7d || 0, allow:key?.ip_whitelist?.join('\n') || '', block:key?.ip_blacklist?.join('\n') || '', custom:'', routing:[...(key?.routing_group_ids || [])], resetQuota:false, resetRates:false })
   error.value = ''; search.value = ''; category.value = 'all'
 }, { immediate: true })
 function isSelected(id: number) { return form.smart ? form.routing.includes(id) : form.group === String(id) }
@@ -124,6 +125,7 @@ async function submit() {
     error.value = text('请选择可用的接入分组。', 'Select an available connection group.')
     return
   }
+  if (!Number.isInteger(Number(form.concurrency)) || Number(form.concurrency) < 0) { error.value = text('并发上限必须是非负整数。', 'Concurrency limit must be a nonnegative integer.'); return }
   if (![form.quota, form.limit5h, form.limit1d, form.limit7d].every(value => Number.isFinite(Number(value)) && Number(value) >= 0) || (!props.editing && form.days !== '' && (!Number.isInteger(Number(form.days)) || Number(form.days) <= 0))) {
     error.value = text('请输入有效的额度与有效天数。', 'Enter valid limits and expiry days.')
     return
@@ -137,8 +139,8 @@ async function submit() {
   const limits = { rate_limit_5h:Number(form.limit5h), rate_limit_1d:Number(form.limit1d), rate_limit_7d:Number(form.limit7d) }
   try {
     const key = props.editing
-      ? await keysAPI.update(props.editing.id, { name:form.name.trim(), group_id:groupId, quota:Number(form.quota), expires_at:form.expiry ? new Date(form.expiry).toISOString() : '', ip_whitelist:lines(form.allow), ip_blacklist:lines(form.block), routing_group_ids:routing, ...limits, ...(form.resetQuota ? { reset_quota:true } : {}), ...(form.resetRates ? { reset_rate_limit_usage:true } : {}) })
-      : await keysAPI.create(form.name.trim(), groupId, form.custom || undefined, lines(form.allow), lines(form.block), Number(form.quota), form.days ? Number(form.days) : undefined, limits, routing)
+      ? await keysAPI.update(props.editing.id, { name:form.name.trim(), group_id:groupId, quota:Number(form.quota), expires_at:form.expiry ? new Date(form.expiry).toISOString() : '', ip_whitelist:lines(form.allow), ip_blacklist:lines(form.block), routing_group_ids:routing, concurrency_limit:Number(form.concurrency), ...limits, ...(form.resetQuota ? { reset_quota:true } : {}), ...(form.resetRates ? { reset_rate_limit_usage:true } : {}) })
+      : await keysAPI.create(form.name.trim(), groupId, form.custom || undefined, lines(form.allow), lines(form.block), Number(form.quota), form.days ? Number(form.days) : undefined, limits, routing, Number(form.concurrency))
     emit('saved', key)
     if (!props.editing && onboardingStore.isCurrentStep('[data-tour="key-form-submit"]')) void onboardingStore.nextStep(500)
   } catch (e) { error.value = userFacingError(e, locale.value, text('保存失败，请重试。', 'Could not save. Please retry.')) }

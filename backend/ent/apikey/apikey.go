@@ -31,6 +31,8 @@ const (
 	FieldGroupID = "group_id"
 	// FieldRoutingGroupIds holds the string denoting the routing_group_ids field in the database.
 	FieldRoutingGroupIds = "routing_group_ids"
+	// FieldConcurrencyLimit holds the string denoting the concurrency_limit field in the database.
+	FieldConcurrencyLimit = "concurrency_limit"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// FieldLastUsedAt holds the string denoting the last_used_at field in the database.
@@ -123,6 +125,7 @@ var Columns = []string{
 	FieldName,
 	FieldGroupID,
 	FieldRoutingGroupIds,
+	FieldConcurrencyLimit,
 	FieldStatus,
 	FieldLastUsedAt,
 	FieldIPWhitelist,
@@ -169,6 +172,10 @@ var (
 	KeyValidator func(string) error
 	// NameValidator is a validator for the "name" field. It is called by the builders before save.
 	NameValidator func(string) error
+	// DefaultConcurrencyLimit holds the default value on creation for the "concurrency_limit" field.
+	DefaultConcurrencyLimit int
+	// ConcurrencyLimitValidator is a validator for the "concurrency_limit" field. It is called by the builders before save.
+	ConcurrencyLimitValidator func(int) error
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus string
 	// StatusValidator is a validator for the "status" field. It is called by the builders before save.
@@ -232,6 +239,11 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 // ByGroupID orders the results by the group_id field.
 func ByGroupID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldGroupID, opts...).ToFunc()
+}
+
+// ByConcurrencyLimit orders the results by the concurrency_limit field.
+func ByConcurrencyLimit(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldConcurrencyLimit, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

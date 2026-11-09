@@ -121,7 +121,7 @@ function latencyColor(ms: number | null | undefined, first = false) {
 .usage-request-stream, .usage-request-ws_v2, .usage-request-live { color: rgb(var(--text-accent)); background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); }
 .usage-request-sync { color: rgb(var(--text-link)); background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); }
 .usage-actual-cost { color: rgb(var(--text-link)); font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
-.usage-table .usage-standard-cost, .usage-card .usage-standard-cost { color: rgb(var(--text-err)); font-variant-numeric: tabular-nums; }
+.usage-table .usage-standard-cost, .usage-card .usage-standard-cost { color: rgb(var(--ink-3)); font-variant-numeric: tabular-nums; }
 .usage-latency-values { position:relative; display: grid; grid-template-columns: max-content max-content; gap: 4px 10px; padding-left: 13px; font-size: 13px; }
 .usage-latency-values::before { content:''; position:absolute; inset:0 auto 0 0; width:3px; border-radius:3px; background:linear-gradient(to bottom,var(--latency-first),var(--latency-duration)); }
 .usage-latency-values span { color: rgb(var(--ink-3)); }

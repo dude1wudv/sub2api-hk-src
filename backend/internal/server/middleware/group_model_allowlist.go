@@ -31,7 +31,7 @@ import (
 func GroupModelAllowlist() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		apiKey, ok := GetAPIKeyFromContext(c)
-		if !ok || apiKey == nil || apiKey.Group == nil || !apiKey.Group.ModelAllowlistEnabled() {
+		if !ok || apiKey == nil || apiKey.Group == nil || (!apiKey.Group.ModelAllowlistEnabled() && !service.HasAPIKeyQueueAuthRevalidator(c.Request.Context())) {
 			c.Next()
 			return
 		}
@@ -69,6 +69,9 @@ func GroupModelAllowlist() gin.HandlerFunc {
 			}
 		}
 
+		permissions := service.APIKeyQueueRequestPermissionsFromContext(c.Request.Context())
+		permissions.Models = append([]string(nil), models...)
+		c.Request = c.Request.WithContext(service.WithAPIKeyQueueRequestPermissions(c.Request.Context(), permissions))
 		blocked := ""
 		for _, candidate := range models {
 			if !allowlist.Allows(candidate) {

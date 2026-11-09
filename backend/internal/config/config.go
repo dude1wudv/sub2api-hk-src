@@ -1046,7 +1046,13 @@ const (
 )
 
 // GatewayConfig API网关相关配置
+type APIKeyQueueConfig struct {
+	MaxWaiting     int `mapstructure:"max_waiting"`
+	TimeoutSeconds int `mapstructure:"timeout_seconds"`
+}
+
 type GatewayConfig struct {
+	APIKeyQueue APIKeyQueueConfig `mapstructure:"api_key_queue"`
 	// UpstreamErrorProtection hides provider error details from gateway clients.
 	// It is enabled by default; disabling restores legacy passthrough behavior.
 	UpstreamErrorProtection bool `mapstructure:"upstream_error_protection"`
@@ -2523,6 +2529,8 @@ func setDefaults() {
 	viper.SetDefault("idempotency.cleanup_batch_size", 500)
 
 	// Gateway
+	viper.SetDefault("gateway.api_key_queue.max_waiting", 5)
+	viper.SetDefault("gateway.api_key_queue.timeout_seconds", 30)
 	viper.SetDefault("gateway.response_header_timeout", 600) // 600秒(10分钟)等待上游响应头，LLM高负载时可能排队较久
 	viper.SetDefault("gateway.openai_response_header_timeout", 0)
 	viper.SetDefault("gateway.disable_openai_transport_error_cooldown", false)
@@ -2821,6 +2829,9 @@ func setEnvReachableDefaults() {
 }
 
 func (c *Config) Validate() error {
+	if c.Gateway.APIKeyQueue.MaxWaiting < 0 || c.Gateway.APIKeyQueue.MaxWaiting > 10000 || c.Gateway.APIKeyQueue.TimeoutSeconds < 0 || c.Gateway.APIKeyQueue.TimeoutSeconds > 3600 {
+		return fmt.Errorf("gateway.api_key_queue must have 0..10000 waiters and 0..3600 timeout seconds")
+	}
 	if c.HeliosWorkbench.Enabled {
 		if strings.TrimSpace(c.HeliosWorkbench.ClientID) != "heliosgen-web" {
 			return fmt.Errorf("helios_workbench.client_id must be heliosgen-web")

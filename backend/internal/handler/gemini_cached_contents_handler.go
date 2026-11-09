@@ -139,7 +139,6 @@ func (h *GatewayHandler) GeminiCachedContentsCreate(c *gin.Context) {
 		googleConcurrencyError(c, err, "user")
 		return
 	}
-	userReleaseFunc = wrapReleaseOnDone(c.Request.Context(), userReleaseFunc)
 	if userReleaseFunc != nil {
 		defer userReleaseFunc()
 	}

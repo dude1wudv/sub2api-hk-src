@@ -95,7 +95,6 @@ func (h *GatewayHandler) SystemOne(c *gin.Context) {
 		return
 	}
 	// 在请求结束或 Context 取消时确保释放槽位，避免客户端断开造成泄漏。
-	userRelease = wrapReleaseOnDone(c.Request.Context(), userRelease)
 	if userRelease != nil {
 		defer userRelease()
 	}

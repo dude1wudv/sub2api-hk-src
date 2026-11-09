@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { adminNavigation, visibleAdminNavigation } from '../adminNavigation'
 
 describe('admin navigation preservation', () => {
-  it('preserves all 24 built-in routes without duplicate entries', () => {
+  it('preserves built-in routes and adds cache tests and traffic without duplicates', () => {
     const paths = adminNavigation.flatMap(group => group.items.map(item => item.path))
-    expect(paths).toHaveLength(24)
+    expect(paths).toHaveLength(26)
+    expect(paths).toContain('/admin/group-cache-tests')
+    expect(paths).toContain('/admin/traffic')
     expect(new Set(paths).size).toBe(paths.length)
     expect(paths).toContain('/admin/orders')
     expect(paths).toContain('/admin/prompt-audit')

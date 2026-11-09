@@ -229,6 +229,10 @@ security:
 # 网关配置
 # =============================================================================
 gateway:
+  # Per-key limits remain opt-in; bounded queue applies to keys with a positive limit.
+  api_key_queue:
+    max_waiting: 5
+    timeout_seconds: 30
   # Minimum max_output_tokens when converting Chat Completions or Anthropic requests to Responses (minimum 16, default 128)
   # Chat Completions 或 Anthropic 请求转换为 Responses 时的最小 max_output_tokens（最小 16，默认 128）
   min_output_tokens: 128

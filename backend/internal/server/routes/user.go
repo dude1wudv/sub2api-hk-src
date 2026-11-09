@@ -83,6 +83,7 @@ func RegisterUserRoutes(
 		keys := authenticated.Group("/keys")
 		{
 			keys.GET("", h.APIKey.List)
+			keys.GET("/concurrency", h.APIKey.GetConcurrencyQueue)
 			keys.GET("/:id", h.APIKey.GetByID)
 			keys.POST("", h.APIKey.Create)
 			keys.PUT("/:id", h.APIKey.Update)
@@ -107,6 +108,8 @@ func RegisterUserRoutes(
 		usage.Use(panelRateLimiter.Heavy())
 		{
 			usage.GET("", h.Usage.List)
+			usage.GET("/traffic", h.Usage.Traffic)
+			usage.GET("/traffic/keys", h.Usage.TrafficKeys)
 			usage.GET("/errors", h.Usage.ListErrors)
 			usage.GET("/errors/:id", h.Usage.GetErrorDetail)
 			usage.GET("/:id", h.Usage.GetByID)
@@ -161,6 +164,7 @@ func RegisterUserRoutes(
 			monitorV2.GET("/matrix", h.ChannelMonitorV2.Matrix)
 			monitorV2.GET("/errors", h.ChannelMonitorV2.Errors)
 			monitorV2.GET("/users", h.ChannelMonitorV2.Users)
+			monitorV2.GET("/external-quality", h.ChannelMonitorV2.ExternalQuality)
 		}
 	}
 }

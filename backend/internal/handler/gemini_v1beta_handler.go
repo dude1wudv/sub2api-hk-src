@@ -432,7 +432,6 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 		return
 	}
 	// 确保请求取消时也会释放槽位，避免长连接被动中断造成泄漏
-	userReleaseFunc = wrapReleaseOnDone(c.Request.Context(), userReleaseFunc)
 	if userReleaseFunc != nil {
 		defer userReleaseFunc()
 	}

@@ -66,9 +66,11 @@ export async function create(
   quota?: number,
   expiresInDays?: number,
   rateLimitData?: { rate_limit_5h?: number; rate_limit_1d?: number; rate_limit_7d?: number },
-  routingGroupIds?: number[]
+  routingGroupIds?: number[],
+  concurrencyLimit?: number
 ): Promise<ApiKey> {
   const payload: CreateApiKeyRequest = { name }
+  if (concurrencyLimit !== undefined) payload.concurrency_limit = concurrencyLimit
   if (routingGroupIds !== undefined) payload.routing_group_ids = routingGroupIds
   if (groupId !== undefined) {
     payload.group_id = groupId
@@ -159,6 +161,16 @@ export async function toggleStatus(id: number, status: 'active' | 'inactive'): P
   return update(id, { status })
 }
 
+export interface APIKeyQueueItem { id: number; current_concurrency: number; current_waiting: number }
+export interface APIKeyQueueStats {
+  queue_policy: { max_waiting: number; timeout_seconds: number }
+  items: APIKeyQueueItem[]
+}
+export async function getConcurrencyQueue(ids: number[], signal?: AbortSignal): Promise<APIKeyQueueStats> {
+  const { data } = await apiClient.get<APIKeyQueueStats>('/keys/concurrency', { params: { ids: ids.join(',') }, signal })
+  return data
+}
+
 export const keysAPI = {
   list,
   getById,
@@ -166,7 +178,8 @@ export const keysAPI = {
   update,
   bulkUpdate,
   delete: deleteKey,
-  toggleStatus
+  toggleStatus,
+  getConcurrencyQueue
 }
 
 export default keysAPI

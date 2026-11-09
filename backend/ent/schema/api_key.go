@@ -45,6 +45,7 @@ func (APIKey) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 		field.JSON("routing_group_ids", []int64{}).Optional().Comment("Ordered smart routing groups; empty means fixed group"),
+		field.Int("concurrency_limit").NonNegative().Default(0).Comment("API key concurrency limit (0 = no additional limit)"),
 		field.String("status").
 			MaxLen(20).
 			Default(domain.StatusActive),

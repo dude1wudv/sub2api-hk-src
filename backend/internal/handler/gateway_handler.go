@@ -268,7 +268,6 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		return
 	}
 	// 在请求结束或 Context 取消时确保释放槽位，避免客户端断开造成泄漏
-	userReleaseFunc = wrapReleaseOnDone(c.Request.Context(), userReleaseFunc)
 	if userReleaseFunc != nil {
 		defer userReleaseFunc()
 	}
@@ -295,7 +294,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		h.handleStreamingAwareError(c, status, code, message, streamStarted)
 		return
 	}
-	defer inflightRelease()
+	defer func() { inflightRelease() }()
 
 	// 设置请求所属分组 ID（用于渠道级功能判断，如 WebSearch 模拟）
 	parsedReq.GroupID = apiKey.GroupID
@@ -693,7 +692,13 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 				zap.Bool("has_bound_session", hasBoundSession),
 				zap.Int("failed_account_count", len(fs.FailedAccountIDs)),
 			)
-			selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), currentAPIKey.GroupID, sessionKey, reqModel, fs.FailedAccountIDs, parsedReq.MetadataUserID, subject.UserID)
+			selection, _, err := selectAcrossSmartRoutes(c, h.apiKeyService, h.billingCacheService, h.gatewayService,
+				smartRouteBinding{Key: &currentAPIKey, Subscription: &currentSubscription, Mapping: &channelMapping, InflightDone: &inflightRelease, Model: reqModel, Body: body,
+					Accept: func(candidate *service.APIKey) bool { return candidate.Group.Platform == service.PlatformAnthropic }},
+				func(routeCtx context.Context, candidate *service.APIKey, routeModel string) (*service.AccountSelectionResult, service.OpenAIAccountScheduleDecision, error) {
+					selection, err := h.gatewayService.SelectAccountWithLoadAwareness(routeCtx, candidate.GroupID, sessionKey, routeModel, fs.FailedAccountIDs, parsedReq.MetadataUserID, subject.UserID)
+					return selection, service.OpenAIAccountScheduleDecision{}, err
+				})
 			if err != nil {
 				if failoverClientGone(c) {
 					reqLog.Info("gateway.account_select_aborted_client_disconnected", zap.Error(err))

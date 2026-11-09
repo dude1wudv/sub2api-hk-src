@@ -63,7 +63,7 @@
         </div>
         <div>
           <dt>{{ text('此 Key 当前请求数', 'Active requests for this key') }}</dt>
-          <dd>{{ concurrency(apiKey) }}</dd>
+          <dd>{{ concurrency(apiKey) }}<small class="portal-api-waiting">{{ waiting(apiKey) }}</small></dd>
         </div>
         <div>
           <dt>{{ text('过期时间', 'Expires') }}</dt>
@@ -74,6 +74,7 @@
           <dd>{{ date(apiKey.created_at) }}</dd>
         </div>
       </dl>
+      <PortalKeyUsageLimits :api-key="apiKey" />
       <div class="portal-api-card-actions">
         <button type="button" data-test="use-key" :disabled="busyIds.has(apiKey.id)" @click="emit('use', apiKey)">
           <Icon name="terminal" size="sm" aria-hidden="true" />
@@ -178,13 +179,14 @@
               <span v-if="routingCount(apiKey)" class="portal-api-routing">{{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}</span>
             </InkSurface>
           </td>
-          <td><span class="portal-api-concurrency">{{ concurrency(apiKey) }}</span></td>
+          <td><span class="portal-api-concurrency" :data-full="(queueCounts[apiKey.id]?.current_concurrency ?? 0) >= (apiKey.concurrency_limit || Infinity)">{{ concurrency(apiKey) }}</span><small class="portal-api-waiting">{{ waiting(apiKey) }}</small></td>
           <td>
             <div v-if="usageFor(apiKey.id)" class="portal-api-usage">
               <span>{{ text('今日', 'Today') }} <strong>{{ money(usageFor(apiKey.id)?.today_actual_cost ?? 0) }}</strong></span>
               <span>{{ text('累计', 'Total') }} <strong>{{ money(usageFor(apiKey.id)?.total_actual_cost ?? 0) }}</strong></span>
             </div>
             <span v-else class="portal-api-muted">—</span>
+            <PortalKeyUsageLimits :api-key="apiKey" />
           </td>
           <td>
             <span class="portal-api-expiry" :class="apiKey.status === 'expired' ? 'portal-api-expired' : 'portal-api-muted'">
@@ -233,9 +235,13 @@ import Icon from '@/components/icons/Icon.vue'
 import { formatUsageMoney } from '@/utils/portalUsage'
 import { maskApiKey } from '@/utils/maskApiKey'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
+import type { APIKeyQueueItem } from '@/api/keys'
+import PortalKeyUsageLimits from './PortalKeyUsageLimits.vue'
 import type { ApiKey, Group } from '@/types'
 
 const props = withDefaults(defineProps<{
+  queueCounts?: Record<number, APIKeyQueueItem>
+  queueUnavailable?: boolean
   keys: ApiKey[]
   groups: Group[]
   groupRates: Record<number, number>
@@ -245,6 +251,8 @@ const props = withDefaults(defineProps<{
   selectedIds: number[]
   hideCcs?: boolean
 }>(), {
+  queueCounts: () => ({}),
+  queueUnavailable: false,
   selectable: false,
   hideCcs: false,
 })
@@ -269,7 +277,14 @@ const allSelected = computed(() => props.keys.length > 0 && selectedOnPage.value
 const someSelected = computed(() => selectedOnPage.value.length > 0 && !allSelected.value)
 
 function concurrency(key: ApiKey) {
+  if (props.queueUnavailable) return text('暂不可用', 'Unavailable')
+  const count = props.queueCounts[key.id]?.current_concurrency
+  if (count !== undefined) return key.concurrency_limit ? `${count} / ${key.concurrency_limit}` : String(count)
   return key.current_concurrency_status === 'available' ? key.current_concurrency : key.current_concurrency_status === 'unsupported' ? text('未支持', 'Unsupported') : text('暂不可用', 'Unavailable')
+}
+function waiting(key: ApiKey) {
+  if (props.queueUnavailable || props.queueCounts[key.id] === undefined) return ''
+  return text('排队 ', 'Waiting ') + props.queueCounts[key.id].current_waiting
 }
 function usageFor(id: number) {
   return props.usageStats[String(id)]
@@ -341,6 +356,8 @@ function money(value: number) {
 .portal-api-expiry { white-space:nowrap; }
 .portal-api-expired { color:rgb(var(--text-err)); }
 .portal-api-concurrency { display:inline-flex; min-width:28px; justify-content:center; padding:2px 8px; border-radius:8px; background:rgb(var(--surface-2)); color:rgb(var(--ink-2)); font-variant-numeric:tabular-nums; }
+.portal-api-waiting { display:block; margin-top:4px; color:rgb(var(--ink-3)); font-size:12px; font-variant-numeric:tabular-nums; }
+.portal-api-concurrency[data-full=true] { color:rgb(var(--text-warn)); }
 .portal-api-usage { display:grid; gap:2px; color:rgb(var(--ink-2)); font-size:13px; white-space:nowrap; }
 .portal-api-usage strong { color:rgb(var(--ink)); font-weight:600; }
 .portal-api-status { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:13px; font-weight:600; white-space:nowrap; }

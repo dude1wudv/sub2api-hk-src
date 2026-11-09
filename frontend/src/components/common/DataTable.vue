@@ -981,7 +981,12 @@ defineExpose({
 
 <style scoped>
 .table-wrapper :deep(tbody td) { padding-block: 8px; }
-.table-record-row:hover { background-color: rgb(var(--table-hover)); }
+.table-record-row:hover, .table-record-row:focus-within { background-color: rgb(var(--table-hover)); }
+.table-record-row > td { transition:background-color var(--motion-fast),color var(--motion-fast); }
+.table-record-row:focus-within .sticky-col { background-color:rgb(var(--table-hover)); }
+.table-record-card { transition:border-color var(--motion-fast),background-color var(--motion-fast); }
+.table-record-card:focus-within { border-color:rgb(var(--focus-ring)); }
+@media(prefers-reduced-motion:reduce) { .table-record-row > td,.table-record-card { transition:none; } }
 
 /* 表格横向滚动 */
 .table-wrapper {

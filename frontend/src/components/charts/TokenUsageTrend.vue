@@ -3,9 +3,13 @@
     class="token-usage-trend chart-panel card p-4 sm:p-5"
     :class="{ 'token-usage-trend--fill': fill }"
   >
-    <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
-      {{ t('admin.dashboard.tokenUsageTrend') }}
-    </h3>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.dashboard.tokenUsageTrend') }}</h3>
+      <div class="token-trend-modes" role="group" :aria-label="locale.startsWith('zh') ? '图表视图' : 'Chart view'">
+        <button type="button" :aria-pressed="mode === 'breakdown'" @click="mode = 'breakdown'">{{ locale.startsWith('zh') ? '分项' : 'Breakdown' }}</button>
+        <button type="button" :aria-pressed="mode === 'total'" @click="mode = 'total'">{{ locale.startsWith('zh') ? '总量' : 'Total' }}</button>
+      </div>
+    </div>
     <div class="token-usage-trend__body">
       <div v-if="loading" class="flex h-full items-center justify-center">
         <LoadingSpinner />
@@ -23,7 +27,8 @@
 
 <script setup lang="ts">
 import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import type { ScriptableContext } from 'chart.js'
 import { useI18n } from 'vue-i18n'
 import {
   Chart as ChartJS,
@@ -52,7 +57,8 @@ ChartJS.register(
 )
 
 const chartTheme = useChartTheme()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const mode = ref<'breakdown' | 'total'>('breakdown')
 
 const props = withDefaults(defineProps<{
   trendData: TrendDataPoint[]
@@ -73,12 +79,35 @@ const chartColors = computed(() => ({
   cacheHitRate: palette.value[3]
 }))
 
+function areaGradient(color: string) {
+  const gradients = new WeakMap<object, CanvasGradient>()
+  return (context: ScriptableContext<'line'>) => {
+    const { chartArea, ctx } = context.chart
+    if (!chartArea || !ctx) return `${color}18`
+    let gradient = gradients.get(chartArea)
+    if (!gradient) {
+      gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+      gradient.addColorStop(0, `${color}48`)
+      gradient.addColorStop(1, `${color}00`)
+      gradients.set(chartArea, gradient)
+    }
+    return gradient
+  }
+}
 const chartData = computed(() => {
   if (!props.trendData?.length) return null
 
   return {
     labels: props.trendData.map((d) => d.date),
-    datasets: [
+    datasets: mode.value === 'total' ? [{
+      label: locale.value?.startsWith('zh') ? '总 Token' : 'Total tokens',
+      data: props.trendData.map(d => d.input_tokens + d.output_tokens + d.cache_creation_tokens + d.cache_read_tokens),
+      borderColor: chartColors.value.input,
+      backgroundColor: areaGradient(chartColors.value.input),
+      fill: true,
+      tension: 0.25,
+      yAxisID: 'y',
+    }] : [
       {
         label: 'Input',
         data: props.trendData.map((d) => d.input_tokens),
@@ -195,6 +224,7 @@ const lineOptions = computed(() => ({
       }
     },
     yPercent: {
+      display: mode.value !== 'total',
       position: 'right' as const,
       min: 0,
       max: 100,
@@ -236,6 +266,10 @@ const formatCost = (value: number): string => {
 </script>
 
 <style scoped>
+.token-trend-modes { display:flex; gap:3px; padding:3px; border:1px solid rgb(var(--line)); border-radius:8px; background:rgb(var(--surface-2)); }
+.token-trend-modes button { padding:4px 10px; border:0; border-radius:5px; color:rgb(var(--ink-3)); background:transparent; font:inherit; font-size:12px; cursor:pointer; transition:background-color 150ms ease,color 150ms ease; }
+.token-trend-modes button[aria-pressed=true] { color:rgb(var(--ink)); background:rgb(var(--surface)); }
+@media(prefers-reduced-motion:reduce) { .token-trend-modes button { transition:none; } }
 .token-usage-trend__body {
   position: relative;
   min-width: 0;
@@ -250,7 +284,7 @@ const formatCost = (value: number): string => {
   min-height: 0;
 }
 
-.token-usage-trend--fill > h3 {
+.token-usage-trend--fill > div:first-child {
   flex: none;
 }
 

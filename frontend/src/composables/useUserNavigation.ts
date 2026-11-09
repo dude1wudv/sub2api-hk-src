@@ -50,6 +50,7 @@ export function useUserNavigation() {
       { path: '/dashboard', label: zh.value ? '概览' : 'Overview', icon: 'home', group: 'primary' },
       { path: '/keys', label: zh.value ? 'API 密钥' : 'API keys', icon: 'key', group: 'primary' },
       { path: '/usage', label: zh.value ? '用量信息' : 'Usage', icon: 'chart', group: 'primary', hideInSimpleMode: true },
+      { path: '/traffic', label: zh.value ? '流量记录' : 'Traffic', icon: 'chart', group: 'primary', hideInSimpleMode: true },
       // Card redemption, not a payment gateway. Self-serve checkout is retired.
       { path: '/purchase', activePaths: ['/purchase', '/redeem', '/orders'], label: purchaseLabel.value, icon: 'creditCard', group: 'primary', hideInSimpleMode: true },
       { path: '/subscriptions', label: subscriptionLabel.value, icon: 'document', group: 'primary', hideInSimpleMode: true, enabled: enabled('subscription') && subscriptionVisible.value },

@@ -689,6 +689,9 @@ func registerSubscriptionRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 func registerUsageRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	usage := admin.Group("/usage")
 	{
+		usage.GET("/traffic", h.Admin.Usage.Traffic)
+		usage.GET("/traffic/keys", h.Admin.Usage.TrafficKeys)
+		usage.GET("/traffic/health", h.Admin.Usage.TrafficHealth)
 		usage.GET("", h.Admin.Usage.List)
 		usage.GET("/stats", h.Admin.Usage.Stats)
 		usage.GET("/search-users", h.Admin.Usage.SearchUsers)
