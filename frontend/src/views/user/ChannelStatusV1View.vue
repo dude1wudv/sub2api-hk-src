@@ -18,6 +18,7 @@
       :loading="loading"
       :detail-cache="detailCache"
       @card-click="openDetail"
+      @quality-click="openQuality"
     />
 
     <MonitorDetailDialog
@@ -26,6 +27,7 @@
       :title="detailTitle"
       @close="closeDetail"
     />
+    <ModelQualityResults v-if="qualityTarget" :group-id="qualityTarget.group_id!" :group-name="qualityTarget.name" @close="qualityTarget = null" />
   </div>
 </template>
 
@@ -47,6 +49,7 @@ import MonitorHero, {
 } from '@/components/user/monitor/MonitorHero.vue'
 import MonitorCardGrid from '@/components/user/monitor/MonitorCardGrid.vue'
 import MonitorDetailDialog from '@/components/user/MonitorDetailDialog.vue'
+import ModelQualityResults from '@/components/usage/ModelQualityResults.vue'
 import { DEFAULT_INTERVAL_SECONDS, STATUS_OPERATIONAL } from '@/constants/channelMonitor'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
@@ -60,6 +63,7 @@ const currentWindow = ref<MonitorWindow>('7d')
 const detailCache = reactive<Record<number, UserMonitorDetail>>({})
 const showDetail = ref(false)
 const detailTarget = ref<UserMonitorView | null>(null)
+const qualityTarget = ref<UserMonitorView | null>(null)
 
 let abortController: AbortController | null = null
 
@@ -142,6 +146,10 @@ async function handleWindowChange(value: MonitorWindow) {
 function openDetail(row: UserMonitorView) {
   detailTarget.value = row
   showDetail.value = true
+}
+
+function openQuality(row: UserMonitorView) {
+  if (row.group_id && [72, 237].includes(row.group_id)) qualityTarget.value = row
 }
 
 function closeDetail() {

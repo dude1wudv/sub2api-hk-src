@@ -31,24 +31,21 @@
       :description="t('channelStatus.empty.description')"
     />
 
-    <div
-      v-else
-      class="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-    >
-      <MonitorCard
-        v-for="item in items"
-        :key="item.id"
-        :item="item"
-        :window="window"
-        :availability-value="resolveAvailability(item)"
-        :countdown-seconds="countdownSeconds"
-        @click="emit('cardClick', item)"
-      />
+    <div v-else class="space-y-6">
+      <section v-for="platform in platformGroups" :key="platform.provider">
+        <h2 class="mb-4 flex items-center gap-3 text-lg font-semibold"><span class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"><ProviderIcon :provider="platform.provider" :size="23" /></span>{{ providerLabel(platform.provider) }}<span class="rounded-full border border-gray-200 px-2.5 py-0.5 text-xs text-gray-500 dark:border-dark-700">{{ platform.items.length }}</span></h2>
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
+          <MonitorCard v-for="item in platform.items" :key="item.id" :item="item" :window="window" :availability-value="resolveAvailability(item)" :countdown-seconds="countdownSeconds" @click="emit('cardClick', item)" @quality="emit('qualityClick', item)" />
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import ProviderIcon from './ProviderIcon.vue'
+import { useChannelMonitorFormat } from '@/composables/useChannelMonitorFormat'
 import { useI18n } from 'vue-i18n'
 import type { UserMonitorView, UserMonitorDetail } from '@/api/channelMonitor'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -64,9 +61,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'cardClick', item: UserMonitorView): void
+  (e: 'qualityClick', item: UserMonitorView): void
 }>()
 
 const { t } = useI18n()
+const { providerLabel } = useChannelMonitorFormat()
+const platformGroups = computed(() => [...new Set(props.items.map(item => item.provider))].map(provider => ({ provider, items: props.items.filter(item => item.provider === provider) })))
 
 function resolveAvailability(item: UserMonitorView): number | null {
   if (props.window === '7d') {

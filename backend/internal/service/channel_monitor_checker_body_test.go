@@ -195,6 +195,18 @@ func TestRunCheckForModel_OpenAI_DefaultChatRequest(t *testing.T) {
 	}
 }
 
+func TestChannelMonitorProbeMarkerCannotBeOverridden(t *testing.T) {
+	h := &openAICaptureHandler{}
+	endpoint := setupFakeOpenAI(t, h)
+	res := runCheckForModel(context.Background(), MonitorProviderOpenAI, endpoint, "sk-openai", "gpt-test", &CheckOptions{ExtraHeaders: map[string]string{"User-Agent": "a-user-client"}})
+	if res.Status != MonitorStatusOperational {
+		t.Fatalf("probe failed: %s", res.Status)
+	}
+	if got := h.lastHeaders.Get("User-Agent"); got != "Sub2API-ChannelMonitor/1.0" {
+		t.Fatalf("probe must have its synthetic marker, got %q", got)
+	}
+}
+
 func TestGrokMonitorConfiguration(t *testing.T) {
 	if err := validateProvider(MonitorProviderGrok); err != nil {
 		t.Fatalf("grok provider should be supported: %v", err)

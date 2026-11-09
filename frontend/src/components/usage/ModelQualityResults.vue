@@ -1,128 +1,89 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import { getExternalQuality, getExternalQualityArtwork, type ExternalQualityEvent, type ExternalQualityReport } from '@/api/externalQuality'
-import { userGroupsAPI } from '@/api/groups'
-import type { Group } from '@/types'
-import { qualityArtifactDocument } from '@/utils/qualityArtifact'
-
+import { qualityArtifactPlayableDocument } from '@/utils/qualityArtifact'
+const props = defineProps<{ groupId: number; groupName: string }>()
+const emit = defineEmits<{ (event: 'close'): void }>()
 const { locale } = useI18n()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
-const groups = ref<Group[]>([])
-const reports = ref<Record<number, ExternalQualityReport>>({})
-const loading = ref(false)
-const failed = ref(false)
-let controller: AbortController | undefined
+const report = ref<ExternalQualityReport | null>(null)
+const loading = ref(false), failed = ref(false), artworkLoading = ref(false), artworkFailed = ref(false)
+const selectedModel = ref('gpt-6-astra'), selectedId = ref<string | number | null>(null), rawArtwork = ref('')
+const preview = ref(true), showSource = ref(false), fit = ref(true)
+let reportController: AbortController | undefined, artworkController: AbortController | undefined
 let timer: ReturnType<typeof setInterval> | undefined
 let alive = true
-const eligible = computed(() => groups.value.filter(group => [72, 237].includes(group.id)).sort((a, b) => a.id - b.id))
-const selectedModels = ref<Record<number, string>>({})
-const artwork = ref<Record<string, string>>({})
-const artworkLoading = ref<Record<string, boolean>>({})
-const artworkFailed = ref<Record<string, boolean>>({})
-const models = (groupId: number) => [...new Set((reports.value[groupId]?.events || []).map(event => event.model_id))]
-const visibleEvents = (groupId: number) => (reports.value[groupId]?.events || [])
-  .filter(event => !selectedModels.value[groupId] || event.model_id === selectedModels.value[groupId]).slice(0, 10)
-const eventKey = (groupId: number, eventId: string | number) => `${groupId}:${eventId}`
-const verdict = (event: ExternalQualityEvent) => event.status === 'completed'
-  ? text('生成完成 · 待对比', 'Generated · awaiting review')
-  : event.status === 'success' ? text('正常', 'Passed') : text('降智', 'Degraded')
-async function loadArtwork(groupId: number, event: ExternalQualityEvent) {
-  const key = eventKey(groupId, event.id)
-  if (!alive || artwork.value[key] || artworkLoading.value[key]) return
-  if (event.response_text) { artwork.value[key] = event.response_text; return }
-  if (!event.has_artwork) return
-  artworkLoading.value[key] = true
-  artworkFailed.value[key] = false
-  try {
-    const result = await getExternalQualityArtwork(groupId, event.id, controller?.signal)
-    if (alive) artwork.value[key] = result.response_text
-  } catch { if (alive) artworkFailed.value[key] = true }
-  finally { if (alive) artworkLoading.value[key] = false }
-}
-function onToggle(event: Event, groupId: number, result: ExternalQualityEvent) {
-  if ((event.target as HTMLDetailsElement).open) void loadArtwork(groupId, result)
-}
+const availableModels = computed(() => [...new Set(['gpt-6-astra', 'gpt-6.1-sol', ...(report.value?.events || []).map(event => event.model_id)])])
+const events = computed(() => (report.value?.events || []).filter(event => event.model_id === selectedModel.value).slice(0, 10))
+const selected = computed(() => events.value.find(event => event.id === selectedId.value) || null)
+const safeDocument = computed(() => preview.value && !showSource.value ? qualityArtifactPlayableDocument(rawArtwork.value) : null)
 const date = (value?: string | null) => value ? new Date(value).toLocaleString(locale.value) : '—'
-async function refresh() {
-  if (document.hidden || loading.value) return
-  controller?.abort()
-  const current = new AbortController(); controller = current
-  loading.value = true; failed.value = false
+const duration = (event: ExternalQualityEvent) => event.duration_ms == null ? '—' : `${(event.duration_ms / 1000).toFixed(1)}s`
+const verdict = (event: ExternalQualityEvent) => event.status === 'completed' ? text('生成完成 · 待对比', 'Generated · awaiting review') : event.status === 'success' ? text('正常', 'Passed') : text('降智', 'Degraded')
+function clearArtwork() { artworkController?.abort(); rawArtwork.value = ''; artworkLoading.value = false; artworkFailed.value = false }
+async function loadArtwork() {
+  clearArtwork()
+  const event = selected.value
+  if (!alive || !event || (!preview.value && !showSource.value)) return
+  if (event.response_text) { rawArtwork.value = event.response_text; return }
+  if (!event.has_artwork) return
+  const controller = new AbortController(); artworkController = controller; artworkLoading.value = true
   try {
-    groups.value = await userGroupsAPI.getAvailable()
-    if (!alive || current.signal.aborted) return
-    const results = await Promise.allSettled(eligible.value.map(group => getExternalQuality(group.id, current.signal)))
-    if (!alive || current.signal.aborted) return
-    const next = { ...reports.value }
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') next[eligible.value[index].id] = result.value
-      else failed.value = true
-    })
-    const allowed = new Set(eligible.value.map(group => group.id))
-    reports.value = Object.fromEntries(Object.entries(next).filter(([id]) => allowed.has(Number(id))))
-    const retained = new Set(Object.values(reports.value).flatMap(report => report.events.map(event => eventKey(report.group_id, event.id))))
-    artwork.value = Object.fromEntries(Object.entries(artwork.value).filter(([key]) => retained.has(key)))
-    artworkFailed.value = Object.fromEntries(Object.entries(artworkFailed.value).filter(([key]) => retained.has(key)))
-  } catch { if (alive && !current.signal.aborted) failed.value = true }
-  finally { if (alive && !current.signal.aborted) loading.value = false }
+    const result = await getExternalQualityArtwork(props.groupId, event.id, controller.signal)
+    if (alive && !controller.signal.aborted && selectedId.value === event.id) rawArtwork.value = result.response_text
+  } catch { if (alive && !controller.signal.aborted) artworkFailed.value = true }
+  finally { if (alive && !controller.signal.aborted) artworkLoading.value = false }
 }
+async function refresh() {
+  if (!alive || document.hidden || loading.value || ![72, 237].includes(props.groupId)) return
+  reportController?.abort()
+  const controller = new AbortController(); reportController = controller; loading.value = true; failed.value = false
+  try {
+    const result = await getExternalQuality(props.groupId, controller.signal)
+    if (!alive || controller.signal.aborted) return
+    report.value = result
+    if (!events.value.length && result.events.length) selectedModel.value = result.events[0].model_id
+    if (!events.value.some(event => event.id === selectedId.value)) selectedId.value = events.value[0]?.id ?? null
+  } catch { if (alive && !controller.signal.aborted) failed.value = true }
+  finally { if (alive && !controller.signal.aborted) loading.value = false }
+}
+function close() { alive = false; clearInterval(timer); reportController?.abort(); clearArtwork(); emit('close') }
+watch(selectedModel, () => { selectedId.value = events.value[0]?.id ?? null })
+watch(selectedId, () => { void loadArtwork() })
+watch([preview, showSource], () => { if (!preview.value && !showSource.value) clearArtwork(); else if (!rawArtwork.value) void loadArtwork() })
 onMounted(() => { void refresh(); timer = setInterval(() => { void refresh() }, 60000) })
-onBeforeUnmount(() => { alive = false; controller?.abort(); clearInterval(timer) })
+onBeforeUnmount(() => { alive = false; clearInterval(timer); reportController?.abort(); clearArtwork() })
 </script>
 <template>
-  <section class="quality-results" :aria-busy="loading" aria-labelledby="quality-results-title">
-    <header><div><h2 id="quality-results-title">{{ text('模型降智检测', 'Model quality checks') }}</h2><p>{{ text('查看模型测试产物，对比生成效果。', 'Compare recent model test outputs.') }}</p></div><button type="button" class="btn btn-secondary" :disabled="loading" @click="refresh">{{ loading ? text('刷新中…', 'Refreshing…') : text('刷新结果', 'Refresh results') }}</button></header>
-    <p v-if="failed" role="status" class="quality-muted">{{ text('部分结果暂时无法更新，已保留上次记录。', 'Some results could not be refreshed. Previous records are retained.') }}</p>
-    <p v-if="!eligible.length && !loading" class="quality-muted">{{ text('暂无可查看的测试分组。', 'No test groups are currently available.') }}</p>
-    <div class="quality-grid">
-      <article v-for="group in eligible" :key="group.id" class="quality-card">
-        <div class="quality-heading"><h3>{{ group.name }}</h3><span v-if="reports[group.id]?.status === 'stale'" class="quality-stale">{{ text('待更新', 'Awaiting update') }}</span></div>
-        <p class="quality-model">{{ reports[group.id]?.model || '—' }}</p>
-        <p class="quality-muted">{{ text('最近检测 ', 'Last tested ') }}{{ date(reports[group.id]?.last_success_at || reports[group.id]?.updated_at) }}</p>
-        <div v-if="models(group.id).length" class="quality-model-tabs" role="group" :aria-label="text('按模型查看', 'Filter by model')">
-          <button type="button" :aria-pressed="!selectedModels[group.id]" @click="selectedModels[group.id] = ''">{{ text('全部', 'All') }}</button>
-          <button v-for="model in models(group.id)" :key="model" type="button" :aria-pressed="selectedModels[group.id] === model" @click="selectedModels[group.id] = model">{{ model }}</button>
-        </div>
-        <p class="quality-muted">{{ text('产物供人工对比；生成完成不代表质量通过。', 'Outputs are for manual comparison; completion is not a quality verdict.') }}</p>
-        <p v-if="!reports[group.id]?.events.length" class="quality-empty">{{ text('暂无测试结果', 'No test results yet') }}</p>
-        <details v-for="event in visibleEvents(group.id)" :key="event.id" class="quality-event" @toggle="onToggle($event, group.id, event)">
-          <summary><span class="quality-verdict" :data-status="event.status">{{ verdict(event) }}</span><strong v-if="(event.score ?? event.audit_summary?.score) != null">{{ event.score ?? event.audit_summary?.score }} / 100</strong><time>{{ date(event.created_at) }}</time></summary>
-          <p v-if="event.model_id" class="quality-model">{{ event.model_id }}<span v-if="event.response_model && event.response_model !== event.model_id"> → {{ event.response_model }}</span><span v-if="event.duration_ms"> · {{ (event.duration_ms / 1000).toFixed(1) }} s</span></p>
-          <dl v-if="event.audit_summary?.sections?.length" class="quality-sections"><div v-for="section in event.audit_summary.sections" :key="section.name"><dt>{{ section.name }}</dt><dd>{{ section.score ?? section.status ?? '—' }}</dd></div></dl>
-          <p v-if="artworkLoading[eventKey(group.id, event.id)]" class="quality-muted" role="status">{{ text('正在加载测试产物…', 'Loading test output…') }}</p>
-          <button v-else-if="artworkFailed[eventKey(group.id, event.id)]" type="button" class="btn btn-secondary" @click="loadArtwork(group.id, event)">{{ text('加载失败，点击重试', 'Failed to load. Retry') }}</button>
-          <iframe v-else-if="qualityArtifactDocument(artwork[eventKey(group.id, event.id)])" class="quality-artifact" sandbox="" referrerpolicy="no-referrer" :title="text('测试产物', 'Test output')" :srcdoc="qualityArtifactDocument(artwork[eventKey(group.id, event.id)]) || ''" />
-          <pre v-else-if="artwork[eventKey(group.id, event.id)]" class="quality-output">{{ artwork[eventKey(group.id, event.id)] }}</pre>
-          <p v-else class="quality-muted">{{ text('本条记录没有测试产物。', 'No test output is available for this record.') }}</p>
-        </details>
-      </article>
+  <BaseDialog :show="true" :title="`${text('降智检测', 'Quality check')} · ${groupName}`" width="full" @close="close">
+    <div class="quality-workspace">
+      <div class="quality-intro"><div><strong>{{ text('鹈鹕测试', 'Pelican test') }}</strong><p>{{ text('每个模型保留最近 10 次结果，仅供人工对比；生成完成不代表质量通过。', 'The latest 10 outputs per model, for manual comparison. Completion is not a quality verdict.') }}</p></div><button type="button" class="quality-control" :disabled="loading" @click="refresh">{{ loading ? text('刷新中…', 'Refreshing…') : text('刷新结果', 'Refresh results') }}</button></div>
+      <p v-if="failed" class="quality-notice" role="status">{{ text('暂时无法更新，保留上次结果。', 'Refresh failed. Previous results are retained.') }}</p>
+      <p v-if="report?.status === 'stale'" class="quality-notice" role="status">{{ text('最近检测已超过 2 小时，等待新结果。', 'The last test is over 2 hours old. Awaiting new results.') }}</p>
+      <div class="quality-layout">
+        <aside class="quality-history" :aria-label="text('检测历史', 'Test history')">
+          <button v-for="event in events" :key="event.id" type="button" class="quality-history-item" :aria-pressed="selectedId === event.id" @click="selectedId = event.id"><strong>{{ date(event.created_at) }}</strong><span>{{ verdict(event) }}</span><small>{{ event.model_id }} · {{ duration(event) }}</small></button>
+          <p v-if="!events.length" class="quality-empty">{{ loading ? text('正在加载…', 'Loading…') : text('暂无测试结果', 'No test results yet') }}</p>
+        </aside>
+        <main class="quality-stage">
+          <p class="quality-dates">{{ text('开始：', 'Started: ') }}{{ date(selected?.created_at) }} · {{ text('结束：', 'Finished: ') }}{{ date(selected?.finished_at) }}</p>
+          <div class="quality-model-tabs" role="group" :aria-label="text('切换模型', 'Choose model')"><button v-for="model in availableModels" :key="model" type="button" :aria-pressed="selectedModel === model" @click="selectedModel = model">{{ model }}</button></div>
+          <div class="quality-toolbar"><button type="button" class="quality-control" :aria-pressed="fit" @click="fit = !fit">{{ text('适应窗口', 'Fit to window') }}{{ fit ? ' ✓' : '' }}</button><button type="button" class="quality-control" :aria-pressed="preview" @click="preview = !preview; showSource = false">{{ preview ? text('停止预览', 'Stop preview') : text('播放产物', 'Play output') }}</button><button type="button" class="quality-control" :aria-pressed="showSource" @click="showSource = !showSource">{{ showSource ? text('返回预览', 'Back to preview') : text('查看源码', 'View source') }}</button><span v-if="selected" class="quality-duration">{{ duration(selected) }}</span></div>
+          <div class="quality-preview" :class="{ 'quality-preview-natural': !fit }">
+            <p v-if="artworkLoading" class="quality-empty" role="status">{{ text('正在加载测试产物…', 'Loading test output…') }}</p>
+            <button v-else-if="artworkFailed" type="button" class="quality-control quality-retry" @click="loadArtwork">{{ text('加载失败，点击重试', 'Failed to load. Retry') }}</button>
+            <pre v-else-if="showSource && rawArtwork" class="quality-source">{{ rawArtwork }}</pre>
+            <iframe v-else-if="safeDocument" :key="selectedId ?? ''" class="quality-artifact" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="text('测试产物', 'Test output')" :srcdoc="safeDocument" />
+            <pre v-else-if="preview && rawArtwork" class="quality-source">{{ rawArtwork }}</pre>
+            <p v-else class="quality-empty">{{ !preview && !showSource ? text('预览已停止', 'Preview stopped') : text('本条记录没有测试产物。', 'No test output is available for this record.') }}</p>
+          </div>
+        </main>
+      </div>
     </div>
-  </section>
+  </BaseDialog>
 </template>
 <style scoped>
-.quality-results { color:rgb(var(--ink)); }
-.quality-results>header,.quality-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
-.quality-results h2 { margin:0; font-size:18px; font-weight:600; }
-.quality-results header p,.quality-muted { margin:6px 0; color:rgb(var(--ink-3)); font-size:12px; }
-.quality-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); gap:16px; margin-top:16px; }
-.quality-card { min-width:0; padding:20px; border:1px solid rgb(var(--line-strong)); border-radius:14px; background:rgb(var(--surface)); }
-.quality-heading h3 { margin:0; font-size:14px; font-weight:600; }
-.quality-model { overflow-wrap:anywhere; color:rgb(var(--ink-2)); font-size:12px; }
-.quality-empty { margin:24px 0; text-align:center; color:rgb(var(--ink-3)); font-size:13px; }
-.quality-stale { flex:none; color:rgb(var(--text-warn)); font-size:12px; }
-.quality-event { margin-top:12px; border-top:1px solid rgb(var(--line)); }
-.quality-event summary { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:12px 0; cursor:pointer; font-size:12px; }
-.quality-event time { margin-left:auto; color:rgb(var(--ink-3)); }
-.quality-verdict { padding:3px 8px; border-radius:999px; color:rgb(var(--text-ok)); background:rgb(var(--surface-2)); }
-.quality-verdict[data-status=completed] { color:rgb(var(--ink-2)); }
-.quality-model-tabs { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
-.quality-model-tabs button { padding:4px 9px; border-radius:8px; border:1px solid rgb(var(--line)); font-size:12px; color:rgb(var(--ink-2)); }
-.quality-model-tabs button[aria-pressed=true] { background:rgb(var(--surface-2)); border-color:rgb(var(--line-strong)); color:rgb(var(--ink)); }
-.quality-verdict[data-status=degraded] { color:rgb(var(--text-warn)); }
-.quality-sections { display:grid; gap:8px; font-size:12px; }
-.quality-sections div { display:flex; justify-content:space-between; gap:12px; }
-.quality-sections dd { margin:0; }
-.quality-output { max-height:420px; overflow:auto; padding:12px; border-radius:8px; background:rgb(var(--surface-2)); font-size:12px; white-space:pre-wrap; overflow-wrap:anywhere; }
-.quality-artifact { display:block; width:100%; height:420px; border:1px solid rgb(var(--line)); border-radius:8px; background:white; }
+.quality-workspace{margin:-4px;color:rgb(var(--ink))}.quality-intro{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:0 2px 16px}.quality-intro strong{font-size:14px}.quality-intro p,.quality-dates{margin:6px 0 0;color:rgb(var(--ink-3));font-size:12px}.quality-control{flex-shrink:0;padding:8px 12px;border:1px solid rgb(var(--line));border-radius:10px;background:rgb(var(--surface));color:rgb(var(--ink-2));font-size:12px;transition:border-color .15s,background .15s}.quality-control:hover{background:rgb(var(--surface-2));border-color:rgb(var(--line-strong))}.quality-control:disabled{opacity:.5}.quality-notice{margin:0 0 12px;font-size:12px;color:rgb(var(--text-warn))}.quality-layout{display:grid;grid-template-columns:270px minmax(0,1fr);min-height:65vh;border-top:1px solid rgb(var(--line))}.quality-history{display:flex;flex-direction:column;gap:10px;padding:16px 16px 16px 0;max-height:72vh;overflow:auto;border-right:1px solid rgb(var(--line))}.quality-history-item{display:flex;flex-direction:column;gap:7px;padding:16px;text-align:left;border:1px solid rgb(var(--line));border-radius:16px;background:rgb(var(--surface));transition:background .15s,border-color .15s}.quality-history-item strong{font-size:13px}.quality-history-item span{color:#168879;font-size:12px}.quality-history-item small{color:rgb(var(--ink-3));font-size:11px}.quality-history-item[aria-pressed=true]{border-color:#33b9a6;background:rgba(20,184,166,.06)}.quality-stage{min-width:0;padding:16px 0 0 18px}.quality-dates{margin:0 0 12px}.quality-model-tabs{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:14px;border-bottom:1px solid rgb(var(--line))}.quality-model-tabs button{padding:10px 14px;border:1px solid rgb(var(--line));border-radius:12px;color:rgb(var(--ink-2));font-size:13px}.quality-model-tabs button[aria-pressed=true]{color:#168879;border-color:#33b9a6;background:rgba(20,184,166,.06)}.quality-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 0}.quality-duration{margin-left:auto;font-size:12px;color:rgb(var(--ink-3))}.quality-preview{overflow:auto;min-height:480px;height:55vh;border:1px solid rgb(var(--line));border-radius:16px;background:rgb(var(--surface-2))}.quality-artifact{display:block;width:100%;height:100%;border:0;background:white}.quality-preview-natural .quality-artifact{width:1200px;min-width:100%}.quality-source{margin:0;padding:18px;font:12px/1.6 monospace;white-space:pre-wrap;overflow-wrap:anywhere}.quality-empty{margin:48px 16px;text-align:center;font-size:13px;color:rgb(var(--ink-3))}.quality-retry{display:block;margin:48px auto}@media(max-width:760px){.quality-layout{grid-template-columns:1fr}.quality-history{flex-direction:row;overflow-x:auto;max-height:145px;border-right:0;padding:12px 0}.quality-history-item{flex:0 0 215px;padding:12px}.quality-stage{padding:16px 0 0}.quality-preview{min-height:400px;height:55vh}.quality-intro{flex-wrap:wrap}}@media(prefers-reduced-motion:reduce){.quality-control,.quality-history-item{transition:none}}
 </style>

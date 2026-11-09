@@ -23,6 +23,11 @@ export interface MonitorTimelinePoint {
 
 export interface UserMonitorView {
   id: number
+  group_id?: number
+  cache_rate?: number | null
+  cache_request_count?: number
+  cache_window_minutes?: number
+  interval_seconds?: number
   name: string
   provider: Provider
   group_name: string

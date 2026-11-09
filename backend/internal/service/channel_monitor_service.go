@@ -81,7 +81,10 @@ type ChannelMonitorService struct {
 	// quotaFetcher 由 wire 通过 SetQuotaFetcher 注入（accountUsage/CN 服务在本服务
 	// 之后构造，构造参数注入会破坏既有依赖顺序）。nil 时 fail-closed：
 	// 配额模式的检测产出「未配置」错误快照，Create/Update 关联账号直接报错。
-	quotaFetcher *ChannelMonitorQuotaFetcher
+	quotaFetcher    *ChannelMonitorQuotaFetcher
+	usageCacheMu    sync.Mutex
+	usageCacheUntil time.Time
+	usageCache      map[string]ChannelMonitorUsageCache
 }
 
 const maxChannelMonitorNameRunes = 100

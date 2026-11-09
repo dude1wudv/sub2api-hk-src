@@ -32,7 +32,7 @@ describe('ChannelStatusView mode switch', () => {
     const wrapper = mountView()
     expect(wrapper.find('[data-testid="v2"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="v1"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="quality"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="quality"]').exists()).toBe(false)
   })
 
   it('renders V1 when in v1 mode', () => {

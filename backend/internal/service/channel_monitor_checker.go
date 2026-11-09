@@ -542,6 +542,9 @@ func postRawJSON(ctx context.Context, fullURL string, payload []byte, headers ma
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
+	// Distinguish synthetic probes from local customer usage in public cache
+	// aggregates. Set after custom headers so probes cannot lose their marker.
+	req.Header.Set("User-Agent", "Sub2API-ChannelMonitor/1.0")
 
 	resp, err := monitorHTTPClient.Do(req)
 	if err != nil {

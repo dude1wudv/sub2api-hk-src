@@ -68,11 +68,20 @@ func (s *ChannelMonitorService) ListUserView(ctx context.Context) ([]*UserMonito
 	summaries := s.BatchMonitorStatusSummary(ctx, ids, primaryByID, extrasByID)
 	latestMap := s.batchLatest(ctx, ids)
 	timelineMap := s.batchTimeline(ctx, ids, primaryByID)
+	usageCache := s.userUsageCache(ctx)
 
 	views := make([]*UserMonitorView, 0, len(monitors))
 	for _, m := range monitors {
 		primaryLatest := pickLatest(latestMap[m.ID], m.PrimaryModel)
-		views = append(views, buildUserViewFromSummary(m, summaries[m.ID], primaryLatest, timelineMap[m.ID]))
+		view := buildUserViewFromSummary(m, summaries[m.ID], primaryLatest, timelineMap[m.ID])
+		view.IntervalSeconds = m.IntervalSeconds
+		view.CacheWindowMinutes = 90
+		if usage, ok := usageCache[m.GroupName]; ok {
+			view.GroupID = usage.GroupID
+			view.CacheRate = usage.CacheRate
+			view.CacheRequestCount = usage.RequestCount
+		}
+		views = append(views, view)
 	}
 	return views, nil
 }

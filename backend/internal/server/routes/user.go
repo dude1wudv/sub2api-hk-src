@@ -165,9 +165,9 @@ func RegisterUserRoutes(
 			monitorV2.GET("/errors", h.ChannelMonitorV2.Errors)
 			monitorV2.GET("/users", h.ChannelMonitorV2.Users)
 		}
-		// Imported artifacts share the user monitor feature and mode guards.
+		// Imported artifacts are available with either monitor mode.
 		quality := authenticated.Group("/channel-monitor-v2/external-quality")
-		quality.Use(panelRateLimiter.Heavy(), channelMonitorModeV2Guard(settingService))
+		quality.Use(panelRateLimiter.Heavy(), channelMonitorAdminFeatureGuard(settingService))
 		quality.GET("", h.ChannelMonitorV2.ExternalQuality)
 		quality.GET("/:id/artwork", h.ChannelMonitorV2.ExternalQualityArtwork)
 	}

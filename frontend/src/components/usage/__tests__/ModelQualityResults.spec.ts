@@ -2,53 +2,54 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import ModelQualityResults from '../ModelQualityResults.vue'
-
-const { getAvailable, getExternalQuality, getExternalQualityArtwork } = vi.hoisted(() => ({ getAvailable: vi.fn(), getExternalQuality: vi.fn(), getExternalQualityArtwork: vi.fn() }))
-vi.mock('@/api/groups', () => ({ userGroupsAPI: { getAvailable } }))
+const { getExternalQuality, getExternalQualityArtwork } = vi.hoisted(() => ({ getExternalQuality: vi.fn(), getExternalQualityArtwork: vi.fn() }))
 vi.mock('@/api/externalQuality', () => ({ getExternalQuality, getExternalQualityArtwork }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ locale: ref('en'), t: (key: string) => key }) }))
-afterEach(() => { vi.clearAllMocks() })
-const event = { id: 5, model_id: 'gpt-6.1-sol', status: 'completed', score: null, created_at: '2026-11-09T00:00:00Z', has_artwork: true }
-const report = { group_id: 237, model: 'gpt-6.1-sol', status: 'stale', last_success_at: '2026-11-09T00:00:00Z', events: [event] }
-describe('ModelQualityResults', () => {
-  it('queries only accessible OpenAI groups and lazily loads artwork without inventing a verdict', async () => {
+afterEach(() => { vi.clearAllMocks(); vi.useRealTimers() })
+const event = { id: 5, model_id: 'gpt-6-astra', status: 'completed', score: null, created_at: '2026-11-09T00:00:00Z', finished_at: '2026-11-09T00:02:00Z', duration_ms: 120000, has_artwork: true }
+const report = { group_id: 237, model: '', status: 'stale', last_success_at: event.finished_at, events: [event] }
+const mountView = () => mount(ModelQualityResults, { props: { groupId: 237, groupName: 'Plus group' }, global: { stubs: { BaseDialog: { name: 'BaseDialog', template: '<div><slot /></div>' } } } })
+describe('ModelQualityResults dialog', () => {
+  it('plays selected output in opaque frame and stops/remounts playback', async () => {
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => false })
-    getAvailable.mockResolvedValue([{ id: 237, name: 'Plus group' }, { id: 179, name: 'DeepSeek group' }, { id: 223, name: 'DeepSeek official' }])
     getExternalQuality.mockResolvedValue(report)
-    getExternalQualityArtwork.mockResolvedValue({ id: 5, group_id: 237, response_text: '<svg><circle r="4" /></svg>' })
-    const wrapper = mount(ModelQualityResults); await flushPromises()
-    expect(getExternalQuality).toHaveBeenCalledTimes(1)
+    getExternalQualityArtwork.mockResolvedValue({ id: 5, group_id: 237, response_text: '<svg><circle r="4" /></svg><script>window.counter=1</script>' })
+    const wrapper = mountView(); await flushPromises()
     expect(getExternalQuality).toHaveBeenCalledWith(237, expect.any(AbortSignal))
-    expect(wrapper.text()).not.toContain('DeepSeek')
     expect(wrapper.text()).toContain('Generated · awaiting review')
     expect(wrapper.text()).not.toContain('Passed')
     expect(wrapper.text()).not.toContain('/ 100')
-    expect(wrapper.find('iframe').exists()).toBe(false)
-    expect(getExternalQualityArtwork).not.toHaveBeenCalled()
-    const details = wrapper.get('details'); (details.element as HTMLDetailsElement).open = true
-    await details.trigger('toggle'); await flushPromises()
     expect(getExternalQualityArtwork).toHaveBeenCalledWith(237, 5, expect.any(AbortSignal))
-    expect(wrapper.get('iframe').attributes('sandbox')).toBe('')
-    expect(wrapper.get('iframe').attributes('srcdoc')).toContain('default-src')
+    expect(wrapper.get('iframe').attributes('sandbox')).toBe('allow-scripts')
+    expect(wrapper.get('iframe').attributes('srcdoc')).toContain("connect-src 'none'")
+    const iframe = wrapper.get('iframe').element
+    await wrapper.findAll('button').find(button => button.text() === 'Stop preview')!.trigger('click')
+    expect(wrapper.find('iframe').exists()).toBe(false)
+    await wrapper.findAll('button').find(button => button.text() === 'Play output')!.trigger('click'); await flushPromises()
+    expect(wrapper.get('iframe').element).not.toBe(iframe)
     wrapper.unmount()
   })
-  it('shows an honest empty state rather than an inferred passing result', async () => {
-    getAvailable.mockResolvedValue([{ id: 72, name: 'Pro group' }])
-    getExternalQuality.mockResolvedValue({ group_id: 72, model: '', status: 'unavailable', events: [] })
-    const wrapper = mount(ModelQualityResults); await flushPromises()
+  it('shows honest empty state without fabricated test type', async () => {
+    getExternalQuality.mockResolvedValue({ ...report, events: [], status: 'unavailable' })
+    const wrapper = mountView(); await flushPromises()
     expect(wrapper.text()).toContain('No test results yet')
     expect(wrapper.text()).not.toContain('Passed')
+    expect(wrapper.text()).not.toContain('Candy')
+    expect(getExternalQualityArtwork).not.toHaveBeenCalled()
     wrapper.unmount()
   })
-  it('filters by exact model without eagerly loading previews', async () => {
-    getAvailable.mockResolvedValue([{ id: 237, name: 'Plus group' }])
-    getExternalQuality.mockResolvedValue({ ...report, events: [event, { ...event, id: 6, model_id: 'gpt-6-astra' }] })
-    const wrapper = mount(ModelQualityResults); await flushPromises()
-    expect(wrapper.findAll('details')).toHaveLength(2)
-    await wrapper.findAll('.quality-model-tabs button').find(b => b.text() === 'gpt-6-astra')!.trigger('click')
-    expect(wrapper.findAll('details')).toHaveLength(1)
-    expect(wrapper.get('details').text()).toContain('gpt-6-astra')
-    expect(getExternalQualityArtwork).not.toHaveBeenCalled()
+  it('switches exact model and aborts polling when closed', async () => {
+    vi.useFakeTimers()
+    getExternalQuality.mockResolvedValue({ ...report, events: [event, { ...event, id: 6, model_id: 'gpt-6.1-sol' }] })
+    getExternalQualityArtwork.mockResolvedValue({ response_text: '<div>output</div>' })
+    const wrapper = mountView(); await flushPromises()
+    expect(wrapper.findAll('.quality-history-item')).toHaveLength(1)
+    await wrapper.findAll('.quality-model-tabs button').find(button => button.text() === 'gpt-6.1-sol')!.trigger('click'); await flushPromises()
+    expect(getExternalQualityArtwork).toHaveBeenLastCalledWith(237, 6, expect.any(AbortSignal))
+    wrapper.findComponent({ name: 'BaseDialog' }).vm.$emit('close'); await flushPromises()
+    expect(wrapper.emitted('close')).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(120000)
+    expect(getExternalQuality).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 })
