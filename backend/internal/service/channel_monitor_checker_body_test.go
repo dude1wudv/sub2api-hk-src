@@ -563,3 +563,11 @@ func TestGeminiMonitorBodyIncludesExplicitUserRole(t *testing.T) {
 		t.Fatalf("contents[0].role = %q, want user", payload.Contents[0].Role)
 	}
 }
+
+func TestExtractMonitorStreamText_DoesNotDuplicateLegacyTextAlias(t *testing.T) {
+	body := []byte("data: {\"choices\":[{\"delta\":{\"content\":\"14\"},\"text\":\"14\"}]}\n\ndata: [DONE]\n\n")
+	got := extractMonitorStreamText(MonitorProviderOpenAI, MonitorAPIModeChatCompletions, providerOpenAIChatAdapter, body)
+	if got != "14" {
+		t.Fatalf("stream parser duplicated delta/text aliases: got %q", got)
+	}
+}

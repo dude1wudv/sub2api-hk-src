@@ -410,13 +410,20 @@ func extractStreamEventText(provider, apiMode string, event map[string]any) stri
 			if !ok {
 				continue
 			}
+			wroteDelta := false
 			if delta, ok := choice["delta"].(map[string]any); ok {
 				if value, ok := delta["content"].(string); ok {
 					text.WriteString(value)
+					wroteDelta = true
 				}
 			}
-			if value, ok := choice["text"].(string); ok {
-				text.WriteString(value)
+			// Some OpenAI-compatible relays include both the modern delta field
+			// and the legacy text field in one SSE chunk. They represent the same
+			// token; prefer delta to avoid doubling the challenge answer.
+			if !wroteDelta {
+				if value, ok := choice["text"].(string); ok {
+					text.WriteString(value)
+				}
 			}
 		}
 		return text.String()
