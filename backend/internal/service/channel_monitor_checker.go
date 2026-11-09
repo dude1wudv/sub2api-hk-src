@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -138,6 +139,7 @@ func pingEndpointOrigin(ctx context.Context, endpoint string) *int {
 	if err != nil {
 		return nil
 	}
+	req.Header.Set("User-Agent", monitorClientUserAgent)
 	start := time.Now()
 	resp, err := monitorPingHTTPClient.Do(req)
 	if err != nil {
@@ -238,7 +240,7 @@ func newOpenAICompatibleChatAdapter(path string) providerAdapter {
 				"model":      model,
 				"messages":   []map[string]string{{"role": "user", "content": prompt}},
 				"max_tokens": monitorChallengeMaxTokens,
-				"stream":     false,
+				"stream":     true,
 			})
 		},
 		buildHeaders: func(apiKey string) map[string]string {
@@ -257,7 +259,7 @@ var providerOpenAIResponsesAdapter = providerAdapter{
 			"instructions":      "You are a channel health-check endpoint. Answer the arithmetic challenge exactly and briefly.",
 			"input":             prompt,
 			"max_output_tokens": monitorChallengeMaxTokens,
-			"stream":            false,
+			"stream":            true,
 		})
 	},
 	buildHeaders: func(apiKey string) map[string]string {
@@ -297,15 +299,134 @@ func callProvider(ctx context.Context, provider, endpoint, apiKey, model, prompt
 		return "", "", 0, err
 	}
 	headers := mergeHeaders(adapter.buildHeaders(apiKey), opts)
-	full := joinURL(endpoint, monitorRequestPath(provider, endpoint, adapter, model))
+	body = forceStreamingBody(provider, body)
+	full := joinURL(endpoint, monitorStreamingRequestPath(provider, endpoint, adapter, model))
 	respBytes, status, err := postRawJSON(ctx, full, body, headers)
 	if err != nil {
 		return "", "", status, err
 	}
-	if provider == MonitorProviderOpenAI && apiMode == MonitorAPIModeResponses {
-		return extractOpenAIResponsesText(respBytes), string(respBytes), status, nil
+	return extractMonitorStreamText(provider, apiMode, adapter, respBytes), string(respBytes), status, nil
+}
+
+// forceStreamingBody makes even a replace-mode template use the active probe
+// streaming contract. The body remains user-shaped apart from this transport
+// flag; challenge validation is still skipped for replace mode.
+func forceStreamingBody(provider string, body []byte) []byte {
+	if provider == MonitorProviderGemini {
+		return body
 	}
-	return extractMonitorResponseText(adapter, respBytes), string(respBytes), status, nil
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return body
+	}
+	payload["stream"] = true
+	updated, err := json.Marshal(payload)
+	if err != nil {
+		return body
+	}
+	return updated
+}
+
+// extractMonitorStreamText accepts SSE responses from the supported upstreams
+// and falls back to a normal JSON response for compatibility with gateways that
+// ignore stream=true. Only bounded response bytes reach this parser.
+func extractMonitorStreamText(provider, apiMode string, adapter providerAdapter, body []byte) string {
+	if !looksLikeMonitorSSE(body) {
+		if provider == MonitorProviderOpenAI && apiMode == MonitorAPIModeResponses {
+			return extractOpenAIResponsesText(body)
+		}
+		return extractMonitorResponseText(adapter, body)
+	}
+
+	var parts []string
+	scanner := bufio.NewScanner(bytes.NewReader(body))
+	scanner.Buffer(make([]byte, 1024), monitorResponseMaxBytes)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		if data == "" || data == "[DONE]" {
+			continue
+		}
+		var event map[string]any
+		if json.Unmarshal([]byte(data), &event) != nil {
+			continue
+		}
+		if text := extractStreamEventText(provider, apiMode, event); text != "" {
+			parts = append(parts, text)
+		}
+	}
+	return strings.Join(parts, "")
+}
+
+func looksLikeMonitorSSE(body []byte) bool {
+	scanner := bufio.NewScanner(bytes.NewReader(body))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "data:") || strings.HasPrefix(line, "event:") {
+			return true
+		}
+	}
+	return false
+}
+
+func extractStreamEventText(provider, apiMode string, event map[string]any) string {
+	if provider == MonitorProviderOpenAI && apiMode == MonitorAPIModeResponses {
+		if text, ok := event["delta"].(string); ok {
+			return text
+		}
+		if text, ok := event["output_text"].(string); ok {
+			return text
+		}
+		if response, ok := event["response"].(map[string]any); ok {
+			if text := extractOpenAIResponsesText(marshalMonitorJSON(response)); text != "" {
+				return text
+			}
+		}
+		return ""
+	}
+	if provider == MonitorProviderAnthropic {
+		if delta, ok := event["delta"].(map[string]any); ok {
+			if text, ok := delta["text"].(string); ok {
+				return text
+			}
+		}
+		if block, ok := event["content_block"].(map[string]any); ok {
+			if text, ok := block["text"].(string); ok {
+				return text
+			}
+		}
+		return ""
+	}
+	if provider == MonitorProviderGemini {
+		return gjson.GetBytes(marshalMonitorJSON(event), "candidates.0.content.parts.0.text").String()
+	}
+	if choices, ok := event["choices"].([]any); ok {
+		var text strings.Builder
+		for _, raw := range choices {
+			choice, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			if delta, ok := choice["delta"].(map[string]any); ok {
+				if value, ok := delta["content"].(string); ok {
+					text.WriteString(value)
+				}
+			}
+			if value, ok := choice["text"].(string); ok {
+				text.WriteString(value)
+			}
+		}
+		return text.String()
+	}
+	return ""
+}
+
+func marshalMonitorJSON(value any) []byte {
+	data, _ := json.Marshal(value)
+	return data
 }
 
 func extractMonitorResponseText(adapter providerAdapter, respBytes []byte) string {
@@ -538,13 +659,13 @@ func postRawJSON(ctx context.Context, fullURL string, payload []byte, headers ma
 		return nil, 0, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	// Distinguish synthetic probes from local customer usage in public cache
-	// aggregates. Set after custom headers so probes cannot lose their marker.
-	req.Header.Set("User-Agent", "Sub2API-ChannelMonitor/1.0")
+	// Match the client identity used by the V1 active probe traffic. Set after
+	// custom headers so a monitor template cannot replace the probe UA.
+	req.Header.Set("User-Agent", monitorClientUserAgent)
 
 	resp, err := monitorHTTPClient.Do(req)
 	if err != nil {
@@ -578,6 +699,20 @@ func monitorRequestPath(provider, endpoint string, adapter providerAdapter, mode
 		return adapter.buildPath(model)
 	}
 	return providerOpenAIPath
+}
+
+// monitorStreamingRequestPath maps providers whose streaming API uses a
+// distinct endpoint. OpenAI-compatible chat, Responses, and Anthropic keep
+// their normal path and select SSE through the request body.
+func monitorStreamingRequestPath(provider, endpoint string, adapter providerAdapter, model string) string {
+	path := monitorRequestPath(provider, endpoint, adapter, model)
+	if provider == MonitorProviderGemini {
+		path = strings.Replace(path, ":generateContent", ":streamGenerateContent", 1)
+		if !strings.Contains(path, "?") {
+			path += "?alt=sse"
+		}
+	}
+	return path
 }
 
 func isZhipuOfficialHost(u *url.URL) bool {

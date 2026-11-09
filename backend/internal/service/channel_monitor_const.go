@@ -124,6 +124,8 @@ const (
 	monitorAnthropicAPIVersion = "2023-06-01"
 	// monitorChallengeMaxTokens 单次 challenge 请求的 max_tokens（足够回答个位数算术）。
 	monitorChallengeMaxTokens = 50
+	// monitorClientUserAgent identifies V1 active probes to upstreams and cache accounting.
+	monitorClientUserAgent = "codex-tui/0.167.0 (Ubuntu 22.4.0; x86_64)"
 
 	// monitorRunOneBuffer runOne 的总超时缓冲（除请求超时与 ping 超时外的额外裕量）。
 	monitorRunOneBuffer = 10 * time.Second

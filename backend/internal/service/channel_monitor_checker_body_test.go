@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -41,8 +42,14 @@ func (h *captureHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.status == 0 {
 		h.status = 200
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/event-stream")
 	w.WriteHeader(h.status)
+	if h.status >= 200 && h.status < 300 && parsed["stream"] == true {
+		_, _ = fmt.Fprintf(w, "event: content_block_delta\ndata: %s\n\ndata: [DONE]\n\n", marshalMonitorJSON(map[string]any{
+			"type": "content_block_delta", "delta": map[string]any{"type": "text_delta", "text": h.respondText},
+		}))
+		return
+	}
 	// 构造 Anthropic 格式的响应：content[0].text = h.respondText
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"content": []map[string]any{
@@ -79,7 +86,7 @@ func (h *openAICaptureHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	if h.status == 0 {
 		h.status = http.StatusOK
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/event-stream")
 	w.WriteHeader(h.status)
 	if h.rawResponse != "" {
 		_, _ = w.Write([]byte(h.rawResponse))
@@ -87,6 +94,18 @@ func (h *openAICaptureHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	answer := answerFromOpenAIRequest(parsed)
+	if h.status >= 200 && h.status < 300 && parsed["stream"] == true {
+		if h.lastPath == providerOpenAIResponsesPath {
+			_, _ = fmt.Fprintf(w, "event: response.output_text.delta\ndata: %s\n\ndata: [DONE]\n\n", marshalMonitorJSON(map[string]any{
+				"type": "response.output_text.delta", "delta": answer,
+			}))
+		} else {
+			_, _ = fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", marshalMonitorJSON(map[string]any{
+				"choices": []map[string]any{{"delta": map[string]any{"content": answer}}},
+			}))
+		}
+		return
+	}
 	if h.lastPath == providerOpenAIResponsesPath {
 		output := []map[string]any{}
 		if h.responsesLeadingReasoning {
@@ -187,8 +206,8 @@ func TestRunCheckForModel_OpenAI_DefaultChatRequest(t *testing.T) {
 	if _, ok := h.lastBody["instructions"]; ok {
 		t.Error("chat body must not contain top-level instructions")
 	}
-	if h.lastBody["stream"] != false {
-		t.Errorf("chat body should set stream=false, got %v", h.lastBody["stream"])
+	if h.lastBody["stream"] != true {
+		t.Errorf("chat body should set stream=true, got %v", h.lastBody["stream"])
 	}
 	if h.lastHeaders.Get("Authorization") != "Bearer sk-openai" {
 		t.Errorf("expected bearer auth header, got %q", h.lastHeaders.Get("Authorization"))
@@ -202,8 +221,8 @@ func TestChannelMonitorProbeMarkerCannotBeOverridden(t *testing.T) {
 	if res.Status != MonitorStatusOperational {
 		t.Fatalf("probe failed: %s", res.Status)
 	}
-	if got := h.lastHeaders.Get("User-Agent"); got != "Sub2API-ChannelMonitor/1.0" {
-		t.Fatalf("probe must have its synthetic marker, got %q", got)
+	if got := h.lastHeaders.Get("User-Agent"); got != monitorClientUserAgent {
+		t.Fatalf("probe must use the codex client UA, got %q", got)
 	}
 }
 
@@ -246,8 +265,8 @@ func TestRunCheckForModel_Grok_DefaultChatRequest(t *testing.T) {
 	if _, ok := h.lastBody["messages"]; !ok {
 		t.Error("Grok body should contain messages")
 	}
-	if h.lastBody["stream"] != false {
-		t.Errorf("Grok body should set stream=false, got %v", h.lastBody["stream"])
+	if h.lastBody["stream"] != true {
+		t.Errorf("Grok body should set stream=true, got %v", h.lastBody["stream"])
 	}
 	if h.lastHeaders.Get("Authorization") != "Bearer xai-key" {
 		t.Errorf("expected Grok bearer auth header, got %q", h.lastHeaders.Get("Authorization"))
@@ -330,8 +349,8 @@ func TestRunCheckForModel_OpenAIResponses_DefaultRequest(t *testing.T) {
 	if _, ok := h.lastBody["messages"]; ok {
 		t.Error("responses body must not contain chat messages")
 	}
-	if h.lastBody["stream"] != false {
-		t.Errorf("responses body should set stream=false, got %v", h.lastBody["stream"])
+	if h.lastBody["stream"] != true {
+		t.Errorf("responses body should set stream=true, got %v", h.lastBody["stream"])
 	}
 	if h.lastHeaders.Get("Authorization") != "Bearer sk-openai" {
 		t.Errorf("expected bearer auth header, got %q", h.lastHeaders.Get("Authorization"))
@@ -414,9 +433,9 @@ func TestRunCheckForModel_MergeMode_UserFieldsWinButDenyListProtects(t *testing.
 	if len(msgs) == 0 {
 		t.Error("messages should be protected by deny list (kept default, non-empty)")
 	}
-	// header 合并
-	if h.lastHeaders.Get("User-Agent") != "claude-cli/1.0" {
-		t.Errorf("extra User-Agent should override, got %q", h.lastHeaders.Get("User-Agent"))
+	// The active probe identity is reserved even when a template supplies a UA.
+	if h.lastHeaders.Get("User-Agent") != monitorClientUserAgent {
+		t.Errorf("probe User-Agent should be fixed, got %q", h.lastHeaders.Get("User-Agent"))
 	}
 	if h.lastHeaders.Get("x-custom") != "ok" {
 		t.Errorf("extra custom header should be present, got %q", h.lastHeaders.Get("x-custom"))
