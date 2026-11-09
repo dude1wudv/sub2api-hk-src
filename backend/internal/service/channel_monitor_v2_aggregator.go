@@ -110,6 +110,7 @@ func (s *ChannelMonitorV2Aggregator) Start() {
 			}
 		}
 		go s.loop()
+		go s.externalQualityCleanupLoop(s.ctx)
 	})
 }
 

@@ -6,6 +6,7 @@ const isV1 = vi.fn(() => false)
 
 vi.mock('@/utils/featureFlags', () => ({
   isChannelMonitorV1Mode: () => isV1(),
+  isChannelMonitorV2Mode: () => !isV1(),
 }))
 
 vi.mock('../ChannelStatusV1View.vue', () => ({
@@ -17,6 +18,10 @@ vi.mock('../ChannelStatusV2View.vue', () => ({
 
 import ChannelStatusView from '../ChannelStatusView.vue'
 
+const mountView = () => mount(ChannelStatusView, {
+  global: { stubs: { ModelQualityResults: { template: '<div data-testid="quality" />' } } },
+})
+
 describe('ChannelStatusView mode switch', () => {
   beforeEach(() => {
     isV1.mockReset()
@@ -24,15 +29,17 @@ describe('ChannelStatusView mode switch', () => {
 
   it('renders V2 when not in v1 mode', () => {
     isV1.mockReturnValue(false)
-    const wrapper = mount(ChannelStatusView)
+    const wrapper = mountView()
     expect(wrapper.find('[data-testid="v2"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="v1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="quality"]').exists()).toBe(true)
   })
 
   it('renders V1 when in v1 mode', () => {
     isV1.mockReturnValue(true)
-    const wrapper = mount(ChannelStatusView)
+    const wrapper = mountView()
     expect(wrapper.find('[data-testid="v1"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="v2"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="quality"]').exists()).toBe(false)
   })
 })

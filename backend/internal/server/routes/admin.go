@@ -840,6 +840,9 @@ func registerChannelMonitorV2Routes(admin *gin.RouterGroup, h *handler.Handlers,
 		{
 			config.GET("/config", h.ChannelMonitorV2.GetConfig)
 			config.PUT("/config", h.ChannelMonitorV2.UpdateConfig)
+			config.GET("/external-quality", h.ChannelMonitorV2.ExternalQuality)
+			config.GET("/external-quality/:id/artwork", h.ChannelMonitorV2.ExternalQualityArtwork)
+			config.POST("/external-quality/import", h.ChannelMonitorV2.ImportExternalQuality)
 		}
 		reads := monitor.Group("")
 		reads.Use(modeV2Guard)
