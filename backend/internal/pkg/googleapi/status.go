@@ -20,6 +20,8 @@ func HTTPStatusToGoogleStatus(status int) string {
 		return "RESOURCE_EXHAUSTED"
 	case 499: // client closed request
 		return "CANCELLED"
+	case http.StatusServiceUnavailable:
+		return "UNAVAILABLE"
 	default:
 		if status >= 500 {
 			return "INTERNAL"

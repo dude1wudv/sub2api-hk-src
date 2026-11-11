@@ -773,6 +773,7 @@ func (s *ConcurrencyService) TrackAPIKeySlotOwned(ctx context.Context, apiKeyID 
 	cancel()
 	if err != nil {
 		logger.LegacyPrintf("service.concurrency", "Warning: failed to track api key slot for %d (req=%s): %v", apiKeyID, requestID, err)
+		return "", func() {}, func() {}
 	}
 
 	release, pause := keepAPIKeySlotState(ctx, cache, apiKeyID, requestID)

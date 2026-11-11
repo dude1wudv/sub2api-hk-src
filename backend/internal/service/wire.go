@@ -648,8 +648,10 @@ func ProvideIdempotencyCleanupService(repo IdempotencyRepository, cfg *config.Co
 }
 
 // ProvideGeminiCachedContentService creates GeminiCachedContentService and starts its mutation recovery loop.
-func ProvideGeminiCachedContentService(repo GeminiCachedContentRepository, compat *GeminiMessagesCompatService, cfg *config.Config) *GeminiCachedContentService {
+func ProvideGeminiCachedContentService(repo GeminiCachedContentRepository, compat *GeminiMessagesCompatService, cfg *config.Config, gateway *GatewayService, keys *APIKeyService) *GeminiCachedContentService {
 	svc := NewGeminiCachedContentService(repo, compat, cfg)
+	svc.SetBillingGateway(gateway)
+	svc.SetAuthCacheInvalidator(keys)
 	svc.Start()
 	return svc
 }

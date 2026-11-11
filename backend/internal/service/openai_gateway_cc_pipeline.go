@@ -196,6 +196,9 @@ func (s *OpenAIGatewayService) sendCCUpstreamRequest(
 	userAgent string,
 	grokCacheIdentity string,
 ) (*http.Response, error) {
+	if account != nil && account.Platform == PlatformDeepseek {
+		body = normalizeDeepSeekChatMessages(dropOrphanDeepSeekToolMessages(body))
+	}
 	// DeepSeek thinking mode 要求历史 assistant 回传 reasoning_content。
 	// Responses→CC 回退在加密-only / 缺 reasoning item 且缓存未命中时会漏掉该
 	// 字段，上游 400 "The `reasoning_content` in the thinking mode must be

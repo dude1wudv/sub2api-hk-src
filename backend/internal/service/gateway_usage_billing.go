@@ -886,6 +886,9 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 		)
 		addCacheStorageToAccountStatsCost(usageLog, cacheStorageCost)
 	}
+	if capturePreparedCachedContentCharge(ctx, usageLog, input, cost, accountRateMultiplier, isSubscriptionBilling, s.cfg) {
+		return nil
+	}
 	s.rateLimitService.ObserveUsageFirstToken(ctx, usageLog, account.SlowTTFTConfig())
 
 	simpleModeKeyRateLimitOnly := simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
