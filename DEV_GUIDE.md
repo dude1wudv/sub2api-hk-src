@@ -54,7 +54,7 @@ npm install -g pnpm
 
 ### CI 要求
 
-- Go 版本要求为 **1.27.3**：CI workflow 从 `backend/go.mod` 读取版本并断言为 `go1.27.3`；三个 Dockerfile（`Dockerfile`、`deploy/Dockerfile`、`backend/Dockerfile`）与 `deploy/build_image.sh` 的默认构建镜像必须同步。漏改构建镜像会在 `GOTOOLCHAIN=local` 下触发 `go.mod requires go >= X`。
+- Go 版本要求为 **1.27.4**：CI workflow 从 `backend/go.mod` 读取版本并断言为 `go1.27.4`；三个 Dockerfile（`Dockerfile`、`deploy/Dockerfile`、`backend/Dockerfile`）与 `deploy/build_image.sh` 的默认构建镜像必须同步。漏改构建镜像会在 `GOTOOLCHAIN=local` 下触发 `go.mod requires go >= X`。
 - 前端使用 `pnpm install --frozen-lockfile`，必须提交 `pnpm-lock.yaml`
 
 ### 本地测试命令
