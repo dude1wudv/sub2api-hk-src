@@ -23,9 +23,25 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 333
+	candidateMigrationCount         = 340
 	mcpOAuthMigration               = "249_mcp_oauth.sql"
 )
+
+var currentOnlineFollowupMigrations = []string{
+	"249_add_usage_logs_api_key_cost_index_notx.sql",
+	"250_openai_cache_write_ttl.sql",
+	"338_gemini_cached_content_charge_intent.sql",
+}
+
+var postHKBaselineMigrations = []string{
+	"249_add_usage_logs_api_key_cost_index_notx.sql",
+	"250_openai_cache_write_ttl.sql",
+	"334_api_key_concurrency_limit.sql",
+	"335_user_traffic.sql",
+	"336_user_traffic_cursor_indexes_notx.sql",
+	"337_external_quality_history.sql",
+	"338_gemini_cached_content_charge_intent.sql",
+}
 
 // Keep the 322-migration HK release fixed while later additive migrations evolve.
 // The immediately previous v0.2.16-hk1 release contains the first five entries.
@@ -88,6 +104,13 @@ var candidateOnlyMigrations = []string{
 	"248_usage_log_service_tier_observation.sql",
 	"249_add_usage_log_output_tokens_estimated.sql",
 	"250_enable_gemini_image_generation_groups.sql",
+	"249_add_usage_logs_api_key_cost_index_notx.sql",
+	"250_openai_cache_write_ttl.sql",
+	"334_api_key_concurrency_limit.sql",
+	"335_user_traffic.sql",
+	"336_user_traffic_cursor_indexes_notx.sql",
+	"337_external_quality_history.sql",
+	"338_gemini_cached_content_charge_intent.sql",
 }
 
 func TestUpstreamMergeValidation_ProductionHistoryAndFreshSchemaConverge(t *testing.T) {
@@ -159,7 +182,7 @@ func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testi
 			ctx := context.Background()
 			history := fstest.MapFS{}
 			for _, name := range migrationFiles(t, migrations.FS) {
-				if name == mcpOAuthMigration || (!baseline.includesScopedKeysAndImageCount &&
+				if name == mcpOAuthMigration || slices.Contains(postHKBaselineMigrations, name) || (!baseline.includesScopedKeysAndImageCount &&
 					(name == "247_scoped_admin_api_keys.sql" || name == "248_group_image_count_billing.sql")) ||
 					slices.Contains(baseline.skipMigrations, name) || (baseline.skipRepairs &&
 					(name == "242_drop_platform_check_constraints.sql" || name == "246_hk_platform_catalog_constraints.sql")) {
@@ -197,6 +220,44 @@ func TestUpstreamMergeValidation_CurrentHKHistoryAndFreshSchemaConverge(t *testi
 			require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
 		})
 	}
+}
+
+func TestUpstreamMergeValidation_CurrentOnlineHistoryAndFreshSchemaConverge(t *testing.T) {
+	ctx := context.Background()
+	history := fstest.MapFS{}
+	for _, name := range migrationFiles(t, migrations.FS) {
+		if slices.Contains(currentOnlineFollowupMigrations, name) {
+			continue
+		}
+		content, err := migrations.FS.ReadFile(name)
+		require.NoError(t, err)
+		history[name] = &fstest.MapFile{Data: content}
+	}
+	require.Len(t, history, 337)
+
+	container, err := tcpostgres.Run(ctx, selectDockerImage(ctx, postgresImageTag),
+		tcpostgres.WithDatabase("online_337_history"), tcpostgres.WithUsername("postgres"),
+		tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = container.Terminate(ctx) })
+	dsn, err := container.ConnectionString(ctx, "sslmode=disable", "TimeZone=UTC")
+	require.NoError(t, err)
+	db, err := openSQLWithRetry(ctx, dsn, 30*time.Second)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	require.NoError(t, applyMigrationsFS(ctx, db, history))
+	before := migrationChecksums(t, db, "public")
+	require.Len(t, before, 337)
+	requireMigrationChecksumsMatchFiles(t, history, before)
+
+	require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
+	after := migrationChecksums(t, db, "public")
+	require.Len(t, after, candidateMigrationCount)
+	requireMigrationChecksumsMatchFiles(t, migrations.FS, after)
+	require.Equal(t, schemaFingerprint(t, integrationDB, "public"), schemaFingerprint(t, db, "public"))
+	require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
+	require.Zero(t, invalidIndexCount(t, db, "public"))
 }
 
 func TestUpstreamMergeValidation_RequiredContractsAndLegacyExclusions(t *testing.T) {
