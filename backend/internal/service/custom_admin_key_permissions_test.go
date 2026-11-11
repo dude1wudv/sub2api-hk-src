@@ -56,7 +56,7 @@ func TestScopedAdminPermissionCapacityScopesBeforeAggregation(t *testing.T) {
 	result, err := svc.GetAllGroupCapacity(ctx)
 	require.NoError(t, err)
 	require.Equal(t, []int64{2}, accounts.requested)
-	require.Equal(t, []GroupCapacitySummary{{GroupID: 2}}, result)
+	require.Equal(t, []GroupCapacitySummary{{GroupID: 2, RuntimeKnown: true}}, result)
 	require.Zero(t, groups.listCalls)
 	svc.groupRepo = &groupCapacityGroupRepoStub{}
 	_, err = svc.GetAllGroupCapacity(ctx)
