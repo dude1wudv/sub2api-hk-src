@@ -152,3 +152,9 @@ func TestModelsDevMetadataExtendedFieldsAndMerge(t *testing.T) {
 	require.Equal(t, metadata.Family, merged.Family)
 	require.Equal(t, metadata.ReleaseDate, merged.ReleaseDate)
 }
+
+// Used to seed an unpublished catalogue in tests. Production builds a new index
+// outside the lock so even a large registry cannot stall catalogue reads.
+func (c *ModelMetadataCatalog) installRegistry(registry map[string]modelsDevProvider) {
+	c.entries, c.families = buildMetadataRegistry(registry)
+}

@@ -16,7 +16,7 @@ func TestUserAvailableGroupHintContract(t *testing.T) {
 	now := time.Now().UTC()
 	rate := 1.5
 	change := &service.GroupRateChange{OldRate: 2, NewRate: rate, ChangedAt: now}
-	g := service.Group{ID: 1, LaunchedAt: &now, LaunchRate: &rate, IsNew: true, RecentRateChange: change}
+	g := service.Group{ID: 1, LaunchedAt: &now, LaunchRate: &rate, IsNew: true, RecentRateChange: change, RateHintsAuthorized: true}
 	groups := filterUserVisibleGroups([]service.AvailableGroupRef{{ID: 1}, {ID: 2}}, map[int64]struct{}{1: {}})
 	applyUserGroupHints(groups, map[int64]service.Group{1: g})
 	require.Len(t, groups, 1)
@@ -35,4 +35,11 @@ func TestUserAvailableGroupHintContract(t *testing.T) {
 	data, err := json.Marshal(groups[0])
 	require.NoError(t, err)
 	require.Contains(t, string(data), `"recent_rate_change":null`)
+	g.RateHintsAuthorized = false
+	g.RecentRateChange = change
+	applyUserGroupHints(groups, map[int64]service.Group{1: g})
+	require.Nil(t, groups[0].LaunchRate, "raw nested groups cannot bypass the personal-rate check")
+	require.Nil(t, groups[0].RecentRateChange)
+	require.True(t, groups[0].IsNew)
+	require.Equal(t, &now, groups[0].LaunchedAt)
 }

@@ -209,12 +209,6 @@ func (c *ModelMetadataCatalog) fetch(ctx context.Context) (map[string]modelsDevP
 	return registry, nil
 }
 
-// Used to seed an unpublished catalogue in tests. Production builds a new index
-// outside the lock so even a large registry cannot stall catalogue reads.
-func (c *ModelMetadataCatalog) installRegistry(registry map[string]modelsDevProvider) {
-	c.entries, c.families = buildMetadataRegistry(registry)
-}
-
 func buildMetadataRegistry(registry map[string]modelsDevProvider) (map[string][]modelMetadataEntry, []string) {
 	entries := map[string][]modelMetadataEntry{}
 	families := map[string]bool{}

@@ -9,7 +9,12 @@ func applyUserGroupHints(groups []userAvailableGroup, visible map[int64]service.
 			groups[i].LaunchedAt = g.LaunchedAt
 			groups[i].LaunchRate = g.LaunchRate
 			groups[i].IsNew = g.IsNew
-			groups[i].RecentRateChange = g.RecentRateChange
+			if g.RateHintsAuthorized {
+				groups[i].RecentRateChange = g.RecentRateChange
+			} else {
+				groups[i].LaunchRate = nil
+				groups[i].RecentRateChange = nil
+			}
 		}
 	}
 }

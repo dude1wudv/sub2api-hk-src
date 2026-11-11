@@ -135,6 +135,10 @@ func GroupFromServiceShallow(g *service.Group) *Group {
 		return nil
 	}
 	out := groupFromServiceBase(g)
+	if !g.RateHintsAuthorized {
+		out.LaunchRate = nil
+		out.RecentRateChange = nil
+	}
 	return &out
 }
 
@@ -152,6 +156,8 @@ func GroupFromServiceAdmin(g *service.Group) *AdminGroup {
 		return nil
 	}
 	out := &AdminGroup{
+		// Admins inspect the stored base-rate publication regardless of a
+		// user-specific hint check; user/nested mappers use the gate above.
 		Group:                       groupFromServiceBase(g),
 		ForceOpenAIFast:             g.ForceOpenAIFast,
 		ForceOpenAIUltrafast:        g.ForceOpenAIUltrafast,

@@ -42,15 +42,23 @@ func (s *APIKeyService) enrichAvailableGroups(ctx context.Context, userID int64,
 		ids[i] = groups[i].ID
 		groups[i].IsNew = groups[i].IsNewAt(now)
 		groups[i].RecentRateChange = nil
+		groups[i].RateHintsAuthorized = false
 	}
 	if len(ids) == 0 {
 		return
 	}
 	rates, err := s.GetUserGroupRates(ctx, userID)
 	for i := range groups {
-		if _, fixed := rates[groups[i].ID]; fixed || err != nil {
+		if _, fixed := rates[groups[i].ID]; fixed || err != nil || s.userGroupRateRepo == nil {
 			groups[i].LaunchRate = nil
+		} else {
+			// A history outage may suppress the recent change while this known
+			// base-rate launch snapshot remains valid for the checked user.
+			groups[i].RateHintsAuthorized = true
 		}
+	}
+	if s.userGroupRateRepo == nil {
+		return
 	}
 	if err != nil {
 		// Unknown personal overrides must not expose base-rate launch hints either.
@@ -67,7 +75,7 @@ func (s *APIKeyService) enrichAvailableGroups(ctx context.Context, userID int64,
 		return
 	}
 	for i := range groups {
-		if _, fixed := rates[groups[i].ID]; fixed {
+		if !groups[i].RateHintsAuthorized {
 			continue
 		}
 		if change, found := changes[groups[i].ID]; found {

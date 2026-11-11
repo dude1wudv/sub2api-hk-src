@@ -79,7 +79,7 @@ func TestAvailableGroupHintsPermissionsPersonalRatesAndFallback(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			launchRate := 1.0
 			repo := &availabilityHistoryRepo{groups: []Group{
-				{ID: 1, Name: "public", RateMultiplier: 1, LaunchedAt: &now, LaunchRate: &launchRate},
+				{ID: 1, Name: "public", RateMultiplier: 1, LaunchedAt: &now, LaunchRate: &launchRate, RateHintsAuthorized: true},
 				{ID: 2, Name: "private", IsExclusive: true},
 				{ID: 3, Name: "subscription", SubscriptionType: SubscriptionTypeSubscription},
 			}, changes: map[int64]GroupRateChange{1: change, 2: change, 3: change}, err: tc.historyErr}
@@ -98,12 +98,27 @@ func TestAvailableGroupHintsPermissionsPersonalRatesAndFallback(t *testing.T) {
 			require.True(t, groups[0].IsNew, "history failures must not suppress independent launch metadata")
 			require.Equal(t, tc.wantHint, groups[0].RecentRateChange != nil)
 			require.Equal(t, !tc.fixed && tc.ratesErr == nil, groups[0].LaunchRate != nil)
+			require.Equal(t, !tc.fixed && tc.ratesErr == nil, groups[0].RateHintsAuthorized, "authorization is recomputed for the current user")
 			require.Equal(t, 1.0, groups[0].RateMultiplier, "rate hints cannot change actual pricing")
 			if tc.wantHint {
 				require.Equal(t, change, *groups[0].RecentRateChange)
 			}
 		})
 	}
+}
+
+func TestAvailableGroupHintsRequirePersonalRateCheck(t *testing.T) {
+	now := time.Now().UTC()
+	rate := 1.0
+	groups := []Group{{ID: 1, LaunchedAt: &now, LaunchRate: &rate, RateHintsAuthorized: true,
+		RecentRateChange: &GroupRateChange{OldRate: 2, NewRate: 1, ChangedAt: now}}}
+	repo := &availabilityHistoryRepo{changes: map[int64]GroupRateChange{1: {OldRate: 2, NewRate: 1, ChangedAt: now}}}
+	svc := &APIKeyService{groupRepo: repo}
+	svc.enrichAvailableGroups(context.Background(), 1, groups, now)
+	require.False(t, groups[0].RateHintsAuthorized, "an absent personal-rate repository cannot authorize hints")
+	require.Nil(t, groups[0].LaunchRate)
+	require.Nil(t, groups[0].RecentRateChange)
+	require.True(t, groups[0].IsNew, "publication identity does not disclose a base rate")
 }
 
 func TestAdminGroupLaunchSnapshotAndPartialUpdate(t *testing.T) {

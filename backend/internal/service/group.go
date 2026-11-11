@@ -26,6 +26,9 @@ type Group struct {
 	LaunchRate       *float64
 	IsNew            bool
 	RecentRateChange *GroupRateChange
+	// RateHintsAuthorized is request-local: only an explicit successful personal
+	// rate check may expose base-rate hints to a user. Never persist or serialize.
+	RateHintsAuthorized bool `json:"-"`
 	// 高峰时段倍率：peak_rate_enabled 为 true 且当前时刻处于 [PeakStart, PeakEnd) 时，
 	// token 计费倍率额外乘以 PeakRateMultiplier。详见 PeakMultiplierAt。
 	PeakRateEnabled    bool
