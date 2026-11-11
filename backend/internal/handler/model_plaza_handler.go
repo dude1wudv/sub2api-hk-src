@@ -65,6 +65,7 @@ type modelPlazaTimePricing struct {
 
 // modelPlazaModel 广场模型条目：实收口径展示定价（白名单形态）+ 官方参考价。
 type modelPlazaModel struct {
+	service.ModelMetadata
 	Name            string                     `json:"name"`
 	Platform        string                     `json:"platform"`
 	Pricing         *userSupportedModelPricing `json:"pricing"`
@@ -203,6 +204,7 @@ func toModelPlazaGroupDTO(g *service.PlazaGroup, userRates map[int64]float64) mo
 	for i := range g.Models {
 		m := &g.Models[i]
 		models = append(models, modelPlazaModel{
+			ModelMetadata:    m.ModelMetadata,
 			Name:             m.Name,
 			Platform:         m.Platform,
 			Pricing:          toUserPricing(m.Pricing),

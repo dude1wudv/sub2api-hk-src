@@ -72,6 +72,7 @@
                         :user-rate-multiplier="userGroupRates[g.id] ?? null"
                         always-show-rate
                       />
+                      <GroupChangeIndicator :group="g" />
                       <span
                         v-if="hasPeakRate(g)"
                         class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
@@ -107,6 +108,7 @@
                         :user-rate-multiplier="userGroupRates[g.id] ?? null"
                         always-show-rate
                       />
+                      <GroupChangeIndicator :group="g" />
                       <span
                         v-if="hasPeakRate(g)"
                         class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
@@ -160,6 +162,7 @@ import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import GroupBadge from '@/components/common/GroupBadge.vue'
+import GroupChangeIndicator from '@/components/common/GroupChangeIndicator.vue'
 import SupportedModelChip from './SupportedModelChip.vue'
 import type { UserAvailableChannel, UserAvailableGroup, UserChannelPlatformSection } from '@/api/channels'
 import type { GroupPlatform, SubscriptionType } from '@/types'

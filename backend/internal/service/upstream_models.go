@@ -41,6 +41,10 @@ type UpstreamModelMetadata struct {
 	DefaultReasoningLevel    string                     `json:"default_reasoning_level,omitempty"`
 	SupportedReasoningLevels []string                   `json:"supported_reasoning_levels,omitempty"`
 	InputModalities          []string                   `json:"input_modalities,omitempty"`
+	OutputModalities         []string                   `json:"output_modalities,omitempty"`
+	ToolCall                 *bool                      `json:"tool_call,omitempty"`
+	Family                   string                     `json:"family,omitempty"`
+	ReleaseDate              string                     `json:"release_date,omitempty"`
 	ContextWindow            int64                      `json:"context_window,omitempty"`
 	MaxContextWindow         int64                      `json:"max_context_window,omitempty"`
 	MaxOutputTokens          int64                      `json:"max_output_tokens,omitempty"`
@@ -86,6 +90,9 @@ type modelsDevModel struct {
 	Name             string                     `json:"name"`
 	Description      string                     `json:"description"`
 	Reasoning        *bool                      `json:"reasoning"`
+	ToolCall         *bool                      `json:"tool_call"`
+	Family           string                     `json:"family"`
+	ReleaseDate      string                     `json:"release_date"`
 	ReasoningOptions []modelsDevReasoningOption `json:"reasoning_options"`
 	Modalities       modelsDevModalities        `json:"modalities"`
 	Limit            modelsDevLimit             `json:"limit"`
@@ -446,6 +453,8 @@ func upstreamModelMetadataIsUseful(metadata UpstreamModelMetadata) bool {
 	return strings.TrimSpace(metadata.DisplayName) != "" ||
 		strings.TrimSpace(metadata.Description) != "" ||
 		metadata.Reasoning != nil ||
+		metadata.ToolCall != nil ||
+		len(metadata.OutputModalities) > 0 ||
 		len(metadata.SupportedReasoningLevels) > 0 ||
 		len(metadata.InputModalities) > 0 ||
 		len(metadata.CodexToolCapabilities) > 0 ||
@@ -530,6 +539,22 @@ func mergeUpstreamModelMetadata(primary, fallback UpstreamModelMetadata) (Upstre
 	}
 	if len(merged.InputModalities) == 0 && len(fallback.InputModalities) > 0 {
 		merged.InputModalities = append([]string(nil), fallback.InputModalities...)
+		changed = true
+	}
+	if len(merged.OutputModalities) == 0 && len(fallback.OutputModalities) > 0 {
+		merged.OutputModalities = append([]string(nil), fallback.OutputModalities...)
+		changed = true
+	}
+	if merged.ToolCall == nil && fallback.ToolCall != nil {
+		merged.ToolCall = copyMetadataBool(fallback.ToolCall)
+		changed = true
+	}
+	if merged.Family == "" && fallback.Family != "" {
+		merged.Family = fallback.Family
+		changed = true
+	}
+	if merged.ReleaseDate == "" && fallback.ReleaseDate != "" {
+		merged.ReleaseDate = fallback.ReleaseDate
 		changed = true
 	}
 	if merged.ContextWindow <= 0 && fallback.ContextWindow > 0 {
@@ -648,9 +673,15 @@ func upstreamMetadataFromModelsDevModel(modelID string, model modelsDevModel) Up
 		Reasoning:                reasoning,
 		SupportedReasoningLevels: levels,
 		InputModalities:          normalizeCodexInputModalities(model.Modalities.Input),
+		ToolCall:                 copyMetadataBool(model.ToolCall),
+		Family:                   strings.TrimSpace(model.Family),
+		ReleaseDate:              strings.TrimSpace(model.ReleaseDate),
 		ContextWindow:            model.Limit.Context,
 		MaxContextWindow:         model.Limit.Context,
 		MaxOutputTokens:          model.Limit.Output,
+	}
+	if len(model.Modalities.Output) > 0 {
+		metadata.OutputModalities = normalizeMetadataModalities(model.Modalities.Output)
 	}
 	if len(levels) > 0 {
 		metadata.DefaultReasoningLevel = levels[0]

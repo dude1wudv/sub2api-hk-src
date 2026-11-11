@@ -37,7 +37,7 @@ func (h *GatewayHandler) pinnedOpenAIModels(c *gin.Context, group *service.Group
 		writeOpenAIModelsError(c, infraerrors.Code(err), "upstream_error", infraerrors.Message(err))
 		return
 	}
-	setOpsSelectedAccount(c, account.ID, account.Platform)
+	setOpsSelectedAccount(c, account.ID, account.Platform, account.Name)
 	writeOpenAIModelsResponse(c, response)
 }
 
@@ -65,13 +65,14 @@ func writeOpenAIModelsResponse(c *gin.Context, manifest *service.OpenAIModelsRes
 // selection and allowlist filtering. Preserve every field on the selected entry.
 func writeModelsListResponse(c *gin.Context, models any) {
 	response := gin.H{"object": "list", "data": models}
-	if c.Param("model") == "" {
-		c.JSON(http.StatusOK, response)
-		return
-	}
 	body, err := json.Marshal(response)
 	if err != nil {
 		writeOpenAIModelsError(c, http.StatusInternalServerError, "api_error", "Failed to encode model catalogue")
+		return
+	}
+	body = enrichModelsMetadata(c, body)
+	if c.Param("model") == "" {
+		c.Data(http.StatusOK, "application/json", body)
 		return
 	}
 	writeRetrievedModel(c, body)

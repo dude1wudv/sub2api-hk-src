@@ -985,8 +985,8 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 		}
 
 		// Cache TTL Override: 重写 SSE 事件中的 cache_creation 分类。
-		// 账号级设置优先；全局 1h 请求注入开启时，默认把 usage 计费归回 5m。
-		if overrideTarget, ok := s.resolveCacheTTLUsageOverrideTarget(ctx, account); ok {
+		// Key > Account > Global；继承全局时保留 1h 注入、5m 计费政策。
+		if overrideTarget, ok := s.resolveCacheTTLUsageOverrideTarget(ctx, getAPIKeyFromContext(c), account); ok {
 			if eventType == "message_start" {
 				if msg, ok := event["message"].(map[string]any); ok {
 					if u, ok := msg["usage"].(map[string]any); ok {
@@ -1435,17 +1435,9 @@ func rewriteCacheCreationJSON(usageObj map[string]any, target string) bool {
 	return true
 }
 
-func (s *GatewayService) resolveCacheTTLUsageOverrideTarget(ctx context.Context, account *Account) (string, bool) {
-	if account == nil {
-		return "", false
-	}
-	if account.IsCacheTTLOverrideEnabled() {
-		return account.GetCacheTTLOverrideTarget(), true
-	}
-	if account.IsAnthropicOAuthOrSetupToken() && s != nil && s.settingService != nil && s.settingService.IsAnthropicCacheTTL1hInjectionEnabled(ctx) {
-		return cacheTTLTarget5m, true
-	}
-	return "", false
+func (s *GatewayService) resolveCacheTTLUsageOverrideTarget(ctx context.Context, apiKey *APIKey, account *Account) (string, bool) {
+	_, billingTTL, ok := s.resolveAnthropicCacheTTLPolicy(ctx, apiKey, account)
+	return billingTTL, ok
 }
 
 func (s *GatewayService) handleNonStreamingResponse(ctx context.Context, resp *http.Response, c *gin.Context, account *Account, originalModel, mappedModel string) (*ClaudeUsage, error) {
@@ -1493,8 +1485,8 @@ func (s *GatewayService) handleNonStreamingResponse(ctx context.Context, resp *h
 	}
 
 	// Cache TTL Override: 重写 non-streaming 响应中的 cache_creation 分类。
-	// 账号级设置优先；全局 1h 请求注入开启时，默认把 usage 计费归回 5m。
-	if overrideTarget, ok := s.resolveCacheTTLUsageOverrideTarget(ctx, account); ok {
+	// Key > Account > Global；继承全局时保留 1h 注入、5m 计费政策。
+	if overrideTarget, ok := s.resolveCacheTTLUsageOverrideTarget(ctx, getAPIKeyFromContext(c), account); ok {
 		if applyCacheTTLOverride(&response.Usage, overrideTarget) {
 			// 同步更新 body JSON 中的嵌套 cache_creation 对象
 			if newBody, err := sjson.SetBytes(body, "usage.cache_creation.ephemeral_5m_input_tokens", response.Usage.CacheCreation5mTokens); err == nil {

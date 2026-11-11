@@ -22,6 +22,14 @@ const groups = [
 const editing = { id: 42, name: 'Production key', group_id: 3, quota: 18, expires_at: '2030-03-04T12:30:00.000Z', rate_limit_5h: 4, rate_limit_1d: 5, rate_limit_7d: 6, ip_whitelist: ['192.0.2.1', '198.51.100.0/24'], ip_blacklist: ['203.0.113.7'], routing_group_ids: [] } as any
 const render = (props: Record<string, unknown> = {}) => mount(PortalKeyForm, { props: { open: true, groups, editing: null, ...props } as any })
 describe('PortalKeyForm', () => {
+  it('persists an explicitly changed Anthropic cache TTL while retaining inherited settings by default', async () => {
+    const wrapper = render({ editing: { ...editing, anthropic_cache_ttl_mode: '1h' } })
+    expect((wrapper.get('[data-test="anthropic-cache-ttl"]').element as HTMLSelectElement).value).toBe('1h')
+    await wrapper.get('[data-test="anthropic-cache-ttl"]').setValue('off')
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(update).toHaveBeenCalledWith(42, expect.objectContaining({ anthropic_cache_ttl_mode: 'off' }))
+    wrapper.unmount()
+  })
   it('edits an independent concurrency limit and rejects negative values', async () => {
     const wrapper = render({ editing: { ...editing, concurrency_limit: 4 } })
     const input = wrapper.get('[data-test="key-concurrency"]')
@@ -49,7 +57,7 @@ describe('PortalKeyForm', () => {
     const wrapper = render({ groupRates: { 3: 0.8 } })
     expect(wrapper.get('[data-group-id="3"]').text()).toContain('0.8×')
     expect(wrapper.get('[data-group-id="3"]').text()).toContain('Your rate')
-    expect(wrapper.find('select').exists()).toBe(false)
+    expect(wrapper.find('[data-test="anthropic-cache-ttl"]').exists()).toBe(true)
     expect(wrapper.find('.key-routing input[type="checkbox"]').exists()).toBe(false)
     await wrapper.get('[aria-label="Search groups"]').setValue('large context')
     expect(wrapper.findAll('.key-group-card')).toHaveLength(1)
@@ -137,7 +145,7 @@ describe('PortalKeyForm', () => {
     await wrapper.get('input[type="password"]').setValue('my_private_key_123')
     await wrapper.get('form').trigger('submit'); await wrapper.get('form').trigger('submit')
     expect(create).toHaveBeenCalledTimes(1)
-    expect(create).toHaveBeenCalledWith('New key', 3, 'my_private_key_123', [], [], 12, 30, { rate_limit_5h: 0, rate_limit_1d: 0, rate_limit_7d: 0 }, [], 0)
+    expect(create).toHaveBeenCalledWith('New key', 3, 'my_private_key_123', [], [], 12, 30, { rate_limit_5h: 0, rate_limit_1d: 0, rate_limit_7d: 0 }, [], 0, 'inherit')
     resolveCreate({ id: 43 }); await flushPromises()
     expect(wrapper.emitted('saved')).toHaveLength(1)
     wrapper.unmount()

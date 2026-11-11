@@ -2,6 +2,7 @@ package handler
 
 import (
 	"sort"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -52,16 +53,20 @@ func (h *AvailableChannelHandler) featureEnabled(c *gin.Context) bool {
 // 订阅视觉加深），并展示默认倍率与高峰倍率规则；用户专属倍率前端走
 // /groups/rates，和 API 密钥页面保持一致。
 type userAvailableGroup struct {
-	ID                 int64   `json:"id"`
-	Name               string  `json:"name"`
-	Platform           string  `json:"platform"`
-	SubscriptionType   string  `json:"subscription_type"`
-	RateMultiplier     float64 `json:"rate_multiplier"`
-	PeakRateEnabled    bool    `json:"peak_rate_enabled"`
-	PeakStart          string  `json:"peak_start"`
-	PeakEnd            string  `json:"peak_end"`
-	PeakRateMultiplier float64 `json:"peak_rate_multiplier"`
-	IsExclusive        bool    `json:"is_exclusive"`
+	LaunchedAt         *time.Time               `json:"launched_at"`
+	LaunchRate         *float64                 `json:"launch_rate"`
+	IsNew              bool                     `json:"is_new"`
+	RecentRateChange   *service.GroupRateChange `json:"recent_rate_change"`
+	ID                 int64                    `json:"id"`
+	Name               string                   `json:"name"`
+	Platform           string                   `json:"platform"`
+	SubscriptionType   string                   `json:"subscription_type"`
+	RateMultiplier     float64                  `json:"rate_multiplier"`
+	PeakRateEnabled    bool                     `json:"peak_rate_enabled"`
+	PeakStart          string                   `json:"peak_start"`
+	PeakEnd            string                   `json:"peak_end"`
+	PeakRateMultiplier float64                  `json:"peak_rate_multiplier"`
+	IsExclusive        bool                     `json:"is_exclusive"`
 
 	// 不对外输出；List 按请求语言把 Name 换成译文后丢弃。
 	i18n service.GroupI18n
@@ -149,8 +154,10 @@ func (h *AvailableChannelHandler) List(c *gin.Context) {
 		return
 	}
 	allowedGroupIDs := make(map[int64]struct{}, len(userGroups))
+	groupHints := make(map[int64]service.Group, len(userGroups))
 	for i := range userGroups {
 		allowedGroupIDs[userGroups[i].ID] = struct{}{}
+		groupHints[userGroups[i].ID] = userGroups[i]
 	}
 
 	channels, err := h.channelService.ListAvailable(c.Request.Context())
@@ -166,6 +173,7 @@ func (h *AvailableChannelHandler) List(c *gin.Context) {
 			continue
 		}
 		visibleGroups := filterUserVisibleGroups(ch.Groups, allowedGroupIDs)
+		applyUserGroupHints(visibleGroups, groupHints)
 		if len(visibleGroups) == 0 {
 			continue
 		}

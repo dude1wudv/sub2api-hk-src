@@ -77,6 +77,7 @@
         @select-all="selectPageKeys"
         @copy="copyKey"
         @use="openUseKey"
+        @usage="usageKey = $event"
         @import-ccs="importToCcs"
         @edit="openEdit"
         @toggle="toggleKey"
@@ -114,6 +115,7 @@
     <PortalApiExamples v-if="examplesOpen" v-model:model="exampleModel" />
 
     <PortalKeyForm :open="keyFormOpen" :editing="editingKey" :groups="groups" :group-rates="groupRates" :selected-group="formGroupId" @close="keyFormOpen = false" @saved="onKeySaved" />
+    <PortalKeyUsageDialog :api-key="usageKey" @close="usageKey = null" />
     <UseKeyModal :show="!!useKeyTarget" :api-key="useKeyTarget?.key || ''" :base-url="apiRoot" :platform="useKeyTarget?.group?.platform || null" :claude-code-only="useKeyTarget?.group?.claude_code_only || false" :allow-messages-dispatch="useKeyTarget?.group?.allow_messages_dispatch || false" @close="useKeyTarget = null" />
     <PortalDialog :open="ccsClientOpen" :title="t('keys.ccsClientSelect.title')" @close="closeCcsClient">
       <p>{{ t('keys.ccsClientSelect.description') }}</p>
@@ -162,6 +164,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useClipboard } from '@/composables/useClipboard'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 import PortalDataState from '@/components/portal/PortalDataState.vue'
+import PortalKeyUsageDialog from '@/components/portal/PortalKeyUsageDialog.vue'
 import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
 import { useRetryCooldown } from '@/composables/useRetryCooldown'
 import { userFacingError } from '@/utils/userFacingError'
@@ -214,6 +217,7 @@ function pageSeparated(index: number) {
   return previous != null && current != null && current - previous > 1
 }
 const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
+const usageKey = ref<ApiKey | null>(null)
 const usageLoading = ref(false)
 const usageError = ref('')
 const { apiRoot, openAIBase: apiBaseUrl } = usePatrickApiBase()

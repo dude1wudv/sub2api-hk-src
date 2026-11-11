@@ -23,17 +23,30 @@ const maxAPIKeyAuthorizationHeaderBytes = service.MaxAPIKeyCredentialBytes + 128
 const statusClientClosedRequest = 499
 
 // NewAPIKeyAuthMiddleware 创建 API Key 认证中间件
-func NewAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config) APIKeyAuthMiddleware {
-	return APIKeyAuthMiddleware(apiKeyAuthWithSubscription(apiKeyService, subscriptionService, cfg))
+func NewAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config, notifiers ...InsufficientBalanceNotifier) APIKeyAuthMiddleware {
+	var notifier InsufficientBalanceNotifier
+	if len(notifiers) > 0 {
+		notifier = notifiers[0]
+	}
+	return APIKeyAuthMiddleware(apiKeyAuthWithSubscription(apiKeyService, subscriptionService, cfg, smartRoutingGateways{balanceNotifier: notifier}))
+}
+
+type InsufficientBalanceNotifier interface {
+	NotifyInsufficientBalance(*service.User)
 }
 
 type smartRoutingGateways struct {
-	openai    *service.OpenAIGatewayService
-	anthropic *service.GatewayService
+	balanceNotifier InsufficientBalanceNotifier
+	openai          *service.OpenAIGatewayService
+	anthropic       *service.GatewayService
 }
 
-func NewSmartRoutingAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config, gateway *service.OpenAIGatewayService, anthropic *service.GatewayService) APIKeyAuthMiddleware {
-	return APIKeyAuthMiddleware(apiKeyAuthWithSubscription(apiKeyService, subscriptionService, cfg, smartRoutingGateways{gateway, anthropic}))
+func NewSmartRoutingAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config, gateway *service.OpenAIGatewayService, anthropic *service.GatewayService, notifiers ...InsufficientBalanceNotifier) APIKeyAuthMiddleware {
+	var notifier InsufficientBalanceNotifier
+	if len(notifiers) > 0 {
+		notifier = notifiers[0]
+	}
+	return APIKeyAuthMiddleware(apiKeyAuthWithSubscription(apiKeyService, subscriptionService, cfg, smartRoutingGateways{openai: gateway, anthropic: anthropic, balanceNotifier: notifier}))
 }
 
 // apiKeyAuthWithSubscription API Key认证中间件（支持订阅验证）
@@ -293,6 +306,9 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			} else {
 				// 非订阅模式 或 订阅模式但 subscriptionService 未注入：回退到余额检查
 				if apiKeyBalanceBelowAuthThreshold(apiKey.User.Balance, cfg) {
+					if len(gateways) > 0 && gateways[0].balanceNotifier != nil {
+						gateways[0].balanceNotifier.NotifyInsufficientBalance(apiKey.User)
+					}
 					AbortWithError(c, 403, "INSUFFICIENT_BALANCE", "Insufficient account balance")
 					return
 				}

@@ -107,6 +107,20 @@ func (_c *APIKeyCreate) SetRoutingGroupIds(v []int64) *APIKeyCreate {
 	return _c
 }
 
+// SetAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field.
+func (_c *APIKeyCreate) SetAnthropicCacheTTLMode(v string) *APIKeyCreate {
+	_c.mutation.SetAnthropicCacheTTLMode(v)
+	return _c
+}
+
+// SetNillableAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableAnthropicCacheTTLMode(v *string) *APIKeyCreate {
+	if v != nil {
+		_c.SetAnthropicCacheTTLMode(*v)
+	}
+	return _c
+}
+
 // SetConcurrencyLimit sets the "concurrency_limit" field.
 func (_c *APIKeyCreate) SetConcurrencyLimit(v int) *APIKeyCreate {
 	_c.mutation.SetConcurrencyLimit(v)
@@ -435,6 +449,10 @@ func (_c *APIKeyCreate) defaults() error {
 		v := apikey.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.AnthropicCacheTTLMode(); !ok {
+		v := apikey.DefaultAnthropicCacheTTLMode
+		_c.mutation.SetAnthropicCacheTTLMode(v)
+	}
 	if _, ok := _c.mutation.ConcurrencyLimit(); !ok {
 		v := apikey.DefaultConcurrencyLimit
 		_c.mutation.SetConcurrencyLimit(v)
@@ -503,6 +521,14 @@ func (_c *APIKeyCreate) check() error {
 	if v, ok := _c.mutation.Name(); ok {
 		if err := apikey.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "APIKey.name": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.AnthropicCacheTTLMode(); !ok {
+		return &ValidationError{Name: "anthropic_cache_ttl_mode", err: errors.New(`ent: missing required field "APIKey.anthropic_cache_ttl_mode"`)}
+	}
+	if v, ok := _c.mutation.AnthropicCacheTTLMode(); ok {
+		if err := apikey.AnthropicCacheTTLModeValidator(v); err != nil {
+			return &ValidationError{Name: "anthropic_cache_ttl_mode", err: fmt.Errorf(`ent: validator failed for field "APIKey.anthropic_cache_ttl_mode": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.ConcurrencyLimit(); !ok {
@@ -598,6 +624,10 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RoutingGroupIds(); ok {
 		_spec.SetField(apikey.FieldRoutingGroupIds, field.TypeJSON, value)
 		_node.RoutingGroupIds = value
+	}
+	if value, ok := _c.mutation.AnthropicCacheTTLMode(); ok {
+		_spec.SetField(apikey.FieldAnthropicCacheTTLMode, field.TypeString, value)
+		_node.AnthropicCacheTTLMode = value
 	}
 	if value, ok := _c.mutation.ConcurrencyLimit(); ok {
 		_spec.SetField(apikey.FieldConcurrencyLimit, field.TypeInt, value)
@@ -900,6 +930,18 @@ func (u *APIKeyUpsert) UpdateRoutingGroupIds() *APIKeyUpsert {
 // ClearRoutingGroupIds clears the value of the "routing_group_ids" field.
 func (u *APIKeyUpsert) ClearRoutingGroupIds() *APIKeyUpsert {
 	u.SetNull(apikey.FieldRoutingGroupIds)
+	return u
+}
+
+// SetAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field.
+func (u *APIKeyUpsert) SetAnthropicCacheTTLMode(v string) *APIKeyUpsert {
+	u.Set(apikey.FieldAnthropicCacheTTLMode, v)
+	return u
+}
+
+// UpdateAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateAnthropicCacheTTLMode() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldAnthropicCacheTTLMode)
 	return u
 }
 
@@ -1364,6 +1406,20 @@ func (u *APIKeyUpsertOne) UpdateRoutingGroupIds() *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) ClearRoutingGroupIds() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearRoutingGroupIds()
+	})
+}
+
+// SetAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field.
+func (u *APIKeyUpsertOne) SetAnthropicCacheTTLMode(v string) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetAnthropicCacheTTLMode(v)
+	})
+}
+
+// UpdateAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateAnthropicCacheTTLMode() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateAnthropicCacheTTLMode()
 	})
 }
 
@@ -2044,6 +2100,20 @@ func (u *APIKeyUpsertBulk) UpdateRoutingGroupIds() *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) ClearRoutingGroupIds() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearRoutingGroupIds()
+	})
+}
+
+// SetAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field.
+func (u *APIKeyUpsertBulk) SetAnthropicCacheTTLMode(v string) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetAnthropicCacheTTLMode(v)
+	})
+}
+
+// UpdateAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateAnthropicCacheTTLMode() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateAnthropicCacheTTLMode()
 	})
 }
 

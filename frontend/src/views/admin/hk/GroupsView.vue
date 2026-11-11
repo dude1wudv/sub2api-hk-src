@@ -328,6 +328,10 @@
               :sessions-max="capacityMap.get(row.id)!.sessionsMax"
               :rpm-used="capacityMap.get(row.id)!.rpmUsed"
               :rpm-max="capacityMap.get(row.id)!.rpmMax"
+              :active-users="capacityMap.get(row.id)!.activeUsers"
+              :active-users-known="capacityMap.get(row.id)!.activeUsersKnown"
+              :sessions-tracked="capacityMap.get(row.id)!.sessionsTracked"
+              :runtime-known="capacityMap.get(row.id)!.runtimeKnown"
             />
             <span v-else class="text-xs text-gray-400">—</span>
           </template>
@@ -631,6 +635,8 @@
             data-tour="group-form-multiplier"
           />
           <p class="input-hint">{{ t("admin.groups.rateMultiplierHint") }}</p>
+          <label class="input-label mt-4">{{ locale?.startsWith('zh') ? '上线时间（可选）' : 'Launch time (optional)' }}<input v-model="createLaunchAt" type="datetime-local" class="input" /></label>
+          <p class="input-hint">{{ locale?.startsWith('zh') ? '明确设置后，前 24 小时显示 NEW；留空不显示。' : 'NEW is shown for 24 hours after this time; leave empty to hide it.' }}</p>
         </div>
 <div class="mt-4 border-t pt-4">
           <div>
@@ -2296,6 +2302,8 @@
             class="input"
             data-tour="group-form-multiplier"
           />
+          <label class="input-label mt-4">{{ locale?.startsWith('zh') ? '上线时间（可选）' : 'Launch time (optional)' }}<input v-model="editLaunchAt" type="datetime-local" class="input" /></label>
+          <p class="input-hint">{{ locale?.startsWith('zh') ? '修改时间会重新计算 NEW；清空后隐藏。' : 'Changing the time restarts NEW; clear it to hide.' }}</p>
         </div>
 <div class="mt-4 border-t pt-4">
           <div>
@@ -4462,7 +4470,15 @@ const groupPricingToAPI = (
       time_pricing: null,
     }));
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
+const createLaunchAt = ref("");
+const editLaunchAt = ref("");
+const originalLaunchAt = ref("");
+function localLaunchDate(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
 const appStore = useAppStore();
 const authStore = useAuthStore();
 const onboardingStore = useOnboardingStore();
@@ -4812,6 +4828,7 @@ const capacityMap = ref<
       sessionsMax: number;
       rpmUsed: number;
       rpmMax: number;
+      activeUsers?: number; activeUsersKnown?: boolean; sessionsTracked?: boolean; runtimeKnown?: boolean;
     }
   >
 >(new Map());
@@ -5743,6 +5760,7 @@ const loadCapacitySummary = async () => {
         sessionsMax: number;
         rpmUsed: number;
         rpmMax: number;
+        activeUsers?: number; activeUsersKnown?: boolean; sessionsTracked?: boolean; runtimeKnown?: boolean;
       }
     >();
     for (const item of data) {
@@ -5753,6 +5771,10 @@ const loadCapacitySummary = async () => {
         sessionsMax: item.sessions_max,
         rpmUsed: item.rpm_used,
         rpmMax: item.rpm_max,
+        activeUsers: item.active_users,
+        activeUsersKnown: item.active_users_known,
+        sessionsTracked: item.sessions_tracked,
+        runtimeKnown: item.runtime_known,
       });
     }
     capacityMap.value = map;
@@ -5790,6 +5812,7 @@ const handleSort = (key: string, order: 'asc' | 'desc') => {
 
 const openCreateModal = () => {
   showCreateModal.value = true;
+  createLaunchAt.value = "";
   loadModelAllowlistCandidates("create", 0, createForm.platform);
 };
 
@@ -6081,7 +6104,7 @@ const handleCreateGroup = async () => {
           platform: createForm.platform,
         }
       : requestData;
-    await adminAPI.groups.create(payload);
+    await adminAPI.groups.create({ ...payload, ...(createLaunchAt.value ? { launched_at: new Date(createLaunchAt.value).toISOString() } : {}) });
     appStore.showSuccess(t("admin.groups.groupCreated"));
     closeCreateModal();
     loadGroups();
@@ -6102,6 +6125,8 @@ const handleCreateGroup = async () => {
 
 const handleEdit = async (group: AdminGroup) => {
   editingGroup.value = group;
+  editLaunchAt.value = localLaunchDate(group.launched_at);
+  originalLaunchAt.value = editLaunchAt.value;
   editForm.name = group.name;
   editForm.description = group.description || "";
   editForm.i18n = Object.fromEntries(
@@ -6457,7 +6482,7 @@ const handleUpdateGroup = async () => {
           i18n: editForm.i18n,
         }
       : payload;
-    await adminAPI.groups.update(editingGroup.value.id, requestData);
+    await adminAPI.groups.update(editingGroup.value.id, { ...requestData, ...(editLaunchAt.value !== originalLaunchAt.value ? { launched_at: editLaunchAt.value ? new Date(editLaunchAt.value).toISOString() : null } : {}) });
     appStore.showSuccess(t("admin.groups.groupUpdated"));
     closeEditModal();
     loadGroups();

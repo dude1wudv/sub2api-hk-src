@@ -100,6 +100,16 @@ func RateMultiplier(v float64) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldRateMultiplier, v))
 }
 
+// LaunchedAt applies equality check predicate on the "launched_at" field. It's identical to LaunchedAtEQ.
+func LaunchedAt(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldLaunchedAt, v))
+}
+
+// LaunchRate applies equality check predicate on the "launch_rate" field. It's identical to LaunchRateEQ.
+func LaunchRate(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldLaunchRate, v))
+}
+
 // PeakRateEnabled applies equality check predicate on the "peak_rate_enabled" field. It's identical to PeakRateEnabledEQ.
 func PeakRateEnabled(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldPeakRateEnabled, v))
@@ -753,6 +763,106 @@ func RateMultiplierLT(v float64) predicate.Group {
 // RateMultiplierLTE applies the LTE predicate on the "rate_multiplier" field.
 func RateMultiplierLTE(v float64) predicate.Group {
 	return predicate.Group(sql.FieldLTE(FieldRateMultiplier, v))
+}
+
+// LaunchedAtEQ applies the EQ predicate on the "launched_at" field.
+func LaunchedAtEQ(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldLaunchedAt, v))
+}
+
+// LaunchedAtNEQ applies the NEQ predicate on the "launched_at" field.
+func LaunchedAtNEQ(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldLaunchedAt, v))
+}
+
+// LaunchedAtIn applies the In predicate on the "launched_at" field.
+func LaunchedAtIn(vs ...time.Time) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldLaunchedAt, vs...))
+}
+
+// LaunchedAtNotIn applies the NotIn predicate on the "launched_at" field.
+func LaunchedAtNotIn(vs ...time.Time) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldLaunchedAt, vs...))
+}
+
+// LaunchedAtGT applies the GT predicate on the "launched_at" field.
+func LaunchedAtGT(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldLaunchedAt, v))
+}
+
+// LaunchedAtGTE applies the GTE predicate on the "launched_at" field.
+func LaunchedAtGTE(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldLaunchedAt, v))
+}
+
+// LaunchedAtLT applies the LT predicate on the "launched_at" field.
+func LaunchedAtLT(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldLaunchedAt, v))
+}
+
+// LaunchedAtLTE applies the LTE predicate on the "launched_at" field.
+func LaunchedAtLTE(v time.Time) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldLaunchedAt, v))
+}
+
+// LaunchedAtIsNil applies the IsNil predicate on the "launched_at" field.
+func LaunchedAtIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldLaunchedAt))
+}
+
+// LaunchedAtNotNil applies the NotNil predicate on the "launched_at" field.
+func LaunchedAtNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldLaunchedAt))
+}
+
+// LaunchRateEQ applies the EQ predicate on the "launch_rate" field.
+func LaunchRateEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldLaunchRate, v))
+}
+
+// LaunchRateNEQ applies the NEQ predicate on the "launch_rate" field.
+func LaunchRateNEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldLaunchRate, v))
+}
+
+// LaunchRateIn applies the In predicate on the "launch_rate" field.
+func LaunchRateIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldLaunchRate, vs...))
+}
+
+// LaunchRateNotIn applies the NotIn predicate on the "launch_rate" field.
+func LaunchRateNotIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldLaunchRate, vs...))
+}
+
+// LaunchRateGT applies the GT predicate on the "launch_rate" field.
+func LaunchRateGT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldLaunchRate, v))
+}
+
+// LaunchRateGTE applies the GTE predicate on the "launch_rate" field.
+func LaunchRateGTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldLaunchRate, v))
+}
+
+// LaunchRateLT applies the LT predicate on the "launch_rate" field.
+func LaunchRateLT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldLaunchRate, v))
+}
+
+// LaunchRateLTE applies the LTE predicate on the "launch_rate" field.
+func LaunchRateLTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldLaunchRate, v))
+}
+
+// LaunchRateIsNil applies the IsNil predicate on the "launch_rate" field.
+func LaunchRateIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldLaunchRate))
+}
+
+// LaunchRateNotNil applies the NotNil predicate on the "launch_rate" field.
+func LaunchRateNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldLaunchRate))
 }
 
 // PeakRateEnabledEQ applies the EQ predicate on the "peak_rate_enabled" field.

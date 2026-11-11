@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-1 tabular-nums">
     <!-- 并发槽位 -->
-    <div class="flex items-center gap-1">
+    <div v-if="runtimeKnown !== false" class="flex items-center gap-1">
       <span
         :class="[
           'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium',
@@ -18,7 +18,7 @@
     </div>
 
     <!-- 会话数 -->
-    <div v-if="sessionsMax > 0" class="flex items-center gap-1">
+    <div v-if="sessionsMax > 0 && sessionsTracked !== false" class="flex items-center gap-1">
       <span
         :class="[
           'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium',
@@ -35,7 +35,7 @@
     </div>
 
     <!-- RPM -->
-    <div v-if="rpmMax > 0" class="flex items-center gap-1">
+    <div v-if="rpmMax > 0 && runtimeKnown !== false" class="flex items-center gap-1">
       <span
         :class="[
           'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium',
@@ -50,10 +50,14 @@
         <span class="font-mono">{{ rpmMax }}</span>
       </span>
     </div>
+    <span class="text-xs text-gray-500">{{ locale.startsWith('zh') ? '近 5 分钟活跃' : 'Active in 5 min' }}: {{ activeUsersKnown ? activeUsers : '—' }}</span>
+    <span v-if="runtimeKnown === false" class="text-xs text-gray-500">{{ locale.startsWith('zh') ? '状态不可用' : 'Status unavailable' }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+const { locale } = useI18n()
 interface Props {
   concurrencyUsed: number
   concurrencyMax: number
@@ -61,6 +65,10 @@ interface Props {
   sessionsMax: number
   rpmUsed: number
   rpmMax: number
+  activeUsers?: number
+  activeUsersKnown?: boolean
+  sessionsTracked?: boolean
+  runtimeKnown?: boolean
 }
 
 withDefaults(defineProps<Props>(), {

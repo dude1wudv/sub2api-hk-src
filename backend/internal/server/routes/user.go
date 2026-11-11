@@ -44,6 +44,7 @@ func RegisterUserRoutes(
 			user.POST("/account-bindings/email", h.User.BindEmailIdentity)
 			user.DELETE("/account-bindings/:provider", h.User.UnbindIdentity)
 			user.POST("/auth-identities/bind/start", h.User.StartIdentityBinding)
+			user.GET("/api-keys/:id/usage", panelRateLimiter.Heavy(), h.Usage.GetMyAPIKeyUsage)
 			user.GET("/api-keys/:id/usage/daily", panelRateLimiter.Heavy(), h.Usage.GetMyAPIKeyDailyUsage)
 			user.GET("/platform-quotas", h.User.GetMyPlatformQuotas)
 
@@ -108,6 +109,7 @@ func RegisterUserRoutes(
 		usage.Use(panelRateLimiter.Heavy())
 		{
 			usage.GET("", h.Usage.List)
+			usage.GET("/inflight", h.Usage.Inflight)
 			usage.GET("/traffic", h.Usage.Traffic)
 			usage.GET("/traffic/keys", h.Usage.TrafficKeys)
 			usage.GET("/errors", h.Usage.ListErrors)

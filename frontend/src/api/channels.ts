@@ -7,6 +7,10 @@ import { apiClient } from './client'
 import type { BillingMode } from '@/constants/channel'
 
 export interface UserAvailableGroup {
+  recent_rate_change?: { old_rate: number; new_rate: number; changed_at: string } | null
+  is_new?: boolean
+  launched_at?: string | null
+  launch_rate?: number | null
   id: number
   name: string
   platform: string

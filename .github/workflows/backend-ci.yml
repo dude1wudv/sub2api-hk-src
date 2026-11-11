@@ -38,6 +38,11 @@ jobs:
       - name: Unit tests
         working-directory: backend
         run: make test-unit
+      - name: In-flight and notification race tests
+        working-directory: backend
+        env:
+          CGO_ENABLED: '1'
+        run: go test -race -tags=unit ./internal/server/middleware ./internal/repository ./internal/service -run 'TestUsageInflight|TestTrackUsageInflight|TestBalanceRejection|TestModelMetadataCatalog' -count=1
       - name: Integration tests
         working-directory: backend
         run: make test-integration

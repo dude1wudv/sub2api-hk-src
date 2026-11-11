@@ -107,7 +107,7 @@ func (h *OpenAIGatewayHandler) handleDeepSeekTool(c *gin.Context, kind service.D
 		return
 	}
 	account := selection.Account
-	setOpsSelectedAccount(c, account.ID, account.Platform)
+	setOpsSelectedAccount(c, account.ID, account.Platform, account.Name)
 	accountRelease, slotStatus := h.acquireResponsesAccountSlot(c, apiKey.GroupID, "", selection, false, &streamStarted, reqLog)
 	if slotStatus != openAISlotAcquireOK {
 		if slotStatus == openAISlotAcquireProfitVetoed {

@@ -140,6 +140,20 @@ func (_u *APIKeyUpdate) ClearRoutingGroupIds() *APIKeyUpdate {
 	return _u
 }
 
+// SetAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field.
+func (_u *APIKeyUpdate) SetAnthropicCacheTTLMode(v string) *APIKeyUpdate {
+	_u.mutation.SetAnthropicCacheTTLMode(v)
+	return _u
+}
+
+// SetNillableAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableAnthropicCacheTTLMode(v *string) *APIKeyUpdate {
+	if v != nil {
+		_u.SetAnthropicCacheTTLMode(*v)
+	}
+	return _u
+}
+
 // SetConcurrencyLimit sets the "concurrency_limit" field.
 func (_u *APIKeyUpdate) SetConcurrencyLimit(v int) *APIKeyUpdate {
 	_u.mutation.ResetConcurrencyLimit()
@@ -668,6 +682,11 @@ func (_u *APIKeyUpdate) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "APIKey.name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.AnthropicCacheTTLMode(); ok {
+		if err := apikey.AnthropicCacheTTLModeValidator(v); err != nil {
+			return &ValidationError{Name: "anthropic_cache_ttl_mode", err: fmt.Errorf(`ent: validator failed for field "APIKey.anthropic_cache_ttl_mode": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ConcurrencyLimit(); ok {
 		if err := apikey.ConcurrencyLimitValidator(v); err != nil {
 			return &ValidationError{Name: "concurrency_limit", err: fmt.Errorf(`ent: validator failed for field "APIKey.concurrency_limit": %w`, err)}
@@ -721,6 +740,9 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.RoutingGroupIdsCleared() {
 		_spec.ClearField(apikey.FieldRoutingGroupIds, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.AnthropicCacheTTLMode(); ok {
+		_spec.SetField(apikey.FieldAnthropicCacheTTLMode, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.ConcurrencyLimit(); ok {
 		_spec.SetField(apikey.FieldConcurrencyLimit, field.TypeInt, value)
@@ -1147,6 +1169,20 @@ func (_u *APIKeyUpdateOne) AppendRoutingGroupIds(v []int64) *APIKeyUpdateOne {
 // ClearRoutingGroupIds clears the value of the "routing_group_ids" field.
 func (_u *APIKeyUpdateOne) ClearRoutingGroupIds() *APIKeyUpdateOne {
 	_u.mutation.ClearRoutingGroupIds()
+	return _u
+}
+
+// SetAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field.
+func (_u *APIKeyUpdateOne) SetAnthropicCacheTTLMode(v string) *APIKeyUpdateOne {
+	_u.mutation.SetAnthropicCacheTTLMode(v)
+	return _u
+}
+
+// SetNillableAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableAnthropicCacheTTLMode(v *string) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetAnthropicCacheTTLMode(*v)
+	}
 	return _u
 }
 
@@ -1691,6 +1727,11 @@ func (_u *APIKeyUpdateOne) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "APIKey.name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.AnthropicCacheTTLMode(); ok {
+		if err := apikey.AnthropicCacheTTLModeValidator(v); err != nil {
+			return &ValidationError{Name: "anthropic_cache_ttl_mode", err: fmt.Errorf(`ent: validator failed for field "APIKey.anthropic_cache_ttl_mode": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ConcurrencyLimit(); ok {
 		if err := apikey.ConcurrencyLimitValidator(v); err != nil {
 			return &ValidationError{Name: "concurrency_limit", err: fmt.Errorf(`ent: validator failed for field "APIKey.concurrency_limit": %w`, err)}
@@ -1761,6 +1802,9 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	}
 	if _u.mutation.RoutingGroupIdsCleared() {
 		_spec.ClearField(apikey.FieldRoutingGroupIds, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.AnthropicCacheTTLMode(); ok {
+		_spec.SetField(apikey.FieldAnthropicCacheTTLMode, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.ConcurrencyLimit(); ok {
 		_spec.SetField(apikey.FieldConcurrencyLimit, field.TypeInt, value)

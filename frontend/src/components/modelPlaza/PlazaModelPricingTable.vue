@@ -109,6 +109,7 @@
                 {{ t('modelPlaza.table.reasoningMultiplierBadge', { effort, multiplier }) }}
               </span>
             </div>
+            <ModelCapabilities v-if="!period" :model="m" />
           </td>
 
           <!-- token 计费:输入 / 输出 / 缓存(写/读),有阶梯时每档一行;档位标签只放输入列,其余列按行对齐 -->
@@ -318,6 +319,7 @@
 </template>
 
 <script setup lang="ts">
+import ModelCapabilities from './ModelCapabilities.vue'
 import { computed } from 'vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { useI18n } from 'vue-i18n'

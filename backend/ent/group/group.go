@@ -36,6 +36,10 @@ const (
 	FieldI18n = "i18n"
 	// FieldRateMultiplier holds the string denoting the rate_multiplier field in the database.
 	FieldRateMultiplier = "rate_multiplier"
+	// FieldLaunchedAt holds the string denoting the launched_at field in the database.
+	FieldLaunchedAt = "launched_at"
+	// FieldLaunchRate holds the string denoting the launch_rate field in the database.
+	FieldLaunchRate = "launch_rate"
 	// FieldPeakRateEnabled holds the string denoting the peak_rate_enabled field in the database.
 	FieldPeakRateEnabled = "peak_rate_enabled"
 	// FieldPeakStart holds the string denoting the peak_start field in the database.
@@ -247,6 +251,8 @@ var Columns = []string{
 	FieldDescription,
 	FieldI18n,
 	FieldRateMultiplier,
+	FieldLaunchedAt,
+	FieldLaunchRate,
 	FieldPeakRateEnabled,
 	FieldPeakStart,
 	FieldPeakEnd,
@@ -520,6 +526,16 @@ func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 // ByRateMultiplier orders the results by the rate_multiplier field.
 func ByRateMultiplier(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRateMultiplier, opts...).ToFunc()
+}
+
+// ByLaunchedAt orders the results by the launched_at field.
+func ByLaunchedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLaunchedAt, opts...).ToFunc()
+}
+
+// ByLaunchRate orders the results by the launch_rate field.
+func ByLaunchRate(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLaunchRate, opts...).ToFunc()
 }
 
 // ByPeakRateEnabled orders the results by the peak_rate_enabled field.

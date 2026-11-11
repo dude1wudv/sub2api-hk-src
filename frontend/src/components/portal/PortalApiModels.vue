@@ -53,6 +53,7 @@
 
     <PortalDialog :open="!!detailModel" :title="detailModel?.name || text('定价详情', 'Pricing details')" wide @close="detailModel = null">
       <div v-if="detailModel" class="portal-api-price-detail">
+        <ModelCapabilities :model="detailModel" />
         <p v-if="!detailModel.pricing">{{ text('此模型尚未提供实际单价。', 'Actual pricing is not provided for this model.') }}</p>
         <template v-else-if="selectedGroup">
           <dl class="portal-api-price-summary">
@@ -103,6 +104,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import Icon from '@/components/icons/Icon.vue'
 import ModelIcon from '@/components/common/ModelIcon.vue'
+import ModelCapabilities from '@/components/modelPlaza/ModelCapabilities.vue'
 import ActiveIndicator from '@/components/common/ActiveIndicator.vue'
 import PortalDialog from './PortalDialog.vue'
 import type { ModelPlazaGroup, PlazaModel } from '@/api/modelPlaza'

@@ -154,6 +154,34 @@ func (_c *GroupCreate) SetNillableRateMultiplier(v *float64) *GroupCreate {
 	return _c
 }
 
+// SetLaunchedAt sets the "launched_at" field.
+func (_c *GroupCreate) SetLaunchedAt(v time.Time) *GroupCreate {
+	_c.mutation.SetLaunchedAt(v)
+	return _c
+}
+
+// SetNillableLaunchedAt sets the "launched_at" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableLaunchedAt(v *time.Time) *GroupCreate {
+	if v != nil {
+		_c.SetLaunchedAt(*v)
+	}
+	return _c
+}
+
+// SetLaunchRate sets the "launch_rate" field.
+func (_c *GroupCreate) SetLaunchRate(v float64) *GroupCreate {
+	_c.mutation.SetLaunchRate(v)
+	return _c
+}
+
+// SetNillableLaunchRate sets the "launch_rate" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableLaunchRate(v *float64) *GroupCreate {
+	if v != nil {
+		_c.SetLaunchRate(*v)
+	}
+	return _c
+}
+
 // SetPeakRateEnabled sets the "peak_rate_enabled" field.
 func (_c *GroupCreate) SetPeakRateEnabled(v bool) *GroupCreate {
 	_c.mutation.SetPeakRateEnabled(v)
@@ -1617,6 +1645,14 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 		_spec.SetField(group.FieldRateMultiplier, field.TypeFloat64, value)
 		_node.RateMultiplier = value
 	}
+	if value, ok := _c.mutation.LaunchedAt(); ok {
+		_spec.SetField(group.FieldLaunchedAt, field.TypeTime, value)
+		_node.LaunchedAt = &value
+	}
+	if value, ok := _c.mutation.LaunchRate(); ok {
+		_spec.SetField(group.FieldLaunchRate, field.TypeFloat64, value)
+		_node.LaunchRate = &value
+	}
 	if value, ok := _c.mutation.PeakRateEnabled(); ok {
 		_spec.SetField(group.FieldPeakRateEnabled, field.TypeBool, value)
 		_node.PeakRateEnabled = value
@@ -2154,6 +2190,48 @@ func (u *GroupUpsert) UpdateRateMultiplier() *GroupUpsert {
 // AddRateMultiplier adds v to the "rate_multiplier" field.
 func (u *GroupUpsert) AddRateMultiplier(v float64) *GroupUpsert {
 	u.Add(group.FieldRateMultiplier, v)
+	return u
+}
+
+// SetLaunchedAt sets the "launched_at" field.
+func (u *GroupUpsert) SetLaunchedAt(v time.Time) *GroupUpsert {
+	u.Set(group.FieldLaunchedAt, v)
+	return u
+}
+
+// UpdateLaunchedAt sets the "launched_at" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateLaunchedAt() *GroupUpsert {
+	u.SetExcluded(group.FieldLaunchedAt)
+	return u
+}
+
+// ClearLaunchedAt clears the value of the "launched_at" field.
+func (u *GroupUpsert) ClearLaunchedAt() *GroupUpsert {
+	u.SetNull(group.FieldLaunchedAt)
+	return u
+}
+
+// SetLaunchRate sets the "launch_rate" field.
+func (u *GroupUpsert) SetLaunchRate(v float64) *GroupUpsert {
+	u.Set(group.FieldLaunchRate, v)
+	return u
+}
+
+// UpdateLaunchRate sets the "launch_rate" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateLaunchRate() *GroupUpsert {
+	u.SetExcluded(group.FieldLaunchRate)
+	return u
+}
+
+// AddLaunchRate adds v to the "launch_rate" field.
+func (u *GroupUpsert) AddLaunchRate(v float64) *GroupUpsert {
+	u.Add(group.FieldLaunchRate, v)
+	return u
+}
+
+// ClearLaunchRate clears the value of the "launch_rate" field.
+func (u *GroupUpsert) ClearLaunchRate() *GroupUpsert {
+	u.SetNull(group.FieldLaunchRate)
 	return u
 }
 
@@ -3370,6 +3448,55 @@ func (u *GroupUpsertOne) AddRateMultiplier(v float64) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateRateMultiplier() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateRateMultiplier()
+	})
+}
+
+// SetLaunchedAt sets the "launched_at" field.
+func (u *GroupUpsertOne) SetLaunchedAt(v time.Time) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetLaunchedAt(v)
+	})
+}
+
+// UpdateLaunchedAt sets the "launched_at" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateLaunchedAt() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateLaunchedAt()
+	})
+}
+
+// ClearLaunchedAt clears the value of the "launched_at" field.
+func (u *GroupUpsertOne) ClearLaunchedAt() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearLaunchedAt()
+	})
+}
+
+// SetLaunchRate sets the "launch_rate" field.
+func (u *GroupUpsertOne) SetLaunchRate(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetLaunchRate(v)
+	})
+}
+
+// AddLaunchRate adds v to the "launch_rate" field.
+func (u *GroupUpsertOne) AddLaunchRate(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddLaunchRate(v)
+	})
+}
+
+// UpdateLaunchRate sets the "launch_rate" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateLaunchRate() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateLaunchRate()
+	})
+}
+
+// ClearLaunchRate clears the value of the "launch_rate" field.
+func (u *GroupUpsertOne) ClearLaunchRate() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearLaunchRate()
 	})
 }
 
@@ -4921,6 +5048,55 @@ func (u *GroupUpsertBulk) AddRateMultiplier(v float64) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateRateMultiplier() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateRateMultiplier()
+	})
+}
+
+// SetLaunchedAt sets the "launched_at" field.
+func (u *GroupUpsertBulk) SetLaunchedAt(v time.Time) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetLaunchedAt(v)
+	})
+}
+
+// UpdateLaunchedAt sets the "launched_at" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateLaunchedAt() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateLaunchedAt()
+	})
+}
+
+// ClearLaunchedAt clears the value of the "launched_at" field.
+func (u *GroupUpsertBulk) ClearLaunchedAt() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearLaunchedAt()
+	})
+}
+
+// SetLaunchRate sets the "launch_rate" field.
+func (u *GroupUpsertBulk) SetLaunchRate(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetLaunchRate(v)
+	})
+}
+
+// AddLaunchRate adds v to the "launch_rate" field.
+func (u *GroupUpsertBulk) AddLaunchRate(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddLaunchRate(v)
+	})
+}
+
+// UpdateLaunchRate sets the "launch_rate" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateLaunchRate() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateLaunchRate()
+	})
+}
+
+// ClearLaunchRate clears the value of the "launch_rate" field.
+func (u *GroupUpsertBulk) ClearLaunchRate() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearLaunchRate()
 	})
 }
 

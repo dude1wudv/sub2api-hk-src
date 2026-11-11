@@ -22,6 +22,7 @@ type PlazaOfficialPricing struct {
 
 // PlazaModel 模型广场中单个模型条目：按实收口径合成的展示定价 + 官方参考价。
 type PlazaModel struct {
+	ModelMetadata
 	Name            string
 	Platform        string
 	Pricing         *ChannelModelPricing
@@ -67,11 +68,12 @@ type PlazaGroup struct {
 // 模型枚举来自渠道配置；token 模型的展示单价与阶梯由 BillingService 的阶梯表
 // 查询给出（与扣费走同一条解析链与计费函数），图片/按次模型沿用渠道/分组档位价。
 type ModelPlazaService struct {
-	channelRepo    ChannelRepository
-	groupRepo      GroupRepository
-	pricingService *PricingService
-	billingService *BillingService
-	resolver       *ModelPricingResolver
+	channelRepo     ChannelRepository
+	groupRepo       GroupRepository
+	pricingService  *PricingService
+	billingService  *BillingService
+	resolver        *ModelPricingResolver
+	metadataCatalog *ModelMetadataCatalog
 }
 
 // NewModelPlazaService 创建模型广场服务。
@@ -213,6 +215,7 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 		})
 		g := groupEnt[gid]
 		for j := range pg.Models {
+			pg.Models[j].ModelMetadata = s.metadataCatalog.Resolve(pg.Models[j].Name)
 			s.fillDisplayPricing(ctx, &pg.Models[j], g)
 			pg.Models[j].OfficialPricing = s.lookupOfficialPricing(ctx, pg.Models[j].Name, officialMemo)
 		}

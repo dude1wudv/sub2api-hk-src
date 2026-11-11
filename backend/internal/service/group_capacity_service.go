@@ -4,18 +4,23 @@ import (
 	"context"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/adminaccess"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"sync"
 	"time"
 )
 
 // GroupCapacitySummary holds aggregated capacity for a single group.
 type GroupCapacitySummary struct {
-	GroupID         int64 `json:"group_id"`
-	ConcurrencyUsed int   `json:"concurrency_used"`
-	ConcurrencyMax  int   `json:"concurrency_max"`
-	SessionsUsed    int   `json:"sessions_used"`
-	SessionsMax     int   `json:"sessions_max"`
-	RPMUsed         int   `json:"rpm_used"`
-	RPMMax          int   `json:"rpm_max"`
+	ActiveUsers      int   `json:"active_users"`
+	ActiveUsersKnown bool  `json:"active_users_known"`
+	SessionsTracked  bool  `json:"sessions_tracked"`
+	RuntimeKnown     bool  `json:"runtime_known"`
+	GroupID          int64 `json:"group_id"`
+	ConcurrencyUsed  int   `json:"concurrency_used"`
+	ConcurrencyMax   int   `json:"concurrency_max"`
+	SessionsUsed     int   `json:"sessions_used"`
+	SessionsMax      int   `json:"sessions_max"`
+	RPMUsed          int   `json:"rpm_used"`
+	RPMMax           int   `json:"rpm_max"`
 }
 
 // GroupAccountCapacityRow is the lightweight account projection needed for
@@ -45,6 +50,9 @@ type GroupCapacityService struct {
 	concurrencyService *ConcurrencyService
 	sessionLimitCache  SessionLimitCache
 	rpmCache           RPMCache
+	activeUsers        groupActiveUsersProbe
+	activeMu           sync.Mutex
+	activeCache        map[int64]groupActiveUsersEntry
 }
 
 // NewGroupCapacityService creates a new GroupCapacityService.
@@ -72,10 +80,16 @@ func (s *GroupCapacityService) GetAllGroupCapacity(ctx context.Context) ([]Group
 	}
 
 	if lister, ok := s.accountRepo.(groupCapacityAccountLister); ok {
-		return s.getGroupCapacitiesBatch(ctx, groupIDs, lister)
+		results, err := s.getGroupCapacitiesBatch(ctx, groupIDs, lister)
+		if err == nil {
+			s.enrichActiveUsers(ctx, results)
+		}
+		return results, err
 	}
 
-	return s.getGroupCapacitiesSequential(ctx, groupIDs), nil
+	results := s.getGroupCapacitiesSequential(ctx, groupIDs)
+	s.enrichActiveUsers(ctx, results)
+	return results, nil
 }
 
 func (s *GroupCapacityService) listActiveGroupIDs(ctx context.Context) ([]int64, error) {
@@ -127,6 +141,7 @@ func (s *GroupCapacityService) getGroupCapacitiesBatch(ctx context.Context, grou
 	groupIndex := make(map[int64]int, len(groupIDs))
 	for i, groupID := range groupIDs {
 		results[i].GroupID = groupID
+		results[i].RuntimeKnown = true
 		groupIndex[groupID] = i
 	}
 	if len(groupIDs) == 0 {
@@ -178,6 +193,7 @@ func (s *GroupCapacityService) getGroupCapacitiesBatch(ctx context.Context, grou
 
 		if maxSessions := acc.GetMaxSessions(); maxSessions > 0 {
 			results[idx].SessionsMax += maxSessions
+			results[idx].SessionsTracked = true
 			timeout := time.Duration(acc.GetSessionIdleTimeoutMinutes()) * time.Minute
 			if timeout <= 0 {
 				timeout = 5 * time.Minute
@@ -195,8 +211,11 @@ func (s *GroupCapacityService) getGroupCapacitiesBatch(ctx context.Context, grou
 	}
 
 	concurrencyMap := map[int64]int{}
-	if s.concurrencyService != nil {
-		concurrencyMap, _ = s.concurrencyService.GetAccountConcurrencyBatch(ctx, accountIDs)
+	runtimeKnown := false
+	if s.concurrencyService != nil && s.concurrencyService.cache != nil {
+		var err error
+		concurrencyMap, err = s.concurrencyService.GetAccountConcurrencyBatch(ctx, accountIDs)
+		runtimeKnown = err == nil
 	}
 
 	sessionAccountIDs := accountIDsForGroupsWithLimit(refs, groupIndex, results, func(summary GroupCapacitySummary) bool {
@@ -204,7 +223,9 @@ func (s *GroupCapacityService) getGroupCapacitiesBatch(ctx context.Context, grou
 	})
 	var sessionsMap map[int64]int
 	if len(sessionAccountIDs) > 0 && s.sessionLimitCache != nil {
-		sessionsMap, _ = s.sessionLimitCache.GetActiveSessionCountBatch(ctx, sessionAccountIDs, sessionTimeouts)
+		var err error
+		sessionsMap, err = s.sessionLimitCache.GetActiveSessionCountBatch(ctx, sessionAccountIDs, sessionTimeouts)
+		runtimeKnown = runtimeKnown && err == nil
 	}
 
 	rpmAccountIDs := accountIDsForGroupsWithLimit(refs, groupIndex, results, func(summary GroupCapacitySummary) bool {
@@ -212,9 +233,17 @@ func (s *GroupCapacityService) getGroupCapacitiesBatch(ctx context.Context, grou
 	})
 	var rpmMap map[int64]int
 	if len(rpmAccountIDs) > 0 && s.rpmCache != nil {
-		rpmMap, _ = s.rpmCache.GetRPMBatch(ctx, rpmAccountIDs)
+		var err error
+		rpmMap, err = s.rpmCache.GetRPMBatch(ctx, rpmAccountIDs)
+		runtimeKnown = runtimeKnown && err == nil
 	}
 
+	if (len(sessionAccountIDs) > 0 && s.sessionLimitCache == nil) || (len(rpmAccountIDs) > 0 && s.rpmCache == nil) {
+		runtimeKnown = false
+	}
+	for _, ref := range refs {
+		results[groupIndex[ref.groupID]].RuntimeKnown = runtimeKnown
+	}
 	for _, ref := range refs {
 		idx := groupIndex[ref.groupID]
 		results[idx].ConcurrencyUsed += concurrencyMap[ref.accountID]
@@ -251,7 +280,7 @@ func (s *GroupCapacityService) getGroupCapacity(ctx context.Context, groupID int
 		return GroupCapacitySummary{}, err
 	}
 	if len(accounts) == 0 {
-		return GroupCapacitySummary{}, nil
+		return GroupCapacitySummary{RuntimeKnown: true}, nil
 	}
 
 	// Collect account IDs and config values
@@ -279,16 +308,26 @@ func (s *GroupCapacityService) getGroupCapacity(ctx context.Context, groupID int
 	}
 
 	// Batch query runtime data from Redis
-	concurrencyMap, _ := s.concurrencyService.GetAccountConcurrencyBatch(ctx, accountIDs)
+	concurrencyMap := map[int64]int{}
+	runtimeKnown := false
+	if s.concurrencyService != nil && s.concurrencyService.cache != nil {
+		var err error
+		concurrencyMap, err = s.concurrencyService.GetAccountConcurrencyBatch(ctx, accountIDs)
+		runtimeKnown = err == nil
+	}
 
 	var sessionsMap map[int64]int
 	if sessionsMax > 0 && s.sessionLimitCache != nil {
-		sessionsMap, _ = s.sessionLimitCache.GetActiveSessionCountBatch(ctx, accountIDs, sessionTimeouts)
+		var err error
+		sessionsMap, err = s.sessionLimitCache.GetActiveSessionCountBatch(ctx, accountIDs, sessionTimeouts)
+		runtimeKnown = runtimeKnown && err == nil
 	}
 
 	var rpmMap map[int64]int
 	if rpmMax > 0 && s.rpmCache != nil {
-		rpmMap, _ = s.rpmCache.GetRPMBatch(ctx, accountIDs)
+		var err error
+		rpmMap, err = s.rpmCache.GetRPMBatch(ctx, accountIDs)
+		runtimeKnown = runtimeKnown && err == nil
 	}
 
 	// Aggregate
@@ -304,6 +343,8 @@ func (s *GroupCapacityService) getGroupCapacity(ctx context.Context, groupID int
 	}
 
 	return GroupCapacitySummary{
+		RuntimeKnown:    runtimeKnown && (sessionsMax == 0 || s.sessionLimitCache != nil) && (rpmMax == 0 || s.rpmCache != nil),
+		SessionsTracked: sessionsMax > 0,
 		ConcurrencyUsed: concurrencyUsed,
 		ConcurrencyMax:  concurrencyMax,
 		SessionsUsed:    sessionsUsed,
@@ -311,4 +352,62 @@ func (s *GroupCapacityService) getGroupCapacity(ctx context.Context, groupID int
 		RPMUsed:         rpmUsed,
 		RPMMax:          rpmMax,
 	}, nil
+}
+
+type groupActiveUsersProbe interface {
+	GetGroupActiveUserCounts(context.Context, []int64, time.Time) (map[int64]int, error)
+}
+type groupActiveUsersEntry struct {
+	count   int
+	expires time.Time
+}
+
+func ProvideGroupCapacityService(accounts AccountRepository, groups GroupRepository, concurrency *ConcurrencyService, sessions SessionLimitCache, rpm RPMCache, usage *UsageService) *GroupCapacityService {
+	s := NewGroupCapacityService(accounts, groups, concurrency, sessions, rpm)
+	if usage != nil {
+		if probe, ok := usage.usageRepo.(groupActiveUsersProbe); ok {
+			s.activeUsers = probe
+		}
+	}
+	return s
+}
+func (s *GroupCapacityService) enrichActiveUsers(ctx context.Context, results []GroupCapacitySummary) {
+	if s.activeUsers == nil {
+		return
+	}
+	now := time.Now()
+	missing := []int64{}
+	s.activeMu.Lock()
+	if s.activeCache == nil {
+		s.activeCache = make(map[int64]groupActiveUsersEntry)
+	}
+	for i := range results {
+		if entry, ok := s.activeCache[results[i].GroupID]; ok && now.Before(entry.expires) {
+			results[i].ActiveUsers = entry.count
+			results[i].ActiveUsersKnown = true
+		} else {
+			missing = append(missing, results[i].GroupID)
+		}
+	}
+	s.activeMu.Unlock()
+	if len(missing) == 0 {
+		return
+	}
+	readCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	counts, err := s.activeUsers.GetGroupActiveUserCounts(readCtx, missing, now.Add(-5*time.Minute))
+	if err != nil {
+		return
+	}
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	for _, id := range missing {
+		s.activeCache[id] = groupActiveUsersEntry{count: counts[id], expires: now.Add(30 * time.Second)}
+	}
+	for i := range results {
+		if entry, ok := s.activeCache[results[i].GroupID]; ok {
+			results[i].ActiveUsers = entry.count
+			results[i].ActiveUsersKnown = true
+		}
+	}
 }

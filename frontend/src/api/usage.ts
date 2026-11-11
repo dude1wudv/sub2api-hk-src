@@ -102,6 +102,30 @@ export interface ApiKeyDailyUsageResponse {
   end_date: string
 }
 
+export interface KeyUsageTotals {
+  requests: number
+  input_tokens: number
+  output_tokens: number
+  cache_read_tokens: number
+  cache_write_tokens: number
+  total_tokens: number
+  cost: number
+  actual_cost: number
+}
+export interface KeyUsageDetail {
+  api_key_id: number
+  start_date: string
+  end_date: string
+  timezone: string
+  today: KeyUsageTotals
+  range: KeyUsageTotals
+  items: Array<KeyUsageTotals & { date: string }>
+}
+export async function getKeyUsageDetail(id: number, params: { days?: number; start_date?: string; end_date?: string; timezone: string }, signal?: AbortSignal): Promise<KeyUsageDetail> {
+  const { data } = await apiClient.get<KeyUsageDetail>(`/user/api-keys/${id}/usage`, { params, signal })
+  return data
+}
+
 export interface UsageDashboardSnapshotV2Params extends TrendParams {
   include_trend?: boolean
   include_model_stats?: boolean

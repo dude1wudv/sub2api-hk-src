@@ -580,6 +580,10 @@ export type GroupI18n = Record<string, GroupLocaleText>
 
 // 用户侧接口返回的 name / description 已由后端按请求语言（Accept-Language）选好
 export interface Group {
+  recent_rate_change?: { old_rate: number; new_rate: number; changed_at: string } | null
+  is_new?: boolean
+  launched_at?: string | null
+  launch_rate?: number | null
   id: number
   name: string
   description: string | null
@@ -751,6 +755,7 @@ export interface CompositeRouteDecision {
 }
 
 export interface ApiKey {
+  anthropic_cache_ttl_mode?: 'inherit' | 'off' | '5m' | '1h'
   concurrency_limit?: number
   current_waiting?: number
   current_concurrency_status?: 'available' | 'unavailable' | 'unsupported'
@@ -788,6 +793,7 @@ export interface ApiKey {
 }
 
 export interface CreateApiKeyRequest {
+  anthropic_cache_ttl_mode?: 'inherit' | 'off' | '5m' | '1h'
   concurrency_limit?: number
   routing_group_ids?: number[]
   name: string
@@ -803,6 +809,7 @@ export interface CreateApiKeyRequest {
 }
 
 export interface UpdateApiKeyRequest {
+  anthropic_cache_ttl_mode?: 'inherit' | 'off' | '5m' | '1h'
   concurrency_limit?: number
   routing_group_ids?: number[]
   name?: string
@@ -820,6 +827,7 @@ export interface UpdateApiKeyRequest {
 }
 
 export interface CreateGroupRequest {
+  launched_at?: string | null
   name: string
   description?: string | null
   i18n?: GroupI18n
@@ -889,6 +897,7 @@ export interface CreateGroupRequest {
 }
 
 export interface UpdateGroupRequest {
+  launched_at?: string | null
   name?: string
   description?: string | null
   i18n?: GroupI18n

@@ -36,6 +36,8 @@ type APIKey struct {
 	GroupID *int64 `json:"group_id,omitempty"`
 	// Ordered smart routing groups; empty means fixed group
 	RoutingGroupIds []int64 `json:"routing_group_ids,omitempty"`
+	// AnthropicCacheTTLMode holds the value of the "anthropic_cache_ttl_mode" field.
+	AnthropicCacheTTLMode string `json:"anthropic_cache_ttl_mode,omitempty"`
 	// API key concurrency limit (0 = no additional limit)
 	ConcurrencyLimit int `json:"concurrency_limit,omitempty"`
 	// Status holds the value of the "status" field.
@@ -153,7 +155,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID, apikey.FieldConcurrencyLimit:
 			values[i] = new(sql.NullInt64)
-		case apikey.FieldKey, apikey.FieldName, apikey.FieldStatus:
+		case apikey.FieldKey, apikey.FieldName, apikey.FieldAnthropicCacheTTLMode, apikey.FieldStatus:
 			values[i] = new(sql.NullString)
 		case apikey.FieldCreatedAt, apikey.FieldUpdatedAt, apikey.FieldDeletedAt, apikey.FieldLastUsedAt, apikey.FieldExpiresAt, apikey.FieldWindow5hStart, apikey.FieldWindow1dStart, apikey.FieldWindow7dStart:
 			values[i] = new(sql.NullTime)
@@ -229,6 +231,12 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &_m.RoutingGroupIds); err != nil {
 					return fmt.Errorf("unmarshal field routing_group_ids: %w", err)
 				}
+			}
+		case apikey.FieldAnthropicCacheTTLMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field anthropic_cache_ttl_mode", values[i])
+			} else if value.Valid {
+				_m.AnthropicCacheTTLMode = value.String
 			}
 		case apikey.FieldConcurrencyLimit:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -429,6 +437,9 @@ func (_m *APIKey) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("routing_group_ids=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RoutingGroupIds))
+	builder.WriteString(", ")
+	builder.WriteString("anthropic_cache_ttl_mode=")
+	builder.WriteString(_m.AnthropicCacheTTLMode)
 	builder.WriteString(", ")
 	builder.WriteString("concurrency_limit=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ConcurrencyLimit))

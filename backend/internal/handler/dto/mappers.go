@@ -83,6 +83,7 @@ func APIKeyFromService(k *service.APIKey) *APIKey {
 	}
 	out := &APIKey{
 		RoutingGroupIDs:             append([]int64{}, k.RoutingGroupIDs...),
+		AnthropicCacheTTLMode:       service.NormalizeAnthropicCacheTTLMode(k.AnthropicCacheTTLMode),
 		ConcurrencyLimit:            k.ConcurrencyLimit,
 		ID:                          k.ID,
 		UserID:                      k.UserID,
@@ -191,6 +192,10 @@ func groupFromServiceBase(g *service.Group) Group {
 		I18n:                            g.I18n,
 		Platform:                        g.Platform,
 		RateMultiplier:                  g.RateMultiplier,
+		LaunchedAt:                      g.LaunchedAt,
+		LaunchRate:                      g.LaunchRate,
+		IsNew:                           g.IsNew,
+		RecentRateChange:                g.RecentRateChange,
 		IsExclusive:                     g.IsExclusive,
 		Status:                          g.Status,
 		SubscriptionType:                g.SubscriptionType,

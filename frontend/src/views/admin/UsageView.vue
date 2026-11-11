@@ -1,6 +1,7 @@
 <template>
   <div class="admin-page admin-page--analysis" data-admin-page="usage">
     <div class="space-y-6">
+      <InflightRequests admin />
       <UsageStatsCards :stats="usageStats" />
       <!-- Charts Section -->
       <div class="space-y-4 dashboard-analytics">
@@ -184,6 +185,7 @@
 </template>
 
 <script setup lang="ts">
+import InflightRequests from '@/components/usage/InflightRequests.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { saveAs } from 'file-saver'

@@ -31,6 +31,8 @@ const (
 	FieldGroupID = "group_id"
 	// FieldRoutingGroupIds holds the string denoting the routing_group_ids field in the database.
 	FieldRoutingGroupIds = "routing_group_ids"
+	// FieldAnthropicCacheTTLMode holds the string denoting the anthropic_cache_ttl_mode field in the database.
+	FieldAnthropicCacheTTLMode = "anthropic_cache_ttl_mode"
 	// FieldConcurrencyLimit holds the string denoting the concurrency_limit field in the database.
 	FieldConcurrencyLimit = "concurrency_limit"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -125,6 +127,7 @@ var Columns = []string{
 	FieldName,
 	FieldGroupID,
 	FieldRoutingGroupIds,
+	FieldAnthropicCacheTTLMode,
 	FieldConcurrencyLimit,
 	FieldStatus,
 	FieldLastUsedAt,
@@ -172,6 +175,10 @@ var (
 	KeyValidator func(string) error
 	// NameValidator is a validator for the "name" field. It is called by the builders before save.
 	NameValidator func(string) error
+	// DefaultAnthropicCacheTTLMode holds the default value on creation for the "anthropic_cache_ttl_mode" field.
+	DefaultAnthropicCacheTTLMode string
+	// AnthropicCacheTTLModeValidator is a validator for the "anthropic_cache_ttl_mode" field. It is called by the builders before save.
+	AnthropicCacheTTLModeValidator func(string) error
 	// DefaultConcurrencyLimit holds the default value on creation for the "concurrency_limit" field.
 	DefaultConcurrencyLimit int
 	// ConcurrencyLimitValidator is a validator for the "concurrency_limit" field. It is called by the builders before save.
@@ -239,6 +246,11 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 // ByGroupID orders the results by the group_id field.
 func ByGroupID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldGroupID, opts...).ToFunc()
+}
+
+// ByAnthropicCacheTTLMode orders the results by the anthropic_cache_ttl_mode field.
+func ByAnthropicCacheTTLMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAnthropicCacheTTLMode, opts...).ToFunc()
 }
 
 // ByConcurrencyLimit orders the results by the concurrency_limit field.

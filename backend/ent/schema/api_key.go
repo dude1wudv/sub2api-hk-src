@@ -45,6 +45,7 @@ func (APIKey) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 		field.JSON("routing_group_ids", []int64{}).Optional().Comment("Ordered smart routing groups; empty means fixed group"),
+		field.String("anthropic_cache_ttl_mode").Default("inherit").MaxLen(10),
 		field.Int("concurrency_limit").NonNegative().Default(0).Comment("API key concurrency limit (0 = no additional limit)"),
 		field.String("status").
 			MaxLen(20).

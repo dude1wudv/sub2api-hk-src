@@ -47,6 +47,17 @@ export interface PlazaTimePricing {
 export interface PlazaModel {
   name: string
   platform: string
+  description?: string
+  context_window?: number
+  max_output_tokens?: number
+  input_modalities?: string[]
+  output_modalities?: string[]
+  reasoning?: boolean
+  tool_call?: boolean
+  family?: string
+  release_date?: string
+  metadata_source?: string
+  metadata_match?: string
   /** 实收口径的展示定价：档位可提供绝对单价或相对基础价倍率；均为标准时段价。 */
   pricing: UserSupportedModelPricing | null
   official_pricing: PlazaOfficialPricing | null

@@ -165,7 +165,8 @@ func TestListPlazaGroups_CompositeAndOrdinaryGroupsDoNotLeakPlatforms(t *testing
 	}
 	require.Len(t, byName["anthropic-only"].Models, 1)
 	require.Equal(t, []PlazaModel{{
-		Name: "claude-sonnet", Platform: PlatformAnthropic, Pricing: byName["anthropic-only"].Models[0].Pricing,
+		ModelMetadata: ModelMetadata{InputModalities: []string{}, OutputModalities: []string{}, MetadataSource: "none", MetadataMatch: "unknown"},
+		Name:          "claude-sonnet", Platform: PlatformAnthropic, Pricing: byName["anthropic-only"].Models[0].Pricing,
 	}}, byName["anthropic-only"].Models)
 	require.Len(t, byName["composite"].Models, 2)
 	require.Equal(t, []string{"claude-sonnet", "gpt-5"}, []string{

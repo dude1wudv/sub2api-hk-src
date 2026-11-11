@@ -23,17 +23,21 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 340
+	candidateMigrationCount         = 342
 	mcpOAuthMigration               = "249_mcp_oauth.sql"
 )
 
 var currentOnlineFollowupMigrations = []string{
+	"339_group_rate_history.sql",
+	"340_api_key_anthropic_cache_ttl_mode.sql",
 	"249_add_usage_logs_api_key_cost_index_notx.sql",
 	"250_openai_cache_write_ttl.sql",
 	"338_gemini_cached_content_charge_intent.sql",
 }
 
 var postHKBaselineMigrations = []string{
+	"339_group_rate_history.sql",
+	"340_api_key_anthropic_cache_ttl_mode.sql",
 	"249_add_usage_logs_api_key_cost_index_notx.sql",
 	"250_openai_cache_write_ttl.sql",
 	"334_api_key_concurrency_limit.sql",
@@ -57,6 +61,8 @@ var currentReleaseMigrations = []string{
 }
 
 var candidateOnlyMigrations = []string{
+	"339_group_rate_history.sql",
+	"340_api_key_anthropic_cache_ttl_mode.sql",
 	mcpOAuthMigration,
 	"247_scoped_admin_api_keys.sql",
 	"248_group_image_count_billing.sql",
@@ -249,6 +255,44 @@ func TestUpstreamMergeValidation_CurrentOnlineHistoryAndFreshSchemaConverge(t *t
 	require.NoError(t, applyMigrationsFS(ctx, db, history))
 	before := migrationChecksums(t, db, "public")
 	require.Len(t, before, 337)
+	requireMigrationChecksumsMatchFiles(t, history, before)
+
+	require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
+	after := migrationChecksums(t, db, "public")
+	require.Len(t, after, candidateMigrationCount)
+	requireMigrationChecksumsMatchFiles(t, migrations.FS, after)
+	require.Equal(t, schemaFingerprint(t, integrationDB, "public"), schemaFingerprint(t, db, "public"))
+	require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))
+	require.Zero(t, invalidIndexCount(t, db, "public"))
+}
+
+func TestUpstreamMergeValidation_FeatureBaselineHistoryAndFreshSchemaConverge(t *testing.T) {
+	ctx := context.Background()
+	history := fstest.MapFS{}
+	for _, name := range migrationFiles(t, migrations.FS) {
+		if name == "339_group_rate_history.sql" || name == "340_api_key_anthropic_cache_ttl_mode.sql" {
+			continue
+		}
+		content, err := migrations.FS.ReadFile(name)
+		require.NoError(t, err)
+		history[name] = &fstest.MapFile{Data: content}
+	}
+	require.Len(t, history, 340)
+
+	container, err := tcpostgres.Run(ctx, selectDockerImage(ctx, postgresImageTag),
+		tcpostgres.WithDatabase("online_340_history"), tcpostgres.WithUsername("postgres"),
+		tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = container.Terminate(ctx) })
+	dsn, err := container.ConnectionString(ctx, "sslmode=disable", "TimeZone=UTC")
+	require.NoError(t, err)
+	db, err := openSQLWithRetry(ctx, dsn, 30*time.Second)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	require.NoError(t, applyMigrationsFS(ctx, db, history))
+	before := migrationChecksums(t, db, "public")
+	require.Len(t, before, 340)
 	requireMigrationChecksumsMatchFiles(t, history, before)
 
 	require.NoError(t, applyMigrationsFS(ctx, db, migrations.FS))

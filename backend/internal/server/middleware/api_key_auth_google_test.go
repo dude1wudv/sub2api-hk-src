@@ -285,6 +285,99 @@ func newTestAPIKeyService(repo service.APIKeyRepository) *service.APIKeyService 
 	)
 }
 
+type googleAuthBalanceNotifier struct{ calls atomic.Int64 }
+
+func (n *googleAuthBalanceNotifier) NotifyInsufficientBalance(*service.User) { n.calls.Add(1) }
+
+func TestGoogleAPIKeyAuthNotifiesOnlyUserBalanceRejection(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, tt := range []struct {
+		name, keyStatus, groupStatus, subscriptionType, runMode, credential string
+		balance, quota, used                                                float64
+		subscribed, missingKey                                              bool
+		want                                                                int
+		googleStatus, message                                               string
+		notifications                                                       int64
+	}{
+		{name: "balance zero", want: 403, googleStatus: "PERMISSION_DENIED", message: "Insufficient account balance", notifications: 1},
+		{name: "balance negative", balance: -1, want: 403, googleStatus: "PERMISSION_DENIED", message: "Insufficient account balance", notifications: 1},
+		{name: "positive balance", balance: 1, want: 200},
+		{name: "missing credential", missingKey: true, want: 401, googleStatus: "UNAUTHENTICATED", message: "API key is required"},
+		{name: "invalid credential", credential: "sk-invalid", want: 401, googleStatus: "UNAUTHENTICATED", message: "Invalid API key"},
+		{name: "key quota status", keyStatus: service.StatusAPIKeyQuotaExhausted, want: 429, googleStatus: "RESOURCE_EXHAUSTED", message: "API key 额度已用完"},
+		{name: "key runtime quota", quota: 1, used: 1, want: 429, googleStatus: "RESOURCE_EXHAUSTED", message: "API key 额度已用完"},
+		{name: "key expired", keyStatus: service.StatusAPIKeyExpired, want: 403, googleStatus: "PERMISSION_DENIED", message: "API key 已过期"},
+		{name: "group disabled", groupStatus: service.StatusDisabled, want: 403, googleStatus: "PERMISSION_DENIED"},
+		{name: "subscription missing", subscriptionType: service.SubscriptionTypeSubscription, want: 403, googleStatus: "PERMISSION_DENIED", message: "No active subscription found for this group"},
+		{name: "subscription quota", subscriptionType: service.SubscriptionTypeSubscription, subscribed: true, want: 429, googleStatus: "RESOURCE_EXHAUSTED", message: "daily usage limit exceeded"},
+		{name: "simple mode", runMode: config.RunModeSimple, want: 200},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config.Config{RunMode: config.RunModeStandard}
+			if tt.runMode != "" {
+				cfg.RunMode = tt.runMode
+			}
+			group := &service.Group{ID: 8, Platform: service.PlatformGemini, Status: service.StatusActive, SubscriptionType: tt.subscriptionType, Hydrated: true}
+			if tt.groupStatus != "" {
+				group.Status = tt.groupStatus
+			}
+			key := &service.APIKey{ID: 1, UserID: 2, Key: "sk-google-notify", Status: service.StatusActive, GroupID: &group.ID, Group: group, Quota: tt.quota, QuotaUsed: tt.used, User: &service.User{ID: 2, Status: service.StatusActive, Balance: tt.balance}}
+			if tt.keyStatus != "" {
+				key.Status = tt.keyStatus
+			}
+			keys := service.NewAPIKeyService(fakeAPIKeyRepo{getByKey: func(_ context.Context, credential string) (*service.APIKey, error) {
+				if credential != key.Key {
+					return nil, service.ErrAPIKeyNotFound
+				}
+				clone := *key
+				return &clone, nil
+			}}, nil, nil, nil, nil, nil, cfg)
+			subRepo := fakeGoogleSubscriptionRepo{getActive: func(context.Context, int64, int64) (*service.UserSubscription, error) {
+				if !tt.subscribed {
+					return nil, service.ErrSubscriptionNotFound
+				}
+				now := time.Now()
+				return &service.UserSubscription{ID: 1, UserID: 2, GroupID: 8, Status: service.SubscriptionStatusActive, ExpiresAt: now.Add(time.Hour), DailyWindowStart: &now, WeeklyWindowStart: &now, MonthlyWindowStart: &now, DailyUsageUSD: 2}, nil
+			}}
+			if tt.subscribed {
+				limit := 1.0
+				group.DailyLimitUSD = &limit
+			}
+			subscriptions := service.NewSubscriptionService(nil, subRepo, nil, nil, cfg)
+			t.Cleanup(subscriptions.Stop)
+			notifier := &googleAuthBalanceNotifier{}
+			router := gin.New()
+			router.Use(APIKeyAuthWithSubscriptionGoogle(keys, subscriptions, cfg, notifier))
+			router.GET("/v1beta/test", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"ok": true}) })
+			request := httptest.NewRequest(http.MethodGet, "/v1beta/test", nil)
+			credential := key.Key
+			if tt.credential != "" {
+				credential = tt.credential
+			}
+			if !tt.missingKey {
+				request.Header.Set("x-goog-api-key", credential)
+			}
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			require.Equal(t, tt.want, response.Code, response.Body.String())
+			require.Equal(t, tt.notifications, notifier.calls.Load())
+			if tt.want != http.StatusOK {
+				var payload googleErrorResponse
+				require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
+				require.Equal(t, tt.want, payload.Error.Code)
+				require.Equal(t, tt.googleStatus, payload.Error.Status)
+				require.NotEmpty(t, payload.Error.Message)
+				if tt.message != "" {
+					require.Contains(t, payload.Error.Message, tt.message)
+				}
+				wantJSON, err := json.Marshal(payload)
+				require.NoError(t, err)
+				require.JSONEq(t, string(wantJSON), response.Body.String(), "Google errors retain exactly the code/message/status shape")
+			}
+		})
+	}
+}
+
 func TestApiKeyAuthWithSubscriptionGoogle_MissingKey(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

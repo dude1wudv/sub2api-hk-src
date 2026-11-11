@@ -141,6 +141,8 @@ func TestGetAllGroupCapacityBatchAggregatesRuntimeAndLimits(t *testing.T) {
 	require.Equal(t, []GroupCapacitySummary{
 		{
 			GroupID:         10,
+			RuntimeKnown:    true,
+			SessionsTracked: true,
 			ConcurrencyUsed: 1,
 			ConcurrencyMax:  2,
 			SessionsUsed:    2,
@@ -150,6 +152,8 @@ func TestGetAllGroupCapacityBatchAggregatesRuntimeAndLimits(t *testing.T) {
 		},
 		{
 			GroupID:         20,
+			RuntimeKnown:    true,
+			SessionsTracked: true,
 			ConcurrencyUsed: 3,
 			ConcurrencyMax:  6,
 			SessionsUsed:    3,
@@ -173,7 +177,7 @@ func TestGetAllGroupCapacityBatchKeepsEmptyGroupRows(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, []GroupCapacitySummary{
-		{GroupID: 10},
+		{GroupID: 10, RuntimeKnown: true},
 		{GroupID: 20, ConcurrencyMax: 4},
 	}, results)
 }

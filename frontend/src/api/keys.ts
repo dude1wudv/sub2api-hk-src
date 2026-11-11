@@ -67,9 +67,11 @@ export async function create(
   expiresInDays?: number,
   rateLimitData?: { rate_limit_5h?: number; rate_limit_1d?: number; rate_limit_7d?: number },
   routingGroupIds?: number[],
-  concurrencyLimit?: number
+  concurrencyLimit?: number,
+  anthropicCacheTtlMode?: CreateApiKeyRequest['anthropic_cache_ttl_mode']
 ): Promise<ApiKey> {
   const payload: CreateApiKeyRequest = { name }
+  if (anthropicCacheTtlMode && anthropicCacheTtlMode !== 'inherit') payload.anthropic_cache_ttl_mode = anthropicCacheTtlMode
   if (concurrencyLimit !== undefined) payload.concurrency_limit = concurrencyLimit
   if (routingGroupIds !== undefined) payload.routing_group_ids = routingGroupIds
   if (groupId !== undefined) {

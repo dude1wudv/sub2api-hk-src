@@ -14,11 +14,12 @@
           <div class="key-group-list">
             <button v-for="group in filteredGroups" :key="group.id" type="button" class="key-group-card" :class="{ selected: isSelected(group.id) }" :aria-pressed="isSelected(group.id)" :disabled="form.smart && (form.routing.includes(group.id) || form.routing.length >= 10)" :data-group-id="group.id" @click="selectGroup(group.id)">
               <span class="key-radio" aria-hidden="true">{{ isSelected(group.id) ? '✓' : '+' }}</span>
-              <span class="key-group-copy"><strong>{{ group.name }}</strong><span v-if="group.description" class="key-description">{{ group.description }}</span><small v-if="group.subscription_type === 'subscription'">{{ text('订阅分组', 'Subscription group') }}</small></span>
+              <span class="key-group-copy"><strong>{{ group.name }} <span v-if="group.is_new" class="key-new">NEW</span></strong><span v-if="group.description" class="key-description">{{ group.description }}</span><small v-if="group.subscription_type === 'subscription'">{{ text('订阅分组', 'Subscription group') }}</small></span>
               <span class="key-group-rate"><span>{{ text('分组倍率', 'Group rate') }} <b>{{ rate(group) }}×</b></span><small v-if="hasUserRate(group)">{{ text('专属倍率', 'Your rate') }}</small><small v-if="group.peak_rate_enabled">{{ peakText(group) }}</small></span>
             </button>
             <p v-if="!filteredGroups.length" class="key-empty">{{ text('没有匹配的可用分组', 'No matching groups') }}</p>
           </div>
+          <div v-for="group in filteredGroups.filter(item => item.is_new || (item.recent_rate_change && item.subscription_type !== 'subscription'))" :key="'rate-' + group.id" class="key-rate-note"><span>{{ group.name }}</span> <GroupChangeIndicator :group="group" /></div>
           <p class="key-count">{{ text('显示 ', 'Showing ') }}{{ filteredGroups.length }} / {{ eligibleGroups.length }}<span v-if="form.smart">{{ text('已添加 ', 'Added ') }}{{ form.routing.length }} / 10</span></p>
         </section>
         <section class="key-configuration" :aria-label="text('配置密钥', 'Configure key')">
@@ -44,6 +45,7 @@
           </div>
           <label class="portal-field">{{ text('Key 并发上限', 'Key concurrency limit') }}<input v-model.number="form.concurrency" type="number" min="0" step="1" required data-test="key-concurrency" /><small>{{ text('0 为不额外限制，仍受用户和账号并发限制。', '0 adds no key limit; user and account limits still apply.') }}</small></label>
           <details class="key-advanced"><summary>{{ text('高级设置', 'Advanced settings') }}</summary>
+            <label class="portal-field">{{ text('Anthropic 缓存时长', 'Anthropic cache duration') }}<select v-model="form.cacheTtl" data-test="anthropic-cache-ttl"><option value="inherit">{{ text('跟随账号与全局设置', 'Follow account and global settings') }}</option><option value="off">{{ text('关闭覆盖', 'Disable override') }}</option><option value="5m">{{ text('强制 5 分钟', 'Force 5 minutes') }}</option><option value="1h">{{ text('强制 1 小时', 'Force 1 hour') }}</option></select><small>{{ text('仅对原生 Anthropic 生效（不包括 Bedrock）；关闭覆盖时按上游返回的用量计费。', 'Applies only to native Anthropic, excluding Bedrock. Disabling the override uses upstream usage.') }}</small></label>
             <div class="key-rate-fields"><label v-for="field in rateFields" :key="field.key" class="portal-field">{{ field.label }}<input v-model.number="form[field.key]" type="number" min="0" step="0.01" required /></label></div><p class="key-hint">{{ text('窗口限额按 USD 计算，0 为不限。', 'Window limits are in USD; 0 means unlimited.') }}</p>
             <div v-if="editing" class="key-resets"><label><input v-model="form.resetQuota" type="checkbox" />{{ text('重置已用额度', 'Reset used quota') }}</label><label><input v-model="form.resetRates" type="checkbox" />{{ text('重置限流计数', 'Reset rate-limit usage') }}</label><small>{{ text('仅勾选后保存才会重置。', 'Resets apply only when selected and saved.') }}</small></div>
             <label class="portal-field">{{ text('IP 白名单（每行一个 IP 或 CIDR）', 'IP allowlist (one IP/CIDR per line)') }}<textarea v-model="form.allow" rows="2" /></label>
@@ -61,6 +63,7 @@ import { userFacingError } from '@/utils/userFacingError'
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PortalDialog from './PortalDialog.vue'
+import GroupChangeIndicator from '@/components/common/GroupChangeIndicator.vue'
 import { keysAPI } from '@/api/keys'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { isSmartRoutingGroup } from '@/utils/smartRouting'
@@ -76,7 +79,7 @@ const error = ref('')
 const search = ref('')
 const category = ref<'all' | KeyGroupProvider>('all')
 const routingGroups = computed(() => props.groups.filter(isSmartRoutingGroup))
-const form = reactive({ name: '', group: '', smart: false, quota: 0, concurrency: 0, days: '' as number | string, expiry: '', limit5h: 0, limit1d: 0, limit7d: 0, allow: '', block: '', custom: '', routing: [] as number[], resetQuota: false, resetRates: false })
+const form = reactive({ name: '', group: '', smart: false, quota: 0, concurrency: 0, cacheTtl: 'inherit' as NonNullable<ApiKey['anthropic_cache_ttl_mode']>, days: '' as number | string, expiry: '', limit5h: 0, limit1d: 0, limit7d: 0, allow: '', block: '', custom: '', routing: [] as number[], resetQuota: false, resetRates: false })
 const eligibleGroups = computed(() => form.smart ? routingGroups.value : props.groups)
 const selectedGroup = computed(() => props.groups.find(group => String(group.id) === form.group))
 const providers = computed(() => [
@@ -92,7 +95,7 @@ function localDate(iso: string | null) { if (!iso) return ''; const date = new D
 watch(() => props.open, (open) => {
   if (!open) return
   const key = props.editing
-  Object.assign(form, { name:key?.name || '', group:String(key?.group_id ?? props.selectedGroup ?? ''), smart:!!key?.routing_group_ids?.length, quota:key?.quota || 0, concurrency:key?.concurrency_limit ?? 0, days:'', expiry:localDate(key?.expires_at ?? null), limit5h:key?.rate_limit_5h || 0, limit1d:key?.rate_limit_1d || 0, limit7d:key?.rate_limit_7d || 0, allow:key?.ip_whitelist?.join('\n') || '', block:key?.ip_blacklist?.join('\n') || '', custom:'', routing:[...(key?.routing_group_ids || [])], resetQuota:false, resetRates:false })
+  Object.assign(form, { name:key?.name || '', group:String(key?.group_id ?? props.selectedGroup ?? ''), smart:!!key?.routing_group_ids?.length, quota:key?.quota || 0, concurrency:key?.concurrency_limit ?? 0, cacheTtl:key?.anthropic_cache_ttl_mode ?? 'inherit', days:'', expiry:localDate(key?.expires_at ?? null), limit5h:key?.rate_limit_5h || 0, limit1d:key?.rate_limit_1d || 0, limit7d:key?.rate_limit_7d || 0, allow:key?.ip_whitelist?.join('\n') || '', block:key?.ip_blacklist?.join('\n') || '', custom:'', routing:[...(key?.routing_group_ids || [])], resetQuota:false, resetRates:false })
   error.value = ''; search.value = ''; category.value = 'all'
 }, { immediate: true })
 function isSelected(id: number) { return form.smart ? form.routing.includes(id) : form.group === String(id) }
@@ -139,8 +142,8 @@ async function submit() {
   const limits = { rate_limit_5h:Number(form.limit5h), rate_limit_1d:Number(form.limit1d), rate_limit_7d:Number(form.limit7d) }
   try {
     const key = props.editing
-      ? await keysAPI.update(props.editing.id, { name:form.name.trim(), group_id:groupId, quota:Number(form.quota), expires_at:form.expiry ? new Date(form.expiry).toISOString() : '', ip_whitelist:lines(form.allow), ip_blacklist:lines(form.block), routing_group_ids:routing, concurrency_limit:Number(form.concurrency), ...limits, ...(form.resetQuota ? { reset_quota:true } : {}), ...(form.resetRates ? { reset_rate_limit_usage:true } : {}) })
-      : await keysAPI.create(form.name.trim(), groupId, form.custom || undefined, lines(form.allow), lines(form.block), Number(form.quota), form.days ? Number(form.days) : undefined, limits, routing, Number(form.concurrency))
+      ? await keysAPI.update(props.editing.id, { name:form.name.trim(), group_id:groupId, quota:Number(form.quota), expires_at:form.expiry ? new Date(form.expiry).toISOString() : '', ip_whitelist:lines(form.allow), ip_blacklist:lines(form.block), routing_group_ids:routing, concurrency_limit:Number(form.concurrency), ...(form.cacheTtl !== (props.editing.anthropic_cache_ttl_mode ?? 'inherit') ? { anthropic_cache_ttl_mode:form.cacheTtl } : {}), ...limits, ...(form.resetQuota ? { reset_quota:true } : {}), ...(form.resetRates ? { reset_rate_limit_usage:true } : {}) })
+      : await keysAPI.create(form.name.trim(), groupId, form.custom || undefined, lines(form.allow), lines(form.block), Number(form.quota), form.days ? Number(form.days) : undefined, limits, routing, Number(form.concurrency), form.cacheTtl)
     emit('saved', key)
     if (!props.editing && onboardingStore.isCurrentStep('[data-tour="key-form-submit"]')) void onboardingStore.nextStep(500)
   } catch (e) { error.value = userFacingError(e, locale.value, text('保存失败，请重试。', 'Could not save. Please retry.')) }
@@ -177,6 +180,8 @@ async function submit() {
 .key-group-card.selected .key-radio { color:rgb(var(--action-text)); background:rgb(var(--action-bg)); border-color:rgb(var(--ink)); }
 .key-group-copy { display:grid; gap:7px; min-width:0; flex:1; }
 .key-group-copy strong { font-size:13px; font-weight:600; overflow-wrap:anywhere; }
+.key-new { margin-left:4px; border-radius:4px; padding:2px 5px; background:#f4dfc3; color:#7a431f; font-size:10px; }
+.key-rate-note { display:flex; justify-content:space-between; gap:12px; padding:6px 3px; color:rgb(var(--ink-3)); font-size:12px; }
 .key-description { color:rgb(var(--ink-3)); font-size:13px; line-height:1.65; white-space:pre-line; overflow-wrap:anywhere; }
 .key-group-copy small,.key-group-rate small { color:rgb(var(--ink-3)); font-size:13px; line-height:1.5; }
 .key-group-rate { display:grid; flex-shrink:0; gap:5px; max-width:130px; text-align:right; font-size:13px; color:rgb(var(--ink-3)); }

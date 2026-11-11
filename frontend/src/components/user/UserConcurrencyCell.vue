@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center">
+  <div class="flex flex-col items-start">
     <span
       :class="[
         'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium tabular-nums',
@@ -14,16 +14,44 @@
       <span class="text-gray-400 dark:text-dark-500">/</span>
       <span class="font-mono">{{ max }}</span>
     </span>
+    <details v-if="userId" class="text-xs" @toggle="toggle">
+      <summary class="cursor-pointer text-gray-500">{{ locale.startsWith('zh') ? '按组查看' : 'By group' }}</summary>
+      <div v-if="loading" role="status">{{ locale.startsWith('zh') ? '加载中…' : 'Loading…' }}</div>
+      <div v-else-if="error" role="alert">{{ locale.startsWith('zh') ? '暂不可用' : 'Unavailable' }} <button type="button" @click="load">↻</button></div>
+      <div v-else-if="!known">{{ locale.startsWith('zh') ? '状态未知' : 'Status unknown' }}</div>
+      <div v-else-if="!items.length">{{ locale.startsWith('zh') ? '无在途请求' : 'No requests in progress' }}</div>
+      <ul v-else><li v-for="item in items" :key="item.group_id">{{ item.group_id ? (item.group_name || `#${item.group_id}`) : (locale.startsWith('zh') ? '尚未选组' : 'Group pending') }} · {{ item.inflight }}<small v-if="item.models?.length"> ({{ item.models.join(', ') }})</small></li></ul>
+    </details>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { apiClient } from '@/api/client'
 
 const props = defineProps<{
   current: number
   max: number
+  userId?: number
 }>()
+const { locale } = useI18n()
+const items = ref<Array<{group_id:number; group_name?:string; inflight:number; models:string[]}>>([])
+const known = ref(false), loading = ref(false), error = ref(false)
+let controller: AbortController | null = null
+let seq = 0
+async function load() {
+  if (!props.userId) return
+  const current = ++seq; controller?.abort(); controller = new AbortController(); const signal = controller.signal
+  loading.value = true; error.value = false
+  try {
+    const { data } = await apiClient.get<{items: typeof items.value; runtime_known:boolean}>(`/admin/users/${props.userId}/inflight`, { signal })
+    if (current === seq && !signal.aborted) { items.value = data.items; known.value = data.runtime_known }
+  } catch { if (current === seq && !signal.aborted) error.value = true }
+  finally { if (current === seq) loading.value = false }
+}
+function toggle(event: Event) { if ((event.target as HTMLDetailsElement).open) void load(); else { ++seq; controller?.abort(); loading.value = false } }
+onBeforeUnmount(() => { ++seq; controller?.abort() })
 
 // Status color based on usage
 const statusClass = computed(() => {

@@ -233,7 +233,7 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 		account := selection.Account
 		requestCtx = selection.WithSlowTTFTContext(requestCtx)
 		c.Request = c.Request.WithContext(selection.WithSlowTTFTContext(c.Request.Context()))
-		setOpsSelectedAccount(c, account.ID, account.Platform)
+		setOpsSelectedAccount(c, account.ID, account.Platform, account.Name)
 
 		// 4. Acquire account concurrency slot
 		accountReleaseFunc := selection.ReleaseFunc

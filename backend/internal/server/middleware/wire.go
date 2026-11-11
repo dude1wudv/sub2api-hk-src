@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 )
@@ -22,7 +24,11 @@ var ProviderSet = wire.NewSet(
 	NewJWTAuthMiddleware,
 	NewOptionalJWTAuthMiddleware,
 	NewAdminAuthMiddleware,
-	NewSmartRoutingAPIKeyAuthMiddleware,
+	ProvideSmartRoutingAPIKeyAuthMiddleware,
 	NewAuditLogMiddleware,
 	NewStepUpAuthMiddleware,
 )
+
+func ProvideSmartRoutingAPIKeyAuthMiddleware(keys *service.APIKeyService, subscriptions *service.SubscriptionService, cfg *config.Config, openai *service.OpenAIGatewayService, anthropic *service.GatewayService, notifier *service.BalanceNotifyService) APIKeyAuthMiddleware {
+	return NewSmartRoutingAPIKeyAuthMiddleware(keys, subscriptions, cfg, openai, anthropic, notifier)
+}

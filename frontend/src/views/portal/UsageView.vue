@@ -23,6 +23,7 @@ import PortalUsageErrorTable from '@/components/portal/PortalUsageErrorTable.vue
 import PortalUsageDetail from '@/components/portal/PortalUsageDetail.vue'
 import PortalDialog from '@/components/portal/PortalDialog.vue'
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import InflightRequests from '@/components/usage/InflightRequests.vue'
 import { parseUsageRoute, usageFiltersQuery, usageDrilldownQuery, validUsageDate, type UsageDrilldown } from './usageRoute'
 
 const { locale } = useI18n()
@@ -344,6 +345,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="portal-page usage-page">
     <PortalPageHeader :title="copy('使用记录', 'Usage records')" />
+    <InflightRequests />
     <div class="usage-overview">
       <section class="usage-summary"><div><span class="portal-muted">{{ copy('账户余额', 'Account balance') }}</span><strong>{{ auth.user ? formatUsageMoney(auth.user.balance, 2) : '—' }}</strong></div><RouterLink v-if="!auth.isSimpleMode" to="/purchase" class="portal-button">{{ copy('充值', 'Recharge') }}</RouterLink></section>
       <section class="usage-summary"><div><span class="portal-muted">{{ copy('本月消费', 'This month') }}</span><strong>{{ overviewLoading ? '—' : monthStats ? formatUsageMoney(monthStats.total_actual_cost, 2) : '—' }}</strong><small v-if="monthStats && !overviewLoading">{{ formatUsageNumber(monthStats.total_requests) }} {{ copy('次请求', 'requests') }}</small></div><span class="usage-summary-symbol" aria-hidden="true">↗</span></section>

@@ -124,6 +124,7 @@ type APIKeyMutation struct {
 	name                           *string
 	routing_group_ids              *[]int64
 	appendrouting_group_ids        []int64
+	anthropic_cache_ttl_mode       *string
 	concurrency_limit              *int
 	addconcurrency_limit           *int
 	status                         *string
@@ -610,6 +611,42 @@ func (m *APIKeyMutation) ResetRoutingGroupIds() {
 	m.routing_group_ids = nil
 	m.appendrouting_group_ids = nil
 	delete(m.clearedFields, apikey.FieldRoutingGroupIds)
+}
+
+// SetAnthropicCacheTTLMode sets the "anthropic_cache_ttl_mode" field.
+func (m *APIKeyMutation) SetAnthropicCacheTTLMode(s string) {
+	m.anthropic_cache_ttl_mode = &s
+}
+
+// AnthropicCacheTTLMode returns the value of the "anthropic_cache_ttl_mode" field in the mutation.
+func (m *APIKeyMutation) AnthropicCacheTTLMode() (r string, exists bool) {
+	v := m.anthropic_cache_ttl_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAnthropicCacheTTLMode returns the old "anthropic_cache_ttl_mode" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldAnthropicCacheTTLMode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAnthropicCacheTTLMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAnthropicCacheTTLMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAnthropicCacheTTLMode: %w", err)
+	}
+	return oldValue.AnthropicCacheTTLMode, nil
+}
+
+// ResetAnthropicCacheTTLMode resets all changes to the "anthropic_cache_ttl_mode" field.
+func (m *APIKeyMutation) ResetAnthropicCacheTTLMode() {
+	m.anthropic_cache_ttl_mode = nil
 }
 
 // SetConcurrencyLimit sets the "concurrency_limit" field.
@@ -1777,7 +1814,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 25)
+	fields := make([]string, 0, 26)
 	if m.created_at != nil {
 		fields = append(fields, apikey.FieldCreatedAt)
 	}
@@ -1801,6 +1838,9 @@ func (m *APIKeyMutation) Fields() []string {
 	}
 	if m.routing_group_ids != nil {
 		fields = append(fields, apikey.FieldRoutingGroupIds)
+	}
+	if m.anthropic_cache_ttl_mode != nil {
+		fields = append(fields, apikey.FieldAnthropicCacheTTLMode)
 	}
 	if m.concurrency_limit != nil {
 		fields = append(fields, apikey.FieldConcurrencyLimit)
@@ -1877,6 +1917,8 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.GroupID()
 	case apikey.FieldRoutingGroupIds:
 		return m.RoutingGroupIds()
+	case apikey.FieldAnthropicCacheTTLMode:
+		return m.AnthropicCacheTTLMode()
 	case apikey.FieldConcurrencyLimit:
 		return m.ConcurrencyLimit()
 	case apikey.FieldStatus:
@@ -1936,6 +1978,8 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldGroupID(ctx)
 	case apikey.FieldRoutingGroupIds:
 		return m.OldRoutingGroupIds(ctx)
+	case apikey.FieldAnthropicCacheTTLMode:
+		return m.OldAnthropicCacheTTLMode(ctx)
 	case apikey.FieldConcurrencyLimit:
 		return m.OldConcurrencyLimit(ctx)
 	case apikey.FieldStatus:
@@ -2034,6 +2078,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRoutingGroupIds(v)
+		return nil
+	case apikey.FieldAnthropicCacheTTLMode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAnthropicCacheTTLMode(v)
 		return nil
 	case apikey.FieldConcurrencyLimit:
 		v, ok := value.(int)
@@ -2400,6 +2451,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 		return nil
 	case apikey.FieldRoutingGroupIds:
 		m.ResetRoutingGroupIds()
+		return nil
+	case apikey.FieldAnthropicCacheTTLMode:
+		m.ResetAnthropicCacheTTLMode()
 		return nil
 	case apikey.FieldConcurrencyLimit:
 		m.ResetConcurrencyLimit()
@@ -22568,6 +22622,9 @@ type GroupMutation struct {
 	i18n                                    *domain.GroupI18n
 	rate_multiplier                         *float64
 	addrate_multiplier                      *float64
+	launched_at                             *time.Time
+	launch_rate                             *float64
+	addlaunch_rate                          *float64
 	peak_rate_enabled                       *bool
 	peak_start                              *string
 	peak_end                                *string
@@ -23199,6 +23256,125 @@ func (m *GroupMutation) AddedRateMultiplier() (r float64, exists bool) {
 func (m *GroupMutation) ResetRateMultiplier() {
 	m.rate_multiplier = nil
 	m.addrate_multiplier = nil
+}
+
+// SetLaunchedAt sets the "launched_at" field.
+func (m *GroupMutation) SetLaunchedAt(t time.Time) {
+	m.launched_at = &t
+}
+
+// LaunchedAt returns the value of the "launched_at" field in the mutation.
+func (m *GroupMutation) LaunchedAt() (r time.Time, exists bool) {
+	v := m.launched_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLaunchedAt returns the old "launched_at" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldLaunchedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLaunchedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLaunchedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLaunchedAt: %w", err)
+	}
+	return oldValue.LaunchedAt, nil
+}
+
+// ClearLaunchedAt clears the value of the "launched_at" field.
+func (m *GroupMutation) ClearLaunchedAt() {
+	m.launched_at = nil
+	m.clearedFields[group.FieldLaunchedAt] = struct{}{}
+}
+
+// LaunchedAtCleared returns if the "launched_at" field was cleared in this mutation.
+func (m *GroupMutation) LaunchedAtCleared() bool {
+	_, ok := m.clearedFields[group.FieldLaunchedAt]
+	return ok
+}
+
+// ResetLaunchedAt resets all changes to the "launched_at" field.
+func (m *GroupMutation) ResetLaunchedAt() {
+	m.launched_at = nil
+	delete(m.clearedFields, group.FieldLaunchedAt)
+}
+
+// SetLaunchRate sets the "launch_rate" field.
+func (m *GroupMutation) SetLaunchRate(f float64) {
+	m.launch_rate = &f
+	m.addlaunch_rate = nil
+}
+
+// LaunchRate returns the value of the "launch_rate" field in the mutation.
+func (m *GroupMutation) LaunchRate() (r float64, exists bool) {
+	v := m.launch_rate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLaunchRate returns the old "launch_rate" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldLaunchRate(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLaunchRate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLaunchRate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLaunchRate: %w", err)
+	}
+	return oldValue.LaunchRate, nil
+}
+
+// AddLaunchRate adds f to the "launch_rate" field.
+func (m *GroupMutation) AddLaunchRate(f float64) {
+	if m.addlaunch_rate != nil {
+		*m.addlaunch_rate += f
+	} else {
+		m.addlaunch_rate = &f
+	}
+}
+
+// AddedLaunchRate returns the value that was added to the "launch_rate" field in this mutation.
+func (m *GroupMutation) AddedLaunchRate() (r float64, exists bool) {
+	v := m.addlaunch_rate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearLaunchRate clears the value of the "launch_rate" field.
+func (m *GroupMutation) ClearLaunchRate() {
+	m.launch_rate = nil
+	m.addlaunch_rate = nil
+	m.clearedFields[group.FieldLaunchRate] = struct{}{}
+}
+
+// LaunchRateCleared returns if the "launch_rate" field was cleared in this mutation.
+func (m *GroupMutation) LaunchRateCleared() bool {
+	_, ok := m.clearedFields[group.FieldLaunchRate]
+	return ok
+}
+
+// ResetLaunchRate resets all changes to the "launch_rate" field.
+func (m *GroupMutation) ResetLaunchRate() {
+	m.launch_rate = nil
+	m.addlaunch_rate = nil
+	delete(m.clearedFields, group.FieldLaunchRate)
 }
 
 // SetPeakRateEnabled sets the "peak_rate_enabled" field.
@@ -26669,7 +26845,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 73)
+	fields := make([]string, 0, 75)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -26699,6 +26875,12 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.rate_multiplier != nil {
 		fields = append(fields, group.FieldRateMultiplier)
+	}
+	if m.launched_at != nil {
+		fields = append(fields, group.FieldLaunchedAt)
+	}
+	if m.launch_rate != nil {
+		fields = append(fields, group.FieldLaunchRate)
 	}
 	if m.peak_rate_enabled != nil {
 		fields = append(fields, group.FieldPeakRateEnabled)
@@ -26917,6 +27099,10 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.I18n()
 	case group.FieldRateMultiplier:
 		return m.RateMultiplier()
+	case group.FieldLaunchedAt:
+		return m.LaunchedAt()
+	case group.FieldLaunchRate:
+		return m.LaunchRate()
 	case group.FieldPeakRateEnabled:
 		return m.PeakRateEnabled()
 	case group.FieldPeakStart:
@@ -27072,6 +27258,10 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldI18n(ctx)
 	case group.FieldRateMultiplier:
 		return m.OldRateMultiplier(ctx)
+	case group.FieldLaunchedAt:
+		return m.OldLaunchedAt(ctx)
+	case group.FieldLaunchRate:
+		return m.OldLaunchRate(ctx)
 	case group.FieldPeakRateEnabled:
 		return m.OldPeakRateEnabled(ctx)
 	case group.FieldPeakStart:
@@ -27276,6 +27466,20 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRateMultiplier(v)
+		return nil
+	case group.FieldLaunchedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLaunchedAt(v)
+		return nil
+	case group.FieldLaunchRate:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLaunchRate(v)
 		return nil
 	case group.FieldPeakRateEnabled:
 		v, ok := value.(bool)
@@ -27729,6 +27933,9 @@ func (m *GroupMutation) AddedFields() []string {
 	if m.addrate_multiplier != nil {
 		fields = append(fields, group.FieldRateMultiplier)
 	}
+	if m.addlaunch_rate != nil {
+		fields = append(fields, group.FieldLaunchRate)
+	}
 	if m.addpeak_rate_multiplier != nil {
 		fields = append(fields, group.FieldPeakRateMultiplier)
 	}
@@ -27817,6 +28024,8 @@ func (m *GroupMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case group.FieldRateMultiplier:
 		return m.AddedRateMultiplier()
+	case group.FieldLaunchRate:
+		return m.AddedLaunchRate()
 	case group.FieldPeakRateMultiplier:
 		return m.AddedPeakRateMultiplier()
 	case group.FieldDailyLimitUsd:
@@ -27884,6 +28093,13 @@ func (m *GroupMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddRateMultiplier(v)
+		return nil
+	case group.FieldLaunchRate:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLaunchRate(v)
 		return nil
 	case group.FieldPeakRateMultiplier:
 		v, ok := value.(float64)
@@ -28084,6 +28300,12 @@ func (m *GroupMutation) ClearedFields() []string {
 	if m.FieldCleared(group.FieldDescription) {
 		fields = append(fields, group.FieldDescription)
 	}
+	if m.FieldCleared(group.FieldLaunchedAt) {
+		fields = append(fields, group.FieldLaunchedAt)
+	}
+	if m.FieldCleared(group.FieldLaunchRate) {
+		fields = append(fields, group.FieldLaunchRate)
+	}
 	if m.FieldCleared(group.FieldDuplicateOperationID) {
 		fields = append(fields, group.FieldDuplicateOperationID)
 	}
@@ -28166,6 +28388,12 @@ func (m *GroupMutation) ClearField(name string) error {
 		return nil
 	case group.FieldDescription:
 		m.ClearDescription()
+		return nil
+	case group.FieldLaunchedAt:
+		m.ClearLaunchedAt()
+		return nil
+	case group.FieldLaunchRate:
+		m.ClearLaunchRate()
 		return nil
 	case group.FieldDuplicateOperationID:
 		m.ClearDuplicateOperationID()
@@ -28264,6 +28492,12 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldRateMultiplier:
 		m.ResetRateMultiplier()
+		return nil
+	case group.FieldLaunchedAt:
+		m.ResetLaunchedAt()
+		return nil
+	case group.FieldLaunchRate:
+		m.ResetLaunchRate()
 		return nil
 	case group.FieldPeakRateEnabled:
 		m.ResetPeakRateEnabled()

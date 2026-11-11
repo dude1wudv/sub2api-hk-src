@@ -172,6 +172,53 @@ func (_u *GroupUpdate) AddRateMultiplier(v float64) *GroupUpdate {
 	return _u
 }
 
+// SetLaunchedAt sets the "launched_at" field.
+func (_u *GroupUpdate) SetLaunchedAt(v time.Time) *GroupUpdate {
+	_u.mutation.SetLaunchedAt(v)
+	return _u
+}
+
+// SetNillableLaunchedAt sets the "launched_at" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableLaunchedAt(v *time.Time) *GroupUpdate {
+	if v != nil {
+		_u.SetLaunchedAt(*v)
+	}
+	return _u
+}
+
+// ClearLaunchedAt clears the value of the "launched_at" field.
+func (_u *GroupUpdate) ClearLaunchedAt() *GroupUpdate {
+	_u.mutation.ClearLaunchedAt()
+	return _u
+}
+
+// SetLaunchRate sets the "launch_rate" field.
+func (_u *GroupUpdate) SetLaunchRate(v float64) *GroupUpdate {
+	_u.mutation.ResetLaunchRate()
+	_u.mutation.SetLaunchRate(v)
+	return _u
+}
+
+// SetNillableLaunchRate sets the "launch_rate" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableLaunchRate(v *float64) *GroupUpdate {
+	if v != nil {
+		_u.SetLaunchRate(*v)
+	}
+	return _u
+}
+
+// AddLaunchRate adds value to the "launch_rate" field.
+func (_u *GroupUpdate) AddLaunchRate(v float64) *GroupUpdate {
+	_u.mutation.AddLaunchRate(v)
+	return _u
+}
+
+// ClearLaunchRate clears the value of the "launch_rate" field.
+func (_u *GroupUpdate) ClearLaunchRate() *GroupUpdate {
+	_u.mutation.ClearLaunchRate()
+	return _u
+}
+
 // SetPeakRateEnabled sets the "peak_rate_enabled" field.
 func (_u *GroupUpdate) SetPeakRateEnabled(v bool) *GroupUpdate {
 	_u.mutation.SetPeakRateEnabled(v)
@@ -1698,6 +1745,21 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedRateMultiplier(); ok {
 		_spec.AddField(group.FieldRateMultiplier, field.TypeFloat64, value)
 	}
+	if value, ok := _u.mutation.LaunchedAt(); ok {
+		_spec.SetField(group.FieldLaunchedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LaunchedAtCleared() {
+		_spec.ClearField(group.FieldLaunchedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LaunchRate(); ok {
+		_spec.SetField(group.FieldLaunchRate, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedLaunchRate(); ok {
+		_spec.AddField(group.FieldLaunchRate, field.TypeFloat64, value)
+	}
+	if _u.mutation.LaunchRateCleared() {
+		_spec.ClearField(group.FieldLaunchRate, field.TypeFloat64)
+	}
 	if value, ok := _u.mutation.PeakRateEnabled(); ok {
 		_spec.SetField(group.FieldPeakRateEnabled, field.TypeBool, value)
 	}
@@ -2483,6 +2545,53 @@ func (_u *GroupUpdateOne) SetNillableRateMultiplier(v *float64) *GroupUpdateOne 
 // AddRateMultiplier adds value to the "rate_multiplier" field.
 func (_u *GroupUpdateOne) AddRateMultiplier(v float64) *GroupUpdateOne {
 	_u.mutation.AddRateMultiplier(v)
+	return _u
+}
+
+// SetLaunchedAt sets the "launched_at" field.
+func (_u *GroupUpdateOne) SetLaunchedAt(v time.Time) *GroupUpdateOne {
+	_u.mutation.SetLaunchedAt(v)
+	return _u
+}
+
+// SetNillableLaunchedAt sets the "launched_at" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableLaunchedAt(v *time.Time) *GroupUpdateOne {
+	if v != nil {
+		_u.SetLaunchedAt(*v)
+	}
+	return _u
+}
+
+// ClearLaunchedAt clears the value of the "launched_at" field.
+func (_u *GroupUpdateOne) ClearLaunchedAt() *GroupUpdateOne {
+	_u.mutation.ClearLaunchedAt()
+	return _u
+}
+
+// SetLaunchRate sets the "launch_rate" field.
+func (_u *GroupUpdateOne) SetLaunchRate(v float64) *GroupUpdateOne {
+	_u.mutation.ResetLaunchRate()
+	_u.mutation.SetLaunchRate(v)
+	return _u
+}
+
+// SetNillableLaunchRate sets the "launch_rate" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableLaunchRate(v *float64) *GroupUpdateOne {
+	if v != nil {
+		_u.SetLaunchRate(*v)
+	}
+	return _u
+}
+
+// AddLaunchRate adds value to the "launch_rate" field.
+func (_u *GroupUpdateOne) AddLaunchRate(v float64) *GroupUpdateOne {
+	_u.mutation.AddLaunchRate(v)
+	return _u
+}
+
+// ClearLaunchRate clears the value of the "launch_rate" field.
+func (_u *GroupUpdateOne) ClearLaunchRate() *GroupUpdateOne {
+	_u.mutation.ClearLaunchRate()
 	return _u
 }
 
@@ -4041,6 +4150,21 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.AddedRateMultiplier(); ok {
 		_spec.AddField(group.FieldRateMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.LaunchedAt(); ok {
+		_spec.SetField(group.FieldLaunchedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LaunchedAtCleared() {
+		_spec.ClearField(group.FieldLaunchedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LaunchRate(); ok {
+		_spec.SetField(group.FieldLaunchRate, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedLaunchRate(); ok {
+		_spec.AddField(group.FieldLaunchRate, field.TypeFloat64, value)
+	}
+	if _u.mutation.LaunchRateCleared() {
+		_spec.ClearField(group.FieldLaunchRate, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.PeakRateEnabled(); ok {
 		_spec.SetField(group.FieldPeakRateEnabled, field.TypeBool, value)

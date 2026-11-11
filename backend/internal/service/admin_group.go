@@ -585,6 +585,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		I18n:                            i18n,
 		Platform:                        platform,
 		RateMultiplier:                  input.RateMultiplier,
+		LaunchedAt:                      input.LaunchedAt,
 		IsExclusive:                     input.IsExclusive,
 		Status:                          StatusActive,
 		SubscriptionType:                subscriptionType,
@@ -652,6 +653,10 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		group.AllowLive = false
 	}
 	sanitizeGroupReasoningEffortPolicy(group)
+	if group.LaunchedAt != nil {
+		rate := group.RateMultiplier
+		group.LaunchRate = &rate
+	}
 	if err := s.groupRepo.Create(ctx, group); err != nil {
 		return nil, err
 	}
@@ -812,6 +817,11 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 			return nil, errors.New("rate_multiplier must be > 0")
 		}
 		group.RateMultiplier = *input.RateMultiplier
+	}
+	if input.ClearLaunchedAt {
+		group.setLaunch(nil)
+	} else if input.LaunchedAt != nil {
+		group.setLaunch(input.LaunchedAt)
 	}
 	if input.IsExclusive != nil {
 		group.IsExclusive = *input.IsExclusive

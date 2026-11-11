@@ -286,7 +286,7 @@ func (h *OpenAIGatewayHandler) handleQwenAudio(c *gin.Context, req qwenAudioRequ
 			return
 		}
 		account := selection.Account
-		setOpsSelectedAccount(c, account.ID, account.Platform)
+		setOpsSelectedAccount(c, account.ID, account.Platform, account.Name)
 		release, slotStatus := h.acquireResponsesAccountSlot(c, apiKey.GroupID, sessionHash, selection, false, &streamStarted, reqLog)
 		if slotStatus == openAISlotAcquireProfitVetoed {
 			failed[account.ID] = struct{}{}

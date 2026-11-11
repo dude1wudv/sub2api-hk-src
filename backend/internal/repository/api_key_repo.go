@@ -46,6 +46,7 @@ func (r *apiKeyRepository) activeQuery() *dbent.APIKeyQuery {
 func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) error {
 	builder := r.client.APIKey.Create().
 		SetRoutingGroupIds(key.RoutingGroupIDs).
+		SetAnthropicCacheTTLMode(service.NormalizeAnthropicCacheTTLMode(key.AnthropicCacheTTLMode)).
 		SetConcurrencyLimit(key.ConcurrencyLimit).
 		SetUserID(key.UserID).
 		SetKey(key.Key).
@@ -140,6 +141,7 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 			apikey.FieldRoutingGroupIds,
 			apikey.FieldName,
 			apikey.FieldStatus,
+			apikey.FieldAnthropicCacheTTLMode,
 			apikey.FieldConcurrencyLimit,
 			apikey.FieldIPWhitelist,
 			apikey.FieldIPBlacklist,
@@ -308,6 +310,9 @@ func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey, fiel
 		} else {
 			builder.ClearWindow7dStart()
 		}
+	}
+	if fields.AnthropicCacheTTLMode {
+		builder.SetAnthropicCacheTTLMode(key.AnthropicCacheTTLMode)
 	}
 	if fields.ConcurrencyLimit {
 		builder.SetConcurrencyLimit(key.ConcurrencyLimit)
@@ -953,31 +958,32 @@ func apiKeyEntityToService(m *dbent.APIKey) *service.APIKey {
 		return nil
 	}
 	out := &service.APIKey{
-		ConcurrencyLimit: m.ConcurrencyLimit,
-		RoutingGroupIDs:  append([]int64{}, m.RoutingGroupIds...),
-		ID:               m.ID,
-		UserID:           m.UserID,
-		Key:              m.Key,
-		Name:             m.Name,
-		Status:           m.Status,
-		IPWhitelist:      m.IPWhitelist,
-		IPBlacklist:      m.IPBlacklist,
-		LastUsedAt:       m.LastUsedAt,
-		CreatedAt:        m.CreatedAt,
-		UpdatedAt:        m.UpdatedAt,
-		GroupID:          m.GroupID,
-		Quota:            m.Quota,
-		QuotaUsed:        m.QuotaUsed,
-		ExpiresAt:        m.ExpiresAt,
-		RateLimit5h:      m.RateLimit5h,
-		RateLimit1d:      m.RateLimit1d,
-		RateLimit7d:      m.RateLimit7d,
-		Usage5h:          m.Usage5h,
-		Usage1d:          m.Usage1d,
-		Usage7d:          m.Usage7d,
-		Window5hStart:    m.Window5hStart,
-		Window1dStart:    m.Window1dStart,
-		Window7dStart:    m.Window7dStart,
+		AnthropicCacheTTLMode: m.AnthropicCacheTTLMode,
+		ConcurrencyLimit:      m.ConcurrencyLimit,
+		RoutingGroupIDs:       append([]int64{}, m.RoutingGroupIds...),
+		ID:                    m.ID,
+		UserID:                m.UserID,
+		Key:                   m.Key,
+		Name:                  m.Name,
+		Status:                m.Status,
+		IPWhitelist:           m.IPWhitelist,
+		IPBlacklist:           m.IPBlacklist,
+		LastUsedAt:            m.LastUsedAt,
+		CreatedAt:             m.CreatedAt,
+		UpdatedAt:             m.UpdatedAt,
+		GroupID:               m.GroupID,
+		Quota:                 m.Quota,
+		QuotaUsed:             m.QuotaUsed,
+		ExpiresAt:             m.ExpiresAt,
+		RateLimit5h:           m.RateLimit5h,
+		RateLimit1d:           m.RateLimit1d,
+		RateLimit7d:           m.RateLimit7d,
+		Usage5h:               m.Usage5h,
+		Usage1d:               m.Usage1d,
+		Usage7d:               m.Usage7d,
+		Window5hStart:         m.Window5hStart,
+		Window1dStart:         m.Window1dStart,
+		Window7dStart:         m.Window7dStart,
 	}
 	if m.Edges.User != nil {
 		out.User = userEntityToService(m.Edges.User)
@@ -1054,6 +1060,8 @@ func groupEntityToService(g *dbent.Group) *service.Group {
 		I18n:                            g.I18n,
 		Platform:                        g.Platform,
 		RateMultiplier:                  g.RateMultiplier,
+		LaunchedAt:                      g.LaunchedAt,
+		LaunchRate:                      g.LaunchRate,
 		IsExclusive:                     g.IsExclusive,
 		Status:                          g.Status,
 		Hydrated:                        true,

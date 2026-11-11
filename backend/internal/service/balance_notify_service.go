@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	gocache "github.com/patrickmn/go-cache"
 )
 
 const (
@@ -37,22 +39,29 @@ type AccountQuotaReader interface {
 	GetByID(ctx context.Context, id int64) (*Account, error)
 }
 
+// BalanceNotifyEmailSender allows notification delivery to be isolated in tests.
+type BalanceNotifyEmailSender interface {
+	SendEmail(context.Context, string, string, string) error
+}
+
 // BalanceNotifyService handles balance and quota threshold notifications.
 type BalanceNotifyService struct {
-	emailService             *EmailService
+	emailService             BalanceNotifyEmailSender
 	settingRepo              SettingRepository
 	accountRepo              AccountQuotaReader
 	notificationEmailService *NotificationEmailService
 	usageNotifications       *usageNotificationWorker
+	exhaustedNotified        *gocache.Cache
 }
 
 // NewBalanceNotifyService creates a new BalanceNotifyService.
-func NewBalanceNotifyService(emailService *EmailService, settingRepo SettingRepository, accountRepo AccountQuotaReader) *BalanceNotifyService {
+func NewBalanceNotifyService(emailService BalanceNotifyEmailSender, settingRepo SettingRepository, accountRepo AccountQuotaReader) *BalanceNotifyService {
 	return &BalanceNotifyService{
 		emailService:       emailService,
 		settingRepo:        settingRepo,
 		accountRepo:        accountRepo,
 		usageNotifications: newUsageNotificationWorker(),
+		exhaustedNotified:  gocache.New(24*time.Hour, time.Hour),
 	}
 }
 
@@ -84,6 +93,38 @@ func (s *BalanceNotifyService) CheckBalanceAfterDeduction(ctx context.Context, u
 		return
 	}
 	s.dispatchBalanceLowEmail(ctx, user, newBalance, effectiveThreshold, rechargeURL)
+}
+
+// NotifyInsufficientBalance queues settings reads and delivery without blocking auth.
+// Only the user-balance rejection path calls this; key/subscription limits do not.
+func (s *BalanceNotifyService) NotifyInsufficientBalance(user *User) {
+	if s == nil || !s.canNotifyBalance(user) || user.ID <= 0 || user.Balance > 0 || s.usageNotifications == nil {
+		return
+	}
+	if s.exhaustedNotified == nil {
+		return
+	}
+	cooldownKey := strconv.FormatInt(user.ID, 10)
+	if err := s.exhaustedNotified.Add(cooldownKey, true, 24*time.Hour); err != nil {
+		return
+	}
+	snapshot := *user
+	snapshot.BalanceNotifyExtraEmails = append([]NotifyEmailEntry(nil), user.BalanceNotifyExtraEmails...)
+	if user.BalanceNotifyThreshold != nil {
+		threshold := *user.BalanceNotifyThreshold
+		snapshot.BalanceNotifyThreshold = &threshold
+	}
+	release := func() { s.exhaustedNotified.Delete(cooldownKey) }
+	if !s.usageNotifications.submit(func(ctx context.Context) {
+		threshold, rechargeURL, ok := s.resolveUserEffectiveThreshold(ctx, &snapshot)
+		if !ok || ctx.Err() != nil || len(s.collectBalanceNotifyRecipients(&snapshot)) == 0 {
+			release()
+			return
+		}
+		s.dispatchBalanceLowEmail(ctx, &snapshot, snapshot.Balance, threshold, rechargeURL)
+	}) {
+		release()
+	}
 }
 
 // canNotifyBalance checks nil guards and user-level toggle.

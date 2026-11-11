@@ -52,6 +52,7 @@
         <span v-else class="portal-api-muted">{{ text('未绑定分组', 'No group') }}</span>
         <span v-if="routingCount(apiKey)" class="portal-api-routing">{{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}</span>
       </InkSurface>
+      <GroupChangeIndicator :group="groupFor(apiKey)" />
       <dl class="portal-api-facts">
         <div>
           <dt>{{ text('今日', 'Today') }}</dt>
@@ -76,6 +77,7 @@
       </dl>
       <PortalKeyUsageLimits :api-key="apiKey" />
       <div class="portal-api-card-actions">
+        <button type="button" data-test="key-usage" @click="emit('usage', apiKey)">{{ text('用量详情', 'Usage details') }}</button>
         <button type="button" data-test="use-key" :disabled="busyIds.has(apiKey.id)" @click="emit('use', apiKey)">
           <Icon name="terminal" size="sm" aria-hidden="true" />
           <span>{{ text('使用密钥', 'Use key') }}</span>
@@ -178,6 +180,7 @@
               <span v-else class="portal-api-muted">{{ text('未绑定分组', 'No group') }}</span>
               <span v-if="routingCount(apiKey)" class="portal-api-routing">{{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}</span>
             </InkSurface>
+            <GroupChangeIndicator :group="groupFor(apiKey)" />
           </td>
           <td><span class="portal-api-concurrency" :data-full="(queueCounts[apiKey.id]?.current_concurrency ?? 0) >= (apiKey.concurrency_limit || Infinity)">{{ concurrency(apiKey) }}</span><small class="portal-api-waiting">{{ waiting(apiKey) }}</small></td>
           <td>
@@ -197,6 +200,7 @@
           <td class="portal-api-created">{{ date(apiKey.created_at) }}</td>
           <td class="portal-api-actions-col">
             <div class="portal-api-actions">
+              <button type="button" data-test="key-usage" @click="emit('usage', apiKey)">{{ text('用量详情', 'Usage details') }}</button>
               <button type="button" data-test="use-key" :disabled="busyIds.has(apiKey.id)" @click="emit('use', apiKey)">
                 <Icon name="terminal" size="sm" aria-hidden="true" />
                 <span>{{ text('使用密钥', 'Use key') }}</span>
@@ -230,6 +234,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMediaQuery } from '@vueuse/core'
 import GroupBadge from '@/components/common/GroupBadge.vue'
+import GroupChangeIndicator from '@/components/common/GroupChangeIndicator.vue'
 import InkSurface from '@/components/common/InkSurface.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatUsageMoney } from '@/utils/portalUsage'
@@ -262,6 +267,7 @@ const emit = defineEmits<{
   'select-all': [checked: boolean]
   copy: [key: ApiKey]
   use: [key: ApiKey]
+  usage: [key: ApiKey]
   'import-ccs': [key: ApiKey]
   edit: [key: ApiKey]
   toggle: [key: ApiKey]
@@ -290,7 +296,7 @@ function usageFor(id: number) {
   return props.usageStats[String(id)]
 }
 function groupFor(apiKey: ApiKey) {
-  return apiKey.group || (apiKey.group_id == null ? undefined : props.groups.find(group => group.id === apiKey.group_id))
+  return (apiKey.group_id == null ? undefined : props.groups.find(group => group.id === apiKey.group_id)) || apiKey.group
 }
 function routingCount(apiKey: ApiKey) {
   return apiKey.routing_group_ids?.length ?? 0
