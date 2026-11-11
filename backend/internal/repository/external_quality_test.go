@@ -17,7 +17,7 @@ func TestExternalQualityImportIsAtomicAndDeduplicates(t *testing.T) {
 		t.Run(map[bool]string{false: "deduplicate", true: "rollback"}[fail], func(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err)
-			defer db.Close()
+			defer func() { _ = db.Close() }()
 			repo := &channelMonitorV2Repository{db: db}
 			records := make([]service.ExternalQualityRecord, 2)
 			mock.ExpectBegin()
@@ -47,7 +47,7 @@ func TestExternalQualityImportIsAtomicAndDeduplicates(t *testing.T) {
 func TestExternalQualityPeriodicPruneIsBoundedAndAtomic(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	mock.ExpectBegin()
 	mock.ExpectExec("LOCK TABLE external_quality_history").WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec(`(?s)DELETE FROM external_quality_history.*PARTITION BY group_id,model_id.*WHERE rank > 10`).WillReturnResult(sqlmock.NewResult(0, 12))
@@ -59,7 +59,7 @@ func TestExternalQualityPeriodicPruneIsBoundedAndAtomic(t *testing.T) {
 func TestExternalQualityArtworkEnforcesBothGroupAndEventID(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	repo := &channelMonitorV2Repository{db: db}
 	query := regexp.QuoteMeta("SELECT artwork FROM external_quality_history WHERE group_id=$1 AND id=$2 AND status='completed'")
 	mock.ExpectQuery(query).WithArgs(int64(237), int64(12)).WillReturnRows(sqlmock.NewRows([]string{"artwork"}))
@@ -71,7 +71,7 @@ func TestExternalQualityArtworkEnforcesBothGroupAndEventID(t *testing.T) {
 func TestExternalQualityListReturnsOnlyPublicMetadataWithPerModelBound(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	repo := &channelMonitorV2Repository{db: db}
 	now := time.Now().UTC()
 	mock.ExpectQuery(`(?s)SELECT id,model_id,response_model,status,started_at,finished_at,duration_ms,has_artwork,imported_at.*PARTITION BY model_id.*WHERE group_id=\$1.*WHERE rank <= 10.*LIMIT 20`).WithArgs(int64(72)).WillReturnRows(sqlmock.NewRows([]string{"id", "model_id", "response_model", "status", "started_at", "finished_at", "duration_ms", "has_artwork", "imported_at"}).AddRow(12, "gpt-6-astra", "gpt-6-astra", "completed", now, now, 100, true, now))

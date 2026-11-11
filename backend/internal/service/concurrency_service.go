@@ -419,7 +419,8 @@ func (s *ConcurrencyService) AcquireUserSlot(ctx context.Context, userID int64, 
 
 // TrackAPIKeySlot records one active request slot for an API key without
 // applying key-level concurrency limits. It is fail-open: Redis errors are
-// logged and return a no-op release function.
+// logged without blocking the request. Cleanup retains the exact request ID
+// because a write may have succeeded even when its response was lost.
 func (s *ConcurrencyService) TrackAPIKeySlot(ctx context.Context, apiKeyID int64) func() {
 	_, release, _ := s.TrackAPIKeySlotOwned(ctx, apiKeyID)
 	return release
@@ -773,7 +774,6 @@ func (s *ConcurrencyService) TrackAPIKeySlotOwned(ctx context.Context, apiKeyID 
 	cancel()
 	if err != nil {
 		logger.LegacyPrintf("service.concurrency", "Warning: failed to track api key slot for %d (req=%s): %v", apiKeyID, requestID, err)
-		return "", func() {}, func() {}
 	}
 
 	release, pause := keepAPIKeySlotState(ctx, cache, apiKeyID, requestID)

@@ -41,13 +41,15 @@ func SetupRouter(
 ) *gin.Engine {
 	middleware2.SetIngressRejectRecorder(opsService)
 	if handlers != nil && handlers.Admin != nil && handlers.Admin.Usage != nil {
-		handlers.Admin.Usage.ConfigureTrafficDelivery(func() string {
+		if _, err := handlers.Admin.Usage.ConfigureTrafficDelivery(func() string {
 			dir := os.Getenv("DATA_DIR")
 			if dir == "" {
 				dir = "./data"
 			}
 			return filepath.Join(dir, "user-traffic-pending")
-		})
+		}); err != nil {
+			log.Printf("traffic delivery initialization failed: %v", err)
+		}
 		r.Use(middleware2.UserTraffic(handlers.Admin.Usage))
 	}
 	// 缓存 iframe 页面的 origin 列表，用于动态注入 CSP frame-src

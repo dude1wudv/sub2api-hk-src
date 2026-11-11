@@ -6,62 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/service"
-	coderws "github.com/coder/websocket"
 )
 
 const statusClientClosedRequest = 499
-
-func openAIWSUserSlotAcquireError(err error) error {
-	var queueErr *service.APIKeyQueueError
-	if errors.As(err, &queueErr) {
-		switch queueErr.Kind {
-		case service.APIKeyQueueErrorFull:
-			return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "API key wait queue is full; please retry later", err)
-		case service.APIKeyQueueErrorTimeout:
-			return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "timed out waiting for API key concurrency slot; please retry later", err)
-		case service.APIKeyQueueErrorAuthRejected:
-			return openAIWSQueueAuthRejectedClose(queueErr.Cause, err)
-		default:
-			// Capacity, policy and temporary verification failures are retryable.
-			return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "API key wait queue is temporarily unavailable; please retry later", err)
-		}
-	}
-	var limitErr *ConcurrencyError
-	if errors.As(err, &limitErr) && limitErr.SlotType == "API key" {
-		return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "API key concurrency limit reached; please retry later", err)
-	}
-	return service.NewOpenAIWSClientCloseError(coderws.StatusInternalError, "failed to acquire concurrency slot", err)
-}
-
-// openAIWSQueueAuthRejectedClose keeps the WS close code aligned with the
-// business nature of a queued rejection: a definite identity/permission/model
-// denial closes with 1008, while a retryable service or configuration change
-// closes with 1013. Both 5xx flavors are retryable but must stay distinct: only
-// a core API_KEY_GROUP_CHANGED is a configuration change; a temporary
-// authentication read failure keeps a service-unavailable message.
-func openAIWSQueueAuthRejectedClose(cause error, wrapper error) error {
-	status := infraerrors.Code(cause)
-	switch {
-	case status == http.StatusServiceUnavailable, status >= 500:
-		message := "API key authentication is temporarily unavailable; please reconnect"
-		if cause != nil && infraerrors.Reason(cause) == "API_KEY_GROUP_CHANGED" {
-			message = "API key configuration changed; please reconnect"
-		}
-		return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, message, wrapper)
-	default:
-		message := "API key authentication changed; please reconnect"
-		if cause != nil {
-			if text := strings.TrimSpace(infraerrors.Message(cause)); text != "" && text != infraerrors.UnknownMessage {
-				message = text
-			}
-		}
-		return service.NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, message, wrapper)
-	}
-}
 
 const (
 	gatewayQueueFullCode        = "gateway_queue_full"

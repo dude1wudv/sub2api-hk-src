@@ -436,7 +436,7 @@ func extractStreamEventText(provider, apiMode string, event map[string]any) stri
 			wroteDelta := false
 			if delta, ok := choice["delta"].(map[string]any); ok {
 				if value, ok := delta["content"].(string); ok {
-					text.WriteString(value)
+					_, _ = text.WriteString(value)
 					wroteDelta = true
 				}
 			}
@@ -445,7 +445,7 @@ func extractStreamEventText(provider, apiMode string, event map[string]any) stri
 			// token; prefer delta to avoid doubling the challenge answer.
 			if !wroteDelta {
 				if value, ok := choice["text"].(string); ok {
-					text.WriteString(value)
+					_, _ = text.WriteString(value)
 				}
 			}
 		}

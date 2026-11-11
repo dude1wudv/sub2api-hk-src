@@ -18,7 +18,7 @@ func (r *channelMonitorRepository) ChannelMonitorUsageCache(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	stats := make([]service.ChannelMonitorUsageCache, 0, 2)
 	for rows.Next() {
 		var stat service.ChannelMonitorUsageCache

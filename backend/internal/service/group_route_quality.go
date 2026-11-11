@@ -271,26 +271,6 @@ func (s *GatewayService) SetRouteQualityCache(cache *GroupRouteQualityCache) {
 	s.routeQuality = cache
 }
 
-func (s *GatewayService) groupRouteQualityCache() *GroupRouteQualityCache {
-	if s != nil && s.routeQuality != nil {
-		return s.routeQuality
-	}
-	return DefaultGroupRouteQualityCache()
-}
-
-// orderGroupsByQuality reorders smart-routing candidates by monitor quality.
-// Unknown groups stay neutral, so the configured order is preserved until
-// samples exist.
-func (s *GatewayService) orderGroupsByQuality(ctx context.Context, groupIDs []int64) []int64 {
-	return orderGroupIDsByQualityWithCache(s.groupRouteQualityCache(), ctx, groupIDs)
-}
-
-// OpenAIGatewayService routes OpenAI-compatible requests; it shares the same
-// process-default quality cache.
-func (s *OpenAIGatewayService) orderGroupsByQuality(ctx context.Context, groupIDs []int64) []int64 {
-	return orderGroupIDsByQualityWithCache(DefaultGroupRouteQualityCache(), ctx, groupIDs)
-}
-
 func orderGroupIDsByQualityWithCache(cache *GroupRouteQualityCache, ctx context.Context, groupIDs []int64) []int64 {
 	if cache == nil || len(groupIDs) < 2 {
 		return groupIDs

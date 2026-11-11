@@ -82,12 +82,6 @@ func InstallAPIKeyAdmissionOwner(c *gin.Context, apiKeyService *service.APIKeySe
 	}
 }
 
-func nextWithAPIKeyAdmissionOwner(c *gin.Context, apiKeyService *service.APIKeyService, credential string, trustedClientIP string, key *service.APIKey, googleStyle bool) {
-	cleanup := InstallAPIKeyAdmissionOwner(c, apiKeyService, credential, trustedClientIP, key, googleStyle)
-	defer cleanup()
-	c.Next()
-}
-
 func newAPIKeyAuthRevalidator(lookup func(context.Context, string) (*service.APIKey, error), credential string, trustedClientIP string, initial *service.APIKey) service.APIKeyQueueAuthRevalidator {
 	identity := captureAPIKeyQueueIdentity(initial)
 	return func(ctx context.Context) (int, error) {

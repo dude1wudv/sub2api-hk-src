@@ -294,7 +294,11 @@ func TestTrackAPIKeySlot_FailOpen(t *testing.T) {
 	require.Equal(t, []int64{88}, cache.trackedAPIKeyIDs)
 
 	require.NotPanics(t, release)
-	require.Empty(t, cache.releasedAPIKeyIDs)
+	require.Equal(t, []int64{88}, cache.releasedAPIKeyIDs)
+	require.Equal(t, cache.trackedAPIKeyRequestIDs, cache.releasedAPIKeyRequestIDs,
+		"a lost Redis reply must still clean up only this request's possible member")
+	release()
+	require.Len(t, cache.releasedAPIKeyIDs, 1, "cleanup remains idempotent after a tracking error")
 }
 
 func TestGetAPIKeyConcurrencyBatch_Fallbacks(t *testing.T) {
