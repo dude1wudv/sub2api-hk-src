@@ -128,7 +128,7 @@ describe('personal workspace navigation', () => {
   it('shows every personal feature and only sorted user custom menus without disclosure', async () => {
     const { wrapper, router } = await mountShell()
     expect(navPaths(wrapper)).toEqual([
-      '/dashboard', '/keys', '/usage', '/purchase', '/subscriptions', '/profile', '/model-plaza', '/monitor',
+      '/dashboard', '/keys', '/usage', '/traffic', '/purchase', '/subscriptions', '/profile', '/model-plaza', '/monitor',
       '/image2', '/helios', '/batch-image', '/affiliate',
       '/custom/first', '/custom/later',
     ])
@@ -291,7 +291,7 @@ describe('personal workspace navigation at narrow widths', () => {
     expect(wrapper.get('.user-sidebar').attributes('role')).toBe('dialog')
     expect(wrapper.get('.user-sidebar').attributes('aria-modal')).toBe('true')
     expect(wrapper.get('.user-drawer-scrim').exists()).toBe(true)
-    expect(navPaths(wrapper)).toHaveLength(14)
+    expect(navPaths(wrapper)).toHaveLength(15)
     expect(wrapper.findAll('[data-nav-path]').every(item => item.isVisible())).toBe(true)
     expect(wrapper.findAll('.user-nav-heading')).toHaveLength(4)
     expect(wrapper.get('.user-doc-link').isVisible()).toBe(true)
@@ -333,7 +333,7 @@ describe('personal workspace navigation at rail widths (768–1199px)', () => {
     expect(wrapper.get('.user-sidebar').attributes('aria-modal')).toBeUndefined()
     expect(wrapper.get('.user-workspace').attributes('inert')).toBeUndefined()
     const railPaths = navPaths(wrapper)
-    expect(railPaths).toHaveLength(14)
+    expect(railPaths).toHaveLength(15)
     wrapper.findAll('[data-nav-path]').forEach(item => {
       expect(item.isVisible()).toBe(true)
       expect(item.attributes('aria-label')).toBeTruthy()

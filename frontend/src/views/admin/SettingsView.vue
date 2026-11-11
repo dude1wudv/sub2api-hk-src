@@ -8050,8 +8050,8 @@
                           ) || 1
                       "
                       type="number"
-                      step="0.01"
-                      min="0.01"
+                      step="0.000001"
+                      min="0.000001"
                       class="input"
                     />
                     <p class="mt-0.5 text-xs text-gray-400">
@@ -8066,10 +8066,10 @@
                     >
                       {{
                         t("admin.settings.payment.balanceRechargePreview", {
-                          usd: (
+                          usd: formatBalanceRechargeMultiplier(
                             Number(form.payment_balance_recharge_multiplier) ||
-                            1
-                          ).toFixed(2),
+                              1,
+                          ),
                         })
                       }}
                     </p>
@@ -9030,6 +9030,7 @@ import AdminAccessKeysSettings from "@/components/admin/settings/AdminAccessKeys
 import TotpStepUpDialog from "@/components/auth/TotpStepUpDialog.vue";
 import { affiliatesAPI, type AffiliateAdminEntry, type SimpleUser as AffiliateSimpleUser } from "@/api/admin/affiliates";
 import { extractApiErrorMessage, extractI18nErrorMessage } from "@/utils/apiError";
+import { formatBalanceRechargeMultiplier } from "@/utils/rechargeBonus";
 import { useAppStore } from "@/stores";
 import { useAdminSettingsStore } from "@/stores/adminSettings";
 import { normalizeVisibleMethod } from "@/components/payment/paymentFlow";
@@ -13399,6 +13400,7 @@ const { resetDraft: resetSettingsDraft } = useAdminDraft(() => !loading.value, (
 .settings-tab-label {
   @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap leading-none;
 }
+
 </style>
 
 <style>
@@ -13422,4 +13424,6 @@ const { resetDraft: resetSettingsDraft } = useAdminDraft(() => !loading.value, (
     0 10px 22px rgb(0 0 0 / 0.25),
     0 1px 0 rgb(255 255 255 / 0.06) inset;
 }
+
+
 </style>

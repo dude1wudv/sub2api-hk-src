@@ -25,6 +25,7 @@ func (u *reasoningDefaultCapturedUpstream) DoWithTLS(req *http.Request, proxy st
 
 func TestReasoningEffortDefaultHTTPUpstreamJSON(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	t.Cleanup(service.ResetGatewayForwardingSettingsCacheForUnitTest())
 	const configJSON = `{"enabled":true,"rules":[{"platform":"openai","match_type":"exact","model":"gpt-6.1-sol","effort":"high"},{"platform":"anthropic","match_type":"exact","model":"claude-opus-4-5","effort":"high"}]}`
 	for _, tt := range []struct {
 		name, protocol, body, effort, source string
