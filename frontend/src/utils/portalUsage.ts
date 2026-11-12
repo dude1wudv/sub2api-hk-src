@@ -96,9 +96,30 @@ export function usageColumnLabel(key: string, english = false): string {
 }
 
 export function usageCacheRate(row: UsageLog): number | null {
-  if (!isTokenUsage(row)) return null
+  if (!isTokenUsage(row) || row.input_tokens_estimated || row.cache_read_tokens_estimated) return null
   const denominator = finiteNumber(row.input_tokens) + finiteNumber(row.cache_creation_tokens) + finiteNumber(row.cache_read_tokens)
   return denominator > 0 ? finiteNumber(row.cache_read_tokens) / denominator * 100 : null
+}
+
+/** Each flag describes its own field; a discounted estimate is not a cache hit. */
+export function usageEstimates(row: UsageLog) {
+  return [
+    { active: row.input_tokens_estimated, id: 'input-tokens-estimated', label: 'usage.inputTokensEstimated', hint: 'usage.inputTokensEstimatedHint' },
+    { active: row.cache_read_tokens_estimated, id: 'cache-read-tokens-estimated', label: 'usage.cacheReadTokensEstimated', hint: 'usage.cacheReadTokensEstimatedHint' },
+    { active: row.output_tokens_estimated, id: 'output-tokens-estimated', label: 'usage.outputTokensEstimated', hint: 'usage.outputTokensEstimatedHint' },
+  ].filter(item => item.active)
+}
+
+export function usageEstimationReasonKey(row: UsageLog): string | null {
+  if (!usageEstimates(row).length) return null
+  const reasons: Record<string, string> = {
+    client_cancelled: 'usage.estimateReasonClientCancelled',
+    upstream_eof: 'usage.estimateReasonUpstreamEof',
+    upstream_timeout: 'usage.estimateReasonUpstreamTimeout',
+    upstream_error: 'usage.estimateReasonUpstreamError',
+    missing_usage: 'usage.estimateReasonMissingUsage',
+  }
+  return reasons[row.usage_estimation_reason || ''] || null
 }
 
 export function usageOutputStageRate(row: UsageLog): number | null {
@@ -147,11 +168,14 @@ export function escapeUsageCsv(value: unknown): string {
 
 export function usageLogsCsv(rows: UsageLog[], english = false): string {
   const headers = english ? ['Time', 'Request ID', 'API Key', 'Group', 'Model', 'Request type', 'Billing mode', 'Billing source', 'Reasoning effort', 'Inbound endpoint', 'IP', 'Input tokens', 'Output tokens', 'Estimated output', 'Cache read tokens', 'Cache write tokens', '5m cache write', '1h cache write', 'Cache hit rate %', 'Output stage tok/s', 'Output TPS', 'Billed cost USD', 'Standard cost USD', 'Rate multiplier', 'First token ms', 'Duration ms', 'Image count', 'Image size', 'Image input tokens', 'Image output tokens', 'User-Agent'] : ['时间', '请求 ID', 'API Key', '分组', '模型', '请求类型', '计费模式', '扣费方式', '推理强度', '入站端点', 'IP', '输入 Token', '输出 Token', '输出估算', '缓存读取 Token', '缓存写入 Token', '5m 缓存写入', '1h 缓存写入', '缓存命中率 %', '输出阶段 tok/s', '输出 TPS', '实际扣费 USD', '标准费用 USD', '计费倍率', '首字 ms', '总耗时 ms', '图片数量', '图片尺寸', '图片输入 Token', '图片输出 Token', 'User-Agent']
+  headers.push(...(english ? ['Estimated input', 'Estimated cache discount', 'Estimation reason'] : ['输入估算', '缓存优惠估算', '估算原因']))
   const values = rows.map(row => [
     row.created_at, row.request_id, row.api_key?.name || '', row.group?.name || '', row.model, usageRowRequestLabel(row, english), usageBillingLabel(row, english), row.billing_type === 1 ? english ? 'Subscription' : '订阅' : english ? 'Balance' : '余额', row.reasoning_effort || '', row.inbound_endpoint || '', row.ip_address || '',
     row.input_tokens, row.output_tokens, row.output_tokens_estimated ? english ? 'Yes' : '是' : english ? 'No' : '否', row.cache_read_tokens, row.cache_creation_tokens, row.cache_creation_5m_tokens, row.cache_creation_1h_tokens,
     usageCacheRate(row), usageOutputStageRate(row), usageOutputRate(row), finiteNumber(row.actual_cost).toFixed(8), finiteNumber(row.total_cost).toFixed(8), row.rate_multiplier, row.first_token_ms, row.duration_ms,
     row.image_count, row.image_size || '', row.image_input_tokens, row.image_output_tokens, row.user_agent || '',
+    row.input_tokens_estimated ? english ? 'Yes' : '是' : english ? 'No' : '否',
+    row.cache_read_tokens_estimated ? english ? 'Yes' : '是' : english ? 'No' : '否', row.usage_estimation_reason || '',
   ])
   return '\uFEFF' + [headers, ...values].map(row => row.map(escapeUsageCsv).join(',')).join('\r\n')
 }

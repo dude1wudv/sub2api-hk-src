@@ -4,7 +4,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ModelIcon from '@/components/common/ModelIcon.vue'
-import { formatUsageMoney } from '@/utils/portalUsage'
+import { formatUsageMoney, usageEstimates } from '@/utils/portalUsage'
 import { formatDateTime, formatDateLocalInput } from '@/utils/format'
 import { usageDrilldownQuery } from '@/views/portal/usageRoute'
 import type { UsageLog } from '@/types'
@@ -27,7 +27,7 @@ function usageLocation(log: UsageLog) {
       <li v-for="log in data" :key="log.id"><RouterLink :to="usageLocation(log)" class="workspace-request">
         <span class="workspace-request-model-icon"><ModelIcon :model="log.model" size="22px" /></span>
         <span class="workspace-request-identity"><strong :title="log.model">{{ log.model }}</strong><small>{{ formatDateTime(log.created_at) }}</small></span>
-        <span class="workspace-request-cost"><strong :title="t('dashboard.actual')">{{ formatCost(log.actual_cost) }}</strong><small>{{ (log.input_tokens + log.output_tokens).toLocaleString() }} tokens</small><small v-if="log.output_tokens_estimated" :title="t('usage.outputTokensEstimatedHint')">{{ t('usage.outputTokensEstimated') }}</small></span>
+        <span class="workspace-request-cost"><strong :title="t('dashboard.actual')">{{ formatCost(log.actual_cost) }}</strong><small>{{ (log.input_tokens + log.output_tokens + (log.cache_creation_tokens || 0) + (log.cache_read_tokens || 0)).toLocaleString() }} tokens</small><small v-for="estimate in usageEstimates(log)" :key="estimate.id" :title="t(estimate.hint)">{{ t(estimate.label) }}</small></span>
         <Icon name="arrowRight" size="sm" class="workspace-request-arrow" />
       </RouterLink></li>
     </ol>

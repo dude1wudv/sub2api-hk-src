@@ -38,7 +38,10 @@ func (s *OpenAIGatewayService) forwardAnthropicViaNativeAnthropicEndpoint(
 	account *Account,
 	body []byte,
 	defaultMappedModel string,
-) (*OpenAIForwardResult, error) {
+) (out *OpenAIForwardResult, retErr error) {
+	capture := newIncompleteForwardCapture(ctx, c, body)
+	defer capture.finishOpenAI(&out, &retErr)
+
 	startTime := time.Now()
 
 	originalModel := strings.TrimSpace(gjson.GetBytes(body, "model").String())
@@ -50,6 +53,7 @@ func (s *OpenAIGatewayService) forwardAnthropicViaNativeAnthropicEndpoint(
 
 	billingModel := resolveOpenAIForwardModel(account, originalModel, defaultMappedModel)
 	upstreamModel := normalizeOpenAIModelForUpstream(account, billingModel)
+	capture.billingModel = billingModel
 	if upstreamModel != originalModel {
 		rewritten, err := sjson.SetBytes(body, "model", upstreamModel)
 		if err != nil {
@@ -100,7 +104,11 @@ func (s *OpenAIGatewayService) forwardAnthropicViaNativeAnthropicEndpoint(
 		return nil, err
 	}
 
-	resp, err := s.doOpenAIUpstream(upstreamReq, proxyURL, account)
+	resp, err := capture.Do(upstreamReq, func(request *http.Request) (*http.Response, error) {
+
+		return s.doOpenAIUpstream(request, proxyURL, account)
+
+	})
 	if err != nil {
 		return nil, s.handleOpenAIUpstreamTransportError(ctx, c, account, err, true)
 	}
@@ -492,10 +500,12 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 				restored := string(reverseToolNamesIfPresent(c, []byte(line)))
 				if _, err := io.WriteString(w, restored); err != nil {
 					clientDisconnected = true
-					logger.LegacyPrintf("service.gateway", "[CN Anthropic 直通] Client disconnected during streaming, continue draining upstream for usage: account=%d", account.ID)
+					_ = resp.Body.Close()
+					logger.LegacyPrintf("service.gateway", "[CN Anthropic 直通] Client disconnected during streaming, closing upstream and keeping received usage: account=%d", account.ID)
 				} else if _, err := io.WriteString(w, "\n"); err != nil {
 					clientDisconnected = true
-					logger.LegacyPrintf("service.gateway", "[CN Anthropic 直通] Client disconnected during streaming, continue draining upstream for usage: account=%d", account.ID)
+					_ = resp.Body.Close()
+					logger.LegacyPrintf("service.gateway", "[CN Anthropic 直通] Client disconnected during streaming, closing upstream and keeping received usage: account=%d", account.ID)
 				} else if line == "" {
 					// 按 SSE 事件边界刷出，减少每行 flush 带来的 syscall 开销。
 					flusher.Flush()
@@ -537,7 +547,8 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 			}
 			if _, err := fmt.Fprint(w, "event: ping\ndata: {\"type\": \"ping\"}\n\n"); err != nil {
 				clientDisconnected = true
-				logger.LegacyPrintf("service.gateway", "[CN Anthropic 直通] Client disconnected during keepalive ping, continue draining upstream for usage: account=%d", account.ID)
+				_ = resp.Body.Close()
+				logger.LegacyPrintf("service.gateway", "[CN Anthropic 直通] Client disconnected during keepalive ping, closing upstream and keeping received usage: account=%d", account.ID)
 				continue
 			}
 			flusher.Flush()
@@ -592,6 +603,9 @@ func claudeUsageToOpenAIUsage(u *ClaudeUsage) OpenAIUsage {
 		InputTokens:              u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens,
 		OutputTokens:             u.OutputTokens,
 		OutputTokensEstimated:    u.OutputTokensEstimated,
+		InputTokensEstimated:     u.InputTokensEstimated,
+		CacheReadTokensEstimated: u.CacheReadTokensEstimated,
+		UsageEstimationReason:    u.UsageEstimationReason,
 		CacheCreationInputTokens: u.CacheCreationInputTokens,
 		CacheReadInputTokens:     u.CacheReadInputTokens,
 	}

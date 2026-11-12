@@ -24,7 +24,7 @@ export function rankChartRows<T>(
 ): Array<T & { chartColor: string }> {
   const coloredRows = rows.map((row, index) => ({
     ...row,
-    chartColor: palette[index % palette.length] || '#6f7068',
+    chartColor: palette[index % palette.length] || '#64748b',
   }))
   return sortDescending(coloredRows, value)
 }

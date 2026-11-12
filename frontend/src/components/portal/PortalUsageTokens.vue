@@ -6,7 +6,7 @@ import Icon from '@/components/icons/Icon.vue'
 import {
   isTokenUsage, usageBillingLabel, usageBillingMode,
   formatUsageNumber, formatUsageRate, formatUsagePercent,
-  usageCacheRate, usageOutputStageRate,
+  usageCacheRate, usageOutputStageRate, usageEstimates,
 } from '@/utils/portalUsage'
 
 defineProps<{ row: UsageLog }>()
@@ -32,11 +32,11 @@ function compact(value: number) {
     <small v-if="row.image_input_tokens > 0">{{ copy('图像输入', 'Image input') }} {{ formatUsageNumber(row.image_input_tokens) }} Token</small>
     <small v-if="row.image_output_tokens > 0">{{ copy('图像输出', 'Image output') }} {{ formatUsageNumber(row.image_output_tokens) }} Token</small>
     <div class="usage-token-rates">
-      <span v-if="row.output_tokens_estimated" data-testid="output-tokens-estimated" :title="t('usage.outputTokensEstimatedHint')">{{ t('usage.outputTokensEstimated') }}</span>
-      <span class="usage-cache-rate" :title="copy('缓存命中率 = 缓存读取 / (输入 + 缓存写入 + 缓存读取)', 'Cache hit rate = cache read / (input + cache write + cache read)')">{{ copy('缓存', 'Cache') }} {{ formatUsagePercent(usageCacheRate(row)) }}</span>
+      <span v-for="estimate in usageEstimates(row)" :key="estimate.id" :data-testid="estimate.id" :title="t(estimate.hint)">{{ t(estimate.label) }}</span>
+      <span v-if="!row.input_tokens_estimated && !row.cache_read_tokens_estimated" class="usage-cache-rate" :title="copy('缓存命中率 = 缓存读取 / (输入 + 缓存写入 + 缓存读取)', 'Cache hit rate = cache read / (input + cache write + cache read)')">{{ copy('缓存', 'Cache') }} {{ formatUsagePercent(usageCacheRate(row)) }}</span>
       <span class="usage-output-rate" :title="copy('输出阶段速率 = 输出 Token / (总耗时 − 首字耗时)', 'Output stage rate = output tokens / (duration - first token)')">{{ copy('输出阶段', 'Output stage') }} {{ formatUsageRate(usageOutputStageRate(row)) }}</span>
     </div>
-    <small v-if="row.output_tokens_estimated" class="usage-estimate-note">{{ t('usage.outputTokensEstimatedHint') }}</small>
+    <small v-for="estimate in usageEstimates(row)" :key="estimate.id" class="usage-estimate-note">{{ t(estimate.hint) }}</small>
     <small v-if="usageBillingMode(row) === 'per_request'">{{ copy('按次计费', 'Billed per request') }}</small>
   </div>
   <div v-else-if="usageBillingMode(row) === 'per_request' && !row.image_count" class="usage-media">

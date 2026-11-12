@@ -232,7 +232,10 @@ type OpenAIUsage struct {
 	CacheReadInputTokens        int `json:"cache_read_input_tokens,omitempty"`
 	ImageOutputTokens           int `json:"image_output_tokens,omitempty"`
 	// OutputTokensEstimated is internal provenance, never accepted from upstream JSON.
-	OutputTokensEstimated bool `json:"-"`
+	OutputTokensEstimated    bool   `json:"-"`
+	InputTokensEstimated     bool   `json:"-"`
+	CacheReadTokensEstimated bool   `json:"-"`
+	UsageEstimationReason    string `json:"-"`
 }
 
 // OpenAIForwardResult represents the result of forwarding

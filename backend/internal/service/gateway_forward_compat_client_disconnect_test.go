@@ -624,7 +624,7 @@ func TestAnthropicCompatStream_ClientGoneAtStreamEndMarksDisconnected(t *testing
 	}
 }
 
-func TestAnthropicCompatStreaming_RequestContextCanceledDrainsWithoutWriting(t *testing.T) {
+func TestAnthropicCompatStreaming_RequestContextCanceledClosesWithoutWriting(t *testing.T) {
 	for name, handle := range compatStreamHandlers() {
 		for _, delayed := range []bool{true, false} {
 			t.Run(fmt.Sprintf("%s/upstream_delayed=%t", name, delayed), func(t *testing.T) {
@@ -651,22 +651,26 @@ func TestAnthropicCompatStreaming_RequestContextCanceledDrainsWithoutWriting(t *
 				require.NoError(t, got.err)
 				require.NotNil(t, got.result)
 				require.True(t, got.result.ClientDisconnect)
-				require.Equal(t, 20, got.result.Usage.InputTokens)
-				require.Equal(t, 42, got.result.Usage.OutputTokens)
+				if delayed {
+					require.Zero(t, got.result.Usage.InputTokens)
+					require.Zero(t, got.result.Usage.OutputTokens)
+				} else {
+					require.Equal(t, 20, got.result.Usage.InputTokens)
+					require.Equal(t, 42, got.result.Usage.OutputTokens)
+				}
 				require.NotContains(t, rec.Body.String(), compatStreamTerminalMarkers[name])
 			})
 		}
 	}
 }
 
-func TestAnthropicCompatStream_ClientDisconnectBoundsDrainWhenIntervalDisabled(t *testing.T) {
+func TestAnthropicCompatStream_ClientDisconnectClosesWithAnyInterval(t *testing.T) {
 	for _, tc := range []struct {
-		name         string
-		intervalSec  int
-		wantInterval time.Duration
+		name        string
+		intervalSec int
 	}{
-		{name: "interval_disabled", intervalSec: 0, wantInterval: anthropicCompatDisconnectDrainInterval},
-		{name: "interval_configured", intervalSec: 30, wantInterval: 30 * time.Second},
+		{name: "interval_disabled", intervalSec: 0},
+		{name: "interval_configured", intervalSec: 30},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			gin.SetMode(gin.TestMode)
@@ -681,16 +685,13 @@ func TestAnthropicCompatStream_ClientDisconnectBoundsDrainWhenIntervalDisabled(t
 			stream.markClientDisconnected()
 
 			require.True(t, stream.clientDisconnected)
-			require.NotNil(t, stream.pump.timer)
-			require.Equal(t, tc.wantInterval, stream.pump.interval)
+			_, writeErr := pw.Write([]byte("ping"))
+			require.Error(t, writeErr, "cancel must close upstream immediately")
 		})
 	}
 }
 
-func TestAnthropicCompatStreaming_DisconnectDrainEndsWhenIntervalDisabled(t *testing.T) {
-	original := anthropicCompatDisconnectDrainInterval
-	anthropicCompatDisconnectDrainInterval = 200 * time.Millisecond
-	t.Cleanup(func() { anthropicCompatDisconnectDrainInterval = original })
+func TestAnthropicCompatStreaming_DisconnectClosesWhenIntervalDisabled(t *testing.T) {
 
 	for name, handle := range compatStreamHandlers() {
 		t.Run(name, func(t *testing.T) {
@@ -707,7 +708,7 @@ func TestAnthropicCompatStreaming_DisconnectDrainEndsWhenIntervalDisabled(t *tes
 			require.Equal(t, 20, got.result.Usage.InputTokens)
 			require.Zero(t, writer.writesAfterError)
 			_, werr := io.WriteString(pw, "event: ping\n")
-			require.Error(t, werr, "upstream body must be closed after the disconnect drain bound")
+			require.Error(t, werr, "upstream body must be closed immediately on disconnect")
 		})
 	}
 }
@@ -722,8 +723,8 @@ func TestForwardAsCompatStreaming_IdleTimeoutTriggersStreamTimeoutHandling(t *te
 			wantOutput  int
 			wantPenalty int
 		}{
-			{name: "client_online", stream: anthropicStreamTruncatedBeforeMessageDelta(), marker: "\x00never-written", wantErr: true, wantOutput: 1, wantPenalty: 1},
-			{name: "client_disconnected", stream: anthropicStreamTruncatedBeforeMessageDelta(), marker: "second", wantOutput: 1},
+			{name: "client_online", stream: anthropicStreamTruncatedBeforeMessageDelta(), marker: "\x00never-written", wantErr: true, wantOutput: 3, wantPenalty: 1},
+			{name: "client_disconnected", stream: anthropicStreamTruncatedBeforeMessageDelta(), marker: "second", wantOutput: 3},
 			{name: "after_message_stop", stream: anthropicStreamWithMidStreamText(), marker: "\x00never-written", wantOutput: 42},
 			{name: "after_stop_reason", stream: anthropicStreamWithoutMessageStop(), marker: "\x00never-written", wantOutput: 42},
 		} {

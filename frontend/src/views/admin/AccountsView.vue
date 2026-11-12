@@ -78,7 +78,7 @@
                 <Teleport to="body">
                   <div
                     v-if="showAccountToolsDropdown"
-                    class="fixed z-[9999] origin-top-right overflow-hidden rounded-xl border border-gray-200/90 bg-white/95 shadow-2xl backdrop-blur-md dark:border-dark-700/90 dark:bg-dark-800/95"
+                    class="action-menu fixed z-[9999] origin-top-right overflow-hidden rounded-xl border border-gray-200 shadow-2xl dark:border-dark-700"
                     :style="accountToolsDropdownStyle"
                     @click.stop
                   >
@@ -2206,8 +2206,8 @@ function getOpenAICompactMeta(row: any): { label: string; className: string; dot
     case 'auto':
       return {
         label: t('admin.accounts.openai.compactAuto'),
-        className: 'text-slate-500 dark:text-slate-400',
-        dotClass: 'bg-slate-300 dark:bg-slate-500'
+        className: 'text-gray-500 dark:text-dark-300',
+        dotClass: 'bg-gray-300 dark:bg-dark-500'
       }
   }
 }
@@ -3101,7 +3101,7 @@ onUnmounted(() => {
 }
 
 .account-summary-panel {
-  @apply rounded-xl border border-gray-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-gray-300 hover:shadow dark:border-dark-700/80 dark:bg-dark-800/80 dark:hover:border-dark-600;
+  @apply rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors duration-150 hover:border-gray-300 dark:border-dark-700 dark:bg-dark-800 dark:hover:border-dark-600;
 }
 
 .account-table-shell {
@@ -3153,7 +3153,7 @@ onUnmounted(() => {
 }
 
 .quota-pool-card {
-  @apply cursor-pointer rounded-xl border border-gray-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-primary-300 hover:bg-primary-50/30 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-dark-700/80 dark:bg-dark-800/80 dark:hover:border-primary-700/60 dark:hover:bg-primary-950/20 dark:focus-visible:ring-offset-dark-900;
+  @apply cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors duration-150 hover:border-primary-300 hover:bg-primary-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-dark-700 dark:bg-dark-800 dark:hover:border-primary-700/60 dark:hover:bg-primary-950/20 dark:focus-visible:ring-offset-dark-900;
 }
 
 .quota-pool-card-oauth {

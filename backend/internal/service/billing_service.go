@@ -96,6 +96,8 @@ type BillingCache interface {
 
 // ModelPricing 模型价格配置（per-token价格，与LiteLLM格式一致）
 type ModelPricing struct {
+	CacheReadPriceExplicit         bool
+	CacheReadPricePriorityExplicit bool
 	// UltrafastMultiplier is independent of Fast pricing; zero uses the 8x default.
 	UltrafastMultiplier                float64
 	defaultFastMultiplier              float64
@@ -194,6 +196,8 @@ func pricingWithPriorityMultiplier(base *ModelPricing, multiplier float64) *Mode
 
 // UsageTokens 使用的token数量
 type UsageTokens struct {
+	// CacheReadEstimated marks the incomplete-request discount, not measured cache hits.
+	CacheReadEstimated     bool
 	InputTokens            int
 	ImageInputTokens       int
 	ImageCacheReadTokens   int
@@ -450,13 +454,15 @@ func (s *BillingService) initFallbackPricing() {
 	for _, model := range []string{"claude-fable-5-2", "claude-mythos-5-2"} {
 		p := claude52FallbackPricing
 		s.fallbackPrices[model] = &ModelPricing{
-			InputPricePerToken:         p.InputCostPerToken,
-			OutputPricePerToken:        p.OutputCostPerToken,
-			CacheCreationPricePerToken: p.CacheCreationInputTokenCost,
-			CacheCreation5mPrice:       p.CacheCreationInputTokenCost,
-			CacheCreation1hPrice:       p.CacheCreationInputTokenCostAbove1hr,
-			CacheReadPricePerToken:     p.CacheReadInputTokenCost,
-			SupportsCacheBreakdown:     true,
+			InputPricePerToken:             p.InputCostPerToken,
+			OutputPricePerToken:            p.OutputCostPerToken,
+			CacheCreationPricePerToken:     p.CacheCreationInputTokenCost,
+			CacheCreation5mPrice:           p.CacheCreationInputTokenCost,
+			CacheCreation1hPrice:           p.CacheCreationInputTokenCostAbove1hr,
+			CacheReadPricePerToken:         p.CacheReadInputTokenCost,
+			CacheReadPriceExplicit:         p.CacheReadInputTokenCostExplicit,
+			CacheReadPricePriorityExplicit: p.CacheReadInputTokenCostPriorityExplicit,
+			SupportsCacheBreakdown:         true,
 		}
 	}
 	// Claude Fable 5.0 and 5.1 use the same input/output and cache-write prices, while
@@ -1070,7 +1076,9 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 		p := openAIGPTImage25FallbackPricing
 		return &ModelPricing{
 			InputPricePerToken: p.InputCostPerToken, CacheReadPricePerToken: p.CacheReadInputTokenCost,
-			ImageInputPricePerToken: p.InputCostPerImageToken, ImageCacheReadPricePerToken: p.CacheReadInputImageTokenCost,
+			CacheReadPriceExplicit:         p.CacheReadInputTokenCostExplicit,
+			CacheReadPricePriorityExplicit: p.CacheReadInputTokenCostPriorityExplicit,
+			ImageInputPricePerToken:        p.InputCostPerImageToken, ImageCacheReadPricePerToken: p.CacheReadInputImageTokenCost,
 			ImageOutputPricePerToken: p.OutputCostPerImageToken,
 		}
 	}
@@ -1464,6 +1472,8 @@ func (s *BillingService) getModelPricingAt(model string, pricingAt time.Time) (*
 				CacheCreationPricePerToken:         litellmPricing.CacheCreationInputTokenCost,
 				CacheCreationPricePerTokenPriority: litellmPricing.CacheCreationInputTokenCostPriority,
 				CacheReadPricePerToken:             litellmPricing.CacheReadInputTokenCost,
+				CacheReadPriceExplicit:             litellmPricing.CacheReadInputTokenCostExplicit,
+				CacheReadPricePriorityExplicit:     litellmPricing.CacheReadInputTokenCostPriorityExplicit,
 				CacheReadPricePerTokenPriority:     litellmPricing.CacheReadInputTokenCostPriority,
 				CacheCreation5mPrice:               price5m,
 				CacheCreation1hPrice:               price1h,
@@ -1585,6 +1595,8 @@ func applyChannelTokenPriceOverrides(pricing *ModelPricing, channelPricing *Chan
 	if channelPricing.CacheReadPrice != nil {
 		priority := channelTierOverridePrice(pricing.CacheReadPricePerToken, pricing.CacheReadPricePerTokenPriority, *channelPricing.CacheReadPrice)
 		pricing.CacheReadPricePerToken = *channelPricing.CacheReadPrice
+		pricing.CacheReadPriceExplicit = true
+		pricing.CacheReadPricePriorityExplicit = *channelPricing.CacheReadPrice == 0 || priority > 0
 		pricing.CacheReadPricePerTokenPriority = priority
 	}
 }
@@ -1758,6 +1770,7 @@ func (s *BillingService) computeTokenBreakdown(
 	inputPrice := pricing.InputPricePerToken
 	outputPrice := pricing.OutputPricePerToken
 	cacheReadPrice := pricing.CacheReadPricePerToken
+	cacheReadConfigured := pricing.CacheReadPriceExplicit || cacheReadPrice > 0
 	cacheCreationPrice := pricing.CacheCreationPricePerToken
 	cacheCreationPricing := pricing
 	cacheCreationMultiplier := 1.0
@@ -1770,8 +1783,9 @@ func (s *BillingService) computeTokenBreakdown(
 		if pricing.OutputPricePerTokenPriority > 0 {
 			outputPrice = pricing.OutputPricePerTokenPriority
 		}
-		if pricing.CacheReadPricePerTokenPriority > 0 {
+		if pricing.CacheReadPricePerTokenPriority > 0 || (tokens.CacheReadEstimated && pricing.CacheReadPricePriorityExplicit) {
 			cacheReadPrice = pricing.CacheReadPricePerTokenPriority
+			cacheReadConfigured = true
 		}
 		if pricing.CacheCreationPricePerTokenPriority > 0 {
 			cacheCreationPrice = pricing.CacheCreationPricePerTokenPriority
@@ -1791,6 +1805,23 @@ func (s *BillingService) computeTokenBreakdown(
 		}
 	} else {
 		tierMultiplier = configuredServiceTierMultiplier(serviceTier, pricing)
+	}
+
+	// A catalog may declare only a free priority cache rate. That zero must
+	// survive even when other fields use the generic tier multiplier. Explicit
+	// operator fast multipliers continue to replace catalog tier selection.
+	tier := normalizeBillingServiceTier(serviceTier)
+	if tokens.CacheReadEstimated && (tier == "priority" || tier == "fast") &&
+		pricing.FastMultiplier == nil && pricing.defaultFastMultiplier <= 0 &&
+		pricing.CacheReadPricePriorityExplicit && pricing.CacheReadPricePerTokenPriority == 0 {
+		cacheReadPrice = 0
+		cacheReadConfigured = true
+	}
+
+	// Only estimated cache discounts fall back when no cache price exists. An
+	// explicit zero remains free; measured usage retains its historical pricing.
+	if tokens.CacheReadEstimated && !cacheReadConfigured {
+		cacheReadPrice = inputPrice
 	}
 
 	longContextPricingEligible := applyLongCtx && s.shouldApplySessionLongContextPricing(tokens, pricing)

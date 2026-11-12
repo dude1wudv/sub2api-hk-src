@@ -20,11 +20,11 @@ func TestAnthropicStreamOutputUsageEstimatesSemanticPayloadOnce(t *testing.T) {
 		observed.Observe(event)
 	}
 
-	// 3 UTF-8 bytes for 猫, 1 for thinking, 9 for the tool input object,
-	// and 2 for partial tool JSON: ceil(15 / 4) is 4, rounded once.
+	// 1 CJK rune, 1 thinking rune, 6 tool-name runes, 9 tool-input runes,
+	// and 2 partial-JSON runes: mostly ASCII, ceil(19 / 4) is 5.
 	usage := &ClaudeUsage{}
 	observed.ApplyFallback(usage)
-	require.Equal(t, 4, usage.OutputTokens)
+	require.Equal(t, 5, usage.OutputTokens)
 	require.True(t, usage.OutputTokensEstimated)
 }
 

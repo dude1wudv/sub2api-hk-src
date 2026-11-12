@@ -351,6 +351,48 @@ func (_u *UsageLogUpdate) AddOutputTokens(v int) *UsageLogUpdate {
 	return _u
 }
 
+// SetInputTokensEstimated sets the "input_tokens_estimated" field.
+func (_u *UsageLogUpdate) SetInputTokensEstimated(v bool) *UsageLogUpdate {
+	_u.mutation.SetInputTokensEstimated(v)
+	return _u
+}
+
+// SetNillableInputTokensEstimated sets the "input_tokens_estimated" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableInputTokensEstimated(v *bool) *UsageLogUpdate {
+	if v != nil {
+		_u.SetInputTokensEstimated(*v)
+	}
+	return _u
+}
+
+// SetCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field.
+func (_u *UsageLogUpdate) SetCacheReadTokensEstimated(v bool) *UsageLogUpdate {
+	_u.mutation.SetCacheReadTokensEstimated(v)
+	return _u
+}
+
+// SetNillableCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableCacheReadTokensEstimated(v *bool) *UsageLogUpdate {
+	if v != nil {
+		_u.SetCacheReadTokensEstimated(*v)
+	}
+	return _u
+}
+
+// SetUsageEstimationReason sets the "usage_estimation_reason" field.
+func (_u *UsageLogUpdate) SetUsageEstimationReason(v string) *UsageLogUpdate {
+	_u.mutation.SetUsageEstimationReason(v)
+	return _u
+}
+
+// SetNillableUsageEstimationReason sets the "usage_estimation_reason" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableUsageEstimationReason(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetUsageEstimationReason(*v)
+	}
+	return _u
+}
+
 // SetOutputTokensEstimated sets the "output_tokens_estimated" field.
 func (_u *UsageLogUpdate) SetOutputTokensEstimated(v bool) *UsageLogUpdate {
 	_u.mutation.SetOutputTokensEstimated(v)
@@ -1132,6 +1174,11 @@ func (_u *UsageLogUpdate) check() error {
 			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "UsageLog.billing_mode": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.UsageEstimationReason(); ok {
+		if err := usagelog.UsageEstimationReasonValidator(v); err != nil {
+			return &ValidationError{Name: "usage_estimation_reason", err: fmt.Errorf(`ent: validator failed for field "UsageLog.usage_estimation_reason": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.UserAgent(); ok {
 		if err := usagelog.UserAgentValidator(v); err != nil {
 			return &ValidationError{Name: "user_agent", err: fmt.Errorf(`ent: validator failed for field "UsageLog.user_agent": %w`, err)}
@@ -1259,6 +1306,15 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedOutputTokens(); ok {
 		_spec.AddField(usagelog.FieldOutputTokens, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.InputTokensEstimated(); ok {
+		_spec.SetField(usagelog.FieldInputTokensEstimated, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.CacheReadTokensEstimated(); ok {
+		_spec.SetField(usagelog.FieldCacheReadTokensEstimated, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.UsageEstimationReason(); ok {
+		_spec.SetField(usagelog.FieldUsageEstimationReason, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.OutputTokensEstimated(); ok {
 		_spec.SetField(usagelog.FieldOutputTokensEstimated, field.TypeBool, value)
@@ -1933,6 +1989,48 @@ func (_u *UsageLogUpdateOne) SetNillableOutputTokens(v *int) *UsageLogUpdateOne 
 // AddOutputTokens adds value to the "output_tokens" field.
 func (_u *UsageLogUpdateOne) AddOutputTokens(v int) *UsageLogUpdateOne {
 	_u.mutation.AddOutputTokens(v)
+	return _u
+}
+
+// SetInputTokensEstimated sets the "input_tokens_estimated" field.
+func (_u *UsageLogUpdateOne) SetInputTokensEstimated(v bool) *UsageLogUpdateOne {
+	_u.mutation.SetInputTokensEstimated(v)
+	return _u
+}
+
+// SetNillableInputTokensEstimated sets the "input_tokens_estimated" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableInputTokensEstimated(v *bool) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetInputTokensEstimated(*v)
+	}
+	return _u
+}
+
+// SetCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field.
+func (_u *UsageLogUpdateOne) SetCacheReadTokensEstimated(v bool) *UsageLogUpdateOne {
+	_u.mutation.SetCacheReadTokensEstimated(v)
+	return _u
+}
+
+// SetNillableCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableCacheReadTokensEstimated(v *bool) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetCacheReadTokensEstimated(*v)
+	}
+	return _u
+}
+
+// SetUsageEstimationReason sets the "usage_estimation_reason" field.
+func (_u *UsageLogUpdateOne) SetUsageEstimationReason(v string) *UsageLogUpdateOne {
+	_u.mutation.SetUsageEstimationReason(v)
+	return _u
+}
+
+// SetNillableUsageEstimationReason sets the "usage_estimation_reason" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableUsageEstimationReason(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetUsageEstimationReason(*v)
+	}
 	return _u
 }
 
@@ -2730,6 +2828,11 @@ func (_u *UsageLogUpdateOne) check() error {
 			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "UsageLog.billing_mode": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.UsageEstimationReason(); ok {
+		if err := usagelog.UsageEstimationReasonValidator(v); err != nil {
+			return &ValidationError{Name: "usage_estimation_reason", err: fmt.Errorf(`ent: validator failed for field "UsageLog.usage_estimation_reason": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.UserAgent(); ok {
 		if err := usagelog.UserAgentValidator(v); err != nil {
 			return &ValidationError{Name: "user_agent", err: fmt.Errorf(`ent: validator failed for field "UsageLog.user_agent": %w`, err)}
@@ -2874,6 +2977,15 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if value, ok := _u.mutation.AddedOutputTokens(); ok {
 		_spec.AddField(usagelog.FieldOutputTokens, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.InputTokensEstimated(); ok {
+		_spec.SetField(usagelog.FieldInputTokensEstimated, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.CacheReadTokensEstimated(); ok {
+		_spec.SetField(usagelog.FieldCacheReadTokensEstimated, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.UsageEstimationReason(); ok {
+		_spec.SetField(usagelog.FieldUsageEstimationReason, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.OutputTokensEstimated(); ok {
 		_spec.SetField(usagelog.FieldOutputTokensEstimated, field.TypeBool, value)

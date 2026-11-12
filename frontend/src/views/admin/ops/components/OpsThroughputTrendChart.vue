@@ -48,9 +48,9 @@ watch(
 
 const colors = computed(() => ({
   blue: seriesPalette.value[0],
-  blueAlpha: `${seriesPalette.value[0]}20`,
-  green: seriesPalette.value[1],
-  greenAlpha: `${seriesPalette.value[1]}20`,
+  blueAlpha: `${seriesPalette.value[0]}1c`,
+  green: seriesPalette.value[2],
+  greenAlpha: `${seriesPalette.value[2]}1c`,
   grid: chartTheme.value.grid,
   text: chartTheme.value.text
 }))
@@ -59,6 +59,8 @@ const totalRequests = computed(() => sumNumbers(props.points.map((p) => p.reques
 
 const chartData = computed(() => {
   if (!props.points.length || totalRequests.value <= 0) return null
+  const pointBorder = chartTheme.value.pointBorder
+  const pointRadius = props.points.length > 36 ? 0 : 2.5
   return {
     labels: props.points.map((p) => formatHistoryLabel(p.bucket_start, props.timeRange)),
     datasets: [
@@ -67,9 +69,14 @@ const chartData = computed(() => {
         data: props.points.map((p) => p.qps ?? 0),
         borderColor: colors.value.blue,
         backgroundColor: colors.value.blueAlpha,
+        borderWidth: 2,
         fill: true,
         tension: 0.4,
-        pointRadius: 0,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: colors.value.blue,
+        pointBorderWidth: 2,
         pointHitRadius: 10
       },
       {
@@ -77,9 +84,14 @@ const chartData = computed(() => {
         data: props.points.map((p) => (p.tps ?? 0) / 1000),
         borderColor: colors.value.green,
         backgroundColor: colors.value.greenAlpha,
+        borderWidth: 2,
         fill: true,
         tension: 0.4,
-        pointRadius: 0,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: colors.value.green,
+        pointBorderWidth: 2,
         pointHitRadius: 10,
         yAxisID: 'y1'
       }
@@ -100,20 +112,23 @@ const options = computed(() => {
     animation: false as const,
     maintainAspectRatio: false,
     interaction: { intersect: false, mode: 'index' as const },
+    elements: {
+      point: {
+        radius: props.points.length > 36 ? 0 : 2.5,
+        hoverRadius: 5,
+        borderWidth: 2,
+        backgroundColor: chartTheme.value.pointBorder
+      },
+      line: { borderWidth: 2 }
+    },
     plugins: {
       legend: {
         position: 'top' as const,
         align: 'end' as const,
-        labels: { color: c.text, usePointStyle: true, boxWidth: 6, font: { size: 13 } }
+        labels: { color: c.text, usePointStyle: true, pointStyle: 'circle', boxWidth: 7, font: { size: 12 } }
       },
       tooltip: {
-      ...chartTheme.value.tooltip,
-        backgroundColor: chartTheme.value.tooltip.backgroundColor,
-        titleColor: chartTheme.value.tooltip.titleColor,
-        bodyColor: chartTheme.value.tooltip.bodyColor,
-        borderColor: c.grid,
-        borderWidth: 1,
-        padding: 10,
+        ...chartTheme.value.tooltip,
         displayColors: true,
         callbacks: {
           label: (context: any) => {
@@ -133,11 +148,13 @@ const options = computed(() => {
     scales: {
       x: {
         type: 'category' as const,
+        border: { display: false },
         grid: { display: false },
         ticks: {
           color: c.text,
-          font: { size: 13 },
+          font: { size: 12 },
           maxTicksLimit: 8,
+          maxRotation: 0,
           autoSkip: true,
           autoSkipPadding: 10
         }
@@ -146,15 +163,19 @@ const options = computed(() => {
         type: 'linear' as const,
         display: true,
         position: 'left' as const,
-        grid: { color: c.grid, borderDash: [4, 4] },
-        ticks: { color: c.text, font: { size: 13 } }
+        beginAtZero: true,
+        border: { display: false },
+        grid: { color: c.grid },
+        ticks: { color: c.text, font: { size: 12 } }
       },
       y1: {
         type: 'linear' as const,
         display: true,
         position: 'right' as const,
+        beginAtZero: true,
+        border: { display: false },
         grid: { display: false },
-        ticks: { color: c.green, font: { size: 13 } }
+        ticks: { color: c.green, font: { size: 12 } }
       }
     }
   }
@@ -177,12 +198,12 @@ function downloadChart() {
 </script>
 
 <template>
-  <div class="flex h-full min-w-0 flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700">
+  <div class="card flex h-full min-w-0 flex-col p-5 sm:p-6">
     <div
       data-testid="throughput-chart-header"
       class="mb-4 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
-      <h3 class="flex min-w-0 items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+      <h3 class="flex min-w-0 items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
         <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         </svg>
@@ -191,10 +212,10 @@ function downloadChart() {
       </h3>
       <div
         data-testid="throughput-chart-toolbar"
-        class="flex w-full min-w-0 flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 sm:w-auto sm:justify-end"
+        class="flex w-full min-w-0 flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-dark-300 sm:w-auto sm:justify-end"
       >
-        <span class="flex shrink-0 items-center gap-1"><span class="h-2 w-2 rounded-full bg-blue-500"></span>QPS</span>
-        <span class="flex shrink-0 items-center gap-1"><span class="h-2 w-2 rounded-full bg-green-500"></span>{{ t('admin.ops.tpsK') }}</span>
+        <span class="flex shrink-0 items-center gap-1"><span class="h-2 w-2 rounded-full" :style="{ backgroundColor: colors.blue }"></span>QPS</span>
+        <span class="flex shrink-0 items-center gap-1"><span class="h-2 w-2 rounded-full" :style="{ backgroundColor: colors.green }"></span>{{ t('admin.ops.tpsK') }}</span>
         <template v-if="!props.fullscreen">
           <button
             type="button"
@@ -237,7 +258,7 @@ function downloadChart() {
         @click="emit('selectGroup', g.group_id)"
       >
         <span class="max-w-[180px] truncate">{{ g.group_name || `#${g.group_id}` }}</span>
-        <span class="text-gray-400 dark:text-gray-500">{{ formatNumber(g.request_count) }}</span>
+        <span class="font-mono tabular-nums text-gray-400 dark:text-dark-400">{{ formatNumber(g.request_count) }}</span>
       </button>
     </div>
 
@@ -250,7 +271,7 @@ function downloadChart() {
         @click="emit('selectPlatform', p.platform)"
       >
         <span class="uppercase">{{ p.platform }}</span>
-        <span class="text-gray-400 dark:text-gray-500">{{ formatNumber(p.request_count) }}</span>
+        <span class="font-mono tabular-nums text-gray-400 dark:text-dark-400">{{ formatNumber(p.request_count) }}</span>
       </button>
     </div>
 

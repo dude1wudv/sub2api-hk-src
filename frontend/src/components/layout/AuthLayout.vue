@@ -1,28 +1,57 @@
 <template>
   <div class="patrick-surface patrick-auth">
     <header class="pa-header">
-      <router-link to="/home" class="pa-brand-link" :aria-label="zh ? 'patrickapi 首页' : 'patrickapi home'">
-        <PatrickBrand />
-      </router-link>
-      <nav class="pa-header-actions" :aria-label="zh ? '页面导航' : 'Page navigation'">
-        <ColorModeToggle />
-        <router-link to="/home" class="pa-nav-link">{{ zh ? '首页' : 'Home' }}</router-link>
-        <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="pa-nav-link">{{ zh ? '文档' : 'Docs' }}</a>
-        <label class="pa-language">
-          <span class="sr-only">{{ zh ? '语言' : 'Language' }}</span>
-          <select :value="locale" :disabled="switchingLanguage" @change="changeLanguage">
-            <option v-for="language in availableLocales" :key="language.code" :value="language.code">{{ language.code === 'zh' ? 'CN' : 'EN' }}</option>
-          </select>
-        </label>
-      </nav>
+      <div class="pa-header-inner">
+        <router-link to="/home" class="pa-brand-link" :aria-label="zh ? 'patrickapi 首页' : 'patrickapi home'">
+          <PatrickBrand />
+        </router-link>
+        <nav class="pa-header-actions" :aria-label="zh ? '页面导航' : 'Page navigation'">
+          <router-link to="/home" class="pa-nav-link">{{ zh ? '首页' : 'Home' }}</router-link>
+          <router-link to="/key-usage" class="pa-nav-link">{{ zh ? '查额' : 'Usage' }}</router-link>
+          <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="pa-nav-link">{{ zh ? '文档' : 'Docs' }}</a>
+          <ColorModeToggle />
+          <label class="pa-language">
+            <span class="sr-only">{{ zh ? '语言' : 'Language' }}</span>
+            <select :value="locale" :disabled="switchingLanguage" @change="changeLanguage">
+              <option v-for="language in availableLocales" :key="language.code" :value="language.code">{{ language.code === 'zh' ? 'CN' : 'EN' }}</option>
+            </select>
+          </label>
+        </nav>
+      </div>
     </header>
 
     <main class="pa-main">
       <InkSurface class="pa-story">
-        <p class="pa-story-eyebrow">PATRICKAPI</p>
-        <h1>{{ zh ? '账户中心' : 'Your account' }}</h1>
-        <svg class="pa-story-art" viewBox="0 0 440 280" fill="none" aria-hidden="true"><path d="M16 166c76-133 114 103 205-15S332 94 423 27" stroke="currentColor" stroke-opacity=".35" /><path d="M-20 202c124-141 123 150 255-5S376 121 470 66" stroke="currentColor" stroke-opacity=".18" /><path d="M185 244V93c0-14 10-24 24-24h40c45 0 72 24 72 61s-27 61-72 61h-64" stroke="currentColor" stroke-width="23" stroke-linecap="round" /><path d="M226 111h22c15 0 22 7 22 20s-7 20-22 20h-22" stroke="currentColor" stroke-width="17" stroke-linecap="round" /><circle cx="329" cy="231" r="12" class="pa-story-drop" /><circle cx="103" cy="74" r="8" class="pa-story-moss" /></svg>
-        <div class="pa-story-notes"><span>{{ zh ? 'API 密钥' : 'API keys' }}</span><i aria-hidden="true" /><span>{{ zh ? '使用记录' : 'Usage' }}</span><i aria-hidden="true" /><span>{{ zh ? '账户安全' : 'Security' }}</span></div>
+        <div class="pa-story-top">
+          <p class="pa-story-eyebrow"><i aria-hidden="true" />PATRICKAPI // ACCESS</p>
+          <h1>{{ zh ? '统一网关账户中心' : 'Unified Gateway Console' }}</h1>
+          <p class="pa-story-subtitle">{{ zh ? '集中管理多协议 API 密钥、分组路由、速率配额与实时 Token 计量账单。' : 'Manage multi-protocol API keys, group routing, rate quotas and live token billing in one place.' }}</p>
+        </div>
+        <svg class="pa-story-art" viewBox="0 0 440 210" fill="none" aria-hidden="true">
+          <rect x="16" y="18" width="408" height="174" rx="16" class="pa-art-frame" />
+          <line x1="16" y1="54" x2="424" y2="54" class="pa-art-divider" />
+          <circle cx="38" cy="36" r="4" class="pa-story-moss" />
+          <circle cx="52" cy="36" r="4" class="pa-story-drop" />
+          <rect x="344" y="29" width="62" height="14" rx="4" class="pa-art-pill" />
+          <path d="M84 124H174M266 124H356" class="pa-art-bus" />
+          <path d="M174 124H192M248 124H266" class="pa-art-bus-active" />
+          <rect x="36" y="96" width="66" height="56" rx="11" class="pa-art-node" />
+          <path d="M62 117L55 124L62 131M76 117L83 124L76 131" class="pa-art-glyph" />
+          <rect x="188" y="84" width="64" height="80" rx="14" class="pa-art-core" />
+          <path d="M211 139V111C211 108.5 213 106.5 215.5 106.5H224.5a9.5 9.5 0 0 1 0 19H211" class="pa-art-p" />
+          <circle cx="232" cy="136" r="3.2" class="pa-story-moss" />
+          <rect x="338" y="82" width="66" height="36" rx="9" class="pa-art-node" />
+          <rect x="338" y="130" width="66" height="36" rx="9" class="pa-art-node" />
+          <circle cx="352" cy="100" r="3.5" class="pa-story-moss" />
+          <circle cx="352" cy="148" r="3.5" class="pa-story-drop" />
+          <line x1="363" y1="100" x2="390" y2="100" class="pa-art-line" />
+          <line x1="363" y1="148" x2="390" y2="148" class="pa-art-line" />
+        </svg>
+        <div class="pa-story-notes">
+          <span><i class="pa-dot pa-dot--moss" aria-hidden="true" />{{ zh ? 'API 密钥隔离' : 'Scoped API keys' }}</span>
+          <span><i class="pa-dot pa-dot--copper" aria-hidden="true" />{{ zh ? '实时用量遥测' : 'Live telemetry' }}</span>
+          <span><i class="pa-dot pa-dot--moss" aria-hidden="true" />{{ zh ? '多因素安全保护' : '2FA & Passkey' }}</span>
+        </div>
       </InkSurface>
       <section class="pa-form-area" :aria-label="zh ? '账户访问' : 'Account access'">
         <div class="pa-form-card"><slot /></div>
@@ -31,8 +60,10 @@
     </main>
 
     <footer class="pa-footer">
-      <span>&copy; {{ currentYear }} patrickapi</span>
-      <MotionPreferenceToggle show-label />
+      <div class="pa-footer-inner">
+        <span>&copy; {{ currentYear }} patrickapi</span>
+        <MotionPreferenceToggle show-label />
+      </div>
     </footer>
   </div>
 </template>

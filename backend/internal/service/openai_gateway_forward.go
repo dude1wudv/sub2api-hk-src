@@ -19,7 +19,9 @@ import (
 )
 
 // Forward forwards request to OpenAI API
-func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, account *Account, body []byte) (*OpenAIForwardResult, error) {
+func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, account *Account, body []byte) (result *OpenAIForwardResult, forwardErr error) {
+	ctx, finishIncomplete := beginOpenAIIncompleteAttempt(ctx, c, body)
+	defer func() { finishIncomplete(&result, &forwardErr) }()
 	beginUpstreamResponseModelObservation(c)
 	ClearActualOpenAIUpstreamEndpoint(c)
 	if shouldForwardOpenAIResponsesViaRawChatCompletions(account) {
@@ -1037,6 +1039,21 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			}
 			return wsResult, nil
 		}
+		if wsResult != nil {
+			wsResult.UpstreamModel = upstreamModel
+			if wsResult.BillingModel == "" {
+				wsResult.BillingModel = billingModel
+			}
+			if wsResult.ImageCount > 0 {
+				wsResult.ImageSize = imageSizeTier
+				wsResult.ImageInputSize = imageInputSize
+				wsResult.BillingModel = imageBillingModel
+			}
+			if !wsResult.ClientDisconnect {
+				s.writeOpenAIWSFallbackErrorResponse(c, account, wsErr)
+			}
+			return wsResult, wsErr
+		}
 		s.writeOpenAIWSFallbackErrorResponse(c, account, wsErr)
 		return nil, wsErr
 	}
@@ -1284,6 +1301,18 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 						)
 					}
 					return s.handleErrorResponse(ctx, compactResp, c, account, body, resolveOpenAIErrorSchedulingModel(billingModel, upstreamModel))
+				}
+				var failoverErr *UpstreamFailoverError
+				if streamResult != nil && !errors.As(err, &failoverErr) {
+					partial := &OpenAIForwardResult{RequestID: resp.Header.Get("x-request-id"), ResponseID: streamResult.responseID, UpstreamHeaders: resp.Header, ResponseHeaders: resp.Header, Model: originalModel, BillingModel: billingModel, UpstreamModel: upstreamModel, UpstreamResponseModel: observedUpstreamResponseModel(c), UpstreamResponseModelConflict: observedUpstreamResponseModelConflict(c), UpstreamResponseServiceTier: observedUpstreamResponseServiceTier(c), ServiceTier: resolvedOpenAIUpstreamServiceTier(c, serviceTier), ReasoningEffort: reasoningEffort, Stream: reqStream, Duration: time.Since(startTime), FirstTokenMs: streamResult.firstTokenMs, ImageCount: streamResult.imageCount, ImageSize: imageSizeTier, ImageInputSize: imageInputSize, ImageOutputSizes: streamResult.imageOutputSizes, SearchCount: streamResult.searchCount}
+					if streamResult.usage != nil {
+						partial.Usage = *streamResult.usage
+					}
+					if partial.ImageCount > 0 {
+						partial.BillingModel = imageBillingModel
+					}
+					stampOpenAIResponsesUpstreamEndpoint(c, partial)
+					return partial, err
 				}
 				return nil, err
 			}

@@ -530,7 +530,11 @@ func (s *GeminiMessagesCompatService) HasAntigravityAccounts(ctx context.Context
 	return len(accounts) > 0, nil
 }
 
-func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Context, account *Account, body []byte) (*ForwardResult, error) {
+func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Context, account *Account, body []byte) (out *ForwardResult, retErr error) {
+	capture := newIncompleteForwardCapture(ctx, c, body)
+	capture.geminiCumulative = true
+	defer capture.finishForward(&out, &retErr)
+
 	beginUpstreamResponseModelObservation(c)
 	beginGeminiImageOutputObservation(c)
 	startTime := time.Now()
@@ -738,7 +742,11 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 		}
 		requestIDHeader = idHeader
 
-		resp, err = s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
+		resp, err = capture.Do(upstreamReq, func(request *http.Request) (*http.Response, error) {
+
+			return s.httpUpstream.Do(request, proxyURL, account.ID, account.Concurrency)
+
+		})
 		if err != nil {
 			return nil, s.handleUpstreamTransportError(ctx, c, account, err)
 		}
@@ -1092,7 +1100,13 @@ func isGeminiSignatureRelatedError(respBody []byte) bool {
 	return strings.Contains(msg, "thought_signature") || strings.Contains(msg, "signature")
 }
 
-func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.Context, account *Account, originalModel string, action string, stream bool, body []byte) (*ForwardResult, error) {
+func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.Context, account *Account, originalModel string, action string, stream bool, body []byte) (out *ForwardResult, retErr error) {
+	capture := newIncompleteForwardCapture(ctx, c, body)
+	capture.model, capture.stream = originalModel, stream
+	capture.reasoningEffort = extractGeminiReasoningEffortFromBody(body)
+	capture.imageInputSize = s.extractImageInputSize(body)
+	defer capture.finishForward(&out, &retErr)
+
 	beginUpstreamResponseModelObservation(c)
 	beginGeminiImageOutputObservation(c)
 	startTime := time.Now()
@@ -1291,7 +1305,11 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 		}
 		requestIDHeader = idHeader
 
-		resp, err = s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
+		resp, err = capture.Do(upstreamReq, func(request *http.Request) (*http.Response, error) {
+
+			return s.httpUpstream.Do(request, proxyURL, account.ID, account.Concurrency)
+
+		})
 		if err != nil {
 			transportErr := s.handleUpstreamTransportError(ctx, c, account, err)
 			// countTokens 不因上游链路故障而失败：本地估算兜底，不换号。

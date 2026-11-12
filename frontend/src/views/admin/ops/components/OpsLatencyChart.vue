@@ -45,6 +45,8 @@ const chartData = computed(() => {
         label: t('admin.ops.requests'),
         data: props.latencyData.buckets.map((b) => b.count),
         backgroundColor: c.blue,
+        borderColor: chartTheme.value.pointBorder,
+        borderWidth: 1,
         borderRadius: 4,
         barPercentage: 0.6
       }
@@ -59,18 +61,20 @@ const options = computed(() => {
     animation: false as const,
     maintainAspectRatio: false,
     plugins: {
-      tooltip: chartTheme.value.tooltip,
+      tooltip: { ...chartTheme.value.tooltip },
       legend: { display: false }
     },
     scales: {
       x: {
+        border: { display: false },
         grid: { display: false },
-        ticks: { color: c.text, font: { size: 13 } }
+        ticks: { color: c.text, maxRotation: 0, font: { size: 12 } }
       },
       y: {
         beginAtZero: true,
-        grid: { color: c.grid, borderDash: [4, 4] },
-        ticks: { color: c.text, font: { size: 13 } }
+        border: { display: false },
+        grid: { color: c.grid },
+        ticks: { color: c.text, font: { size: 12 } }
       }
     }
   }
@@ -78,9 +82,9 @@ const options = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700">
+  <div class="card flex h-full flex-col p-5 sm:p-6">
     <div class="mb-4 flex items-center justify-between">
-      <h3 class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
         <svg class="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             stroke-linecap="round"

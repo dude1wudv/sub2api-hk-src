@@ -343,7 +343,8 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 			for _, pending := range pendingLines {
 				if _, werr := c.Writer.WriteString(pending + "\n"); werr != nil {
 					clientDisconnected = true
-					logger.L().Debug("openai chat_completions raw: client disconnected, continuing to drain upstream for billing",
+					closeOpenAIIncompleteClientBody(resp)
+					logger.L().Debug("openai chat_completions raw: client disconnected, closing upstream and retaining received usage",
 						zap.Error(werr),
 						zap.String("request_id", requestID),
 					)
@@ -355,7 +356,8 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 		}
 		if _, werr := c.Writer.WriteString(line + "\n"); werr != nil {
 			clientDisconnected = true
-			logger.L().Debug("openai chat_completions raw: client disconnected, continuing to drain upstream for billing",
+			closeOpenAIIncompleteClientBody(resp)
+			logger.L().Debug("openai chat_completions raw: client disconnected, closing upstream and retaining received usage",
 				zap.Error(werr),
 				zap.String("request_id", requestID),
 			)
@@ -464,6 +466,7 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 			for _, pending := range pendingLines {
 				if _, werr := c.Writer.WriteString(pending + "\n"); werr != nil {
 					clientDisconnected = true
+					closeOpenAIIncompleteClientBody(resp)
 					logger.L().Debug("openai chat_completions raw: client disconnected during final flush",
 						zap.Error(werr),
 						zap.String("request_id", requestID),

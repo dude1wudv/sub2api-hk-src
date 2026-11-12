@@ -38,10 +38,10 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const colors = computed(() => ({
-  red: seriesPalette.value[4],
-  redAlpha: `${seriesPalette.value[4]}20`,
-  purple: seriesPalette.value[3],
-  purpleAlpha: `${seriesPalette.value[3]}20`,
+  red: seriesPalette.value[7],
+  redAlpha: `${seriesPalette.value[7]}1c`,
+  purple: seriesPalette.value[1],
+  purpleAlpha: `${seriesPalette.value[1]}18`,
   gray: chartTheme.value.text,
   grid: chartTheme.value.grid,
   text: chartTheme.value.text
@@ -64,6 +64,8 @@ const hasUpstreamErrors = computed(() => totalUpstreamErrors.value > 0)
 
 const chartData = computed(() => {
   if (!props.points.length || totalDisplayed.value <= 0) return null
+  const pointBorder = chartTheme.value.pointBorder
+  const pointRadius = props.points.length > 36 ? 0 : 2.5
   return {
     labels: props.points.map((p) => formatHistoryLabel(p.bucket_start, props.timeRange)),
     datasets: [
@@ -72,9 +74,14 @@ const chartData = computed(() => {
         data: props.points.map((p) => p.error_count_sla ?? 0),
         borderColor: colors.value.red,
         backgroundColor: colors.value.redAlpha,
+        borderWidth: 2,
         fill: true,
         tension: 0.35,
-        pointRadius: 0,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: colors.value.red,
+        pointBorderWidth: 2,
         pointHitRadius: 10
       },
       {
@@ -82,9 +89,14 @@ const chartData = computed(() => {
         data: props.points.map((p) => p.upstream_error_count_excl_429_529 ?? 0),
         borderColor: colors.value.purple,
         backgroundColor: colors.value.purpleAlpha,
+        borderWidth: 2,
         fill: true,
         tension: 0.35,
-        pointRadius: 0,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: colors.value.purple,
+        pointBorderWidth: 2,
         pointHitRadius: 10
       },
       {
@@ -92,10 +104,15 @@ const chartData = computed(() => {
         data: props.points.map((p) => p.business_limited_count ?? 0),
         borderColor: colors.value.gray,
         backgroundColor: 'transparent',
-        borderDash: [6, 6],
+        borderDash: [5, 4],
+        borderWidth: 2,
         fill: false,
         tension: 0.35,
-        pointRadius: 0,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: colors.value.gray,
+        pointBorderWidth: 2,
         pointHitRadius: 10
       }
     ]
@@ -115,31 +132,36 @@ const options = computed(() => {
     animation: false as const,
     maintainAspectRatio: false,
     interaction: { intersect: false, mode: 'index' as const },
+    elements: {
+      point: {
+        radius: props.points.length > 36 ? 0 : 2.5,
+        hoverRadius: 5,
+        borderWidth: 2,
+        backgroundColor: chartTheme.value.pointBorder
+      },
+      line: { borderWidth: 2 }
+    },
     plugins: {
       legend: {
         position: 'top' as const,
         align: 'end' as const,
-        labels: { color: c.text, usePointStyle: true, boxWidth: 6, font: { size: 13 } }
+        labels: { color: c.text, usePointStyle: true, pointStyle: 'circle', boxWidth: 7, font: { size: 12 } }
       },
       tooltip: {
-      ...chartTheme.value.tooltip,
-        backgroundColor: chartTheme.value.tooltip.backgroundColor,
-        titleColor: chartTheme.value.tooltip.titleColor,
-        bodyColor: chartTheme.value.tooltip.bodyColor,
-        borderColor: c.grid,
-        borderWidth: 1,
-        padding: 10,
+        ...chartTheme.value.tooltip,
         displayColors: true
       }
     },
     scales: {
       x: {
         type: 'category' as const,
+        border: { display: false },
         grid: { display: false },
         ticks: {
           color: c.text,
-          font: { size: 13 },
+          font: { size: 12 },
           maxTicksLimit: 8,
+          maxRotation: 0,
           autoSkip: true,
           autoSkipPadding: 10
         }
@@ -148,8 +170,10 @@ const options = computed(() => {
         type: 'linear' as const,
         display: true,
         position: 'left' as const,
-        grid: { color: c.grid, borderDash: [4, 4] },
-        ticks: { color: c.text, font: { size: 13 }, precision: 0 }
+        beginAtZero: true,
+        border: { display: false },
+        grid: { color: c.grid },
+        ticks: { color: c.text, font: { size: 12 }, precision: 0 }
       }
     }
   }
@@ -157,9 +181,9 @@ const options = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700">
+  <div class="card flex h-full flex-col p-5 sm:p-6">
     <div class="mb-4 flex shrink-0 items-center justify-between">
-      <h3 class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
         <svg class="h-4 w-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             stroke-linecap="round"

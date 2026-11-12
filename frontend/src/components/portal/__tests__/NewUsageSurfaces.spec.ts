@@ -45,7 +45,10 @@ describe('new usage surfaces', () => {
     const details = wrapper.get('details'); (details.element as HTMLDetailsElement).open = true; await details.trigger('toggle'); await flushPromises()
     await wrapper.findAll('button').find(button => button.text() === 'Load more')!.trigger('click'); await flushPromises()
     expect(wrapper.text()).toContain('model-1'); expect(wrapper.text()).toContain('model-2')
-    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+    const requests = wrapper.findAll('article.inflight-request')
+    expect(requests).toHaveLength(2)
+    expect(requests[0].text()).toContain('model-1')
+    expect(requests[1].text()).toContain('model-2')
     wrapper.unmount()
   })
   it('loads in-flight requests only while opened and aborts on close', async () => {

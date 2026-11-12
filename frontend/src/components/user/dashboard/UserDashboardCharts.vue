@@ -26,8 +26,8 @@ const number = (value: number) => value.toLocaleString(undefined, { notation: va
 const modelTotal = computed(() => props.models.reduce((sum, item) => sum + item.requests, 0))
 const displayModels = computed(() => rankChartRows(props.models, model => model.requests, palette.value))
 const trendData = computed(() => ({ labels: props.trend.map(item => item.date), datasets: [
-  { label: tx('输入 Token', 'Input tokens'), data: props.trend.map(item => item.input_tokens), borderColor: palette.value[0], backgroundColor: `${palette.value[0]}12`, fill: true },
-  { label: tx('输出 Token', 'Output tokens'), data: props.trend.map(item => item.output_tokens), borderColor: palette.value[1], backgroundColor: `${palette.value[1]}0A`, fill: true },
+  { label: tx('输入 Token', 'Input tokens'), data: props.trend.map(item => item.input_tokens), borderColor: palette.value[0], backgroundColor: `${palette.value[0]}16`, fill: true },
+  { label: tx('输出 Token', 'Output tokens'), data: props.trend.map(item => item.output_tokens), borderColor: palette.value[1], backgroundColor: `${palette.value[1]}10`, fill: true },
   { label: tx('缓存 Token', 'Cache tokens'), data: props.trend.map(item => item.cache_read_tokens + item.cache_creation_tokens), borderColor: palette.value[2], backgroundColor: 'transparent', fill: false },
 ] }))
 function openDate(date: string) {
@@ -39,9 +39,27 @@ const lineOptions = computed<ChartOptions<'line'>>(() => ({
   responsive: true, maintainAspectRatio: false, animation: false,
   interaction: { intersect: false, mode: 'index' },
   onClick: (_event, items) => { const point = props.trend[items[0]?.index ?? -1]; if (point) openDate(point.date) },
-  elements: { point: { radius: props.trend.length > 48 ? 0 : 2, hoverRadius: 4 }, line: { borderWidth: 2, tension: .28 } },
-  plugins: { legend: { position: 'bottom', labels: { color: theme.value.text, usePointStyle: true, boxWidth: 8, font: { size: 13 } } }, tooltip: { ...theme.value.tooltip } },
-  scales: { x: { grid: { display: false }, ticks: { color: theme.value.text, maxTicksLimit: 6, maxRotation: 0 } }, y: { beginAtZero: true, grid: { color: theme.value.grid }, ticks: { color: theme.value.text, callback: value => number(Number(value)) } } },
+  elements: {
+    point: {
+      radius: props.trend.length > 48 ? 0 : 2.5,
+      hoverRadius: 5,
+      hitRadius: 12,
+      borderWidth: 2,
+      backgroundColor: theme.value.pointBorder,
+    },
+    line: { borderWidth: 2, tension: 0.24 },
+  },
+  plugins: {
+    legend: {
+      position: 'bottom',
+      labels: { color: theme.value.text, usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 16, font: { size: 12.5 } },
+    },
+    tooltip: { ...theme.value.tooltip, padding: 10, boxPadding: 4, usePointStyle: true },
+  },
+  scales: {
+    x: { border: { display: false }, grid: { display: false }, ticks: { color: theme.value.text, maxTicksLimit: 7, maxRotation: 0, font: { size: 12 } } },
+    y: { beginAtZero: true, border: { display: false }, grid: { color: theme.value.grid }, ticks: { color: theme.value.text, padding: 8, font: { size: 12 }, callback: value => number(Number(value)) } },
+  },
 }))
 </script>
 

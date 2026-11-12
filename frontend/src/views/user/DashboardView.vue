@@ -1,7 +1,8 @@
 <template>
   <div class="portal-page developer-dashboard">
-    <PortalPageHeader :title="zh ? '概览' : 'Overview'">
+    <PortalPageHeader :title="zh ? '概览' : 'Overview'" :description="zh ? '实时掌握账户余额、各平台配额水位与模型调用趋势。' : 'Monitor account balance, platform quota watermarks, and model usage in real time.'">
       <span class="workspace-today">{{ new Date().toLocaleDateString(locale, { month: 'long', day: 'numeric', weekday: 'short' }) }}</span>
+      <RouterLink to="/keys?create=1" class="portal-button"><Icon name="plus" size="sm" />{{ zh ? '创建密钥' : 'Create key' }}</RouterLink>
       <button class="portal-button secondary" :disabled="loading" @click="refreshAll"><Icon name="refresh" size="sm" :class="{ 'animate-spin': loading }" />{{ t('common.refresh') }}</button>
     </PortalPageHeader>
     <div v-if="error" role="alert" class="portal-error workspace-error"><p>{{ error }}</p><button class="portal-button secondary" :disabled="loading" @click="refreshAll">{{ zh ? '重试' : 'Retry' }}</button></div>

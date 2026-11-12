@@ -1,33 +1,33 @@
 <template>
   <section
-    class="card flex min-h-[360px] flex-col overflow-hidden !rounded-3xl !border-0 !p-6 shadow-sm ring-1 ring-gray-900/5 dark:!bg-dark-800 dark:ring-dark-700"
+    class="card telemetry-chart-shell flex min-h-[360px] flex-col overflow-hidden rounded-3xl p-5 ring-1 ring-gray-900/5 dark:ring-white/5 sm:p-6"
   >
-    <div class="card-header mb-4 flex shrink-0 flex-wrap items-start justify-between gap-3 !border-0 !p-0">
+    <div class="card-header telemetry-chart-header mb-4 flex shrink-0 flex-wrap items-start justify-between gap-3 !border-0 !p-0">
       <div class="min-w-0">
-        <h2 class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
-          <span class="inline-flex h-4 w-4 text-sky-500" aria-hidden="true">
+        <h2 class="telemetry-panel-title flex items-center gap-2 text-[15px] font-semibold tracking-tight">
+          <span class="telemetry-panel-icon inline-flex h-6 w-6 items-center justify-center rounded-md" aria-hidden="true">
             <Icon name="chart" size="sm" />
           </span>
           {{ t('channelMonitorV2.chart.title') }}
         </h2>
-        <p class="mt-0.5 text-xs text-gray-500 dark:text-dark-400">
+        <p class="telemetry-panel-subtitle mt-0.5 text-xs">
           {{ t('channelMonitorV2.chart.description') }}
         </p>
       </div>
-      <div class="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 text-xs text-gray-500 dark:text-gray-400 sm:w-auto">
-        <span class="flex shrink-0 items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-red-500"></span>{{ t('channelMonitorV2.chart.errorLegend') }}
+      <div class="telemetry-chart-meta flex w-full min-w-0 flex-wrap items-center justify-end gap-2.5 text-xs sm:w-auto">
+        <span class="inline-flex shrink-0 items-center gap-1.5">
+          <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: seriesColors.error }"></span>{{ t('channelMonitorV2.chart.errorLegend') }}
         </span>
-        <span class="flex shrink-0 items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>{{ t('channelMonitorV2.chart.cacheLegend') }}
+        <span class="inline-flex shrink-0 items-center gap-1.5">
+          <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: seriesColors.cache }"></span>{{ t('channelMonitorV2.chart.cacheLegend') }}
         </span>
-        <span class="flex shrink-0 items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-sky-500"></span>{{ t('channelMonitorV2.chart.ttftLegend') }}
+        <span class="inline-flex shrink-0 items-center gap-1.5">
+          <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: seriesColors.ttft }"></span>{{ t('channelMonitorV2.chart.ttftLegend') }}
         </span>
-        <span class="badge badge-gray shrink-0">{{ bucketLabel }}</span>
+        <span class="telemetry-bucket-pill badge badge-gray shrink-0 tabular-nums">{{ bucketLabel }}</span>
         <button
           type="button"
-          class="inline-flex shrink-0 items-center rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-300 dark:hover:bg-dark-800"
+          class="telemetry-reset-btn inline-flex shrink-0 items-center rounded-lg px-2.5 py-1 text-[11px] font-medium focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-45"
           :disabled="!zoomed"
           @click="resetChartZoom"
         >
@@ -37,7 +37,7 @@
     </div>
     <div class="card-body min-h-0 flex-1 !p-0">
       <div v-if="loading" class="flex h-[280px] items-center justify-center sm:h-[300px]">
-        <div class="animate-pulse text-sm text-gray-400">{{ t('common.loading') }}</div>
+        <div class="telemetry-muted animate-pulse text-sm">{{ t('common.loading') }}</div>
       </div>
       <div
         v-else-if="chartData"
@@ -71,6 +71,7 @@ import {
   Tooltip,
   Legend,
   Filler,
+  type ChartOptions,
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -101,6 +102,12 @@ const chartRef = ref<HTMLElement | null>(null)
 const zoom = ref<ZoomState>(resetZoom())
 const zoomed = computed(() => isZoomed(zoom.value))
 
+const seriesColors = computed(() => ({
+  ttft: seriesPalette.value[0],
+  cache: seriesPalette.value[2],
+  error: seriesPalette.value[7],
+}))
+
 
 const bucketLabel = computed(() => {
   const seconds = props.coverage?.bucket_seconds || 60
@@ -114,6 +121,8 @@ const bucketLabel = computed(() => {
 const chartData = computed(() => {
   const points = visibleTrend.value
   if (!points.length) return null
+  const pointRadius = points.length > 48 ? 0 : 2.5
+  const pointSurface = chartTheme.value.pointBorder
   const labels = points.map((p) =>
     new Intl.DateTimeFormat(locale.value || undefined, {
       month: '2-digit',
@@ -131,43 +140,52 @@ const chartData = computed(() => {
       {
         label: t('channelMonitorV2.chart.errorDataset'),
         data: errorRates,
-        borderColor: seriesPalette.value[4],
-        backgroundColor: `${seriesPalette.value[4]}1a`,
+        borderColor: seriesColors.value.error,
+        backgroundColor: `${seriesColors.value.error}16`,
+        pointBackgroundColor: pointSurface,
+        pointBorderColor: seriesColors.value.error,
+        pointBorderWidth: 2,
         yAxisID: 'yPct',
-        tension: 0.4,
+        tension: 0.24,
         cubicInterpolationMode: 'monotone' as const,
         fill: 'origin' as const,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-        pointHitRadius: 10,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointHitRadius: 12,
         borderWidth: 2,
       },
       {
         label: t('channelMonitorV2.chart.cacheDataset'),
         data: cacheRates,
-        borderColor: seriesPalette.value[1],
-        backgroundColor: `${seriesPalette.value[1]}14`,
+        borderColor: seriesColors.value.cache,
+        backgroundColor: `${seriesColors.value.cache}12`,
+        pointBackgroundColor: pointSurface,
+        pointBorderColor: seriesColors.value.cache,
+        pointBorderWidth: 2,
         yAxisID: 'yPct',
-        tension: 0.4,
+        tension: 0.24,
         cubicInterpolationMode: 'monotone' as const,
         fill: false,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-        pointHitRadius: 10,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointHitRadius: 12,
         borderWidth: 2,
       },
       {
         label: t('channelMonitorV2.chart.ttftDataset'),
         data: ttftP50,
-        borderColor: seriesPalette.value[0],
-        backgroundColor: `${seriesPalette.value[0]}14`,
+        borderColor: seriesColors.value.ttft,
+        backgroundColor: `${seriesColors.value.ttft}12`,
+        pointBackgroundColor: pointSurface,
+        pointBorderColor: seriesColors.value.ttft,
+        pointBorderWidth: 2,
         yAxisID: 'yTtft',
-        tension: 0.4,
+        tension: 0.24,
         cubicInterpolationMode: 'monotone' as const,
         fill: false,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-        pointHitRadius: 10,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointHitRadius: 12,
         borderWidth: 2,
         spanGaps: true,
       },
@@ -204,27 +222,33 @@ function smoothTrend(values: Array<number | null>): Array<number | null> {
   })
 }
 
-const chartOptions = computed(() => {
+const chartOptions = computed<ChartOptions<'line'>>(() => {
   const text = chartTheme.value.text
   const grid = chartTheme.value.grid
-  const tooltipBg = chartTheme.value.tooltip.backgroundColor
-  const tooltipTitle = chartTheme.value.tooltip.titleColor
-  const tooltipBody = chartTheme.value.tooltip.bodyColor
   return {
     responsive: true,
     animation: false as const,
     maintainAspectRatio: false,
     interaction: { mode: 'index' as const, intersect: false },
+    elements: {
+      point: {
+        radius: visibleTrend.value.length > 48 ? 0 : 2.5,
+        hoverRadius: 5,
+        hitRadius: 12,
+        borderWidth: 2,
+        backgroundColor: chartTheme.value.pointBorder,
+      },
+      line: {
+        borderWidth: 2,
+        tension: 0.24,
+      },
+    },
     plugins: {
       legend: { display: false },
       tooltip: {
         ...chartTheme.value.tooltip,
-        backgroundColor: tooltipBg,
-        titleColor: tooltipTitle,
-        bodyColor: tooltipBody,
-        borderColor: grid,
-        borderWidth: 1,
-        padding: 10,
+        boxPadding: 4,
+        usePointStyle: true,
         displayColors: true,
         callbacks: {
           label(ctx: { dataset: { label?: string }; parsed: { y: number | null } }) {
@@ -241,35 +265,81 @@ const chartOptions = computed(() => {
     },
     scales: {
       x: {
-        ticks: { color: text, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, autoSkipPadding: 10, font: { size: 13 } },
+        border: { display: false },
         grid: { display: false },
+        ticks: { color: text, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, autoSkipPadding: 12, font: { size: 12 } },
       },
       yPct: {
         type: 'linear' as const,
         position: 'left' as const,
         min: 0,
         suggestedMax: 100,
+        border: { display: false },
+        grid: { color: grid },
         ticks: {
           color: text,
-          font: { size: 13 },
+          padding: 8,
+          font: { size: 12 },
           callback: (v: string | number) => `${v}%`,
         },
-        grid: { color: grid, borderDash: [4, 4] },
-        title: { display: true, text: t('channelMonitorV2.chart.percentAxis'), color: text, font: { size: 13 } },
+        title: { display: true, text: t('channelMonitorV2.chart.percentAxis'), color: text, font: { size: 12 } },
       },
       yTtft: {
         type: 'linear' as const,
         position: 'right' as const,
         min: 0,
+        border: { display: false },
+        grid: { display: false },
         ticks: {
-          color: seriesPalette.value[0],
-          font: { size: 13 },
+          color: text,
+          padding: 8,
+          font: { size: 12 },
           callback: (v: string | number) => formatMonitorMs(Number(v)),
         },
-        grid: { display: false },
-        title: { display: true, text: t('channelMonitorV2.metrics.ttftP50'), color: seriesPalette.value[0], font: { size: 13 } },
+        title: { display: true, text: t('channelMonitorV2.metrics.ttftP50'), color: text, font: { size: 12 } },
       },
     },
   }
 })
 </script>
+
+<style scoped>
+.telemetry-chart-shell {
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-panel);
+  --tw-ring-shadow: 0 0 #0000;
+}
+.telemetry-panel-title {
+  color: rgb(var(--ink));
+}
+.telemetry-panel-icon {
+  color: rgb(var(--brand-moss));
+  background: rgb(var(--brand-moss) / 0.1);
+  border: 1px solid rgb(var(--brand-moss) / 0.22);
+}
+.telemetry-panel-subtitle,
+.telemetry-muted {
+  color: rgb(var(--ink-3));
+}
+.telemetry-chart-meta {
+  color: rgb(var(--ink-2));
+  font-variant-numeric: tabular-nums;
+}
+.telemetry-bucket-pill {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-2));
+  border: 1px solid rgb(var(--line));
+}
+.telemetry-reset-btn {
+  background: rgb(var(--surface));
+  color: rgb(var(--ink-2));
+  border: 1px solid rgb(var(--line));
+}
+.telemetry-reset-btn:hover:not(:disabled) {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink));
+  border-color: rgb(var(--line-strong));
+}
+</style>

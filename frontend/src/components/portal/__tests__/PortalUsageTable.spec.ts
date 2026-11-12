@@ -34,6 +34,22 @@ function row(first_token_ms: number | null, duration_ms: number | null) {
 describe('PortalUsageTable latency states', () => {
   beforeEach(() => { mobile.value = false })
 
+  it.each([false, true])('distinguishes input discounts from measured cache hits (mobile=%s)', (isMobile) => {
+    mobile.value = isMobile
+    const wrapper = mount(PortalUsageTable, {
+      props: {
+        rows: [{ ...row(null, 3_000), input_tokens: 5, cache_read_tokens: 95, input_tokens_estimated: true, cache_read_tokens_estimated: true }],
+        columns: ['tokens'], sortBy: 'created_at', sortOrder: 'desc',
+      },
+    })
+    expect(wrapper.get('[data-testid="input-tokens-estimated"]').text()).toBe('usage.inputTokensEstimated')
+    expect(wrapper.get('[data-testid="cache-read-tokens-estimated"]').text()).toBe('usage.cacheReadTokensEstimated')
+    expect(wrapper.find('[data-testid="output-tokens-estimated"]').exists()).toBe(false)
+    expect(wrapper.find('.usage-cache-rate').exists()).toBe(false)
+    expect(wrapper.get('.usage-cache-read').text()).toBe('95')
+    wrapper.unmount()
+  })
+
   it.each([false, true])('labels estimated output in desktop/mobile usage (mobile=%s)', (isMobile) => {
     mobile.value = isMobile
     const wrapper = mount(PortalUsageTable, {

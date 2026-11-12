@@ -26,7 +26,10 @@ func (s *GeminiMessagesCompatService) ForwardAsChatCompletions(
 	c *gin.Context,
 	account *Account,
 	body []byte,
-) (*ForwardResult, error) {
+) (out *ForwardResult, retErr error) {
+	capture := newIncompleteForwardCapture(ctx, c, body)
+	defer capture.finishForward(&out, &retErr)
+
 	startTime := time.Now()
 
 	var ccReq apicompat.ChatCompletionsRequest
@@ -78,7 +81,12 @@ func (s *GeminiMessagesCompatService) forwardClaudeBodyAsChatCompletions(
 	clientStream bool,
 	includeUsage bool,
 	startTime time.Time,
-) (*ForwardResult, error) {
+) (out *ForwardResult, retErr error) {
+	capture := newIncompleteForwardCapture(ctx, c, claudeBody)
+	capture.geminiCumulative = true
+	capture.model, capture.stream = originalModel, clientStream
+	defer capture.finishForward(&out, &retErr)
+
 	var req struct {
 		Model  string `json:"model"`
 		Stream bool   `json:"stream"`
@@ -140,7 +148,11 @@ func (s *GeminiMessagesCompatService) forwardClaudeBodyAsChatCompletions(
 		}
 		requestIDHeader = idHeader
 
-		resp, err = s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
+		resp, err = capture.Do(upstreamReq, func(request *http.Request) (*http.Response, error) {
+
+			return s.httpUpstream.Do(request, proxyURL, account.ID, account.Concurrency)
+
+		})
 		if err != nil {
 			return nil, s.handleUpstreamTransportError(ctx, c, account, err)
 		}

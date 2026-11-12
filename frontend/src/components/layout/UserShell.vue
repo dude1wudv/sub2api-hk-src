@@ -221,6 +221,7 @@
               aria-controls="user-account-popover"
               @click="toggleAccount"
             >
+              <span class="user-account-avatar" aria-hidden="true">{{ accountInitials }}</span>
               <span class="user-account-name">{{ displayName }}</span>
               <Icon name="chevronDown" size="xs" aria-hidden="true" />
             </button>
@@ -325,6 +326,7 @@ const localeMenuRef = ref<HTMLElement | null>(null)
 
 const user = computed(() => authStore.user)
 const displayName = computed(() => user.value?.username || user.value?.email?.split('@')[0] || (zh.value ? '我的账户' : 'My account'))
+const accountInitials = computed(() => displayName.value.slice(0, 2).toUpperCase())
 const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const supportEmail = computed(() => appStore.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '')
 const availableBalance = computed(() => Number(user.value?.balance || 0))
@@ -559,24 +561,24 @@ defineExpose({ replayTour: replayUserGuide })
 
 <style scoped>
 .user-portal .user-sidebar { padding-top: env(safe-area-inset-top, 0px); }
-.user-portal .user-sidebar-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
-.user-portal .user-topbar { padding-top: calc(20px + env(safe-area-inset-top, 0px)); height: calc(var(--user-topbar-height) + env(safe-area-inset-top, 0px)); }
+.user-portal .user-sidebar-bottom { padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+.user-portal .user-topbar { padding-top: env(safe-area-inset-top, 0px); height: calc(var(--user-topbar-height) + env(safe-area-inset-top, 0px)); }
 .user-portal .user-workspace-content { padding-bottom: env(safe-area-inset-bottom, 0px); }
-.user-portal :is(.user-icon-button, .user-account-trigger, .user-language-toggle) { transition: color var(--motion-fast, 160ms), background-color var(--motion-fast, 160ms); }
+.user-portal :is(.user-icon-button, .user-account-trigger, .user-language-toggle) { transition: color var(--motion-fast, 150ms), background-color var(--motion-fast, 150ms), border-color var(--motion-fast, 150ms); }
 .user-portal :is(.user-account-popover, .user-language-menu) { animation: user-menu-enter var(--motion-menu, 180ms) ease-out; transform-origin: top right; }
-.user-portal[data-nav-open='true'] .user-sidebar { animation: user-drawer-enter var(--motion-overlay, 260ms) cubic-bezier(.2,.8,.2,1); }
+.user-portal[data-nav-open='true'] .user-sidebar { animation: user-drawer-enter var(--motion-overlay, 240ms) cubic-bezier(.2,.8,.2,1); }
 @keyframes user-menu-enter { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes user-drawer-enter { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (max-width: 767px) {
-  .user-portal .user-topbar { align-items: center; padding-top: calc(6px + env(safe-area-inset-top, 0px)); padding-bottom: 6px; }
+  .user-portal .user-topbar { align-items: center; }
   .user-portal :is(.user-icon-button, .user-language-toggle, .user-account-trigger, .user-signin-link) { min-width: 44px; min-height: 44px; }
   .user-portal :is(.user-nav-item, .user-account-action, .user-language-menu button, .user-balance-pill) { min-height: 44px; }
   .user-portal .user-announcement-control :deep(button) { min-width: 44px; min-height: 44px; }
-  .user-portal .user-account-trigger { max-width: 100px; }
+  .user-portal .user-account-trigger { max-width: 112px; }
 }
 @media (max-width: 359px) {
   .user-portal .user-topbar-actions { gap: 4px; }
-  .user-portal .user-account-trigger { max-width: 64px; }
+  .user-portal .user-account-trigger { max-width: 76px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .user-portal :is(.user-sidebar, .user-account-popover, .user-language-menu) { animation: none; }

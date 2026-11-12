@@ -14,7 +14,7 @@
               <Icon
                 name="search"
                 size="md"
-                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-400"
               />
               <input
                 v-model="filterUserKeyword"
@@ -365,7 +365,7 @@
                   !row.group?.weekly_limit_usd &&
                   !row.group?.monthly_limit_usd
                 "
-                class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 px-3 py-2 dark:from-emerald-900/20 dark:to-teal-900/20"
+                class="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 dark:border-emerald-800/40 dark:bg-emerald-950/30"
               >
                 <span class="text-lg text-emerald-600 dark:text-emerald-400">∞</span>
                 <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">
@@ -378,7 +378,7 @@
           <template #cell-expires_at="{ value }">
             <div v-if="value">
               <span
-                class="text-sm"
+                class="text-sm tabular-nums"
                 :class="
                   isExpiringSoon(value)
                     ? 'text-orange-600 dark:text-orange-400'

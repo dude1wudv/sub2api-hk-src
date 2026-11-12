@@ -46787,6 +46787,9 @@ type UsageLogMutation struct {
 	addinput_tokens              *int
 	output_tokens                *int
 	addoutput_tokens             *int
+	input_tokens_estimated       *bool
+	cache_read_tokens_estimated  *bool
+	usage_estimation_reason      *string
 	output_tokens_estimated      *bool
 	cache_creation_tokens        *int
 	addcache_creation_tokens     *int
@@ -47755,6 +47758,114 @@ func (m *UsageLogMutation) AddedOutputTokens() (r int, exists bool) {
 func (m *UsageLogMutation) ResetOutputTokens() {
 	m.output_tokens = nil
 	m.addoutput_tokens = nil
+}
+
+// SetInputTokensEstimated sets the "input_tokens_estimated" field.
+func (m *UsageLogMutation) SetInputTokensEstimated(b bool) {
+	m.input_tokens_estimated = &b
+}
+
+// InputTokensEstimated returns the value of the "input_tokens_estimated" field in the mutation.
+func (m *UsageLogMutation) InputTokensEstimated() (r bool, exists bool) {
+	v := m.input_tokens_estimated
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInputTokensEstimated returns the old "input_tokens_estimated" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldInputTokensEstimated(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInputTokensEstimated is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInputTokensEstimated requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInputTokensEstimated: %w", err)
+	}
+	return oldValue.InputTokensEstimated, nil
+}
+
+// ResetInputTokensEstimated resets all changes to the "input_tokens_estimated" field.
+func (m *UsageLogMutation) ResetInputTokensEstimated() {
+	m.input_tokens_estimated = nil
+}
+
+// SetCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field.
+func (m *UsageLogMutation) SetCacheReadTokensEstimated(b bool) {
+	m.cache_read_tokens_estimated = &b
+}
+
+// CacheReadTokensEstimated returns the value of the "cache_read_tokens_estimated" field in the mutation.
+func (m *UsageLogMutation) CacheReadTokensEstimated() (r bool, exists bool) {
+	v := m.cache_read_tokens_estimated
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCacheReadTokensEstimated returns the old "cache_read_tokens_estimated" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldCacheReadTokensEstimated(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCacheReadTokensEstimated is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCacheReadTokensEstimated requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCacheReadTokensEstimated: %w", err)
+	}
+	return oldValue.CacheReadTokensEstimated, nil
+}
+
+// ResetCacheReadTokensEstimated resets all changes to the "cache_read_tokens_estimated" field.
+func (m *UsageLogMutation) ResetCacheReadTokensEstimated() {
+	m.cache_read_tokens_estimated = nil
+}
+
+// SetUsageEstimationReason sets the "usage_estimation_reason" field.
+func (m *UsageLogMutation) SetUsageEstimationReason(s string) {
+	m.usage_estimation_reason = &s
+}
+
+// UsageEstimationReason returns the value of the "usage_estimation_reason" field in the mutation.
+func (m *UsageLogMutation) UsageEstimationReason() (r string, exists bool) {
+	v := m.usage_estimation_reason
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsageEstimationReason returns the old "usage_estimation_reason" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldUsageEstimationReason(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsageEstimationReason is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsageEstimationReason requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsageEstimationReason: %w", err)
+	}
+	return oldValue.UsageEstimationReason, nil
+}
+
+// ResetUsageEstimationReason resets all changes to the "usage_estimation_reason" field.
+func (m *UsageLogMutation) ResetUsageEstimationReason() {
+	m.usage_estimation_reason = nil
 }
 
 // SetOutputTokensEstimated sets the "output_tokens_estimated" field.
@@ -49674,7 +49785,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 50)
+	fields := make([]string, 0, 53)
 	if m.user != nil {
 		fields = append(fields, usagelog.FieldUserID)
 	}
@@ -49725,6 +49836,15 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.output_tokens != nil {
 		fields = append(fields, usagelog.FieldOutputTokens)
+	}
+	if m.input_tokens_estimated != nil {
+		fields = append(fields, usagelog.FieldInputTokensEstimated)
+	}
+	if m.cache_read_tokens_estimated != nil {
+		fields = append(fields, usagelog.FieldCacheReadTokensEstimated)
+	}
+	if m.usage_estimation_reason != nil {
+		fields = append(fields, usagelog.FieldUsageEstimationReason)
 	}
 	if m.output_tokens_estimated != nil {
 		fields = append(fields, usagelog.FieldOutputTokensEstimated)
@@ -49867,6 +49987,12 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.InputTokens()
 	case usagelog.FieldOutputTokens:
 		return m.OutputTokens()
+	case usagelog.FieldInputTokensEstimated:
+		return m.InputTokensEstimated()
+	case usagelog.FieldCacheReadTokensEstimated:
+		return m.CacheReadTokensEstimated()
+	case usagelog.FieldUsageEstimationReason:
+		return m.UsageEstimationReason()
 	case usagelog.FieldOutputTokensEstimated:
 		return m.OutputTokensEstimated()
 	case usagelog.FieldCacheCreationTokens:
@@ -49976,6 +50102,12 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldInputTokens(ctx)
 	case usagelog.FieldOutputTokens:
 		return m.OldOutputTokens(ctx)
+	case usagelog.FieldInputTokensEstimated:
+		return m.OldInputTokensEstimated(ctx)
+	case usagelog.FieldCacheReadTokensEstimated:
+		return m.OldCacheReadTokensEstimated(ctx)
+	case usagelog.FieldUsageEstimationReason:
+		return m.OldUsageEstimationReason(ctx)
 	case usagelog.FieldOutputTokensEstimated:
 		return m.OldOutputTokensEstimated(ctx)
 	case usagelog.FieldCacheCreationTokens:
@@ -50169,6 +50301,27 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetOutputTokens(v)
+		return nil
+	case usagelog.FieldInputTokensEstimated:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInputTokensEstimated(v)
+		return nil
+	case usagelog.FieldCacheReadTokensEstimated:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCacheReadTokensEstimated(v)
+		return nil
+	case usagelog.FieldUsageEstimationReason:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsageEstimationReason(v)
 		return nil
 	case usagelog.FieldOutputTokensEstimated:
 		v, ok := value.(bool)
@@ -50914,6 +51067,15 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldOutputTokens:
 		m.ResetOutputTokens()
+		return nil
+	case usagelog.FieldInputTokensEstimated:
+		m.ResetInputTokensEstimated()
+		return nil
+	case usagelog.FieldCacheReadTokensEstimated:
+		m.ResetCacheReadTokensEstimated()
+		return nil
+	case usagelog.FieldUsageEstimationReason:
+		m.ResetUsageEstimationReason()
 		return nil
 	case usagelog.FieldOutputTokensEstimated:
 		m.ResetOutputTokensEstimated()

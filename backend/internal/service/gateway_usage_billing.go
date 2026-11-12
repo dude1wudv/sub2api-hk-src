@@ -879,6 +879,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 				CacheCreationTokens: result.Usage.CacheCreationInputTokens,
 				CacheReadTokens:     result.Usage.CacheReadInputTokens,
 				ImageOutputTokens:   result.Usage.ImageOutputTokens,
+				CacheReadEstimated:  result.Usage.CacheReadTokensEstimated,
 			},
 			cost.TotalCost-cacheStorageCost, pricingAt,
 			accountStatsLongContextPricingEnabled(nil),
@@ -1296,6 +1297,7 @@ func (s *GatewayService) calculateTokenCost(
 		CacheCreation5mTokens: result.Usage.CacheCreation5mTokens,
 		CacheCreation1hTokens: result.Usage.CacheCreation1hTokens,
 		ImageOutputTokens:     result.Usage.ImageOutputTokens,
+		CacheReadEstimated:    result.Usage.CacheReadTokensEstimated,
 	}
 
 	var resolved *ResolvedPricing
@@ -1372,6 +1374,9 @@ func (s *GatewayService) buildRecordUsageLog(
 		InputTokens:              result.Usage.InputTokens,
 		OutputTokens:             result.Usage.OutputTokens,
 		OutputTokensEstimated:    result.Usage.OutputTokensEstimated,
+		InputTokensEstimated:     result.Usage.InputTokensEstimated,
+		CacheReadTokensEstimated: result.Usage.CacheReadTokensEstimated,
+		UsageEstimationReason:    result.Usage.UsageEstimationReason,
 		CacheCreationTokens:      result.Usage.CacheCreationInputTokens,
 		CacheReadTokens:          result.Usage.CacheReadInputTokens,
 		CacheCreation5mTokens:    result.Usage.CacheCreation5mTokens,

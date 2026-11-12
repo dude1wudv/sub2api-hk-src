@@ -26,8 +26,8 @@ const { t } = useI18n()
 
 const colors = computed(() => ({
   blue: seriesPalette.value[0],
-  red: seriesPalette.value[4],
-  orange: seriesPalette.value[2],
+  red: seriesPalette.value[7],
+  orange: seriesPalette.value[1],
   gray: chartTheme.value.text,
   text: chartTheme.value.text
 }))
@@ -90,7 +90,8 @@ const chartData = computed(() => {
       {
         data: categories.value.map((c) => c.count),
         backgroundColor: categories.value.map((c) => c.color),
-        borderWidth: 0
+        borderColor: chartTheme.value.pointBorder,
+        borderWidth: 2
       }
     ]
   }
@@ -100,22 +101,18 @@ const options = computed(() => ({
   responsive: true,
   animation: false as const,
   maintainAspectRatio: false,
+  cutout: '65%',
   plugins: {
     legend: { display: false },
-    tooltip: {
-      ...chartTheme.value.tooltip,
-      backgroundColor: chartTheme.value.tooltip.backgroundColor,
-      titleColor: chartTheme.value.tooltip.titleColor,
-      bodyColor: chartTheme.value.tooltip.bodyColor
-    }
+    tooltip: { ...chartTheme.value.tooltip }
   }
 }))
 </script>
 
 <template>
-  <div class="flex h-full flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700">
+  <div class="card flex h-full flex-col p-5 sm:p-6">
     <div class="mb-4 flex items-center justify-between">
-      <h3 class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
         <svg class="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             stroke-linecap="round"
@@ -141,16 +138,16 @@ const options = computed(() => ({
     <div class="relative min-h-0 flex-1">
       <div v-if="state === 'ready' && chartData" class="flex h-full flex-col">
         <div class="flex-1">
-          <Doughnut :data="chartData" :options="{ ...options, cutout: '65%' }" />
+          <Doughnut :data="chartData" :options="options" />
         </div>
         <div class="mt-4 flex flex-col items-center gap-2">
-          <div v-if="topReason" class="text-xs font-bold text-gray-900 dark:text-white">
+          <div v-if="topReason" class="text-xs font-semibold text-gray-900 dark:text-white">
             {{ t('admin.ops.top') }}: <span :style="{ color: topReason.color }">{{ topReason.label }}</span>
           </div>
           <div class="flex flex-wrap justify-center gap-3">
             <div v-for="item in categories" :key="item.label" class="flex items-center gap-1.5 text-xs">
               <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: item.color }"></span>
-              <span class="text-gray-500 dark:text-gray-400">{{ item.label }} {{ item.count }}</span>
+              <span class="text-gray-500 dark:text-dark-300">{{ item.label }} <span class="font-mono tabular-nums">{{ item.count }}</span></span>
             </div>
           </div>
         </div>

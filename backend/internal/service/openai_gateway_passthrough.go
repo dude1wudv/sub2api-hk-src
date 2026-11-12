@@ -1972,7 +1972,8 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 		for _, pending := range pendingLines {
 			if _, err := fmt.Fprintln(w, pending); err != nil {
 				clientDisconnected = true
-				logger.LegacyPrintf("service.openai_gateway", "[OpenAI passthrough] Client disconnected during streaming, continue draining upstream for usage: account=%d", account.ID)
+				closeOpenAIIncompleteClientBody(resp)
+				logger.LegacyPrintf("service.openai_gateway", "[OpenAI passthrough] Client disconnected during streaming, close upstream and retain received usage: account=%d", account.ID)
 				return false
 			}
 		}
@@ -1992,6 +1993,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 		}
 		if _, err := fmt.Fprint(w, buildOpenAIResponseFailedSSE(responseID, originalModel, createdAtTracker.Value(), bareErrorPayload, failedMessage)); err != nil {
 			clientDisconnected = true
+			closeOpenAIIncompleteClientBody(resp)
 			return
 		}
 		clientOutputStarted = true
@@ -2229,7 +2231,8 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 			}
 			if _, err := fmt.Fprintln(w, line); err != nil {
 				clientDisconnected = true
-				logger.LegacyPrintf("service.openai_gateway", "[OpenAI passthrough] Client disconnected during streaming, continue draining upstream for usage: account=%d", account.ID)
+				closeOpenAIIncompleteClientBody(resp)
+				logger.LegacyPrintf("service.openai_gateway", "[OpenAI passthrough] Client disconnected during streaming, close upstream and retain received usage: account=%d", account.ID)
 			} else {
 				clientOutputStarted = true
 				flushPending = true

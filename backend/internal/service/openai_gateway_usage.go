@@ -204,6 +204,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		CacheCreation12hTokens: result.Usage.CacheCreation12hInputTokens,
 		CacheReadTokens:        result.Usage.CacheReadInputTokens,
 		ImageOutputTokens:      result.Usage.ImageOutputTokens,
+		CacheReadEstimated:     result.Usage.CacheReadTokensEstimated,
 	}
 
 	// Get rate multiplier
@@ -418,6 +419,9 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		InputTokens:              actualInputTokens,
 		OutputTokens:             result.Usage.OutputTokens,
 		OutputTokensEstimated:    result.Usage.OutputTokensEstimated,
+		InputTokensEstimated:     result.Usage.InputTokensEstimated,
+		CacheReadTokensEstimated: result.Usage.CacheReadTokensEstimated,
+		UsageEstimationReason:    result.Usage.UsageEstimationReason,
 		CacheCreationTokens:      result.Usage.CacheCreationInputTokens,
 		CacheCreation30mTokens:   result.Usage.CacheCreation30mInputTokens,
 		CacheCreation12hTokens:   result.Usage.CacheCreation12hInputTokens,

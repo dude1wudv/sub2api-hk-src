@@ -213,7 +213,11 @@ func (s *AntigravityGatewayService) forwardAntigravityCompat(
 	c *gin.Context,
 	account *Account,
 	request antigravityCompatRequest,
-) (*ForwardResult, error) {
+) (out *ForwardResult, retErr error) {
+	capture := newIncompleteForwardCapture(ctx, c, request.originalBody)
+	capture.reasoningEffort = request.reasoningEffort
+	defer capture.finishForward(&out, &retErr)
+
 	beginUpstreamResponseModelObservation(c)
 	call, err := s.prepareAntigravityCompatCall(ctx, c, account, request)
 	if err != nil {
@@ -221,6 +225,7 @@ func (s *AntigravityGatewayService) forwardAntigravityCompat(
 	}
 
 	result, err := s.antigravityRetryLoop(antigravityRetryLoopParams{
+		usageCapture:    capture,
 		ctx:             ctx,
 		prefix:          call.prefix,
 		account:         account,

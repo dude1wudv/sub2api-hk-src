@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/apicompat"
@@ -20,14 +19,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// anthropicCompatDisconnectDrainInterval 是 gateway.stream_data_interval_timeout
-// 未启用时，客户端断开后继续读取上游的读间隔上限，与该配置项的默认值一致。
-var anthropicCompatDisconnectDrainInterval = 180 * time.Second
-
-// anthropicCompatStream 是 Anthropic 上游经 chat/responses 兼容入口流式转发时的
-// 上游读取状态。上游请求 ctx 与客户端解绑，客户端断开后调用方停止向下游写入、
-// 继续读取上游以合并最终 usage。逐行读间隔受 gateway.stream_data_interval_timeout
-// 限制；该配置未启用时，客户端断开后以 anthropicCompatDisconnectDrainInterval 限制。
+// anthropicCompatStream closes the upstream on disconnect and preserves only
+// the events already received in the local read queue.
 type anthropicCompatStream struct {
 	pump        *anthropicNativeLinePump
 	body        io.Closer
@@ -83,16 +76,15 @@ func (st *anthropicCompatStream) stop() {
 	st.pump.stop()
 }
 
-// markClientDisconnected 标记客户端已断开，此后调用方不再向下游写入；读间隔上限
-// 未启用时以 anthropicCompatDisconnectDrainInterval 启用。
+// markClientDisconnected stops writes and immediately closes the upstream.
 func (st *anthropicCompatStream) markClientDisconnected() {
 	if st.clientDisconnected {
 		return
 	}
 	st.clientDisconnected = true
 	st.clientGone = nil
-	st.pump.enableInterval(anthropicCompatDisconnectDrainInterval)
-	logger.L().Info(st.logPrefix+" stream: client disconnected, continuing to drain upstream for billing",
+	_ = st.body.Close()
+	logger.L().Info(st.logPrefix+" stream: client disconnected, closing upstream and collecting received usage",
 		zap.String("request_id", st.requestID),
 	)
 }

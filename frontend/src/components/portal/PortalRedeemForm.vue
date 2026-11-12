@@ -116,19 +116,19 @@ onBeforeUnmount(() => { disposed = true; code.value = '' })
 
 <style scoped>
 .redeem-entry { padding: 26px; }
-.redeem-entry-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.redeem-entry-heading > span { display: grid; place-items: center; width: 29px; height: 29px; border: 1px solid rgb(var(--line)); border-radius: 50%; font-size: 13px; }
-.redeem-entry-heading h2 { margin: 0; font-size: 18px; font-weight: 400; }
-.redeem-entry > p { margin: 0; font-size: 13px; line-height: 1.8; }
-.redeem-form { display: grid; gap: 18px; margin-top: 24px; }
+.redeem-entry-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+.redeem-entry-heading > span { display: grid; place-items: center; width: 28px; height: 28px; background: rgb(var(--brand-moss) / .12); color: rgb(var(--brand-moss)); border: 1px solid rgb(var(--brand-moss) / .24); border-radius: 8px; font-family: var(--font-mono); font-size: 12.5px; font-weight: 650; }
+.redeem-entry-heading h2 { margin: 0; font-size: 17.5px; font-weight: 650; letter-spacing: -0.015em; }
+.redeem-entry > p { margin: 0; font-size: 13.5px; line-height: 1.7; }
+.redeem-form { display: grid; gap: 16px; margin-top: 22px; }
 .redeem-form .portal-button { justify-self: start; }
-.redeem-form input { background: rgb(var(--surface)); }
+.redeem-form input { background: rgb(var(--surface)); font-family: var(--font-mono); }
 .redeem-form input:disabled { opacity: .55; }
 .redeem-form .portal-error { margin: 0; font-size: 13px; }
-.redeem-success { margin-top: 24px; padding-top: 20px; border-top: 1px solid rgb(var(--line)); }
-.redeem-success > strong { display: block; color: rgb(var(--text-ok)); font-weight: 500; }
-.redeem-success p { margin: 6px 0 0; font-size: 13px; line-height: 1.8; }
-.redeem-history-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; color: rgb(var(--ink)); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.redeem-success { margin-top: 22px; padding: 16px; border-radius: 12px; border: 1px solid rgb(var(--text-ok) / .24); background: rgb(var(--status-ok-bg)); }
+.redeem-success > strong { display: block; color: rgb(var(--text-ok)); font-weight: 650; }
+.redeem-success p { margin: 6px 0 0; font-size: 13px; line-height: 1.7; color: rgb(var(--ink)); }
+.redeem-history-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; color: rgb(var(--brand-moss)); font-weight: 600; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
 .redeem-refresh-warning { margin-top: 12px; color: rgb(var(--text-err)); }
 .redeem-refresh-warning .portal-button { margin-top: 12px; font-size: 13px; }
 @media (max-width: 767px) { .redeem-entry { padding: 20px; } }

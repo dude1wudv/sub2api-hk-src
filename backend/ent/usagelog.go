@@ -57,6 +57,12 @@ type UsageLog struct {
 	InputTokens int `json:"input_tokens,omitempty"`
 	// OutputTokens holds the value of the "output_tokens" field.
 	OutputTokens int `json:"output_tokens,omitempty"`
+	// Input tokens estimated from the dispatched request
+	InputTokensEstimated bool `json:"input_tokens_estimated,omitempty"`
+	// Estimated input discount, not upstream cache hits
+	CacheReadTokensEstimated bool `json:"cache_read_tokens_estimated,omitempty"`
+	// Reason for incomplete usage estimation; historical rows remain empty
+	UsageEstimationReason string `json:"usage_estimation_reason,omitempty"`
 	// Output tokens estimated from received content because final upstream usage was missing
 	OutputTokensEstimated bool `json:"output_tokens_estimated,omitempty"`
 	// CacheCreationTokens holds the value of the "cache_creation_tokens" field.
@@ -208,13 +214,13 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case usagelog.FieldImageSizeBreakdown:
 			values[i] = new([]byte)
-		case usagelog.FieldUpstreamModelMismatch, usagelog.FieldOutputTokensEstimated, usagelog.FieldLongContextBillingApplied, usagelog.FieldStream, usagelog.FieldCacheTTLOverridden:
+		case usagelog.FieldUpstreamModelMismatch, usagelog.FieldInputTokensEstimated, usagelog.FieldCacheReadTokensEstimated, usagelog.FieldOutputTokensEstimated, usagelog.FieldLongContextBillingApplied, usagelog.FieldStream, usagelog.FieldCacheTTLOverridden:
 			values[i] = new(sql.NullBool)
 		case usagelog.FieldInputCost, usagelog.FieldOutputCost, usagelog.FieldCacheCreationCost, usagelog.FieldCacheReadCost, usagelog.FieldTotalCost, usagelog.FieldActualCost, usagelog.FieldRateMultiplier, usagelog.FieldAccountRateMultiplier:
 			values[i] = new(sql.NullFloat64)
 		case usagelog.FieldID, usagelog.FieldUserID, usagelog.FieldAPIKeyID, usagelog.FieldAccountID, usagelog.FieldChannelID, usagelog.FieldGroupID, usagelog.FieldSubscriptionID, usagelog.FieldInputTokens, usagelog.FieldOutputTokens, usagelog.FieldCacheCreationTokens, usagelog.FieldCacheReadTokens, usagelog.FieldCacheCreation5mTokens, usagelog.FieldCacheCreation1hTokens, usagelog.FieldCacheCreation30mTokens, usagelog.FieldCacheCreation12hTokens, usagelog.FieldBillingType, usagelog.FieldDurationMs, usagelog.FieldFirstTokenMs, usagelog.FieldImageCount, usagelog.FieldVideoCount, usagelog.FieldVideoDurationSeconds:
 			values[i] = new(sql.NullInt64)
-		case usagelog.FieldRequestID, usagelog.FieldModel, usagelog.FieldRequestedModel, usagelog.FieldUpstreamModel, usagelog.FieldUpstreamResponseModel, usagelog.FieldModelMappingChain, usagelog.FieldBillingTier, usagelog.FieldBillingMode, usagelog.FieldUserAgent, usagelog.FieldIPAddress, usagelog.FieldImageSize, usagelog.FieldImageInputSize, usagelog.FieldImageOutputSize, usagelog.FieldImageSizeSource, usagelog.FieldVideoResolution:
+		case usagelog.FieldRequestID, usagelog.FieldModel, usagelog.FieldRequestedModel, usagelog.FieldUpstreamModel, usagelog.FieldUpstreamResponseModel, usagelog.FieldModelMappingChain, usagelog.FieldBillingTier, usagelog.FieldBillingMode, usagelog.FieldUsageEstimationReason, usagelog.FieldUserAgent, usagelog.FieldIPAddress, usagelog.FieldImageSize, usagelog.FieldImageInputSize, usagelog.FieldImageOutputSize, usagelog.FieldImageSizeSource, usagelog.FieldVideoResolution:
 			values[i] = new(sql.NullString)
 		case usagelog.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -350,6 +356,24 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field output_tokens", values[i])
 			} else if value.Valid {
 				_m.OutputTokens = int(value.Int64)
+			}
+		case usagelog.FieldInputTokensEstimated:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field input_tokens_estimated", values[i])
+			} else if value.Valid {
+				_m.InputTokensEstimated = value.Bool
+			}
+		case usagelog.FieldCacheReadTokensEstimated:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field cache_read_tokens_estimated", values[i])
+			} else if value.Valid {
+				_m.CacheReadTokensEstimated = value.Bool
+			}
+		case usagelog.FieldUsageEstimationReason:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field usage_estimation_reason", values[i])
+			} else if value.Valid {
+				_m.UsageEstimationReason = value.String
 			}
 		case usagelog.FieldOutputTokensEstimated:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -693,6 +717,15 @@ func (_m *UsageLog) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("output_tokens=")
 	builder.WriteString(fmt.Sprintf("%v", _m.OutputTokens))
+	builder.WriteString(", ")
+	builder.WriteString("input_tokens_estimated=")
+	builder.WriteString(fmt.Sprintf("%v", _m.InputTokensEstimated))
+	builder.WriteString(", ")
+	builder.WriteString("cache_read_tokens_estimated=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CacheReadTokensEstimated))
+	builder.WriteString(", ")
+	builder.WriteString("usage_estimation_reason=")
+	builder.WriteString(_m.UsageEstimationReason)
 	builder.WriteString(", ")
 	builder.WriteString("output_tokens_estimated=")
 	builder.WriteString(fmt.Sprintf("%v", _m.OutputTokensEstimated))

@@ -225,6 +225,48 @@ func (_c *UsageLogCreate) SetNillableOutputTokens(v *int) *UsageLogCreate {
 	return _c
 }
 
+// SetInputTokensEstimated sets the "input_tokens_estimated" field.
+func (_c *UsageLogCreate) SetInputTokensEstimated(v bool) *UsageLogCreate {
+	_c.mutation.SetInputTokensEstimated(v)
+	return _c
+}
+
+// SetNillableInputTokensEstimated sets the "input_tokens_estimated" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableInputTokensEstimated(v *bool) *UsageLogCreate {
+	if v != nil {
+		_c.SetInputTokensEstimated(*v)
+	}
+	return _c
+}
+
+// SetCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field.
+func (_c *UsageLogCreate) SetCacheReadTokensEstimated(v bool) *UsageLogCreate {
+	_c.mutation.SetCacheReadTokensEstimated(v)
+	return _c
+}
+
+// SetNillableCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableCacheReadTokensEstimated(v *bool) *UsageLogCreate {
+	if v != nil {
+		_c.SetCacheReadTokensEstimated(*v)
+	}
+	return _c
+}
+
+// SetUsageEstimationReason sets the "usage_estimation_reason" field.
+func (_c *UsageLogCreate) SetUsageEstimationReason(v string) *UsageLogCreate {
+	_c.mutation.SetUsageEstimationReason(v)
+	return _c
+}
+
+// SetNillableUsageEstimationReason sets the "usage_estimation_reason" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableUsageEstimationReason(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetUsageEstimationReason(*v)
+	}
+	return _c
+}
+
 // SetOutputTokensEstimated sets the "output_tokens_estimated" field.
 func (_c *UsageLogCreate) SetOutputTokensEstimated(v bool) *UsageLogCreate {
 	_c.mutation.SetOutputTokensEstimated(v)
@@ -747,6 +789,18 @@ func (_c *UsageLogCreate) defaults() {
 		v := usagelog.DefaultOutputTokens
 		_c.mutation.SetOutputTokens(v)
 	}
+	if _, ok := _c.mutation.InputTokensEstimated(); !ok {
+		v := usagelog.DefaultInputTokensEstimated
+		_c.mutation.SetInputTokensEstimated(v)
+	}
+	if _, ok := _c.mutation.CacheReadTokensEstimated(); !ok {
+		v := usagelog.DefaultCacheReadTokensEstimated
+		_c.mutation.SetCacheReadTokensEstimated(v)
+	}
+	if _, ok := _c.mutation.UsageEstimationReason(); !ok {
+		v := usagelog.DefaultUsageEstimationReason
+		_c.mutation.SetUsageEstimationReason(v)
+	}
 	if _, ok := _c.mutation.OutputTokensEstimated(); !ok {
 		v := usagelog.DefaultOutputTokensEstimated
 		_c.mutation.SetOutputTokensEstimated(v)
@@ -895,6 +949,20 @@ func (_c *UsageLogCreate) check() error {
 	}
 	if _, ok := _c.mutation.OutputTokens(); !ok {
 		return &ValidationError{Name: "output_tokens", err: errors.New(`ent: missing required field "UsageLog.output_tokens"`)}
+	}
+	if _, ok := _c.mutation.InputTokensEstimated(); !ok {
+		return &ValidationError{Name: "input_tokens_estimated", err: errors.New(`ent: missing required field "UsageLog.input_tokens_estimated"`)}
+	}
+	if _, ok := _c.mutation.CacheReadTokensEstimated(); !ok {
+		return &ValidationError{Name: "cache_read_tokens_estimated", err: errors.New(`ent: missing required field "UsageLog.cache_read_tokens_estimated"`)}
+	}
+	if _, ok := _c.mutation.UsageEstimationReason(); !ok {
+		return &ValidationError{Name: "usage_estimation_reason", err: errors.New(`ent: missing required field "UsageLog.usage_estimation_reason"`)}
+	}
+	if v, ok := _c.mutation.UsageEstimationReason(); ok {
+		if err := usagelog.UsageEstimationReasonValidator(v); err != nil {
+			return &ValidationError{Name: "usage_estimation_reason", err: fmt.Errorf(`ent: validator failed for field "UsageLog.usage_estimation_reason": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.OutputTokensEstimated(); !ok {
 		return &ValidationError{Name: "output_tokens_estimated", err: errors.New(`ent: missing required field "UsageLog.output_tokens_estimated"`)}
@@ -1077,6 +1145,18 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.OutputTokens(); ok {
 		_spec.SetField(usagelog.FieldOutputTokens, field.TypeInt, value)
 		_node.OutputTokens = value
+	}
+	if value, ok := _c.mutation.InputTokensEstimated(); ok {
+		_spec.SetField(usagelog.FieldInputTokensEstimated, field.TypeBool, value)
+		_node.InputTokensEstimated = value
+	}
+	if value, ok := _c.mutation.CacheReadTokensEstimated(); ok {
+		_spec.SetField(usagelog.FieldCacheReadTokensEstimated, field.TypeBool, value)
+		_node.CacheReadTokensEstimated = value
+	}
+	if value, ok := _c.mutation.UsageEstimationReason(); ok {
+		_spec.SetField(usagelog.FieldUsageEstimationReason, field.TypeString, value)
+		_node.UsageEstimationReason = value
 	}
 	if value, ok := _c.mutation.OutputTokensEstimated(); ok {
 		_spec.SetField(usagelog.FieldOutputTokensEstimated, field.TypeBool, value)
@@ -1626,6 +1706,42 @@ func (u *UsageLogUpsert) UpdateOutputTokens() *UsageLogUpsert {
 // AddOutputTokens adds v to the "output_tokens" field.
 func (u *UsageLogUpsert) AddOutputTokens(v int) *UsageLogUpsert {
 	u.Add(usagelog.FieldOutputTokens, v)
+	return u
+}
+
+// SetInputTokensEstimated sets the "input_tokens_estimated" field.
+func (u *UsageLogUpsert) SetInputTokensEstimated(v bool) *UsageLogUpsert {
+	u.Set(usagelog.FieldInputTokensEstimated, v)
+	return u
+}
+
+// UpdateInputTokensEstimated sets the "input_tokens_estimated" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateInputTokensEstimated() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldInputTokensEstimated)
+	return u
+}
+
+// SetCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field.
+func (u *UsageLogUpsert) SetCacheReadTokensEstimated(v bool) *UsageLogUpsert {
+	u.Set(usagelog.FieldCacheReadTokensEstimated, v)
+	return u
+}
+
+// UpdateCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateCacheReadTokensEstimated() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldCacheReadTokensEstimated)
+	return u
+}
+
+// SetUsageEstimationReason sets the "usage_estimation_reason" field.
+func (u *UsageLogUpsert) SetUsageEstimationReason(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldUsageEstimationReason, v)
+	return u
+}
+
+// UpdateUsageEstimationReason sets the "usage_estimation_reason" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateUsageEstimationReason() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldUsageEstimationReason)
 	return u
 }
 
@@ -2576,6 +2692,48 @@ func (u *UsageLogUpsertOne) AddOutputTokens(v int) *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) UpdateOutputTokens() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.UpdateOutputTokens()
+	})
+}
+
+// SetInputTokensEstimated sets the "input_tokens_estimated" field.
+func (u *UsageLogUpsertOne) SetInputTokensEstimated(v bool) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetInputTokensEstimated(v)
+	})
+}
+
+// UpdateInputTokensEstimated sets the "input_tokens_estimated" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateInputTokensEstimated() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateInputTokensEstimated()
+	})
+}
+
+// SetCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field.
+func (u *UsageLogUpsertOne) SetCacheReadTokensEstimated(v bool) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetCacheReadTokensEstimated(v)
+	})
+}
+
+// UpdateCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateCacheReadTokensEstimated() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateCacheReadTokensEstimated()
+	})
+}
+
+// SetUsageEstimationReason sets the "usage_estimation_reason" field.
+func (u *UsageLogUpsertOne) SetUsageEstimationReason(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetUsageEstimationReason(v)
+	})
+}
+
+// UpdateUsageEstimationReason sets the "usage_estimation_reason" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateUsageEstimationReason() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateUsageEstimationReason()
 	})
 }
 
@@ -3788,6 +3946,48 @@ func (u *UsageLogUpsertBulk) AddOutputTokens(v int) *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) UpdateOutputTokens() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.UpdateOutputTokens()
+	})
+}
+
+// SetInputTokensEstimated sets the "input_tokens_estimated" field.
+func (u *UsageLogUpsertBulk) SetInputTokensEstimated(v bool) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetInputTokensEstimated(v)
+	})
+}
+
+// UpdateInputTokensEstimated sets the "input_tokens_estimated" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateInputTokensEstimated() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateInputTokensEstimated()
+	})
+}
+
+// SetCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field.
+func (u *UsageLogUpsertBulk) SetCacheReadTokensEstimated(v bool) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetCacheReadTokensEstimated(v)
+	})
+}
+
+// UpdateCacheReadTokensEstimated sets the "cache_read_tokens_estimated" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateCacheReadTokensEstimated() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateCacheReadTokensEstimated()
+	})
+}
+
+// SetUsageEstimationReason sets the "usage_estimation_reason" field.
+func (u *UsageLogUpsertBulk) SetUsageEstimationReason(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetUsageEstimationReason(v)
+	})
+}
+
+// UpdateUsageEstimationReason sets the "usage_estimation_reason" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateUsageEstimationReason() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateUsageEstimationReason()
 	})
 }
 

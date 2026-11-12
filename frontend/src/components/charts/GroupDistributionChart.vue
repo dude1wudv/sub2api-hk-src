@@ -6,7 +6,7 @@
       </h3>
       <div
         v-if="showMetricToggle"
-        class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
+        class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-100/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-900/60"
       >
         <button
           type="button"
@@ -62,9 +62,10 @@
                   :class="enableBreakdown && group.group_id > 0 ? 'text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300' : 'text-gray-900 dark:text-white'"
                   :title="group.group_name || String(group.group_id)"
                 >
-                  <span class="flex min-w-0 items-start gap-1">
-                    <svg v-if="enableBreakdown && group.group_id > 0 && expandedKey === `group-${group.group_id}`" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    <svg v-else-if="enableBreakdown && group.group_id > 0" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <span class="flex min-w-0 items-start gap-1.5">
+                    <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: group.chartColor }" aria-hidden="true" />
+                    <svg v-if="enableBreakdown && group.group_id > 0 && expandedKey === `group-${group.group_id}`" class="mt-0.5 h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    <svg v-else-if="enableBreakdown && group.group_id > 0" class="mt-0.5 h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     <span class="min-w-0 [overflow-wrap:anywhere]">{{ group.group_name || t('admin.dashboard.noGroup') }}</span>
                   </span>
                 </td>
@@ -197,7 +198,8 @@ const chartData = computed(() => {
       {
         data: displayGroupStats.value.map((g) => distributionValue(g, props.metric)),
         backgroundColor: displayGroupStats.value.map((g) => g.chartColor),
-        borderWidth: 0
+        borderColor: chartTheme.value.pointBorder,
+        borderWidth: 2
       }
     ]
   }
@@ -207,6 +209,7 @@ const doughnutOptions = computed(() => ({
   responsive: true,
   animation: false as const,
   maintainAspectRatio: false,
+  cutout: '66%',
   plugins: {
     legend: {
       display: false

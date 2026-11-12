@@ -60,13 +60,14 @@ withDefaults(defineProps<{
 }
 
 .distribution-table-scroll:focus-visible {
-  outline: 2px solid rgb(var(--color-primary-500));
+  outline: 2px solid rgb(var(--focus-ring));
   outline-offset: 2px;
 }
 
 .distribution-table-scroll :deep(table) {
   width: 100%;
   min-width: var(--distribution-table-min-width);
+  font-variant-numeric: tabular-nums;
 }
 
 .distribution-table-scroll :deep(th),

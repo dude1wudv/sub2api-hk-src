@@ -226,7 +226,7 @@
                 <div class="inline-flex min-w-0 flex-wrap items-center gap-1">
                   <Icon name="arrowUp" size="sm" class="h-3.5 w-3.5 text-violet-500" />
                   <span class="font-mono font-medium tabular-nums text-gray-900 dark:text-white">{{ row.output_tokens?.toLocaleString() || 0 }}</span>
-                  <span v-if="row.output_tokens_estimated" data-testid="output-tokens-estimated" :title="t('usage.outputTokensEstimatedHint')" class="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-500/30">{{ t('usage.outputTokensEstimated') }}</span>
+                  <span v-for="estimate in usageEstimates(row)" :key="estimate.id" :data-testid="estimate.id" :title="t(estimate.hint)" class="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-500/30">{{ t(estimate.label) }}</span>
                 </div>
               </div>
               <div v-if="row.cache_read_tokens > 0 || row.cache_creation_tokens > 0" class="flex min-w-0 flex-wrap items-center gap-2">
@@ -256,6 +256,7 @@
               </div>
               <div class="flex flex-wrap gap-1.5 text-[10px] font-semibold leading-tight tabular-nums">
                 <span
+                  v-if="!row.input_tokens_estimated && !row.cache_read_tokens_estimated"
                   class="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-sky-700 ring-1 ring-inset ring-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-500/30"
                   :title="t('usage.cacheReadRateFormula')"
                 >
@@ -284,7 +285,8 @@
                 <div v-if="open" class="usage-detail-popover space-y-1.5">
                   <div>
                     <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{{ t('usage.tokenDetails') }}</div>
-                    <p v-if="row.output_tokens_estimated" class="mb-2 text-xs leading-relaxed text-amber-700 dark:text-amber-300"><strong>{{ t('usage.outputTokensEstimated') }}</strong> {{ t('usage.outputTokensEstimatedHint') }}</p>
+                    <p v-for="estimate in usageEstimates(row)" :key="estimate.id" class="mb-2 text-xs leading-relaxed text-amber-700 dark:text-amber-300"><strong>{{ t(estimate.label) }}</strong> {{ t(estimate.hint) }}</p>
+                    <p v-if="usageEstimationReasonKey(row)" class="mb-2 text-xs">{{ t('usage.estimationReason') }}：{{ t(usageEstimationReasonKey(row)!) }}</p>
                     <div v-if="row && row.input_tokens > 0 && !hasImageInputTokens(row)" class="flex items-center justify-between gap-4">
                       <span class="text-gray-500 dark:text-gray-400">{{ t('admin.usage.inputTokens') }}</span>
                       <span class="font-medium text-gray-900 dark:text-white">{{ row.input_tokens.toLocaleString() }}</span>
@@ -406,7 +408,8 @@
                   <!-- Cost Breakdown -->
                   <div class="mb-2 border-b border-gray-200 dark:border-gray-700 pb-1.5">
                     <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{{ t('usage.costDetails') }}</div>
-                    <p v-if="row.output_tokens_estimated" class="mb-2 text-xs leading-relaxed text-amber-700 dark:text-amber-300"><strong>{{ t('usage.outputTokensEstimated') }}</strong> {{ t('usage.outputTokensEstimatedHint') }}</p>
+                    <p v-for="estimate in usageEstimates(row)" :key="estimate.id" class="mb-2 text-xs leading-relaxed text-amber-700 dark:text-amber-300"><strong>{{ t(estimate.label) }}</strong> {{ t(estimate.hint) }}</p>
+                    <p v-if="usageEstimationReasonKey(row)" class="mb-2 text-xs">{{ t('usage.estimationReason') }}：{{ t(usageEstimationReasonKey(row)!) }}</p>
                     <div v-if="row && row.input_cost > 0" class="flex items-center justify-between gap-4">
                       <span class="text-gray-500 dark:text-gray-400">{{ t('admin.usage.inputCost') }}</span>
                       <span class="font-medium text-gray-900 dark:text-white">${{ row.input_cost.toFixed(8) }}</span>
@@ -627,6 +630,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { usageEstimates, usageEstimationReasonKey, usageCacheRate, formatUsagePercent } from '@/utils/portalUsage'
 import { useAppStore } from '@/stores/app'
 import { formatDateTime, formatReasoningEffort, reasoningEffortValuesEqual } from '@/utils/format'
 import { formatCacheTokens, formatMultiplier } from '@/utils/formatters'
@@ -878,9 +882,7 @@ const formatDuration = (ms: number | null | undefined): string => {
 }
 
 const formatCacheReadRate = (row: AdminUsageLog): string => {
-  const denominator = row.input_tokens + row.cache_creation_tokens + row.cache_read_tokens
-  if (denominator <= 0) return '—'
-  return `${((row.cache_read_tokens / denominator) * 100).toFixed(1)}%`
+  return formatUsagePercent(usageCacheRate(row))
 }
 
 const formatOutputTps = (row: AdminUsageLog): string => {

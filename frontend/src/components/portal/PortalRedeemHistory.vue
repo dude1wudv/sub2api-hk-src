@@ -120,19 +120,19 @@ onBeforeUnmount(() => { request++ })
 </template>
 
 <style scoped>
-.redeem-history-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
-.redeem-history-heading h2 { margin: 0; font-size: 18px; font-weight: 400; }
-.redeem-view-all { font-size: 13px; color: rgb(var(--ink)); }
+.redeem-history-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
+.redeem-history-heading h2 { margin: 0; font-size: 17.5px; font-weight: 650; letter-spacing: -0.015em; }
+.redeem-view-all { font-size: 13px; font-weight: 550; color: rgb(var(--brand-moss)); text-decoration: none; }
 .redeem-view-all:hover { text-decoration: underline; text-underline-offset: 3px; }
 .redeem-history-error { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
 .redeem-history-error p { margin: 0; }
 .redeem-history-error button { flex-shrink: 0; }
 .redeem-history-table { min-width: 560px; }
 .redeem-history-table td { white-space: nowrap; }
-.redeem-history-table small { display: block; color: rgb(var(--ink-3)); font-size: 13px; margin-top: 5px; }
+.redeem-history-table small { display: block; color: rgb(var(--ink-3)); font-size: 12.5px; margin-top: 4px; }
 .redeem-history-empty { height: 150px; text-align: center; color: rgb(var(--ink-3)); }
-.redeem-history-value { font-variant-numeric: tabular-nums; }
-.redeem-history-code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; color: rgb(var(--ink-3)); }
+.redeem-history-value { font-weight: 600; font-variant-numeric: tabular-nums; color: rgb(var(--ink)); }
+.redeem-history-code { font-family: var(--font-mono); font-size: 12.5px; color: rgb(var(--ink-2)); }
 .redeem-history-pagination { font-size: 13px; }
 .redeem-history-pagination label { margin-right: auto; display: flex; align-items: center; gap: 10px; }
 @media (max-width: 600px) {

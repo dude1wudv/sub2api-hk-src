@@ -3,7 +3,7 @@
     <TablePageLayout>
       <!-- Single Row: Search, Filters, and Actions -->
       <template #filters>
-        <div class="rounded-xl border border-gray-200/80 bg-white/70 p-3 shadow-sm backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/45 sm:p-4">
+        <div>
           <div class="flex flex-wrap items-center gap-3">
             <!-- Left: Search + Active Filters -->
             <div class="flex flex-1 flex-wrap items-center gap-3">
@@ -678,7 +678,7 @@
       <div
         v-if="activeMenuId !== null && menuPosition"
         ref="actionMenuRef"
-        class="action-menu-content fixed z-[9999] overflow-y-auto overscroll-contain rounded-xl border border-gray-200/80 bg-white/95 py-1.5 shadow-xl ring-1 ring-black/5 backdrop-blur dark:border-dark-600 dark:bg-dark-800/95 dark:ring-white/10"
+        class="action-menu action-menu-content fixed z-[9999] overflow-y-auto overscroll-contain rounded-xl border border-gray-200 py-1.5 shadow-xl dark:border-dark-700"
         :style="menuPosition"
       >
         <div class="py-0.5">

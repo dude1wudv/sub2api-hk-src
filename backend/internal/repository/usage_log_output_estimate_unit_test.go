@@ -4,6 +4,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,9 +24,9 @@ func TestUsageLogInsertPersistsOutputTokensEstimated(t *testing.T) {
 			}
 			prepared := prepareUsageLogInsert(log)
 			idx := -1
-			for i, typ := range usageLogInsertArgTypes {
-				if typ == "boolean" && i == len(usageLogInsertArgTypes)-1 {
-					idx = i
+			for i, name := range strings.Split(usageLogSelectColumns, ", ") {
+				if name == "output_tokens_estimated" {
+					idx = i - 1
 				}
 			}
 			require.NotEqual(t, -1, idx, "estimated provenance column must be part of insert arguments")

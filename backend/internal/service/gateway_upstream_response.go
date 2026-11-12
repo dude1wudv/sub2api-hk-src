@@ -1073,7 +1073,8 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 				restored := reverseToolNamesIfPresent(c, []byte(block))
 				if _, werr := fmt.Fprint(w, string(restored)); werr != nil {
 					clientDisconnected = true
-					logger.LegacyPrintf("service.gateway", "Client disconnected during streaming, continuing to drain upstream for billing")
+					_ = resp.Body.Close()
+					logger.LegacyPrintf("service.gateway", "Client disconnected during streaming, closing upstream and keeping received usage")
 				} else {
 					flusher.Flush()
 					lastDataAt = time.Now()
@@ -1205,7 +1206,8 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			}
 			if _, werr := fmt.Fprint(w, keepaliveBlock); werr != nil {
 				clientDisconnected = true
-				logger.LegacyPrintf("service.gateway", "Client disconnected during keepalive ping, continuing to drain upstream for billing")
+				_ = resp.Body.Close()
+				logger.LegacyPrintf("service.gateway", "Client disconnected during keepalive ping, closing upstream and keeping received usage")
 				continue
 			}
 			flusher.Flush()

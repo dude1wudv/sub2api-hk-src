@@ -236,6 +236,7 @@ func (s *OpenAIGatewayService) streamChatCompletionsAsAnthropic(
 			writeStreamHeaders()
 			if _, err := fmt.Fprint(c.Writer, sse); err != nil {
 				clientDisconnected = true
+				closeOpenAIIncompleteClientBody(resp)
 				break
 			}
 		}
@@ -279,6 +280,7 @@ func (s *OpenAIGatewayService) streamChatCompletionsAsAnthropic(
 			writeStreamHeaders()
 			if _, err := fmt.Fprint(c.Writer, sse); err != nil {
 				clientDisconnected = true
+				closeOpenAIIncompleteClientBody(resp)
 				break
 			}
 		}

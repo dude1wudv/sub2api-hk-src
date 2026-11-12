@@ -9,7 +9,7 @@
       <div class="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
         <div
           v-if="showSourceToggle"
-          class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
+          class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-100/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-900/60"
         >
           <button
             type="button"
@@ -44,7 +44,7 @@
         </div>
         <div
           v-if="showMetricToggle && activeView === 'model_distribution'"
-          class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
+          class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-100/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-900/60"
         >
           <button
             type="button"
@@ -67,7 +67,7 @@
             {{ t('admin.dashboard.metricActualCost') }}
           </button>
         </div>
-        <div v-if="enableRankingView" class="inline-flex max-w-full flex-wrap rounded-lg bg-gray-100 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:bg-dark-800">
+        <div v-if="enableRankingView" class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-100/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-900/60">
           <button
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
@@ -129,9 +129,10 @@
                   :class="enableBreakdown ? 'text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300' : 'text-gray-900 dark:text-white'"
                   :title="model.model"
                 >
-                  <span class="flex min-w-0 items-start gap-1">
-                    <svg v-if="enableBreakdown && expandedKey === `model-${model.model}`" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    <svg v-else-if="enableBreakdown" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <span class="flex min-w-0 items-start gap-1.5">
+                    <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: model.chartColor }" aria-hidden="true" />
+                    <svg v-if="enableBreakdown && expandedKey === `model-${model.model}`" class="mt-0.5 h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    <svg v-else-if="enableBreakdown" class="mt-0.5 h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     <span class="min-w-0 [overflow-wrap:anywhere]">{{ model.model }}</span>
                   </span>
                 </td>
@@ -208,7 +209,12 @@
             >
               <td class="py-1.5">
                 <div class="flex min-w-0 items-center gap-2">
-                  <span class="shrink-0 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                  <span
+                    class="h-2 w-2 shrink-0 rounded-full"
+                    :style="{ backgroundColor: getRankingItemColor(item) }"
+                    aria-hidden="true"
+                  />
+                  <span class="shrink-0 font-mono text-[11px] font-semibold tabular-nums text-gray-500 dark:text-dark-300">
                     {{ item.isOther ? 'Σ' : `#${index + 1}` }}
                   </span>
                   <span
@@ -219,13 +225,13 @@
                   </span>
                 </div>
               </td>
-              <td class="py-1.5 text-right text-gray-600 dark:text-gray-400">
+              <td class="py-1.5 text-right font-mono tabular-nums text-gray-600 dark:text-dark-200">
                 {{ formatNumber(item.requests) }}
               </td>
-              <td class="py-1.5 text-right text-gray-600 dark:text-gray-400">
+              <td class="py-1.5 text-right font-mono tabular-nums text-gray-600 dark:text-dark-200">
                 {{ formatTokens(item.tokens) }}
               </td>
-              <td class="py-1.5 text-right text-green-600 dark:text-green-400">
+              <td class="py-1.5 text-right font-mono font-medium tabular-nums text-primary-700 dark:text-primary-300">
                 ${{ formatCost(item.actual_cost) }}
               </td>
             </tr>
@@ -234,7 +240,7 @@
     </DistributionChartLayout>
     <div
       v-else
-      class="flex h-48 items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+      class="flex h-48 items-center justify-center text-xs text-gray-400 dark:text-dark-400"
     >
       {{ t('admin.dashboard.noDataAvailable') }}
     </div>
@@ -364,11 +370,18 @@ const chartData = computed(() => {
       {
         data: displayModelStats.value.map((m) => distributionValue(m, props.metric)),
         backgroundColor: displayModelStats.value.map((m) => m.chartColor),
-        borderWidth: 0
+        borderColor: chartTheme.value.pointBorder,
+        borderWidth: 2
       }
     ]
   }
 })
+
+const getRankingItemColor = (item: RankingDisplayItem): string => {
+  if (item.isOther) return chartTheme.value.text
+  const sourceIndex = props.rankingItems.indexOf(item)
+  return chartColors.value[(sourceIndex >= 0 ? sourceIndex : 0) % chartColors.value.length]
+}
 
 const rankingChartData = computed(() => {
   if (!props.rankingItems?.length) return null
@@ -380,10 +393,9 @@ const rankingChartData = computed(() => {
     datasets: [
       {
         data: rankingDisplayItems.value.map(item => toFiniteNumber(item.actual_cost)),
-        backgroundColor: rankingDisplayItems.value.map(item => item.isOther
-          ? chartTheme.value.text
-          : chartColors.value[props.rankingItems.indexOf(item) % chartColors.value.length]),
-        borderWidth: 0
+        backgroundColor: rankingDisplayItems.value.map(item => getRankingItemColor(item)),
+        borderColor: chartTheme.value.pointBorder,
+        borderWidth: 2
       }
     ]
   }
@@ -425,6 +437,7 @@ const doughnutOptions = computed(() => ({
   responsive: true,
   animation: false as const,
   maintainAspectRatio: false,
+  cutout: '66%',
   plugins: {
     legend: {
       display: false
@@ -450,6 +463,7 @@ const rankingDoughnutOptions = computed(() => ({
   responsive: true,
   animation: false as const,
   maintainAspectRatio: false,
+  cutout: '66%',
   plugins: {
     legend: {
       display: false

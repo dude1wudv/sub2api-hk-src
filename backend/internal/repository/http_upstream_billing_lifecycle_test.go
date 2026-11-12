@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -54,31 +53,24 @@ func (w *lifecycleDisconnectedWriter) Write([]byte) (int, error) {
 }
 
 // Exercise the real forwarding and RecordUsage services with the real HTTP
-// upstream. Only the persistence boundary is replaced: closing an attempt must
-// not cancel the detached stream before its final usage reaches billing.
-func TestHTTPUpstreamForwardDrainsUsageAfterClientDisconnect(t *testing.T) {
+// upstream. Cancellation closes the upstream promptly, and the received partial
+// output is settled exactly once using estimated missing counters.
+func TestHTTPUpstreamForwardSettlesPartialUsageAfterClientDisconnect(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	clientCtx, disconnect := context.WithCancel(t.Context())
 	defer disconnect()
-	releaseUsage := make(chan struct{})
-	var releaseOnce sync.Once
-	release := func() { releaseOnce.Do(func() { close(releaseUsage) }) }
+	upstreamClosed := make(chan struct{})
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("X-Request-Id", "lifecycle-billing")
 		_, _ = io.WriteString(w, "data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello\"}\n\n")
 		_ = http.NewResponseController(w).Flush()
-		select {
-		case <-releaseUsage:
-		case <-r.Context().Done():
-			return
-		}
-		_, _ = io.WriteString(w, "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_lifecycle\",\"status\":\"completed\",\"usage\":{\"input_tokens\":17,\"output_tokens\":8,\"total_tokens\":25}}}\n\n")
+		<-r.Context().Done()
+		close(upstreamClosed)
 	}))
 	defer srv.Close()
 	defer srv.CloseClientConnections()
-	defer release()
 
 	cfg := &config.Config{}
 	cfg.Default.RateMultiplier = 1
@@ -119,25 +111,32 @@ func TestHTTPUpstreamForwardDrainsUsageAfterClientDisconnect(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("downstream did not receive the first event")
 	}
-	release()
 	select {
 	case got := <-done:
-		require.NoError(t, got.err)
+		require.Error(t, got.err)
 		require.NotNil(t, got.result)
-		require.Equal(t, 17, got.result.Usage.InputTokens)
-		require.Equal(t, 8, got.result.Usage.OutputTokens)
+		require.Positive(t, got.result.Usage.InputTokens)
+		require.Positive(t, got.result.Usage.OutputTokens)
+		require.True(t, got.result.Usage.InputTokensEstimated)
+		require.True(t, got.result.Usage.OutputTokensEstimated)
+		require.Equal(t, "client_cancelled", got.result.Usage.UsageEstimationReason)
 		// RecordUsage must still work with the cancelled downstream context.
 		require.NoError(t, svc.RecordUsage(clientCtx, &service.OpenAIRecordUsageInput{
 			Result: got.result, APIKey: &service.APIKey{ID: 2},
 			User: &service.User{ID: 3}, Account: account,
 		}))
 	case <-time.After(5 * time.Second):
-		t.Fatal("forward did not finish draining usage")
+		t.Fatal("forward did not return promptly after cancellation")
 	}
 	require.Len(t, billingRepo.commands, 1)
 	require.Len(t, usageRepo.logs, 1)
-	require.Equal(t, 17, usageRepo.logs[0].InputTokens)
-	require.Equal(t, 8, usageRepo.logs[0].OutputTokens)
+	require.Positive(t, usageRepo.logs[0].InputTokens+usageRepo.logs[0].CacheReadTokens)
+	require.Positive(t, usageRepo.logs[0].OutputTokens)
+	select {
+	case <-upstreamClosed:
+	case <-time.After(time.Second):
+		t.Fatal("upstream was not cancelled")
+	}
 	require.Greater(t, usageRepo.logs[0].ActualCost, 0.0)
 	s, ok := upstream.(*httpUpstreamService)
 	require.True(t, ok)

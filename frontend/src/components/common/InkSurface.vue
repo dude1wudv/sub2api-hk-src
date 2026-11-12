@@ -31,7 +31,7 @@ usePointerSurface(surface, {
 <style scoped>
 .ink-surface { position: relative; isolation: isolate; }
 .ink-surface__wash { position: absolute; inset: 0; z-index: -1; overflow: clip; contain: paint; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity var(--motion-menu, 180ms) var(--motion-ease, ease); }
-.ink-surface__liquid { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(260px 180px at var(--ink-pointer-x, 50%) var(--ink-pointer-y, 50%), rgb(var(--brand-moss) / .2), transparent 76%), radial-gradient(160px 240px at var(--ink-pointer-x, 50%) var(--ink-pointer-y, 50%), rgb(var(--brand-copper) / .12), transparent 80%); transform: scale(.985); transition: transform var(--motion-menu, 180ms) var(--motion-ease, ease); }
+.ink-surface__liquid { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(260px 180px at var(--ink-pointer-x, 50%) var(--ink-pointer-y, 50%), rgb(var(--brand-moss) / .18), transparent 76%), radial-gradient(160px 240px at var(--ink-pointer-x, 50%) var(--ink-pointer-y, 50%), rgb(var(--focus-ring) / .09), transparent 80%); transform: scale(.99); transition: transform var(--motion-menu, 180ms) var(--motion-ease, ease); }
 .ink-surface[data-pointer-active='true'] > .ink-surface__wash { opacity: 1; }
 .ink-surface[data-pointer-active='true'] { --ink-3: var(--ink-2); }
 .ink-surface[data-pointer-active='true'] > .ink-surface__wash > .ink-surface__liquid { transform: translateY(var(--ink-lift, 0px)) scale(1.02); }

@@ -1,9 +1,9 @@
 <template>
-  <div class="min-w-0 max-w-full bg-gray-50/50 dark:bg-dark-700/30">
+  <div class="min-w-0 max-w-full bg-gray-50/80 dark:bg-dark-900/45">
     <div v-if="loading" class="flex items-center justify-center py-3">
       <LoadingSpinner />
     </div>
-    <div v-else-if="items.length === 0" class="py-2 text-center text-xs text-gray-400">
+    <div v-else-if="items.length === 0" class="py-2 text-center text-xs text-gray-400 dark:text-dark-400">
       {{ t('admin.dashboard.noDataAvailable') }}
     </div>
     <table v-else class="w-full text-xs">
@@ -11,24 +11,24 @@
         <tr
           v-for="user in displayItems"
           :key="user.user_id"
-          class="border-t border-gray-100/50 dark:border-dark-700/50"
+          class="border-t border-gray-200/70 dark:border-dark-700/70"
         >
-          <td class="distribution-name py-1 pl-6 text-gray-600 dark:text-gray-300" :title="user.email">
+          <td class="distribution-name py-1.5 pl-6 text-gray-700 dark:text-dark-200" :title="user.email">
             {{ user.email || `User #${user.user_id}` }}
           </td>
-          <td class="py-1 text-right text-gray-500 dark:text-gray-400">
+          <td class="py-1.5 text-right font-mono tabular-nums text-gray-600 dark:text-dark-200">
             {{ user.requests.toLocaleString() }}
           </td>
-          <td class="py-1 text-right text-gray-500 dark:text-gray-400">
+          <td class="py-1.5 text-right font-mono tabular-nums text-gray-600 dark:text-dark-200">
             {{ formatTokens(user.total_tokens) }}
           </td>
-          <td class="py-1 text-right text-green-600 dark:text-green-400">
+          <td class="py-1.5 text-right font-mono font-medium tabular-nums text-primary-700 dark:text-primary-300">
             ${{ formatCost(user.actual_cost) }}
           </td>
-          <td v-if="showAccountCost" class="py-1 text-right text-orange-500 dark:text-orange-400">
+          <td v-if="showAccountCost" class="py-1.5 text-right font-mono tabular-nums text-amber-600 dark:text-amber-400">
             ${{ formatCost(user.account_cost) }}
           </td>
-          <td class="py-1 pr-1 text-right text-gray-400 dark:text-gray-500">
+          <td class="py-1.5 pr-1 text-right font-mono tabular-nums text-gray-400 dark:text-dark-400">
             ${{ formatCost(user.cost) }}
           </td>
         </tr>

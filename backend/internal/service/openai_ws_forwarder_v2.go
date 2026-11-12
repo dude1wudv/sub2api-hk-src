@@ -34,7 +34,7 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 	attempt int,
 	lastFailureReason string,
 	agentTaskRecoveryTried *bool,
-) (*OpenAIForwardResult, error) {
+) (forwardResult *OpenAIForwardResult, forwardErr error) {
 	if s == nil || account == nil {
 		return nil, wrapOpenAIWSFallback("invalid_state", errors.New("service or account is nil"))
 	}
@@ -370,6 +370,29 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 	usage := &OpenAIUsage{}
 	imageCounter := newOpenAIImageOutputCounter()
 	var firstTokenMs *int
+	clientWriteFailed := false
+	var incomplete openAIWSIncompleteTurn
+	requestBytes, _ := json.Marshal(payload)
+	incomplete.Sent(requestBytes)
+	defer func() {
+		if GetOpsCyberPolicy(c) != nil {
+			return
+		}
+		if forwardResult == nil {
+			forwardResult = &OpenAIForwardResult{Model: originalModel, UpstreamModel: mappedModel, Stream: reqStream, OpenAIWSMode: true, Duration: time.Since(startTime), ResponseHeaders: lease.HandshakeHeaders(), Usage: *usage, ServiceTier: extractOpenAIServiceTier(reqBody), ReasoningEffort: extractOpenAIReasoningEffort(reqBody, mappedModel, originalModel)}
+		}
+		forwardResult.FirstTokenMs = firstTokenMs
+		forwardResult.ImageCount = imageCounter.Count()
+		forwardResult.ImageOutputSizes = imageCounter.Sizes()
+		forwardResult.UpstreamResponseModel = responseModelObserver.Model()
+		forwardResult.UpstreamResponseModelConflict = responseModelObserver.Conflict()
+		forwardResult.UpstreamResponseServiceTier = responseModelObserver.ServiceTier()
+		gone := clientWriteFailed || openAIOriginalClientGone(ctx, c)
+		forwardResult.ClientDisconnect = gone
+		if !incomplete.Apply(forwardResult, gone, forwardErr) && forwardErr != nil && forwardResult.ImageCount == 0 {
+			forwardResult = nil
+		}
+	}()
 	responseID := ""
 	var finalResponse []byte
 	wroteDownstream := false
@@ -388,10 +411,7 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 	lastEventType := ""
 	upstreamTerminalEvent := ""
 	clientDisconnected := false
-	clientDisconnectDrainStartedAt := time.Time{}
 	readTimeout := s.openAIWSReadTimeout()
-	upstreamReadCtx := ctx
-	upstreamReadDetached := false
 	clientRequestCanceled := func() bool {
 		return ctx != nil && errors.Is(ctx.Err(), context.Canceled)
 	}
@@ -400,11 +420,7 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 			return
 		}
 		clientDisconnected = true
-		clientDisconnectDrainStartedAt = time.Now()
-		if !upstreamReadDetached {
-			upstreamReadCtx = context.WithoutCancel(ctx)
-			upstreamReadDetached = true
-		}
+		lease.MarkBroken()
 		logOpenAIWSModeInfo(
 			"client_disconnected account_id=%d conn_id=%s cause=%s events=%d token_events=%d",
 			account.ID,
@@ -421,8 +437,9 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 	}
 	resultWithUsage := func() *OpenAIForwardResult {
 		return &OpenAIForwardResult{
-			RequestID:                     responseID,
-			ResponseID:                    responseID,
+			RequestID: responseID,
+			// ResponseID is populated from actual response.id by the usage observer.
+			// RequestID may instead contain a transport/event billing identifier.
 			Usage:                         *usage,
 			Model:                         originalModel,
 			UpstreamModel:                 mappedModel,
@@ -490,8 +507,9 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 			flushStreamWriter(forceFlush)
 			return
 		}
+		clientWriteFailed = true
 		markClientDisconnected("downstream_write_error")
-		logger.LegacyPrintf("service.openai_gateway", "[OpenAI WS Mode] client disconnected, continue draining upstream: account=%d", account.ID)
+		logger.LegacyPrintf("service.openai_gateway", "[OpenAI WS Mode] client disconnected, closing upstream: account=%d", account.ID)
 	}
 	flushBufferedStreamEvents := func(reason string) {
 		if len(bufferedStreamEvents) == 0 {
@@ -517,32 +535,22 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 		}
 	}
 
-	// Keep per-read timeouts unchanged for connected clients. Once a client
-	// disconnects, use the same timeout as a bounded total drain budget.
+	// Cancellation ends the turn immediately; retain only frames already read.
 	var pendingJSONDocuments [][]byte
 
 readLoop:
 	for {
 		markClientRequestCanceled()
+		if clientDisconnected {
+			break readLoop
+		}
 		var message []byte
 		var readErr error
-		readUsedDetachedContext := upstreamReadDetached
 		if len(pendingJSONDocuments) > 0 {
 			message = pendingJSONDocuments[0]
 			pendingJSONDocuments = pendingJSONDocuments[1:]
 		} else {
-			currentReadTimeout := readTimeout
-			if clientDisconnected && !clientDisconnectDrainStartedAt.IsZero() {
-				remaining := readTimeout - time.Since(clientDisconnectDrainStartedAt)
-				if remaining <= 0 {
-					lease.MarkBroken()
-					break readLoop
-				}
-				if remaining < currentReadTimeout {
-					currentReadTimeout = remaining
-				}
-			}
-			message, readErr = lease.ReadMessageWithContextTimeout(upstreamReadCtx, currentReadTimeout)
+			message, readErr = lease.ReadMessageWithContextTimeout(ctx, readTimeout)
 			if readErr == nil {
 				if documents, repaired := splitOpenAIConcatenatedJSONDocuments(message); repaired {
 					logOpenAIWSModeInfo(
@@ -597,9 +605,6 @@ readLoop:
 				truncateOpenAIWSLogValue(lastEventType, openAIWSLogValueMaxLen),
 			)
 			if clientDisconnected {
-				if !readUsedDetachedContext && errors.Is(readErr, context.Canceled) && clientRequestCanceled() {
-					continue
-				}
 				break
 			}
 			if !wroteDownstream {
@@ -617,6 +622,7 @@ readLoop:
 			continue
 		}
 		responseModelObserver.ObserveOpenAI(message, eventType)
+		incomplete.Observe(message)
 		eventCount++
 		if firstEventType == "" {
 			firstEventType = eventType

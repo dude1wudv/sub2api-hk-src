@@ -16,6 +16,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/apicompat"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
 )
 
@@ -430,7 +431,17 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 	grokCacheIdentity string,
 	turn int,
 	writeClientMessage func([]byte) error,
-) (*OpenAIForwardResult, error) {
+) (turnResult *OpenAIForwardResult, turnErr error) {
+	ctx, finishIncomplete := beginOpenAIIncompleteAttempt(ctx, c, payload)
+	defer func() {
+		finishIncomplete(&turnResult, &turnErr)
+		if turnResult != nil {
+			turnResult.OpenAIWSMode = true
+			if turnResult.RequestID == "" {
+				turnResult.RequestID = uuid.NewString()
+			}
+		}
+	}()
 	if s == nil {
 		return nil, errors.New("service is nil")
 	}
@@ -652,6 +663,7 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 	}
 
 	responseID := ""
+	continuationResponseID := ""
 	usage := OpenAIUsage{}
 	imageCounter := newOpenAIImageOutputCounter()
 	var firstTokenMs *int
@@ -689,6 +701,7 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 		imageCount := imageCounter.Count()
 		result := &OpenAIForwardResult{
 			RequestID:                     responseID,
+			ResponseID:                    continuationResponseID,
 			Usage:                         usage,
 			Model:                         originalModel,
 			UpstreamModel:                 mappedModel,
@@ -754,6 +767,7 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 		pendingClientMessageBytes = 0
 		for _, message := range messages {
 			if err := writeClientMessage(message); err != nil {
+				closeOpenAIIncompleteClientBody(resp)
 				if isOpenAIWSClientDisconnectError(err) {
 					clientDisconnected = true
 					return nil
@@ -792,7 +806,10 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 		if normalized, changed := normalizeCompletedImageGenerationStatus(upstreamMessage); changed {
 			upstreamMessage = normalized
 		}
-		eventType, eventResponseID, _ := parseOpenAIWSEventEnvelope(upstreamMessage)
+		eventType, eventResponseID, response := parseOpenAIWSEventEnvelope(upstreamMessage)
+		if id := strings.TrimSpace(response.Get("id").String()); id != "" {
+			continuationResponseID = id
+		}
 		responseModelObserver.ObserveOpenAI(upstreamMessage, eventType)
 		if responseID == "" && eventResponseID != "" {
 			responseID = eventResponseID
@@ -945,11 +962,12 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 				messages = append(messages, clientMessage)
 				for _, message := range messages {
 					if err := writeClientMessage(message); err != nil {
+						closeOpenAIIncompleteClientBody(resp)
 						if isOpenAIWSClientDisconnectError(err) {
 							clientDisconnected = true
 							closeStatus, closeReason := summarizeOpenAIWSReadCloseError(err)
 							logOpenAIWSModeInfo(
-								"ingress_ws_http_bridge_client_disconnected_drain account_id=%d turn=%d close_status=%s close_reason=%s",
+								"ingress_ws_http_bridge_client_disconnected_close account_id=%d turn=%d close_status=%s close_reason=%s",
 								account.ID,
 								turn,
 								closeStatus,

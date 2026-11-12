@@ -7,14 +7,14 @@
       <div class="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
         <div
           v-if="showSourceToggle"
-          class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
+          class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-100/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-900/60"
         >
           <button
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="source === 'inbound'
               ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+              : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'"
             @click="emit('update:source', 'inbound')"
           >
             {{ t('usage.inbound') }}
@@ -24,7 +24,7 @@
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="source === 'upstream'
               ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+              : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'"
             @click="emit('update:source', 'upstream')"
           >
             {{ t('usage.upstream') }}
@@ -34,7 +34,7 @@
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="source === 'path'
               ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+              : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'"
             @click="emit('update:source', 'path')"
           >
             {{ t('usage.path') }}
@@ -43,14 +43,14 @@
 
         <div
           v-if="showMetricToggle"
-          class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-800/80"
+          class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-100/80 p-0.5 [&>button]:min-h-11 sm:[&>button]:min-h-9 dark:border-dark-700 dark:bg-dark-900/60"
         >
           <button
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="metric === 'tokens'
               ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+              : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'"
             @click="emit('update:metric', 'tokens')"
           >
             {{ t('admin.dashboard.metricTokens') }}
@@ -60,7 +60,7 @@
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="metric === 'actual_cost'
               ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+              : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'"
             @click="emit('update:metric', 'actual_cost')"
           >
             {{ t('admin.dashboard.metricActualCost') }}
@@ -95,16 +95,17 @@
                 @click="enableBreakdown && toggleBreakdown(item.endpoint)"
               >
                 <td class="distribution-name py-1.5 font-medium" :class="enableBreakdown ? 'text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300' : 'text-gray-900 dark:text-white'" :title="item.endpoint || t('common.unknown')">
-                  <span class="flex min-w-0 items-start gap-1">
-                    <svg v-if="enableBreakdown && expandedKey === item.endpoint" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    <svg v-else-if="enableBreakdown" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <span class="flex min-w-0 items-start gap-1.5">
+                    <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: item.chartColor }" aria-hidden="true" />
+                    <svg v-if="enableBreakdown && expandedKey === item.endpoint" class="mt-0.5 h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    <svg v-else-if="enableBreakdown" class="mt-0.5 h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     <span class="min-w-0 [overflow-wrap:anywhere]">{{ item.endpoint || t('common.unknown') }}</span>
                   </span>
                 </td>
-                <td class="py-1.5 text-right text-gray-600 dark:text-gray-400">
+                <td class="py-1.5 text-right font-mono tabular-nums text-gray-600 dark:text-dark-200">
                   {{ formatNumber(item.requests) }}
                 </td>
-                <td class="py-1.5 text-right text-gray-600 dark:text-gray-400">
+                <td class="py-1.5 text-right font-mono tabular-nums text-gray-600 dark:text-dark-200">
                   {{ formatTokens(item.total_tokens) }}
                 </td>
                 <td class="py-1.5 text-right font-mono font-medium tabular-nums text-primary-700 dark:text-primary-300">
@@ -239,7 +240,8 @@ const chartData = computed(() => {
       {
         data: displayEndpointStats.value.map((item) => distributionValue(item, props.metric)),
         backgroundColor: displayEndpointStats.value.map((item) => item.chartColor),
-        borderWidth: 0
+        borderColor: chartTheme.value.pointBorder,
+        borderWidth: 2
       }
     ]
   }
@@ -249,6 +251,7 @@ const doughnutOptions = computed(() => ({
   responsive: true,
   animation: false as const,
   maintainAspectRatio: false,
+  cutout: '66%',
   plugins: {
     legend: {
       display: false

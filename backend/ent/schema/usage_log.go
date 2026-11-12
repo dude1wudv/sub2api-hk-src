@@ -80,6 +80,9 @@ func (UsageLog) Fields() []ent.Field {
 			Default(0),
 		field.Int("output_tokens").
 			Default(0),
+		field.Bool("input_tokens_estimated").Default(false).Comment("Input tokens estimated from the dispatched request"),
+		field.Bool("cache_read_tokens_estimated").Default(false).Comment("Estimated input discount, not upstream cache hits"),
+		field.String("usage_estimation_reason").MaxLen(64).Default("").Comment("Reason for incomplete usage estimation; historical rows remain empty"),
 		field.Bool("output_tokens_estimated").
 			Default(false).
 			Comment("Output tokens estimated from received content because final upstream usage was missing"),

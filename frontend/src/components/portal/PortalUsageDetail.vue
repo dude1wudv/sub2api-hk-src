@@ -8,7 +8,7 @@ import ModelIcon from '@/components/common/ModelIcon.vue'
 import {
   finiteNumber, isTokenUsage, usageBillingMode, usageBillingLabel, usageRowRequestLabel,
   formatUsageNumber, formatUsageMoney, formatUsageDuration, formatUsageRate, formatUsagePercent,
-  usageCacheRate, usageOutputStageRate, usageOutputRate,
+  usageCacheRate, usageOutputStageRate, usageOutputRate, usageEstimates, usageEstimationReasonKey,
 } from '@/utils/portalUsage'
 const props = defineProps<{ open: boolean; row: UsageLog | null; loading?: boolean; error?: string }>()
 const { t, locale } = useI18n()
@@ -33,8 +33,8 @@ const tokenRows = computed(() => {
   const row = props.row
   if (!row) return []
   const rows: Array<[string, string]> = [
-    [copy('输入 Token', 'Input tokens'), formatUsageNumber(row.input_tokens)], [row.output_tokens_estimated ? t('usage.outputTokensEstimated') : copy('输出 Token', 'Output tokens'), formatUsageNumber(row.output_tokens)],
-    [copy('缓存读取', 'Cache read'), formatUsageNumber(row.cache_read_tokens)], [copy('缓存写入', 'Cache write'), formatUsageNumber(row.cache_creation_tokens)],
+    [row.input_tokens_estimated ? t('usage.inputTokensEstimated') : copy('输入 Token', 'Input tokens'), formatUsageNumber(row.input_tokens)], [row.output_tokens_estimated ? t('usage.outputTokensEstimated') : copy('输出 Token', 'Output tokens'), formatUsageNumber(row.output_tokens)],
+    [row.cache_read_tokens_estimated ? t('usage.cacheReadTokensEstimated') : copy('缓存读取', 'Cache read'), formatUsageNumber(row.cache_read_tokens)], [copy('缓存写入', 'Cache write'), formatUsageNumber(row.cache_creation_tokens)],
   ]
   if (row.cache_creation_5m_tokens > 0) rows.push([copy('5 分钟缓存写入', '5-minute cache write'), formatUsageNumber(row.cache_creation_5m_tokens)])
   if (row.cache_creation_1h_tokens > 0) rows.push([copy('1 小时缓存写入', '1-hour cache write'), formatUsageNumber(row.cache_creation_1h_tokens)])
@@ -64,7 +64,8 @@ const sizeSource = computed(() => {
     <p v-if="loading" class="portal-muted" role="status">{{ copy('正在加载完整记录…', 'Loading the complete record…') }}</p>
     <p v-if="error" class="portal-error" role="alert">{{ error }}</p>
     <template v-if="row">
-      <p v-if="row.output_tokens_estimated" class="usage-estimate-notice" data-testid="output-tokens-estimated-notice"><strong>{{ t('usage.outputTokensEstimated') }}</strong> {{ t('usage.outputTokensEstimatedHint') }}</p>
+      <p v-for="estimate in usageEstimates(row)" :key="estimate.id" class="usage-estimate-notice" :data-testid="`${estimate.id}-notice`"><strong>{{ t(estimate.label) }}</strong> {{ t(estimate.hint) }}</p>
+      <p v-if="usageEstimationReasonKey(row)" class="usage-detail-note">{{ t('usage.estimationReason') }}：{{ t(usageEstimationReasonKey(row)!) }}</p>
       <div class="usage-detail-model"><ModelIcon :model="row.model" size="28px" aria-hidden="true" /><strong>{{ row.model }}</strong><span>{{ usageRowRequestLabel(row, !zh) }}</span></div>
       <dl class="usage-detail-grid"><template v-for="[label, value] in metadata" :key="label"><dt>{{ label }}</dt><dd>{{ value }}</dd></template></dl>
       <section v-if="isTokenUsage(row)" class="usage-detail-section"><h3><Icon name="cpu" size="sm" class="usage-token-icon" aria-hidden="true" />{{ copy('Token 明细', 'Token details') }}</h3><dl class="usage-detail-grid"><template v-for="[label, value] in tokenRows" :key="label"><dt>{{ label }}</dt><dd>{{ value }}</dd></template><dt>{{ copy('缓存命中率', 'Cache hit rate') }}</dt><dd>{{ formatUsagePercent(usageCacheRate(row)) }}</dd><dt>{{ copy('输出阶段速率', 'Output stage rate') }}</dt><dd>{{ formatUsageRate(usageOutputStageRate(row)) }}</dd><dt v-if="row.cache_ttl_overridden">{{ copy('缓存 TTL', 'Cache TTL') }}</dt><dd v-if="row.cache_ttl_overridden">{{ copy('已覆盖为', 'Overridden to') }} {{ row.cache_creation_1h_tokens > 0 ? copy('1 小时', '1 hour') : copy('5 分钟', '5 minutes') }}</dd></dl><p class="usage-detail-note">{{ copy('缓存命中率 = 缓存读取 /（输入 + 缓存写入 + 缓存读取）', 'Cache hit rate = cache read / (input + cache write + cache read)') }}<br />{{ copy('输出阶段速率 = 输出 Token /（总耗时 − 首字耗时）', 'Output stage rate = output tokens / (duration - first token)') }}</p></section>

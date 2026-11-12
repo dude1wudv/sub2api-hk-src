@@ -941,6 +941,9 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		return errors.New("openai ws passthrough upstream connection does not support frame relay")
 	}
 	upstreamFrameConn = &slowTTFTFrameConn{FrameConn: upstreamFrameConn, ctx: ctx, protection: s.rateLimitService, accountID: account.ID}
+	var incompleteTurn openAIWSIncompleteTurn
+	var incompleteClientGone atomic.Bool
+	upstreamFrameConn = &openAIWSIncompleteFrameConn{FrameConn: upstreamFrameConn, turn: &incompleteTurn}
 	relayUpstreamFrameConn := &openAIWSPassthroughFirstOutputFrameConn{
 		inner:             upstreamFrameConn,
 		activeReadTimeout: s.openAIWSPassthroughIdleTimeout(),
@@ -971,6 +974,8 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	}
 
 	completedTurns := atomic.Int32{}
+	var pendingUnsettledTurn atomic.Bool
+	pendingUnsettledTurn.Store(true)
 	turnLifecycle := newOpenAIWSPassthroughTurnLifecycle(true)
 	var acceptedTurnStartedAt atomic.Pointer[time.Time]
 	clientFrameConn := &openAIWSClientFrameConn{
@@ -1079,6 +1084,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 			}
 			requestModelForThisFrame := ""
 			if isResponseCreate {
+				pendingUnsettledTurn.Store(true)
 				requestModelForThisFrame = usageMeta.requestModelForFrame(payload)
 				if requestModelForThisFrame == "" {
 					requestModelForThisFrame = capturedSessionModel
@@ -1224,7 +1230,8 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 			IdleTimeout:                     0,
 			FirstMessageType:                coderws.MessageText,
 			FirstMessageSent:                upstreamFirstMessageSent,
-			StartClientAfterFirstDownstream: true,
+			StartClientAfterFirstDownstream: false,
+			StopUpstreamOnClientDisconnect:  true,
 			ReadClientFrame:                 readNextClientFrame,
 			OnUsageParseFailure: func(eventType string, usageRaw string) {
 				logOpenAIWSV2Passthrough(
@@ -1235,6 +1242,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 			},
 			OnTurnComplete: func(turn openaiwsv2.RelayTurnResult) {
 				turnNo := int(completedTurns.Add(1))
+				pendingUnsettledTurn.Store(false)
 				if hooks != nil && hooks.TurnStarted != nil && !turn.StartedAt.IsZero() {
 					hooks.TurnStarted(turnNo, turn.StartedAt)
 				}
@@ -1280,8 +1288,10 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 					turnResult.Usage.CacheReadInputTokens,
 				)
 				if hooks != nil && hooks.AfterTurn != nil {
+					incompleteTurn.Apply(turnResult, false, nil)
 					hooks.AfterTurn(turnNo, turnResult, nil)
 				}
+				incompleteTurn.Complete()
 			},
 			BeforeClientWrite: func(msgType coderws.MessageType, payload []byte) {
 				if msgType == coderws.MessageText && openAIWSPassthroughIsTerminalOutput(payload) {
@@ -1298,6 +1308,9 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 				}
 			},
 			BeforeRelayCancel: func(exit openaiwsv2.RelayExit) {
+				if exit.Stage == "read_client" || exit.Stage == "write_client" {
+					incompleteClientGone.Store(true)
+				}
 				if context.Cause(ctx) != nil {
 					return
 				}
@@ -1366,6 +1379,25 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 			},
 		},
 	})
+	settledIncomplete := false
+	if incompleteTurn.Active() {
+		turnRequestModel, turnUpstreamModel := usageMeta.turnModels(relayResult.RequestModel)
+		partial := &OpenAIForwardResult{Model: turnRequestModel, UpstreamModel: openAIWSDifferentModel(turnRequestModel, turnUpstreamModel), Stream: true, OpenAIWSMode: true, ResponseHeaders: cloneHeader(handshakeHeaders), ServiceTier: usageMeta.serviceTier.Load(), ReasoningEffort: usageMeta.reasoningEffort.Load(), RequestedReasoningEffort: usageMeta.requestedReasoningEffort.Load(), ReasoningEffortSource: usageMeta.reasoningEffortSource.Load(), Duration: relayResult.Duration, FirstTokenMs: relayResult.FirstTokenMs}
+		var partialErr error
+		if relayExit != nil {
+			partialErr = relayExit.Err
+		}
+		gone := incompleteClientGone.Load() || openAIOriginalClientGone(ctx, c)
+		if gone && partialErr == nil {
+			partialErr = context.Canceled
+		}
+		if incompleteTurn.Apply(partial, gone, partialErr) {
+			if hooks != nil && hooks.AfterTurn != nil {
+				hooks.AfterTurn(int(completedTurns.Load())+1, partial, partialErr)
+			}
+			settledIncomplete = true
+		}
+	}
 	if cause := context.Cause(ctx); cause != nil {
 		if isOpenAIWSSessionPreempted(ctx) {
 			return errOpenAIWSSessionPreempted
@@ -1423,7 +1455,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 			turnCount,
 		)
 		// 正常路径按 terminal 事件逐 turn 已回调；仅在零 turn 场景兜底回调一次。
-		if turnCount == 0 && hooks != nil && hooks.AfterTurn != nil {
+		if turnCount == 0 && !settledIncomplete && hooks != nil && hooks.AfterTurn != nil {
 			if hooks.TurnStarted != nil {
 				hooks.TurnStarted(1, time.Now().Add(-result.Duration))
 			}
@@ -1497,7 +1529,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		relayErr,
 		relayExit.WroteDownstream,
 	)
-	if hooks != nil && hooks.AfterTurn != nil {
+	if !settledIncomplete && pendingUnsettledTurn.Load() && hooks != nil && hooks.AfterTurn != nil {
 		if hooks.TurnStarted != nil {
 			hooks.TurnStarted(turnCount+1, time.Now().Add(-result.Duration))
 		}

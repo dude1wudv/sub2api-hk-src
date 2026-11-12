@@ -8,6 +8,8 @@ import {
   usageLogsCsv,
   usageOutputRate,
   usageOutputStageRate,
+  usageEstimates,
+  usageEstimationReasonKey,
 } from '../portalUsage'
 
 function usage(overrides: Record<string, unknown> = {}) {
@@ -28,6 +30,19 @@ function usage(overrides: Record<string, unknown> = {}) {
 }
 
 describe('portal usage calculations', () => {
+  it('does not label the 95% estimated discount as a measured cache hit', () => {
+    const row = usage({ input_tokens: 5, cache_read_tokens: 95, cache_creation_tokens: 0, input_tokens_estimated: true, cache_read_tokens_estimated: true, usage_estimation_reason: 'client_cancelled' })
+    expect(usageCacheRate(row)).toBeNull()
+    expect(usageEstimates(row).map(item => item.id)).toEqual(['input-tokens-estimated', 'cache-read-tokens-estimated'])
+    expect(usageEstimationReasonKey(row)).toBe('usage.estimateReasonClientCancelled')
+    expect(usageEstimationReasonKey(usage({ usage_estimation_reason: 'client_cancelled' }))).toBeNull()
+    const lines = usageLogsCsv([row], true).split('\r\n').map(line => line.split(','))
+    const column = (title: string) => lines[0].indexOf(`"${title}"`)
+    expect(lines[1][column('Estimated input')]).toBe('"Yes"')
+    expect(lines[1][column('Estimated cache discount')]).toBe('"Yes"')
+    expect(lines[1][column('Cache hit rate %')]).toBe('""')
+    expect(lines[1][column('Estimation reason')]).toBe('"client_cancelled"')
+  })
   it('exports the estimate marker separately from the output count', () => {
     const csv = usageLogsCsv([usage({ output_tokens_estimated: true }), usage()], true)
     const lines = csv.split('\n').map(line => line.trim().split(','))

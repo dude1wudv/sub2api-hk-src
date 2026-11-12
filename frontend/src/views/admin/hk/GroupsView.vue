@@ -11,7 +11,7 @@
               <Icon
                 name="search"
                 size="md"
-                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-400"
               />
               <input
                 v-model="searchQuery"
@@ -131,7 +131,7 @@
           </template>
 
           <template #cell-id="{ value }">
-            <span class="font-mono text-xs text-gray-500 dark:text-gray-400"
+            <span class="font-mono text-xs tabular-nums text-gray-500 dark:text-dark-300"
               >#{{ value }}</span
             >
           </template>
@@ -147,7 +147,7 @@
                     : value === 'antigravity'
                       ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                       : value === 'grok'
-                        ? 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100'
+                        ? 'bg-gray-100 text-gray-800 dark:bg-dark-700 dark:text-dark-100'
                         : value === 'kimi'
                           ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
                           : value === 'zhipu'
@@ -3824,7 +3824,7 @@
                         : group.platform === 'antigravity'
                           ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                           : group.platform === 'grok'
-                            ? 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100'
+                            ? 'bg-gray-100 text-gray-800 dark:bg-dark-700 dark:text-dark-100'
                             : group.platform === 'kimi'
                               ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
                               : group.platform === 'zhipu'

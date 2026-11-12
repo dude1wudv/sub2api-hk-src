@@ -20,12 +20,18 @@ const active = computed(() => points.value[selected.value] || points.value[point
     <div class="chart-meta"><span>{{ copy('实际消费 · USD', 'Billed cost · USD') }}</span><span v-if="active">{{ active.key }} <strong>{{ formatUsageMoney(active.cost, 2) }}</strong></span></div>
     <div class="chart-scroll"><svg viewBox="0 0 940 220" role="img" :aria-label="copy('过去十二个月的实际消费曲线', 'Billed cost over the last twelve months')">
       <title>{{ copy('过去十二个月的实际消费', 'Billed cost over the last twelve months') }}</title>
-      <g v-for="tick in [0, 1, 2, 3]" :key="tick"><line x1="56" x2="915" :y1="180 - tick * 49.33" :y2="180 - tick * 49.33" stroke="var(--chart-grid)" stroke-dasharray="3 4" /><text x="44" :y="184 - tick * 49.33" text-anchor="end">{{ (chartMax * tick / 3).toFixed(chartMax >= 100 ? 0 : 1) }}</text></g>
-      <path :d="area" fill="rgb(var(--surface-2))" opacity="0.65" />
-      <path :d="path" fill="none" stroke="var(--chart-1)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+      <defs>
+        <linearGradient id="portal-usage-area-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.18" />
+          <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.01" />
+        </linearGradient>
+      </defs>
+      <g v-for="tick in [0, 1, 2, 3]" :key="tick"><line x1="56" x2="915" :y1="180 - tick * 49.33" :y2="180 - tick * 49.33" stroke="var(--chart-grid)" stroke-width="1" /><text x="44" :y="184 - tick * 49.33" text-anchor="end">{{ (chartMax * tick / 3).toFixed(chartMax >= 100 ? 0 : 1) }}</text></g>
+      <path :d="area" fill="url(#portal-usage-area-fill)" />
+      <path :d="path" fill="none" stroke="var(--chart-1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
       <g v-for="(point, index) in points" :key="point.key" class="chart-point" tabindex="0" :aria-label="`${point.key}, ${formatUsageMoney(point.cost, 2)}, ${point.requests} ${copy('次请求', 'requests')}`" @mouseenter="selected = index" @focus="selected = index">
         <rect :x="point.x - 30" y="20" width="60" height="165" fill="transparent" />
-        <circle :cx="point.x" :cy="point.y" :r="selected === index ? 4 : 2.5" fill="rgb(var(--surface))" stroke="var(--chart-1)" stroke-width="1.4" />
+        <circle :cx="point.x" :cy="point.y" :r="selected === index ? 4.5 : 3" fill="rgb(var(--surface))" stroke="var(--chart-1)" stroke-width="2" />
         <text :x="point.x" y="209" text-anchor="middle">{{ zh ? point.label : new Date(`${point.key}-01T12:00:00`).toLocaleDateString('en', { month: 'short' }) }}</text>
         <title>{{ point.key }} · {{ formatUsageMoney(point.cost, 2) }} · {{ formatUsageNumber(point.requests) }} {{ copy('次请求', 'requests') }}</title>
       </g>

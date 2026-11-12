@@ -253,10 +253,14 @@ func calculateTokenStatsCost(pricing *ChannelModelPricing, tokens UsageTokens) *
 	if cost, ok := openAICacheCreationTTLCost(tokens, deref(p.CacheWritePrice), p.CacheWrite12hPrice); ok {
 		cacheCreationCost = cost
 	}
+	cacheReadPrice := p.CacheReadPrice
+	if tokens.CacheReadEstimated && cacheReadPrice == nil {
+		cacheReadPrice = p.InputPrice
+	}
 	cost := float64(tokens.InputTokens)*deref(p.InputPrice) +
 		float64(tokens.OutputTokens)*deref(p.OutputPrice) +
 		cacheCreationCost +
-		float64(tokens.CacheReadTokens)*deref(p.CacheReadPrice) +
+		float64(tokens.CacheReadTokens)*deref(cacheReadPrice) +
 		float64(tokens.ImageOutputTokens)*deref(p.ImageOutputPrice)
 	if cost <= 0 {
 		return nil

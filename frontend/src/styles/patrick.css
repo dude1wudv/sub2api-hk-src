@@ -1,28 +1,150 @@
-/* Shared brand controls; all colors resolve from the root design system. */
-.patrick-surface { --p-ink:rgb(var(--ink)); --p-muted:rgb(var(--ink-3)); --p-accent:rgb(var(--ink)); --p-border:rgb(var(--line)); --p-panel:rgb(var(--surface)); }
-body[data-patrick-surface='true'] { background:rgb(var(--surface)); }
-.patrick-surface { color:rgb(var(--ink)); font-family:var(--font-sans); -webkit-font-smoothing:antialiased; }
-.patrick-surface :where(button,a,input,select,textarea,summary):focus-visible { outline:2px solid rgb(var(--focus-ring)); outline-offset:3px; }
-.patrick-surface :where(button,a) { -webkit-tap-highlight-color:transparent; }
-.patrick-surface .p-glass { background:rgb(var(--surface)); border:1px solid rgb(var(--line)); box-shadow:none; backdrop-filter:none; }
-.patrick-surface .p-button { display:inline-flex; justify-content:center; align-items:center; gap:8px; min-height:40px; padding:8px 20px; border:1px solid rgb(var(--line)); border-radius:24px; background:rgb(var(--surface)); color:rgb(var(--ink)); font-size:14px; }
-.patrick-surface .p-button--primary { background:rgb(var(--action-bg)); color:rgb(var(--action-text)); border-color:rgb(var(--ink)); }
-.patrick-surface .p-button:hover { background:rgb(var(--surface-2)); }
-.patrick-surface .p-button--primary:hover { background:rgb(var(--action-hover)); }
-/* Auxiliary routes keep their contracts while adopting the same flat palette. */
-:root body .patrick-surface :is(.card,.card-glass,.glass-card,.stat-card,.account-summary-panel) { background:rgb(var(--surface)); border:1px solid rgb(var(--line)); border-radius:var(--radius-card); box-shadow:none; backdrop-filter:none; }
-:root body .patrick-surface :is(.input,.select-trigger) { color:rgb(var(--ink)); background:rgb(var(--surface)); border:1px solid rgb(var(--line)); border-radius:var(--radius-control); min-height:40px; box-shadow:none; }
-:root body .patrick-surface .input-error { border-color:rgb(var(--text-err) / .35); }
-:root body .patrick-surface .btn { border-radius:999px; min-height:40px; font-weight:400; box-shadow:none; }
-:root body .patrick-surface .btn-primary { background:rgb(var(--action-bg)); border:1px solid rgb(var(--ink)); color:rgb(var(--action-text)); }
-:root body .patrick-surface .btn-secondary { background:rgb(var(--surface)); color:rgb(var(--ink)); border:1px solid rgb(var(--line)); }
-:root body .patrick-surface .btn-ghost { background:transparent; color:rgb(var(--ink-2)); }
-:root body .patrick-surface .btn-ghost:hover { background:rgb(var(--surface-2)); }
-:root body .patrick-surface :is(.table-scroll-container,.table-pagination) { background:rgb(var(--surface)); border:1px solid rgb(var(--line)); border-radius:12px; box-shadow:none; }
-:root body .patrick-surface .table-page-layout { height:auto; min-height:0; }
-:root body .patrick-surface .table-wrapper :is(.table-header,.sticky-header-cell) { background:rgb(var(--surface-2)); color:rgb(var(--ink-2)); }
-:root body .patrick-surface .table-wrapper :is(.table-body,tbody .sticky-col) { background:rgb(var(--surface)); }
-:root body[data-patrick-surface='true'] :is(.modal-content,.dropdown,.select-dropdown-portal,.date-picker-dropdown,.action-menu) { background:rgb(var(--surface)); color:rgb(var(--ink)); border:1px solid rgb(var(--line)); border-radius:12px; box-shadow:0 8px 24px #00000012; }
-:root body .patrick-surface .chip-tinted { color:rgb(var(--ink)); background:rgb(var(--surface-2)); }
-:root body .patrick-surface .chip-tinted-active { color:rgb(var(--action-text)); background:rgb(var(--action-bg)); }
-@media (prefers-reduced-motion:reduce) { .patrick-surface *, .patrick-surface *::before, .patrick-surface *::after { scroll-behavior:auto!important; animation-duration:.01ms!important; transition-duration:.01ms!important; animation-iteration-count:1!important; } }
+/* Shared brand surface contracts; every color and elevation resolves from design-system.css. */
+.patrick-surface {
+  --p-ink: rgb(var(--ink));
+  --p-muted: rgb(var(--ink-3));
+  --p-accent: rgb(var(--brand-moss));
+  --p-border: rgb(var(--line));
+  --p-panel: rgb(var(--surface));
+  color: rgb(var(--ink));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+body[data-patrick-surface='true'] {
+  background: rgb(var(--canvas));
+}
+.patrick-surface :where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid rgb(var(--focus-ring));
+  outline-offset: 2px;
+}
+.patrick-surface :where(button, a) {
+  -webkit-tap-highlight-color: transparent;
+}
+.patrick-surface .p-glass {
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: none;
+}
+.patrick-surface .p-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-control);
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgb(15 23 42 / .03);
+}
+.patrick-surface .p-button--primary {
+  background: rgb(var(--action-bg));
+  color: rgb(var(--action-text));
+  border-color: rgb(var(--action-bg));
+  box-shadow: 0 1px 2px rgb(15 23 42 / .1);
+}
+.patrick-surface .p-button:hover {
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--line-strong));
+}
+.patrick-surface .p-button--primary:hover {
+  background: rgb(var(--action-hover));
+  border-color: rgb(var(--action-hover));
+}
+/* Auxiliary routes keep their contracts while adopting the architectural slate palette. */
+:root body .patrick-surface :is(.card, .card-glass, .glass-card, .stat-card, .account-summary-panel) {
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: none;
+}
+:root body .patrick-surface :is(.input, .select-trigger) {
+  color: rgb(var(--ink));
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-control);
+  min-height: 40px;
+  box-shadow: none;
+}
+:root body .patrick-surface :is(.input, .select-trigger):hover {
+  border-color: rgb(var(--line-strong));
+}
+:root body .patrick-surface .input-error {
+  border-color: rgb(var(--text-err) / .5);
+}
+:root body .patrick-surface .btn {
+  border-radius: var(--radius-control);
+  min-height: 40px;
+  font-weight: 500;
+  box-shadow: none;
+}
+:root body .patrick-surface .btn-primary {
+  background: rgb(var(--action-bg));
+  border: 1px solid rgb(var(--action-bg));
+  color: rgb(var(--action-text));
+}
+:root body .patrick-surface .btn-primary:hover {
+  background: rgb(var(--action-hover));
+  border-color: rgb(var(--action-hover));
+}
+:root body .patrick-surface .btn-secondary {
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--line));
+}
+:root body .patrick-surface .btn-secondary:hover {
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--line-strong));
+}
+:root body .patrick-surface .btn-ghost {
+  background: transparent;
+  color: rgb(var(--ink-2));
+}
+:root body .patrick-surface .btn-ghost:hover {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink));
+}
+:root body .patrick-surface :is(.table-scroll-container, .table-pagination) {
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-panel);
+}
+:root body .patrick-surface .table-page-layout {
+  height: auto;
+  min-height: 0;
+}
+:root body .patrick-surface .table-wrapper :is(.table-header, .sticky-header-cell) {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-2));
+}
+:root body .patrick-surface .table-wrapper :is(.table-body, tbody .sticky-col) {
+  background: rgb(var(--surface));
+}
+:root body[data-patrick-surface='true'] :is(.modal-content, .dropdown, .select-dropdown-portal, .date-picker-dropdown, .action-menu) {
+  background: rgb(var(--surface-elevated));
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--line));
+  border-radius: 14px;
+  box-shadow: var(--shadow-overlay);
+}
+:root body .patrick-surface .chip-tinted {
+  color: rgb(var(--ink-2));
+  background: rgb(var(--surface-2));
+}
+:root body .patrick-surface .chip-tinted-active {
+  color: rgb(var(--action-text));
+  background: rgb(var(--action-bg));
+}
+@media (prefers-reduced-motion: reduce) {
+  .patrick-surface *, .patrick-surface *::before, .patrick-surface *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

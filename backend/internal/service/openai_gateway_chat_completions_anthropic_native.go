@@ -40,7 +40,10 @@ func (s *OpenAIGatewayService) forwardChatCompletionsViaNativeAnthropic(
 	account *Account,
 	body []byte,
 	defaultMappedModel string,
-) (*OpenAIForwardResult, error) {
+) (out *OpenAIForwardResult, retErr error) {
+	capture := newIncompleteForwardCapture(ctx, c, body)
+	defer capture.finishOpenAI(&out, &retErr)
+
 	startTime := time.Now()
 
 	// 1. Parse Chat Completions request
@@ -65,6 +68,7 @@ func (s *OpenAIGatewayService) forwardChatCompletionsViaNativeAnthropic(
 	// Resolve the mapped model before choosing its thinking/tool protocol.
 	billingModel := resolveOpenAIForwardModel(account, originalModel, defaultMappedModel)
 	upstreamModel := normalizeOpenAIModelForUpstream(account, billingModel)
+	capture.billingModel = billingModel
 	if err := validateClaude55Request(body, upstreamModel); err != nil {
 		writeChatCompletionsError(c, http.StatusBadRequest, "invalid_request_error", err.Error())
 		return nil, err
@@ -120,7 +124,11 @@ func (s *OpenAIGatewayService) forwardChatCompletionsViaNativeAnthropic(
 		return nil, fmt.Errorf("build upstream request: %w", err)
 	}
 
-	resp, err := s.doOpenAIUpstream(upstreamReq, proxyURL, account)
+	resp, err := capture.Do(upstreamReq, func(request *http.Request) (*http.Response, error) {
+
+		return s.doOpenAIUpstream(request, proxyURL, account)
+
+	})
 	if err != nil {
 		return nil, s.handleOpenAIUpstreamTransportError(ctx, c, account, err, true)
 	}

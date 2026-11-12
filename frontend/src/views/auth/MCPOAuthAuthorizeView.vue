@@ -1,5 +1,5 @@
 <template>
-  <main class="min-h-screen bg-gray-50 px-4 py-8 dark:bg-dark-950 sm:py-12">
+  <main class="patrick-surface min-h-screen bg-[rgb(var(--canvas))] px-4 py-8 sm:py-12">
     <section class="card mx-auto max-w-2xl p-5 sm:p-8" aria-labelledby="mcp-consent-title" :aria-busy="loading || submitting">
       <div class="mb-6 flex items-start gap-3">
         <div class="rounded-xl bg-primary-50 p-3 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400"><Icon name="mcp" size="lg" /></div>
@@ -15,7 +15,7 @@
         <RouterLink to="/settings/mcp" class="btn btn-secondary">{{ t('mcp.backToConnections') }}</RouterLink>
       </div>
       <form v-else-if="consent" class="space-y-6" @submit.prevent="decide(true)">
-        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-900">
+        <div class="rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface-2))] p-4">
           <dl class="space-y-4 text-sm">
             <div>
               <dt class="text-gray-500 dark:text-gray-400">{{ t('mcp.applicationName') }}</dt>

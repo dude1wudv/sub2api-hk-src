@@ -49,12 +49,15 @@ func TestUsageLogOutputTokensEstimatedMigrationAndRoundTrip(t *testing.T) {
 	historical, err := repo.GetByID(ctx, historicalID)
 	require.NoError(t, err)
 	require.False(t, historical.OutputTokensEstimated)
+	require.False(t, historical.InputTokensEstimated)
+	require.False(t, historical.CacheReadTokensEstimated)
+	require.Empty(t, historical.UsageEstimationReason)
 
 	requestID := uuid.NewString()
 	estimated := &service.UsageLog{
 		UserID: user.ID, APIKeyID: apiKey.ID, AccountID: account.ID,
 		RequestID: requestID, Model: "claude-sonnet-4", OutputTokens: 17,
-		OutputTokensEstimated: true, CreatedAt: time.Now().UTC(),
+		OutputTokensEstimated: true, InputTokensEstimated: true, CacheReadTokensEstimated: true, UsageEstimationReason: "client_cancelled", CreatedAt: time.Now().UTC(),
 	}
 	inserted, err := repo.Create(ctx, estimated)
 	require.NoError(t, err)
@@ -63,6 +66,9 @@ func TestUsageLogOutputTokensEstimatedMigrationAndRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 17, stored.OutputTokens)
 	require.True(t, stored.OutputTokensEstimated)
+	require.True(t, stored.InputTokensEstimated)
+	require.True(t, stored.CacheReadTokensEstimated)
+	require.Equal(t, "client_cancelled", stored.UsageEstimationReason)
 
 	duplicate := &service.UsageLog{
 		UserID: user.ID, APIKeyID: apiKey.ID, AccountID: account.ID,
@@ -77,6 +83,9 @@ func TestUsageLogOutputTokensEstimatedMigrationAndRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 17, stored.OutputTokens, "duplicate insert must not replace the original usage")
 	require.True(t, stored.OutputTokensEstimated, "duplicate insert must preserve the original provenance marker")
+	require.True(t, stored.InputTokensEstimated)
+	require.True(t, stored.CacheReadTokensEstimated)
+	require.Equal(t, "client_cancelled", stored.UsageEstimationReason)
 
 	real := &service.UsageLog{
 		UserID: user.ID, APIKeyID: apiKey.ID, AccountID: account.ID,

@@ -170,18 +170,18 @@ onBeforeUnmount(rememberScroll)
 </script>
 
 <style scoped>
-.admin-navigation { position:relative; isolation:isolate; --active-indicator-fill:rgb(var(--action-bg)); --active-indicator-radius:14px; --active-indicator-edge:transparent; }
+.admin-navigation { position:relative; isolation:isolate; --active-indicator-fill:rgb(var(--brand-moss) / .12); --active-indicator-radius:10px; --active-indicator-edge:rgb(var(--brand-moss) / .24); }
 .admin-navigation .admin-nav-item { position:relative; z-index:1; }
-.admin-navigation .admin-nav-item.active { background:transparent; color:rgb(var(--action-text)); }
-.admin-account-menu :deep(.motion-preference-toggle) { width:100%; justify-content:flex-start; font-size:14px; border-radius:10px; }
+.admin-navigation .admin-nav-item.active { background:transparent; color:rgb(var(--ink)); }
+.admin-account-menu :deep(.motion-preference-toggle) { width:100%; justify-content:flex-start; font-size:13.5px; border-radius:8px; }
 .admin-sidebar { padding-top: env(safe-area-inset-top, 0px); }
-.admin-nav-close { top: calc(10px + env(safe-area-inset-top, 0px)); }
-.admin-sidebar-bottom { padding-bottom: max(14px, env(safe-area-inset-bottom, 0px)); }
+.admin-nav-close { top: calc(15px + env(safe-area-inset-top, 0px)); }
+.admin-sidebar-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
 .admin-topbar { padding-top: env(safe-area-inset-top, 0px); height: calc(64px + env(safe-area-inset-top, 0px)); }
 .admin-content { padding-bottom: max(40px, env(safe-area-inset-bottom, 0px)); }
-.admin-icon-button { transition: color var(--motion-fast, 160ms), background-color var(--motion-fast, 160ms); }
+.admin-icon-button { transition: color var(--motion-fast, 150ms), background-color var(--motion-fast, 150ms), border-color var(--motion-fast, 150ms); }
 .admin-account-menu { animation: admin-menu-enter var(--motion-menu, 180ms) ease-out; transform-origin: top right; }
-.admin-portal[data-overlay='true'] .admin-sidebar { animation: admin-drawer-enter var(--motion-overlay, 260ms) cubic-bezier(.2,.8,.2,1); }
+.admin-portal[data-overlay='true'] .admin-sidebar { animation: admin-drawer-enter var(--motion-overlay, 240ms) cubic-bezier(.2,.8,.2,1); }
 @keyframes admin-menu-enter { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes admin-drawer-enter { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (max-width: 767px) {

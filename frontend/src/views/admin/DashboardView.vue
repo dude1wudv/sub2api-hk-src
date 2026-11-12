@@ -3,6 +3,7 @@
     <div class="operations-dashboard space-y-6">
       <InkSurface as="section" interactive class="admin-workbench-intro">
         <div>
+          <span class="admin-eyebrow">{{ zh ? '遥测总览' : 'Telemetry overview' }}</span>
           <h2>{{ zh ? '资源与用量' : 'Resources & usage' }}</h2>
         </div>
         <span v-if="stats?.stats_stale" class="admin-status-note" role="status">{{ zh ? '统计待更新' : 'Statistics awaiting refresh' }}</span>
@@ -235,7 +236,7 @@
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
               <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('admin.dashboard.upstreamBalance.title') }}</p>
-              <p class="metric-value">${{ formatCost(upstreamBalances?.total || 0) }}</p>
+              <p class="metric-value tabular-nums">${{ formatCost(upstreamBalances?.total || 0) }}</p>
               <p class="mt-1 text-xs text-gray-400 dark:text-dark-400">{{ t('admin.dashboard.upstreamBalance.autoRefresh') }}</p>
             </div>
             <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-100/70 text-link-700 dark:bg-link-900/30 dark:text-link-300">
@@ -245,7 +246,7 @@
           <div v-if="upstreamBalancesLoading" class="py-4"><LoadingSpinner size="sm" /></div>
           <template v-else-if="upstreamBalances?.items?.length">
             <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <div v-for="item in upstreamBalances.items" :key="item.id" class="rounded-xl border border-gray-200/80 bg-white/60 p-3.5 transition-colors hover:border-gray-300 dark:border-dark-700 dark:bg-dark-800/40 dark:hover:border-dark-500">
+              <div v-for="item in upstreamBalances.items" :key="item.id" class="rounded-xl border border-gray-200/80 bg-gray-50/60 p-3.5 transition-colors hover:border-gray-300 dark:border-dark-700 dark:bg-dark-900/45 dark:hover:border-dark-500">
                 <div class="flex items-start justify-between gap-2">
                   <div class="min-w-0">
                     <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">{{ item.group_name || item.name }}</p>
@@ -257,9 +258,9 @@
               </div>
             </div>
             <div class="mt-3.5 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div v-for="entry in upstreamConsumptionCards" :key="entry.label" class="rounded-xl bg-amber-50/80 p-3.5 dark:bg-amber-950/20">
-                <p class="text-xs font-medium text-amber-700 dark:text-amber-300">{{ entry.label }}</p>
-                <p class="mt-1 break-all text-lg font-semibold text-amber-900 tabular-nums dark:text-amber-100">${{ formatCost(entry.value) }}</p>
+              <div v-for="entry in upstreamConsumptionCards" :key="entry.label" class="rounded-xl border border-gray-200/80 bg-gray-50/70 p-3.5 dark:border-dark-700 dark:bg-dark-900/45">
+                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ entry.label }}</p>
+                <p class="mt-1 break-all font-mono text-lg font-semibold text-amber-700 tabular-nums dark:text-amber-300">${{ formatCost(entry.value) }}</p>
               </div>
             </div>
           </template>
@@ -396,11 +397,18 @@
 
           <!-- User Usage Trend (Full Width) -->
           <div class="card p-4 sm:p-5">
-            <div class="mb-4 flex items-center justify-between gap-3">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.dashboard.recentUsage') }} (Top 12)</h3>
-              <div class="flex gap-1" role="group" :aria-label="t('admin.dashboard.recentUsage')">
+              <div
+                class="inline-flex rounded-lg border border-gray-200 bg-gray-100/80 p-0.5 dark:border-dark-700 dark:bg-dark-900/60"
+                role="group"
+                :aria-label="t('admin.dashboard.recentUsage')"
+              >
                 <button v-for="metric in (['tokens', 'actual_cost'] as const)" :key="metric" type="button"
-                  class="rounded px-2 py-1 text-xs" :class="userTrendMetric === metric ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300'"
+                  class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
+                  :class="userTrendMetric === metric
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'"
                   :aria-pressed="userTrendMetric === metric" @click="setUserTrendMetric(metric)">
                   {{ t(metric === 'tokens' ? 'admin.dashboard.tokens' : 'admin.dashboard.actualSpending') }}
                 </button>
@@ -555,6 +563,16 @@ const lineOptions = computed(() => ({
   responsive: true,
   animation: false as const,
   maintainAspectRatio: false,
+  elements: {
+    point: {
+      radius: 2.5,
+      hoverRadius: 5,
+      hitRadius: 12,
+      borderWidth: 2,
+      backgroundColor: chartTheme.value.pointBorder
+    },
+    line: { borderWidth: 2 }
+  },
   interaction: {
     intersect: false,
     mode: 'index' as const
@@ -566,9 +584,10 @@ const lineOptions = computed(() => ({
         color: chartColors.value.text,
         usePointStyle: true,
         pointStyle: 'circle',
+        boxWidth: 8,
         padding: 15,
         font: {
-          size: 13
+          size: 12.5
         }
       }
     },
@@ -588,24 +607,33 @@ const lineOptions = computed(() => ({
   },
   scales: {
     x: {
+      border: {
+        display: false
+      },
       grid: {
-        color: chartColors.value.grid
+        display: false
       },
       ticks: {
         color: chartColors.value.text,
+        maxRotation: 0,
+        maxTicksLimit: 8,
         font: {
-          size: 13
+          size: 12
         }
       }
     },
     y: {
+      beginAtZero: true,
+      border: {
+        display: false
+      },
       grid: {
         color: chartColors.value.grid
       },
       ticks: {
         color: chartColors.value.text,
         font: {
-          size: 13
+          size: 12
         },
         callback: (value: string | number) => formatUserTrendValue(Number(value))
       }
@@ -646,15 +674,26 @@ const userTrendChartData = computed(() => {
 
   const sortedDates = Array.from(allDates).sort()
   const colors = userTrendPalette.value
+  const pointBorder = chartTheme.value.pointBorder
+  const pointRadius = sortedDates.length > 48 ? 0 : 2.5
 
-  const datasets = Array.from(userGroups.values()).map((group, idx) => ({
-    label: group.name,
-    data: sortedDates.map((date) => group.data.get(date) || 0),
-    borderColor: colors[idx % colors.length],
-    backgroundColor: `${colors[idx % colors.length]}20`,
-    fill: false,
-    tension: 0.3
-  }))
+  const datasets = Array.from(userGroups.values()).map((group, idx) => {
+    const borderColor = colors[idx % colors.length]
+    return {
+      label: group.name,
+      data: sortedDates.map((date) => group.data.get(date) || 0),
+      borderColor,
+      backgroundColor: `${borderColor}20`,
+      borderWidth: 2,
+      pointRadius,
+      pointHoverRadius: 5,
+      pointBackgroundColor: pointBorder,
+      pointBorderColor: borderColor,
+      pointBorderWidth: 2,
+      fill: false,
+      tension: 0.3
+    }
+  })
 
   return {
     labels: sortedDates,

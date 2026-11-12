@@ -35,8 +35,8 @@ const props = defineProps<Props>()
 const { t } = useI18n()
 
 const colors = computed(() => ({
-  teal: seriesPalette.value[5],
-  tealAlpha: `${seriesPalette.value[5]}20`,
+  teal: seriesPalette.value[2],
+  tealAlpha: `${seriesPalette.value[2]}1c`,
   grid: chartTheme.value.grid,
   text: chartTheme.value.text
 }))
@@ -45,6 +45,8 @@ const totalRequests = computed(() => sumNumbers(props.points.map((p) => p.reques
 
 const chartData = computed(() => {
   if (!props.points.length || totalRequests.value <= 0) return null
+  const pointBorder = chartTheme.value.pointBorder
+  const pointRadius = props.points.length > 36 ? 0 : 2.5
   return {
     labels: props.points.map((p) => formatHistoryLabel(p.bucket_start, props.timeRange)),
     datasets: [
@@ -58,9 +60,14 @@ const chartData = computed(() => {
         }),
         borderColor: colors.value.teal,
         backgroundColor: colors.value.tealAlpha,
+        borderWidth: 2,
         fill: true,
         tension: 0.35,
-        pointRadius: 0,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: colors.value.teal,
+        pointBorderWidth: 2,
         pointHitRadius: 10
       }
     ]
@@ -80,20 +87,23 @@ const options = computed(() => {
     animation: false as const,
     maintainAspectRatio: false,
     interaction: { intersect: false, mode: 'index' as const },
+    elements: {
+      point: {
+        radius: props.points.length > 36 ? 0 : 2.5,
+        hoverRadius: 5,
+        borderWidth: 2,
+        backgroundColor: chartTheme.value.pointBorder
+      },
+      line: { borderWidth: 2 }
+    },
     plugins: {
       legend: {
         position: 'top' as const,
         align: 'end' as const,
-        labels: { color: c.text, usePointStyle: true, boxWidth: 6, font: { size: 13 } }
+        labels: { color: c.text, usePointStyle: true, pointStyle: 'circle', boxWidth: 7, font: { size: 12 } }
       },
       tooltip: {
-      ...chartTheme.value.tooltip,
-        backgroundColor: chartTheme.value.tooltip.backgroundColor,
-        titleColor: chartTheme.value.tooltip.titleColor,
-        bodyColor: chartTheme.value.tooltip.bodyColor,
-        borderColor: c.grid,
-        borderWidth: 1,
-        padding: 10,
+        ...chartTheme.value.tooltip,
         displayColors: true,
         callbacks: {
           label: (context: any) => {
@@ -106,11 +116,13 @@ const options = computed(() => {
     scales: {
       x: {
         type: 'category' as const,
+        border: { display: false },
         grid: { display: false },
         ticks: {
           color: c.text,
-          font: { size: 13 },
+          font: { size: 12 },
           maxTicksLimit: 8,
+          maxRotation: 0,
           autoSkip: true,
           autoSkipPadding: 10
         }
@@ -119,10 +131,12 @@ const options = computed(() => {
         type: 'linear' as const,
         display: true,
         position: 'left' as const,
-        grid: { color: c.grid, borderDash: [4, 4] },
+        beginAtZero: true,
+        border: { display: false },
+        grid: { color: c.grid },
         ticks: {
           color: c.text,
-          font: { size: 13 },
+          font: { size: 12 },
           callback: (value: any) => Number(value).toFixed(3)
         }
       }
@@ -132,9 +146,9 @@ const options = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700">
+  <div class="card flex h-full flex-col p-5 sm:p-6">
     <div class="mb-4 flex shrink-0 items-center justify-between">
-      <h3 class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
         <svg class="h-4 w-4 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h6m-6 5h3" />
         </svg>

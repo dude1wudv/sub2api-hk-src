@@ -140,6 +140,21 @@ func OutputTokens(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldOutputTokens, v))
 }
 
+// InputTokensEstimated applies equality check predicate on the "input_tokens_estimated" field. It's identical to InputTokensEstimatedEQ.
+func InputTokensEstimated(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldInputTokensEstimated, v))
+}
+
+// CacheReadTokensEstimated applies equality check predicate on the "cache_read_tokens_estimated" field. It's identical to CacheReadTokensEstimatedEQ.
+func CacheReadTokensEstimated(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldCacheReadTokensEstimated, v))
+}
+
+// UsageEstimationReason applies equality check predicate on the "usage_estimation_reason" field. It's identical to UsageEstimationReasonEQ.
+func UsageEstimationReason(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldUsageEstimationReason, v))
+}
+
 // OutputTokensEstimated applies equality check predicate on the "output_tokens_estimated" field. It's identical to OutputTokensEstimatedEQ.
 func OutputTokensEstimated(v bool) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldOutputTokensEstimated, v))
@@ -1148,6 +1163,91 @@ func OutputTokensLT(v int) predicate.UsageLog {
 // OutputTokensLTE applies the LTE predicate on the "output_tokens" field.
 func OutputTokensLTE(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldOutputTokens, v))
+}
+
+// InputTokensEstimatedEQ applies the EQ predicate on the "input_tokens_estimated" field.
+func InputTokensEstimatedEQ(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldInputTokensEstimated, v))
+}
+
+// InputTokensEstimatedNEQ applies the NEQ predicate on the "input_tokens_estimated" field.
+func InputTokensEstimatedNEQ(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldInputTokensEstimated, v))
+}
+
+// CacheReadTokensEstimatedEQ applies the EQ predicate on the "cache_read_tokens_estimated" field.
+func CacheReadTokensEstimatedEQ(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldCacheReadTokensEstimated, v))
+}
+
+// CacheReadTokensEstimatedNEQ applies the NEQ predicate on the "cache_read_tokens_estimated" field.
+func CacheReadTokensEstimatedNEQ(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldCacheReadTokensEstimated, v))
+}
+
+// UsageEstimationReasonEQ applies the EQ predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldUsageEstimationReason, v))
+}
+
+// UsageEstimationReasonNEQ applies the NEQ predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonNEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldUsageEstimationReason, v))
+}
+
+// UsageEstimationReasonIn applies the In predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldUsageEstimationReason, vs...))
+}
+
+// UsageEstimationReasonNotIn applies the NotIn predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonNotIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldUsageEstimationReason, vs...))
+}
+
+// UsageEstimationReasonGT applies the GT predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonGT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldUsageEstimationReason, v))
+}
+
+// UsageEstimationReasonGTE applies the GTE predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonGTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldUsageEstimationReason, v))
+}
+
+// UsageEstimationReasonLT applies the LT predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonLT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldUsageEstimationReason, v))
+}
+
+// UsageEstimationReasonLTE applies the LTE predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonLTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldUsageEstimationReason, v))
+}
+
+// UsageEstimationReasonContains applies the Contains predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonContains(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContains(FieldUsageEstimationReason, v))
+}
+
+// UsageEstimationReasonHasPrefix applies the HasPrefix predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonHasPrefix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasPrefix(FieldUsageEstimationReason, v))
+}
+
+// UsageEstimationReasonHasSuffix applies the HasSuffix predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonHasSuffix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasSuffix(FieldUsageEstimationReason, v))
+}
+
+// UsageEstimationReasonEqualFold applies the EqualFold predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonEqualFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEqualFold(FieldUsageEstimationReason, v))
+}
+
+// UsageEstimationReasonContainsFold applies the ContainsFold predicate on the "usage_estimation_reason" field.
+func UsageEstimationReasonContainsFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContainsFold(FieldUsageEstimationReason, v))
 }
 
 // OutputTokensEstimatedEQ applies the EQ predicate on the "output_tokens_estimated" field.

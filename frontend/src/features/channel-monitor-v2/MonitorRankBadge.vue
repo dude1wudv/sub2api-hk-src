@@ -1,7 +1,7 @@
 <template>
   <span
-    class="inline-flex items-center gap-1.5 tabular-nums"
-    :class="rankClass"
+    class="rank-badge inline-flex items-center gap-1.5 font-mono tabular-nums"
+    :class="[rankClass, showTrophy ? 'rank-badge--medal' : '']"
     :title="titleText"
   >
     <svg
@@ -9,8 +9,8 @@
       class="rank-trophy shrink-0"
       viewBox="0 0 1024 1024"
       xmlns="http://www.w3.org/2000/svg"
-      width="20"
-      height="20"
+      width="16"
+      height="16"
       aria-hidden="true"
     >
       <!-- stem -->
@@ -41,8 +41,8 @@
     </svg>
     <span v-if="showTrophy" class="sr-only">{{ ariaLabel }}</span>
     <span
-      class="text-xs font-semibold"
-      :class="showTrophy ? rankClass : 'text-gray-500 dark:text-dark-300'"
+      class="text-xs font-semibold tabular-nums"
+      :class="showTrophy ? rankClass : 'rank-plain'"
     >
       {{ label }}
     </span>
@@ -58,22 +58,22 @@ const { t } = useI18n()
 /** Rank medal palettes: light / mid / dark fills for the multi-path trophy SVG. */
 const RANK_PALETTES = {
   1: {
-    // gold
-    light: '#FFD524',
-    mid: '#F5B200',
+    // amber copper / gold
+    light: '#FCD34D',
+    mid: '#D97706',
     dark: '#B45309',
   },
   2: {
-    // silver
+    // architectural slate silver
     light: '#E5E7EB',
-    mid: '#9CA3AF',
-    dark: '#4B5563',
+    mid: '#94A3B8',
+    dark: '#475569',
   },
   3: {
     // bronze
     light: '#E8A86A',
-    mid: '#CD7F32',
-    dark: '#8B5A2B',
+    mid: '#B45309',
+    dark: '#78350F',
   },
 } as const
 
@@ -114,9 +114,25 @@ const ariaLabel = computed(() => {
 const titleText = computed(() => ariaLabel.value)
 
 const rankClass = computed(() => {
-  if (rankNum.value === 1) return 'text-amber-600 dark:text-amber-400'
-  if (rankNum.value === 2) return 'text-slate-500 dark:text-slate-300'
-  if (rankNum.value === 3) return 'text-amber-800 dark:text-amber-600'
+  if (rankNum.value === 1) return 'rank-gold text-amber-600 dark:text-amber-400'
+  if (rankNum.value === 2) return 'rank-silver text-slate-600 dark:text-slate-300'
+  if (rankNum.value === 3) return 'rank-bronze text-amber-700 dark:text-amber-500'
   return ''
 })
 </script>
+
+<style scoped>
+.rank-badge--medal {
+  padding: 2px 7px 2px 5px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface-2));
+}
+.rank-gold.rank-badge--medal {
+  border-color: rgb(var(--brand-copper) / 0.32);
+  background: rgb(var(--brand-copper) / 0.1);
+}
+.rank-plain {
+  color: rgb(var(--ink-2));
+}
+</style>

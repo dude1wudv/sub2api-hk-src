@@ -92,33 +92,35 @@
         </p>
 
         <!-- Date Range Picker -->
-        <div v-if="showDatePicker" class="mt-4">
-          <div class="flex flex-wrap items-center gap-2 justify-center">
-            <span class="text-xs text-gray-500 dark:text-dark-400">{{ t('keyUsage.dateRange') }}</span>
+        <div v-if="showDatePicker" class="mt-4 border-t border-[rgb(var(--line))] pt-3.5">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-medium text-[rgb(var(--ink-3))]">{{ t('keyUsage.dateRange') }}</span>
             <button
               v-for="range in dateRanges"
               :key="range.key"
+              type="button"
               @click="setDateRange(range.key)"
-              class="text-xs px-3 py-1.5 rounded-lg border transition-all"
+              class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
               :class="currentRange === range.key
-                ? 'bg-primary-500 text-white border-primary-500'
-                : 'border-gray-200 bg-white text-gray-700 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200 hover:border-primary-300 dark:hover:border-dark-600'"
+                ? 'border-[rgb(var(--action-bg))] bg-[rgb(var(--action-bg))] text-[rgb(var(--action-text))]'
+                : 'border-[rgb(var(--line))] bg-[rgb(var(--surface))] text-[rgb(var(--ink-2))] hover:border-[rgb(var(--line-strong))] hover:bg-[rgb(var(--surface-2))]'"
             >{{ range.label }}</button>
-            <div v-if="currentRange === 'custom'" class="flex items-center gap-2 ml-1">
+            <div v-if="currentRange === 'custom'" class="flex flex-wrap items-center gap-2">
               <input
                 v-model="customStartDate"
                 type="date"
-                class="input-ring text-xs px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-900 dark:border-dark-700 dark:bg-dark-900 dark:text-white"
+                class="input-ring rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-2.5 py-1.5 text-xs text-[rgb(var(--ink))]"
               />
-              <span class="text-xs text-gray-400">-</span>
+              <span class="text-xs text-[rgb(var(--ink-3))]">-</span>
               <input
                 v-model="customEndDate"
                 type="date"
-                class="input-ring text-xs px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-900 dark:border-dark-700 dark:bg-dark-900 dark:text-white"
+                class="input-ring rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-2.5 py-1.5 text-xs text-[rgb(var(--ink))]"
               />
               <button
+                type="button"
                 @click="queryKey"
-                class="text-xs px-3 py-1.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600"
+                class="rounded-lg border border-[rgb(var(--action-bg))] bg-[rgb(var(--action-bg))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--action-text))] hover:bg-[rgb(var(--action-hover))]"
               >{{ t('keyUsage.apply') }}</button>
             </div>
           </div>
@@ -132,16 +134,16 @@
         <!-- Loading Skeleton -->
         <div v-if="showLoading" class="space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="rounded-2xl border border-gray-200 bg-white p-8 dark:border-dark-700 dark:bg-dark-900">
+            <div class="rounded-2xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-8">
               <div class="skeleton h-5 w-24 mb-6"></div>
               <div class="flex justify-center"><div class="skeleton w-44 h-44 rounded-full"></div></div>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white p-8 dark:border-dark-700 dark:bg-dark-900">
+            <div class="rounded-2xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-8">
               <div class="skeleton h-5 w-24 mb-6"></div>
               <div class="flex justify-center"><div class="skeleton w-44 h-44 rounded-full"></div></div>
             </div>
           </div>
-          <div class="rounded-2xl border border-gray-200 bg-white p-8 dark:border-dark-700 dark:bg-dark-900">
+          <div class="rounded-2xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-8">
             <div class="skeleton h-5 w-32 mb-6"></div>
             <div class="space-y-4">
               <div class="skeleton h-4 w-full"></div>
@@ -156,14 +158,14 @@
         <div v-else-if="resultData" class="space-y-6">
           <!-- Status Badge -->
           <div v-if="statusInfo" class="fade-up flex items-center justify-center mb-2">
-            <div class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-gray-200 bg-white/90 shadow-sm backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/90">
+            <div class="inline-flex items-center gap-2.5 rounded-full border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-5 py-2 shadow-[var(--shadow-panel)]">
               <span
                 class="w-2.5 h-2.5 rounded-full pulse-dot"
-                :class="statusInfo.isActive ? 'bg-emerald-500' : 'bg-rose-500'"
+                :class="statusInfo.isActive ? 'bg-[rgb(var(--brand-moss))]' : 'bg-rose-500'"
               ></span>
-              <span class="text-sm font-medium text-gray-900 dark:text-white">{{ statusInfo.label }}</span>
-              <span class="text-xs text-gray-400 dark:text-dark-500">|</span>
-              <span class="text-xs text-gray-500 dark:text-dark-400">{{ statusInfo.statusText }}</span>
+              <span class="text-sm font-semibold text-[rgb(var(--ink))]">{{ statusInfo.label }}</span>
+              <span class="text-xs text-[rgb(var(--line-strong))]">|</span>
+              <span class="font-mono text-xs font-medium text-[rgb(var(--ink-2))]">{{ statusInfo.statusText }}</span>
             </div>
           </div>
 
@@ -172,11 +174,11 @@
             <div
               v-for="(ring, i) in ringItems"
               :key="i"
-              class="fade-up rounded-2xl border border-gray-200 bg-white/90 p-8 backdrop-blur-sm transition-all duration-300 hover:shadow-lg dark:border-dark-700 dark:bg-dark-900/90"
+              class="fade-up rounded-2xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-7 transition-shadow hover:border-[rgb(var(--line-strong))] hover:shadow-[var(--shadow-card-hover)]"
               :class="`fade-up-delay-${Math.min(i + 1, 4)}`"
             >
               <div class="flex items-center justify-between mb-6">
-                <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--ink-3))]">
                   {{ ring.title }}
                 </h3>
                 <!-- Clock icon -->
@@ -199,34 +201,28 @@
                     <circle
                       class="progress-ring"
                       cx="80" cy="80" r="68" fill="none"
-                      :stroke="`url(#ring-grad-${i})`"
+                      :stroke="ringStrokeColor(i)"
                       stroke-width="10" stroke-linecap="round"
                       :stroke-dasharray="CIRCUMFERENCE.toFixed(2)"
                       :stroke-dashoffset="getRingOffset(ring)"
                     />
-                    <defs>
-                      <linearGradient :id="`ring-grad-${i}`" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" :stop-color="RING_GRADIENTS[i % 4].from"/>
-                        <stop offset="100%" :stop-color="RING_GRADIENTS[i % 4].to"/>
-                      </linearGradient>
-                    </defs>
                   </svg>
                   <div class="absolute inset-0 flex flex-col items-center justify-center">
                     <template v-if="ring.isBalance">
-                      <span class="text-2xl font-bold tabular-nums" :style="{ color: RING_GRADIENTS[i % 4].from }">
+                      <span class="text-2xl font-bold tabular-nums" :style="{ color: ringStrokeColor(i) }">
                         {{ ring.amount }}
                       </span>
                     </template>
                     <template v-else>
-                      <span class="text-3xl font-bold tabular-nums text-gray-900 dark:text-white">
+                      <span class="text-3xl font-bold tabular-nums text-[rgb(var(--ink))]">
                         {{ displayPcts[i] ?? 0 }}%
                       </span>
-                      <span class="text-xs text-gray-500 dark:text-dark-400 mt-0.5">{{ t('keyUsage.used') }}</span>
+                      <span class="mt-0.5 text-xs text-[rgb(var(--ink-3))]">{{ t('keyUsage.used') }}</span>
                       <span
                         class="text-sm font-semibold mt-1 tabular-nums"
-                        :style="{ color: RING_GRADIENTS[i % 4].from }"
+                        :style="{ color: ringStrokeColor(i) }"
                       >{{ ring.amount }}</span>
-                      <p v-if="ring.resetAt && formatResetTime(ring.resetAt)" class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 tabular-nums">
+                      <p v-if="ring.resetAt && formatResetTime(ring.resetAt)" class="mt-0.5 text-xs tabular-nums text-[rgb(var(--ink-3))]">
                         ⟳ {{ formatResetTime(ring.resetAt) }}
                       </p>
                     </template>
@@ -239,16 +235,16 @@
           <!-- Detail Card -->
           <div
             v-if="detailRows.length > 0"
-            class="fade-up fade-up-delay-3 rounded-2xl border border-gray-200 bg-white/90 backdrop-blur-sm overflow-hidden dark:border-dark-700 dark:bg-dark-900/90"
+            class="fade-up fade-up-delay-3 overflow-hidden rounded-2xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))]"
           >
-            <div class="px-8 py-5 border-b border-gray-200 dark:border-dark-700">
-              <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.detailInfo') }}</h3>
+            <div class="border-b border-[rgb(var(--line))] px-6 py-4 sm:px-8">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--ink-3))]">{{ t('keyUsage.detailInfo') }}</h3>
             </div>
-            <div class="divide-y divide-gray-100 dark:divide-dark-800">
+            <div class="divide-y divide-[rgb(var(--line))]">
               <div
                 v-for="(row, i) in detailRows"
                 :key="i"
-                class="px-8 py-4 flex items-center justify-between"
+                class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 sm:px-8"
               >
                 <div class="flex items-center gap-3">
                   <div class="w-8 h-8 rounded-lg flex items-center justify-center" :class="row.iconBg">
@@ -260,9 +256,9 @@
                       v-html="row.iconSvg"
                     ></svg>
                   </div>
-                  <span class="text-sm text-gray-700 dark:text-dark-200">{{ row.label }}</span>
+                  <span class="text-sm text-[rgb(var(--ink-2))]">{{ row.label }}</span>
                 </div>
-                <span class="text-sm font-semibold tabular-nums" :class="row.valueClass || 'text-gray-900 dark:text-white'">
+                <span class="text-sm font-semibold tabular-nums" :class="row.valueClass || 'text-[rgb(var(--ink))]'">
                   {{ row.value }}
                 </span>
               </div>
@@ -272,19 +268,19 @@
           <!-- Usage Stats Card -->
           <div
             v-if="usageStatCells.length > 0"
-            class="fade-up fade-up-delay-3 rounded-2xl border border-gray-200 bg-white/90 backdrop-blur-sm overflow-hidden dark:border-dark-700 dark:bg-dark-900/90"
+            class="fade-up fade-up-delay-3 overflow-hidden rounded-2xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))]"
           >
-            <div class="px-8 py-5 border-b border-gray-200 dark:border-dark-700">
-              <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.tokenStats') }}</h3>
+            <div class="border-b border-[rgb(var(--line))] px-6 py-4 sm:px-8">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--ink-3))]">{{ t('keyUsage.tokenStats') }}</h3>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-gray-100 dark:bg-dark-800">
+            <div class="grid grid-cols-2 gap-px bg-[rgb(var(--line))] md:grid-cols-4">
               <div
                 v-for="(cell, i) in usageStatCells"
                 :key="i"
-                class="bg-white px-6 py-4 dark:bg-dark-900"
+                class="bg-[rgb(var(--surface))] px-5 py-4 sm:px-6"
               >
-                <div class="text-xs text-gray-500 dark:text-dark-400 mb-1">{{ cell.label }}</div>
-                <div class="text-sm font-semibold tabular-nums text-gray-900 dark:text-white">{{ cell.value }}</div>
+                <div class="mb-1 text-xs text-[rgb(var(--ink-3))]">{{ cell.label }}</div>
+                <div class="text-sm font-semibold tabular-nums text-[rgb(var(--ink))]">{{ cell.value }}</div>
               </div>
             </div>
           </div>
@@ -292,19 +288,20 @@
           <!-- Daily Usage Table -->
           <div
             v-if="showDailyUsage"
-            class="fade-up fade-up-delay-4 rounded-2xl border border-gray-200 bg-white/90 backdrop-blur-sm overflow-hidden dark:border-dark-700 dark:bg-dark-900/90"
+            class="fade-up fade-up-delay-4 overflow-hidden rounded-2xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))]"
           >
-            <div class="flex flex-col gap-3 px-8 py-5 border-b border-gray-200 dark:border-dark-700 sm:flex-row sm:items-center sm:justify-between">
-              <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.dailyDetail') }}</h3>
-              <div class="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 dark:border-dark-700 dark:bg-dark-950">
+            <div class="flex flex-col gap-3 border-b border-[rgb(var(--line))] px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--ink-3))]">{{ t('keyUsage.dailyDetail') }}</h3>
+              <div class="inline-flex rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface-2))] p-0.5">
                 <button
                   v-for="option in dailyUsageOptions"
                   :key="option.value"
+                  type="button"
                   @click="setDailyUsageDays(option.value)"
                   class="min-w-12 rounded-md px-3 py-1.5 text-xs font-medium transition-colors"
                   :class="dailyUsageDays === option.value
-                    ? 'bg-primary-500 text-white'
-                    : 'text-gray-600 hover:bg-gray-100 dark:text-dark-300 dark:hover:bg-dark-800'"
+                    ? 'bg-[rgb(var(--surface))] font-semibold text-[rgb(var(--ink))] shadow-sm'
+                    : 'text-[rgb(var(--ink-2))] hover:text-[rgb(var(--ink))]'"
                 >
                   {{ option.label }}
                 </button>
@@ -313,7 +310,7 @@
             <div v-if="dailyUsageRows.length > 0" class="overflow-x-auto">
               <table class="w-full">
                 <thead>
-                  <tr class="border-b border-gray-200 bg-gray-50 dark:border-dark-700 dark:bg-dark-950">
+                  <tr class="border-b border-[rgb(var(--line))] bg-[rgb(var(--table-head))]">
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.date') }}</th>
                     <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.requests') }}</th>
                     <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.inputTokens') }}</th>
@@ -327,9 +324,9 @@
                   <tr
                     v-for="row in dailyUsageRows"
                     :key="row.date"
-                    class="border-b border-gray-100 last:border-b-0 dark:border-dark-800"
+                    class="border-b border-[rgb(var(--line))] last:border-b-0"
                   >
-                    <td class="px-4 py-3 text-sm font-medium whitespace-nowrap text-gray-900 dark:text-white">{{ row.date }}</td>
+                    <td class="whitespace-nowrap px-4 py-3 font-mono text-xs font-medium text-[rgb(var(--ink))]">{{ row.date }}</td>
                     <td class="px-4 py-3 text-sm tabular-nums text-right text-gray-700 dark:text-dark-200">{{ fmtNum(row.requests) }}</td>
                     <td class="px-4 py-3 text-sm tabular-nums text-right text-gray-700 dark:text-dark-200">{{ fmtNum(row.input_tokens) }}</td>
                     <td class="px-4 py-3 text-sm tabular-nums text-right text-gray-700 dark:text-dark-200">{{ fmtNum(row.output_tokens) }}</td>
@@ -348,15 +345,15 @@
           <!-- Model Stats Table -->
           <div
             v-if="modelStats.length > 0"
-            class="fade-up fade-up-delay-4 rounded-2xl border border-gray-200 bg-white/90 backdrop-blur-sm overflow-hidden dark:border-dark-700 dark:bg-dark-900/90"
+            class="fade-up fade-up-delay-4 overflow-hidden rounded-2xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))]"
           >
-            <div class="px-8 py-5 border-b border-gray-200 dark:border-dark-700">
-              <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.modelStats') }}</h3>
+            <div class="border-b border-[rgb(var(--line))] px-6 py-4 sm:px-8">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--ink-3))]">{{ t('keyUsage.modelStats') }}</h3>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full">
                 <thead>
-                  <tr class="border-b border-gray-200 bg-gray-50 dark:border-dark-700 dark:bg-dark-950">
+                  <tr class="border-b border-[rgb(var(--line))] bg-[rgb(var(--table-head))]">
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.model') }}</th>
                     <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.requests') }}</th>
                     <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.inputTokens') }}</th>
@@ -371,9 +368,9 @@
                   <tr
                     v-for="(m, i) in modelStats"
                     :key="i"
-                    class="border-b border-gray-100 last:border-b-0 dark:border-dark-800"
+                    class="border-b border-[rgb(var(--line))] last:border-b-0"
                   >
-                    <td class="px-4 py-3 text-sm font-medium whitespace-nowrap text-gray-900 dark:text-white">{{ m.model || '-' }}</td>
+                    <td class="whitespace-nowrap px-4 py-3 font-mono text-xs font-medium text-[rgb(var(--ink))]">{{ m.model || '-' }}</td>
                     <td class="px-4 py-3 text-sm tabular-nums text-right text-gray-700 dark:text-dark-200">{{ fmtNum(m.requests) }}</td>
                     <td class="px-4 py-3 text-sm tabular-nums text-right text-gray-700 dark:text-dark-200">{{ fmtNum(m.input_tokens) }}</td>
                     <td class="px-4 py-3 text-sm tabular-nums text-right text-gray-700 dark:text-dark-200">{{ fmtNum(m.output_tokens) }}</td>
@@ -426,12 +423,15 @@ import Icon from '@/components/icons/Icon.vue'
 import { buildGatewayUrl } from '@/api/client'
 import { formatDateLocalInput } from '@/utils/format'
 import { sanitizeUrl } from '@/utils/url'
+import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
 import '@/styles/patrick-public.css'
 
 const { t, locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const appStore = useAppStore()
+const palette = useChartPalette()
+const chartTheme = useChartTheme()
 const subscriptionFeatureEnabled = computed(() => resolveFeatureFlag(appStore.cachedPublicSettings, FeatureFlags.subscription))
 
 // ==================== Public Documentation ====================
@@ -520,12 +520,10 @@ function setDailyUsageDays(days: 7 | 30 | 90) {
 // ==================== Ring Animation ====================
 
 const CIRCUMFERENCE = 2 * Math.PI * 68
-const RING_GRADIENTS = [
-  { from: '#14b8a6', to: '#5eead4' },
-  { from: '#6366F1', to: '#A5B4FC' },
-  { from: '#10B981', to: '#6EE7B7' },
-  { from: '#F59E0B', to: '#FCD34D' },
-]
+const ringPaletteSlots = [2, 0, 3, 6] as const
+function ringStrokeColor(index: number): string {
+  return palette.value[ringPaletteSlots[index % ringPaletteSlots.length]] || palette.value[0]
+}
 
 const ringAnimated = ref(false)
 const displayPcts = ref<number[]>([])
@@ -539,7 +537,7 @@ onBeforeUnmount(() => {
   if (ringAnimationFrame) cancelAnimationFrame(ringAnimationFrame)
 })
 
-const ringTrackColor = '#e7eef6'
+const ringTrackColor = computed(() => chartTheme.value.grid)
 
 interface RingItem {
   title: string
@@ -947,8 +945,8 @@ onUnmounted(() => {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .input-ring:focus {
-  box-shadow: 0 0 0 3px rgba(53, 103, 173, 0.16);
-  border-color: #7398c5;
+  box-shadow: 0 0 0 3px rgb(var(--focus-ring) / .16);
+  border-color: rgb(var(--focus-ring));
   outline: none;
 }
 
@@ -965,7 +963,7 @@ onUnmounted(() => {
   100% { background-position: 200% 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background: linear-gradient(90deg, rgb(var(--surface-2)) 25%, rgb(var(--line)) 50%, rgb(var(--surface-2)) 75%);
   background-size: 200% 100%;
   animation: shimmer-kv 1.8s ease-in-out infinite;
   border-radius: 8px;
@@ -973,16 +971,16 @@ onUnmounted(() => {
 
 /* Fade up animation */
 @keyframes fade-up-kv {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .fade-up {
-  animation: fade-up-kv 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: fade-up-kv 0.36s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
-.fade-up-delay-1 { animation-delay: 0.1s; opacity: 0; }
-.fade-up-delay-2 { animation-delay: 0.2s; opacity: 0; }
-.fade-up-delay-3 { animation-delay: 0.3s; opacity: 0; }
-.fade-up-delay-4 { animation-delay: 0.4s; opacity: 0; }
+.fade-up-delay-1 { animation-delay: 0.05s; opacity: 0; }
+.fade-up-delay-2 { animation-delay: 0.1s; opacity: 0; }
+.fade-up-delay-3 { animation-delay: 0.15s; opacity: 0; }
+.fade-up-delay-4 { animation-delay: 0.2s; opacity: 0; }
 
 /* Pulse dot */
 @keyframes pulse-dot-kv {

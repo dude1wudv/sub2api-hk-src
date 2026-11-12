@@ -1312,12 +1312,12 @@ func TestProxyOpenAIWSHTTPBridgeTurnDoesNotReplayCapacityAfterSemanticOutput(t *
 func TestProxyOpenAIWSHTTPBridgeTurnKeepaliveWriteFailure(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	for _, tc := range []struct {
-		name      string
-		writeErr  error
-		wantDrain bool
+		name             string
+		writeErr         error
+		clientDisconnect bool
 	}{
 		{name: "write error", writeErr: errors.New("downstream write failed")},
-		{name: "client disconnect", writeErr: io.EOF, wantDrain: true},
+		{name: "client disconnect", writeErr: io.EOF, clientDisconnect: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			body := strings.Join([]string{
@@ -1352,13 +1352,17 @@ func TestProxyOpenAIWSHTTPBridgeTurnKeepaliveWriteFailure(t *testing.T) {
 
 			require.Len(t, writes, 1)
 			require.JSONEq(t, `{"type":"keepalive"}`, string(writes[0]))
-			if tc.wantDrain {
+			if tc.clientDisconnect {
 				require.NoError(t, err)
 				require.NotNil(t, result)
 				require.Equal(t, 3, result.Usage.InputTokens)
 				require.Equal(t, 2, result.Usage.OutputTokens)
 			} else {
-				require.Nil(t, result)
+				require.NotNil(t, result)
+				require.Equal(t, 3, result.Usage.InputTokens)
+				require.Equal(t, 2, result.Usage.OutputTokens)
+				require.False(t, result.Usage.InputTokensEstimated)
+				require.False(t, result.Usage.OutputTokensEstimated)
 				require.ErrorIs(t, err, tc.writeErr)
 				var turnErr *openAIWSIngressTurnError
 				require.ErrorAs(t, err, &turnErr)
@@ -2389,4 +2393,42 @@ func TestProxyOpenAIWSHTTPBridgeTurn_StagesCodexFingerprint(t *testing.T) {
 
 	off := newTestOAuthAccount(7102, map[string]any{"codex_fingerprint_mode": "off"})
 	require.Empty(t, run(off).Header.Get("session_id"), "accounts without convergence get no session_id")
+}
+
+func TestProxyOpenAIWSHTTPBridgeTurnKeepaliveWriteFailureClosesSilentUpstream(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	reader, writer := io.Pipe()
+	defer func() { require.NoError(t, writer.Close()) }()
+	written := make(chan error, 1)
+	go func() { _, err := io.WriteString(writer, "data: {\"type\":\"keepalive\"}\n\n"); written <- err }()
+	upstream := &httpUpstreamRecorder{resp: &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: reader}}
+	svc := &OpenAIGatewayService{cfg: &config.Config{}, httpUpstream: upstream}
+	account := &Account{ID: 14, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Concurrency: 1}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
+	payload := []byte(`{"type":"response.create","model":"gpt-5","input":"hello world"}`)
+	writeErr := errors.New("downstream write failed")
+	type outcome struct {
+		result *OpenAIForwardResult
+		err    error
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		result, err := svc.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, account, "sk-test", payload, len(payload), "gpt-5", "", "", "", "", 1, func([]byte) error { return writeErr })
+		done <- outcome{result, err}
+	}()
+	select {
+	case got := <-done:
+		require.ErrorIs(t, got.err, writeErr)
+		require.NotNil(t, got.result)
+		require.True(t, got.result.ClientDisconnect)
+		require.Positive(t, got.result.Usage.InputTokens)
+		require.True(t, got.result.Usage.InputTokensEstimated)
+		require.Zero(t, got.result.Usage.OutputTokens)
+	case <-time.After(time.Second):
+		t.Fatal("keepalive write failure did not stop silent upstream")
+	}
+	require.NoError(t, <-written)
+	_, err := writer.Write([]byte("late usage"))
+	require.Error(t, err, "upstream body must already be closed")
 }

@@ -1499,9 +1499,9 @@ func TestHandleClaudeStreamingResponse_ThoughtsTokenCount(t *testing.T) {
 
 // --- 流式客户端断开检测测试 ---
 
-// TestStreamUpstreamResponse_ClientDisconnectDrainsUsage
-// 验证：客户端写入失败后，streamUpstreamResponse 继续读取上游以收集 usage
-func TestStreamUpstreamResponse_ClientDisconnectDrainsUsage(t *testing.T) {
+// TestStreamUpstreamResponse_ClientDisconnectClosesUpstream
+// 验证：客户端写入失败后立即关闭上游，不等待尚未到达的 usage
+func TestStreamUpstreamResponse_ClientDisconnectClosesUpstream(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	svc := newAntigravityTestService(&config.Config{
 		Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize},
@@ -1510,16 +1510,16 @@ func TestStreamUpstreamResponse_ClientDisconnectDrainsUsage(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
-	c.Writer = &antigravityFailingWriter{ResponseWriter: c.Writer, failAfter: 0}
+	disconnected := make(chan struct{})
+	c.Writer = &antigravitySignalFailWriter{ResponseWriter: c.Writer, signal: disconnected}
 
 	pr, pw := io.Pipe()
 	resp := &http.Response{StatusCode: http.StatusOK, Body: pr, Header: http.Header{}}
 
 	go func() {
 		defer func() { _ = pw.Close() }()
-		fmt.Fprintln(pw, `event: message_start`)
 		fmt.Fprintln(pw, `data: {"type":"message_start","message":{"usage":{"input_tokens":10}}}`)
-		fmt.Fprintln(pw, "")
+		<-disconnected
 		fmt.Fprintln(pw, `event: message_delta`)
 		fmt.Fprintln(pw, `data: {"type":"message_delta","usage":{"output_tokens":20}}`)
 		fmt.Fprintln(pw, "")
@@ -1531,7 +1531,9 @@ func TestStreamUpstreamResponse_ClientDisconnectDrainsUsage(t *testing.T) {
 	require.NotNil(t, result)
 	require.True(t, result.clientDisconnect)
 	require.NotNil(t, result.usage)
-	require.Equal(t, 20, result.usage.OutputTokens)
+	require.Zero(t, result.usage.OutputTokens)
+	_, writeErr := pw.Write([]byte("late usage"))
+	require.Error(t, writeErr)
 }
 
 // TestStreamUpstreamResponse_ContextCanceled
@@ -2183,4 +2185,14 @@ func TestAntigravityGatewayService_ForwardGemini_StreamAndFunctionResponseFollow
 	firstPart, ok := parts[0].(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, "It is sunny in Tokyo.", firstPart["text"])
+}
+
+type antigravitySignalFailWriter struct {
+	gin.ResponseWriter
+	signal chan struct{}
+}
+
+func (w *antigravitySignalFailWriter) Write(p []byte) (int, error) {
+	close(w.signal)
+	return 0, io.ErrClosedPipe
 }

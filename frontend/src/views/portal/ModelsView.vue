@@ -59,8 +59,8 @@ onBeforeUnmount(() => request?.abort())
 </template>
 
 <style scoped>
-.portal-models-public { min-height: 100dvh; background: rgb(var(--surface)); }
-.portal-models-header { width: 86%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 28px 0 48px; }
+.portal-models-public { min-height: 100dvh; background: rgb(var(--canvas)); }
+.portal-models-header { width: min(1160px, calc(100% - 48px)); margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px 0; border-bottom: 1px solid rgb(var(--line)); }
 .portal-models-public .portal-page { max-width: 1160px; }
-@media (max-width: 767px) { .portal-models-header { width: calc(100% - 32px); padding-block: 22px 30px; } }
+@media (max-width: 767px) { .portal-models-header { width: calc(100% - 32px); padding-block: 16px; } }
 </style>

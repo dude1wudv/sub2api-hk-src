@@ -108,14 +108,11 @@ onUnmounted(() => {
 
 /* 表格滚动容器 - 保留表体滚动、sticky 与横向滚动行为，仅替换视觉 */
 .table-scroll-container {
-  @apply flex flex-col overflow-hidden h-full rounded-xl border;
+  @apply flex flex-col overflow-hidden h-full border;
+  border-radius: var(--radius-card);
   border-color: rgb(var(--line));
-  background: rgb(var(--surface));
-  box-shadow: 0 1px 2px 0 rgb(38 36 31 / 0.03);
-}
-
-.dark .table-scroll-container {
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  background: rgb(var(--table-surface, var(--surface)));
+  box-shadow: var(--shadow-panel);
 }
 
 .table-scroll-container :deep(.table-wrapper) {
@@ -139,13 +136,18 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  @apply px-4 py-2.5 text-left text-sm font-semibold;
+  @apply px-4 py-2.5 text-left font-semibold;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
   color: rgb(var(--ink-2));
   border-bottom: 1px solid rgb(var(--line));
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-4 text-sm;
+  @apply px-4;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
   color: rgb(var(--ink));
   border-bottom: 1px solid rgb(var(--line));
 }

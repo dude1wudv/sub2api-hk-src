@@ -377,7 +377,13 @@ func intervalToModelPricing(iv *PricingInterval, base *ModelPricing, chPricing *
 	if iv.CacheReadPrice != nil {
 		pricing.CacheReadPricePerTokenPriority = channelTierOverridePrice(pricing.CacheReadPricePerToken, pricing.CacheReadPricePerTokenPriority, *iv.CacheReadPrice)
 		pricing.CacheReadPricePerToken = *iv.CacheReadPrice
+		pricing.CacheReadPriceExplicit = true
+		pricing.CacheReadPricePriorityExplicit = *iv.CacheReadPrice == 0 || pricing.CacheReadPricePerTokenPriority > 0
 	} else if iv.CacheReadMultiplier != nil {
+		if *iv.CacheReadMultiplier == 0 {
+			pricing.CacheReadPriceExplicit = true
+			pricing.CacheReadPricePriorityExplicit = true
+		}
 		pricing.CacheReadPricePerToken = applyMultiplier(pricing.CacheReadPricePerToken, iv.CacheReadMultiplier)
 		pricing.CacheReadPricePerTokenPriority = applyMultiplier(pricing.CacheReadPricePerTokenPriority, iv.CacheReadMultiplier)
 	}

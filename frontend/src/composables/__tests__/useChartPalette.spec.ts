@@ -37,19 +37,19 @@ describe('chart palette', () => {
     expect(palette).toHaveLength(10)
     expect(palette.every(color => /^#[0-9a-f]{6}$/.test(color))).toBe(true)
     expect(`${palette[0]}20`).toMatch(/^#[0-9a-f]{8}$/)
-    expect(theme.tooltip.backgroundColor).toBe('#f4f1e8')
-    expect(theme.tooltip.titleColor).toBe('#22231f')
-    expect(theme.tooltip.borderColor).toBe('#cdcdbf')
+    expect(theme.tooltip.backgroundColor).toBe('#1e293b')
+    expect(theme.tooltip.titleColor).toBe('#f8fafc')
+    expect(theme.tooltip.borderColor).toBe('#334155')
   })
 
   it('uses the light tooltip surface when a root token is absent', () => {
     useColorMode().setMode('light')
     vi.spyOn(window, 'getComputedStyle').mockReturnValue({ getPropertyValue: () => '' } as unknown as CSSStyleDeclaration)
     const theme = useChartTheme().value
-    expect(theme.tooltip.backgroundColor).toBe('#fffffc')
-    expect(theme.tooltip.titleColor).toBe('#22231f')
-    expect(theme.tooltip.bodyColor).toBe('#22231f')
-    expect(theme.tooltip.borderColor).toBe('#e8e4da')
+    expect(theme.tooltip.backgroundColor).toBe('#ffffff')
+    expect(theme.tooltip.titleColor).toBe('#0f172a')
+    expect(theme.tooltip.bodyColor).toBe('#0f172a')
+    expect(theme.tooltip.borderColor).toBe('#cbd5e1')
   })
 
   it('declares every chart root token as six-digit hex in both modes', () => {

@@ -1,12 +1,13 @@
-/* Payment and callback pages share the b.ai palette; payment state stays unchanged. */
+/* Payment, OAuth callback and consent surfaces — Precision Telemetry & Architectural Slate. */
 .patrick-surface.patrick-flow {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   min-height: 100svh;
   color: rgb(var(--ink));
-  background: rgb(var(--canvas));
-  font: 14px/1.6 var(--font-sans);
+  background-color: rgb(var(--canvas));
+  background-image: radial-gradient(ellipse 80% 340px at 50% 0%, rgb(var(--brand-moss) / .05), transparent 70%);
+  font: 14.5px/1.6 var(--font-sans);
 }
 
 .patrick-flow .pf-header {
@@ -15,33 +16,39 @@
   justify-content: space-between;
   gap: 24px;
   width: min(1100px, 100%);
-  min-height: 88px;
+  min-height: 68px;
   margin-inline: auto;
-  padding: 24px 32px;
+  padding: 16px 32px;
+  border-bottom: 1px solid rgb(var(--line));
 }
 
-.patrick-flow .pf-brand-link { display: inline-flex; flex-shrink: 0; border-radius: 6px; }
-.patrick-flow .pf-brand-link .patrick-brand__mark { width: 32px; height: 34px; }
-.patrick-flow .pf-brand-link .patrick-brand__mark svg { width: 26px; height: 26px; }
-.patrick-flow .pf-brand-link .patrick-brand__name { font-size: 24px; }
-.patrick-flow .pf-domain { color: rgb(var(--ink-3)); font-size: 13px; }
-.patrick-flow .pf-content { flex: 1; width: 100%; margin-inline: auto; padding: 40px 24px 72px; }
+.patrick-flow .pf-brand-link { display: inline-flex; flex-shrink: 0; border-radius: 8px; }
+.patrick-flow .pf-domain {
+  padding: 3px 9px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 6px;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink-3));
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.patrick-flow .pf-content { flex: 1; width: 100%; margin-inline: auto; padding: 40px 24px 72px; animation: page-enter var(--motion-page) var(--motion-ease) both; }
 .patrick-flow .pf-content--callback { max-width: 672px; }
 .patrick-flow .pf-content--payment { max-width: 560px; }
 .patrick-flow .pf-content--result { display: flex; flex-direction: column; justify-content: center; max-width: 512px; padding-bottom: 112px; }
-.patrick-flow .pf-detail-panel { color: rgb(var(--ink)); background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 12px; box-shadow: none; }
-.patrick-flow .pf-content :is(h1, h2) { color: rgb(var(--ink)); font-family: var(--font-sans); font-size: 22px; font-weight: 400; }
+.patrick-flow .pf-detail-panel { color: rgb(var(--ink)); background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); box-shadow: var(--shadow-panel); }
+.patrick-flow .pf-content :is(h1, h2) { color: rgb(var(--ink)); font-family: var(--font-sans); font-size: 21px; font-weight: 650; letter-spacing: -0.02em; }
 .patrick-flow .pf-content :is([class*="backdrop-blur"], [class*="backdrop-filter"]) { backdrop-filter: none; }
 .patrick-flow .pf-content [class*="bg-gradient-"] { background: rgb(var(--surface-2)); }
 .patrick-flow .pf-content [class*="bg-gradient-"] :is([class~="text-white"], [class*="text-indigo-"], [class*="text-blue-"]) { color: rgb(var(--ink)); }
 /* The embedded Stripe page does not use .patrick-flow, but has the same amount header. */
 .patrick-surface [class*="from-[#635bff]"] { background: rgb(var(--surface-2)); }
 .patrick-surface [class*="from-[#635bff]"] :is([class~="text-white"], [class*="text-indigo-"]) { color: rgb(var(--ink)); }
-:root body .patrick-surface .btn-stripe { border: 1px solid rgb(var(--ink)); background: rgb(var(--action-bg)); color: rgb(var(--action-text)); box-shadow: none; }
-:root body .patrick-surface .btn-stripe:not(:disabled):hover { background: rgb(var(--action-hover)); color: rgb(var(--action-text)); box-shadow: none; }
+:root body .patrick-surface .btn-stripe { border: 1px solid rgb(var(--action-bg)); border-radius: var(--radius-control); background: rgb(var(--action-bg)); color: rgb(var(--action-text)); box-shadow: 0 1px 2px rgb(15 23 42 / .1); }
+:root body .patrick-surface .btn-stripe:not(:disabled):hover { background: rgb(var(--action-hover)); border-color: rgb(var(--action-hover)); color: rgb(var(--action-text)); }
 
 @media (max-width: 540px) {
-  .patrick-flow .pf-header { min-height: 76px; gap: 16px; padding: 20px; }
+  .patrick-flow .pf-header { min-height: 62px; gap: 16px; padding: 14px 18px; }
   .patrick-flow .pf-domain { display: none; }
   .patrick-flow .pf-content { padding: 24px 18px 48px; }
   .patrick-flow .pf-content--result { padding-bottom: 76px; }

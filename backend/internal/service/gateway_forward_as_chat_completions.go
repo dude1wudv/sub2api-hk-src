@@ -32,7 +32,10 @@ func (s *GatewayService) ForwardAsChatCompletions(
 	account *Account,
 	body []byte,
 	parsed *ParsedRequest,
-) (*ForwardResult, error) {
+) (out *ForwardResult, retErr error) {
+	capture := newIncompleteForwardCapture(ctx, c, body)
+	defer capture.finishForward(&out, &retErr)
+
 	startTime := time.Now()
 
 	// 1. Parse Chat Completions request
@@ -135,7 +138,9 @@ func (s *GatewayService) ForwardAsChatCompletions(
 	reasoningEffort = ApplyThinkingEnabledFallback(reasoningEffort, forwardedBody, mappedModel)
 
 	// 11. Send request
-	resp, err := s.httpUpstream.DoWithTLS(upstreamReq, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
+	resp, err := capture.Do(upstreamReq, func(request *http.Request) (*http.Response, error) {
+		return s.httpUpstream.DoWithTLS(request, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
+	})
 	if err != nil {
 		if resp != nil && resp.Body != nil {
 			_ = resp.Body.Close()

@@ -56,10 +56,10 @@ describe('theme surfaces', () => {
     return (Math.max(a, b) + .05) / (Math.min(a, b) + .05)
   }
 
-  it('uses light chart tooltip surfaces and keeps both modes readable', () => {
-    expect(light['--chart-tooltip-bg']).toBe('#fffffc')
-    expect(light['--chart-tooltip-text']).toBe('#22231f')
-    expect(light['--chart-tooltip-border']).toBe('#e8e4da')
+  it('uses crisp chart tooltip surfaces and keeps both modes readable', () => {
+    expect(light['--chart-tooltip-bg']).toBe('#ffffff')
+    expect(light['--chart-tooltip-text']).toBe('#0f172a')
+    expect(light['--chart-tooltip-border']).toBe('#cbd5e1')
     expect(hexContrast(light['--chart-tooltip-text'], light['--chart-tooltip-bg'])).toBeGreaterThanOrEqual(4.5)
     expect(hexContrast(dark['--chart-tooltip-text'], dark['--chart-tooltip-bg'])).toBeGreaterThanOrEqual(4.5)
   })

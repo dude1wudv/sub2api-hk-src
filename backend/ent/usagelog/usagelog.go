@@ -48,6 +48,12 @@ const (
 	FieldInputTokens = "input_tokens"
 	// FieldOutputTokens holds the string denoting the output_tokens field in the database.
 	FieldOutputTokens = "output_tokens"
+	// FieldInputTokensEstimated holds the string denoting the input_tokens_estimated field in the database.
+	FieldInputTokensEstimated = "input_tokens_estimated"
+	// FieldCacheReadTokensEstimated holds the string denoting the cache_read_tokens_estimated field in the database.
+	FieldCacheReadTokensEstimated = "cache_read_tokens_estimated"
+	// FieldUsageEstimationReason holds the string denoting the usage_estimation_reason field in the database.
+	FieldUsageEstimationReason = "usage_estimation_reason"
 	// FieldOutputTokensEstimated holds the string denoting the output_tokens_estimated field in the database.
 	FieldOutputTokensEstimated = "output_tokens_estimated"
 	// FieldCacheCreationTokens holds the string denoting the cache_creation_tokens field in the database.
@@ -183,6 +189,9 @@ var Columns = []string{
 	FieldSubscriptionID,
 	FieldInputTokens,
 	FieldOutputTokens,
+	FieldInputTokensEstimated,
+	FieldCacheReadTokensEstimated,
+	FieldUsageEstimationReason,
 	FieldOutputTokensEstimated,
 	FieldCacheCreationTokens,
 	FieldCacheReadTokens,
@@ -249,6 +258,14 @@ var (
 	DefaultInputTokens int
 	// DefaultOutputTokens holds the default value on creation for the "output_tokens" field.
 	DefaultOutputTokens int
+	// DefaultInputTokensEstimated holds the default value on creation for the "input_tokens_estimated" field.
+	DefaultInputTokensEstimated bool
+	// DefaultCacheReadTokensEstimated holds the default value on creation for the "cache_read_tokens_estimated" field.
+	DefaultCacheReadTokensEstimated bool
+	// DefaultUsageEstimationReason holds the default value on creation for the "usage_estimation_reason" field.
+	DefaultUsageEstimationReason string
+	// UsageEstimationReasonValidator is a validator for the "usage_estimation_reason" field. It is called by the builders before save.
+	UsageEstimationReasonValidator func(string) error
 	// DefaultOutputTokensEstimated holds the default value on creation for the "output_tokens_estimated" field.
 	DefaultOutputTokensEstimated bool
 	// DefaultCacheCreationTokens holds the default value on creation for the "cache_creation_tokens" field.
@@ -398,6 +415,21 @@ func ByInputTokens(opts ...sql.OrderTermOption) OrderOption {
 // ByOutputTokens orders the results by the output_tokens field.
 func ByOutputTokens(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldOutputTokens, opts...).ToFunc()
+}
+
+// ByInputTokensEstimated orders the results by the input_tokens_estimated field.
+func ByInputTokensEstimated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldInputTokensEstimated, opts...).ToFunc()
+}
+
+// ByCacheReadTokensEstimated orders the results by the cache_read_tokens_estimated field.
+func ByCacheReadTokensEstimated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCacheReadTokensEstimated, opts...).ToFunc()
+}
+
+// ByUsageEstimationReason orders the results by the usage_estimation_reason field.
+func ByUsageEstimationReason(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUsageEstimationReason, opts...).ToFunc()
 }
 
 // ByOutputTokensEstimated orders the results by the output_tokens_estimated field.

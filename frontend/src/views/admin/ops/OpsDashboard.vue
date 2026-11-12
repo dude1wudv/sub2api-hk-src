@@ -1,9 +1,9 @@
 <template>
-  <div class="admin-page admin-page--analysis" data-admin-page="ops" :class="isFullscreen ? 'flex min-h-screen flex-col justify-center bg-gray-50 dark:bg-dark-950' : ''">
+  <div class="admin-page admin-page--analysis ops-dashboard-page" data-admin-page="ops" :class="isFullscreen ? 'flex min-h-screen flex-col justify-center bg-[rgb(var(--canvas))]' : ''">
     <div :class="[isFullscreen ? 'p-4 md:p-6' : '', 'space-y-6 pb-12']">
       <div
         v-if="errorMessage"
-        class="rounded-2xl bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400"
+        class="rounded-2xl border border-red-200/80 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300"
       >
         {{ errorMessage }}
       </div>
@@ -862,3 +862,13 @@ watch(showSettingsDialog, async (show) => {
   }
 })
 </script>
+
+<style scoped>
+.ops-dashboard-page :deep(.rounded-3xl) {
+  border-radius: var(--radius-card);
+  border: 1px solid rgb(var(--line));
+  background-color: rgb(var(--surface));
+  box-shadow: var(--shadow-panel);
+  --tw-ring-shadow: 0 0 #0000;
+}
+</style>

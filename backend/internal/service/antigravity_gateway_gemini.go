@@ -41,7 +41,13 @@ func WithForwardGeminiSession(groupID int64, sessionHash string) ForwardGeminiOp
 	}
 }
 
-func (s *AntigravityGatewayService) ForwardGemini(ctx context.Context, c *gin.Context, account *Account, originalModel string, action string, stream bool, body []byte, isStickySession bool, options ...ForwardGeminiOption) (*ForwardResult, error) {
+func (s *AntigravityGatewayService) ForwardGemini(ctx context.Context, c *gin.Context, account *Account, originalModel string, action string, stream bool, body []byte, isStickySession bool, options ...ForwardGeminiOption) (out *ForwardResult, retErr error) {
+	capture := newIncompleteForwardCapture(ctx, c, body)
+	capture.model, capture.stream = originalModel, stream
+	capture.reasoningEffort = extractGeminiReasoningEffortFromBody(body)
+	capture.imageInputSize = s.extractImageInputSize(body)
+	defer capture.finishForward(&out, &retErr)
+
 	beginUpstreamResponseModelObservation(c)
 	startTime := time.Now()
 	forwardOpts := forwardGeminiOptions{}
@@ -158,6 +164,7 @@ func (s *AntigravityGatewayService) ForwardGemini(ctx context.Context, c *gin.Co
 
 	// 执行带重试的请求
 	result, err := s.antigravityRetryLoop(antigravityRetryLoopParams{
+		usageCapture:    capture,
 		ctx:             ctx,
 		prefix:          prefix,
 		account:         account,
@@ -214,7 +221,9 @@ func (s *AntigravityGatewayService) ForwardGemini(ctx context.Context, c *gin.Co
 				if err == nil {
 					fallbackReq, err := antigravity.NewAPIRequest(ctx, upstreamAction, accessToken, fallbackWrapped)
 					if err == nil {
-						fallbackResp, err := s.httpUpstream.Do(fallbackReq, proxyURL, account.ID, account.Concurrency)
+						fallbackResp, err := capture.Do(fallbackReq, func(request *http.Request) (*http.Response, error) {
+							return s.httpUpstream.Do(request, proxyURL, account.ID, account.Concurrency)
+						})
 						if err == nil && fallbackResp.StatusCode < 400 {
 							_ = resp.Body.Close()
 							resp = fallbackResp
@@ -259,6 +268,7 @@ func (s *AntigravityGatewayService) ForwardGemini(ctx context.Context, c *gin.Co
 			retryWrappedBody, wrapErr := s.wrapV1InternalRequest(projectID, mappedModel, cleanedInjectedBody)
 			if wrapErr == nil {
 				retryResult, retryErr := s.antigravityRetryLoop(antigravityRetryLoopParams{
+					usageCapture:    capture,
 					ctx:             ctx,
 					prefix:          prefix,
 					account:         account,

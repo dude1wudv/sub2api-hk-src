@@ -10,6 +10,7 @@
       class="select-trigger flex cursor-pointer list-none items-center justify-between gap-1.5 text-left"
       :class="[
         isOpen ? 'select-trigger-open' : '',
+        modelValue.length > 0 ? 'select-trigger-filtered' : '',
         compact ? 'h-8 rounded-lg !px-2 !py-1 text-xs' : 'h-[42px]',
       ]"
       :aria-expanded="isOpen"
@@ -18,12 +19,12 @@
       @click="toggleOpen"
     >
       <span
-        class="select-value min-w-0 truncate"
+        class="select-value min-w-0 truncate tabular-nums"
         :class="compact ? 'max-w-[5.5rem] sm:max-w-[6.5rem]' : 'max-w-[11rem]'"
       >
         {{ t('channelMonitorV2.filters.labelValue', { label, value: selectionLabel }) }}
       </span>
-      <span class="select-icon shrink-0 text-gray-400 transition-transform" :class="isOpen ? 'rotate-180' : ''">
+      <span class="select-icon shrink-0 transition-transform" :class="isOpen ? 'rotate-180' : ''">
         <Icon name="chevronDown" size="sm" />
       </span>
     </button>
@@ -33,7 +34,7 @@
         <div
           v-if="isOpen"
           ref="dropdownRef"
-          class="select-dropdown-portal dropdown filter-dropdown"
+          class="select-dropdown-portal dropdown ui-popover filter-dropdown"
           :class="[instanceId]"
           :style="dropdownStyle"
           role="listbox"
@@ -43,7 +44,7 @@
         >
           <button
             type="button"
-            class="dropdown-item select-option select-option-group flex w-full items-center justify-between border-b border-gray-100 px-4 py-2 text-left text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:border-dark-700 dark:text-gray-300 dark:hover:bg-dark-700"
+            class="dropdown-item select-option select-option-group flex w-full items-center justify-between px-3.5 py-2 text-left text-xs font-semibold"
             @click="clear"
           >
             <span>{{ allLabel }}</span>
@@ -55,23 +56,23 @@
             :key="option.value"
             type="button"
             role="option"
-            class="dropdown-item select-option flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+            class="dropdown-item select-option flex w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-[13px]"
             :class="modelValue.includes(option.value) ? 'select-option-selected' : ''"
             :aria-selected="modelValue.includes(option.value)"
             @click="toggle(option.value)"
           >
             <span class="flex min-w-0 flex-1 items-center gap-2">
               <span
-                class="checkbox flex h-4 w-4 items-center justify-center rounded border border-gray-300 bg-white text-primary-500 dark:border-dark-600 dark:bg-dark-900"
-                :class="modelValue.includes(option.value) ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' : ''"
+                class="checkbox flex h-4 w-4 items-center justify-center rounded border text-primary-500"
+                :class="modelValue.includes(option.value) ? 'checkbox-checked' : 'checkbox-unchecked'"
               >
                 <Icon v-if="modelValue.includes(option.value)" name="check" size="sm" class="text-primary-500" />
               </span>
               <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
             </span>
-            <small v-if="option.count != null" class="text-xs text-gray-400">{{ formatCount(option.count) }}</small>
+            <small v-if="option.count != null" class="option-count font-mono text-xs tabular-nums">{{ formatCount(option.count) }}</small>
           </button>
-          <p v-if="options.length === 0" class="px-4 py-3 text-center text-xs text-gray-400">{{ t('channelMonitorV2.filters.empty') }}</p>
+          <p v-if="options.length === 0" class="filter-empty px-4 py-3 text-center text-xs">{{ t('channelMonitorV2.filters.empty') }}</p>
         </div>
       </Transition>
     </Teleport>
@@ -234,17 +235,30 @@ onBeforeUnmount(() => {
 .select-trigger {
   @apply flex w-full items-center justify-between gap-2;
   @apply rounded-xl px-4 py-2.5 text-sm;
-  @apply bg-white dark:bg-dark-800;
-  @apply border border-gray-200 dark:border-dark-600;
-  @apply text-gray-900 dark:text-gray-100;
-  @apply transition-all duration-200;
-  @apply focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30;
-  @apply hover:border-gray-300 dark:hover:border-dark-500;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  color: rgb(var(--ink));
+  transition: border-color var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  @apply focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20;
   @apply cursor-pointer;
 }
 
+.select-trigger:hover {
+  border-color: rgb(var(--line-strong));
+  background: rgb(var(--surface-2) / 0.55);
+}
+
 .select-trigger-open {
-  @apply border-primary-500 ring-2 ring-primary-500/30;
+  @apply border-primary-500 ring-2 ring-primary-500/20;
+}
+
+.select-trigger-filtered {
+  border-color: rgb(var(--brand-moss) / 0.45);
+  background: rgb(var(--brand-moss) / 0.06);
+}
+
+.select-icon {
+  color: rgb(var(--ink-3));
 }
 
 .filter-menu summary::-webkit-details-marker {
@@ -252,15 +266,51 @@ onBeforeUnmount(() => {
 }
 
 .filter-dropdown {
-  @apply w-max min-w-[200px] max-h-[min(50vh,360px)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800;
+  @apply w-max min-w-[200px] max-h-[min(50vh,360px)] overflow-y-auto rounded-xl;
+  background: rgb(var(--surface-elevated));
+  border: 1px solid rgb(var(--line));
+  color: rgb(var(--ink));
+  box-shadow: var(--shadow-overlay);
 }
 
 .dropdown-item {
   @apply cursor-pointer;
+  color: rgb(var(--ink-2));
+}
+
+.dropdown-item:hover {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink));
+}
+
+.select-option-group {
+  color: rgb(var(--ink));
+  border-bottom: 1px solid rgb(var(--line));
+}
+
+.select-option-selected {
+  background: rgb(var(--brand-moss) / 0.08);
+  color: rgb(var(--ink));
+  font-weight: 500;
 }
 
 .checkbox {
   flex: none;
+}
+
+.checkbox-unchecked {
+  border-color: rgb(var(--line-strong));
+  background: rgb(var(--surface));
+}
+
+.checkbox-checked {
+  border-color: rgb(var(--brand-moss));
+  background: rgb(var(--brand-moss) / 0.12);
+}
+
+.option-count,
+.filter-empty {
+  color: rgb(var(--ink-3));
 }
 
 @media (max-width: 640px) {

@@ -145,7 +145,7 @@ func TestGatewayCompatibilityHandlers_StreamUsageRecordedOnceWithTerminalEvent(t
 			wantOutput int
 		}{
 			{name: "complete", completion: compatStreamUsageCompletion, wantOutput: 7},
-			{name: "idle_before_message_stop", wantOutput: 1},
+			{name: "idle_before_message_stop", wantOutput: 2},
 		} {
 			t.Run(endpoint+"/"+tc.name, func(t *testing.T) {
 				successMarker, failureMarker := compatStreamUsageMarkers(endpoint)

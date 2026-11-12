@@ -97,6 +97,8 @@ function areaGradient(color: string) {
 const chartData = computed(() => {
   if (!props.trendData?.length) return null
 
+  const pointBorder = chartTheme.value.pointBorder
+  const pointRadius = props.trendData.length > 48 ? 0 : 2.5
   return {
     labels: props.trendData.map((d) => d.date),
     datasets: mode.value === 'total' ? [{
@@ -104,6 +106,12 @@ const chartData = computed(() => {
       data: props.trendData.map(d => d.input_tokens + d.output_tokens + d.cache_creation_tokens + d.cache_read_tokens),
       borderColor: chartColors.value.input,
       backgroundColor: areaGradient(chartColors.value.input),
+      borderWidth: 2,
+      pointRadius,
+      pointHoverRadius: 5,
+      pointBackgroundColor: pointBorder,
+      pointBorderColor: chartColors.value.input,
+      pointBorderWidth: 2,
       fill: true,
       tension: 0.25,
       yAxisID: 'y',
@@ -113,6 +121,12 @@ const chartData = computed(() => {
         data: props.trendData.map((d) => d.input_tokens),
         borderColor: chartColors.value.input,
         backgroundColor: `${chartColors.value.input}20`,
+        borderWidth: 2,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: chartColors.value.input,
+        pointBorderWidth: 2,
         fill: true,
         tension: 0.3
       },
@@ -121,6 +135,12 @@ const chartData = computed(() => {
         data: props.trendData.map((d) => d.output_tokens),
         borderColor: chartColors.value.output,
         backgroundColor: `${chartColors.value.output}20`,
+        borderWidth: 2,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: chartColors.value.output,
+        pointBorderWidth: 2,
         fill: true,
         tension: 0.3
       },
@@ -129,6 +149,12 @@ const chartData = computed(() => {
         data: props.trendData.map((d) => d.cache_creation_tokens),
         borderColor: chartColors.value.cacheCreation,
         backgroundColor: `${chartColors.value.cacheCreation}20`,
+        borderWidth: 2,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: chartColors.value.cacheCreation,
+        pointBorderWidth: 2,
         fill: true,
         tension: 0.3
       },
@@ -137,6 +163,12 @@ const chartData = computed(() => {
         data: props.trendData.map((d) => d.cache_read_tokens),
         borderColor: chartColors.value.cacheRead,
         backgroundColor: `${chartColors.value.cacheRead}20`,
+        borderWidth: 2,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: chartColors.value.cacheRead,
+        pointBorderWidth: 2,
         fill: true,
         tension: 0.3
       },
@@ -149,6 +181,12 @@ const chartData = computed(() => {
         borderColor: chartColors.value.cacheHitRate,
         backgroundColor: `${chartColors.value.cacheHitRate}20`,
         borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius,
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointBorder,
+        pointBorderColor: chartColors.value.cacheHitRate,
+        pointBorderWidth: 2,
         fill: false,
         tension: 0.3,
         yAxisID: 'yPercent'
@@ -161,7 +199,16 @@ const lineOptions = computed(() => ({
   responsive: true,
   animation: false as const,
   maintainAspectRatio: false,
-  elements: { point: { radius: 1, hoverRadius: 5 }, line: { borderWidth: 2 } },
+  elements: {
+    point: {
+      radius: props.trendData.length > 48 ? 0 : 2.5,
+      hoverRadius: 5,
+      hitRadius: 12,
+      borderWidth: 2,
+      backgroundColor: chartTheme.value.pointBorder
+    },
+    line: { borderWidth: 2 }
+  },
   interaction: {
     intersect: false,
     mode: 'index' as const
@@ -173,9 +220,10 @@ const lineOptions = computed(() => ({
         color: chartColors.value.text,
         usePointStyle: true,
         pointStyle: 'circle',
+        boxWidth: 8,
         padding: 15,
         font: {
-          size: 13
+          size: 12.5
         }
       }
     },
@@ -201,24 +249,33 @@ const lineOptions = computed(() => ({
   },
   scales: {
     x: {
+      border: {
+        display: false
+      },
       grid: {
-        color: chartColors.value.grid
+        display: false
       },
       ticks: {
         color: chartColors.value.text,
+        maxRotation: 0,
+        maxTicksLimit: 8,
         font: {
-          size: 13
+          size: 12
         }
       }
     },
     y: {
+      beginAtZero: true,
+      border: {
+        display: false
+      },
       grid: {
         color: chartColors.value.grid
       },
       ticks: {
         color: chartColors.value.text,
         font: {
-          size: 13
+          size: 12
         },
         callback: (value: string | number) => formatTokens(Number(value))
       }
@@ -228,13 +285,16 @@ const lineOptions = computed(() => ({
       position: 'right' as const,
       min: 0,
       max: 100,
+      border: {
+        display: false
+      },
       grid: {
         drawOnChartArea: false
       },
       ticks: {
         color: chartColors.value.cacheHitRate,
         font: {
-          size: 13
+          size: 12
         },
         callback: (value: string | number) => `${value}%`
       }
@@ -267,8 +327,9 @@ const formatCost = (value: number): string => {
 
 <style scoped>
 .token-trend-modes { display:flex; gap:3px; padding:3px; border:1px solid rgb(var(--line)); border-radius:8px; background:rgb(var(--surface-2)); }
-.token-trend-modes button { padding:4px 10px; border:0; border-radius:5px; color:rgb(var(--ink-3)); background:transparent; font:inherit; font-size:12px; cursor:pointer; transition:background-color 150ms ease,color 150ms ease; }
-.token-trend-modes button[aria-pressed=true] { color:rgb(var(--ink)); background:rgb(var(--surface)); }
+.token-trend-modes button { padding:4px 10px; border:0; border-radius:5px; color:rgb(var(--ink-3)); background:transparent; font:inherit; font-size:12px; font-weight:500; cursor:pointer; transition:background-color 150ms ease,color 150ms ease,box-shadow 150ms ease; }
+.token-trend-modes button:hover:not([aria-pressed=true]) { color:rgb(var(--ink-2)); }
+.token-trend-modes button[aria-pressed=true] { color:rgb(var(--ink)); background:rgb(var(--surface)); font-weight:600; box-shadow:0 1px 2px rgb(15 23 42 / .06); }
 @media(prefers-reduced-motion:reduce) { .token-trend-modes button { transition:none; } }
 .token-usage-trend__body {
   position: relative;

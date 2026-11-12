@@ -55,14 +55,14 @@
     <p v-if="summaryLoading" role="status" class="py-8 text-center text-sm text-gray-500">{{ t('traffic.loading') }}</p>
     <template v-if="summary">
       <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div v-for="card in cards" :key="card.label" class="rounded-xl border border-gray-200 p-4 dark:border-dark-700">
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ card.label }}</p>
-          <p class="mt-2 text-xl font-semibold tabular-nums text-gray-900 dark:text-white" :title="card.raw">{{ card.value }}</p>
+        <div v-for="card in cards" :key="card.label" class="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm dark:border-dark-700 dark:bg-dark-800">
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ card.label }}</p>
+          <p class="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-gray-900 dark:text-white" :title="card.raw">{{ card.value }}</p>
         </div>
       </div>
       <p class="text-xs text-gray-500 dark:text-gray-400">{{ summary.recorded_since ? t('traffic.since', { time: displayTime(summary.recorded_since) }) : t('traffic.notRecorded') }} {{ t('traffic.history') }}</p>
-      <div v-if="summary.requests" class="rounded-xl border border-gray-200 p-4 dark:border-dark-700">
-        <h3 class="mb-1 text-sm font-medium">{{ t('traffic.trend') }}</h3>
+      <div v-if="summary.requests" class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm dark:border-dark-700 dark:bg-dark-800">
+        <h3 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">{{ t('traffic.trend') }}</h3>
         <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">{{ t(`traffic.trendScopes.${trendBucket}`) }}</p>
         <div class="h-64" role="img" :aria-label="t('traffic.trend')"><Bar :data="chartData" :options="chartOptions" /></div>
       </div>
@@ -191,14 +191,20 @@ const trendBucket = computed(() => summary.value?.period === 'day' ? 'hour' : su
 const chartData = computed(() => ({
   labels: summary.value?.trend.map(point => point.bucket) || [],
   datasets: [
-    { label: t('traffic.upload'), data: summary.value?.trend.map(point => point.upload_bytes) || [], backgroundColor: palette.value[0], borderRadius: 3 },
-    { label: t('traffic.download'), data: summary.value?.trend.map(point => point.download_bytes) || [], backgroundColor: palette.value[1], borderRadius: 3 }
+    { label: t('traffic.upload'), data: summary.value?.trend.map(point => point.upload_bytes) || [], backgroundColor: palette.value[0], borderColor: chartTheme.value.pointBorder, borderWidth: 1.5, borderRadius: 4 },
+    { label: t('traffic.download'), data: summary.value?.trend.map(point => point.download_bytes) || [], backgroundColor: palette.value[2], borderColor: chartTheme.value.pointBorder, borderWidth: 1.5, borderRadius: 4 }
   ]
 }))
 const chartOptions = computed<ChartOptions<'bar'>>(() => ({
   responsive: true, maintainAspectRatio: false, animation: false,
-  plugins: { legend: { position: 'bottom', labels: { color: chartTheme.value.text } }, tooltip: { ...chartTheme.value.tooltip, callbacks: { label: context => `${context.dataset.label}: ${bytes(Number(context.raw))}` } } },
-  scales: { x: { stacked: true, grid: { display: false }, ticks: { maxRotation: 0, maxTicksLimit: 6 } }, y: { stacked: true, beginAtZero: true, ticks: { callback: value => bytes(Number(value)) } } }
+  plugins: {
+    legend: { position: 'bottom', labels: { color: chartTheme.value.text, usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 14, font: { size: 12.5 } } },
+    tooltip: { ...chartTheme.value.tooltip, callbacks: { label: context => `${context.dataset.label}: ${bytes(Number(context.raw))}` } },
+  },
+  scales: {
+    x: { stacked: true, border: { display: false }, grid: { display: false }, ticks: { color: chartTheme.value.text, maxRotation: 0, maxTicksLimit: 7, font: { size: 12 } } },
+    y: { stacked: true, beginAtZero: true, border: { display: false }, grid: { color: chartTheme.value.grid }, ticks: { color: chartTheme.value.text, font: { size: 12 }, callback: value => bytes(Number(value)) } },
+  }
 }))
 function setDate(event: Event) { date.value = (event.target as HTMLInputElement).value }
 function applyFilters() {

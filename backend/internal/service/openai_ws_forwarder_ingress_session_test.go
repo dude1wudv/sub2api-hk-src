@@ -4447,7 +4447,7 @@ func (c *openAIWSWriteFailAfterFirstTurnConn) Close() error {
 	return nil
 }
 
-func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnectStillDrainsUpstream(t *testing.T) {
+func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnectStopsAndSettlesOnce(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	cfg := &config.Config{}
@@ -4511,7 +4511,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 	resultCh := make(chan *OpenAIForwardResult, 1)
 	hooks := &OpenAIWSIngressHooks{
 		AfterTurn: func(_ int, result *OpenAIForwardResult, turnErr error) {
-			if turnErr == nil && result != nil {
+			if result != nil {
 				resultCh <- result
 			}
 		},
@@ -4557,7 +4557,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 	require.NoError(t, err)
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"custom-original-model","stream":false,"service_tier":"flex"}`))
+	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"custom-original-model","stream":false,"service_tier":"flex","input":"hello"}`))
 	cancelWrite()
 	require.NoError(t, err)
 	// 立即关闭客户端，模拟客户端在 relay 期间断连。
@@ -4565,21 +4565,31 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 
 	select {
 	case serverErr := <-serverErrCh:
-		require.NoError(t, serverErr, "客户端断连后应继续 drain 上游直到 terminal 或正常结束")
+		require.ErrorIs(t, serverErr, context.Canceled)
 	case <-time.After(5 * time.Second):
 		t.Fatal("等待 ingress websocket 结束超时")
 	}
 
 	select {
 	case result := <-resultCh:
-		require.Equal(t, "resp_ingress_disconnect", result.RequestID)
-		require.Equal(t, 2, result.Usage.InputTokens)
-		require.Equal(t, 1, result.Usage.OutputTokens)
+		require.NotEmpty(t, result.RequestID)
+		require.Positive(t, result.Usage.InputTokens)
+		require.True(t, result.Usage.InputTokensEstimated)
+		require.Zero(t, result.Usage.OutputTokens)
+		require.True(t, result.ClientDisconnect)
 		require.NotNil(t, result.ServiceTier)
 		require.Equal(t, "flex", *result.ServiceTier)
 	case <-time.After(2 * time.Second):
 		t.Fatal("未收到断连后的 turn 结果回调")
 	}
+	select {
+	case <-resultCh:
+		t.Fatal("turn settled more than once")
+	default:
+	}
+	captureConn.mu.Lock()
+	require.NotEmpty(t, captureConn.events, "cancellation must leave upstream events unread")
+	captureConn.mu.Unlock()
 }
 
 func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_InvalidEncryptedContentLineageStripsNextTurn(t *testing.T) {

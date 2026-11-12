@@ -5,29 +5,29 @@
       <section
         class="card channel-observatory-controls"
       >
-        <header class="page-header mb-0 flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 dark:border-dark-700 sm:px-6">
+        <header class="page-header observatory-header mb-0 flex flex-wrap items-start justify-between gap-4 px-5 py-4 sm:px-6">
           <div class="min-w-0">
-            <h1 class="page-title flex items-center gap-2 text-xl font-semibold text-gray-900 dark:text-white">
-              <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-500 dark:bg-blue-900/30 dark:text-blue-400">
+            <h1 class="page-title observatory-title flex items-center gap-2.5 text-xl font-semibold tracking-tight">
+              <span class="observatory-title-icon inline-flex h-8 w-8 items-center justify-center rounded-lg">
                 <Icon name="chart" size="sm" />
               </span>
               {{ t('channelMonitorV2.title') }}
             </h1>
-            <div class="page-description mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <div class="page-description observatory-meta mt-1.5 flex flex-wrap items-center gap-2 text-xs tabular-nums">
               <span class="relative flex h-2 w-2 shrink-0">
                 <span
                   class="relative inline-flex h-2 w-2 rounded-full"
-                  :class="loading || refreshing ? 'bg-gray-400' : 'bg-green-500'"
+                  :class="loading || refreshing ? 'observatory-live-dot--idle' : 'observatory-live-dot--live'"
                 ></span>
               </span>
               <span v-if="refreshing" class="inline-flex items-center gap-1 text-primary-600 dark:text-primary-300">
                 <LoadingSpinner size="sm" />
                 {{ t('channelMonitorV2.updating') }}
               </span>
-              <span v-else-if="snapshot?.coverage.data_through">
+              <span v-else-if="snapshot?.coverage.data_through" class="tabular-nums">
                 {{ t('channelMonitorV2.updatedTo', { time: formatTime(snapshot.coverage.data_through) }) }}
               </span>
-              <span v-else class="text-gray-400">{{ t('common.loading') }}</span>
+              <span v-else class="observatory-muted">{{ t('common.loading') }}</span>
               <span
                 v-if="snapshot && !snapshot.coverage.coverage_complete && !bootstrapActive"
                 class="badge badge-warning"
@@ -36,7 +36,7 @@
               </span>
               <span
                 v-if="bootstrapActive"
-                class="badge badge-primary inline-flex items-center gap-1"
+                class="badge badge-primary inline-flex items-center gap-1 tabular-nums"
               >
                 <LoadingSpinner size="sm" />
                 {{ t('channelMonitorV2.bootstrap.progress', { percent: bootstrapPercent }) }}
@@ -44,7 +44,7 @@
             </div>
           </div>
           <button
-            class="btn btn-secondary btn-icon flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-dark-700 dark:text-gray-400 dark:hover:bg-dark-600"
+            class="btn btn-secondary btn-icon observatory-refresh-btn flex h-9 w-9 items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             type="button"
             :title="t('common.refresh')"
             :disabled="loading"
@@ -57,25 +57,25 @@
         <!-- First-upgrade silent backfill: show until 30d product window is covered -->
         <div
           v-if="bootstrapActive"
-          class="border-b border-blue-100 bg-blue-50/90 px-5 py-3 dark:border-blue-900/40 dark:bg-blue-950/40 sm:px-6"
+          class="observatory-bootstrap px-5 py-3 sm:px-6"
           role="status"
           aria-live="polite"
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">
+              <p class="observatory-bootstrap-title text-sm font-semibold">
                 {{ t('channelMonitorV2.bootstrap.title') }}
               </p>
-              <p class="mt-0.5 text-xs text-blue-800/80 dark:text-blue-200/80">
+              <p class="observatory-bootstrap-desc mt-0.5 text-xs">
                 {{ t('channelMonitorV2.bootstrap.description') }}
               </p>
             </div>
-            <span class="shrink-0 text-xs font-medium tabular-nums text-blue-700 dark:text-blue-300">
+            <span class="observatory-bootstrap-pct shrink-0 font-mono text-xs font-semibold tabular-nums">
               {{ t('channelMonitorV2.bootstrap.progress', { percent: bootstrapPercent }) }}
             </span>
           </div>
           <div
-            class="mt-2.5 h-1.5 overflow-hidden rounded-full bg-blue-200/80 dark:bg-blue-900/60"
+            class="observatory-bootstrap-track mt-2.5 h-1.5 overflow-hidden rounded-full"
             role="progressbar"
             :aria-valuenow="bootstrapPercent"
             aria-valuemin="0"
@@ -83,7 +83,7 @@
             :aria-label="t('channelMonitorV2.bootstrap.working')"
           >
             <div
-              class="h-full rounded-full bg-blue-500 transition-[width] duration-500 ease-out dark:bg-blue-400"
+              class="observatory-bootstrap-fill h-full rounded-full transition-[width] duration-500 ease-out"
               :style="{ width: `${bootstrapPercent}%` }"
             />
           </div>
@@ -100,7 +100,7 @@
               v-for="option in ranges"
               :key="option.value"
               type="button"
-              class="tab !px-2 !py-1 text-xs sm:!px-2.5"
+              class="tab !px-2.5 !py-1 text-xs tabular-nums"
               :class="filter.range === option.value ? 'tab-active' : ''"
               @click="setRange(option.value)"
             >
@@ -108,7 +108,7 @@
             </button>
           </div>
 
-          <span class="mx-0.5 hidden h-5 w-px shrink-0 bg-gray-200 dark:bg-dark-700 sm:block" aria-hidden="true"></span>
+          <span class="toolbar-divider mx-0.5 hidden h-5 w-px shrink-0 sm:block" aria-hidden="true"></span>
 
           <FilterMultiSelect
             v-model="filter.platforms"
@@ -133,7 +133,7 @@
           />
           <button
             type="button"
-            class="btn btn-ghost btn-sm shrink-0 !px-2 !py-1 text-xs"
+            class="btn btn-ghost btn-sm observatory-clear-btn shrink-0 !px-2.5 !py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             :disabled="!hasDimensionFilter"
             :class="!hasDimensionFilter ? 'opacity-40' : ''"
             @click="clearDimensions"
@@ -141,7 +141,7 @@
             {{ t('channelMonitorV2.clearFilters') }}
           </button>
 
-          <span class="mx-0.5 hidden h-5 w-px shrink-0 bg-gray-200 dark:bg-dark-700 md:block" aria-hidden="true"></span>
+          <span class="toolbar-divider mx-0.5 hidden h-5 w-px shrink-0 md:block" aria-hidden="true"></span>
 
           <Select
             v-model="matrixGroupBy"
@@ -157,7 +157,7 @@
           >
             <button
               type="button"
-              class="tab !px-2 !py-1 text-xs"
+              class="tab !px-2.5 !py-1 text-xs"
               :class="trendView === 'pulse' ? 'tab-active' : ''"
               @click="trendView = 'pulse'"
             >
@@ -165,7 +165,7 @@
             </button>
             <button
               type="button"
-              class="tab !px-2 !py-1 text-xs"
+              class="tab !px-2.5 !py-1 text-xs"
               :class="trendView === 'line' ? 'tab-active' : ''"
               @click="trendView = 'line'"
             >
@@ -183,7 +183,7 @@
               v-for="option in healthModeOptions"
               :key="option.value"
               type="button"
-              class="tab !px-2 !py-1 text-xs"
+              class="tab !px-2.5 !py-1 text-xs"
               :class="healthMode === option.value ? 'tab-active' : ''"
               @click="healthMode = option.value"
             >
@@ -243,7 +243,7 @@
         <div
           v-for="i in (showThroughput ? 5 : 4)"
           :key="i"
-          class="h-24 animate-pulse rounded-2xl bg-gray-50 dark:bg-dark-900/30"
+          class="observatory-skeleton h-[6.5rem] animate-pulse"
         />
       </section>
 
@@ -263,14 +263,14 @@
         />
         <div
           v-else-if="loading"
-          class="card flex min-h-[320px] items-center justify-center !rounded-3xl !border-0 text-sm text-gray-400 shadow-sm ring-1 ring-gray-900/5 dark:ring-dark-700"
+          class="card observatory-panel flex min-h-[320px] items-center justify-center rounded-3xl text-sm ring-1 ring-gray-900/5 dark:ring-white/5"
         >
-          <span class="animate-pulse">{{ t('common.loading') }}</span>
+          <span class="observatory-muted animate-pulse">{{ t('common.loading') }}</span>
         </div>
       </div>
 
-      <section class="card flex min-h-0 flex-col overflow-hidden !rounded-3xl !border-0 shadow-sm ring-1 ring-gray-900/5 dark:!bg-dark-800 dark:ring-dark-700">
-        <div class="border-b border-gray-100 px-5 pt-4 dark:border-dark-700 sm:px-6">
+      <section class="card observatory-panel flex min-h-0 flex-col overflow-hidden rounded-3xl ring-1 ring-gray-900/5 dark:ring-white/5">
+        <div class="observatory-tabbar px-5 py-3.5 sm:px-6">
           <nav class="tabs w-full max-w-md sm:w-auto" role="tablist" :aria-label="t('channelMonitorV2.tabs.aria')">
             <button
               v-for="item in tabs"
@@ -287,8 +287,8 @@
           </nav>
         </div>
         <div class="min-h-0 max-h-[min(52vh,520px)] overflow-auto p-4 sm:p-5">
-          <div v-if="activeTab === 'models'" class="table-container border-0">
-            <table class="table monitor-table min-w-[720px]">
+          <div v-if="activeTab === 'models'" class="table-container observatory-table-wrap">
+            <table class="table monitor-table min-w-[720px] tabular-nums">
               <thead>
                 <tr>
                   <th>{{ t('channelMonitorV2.table.platformModel') }}</th>
@@ -303,89 +303,89 @@
                 <tr
                   v-for="row in modelRows"
                   :key="`${row.platform}:${row.model}`"
-                  class="cursor-pointer"
+                  class="monitor-drill-row cursor-pointer"
                   @click="drillModel(row)"
                 >
                   <td>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2.5">
                       <span :class="statusDot(row.health)" aria-hidden="true"></span>
                       <div>
-                        <span class="block text-xs text-gray-500 dark:text-dark-400">{{ row.platform }}</span>
-                        <strong class="font-semibold text-gray-900 dark:text-white">
+                        <span class="observatory-muted block text-xs">{{ row.platform }}</span>
+                        <strong class="observatory-strong font-semibold">
                           {{ row.model === '__other__' ? t('channelMonitorV2.otherModels') : row.model }}
                         </strong>
                       </div>
                     </div>
                   </td>
                   <td>
-                    <span class="block">{{ formatPercent(1 - row.metrics.error_rate) }}</span>
-                    <small class="text-xs text-gray-400">{{ t('channelMonitorV2.metrics.errorRateValue', { value: formatPercent(row.metrics.error_rate) }) }}</small>
+                    <span class="observatory-strong block font-medium tabular-nums">{{ formatPercent(1 - row.metrics.error_rate) }}</span>
+                    <small class="observatory-muted text-xs tabular-nums">{{ t('channelMonitorV2.metrics.errorRateValue', { value: formatPercent(row.metrics.error_rate) }) }}</small>
                   </td>
                   <td>
-                    <span class="block">{{ formatMs(row.metrics.ttft.p50_ms) }}</span>
-                    <small class="text-xs text-gray-400">{{ latencyDetail(row.metrics.ttft) }}</small>
+                    <span class="observatory-strong block font-medium tabular-nums">{{ formatMs(row.metrics.ttft.p50_ms) }}</span>
+                    <small class="observatory-muted text-xs tabular-nums">{{ latencyDetail(row.metrics.ttft) }}</small>
                   </td>
-                  <td v-if="showThroughput" :title="exactTps(row.metrics.tpm)">{{ formatTps(row.metrics.tpm) }}</td>
-                  <td>{{ formatPercent(row.metrics.cache_rate) }}</td>
-                  <td v-if="showThroughput">{{ formatRate(row.metrics.rpm) }}</td>
+                  <td v-if="showThroughput" class="tabular-nums" :title="exactTps(row.metrics.tpm)">{{ formatTps(row.metrics.tpm) }}</td>
+                  <td class="tabular-nums">{{ formatPercent(row.metrics.cache_rate) }}</td>
+                  <td v-if="showThroughput" class="tabular-nums">{{ formatRate(row.metrics.rpm) }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <div v-else-if="activeTab === 'errors'" class="space-y-3">
+          <div v-else-if="activeTab === 'errors'" class="space-y-2.5">
             <div
               v-for="row in errorRows"
               :key="row.category"
-              class="rounded-2xl bg-gray-50 p-4 text-sm dark:bg-dark-900/30"
+              class="observatory-error-card p-4 text-sm"
               :class="row.ignored ? 'opacity-60' : ''"
             >
               <button
                 type="button"
-                class="grid w-full grid-cols-[minmax(100px,200px)_1fr_auto_auto] items-center gap-3 text-left"
+                class="grid w-full grid-cols-[minmax(110px,210px)_1fr_auto_auto] items-center gap-3 rounded-md text-left focus:outline-none"
                 @click="toggleError(row.category)"
               >
-                <span class="flex min-w-0 items-center gap-1.5 truncate text-gray-700 dark:text-gray-200">
+                <span class="observatory-strong flex min-w-0 items-center gap-1.5 truncate font-medium">
                   <span class="truncate">{{ errorLabel(row.category) }}</span>
                   <span v-if="row.ignored" class="badge badge-gray shrink-0 !px-1.5 !py-0 text-[10px]">{{ t('channelMonitorV2.ignored') }}</span>
                 </span>
-                <span class="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700">
+                <span class="observatory-error-track h-2 overflow-hidden rounded-full">
                   <i
                     class="block h-full rounded-full"
-                    :class="row.ignored ? 'bg-gray-400 dark:bg-gray-500' : 'bg-gradient-to-r from-red-400 to-red-500'"
+                    :class="row.ignored ? 'observatory-error-fill--ignored' : 'observatory-error-fill--active'"
                     :style="{ width: `${Math.max(2, row.rate * 100)}%` }"
                   ></i>
                 </span>
                 <small
-                  class="w-14 text-right text-xs tabular-nums"
-                  :class="row.ignored ? 'text-gray-400' : 'text-gray-500'"
+                  class="w-14 text-right font-mono text-xs tabular-nums"
+                  :class="row.ignored ? 'observatory-muted' : 'observatory-secondary'"
                 >{{ formatPercent(row.rate) }}</small>
-                <Icon name="chevronDown" size="sm" :class="['text-gray-400 transition-transform', expandedErrors.has(row.category) ? 'rotate-180' : '']" />
+                <Icon name="chevronDown" size="sm" :class="['observatory-muted transition-transform', expandedErrors.has(row.category) ? 'rotate-180' : '']" />
               </button>
-              <div v-if="expandedErrors.has(row.category)" class="mt-3 space-y-2 border-t border-gray-100 pt-3 dark:border-dark-700">
+              <div v-if="expandedErrors.has(row.category)" class="observatory-error-details mt-3 space-y-2 pt-3">
                 <template v-if="isAdmin && (row.details || []).length">
                   <div
                     v-for="(detail, index) in row.details || []"
                     :key="`${row.category}:${index}:${detail.message}`"
-                    class="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-900/50 dark:text-dark-300"
+                    class="ui-code-panel rounded-lg px-3 py-2 text-xs tabular-nums"
                   >
                     <div class="mb-1 flex flex-wrap items-center gap-2">
                       <span class="badge badge-gray !px-1.5 !py-0 text-[10px]">{{ detail.platform || '-' }}</span>
                       <span class="truncate font-medium">{{ detail.model || '-' }}</span>
-                      <span v-if="detail.status_code" class="text-gray-400">{{ t('channelMonitorV2.errorDetail.http', { code: detail.status_code }) }}</span>
-                      <span v-if="detail.upstream_status_code" class="text-gray-400">{{ t('channelMonitorV2.errorDetail.upstream', { code: detail.upstream_status_code }) }}</span>
-                      <span class="ml-auto text-gray-400">×{{ detail.count }}</span>
+                      <span v-if="detail.status_code" class="observatory-muted font-mono tabular-nums">{{ t('channelMonitorV2.errorDetail.http', { code: detail.status_code }) }}</span>
+                      <span v-if="detail.upstream_status_code" class="observatory-muted font-mono tabular-nums">{{ t('channelMonitorV2.errorDetail.upstream', { code: detail.upstream_status_code }) }}</span>
+                      <span class="observatory-muted ml-auto font-mono tabular-nums">×{{ detail.count }}</span>
                     </div>
-                    <p class="break-words leading-relaxed">{{ detail.message || detail.error_type || t('channelMonitorV2.errorDetail.noMessage') }}</p>
+                    <p class="observatory-secondary break-words leading-relaxed">{{ detail.message || detail.error_type || t('channelMonitorV2.errorDetail.noMessage') }}</p>
                   </div>
                 </template>
-                <p v-else class="text-xs text-gray-400">{{ t('channelMonitorV2.errorDetail.empty') }}</p>
+                <p v-else class="observatory-muted text-xs">{{ t('channelMonitorV2.errorDetail.empty') }}</p>
               </div>
             </div>
           </div>
 
-          <div v-else class="table-container border-0">
-            <table class="table monitor-table min-w-[640px]">
+          <div v-else class="table-container observatory-table-wrap">
+            <table class="table monitor-table min-w-[640px] tabular-nums">
               <thead>
                 <tr>
                   <th class="w-16">{{ t('channelMonitorV2.table.rank') }}</th>
@@ -401,15 +401,13 @@
                 <tr
                   v-for="row in userRows"
                   :key="row.user_id || row.display_label"
-                  :class="row.is_self
-                    ? 'bg-primary-50 ring-1 ring-inset ring-primary-200/80 dark:bg-primary-900/25 dark:ring-primary-700/50'
-                    : ''"
+                  :class="row.is_self ? 'monitor-self-row' : ''"
                 >
                   <td><MonitorRankBadge :rank="row.rank" /></td>
                   <td>
                     <strong
                       class="font-semibold"
-                      :class="row.is_self ? 'text-primary-700 dark:text-primary-300' : 'text-gray-900 dark:text-white'"
+                      :class="row.is_self ? 'text-primary-700 dark:text-primary-300' : 'observatory-strong'"
                     >
                       {{ row.display_label }}
                       <span
@@ -419,22 +417,22 @@
                     </strong>
                   </td>
                   <td>
-                    <span class="block">{{ formatPercent(1 - row.metrics.error_rate) }}</span>
-                    <small class="text-xs text-gray-400">{{ t('channelMonitorV2.metrics.errorRateValue', { value: formatPercent(row.metrics.error_rate) }) }}</small>
+                    <span class="observatory-strong block font-medium tabular-nums">{{ formatPercent(1 - row.metrics.error_rate) }}</span>
+                    <small class="observatory-muted text-xs tabular-nums">{{ t('channelMonitorV2.metrics.errorRateValue', { value: formatPercent(row.metrics.error_rate) }) }}</small>
                   </td>
                   <td>
-                    <span class="block">{{ formatMs(row.metrics.ttft.p50_ms) }}</span>
-                    <small class="text-xs text-gray-400">{{ latencyDetail(row.metrics.ttft) }}</small>
+                    <span class="observatory-strong block font-medium tabular-nums">{{ formatMs(row.metrics.ttft.p50_ms) }}</span>
+                    <small class="observatory-muted text-xs tabular-nums">{{ latencyDetail(row.metrics.ttft) }}</small>
                   </td>
-                  <td v-if="showThroughput" :title="exactTps(row.metrics.tpm)">{{ formatTps(row.metrics.tpm) }}</td>
-                  <td>{{ formatPercent(row.metrics.cache_rate) }}</td>
-                  <td v-if="showThroughput">{{ formatRate(row.metrics.rpm) }}</td>
+                  <td v-if="showThroughput" class="tabular-nums" :title="exactTps(row.metrics.tpm)">{{ formatTps(row.metrics.tpm) }}</td>
+                  <td class="tabular-nums">{{ formatPercent(row.metrics.cache_rate) }}</td>
+                  <td v-if="showThroughput" class="tabular-nums">{{ formatRate(row.metrics.rpm) }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <div v-if="tabLoading" class="empty-state py-10 text-sm text-gray-400">{{ t('common.loading') }}</div>
+          <div v-if="tabLoading" class="empty-state observatory-muted py-10 text-sm">{{ t('common.loading') }}</div>
           <div v-else-if="activeRowsEmpty" class="empty-state py-10">
             <p class="empty-state-title text-base">
               {{
@@ -931,10 +929,191 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.channel-observatory-controls { border-radius:20px; box-shadow:none; background:rgb(var(--surface)); border:1px solid rgb(var(--line)); overflow:hidden; }
-.channel-observatory-controls .page-header { padding:24px; }
-.channel-observatory-controls .page-title { font-size:26px; font-weight:600; }
-@media(max-width:767px) { .channel-observatory-controls .page-header { padding:18px; } .channel-observatory-controls .page-title { font-size:24px; } }
+.channel-observatory-controls,
+.observatory-panel {
+  border-radius: var(--radius-card);
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  box-shadow: var(--shadow-panel);
+  --tw-ring-shadow: 0 0 #0000;
+  overflow: hidden;
+}
+.observatory-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgb(var(--line));
+}
+.observatory-title {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: rgb(var(--ink));
+}
+.observatory-title-icon {
+  color: rgb(var(--brand-moss));
+  background: rgb(var(--brand-moss) / 0.1);
+  border: 1px solid rgb(var(--brand-moss) / 0.22);
+}
+.observatory-meta,
+.observatory-secondary {
+  color: rgb(var(--ink-2));
+}
+.observatory-muted {
+  color: rgb(var(--ink-3));
+}
+.observatory-strong {
+  color: rgb(var(--ink));
+}
+.observatory-live-dot--live {
+  background: rgb(var(--brand-moss));
+  box-shadow: 0 0 0 3px rgb(var(--brand-moss) / 0.18);
+}
+.observatory-live-dot--idle {
+  background: rgb(var(--ink-3));
+}
+.observatory-refresh-btn {
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  color: rgb(var(--ink-2));
+}
+.observatory-refresh-btn:hover:not(:disabled) {
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--line-strong));
+  color: rgb(var(--ink));
+}
+.observatory-bootstrap {
+  border-bottom: 1px solid rgb(var(--line));
+  background: rgb(var(--surface-2) / 0.65);
+}
+.observatory-bootstrap-title {
+  color: rgb(var(--ink));
+}
+.observatory-bootstrap-desc {
+  color: rgb(var(--ink-2));
+}
+.observatory-bootstrap-pct {
+  color: rgb(var(--brand-moss));
+}
+.observatory-bootstrap-track {
+  background: rgb(var(--line));
+}
+.observatory-bootstrap-fill {
+  background: rgb(var(--brand-moss));
+}
+.monitor-toolbar {
+  background: rgb(var(--surface-2) / 0.35);
+}
+.toolbar-divider {
+  background: rgb(var(--line));
+}
+.observatory-clear-btn {
+  color: rgb(var(--ink-2));
+}
+.observatory-clear-btn:hover:not(:disabled) {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink));
+}
+.channel-observatory :deep(.tabs) {
+  background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-control);
+  padding: 2px;
+  gap: 2px;
+}
+.channel-observatory :deep(.tab) {
+  border-radius: calc(var(--radius-control) - 2px);
+  color: rgb(var(--ink-2));
+  font-weight: 500;
+}
+.channel-observatory :deep(.tab:hover) {
+  color: rgb(var(--ink));
+}
+.channel-observatory :deep(.tab-active) {
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+.monitor-toolbar-select :deep(.select-trigger) {
+  height: 2rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+}
+.observatory-skeleton {
+  border-radius: var(--radius-card);
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface-2) / 0.7);
+}
+.observatory-tabbar {
+  border-bottom: 1px solid rgb(var(--line));
+  background: rgb(var(--surface));
+}
+.observatory-table-wrap {
+  border: 1px solid rgb(var(--line));
+  border-radius: 12px;
+  background: rgb(var(--surface));
+}
+.monitor-table {
+  font-variant-numeric: tabular-nums;
+}
+.monitor-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgb(var(--table-head));
+  color: rgb(var(--ink-2));
+  border-bottom: 1px solid rgb(var(--line));
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.monitor-table tbody td {
+  border-bottom: 1px solid rgb(var(--line) / 0.8);
+  color: rgb(var(--ink-2));
+  font-variant-numeric: tabular-nums;
+}
+.monitor-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.monitor-table tbody tr:hover td {
+  background: rgb(var(--table-hover));
+}
+.monitor-self-row td {
+  background: rgb(var(--brand-moss) / 0.08);
+}
+.monitor-self-row td:first-child {
+  box-shadow: inset 3px 0 0 rgb(var(--brand-moss));
+}
+.observatory-error-card {
+  border: 1px solid rgb(var(--line));
+  border-radius: 12px;
+  background: rgb(var(--surface-2) / 0.4);
+}
+.observatory-error-track {
+  background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--line));
+}
+.observatory-error-fill--active {
+  background: rgb(var(--text-err));
+}
+.observatory-error-fill--ignored {
+  background: rgb(var(--line-strong));
+}
+.observatory-error-details {
+  border-top: 1px solid rgb(var(--line));
+}
+@media (max-width: 767px) {
+  .observatory-header {
+    padding: 16px 18px;
+  }
+  .observatory-title {
+    font-size: 20px;
+  }
+  .monitor-toolbar-select :deep(.select-trigger) {
+    min-height: 44px;
+  }
+}
 .status-dot {
   display: inline-block;
   height: 0.5rem;
@@ -943,21 +1122,21 @@ onBeforeUnmount(() => {
   border-radius: 9999px;
 }
 /* Multi-stop green → yellow → red score bands */
-.health-score10 { background: #16a34a; }
-.health-score9  { background: #22c55e; }
-.health-score8  { background: #4ade80; }
-.health-score7  { background: #a3e635; }
-.health-score6  { background: #facc15; }
+.health-score10 { background: #0d8a6a; }
+.health-score9  { background: #10946c; }
+.health-score8  { background: #2db692; }
+.health-score7  { background: #6cd3b7; }
+.health-score6  { background: #eab308; }
 .health-score5  { background: #fbbf24; }
-.health-score4  { background: #f59e0b; }
-.health-score3  { background: #f97316; }
-.health-score2  { background: #fb7185; }
-.health-score1  { background: #f87171; }
-.health-score0  { background: rgb(239, 67, 67); }
-.health-healthy  { background: #22c55e; }
-.health-warning  { background: #f59e0b; }
-.health-critical { background: #ef4444; }
-.health-unknown  { background: #9ca3af; }
+.health-score4  { background: #d97706; }
+.health-score3  { background: #ea580c; }
+.health-score2  { background: #e34948; }
+.health-score1  { background: #dc2626; }
+.health-score0  { background: #b91c1c; }
+.health-healthy  { background: #10946c; }
+.health-warning  { background: #d97706; }
+.health-critical { background: #dc2626; }
+.health-unknown  { background: rgb(var(--ink-3) / 0.45); }
 .matrix-select {
   min-width: 10rem;
 }

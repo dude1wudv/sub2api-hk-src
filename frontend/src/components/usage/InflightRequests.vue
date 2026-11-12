@@ -133,7 +133,7 @@ onBeforeUnmount(() => { ++sequence; controller?.abort(); clearInterval(clock) })
 </template>
 
 <style scoped>
-.inflight { margin-bottom:18px; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); color:rgb(var(--ink)); font:14px/1.6 var(--font-sans); }
+.inflight { margin-bottom:18px; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); box-shadow:var(--shadow-panel); color:rgb(var(--ink)); font:14px/1.6 var(--font-sans); }
 .inflight-summary { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:15px 18px; cursor:pointer; list-style:none; }
 .inflight-summary::-webkit-details-marker { display:none; }
 .inflight-summary-title, .inflight-summary-meta { display:flex; align-items:center; gap:9px; }
@@ -162,7 +162,7 @@ onBeforeUnmount(() => { ++sequence; controller?.abort(); clearInterval(clock) })
 .inflight-request { min-width:0; overflow:hidden; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); }
 .inflight-request-heading, .inflight-request-model { display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-width:0; }
 .inflight-request-heading { justify-content:space-between; gap:10px; padding:13px 16px; border-bottom:1px solid rgb(var(--line)); background:color-mix(in srgb,rgb(var(--surface-2)) 60%,rgb(var(--surface))); }
-.inflight-model-mark { display:inline-grid; place-items:center; flex-shrink:0; width:32px; height:32px; border:1px solid rgb(var(--line)); border-radius:9px; background:rgb(var(--color-dark-100)); }
+.inflight-model-mark { display:inline-grid; place-items:center; flex-shrink:0; width:32px; height:32px; border:1px solid rgb(var(--line)); border-radius:9px; background:rgb(var(--surface-2)); }
 .inflight-request-model > strong { font:500 14px/1.6 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; overflow-wrap:anywhere; }
 .inflight-type, .inflight-group { padding:1px 8px; border-radius:5px; font-size:12px; font-weight:500; color:rgb(var(--text-link)); background:rgb(var(--status-link-bg)); overflow-wrap:anywhere; }
 .inflight-group { border:1px solid rgb(var(--color-link-200)); border-radius:999px; }

@@ -78,13 +78,17 @@ func TestGeminiForwardNative_ClientDisconnectAfterFinalChunkBillsCollectedUsage(
 	require.Zero(t, result.ImageCount)
 }
 
-func TestGeminiForwardNative_ClientDisconnectWithoutUsageStaysUnbilled(t *testing.T) {
+func TestGeminiForwardNative_ClientDisconnectWithoutUsageEstimatesReceivedWork(t *testing.T) {
 	reqBody := []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`)
 	svc, c, _ := newGeminiAbortingStreamService(t, "/v1beta/models/gemini-3-flash-preview:streamGenerateContent", reqBody, geminiAbortTextChunk, true)
 
 	result, err := svc.ForwardNative(context.Background(), c, geminiVertexAPIKeyTestAccount(""), "gemini-3-flash-preview", "streamGenerateContent", true, reqBody)
 	require.ErrorIs(t, err, context.Canceled)
-	require.Nil(t, result)
+	require.NotNil(t, result)
+	require.True(t, result.Usage.OutputTokensEstimated)
+	require.True(t, result.Usage.InputTokensEstimated)
+	require.True(t, result.Usage.CacheReadTokensEstimated)
+	require.Equal(t, "client_cancelled", result.Usage.UsageEstimationReason)
 }
 
 func TestGeminiForwardNative_UpstreamReadErrorWithLiveClientStaysError(t *testing.T) {
@@ -93,7 +97,10 @@ func TestGeminiForwardNative_UpstreamReadErrorWithLiveClientStaysError(t *testin
 
 	result, err := svc.ForwardNative(context.Background(), c, geminiVertexAPIKeyTestAccount(""), "gemini-3-flash-preview", "streamGenerateContent", true, reqBody)
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
-	require.Nil(t, result)
+	require.NotNil(t, result)
+	require.Equal(t, 10, result.Usage.InputTokens)
+	require.Equal(t, 5, result.Usage.OutputTokens)
+	require.False(t, result.Usage.InputTokensEstimated)
 }
 
 func TestGeminiForwardNative_ClientDisconnectBillsOnlyDeliveredImages(t *testing.T) {
@@ -133,7 +140,10 @@ func TestGeminiCompatForward_ClientDisconnectAfterFinalChunkBillsCollectedUsage(
 		svc, c, _ := newGeminiAbortingStreamService(t, "/v1/messages", reqBody, geminiAbortTextChunk+geminiAbortFinalChunk, false)
 		result, err := svc.Forward(context.Background(), c, geminiVertexAPIKeyTestAccount(""), reqBody)
 		require.ErrorIs(t, err, io.ErrUnexpectedEOF)
-		require.Nil(t, result)
+		require.NotNil(t, result)
+		require.Equal(t, 10, result.Usage.InputTokens)
+		require.Equal(t, 5, result.Usage.OutputTokens)
+		require.False(t, result.Usage.OutputTokensEstimated)
 	})
 }
 
@@ -153,7 +163,10 @@ func TestGeminiForwardAsChatCompletions_ClientDisconnectAfterFinalChunkBillsColl
 		svc, c, _ := newGeminiAbortingStreamService(t, "/v1/chat/completions", reqBody, geminiAbortTextChunk, true)
 		result, err := svc.ForwardAsChatCompletions(context.Background(), c, geminiVertexAPIKeyTestAccount(""), reqBody)
 		require.ErrorIs(t, err, context.Canceled)
-		require.Nil(t, result)
+		require.NotNil(t, result)
+		require.True(t, result.Usage.InputTokensEstimated)
+		require.True(t, result.Usage.OutputTokensEstimated)
+		require.Equal(t, "client_cancelled", result.Usage.UsageEstimationReason)
 	})
 }
 
