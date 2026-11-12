@@ -147,18 +147,6 @@ onBeforeUnmount(() => { requestSequence++ })
 
 <template>
   <section class="portal-usage-analytics" :aria-label="tx('用量分析', 'Usage analytics')" :aria-busy="loading">
-    <div class="analytics-heading">
-      <div><h2>{{ tx('用量分析', 'Usage analytics') }}</h2><p>{{ tx('统计所选时间段内的全部请求，与下方明细筛选独立。', 'All requests in the analysis period. Independent of the record filters below.') }}</p></div>
-      <button class="analytics-refresh" type="button" :disabled="loading" @click="load"><Icon name="refresh" size="sm" />{{ tx('刷新', 'Refresh') }}</button>
-    </div>
-    <form class="analytics-controls" @submit.prevent="load">
-      <label>{{ tx('时间范围', 'Period') }}<select v-model="preset" data-testid="analytics-preset" @change="changePreset"><option value="month">{{ tx('本月', 'This month') }}</option><option value="today">{{ tx('今天', 'Today') }}</option><option value="7">{{ tx('近 7 天', 'Last 7 days') }}</option><option value="30">{{ tx('近 30 天', 'Last 30 days') }}</option><option value="custom">{{ tx('自定义', 'Custom') }}</option></select></label>
-      <template v-if="preset === 'custom'"><label>{{ tx('开始日期', 'Start date') }}<input v-model="start" data-testid="analytics-start" type="date" required /></label><label>{{ tx('结束日期', 'End date') }}<input v-model="end" data-testid="analytics-end" type="date" required /></label><button class="analytics-apply" type="submit">{{ tx('应用', 'Apply') }}</button></template>
-      <span class="analytics-range">{{ applied.start }} — {{ applied.end }}</span>
-      <label class="analytics-granularity">{{ tx('粒度', 'Granularity') }}<select v-model="granularity" data-testid="analytics-granularity" @change="load"><option value="day">{{ tx('按天', 'Daily') }}</option><option value="hour">{{ tx('按小时', 'Hourly') }}</option></select></label>
-    </form>
-    <p v-if="rangeError" role="alert" class="analytics-error">{{ rangeError }}</p>
-    <p class="analytics-timezone">{{ tx('按自然日统计，时区', 'Calendar days, time zone') }} {{ timezone }}</p>
     <p v-if="errors.stats" role="alert" class="analytics-error">{{ tx('汇总与端点统计暂时无法加载，请重试。', 'Summary and endpoint statistics could not be loaded. Please retry.') }}</p>
     <div class="analytics-summary">
       <article><span class="analytics-metric-icon blue"><Icon name="document" /></span><div><span>{{ tx('总请求数', 'Total requests') }}</span><strong data-testid="analytics-requests" :style="metricNumberStyle(stats ? number(stats.total_requests) : '—')">{{ stats ? number(stats.total_requests) : '—' }}</strong><small>{{ tx('所选分析时间段内', 'In the analysis period') }}</small></div></article>
@@ -166,6 +154,15 @@ onBeforeUnmount(() => { requestSequence++ })
       <article :class="{ 'analytics-summary-wide': stats && money(stats.total_actual_cost).length > 14 }"><span class="analytics-metric-icon green"><Icon name="dollar" /></span><div><span>{{ tx('实际消费', 'Actual cost') }}</span><strong data-testid="analytics-actual-cost" :style="metricNumberStyle(stats ? money(stats.total_actual_cost) : '—')">{{ stats ? money(stats.total_actual_cost) : '—' }}</strong><small v-if="stats">{{ tx('标准费用', 'Standard cost') }} <s>{{ money(stats.total_cost) }}</s></small></div></article>
       <article><span class="analytics-metric-icon purple"><Icon name="clock" /></span><div><span>{{ tx('平均耗时', 'Average duration') }}</span><strong :style="metricNumberStyle(stats ? duration(stats.average_duration_ms) : '—')">{{ stats ? duration(stats.average_duration_ms) : '—' }}</strong><small>{{ tx('单次请求平均总耗时', 'Average request duration') }}</small></div></article>
     </div>
+    <form class="analytics-controls" @submit.prevent="load">
+      <label><Icon name="calendar" size="sm" />{{ tx('时间范围', 'Period') }}<select v-model="preset" data-testid="analytics-preset" @change="changePreset"><option value="month">{{ tx('本月', 'This month') }}</option><option value="today">{{ tx('今天', 'Today') }}</option><option value="7">{{ tx('近 7 天', 'Last 7 days') }}</option><option value="30">{{ tx('近 30 天', 'Last 30 days') }}</option><option value="custom">{{ tx('自定义', 'Custom') }}</option></select></label>
+      <template v-if="preset === 'custom'"><label>{{ tx('开始日期', 'Start date') }}<input v-model="start" data-testid="analytics-start" type="date" required /></label><label>{{ tx('结束日期', 'End date') }}<input v-model="end" data-testid="analytics-end" type="date" required /></label><button class="analytics-apply" type="submit">{{ tx('应用', 'Apply') }}</button></template>
+      <span class="analytics-range">{{ applied.start }} — {{ applied.end }}</span>
+      <label class="analytics-granularity">{{ tx('粒度', 'Granularity') }}<select v-model="granularity" data-testid="analytics-granularity" @change="load"><option value="day">{{ tx('按天', 'Daily') }}</option><option value="hour">{{ tx('按小时', 'Hourly') }}</option></select></label>
+      <button class="analytics-refresh" type="button" :aria-label="tx('刷新用量分析', 'Refresh usage analytics')" :disabled="loading" @click="load"><Icon name="refresh" size="sm" /></button>
+    </form>
+    <p v-if="rangeError" role="alert" class="analytics-error">{{ rangeError }}</p>
+    <p class="analytics-timezone">{{ tx('统计所选日期内的全部请求，独立于下方明细筛选。时区：', 'All requests in the selected dates, independent of the record filters below. Time zone: ') }}{{ timezone }}</p>
     <div class="analytics-grid">
       <article v-for="section in sections" :key="section.id" class="analytics-panel" :data-distribution="section.id">
         <header><h3><Icon :name="section.icon" size="sm" />{{ section.title }}</h3><div class="analytics-segment" :aria-label="section.title"><button type="button" :aria-pressed="metrics[section.id] === 'tokens'" @click="metrics[section.id] = 'tokens'">Token</button><button type="button" :aria-pressed="metrics[section.id] === 'actual_cost'" @click="metrics[section.id] = 'actual_cost'">{{ tx('实际消费', 'Actual cost') }}</button></div></header>
@@ -183,20 +180,18 @@ onBeforeUnmount(() => { requestSequence++ })
 </template>
 
 <style scoped>
-.portal-usage-analytics { margin: 34px 0 42px; color: rgb(var(--ink)); font-size: 14px; }
-.analytics-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 22px; }
-.analytics-heading h2 { margin: 0; font-size: 24px; font-weight: 600; }
-.analytics-heading p, .analytics-timezone, .analytics-chart-note { color: rgb(var(--ink-2)); font-size: 13px; margin: 8px 0 0; line-height: 1.6; }
+.portal-usage-analytics { margin: 0 0 28px; color: rgb(var(--ink)); font-size: 14px; }
+.analytics-timezone, .analytics-chart-note { color: rgb(var(--ink-2)); font-size: 12px; margin: 8px 0 0; line-height: 1.6; }
 .analytics-refresh { display: flex; min-height: 44px; align-items: center; gap: 7px; border: 1px solid rgb(var(--line-strong)); border-radius: 10px; padding: 9px 12px; background: rgb(var(--surface)); color: rgb(var(--ink)); white-space: nowrap; }
 .analytics-refresh:disabled { opacity: .5; }
-.analytics-controls { display: flex; align-items: end; gap: 14px; flex-wrap: wrap; }
+.analytics-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 18px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); background: rgb(var(--surface)); }
 .analytics-controls label { display: flex; align-items: center; gap: 8px; color: rgb(var(--ink-2)); font-size: 13px; }
 .analytics-controls select, .analytics-controls input { min-width: 0; min-height: 44px; border: 1px solid rgb(var(--line-strong)); border-radius: 10px; background: rgb(var(--surface)); color: rgb(var(--ink)); padding: 9px 10px; font: inherit; }
 .analytics-range { font-size: 13px; color: rgb(var(--ink-2)); padding: 10px 0; }
 .analytics-granularity { margin-left: auto; }
 .analytics-apply { min-height: 44px; background: rgb(var(--action-bg)); color: rgb(var(--action-text)); border: 0; border-radius: 10px; padding: 10px 16px; }
-.analytics-timezone { margin: 12px 0 18px; }
-.analytics-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 1px; border: 1px solid rgb(var(--line)); border-radius: 16px; margin-bottom: 20px; overflow: hidden; background: rgb(var(--line)); }
+.analytics-timezone { margin: 10px 2px 18px; }
+.analytics-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; border: 1px solid rgb(var(--line)); border-radius: 16px; margin-bottom: 20px; overflow: hidden; background: rgb(var(--line)); }
 .analytics-summary article { display: flex; gap: 12px; padding: 23px 18px; min-width: 0; background: rgb(var(--surface)); }
 .analytics-summary-wide { grid-column: 1 / -1; }
 .analytics-summary article > div { flex: 1; min-width: 0; container-type: inline-size; }
@@ -208,35 +203,33 @@ onBeforeUnmount(() => { requestSequence++ })
 .amber { background: color-mix(in srgb, var(--chart-3) 12%, transparent); color: var(--chart-3); }
 .green { background: color-mix(in srgb, var(--chart-2) 12%, transparent); color: var(--chart-2); }
 .purple { background: color-mix(in srgb, var(--chart-4) 12%, transparent); color: var(--chart-4); }
-.analytics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-.analytics-trend { order: -1; grid-column: 1 / -1; }
-.analytics-trend .analytics-line { height: 300px; }
-.analytics-model-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; text-align: left; color: rgb(var(--ink)); text-decoration: underline; text-decoration-color: rgb(var(--line-strong)); text-underline-offset: 4px; }
+.analytics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.analytics-trend .analytics-line { height: 264px; }
+.analytics-model-link { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 0; text-align: left; color: rgb(var(--ink)); text-decoration: underline; text-decoration-color: rgb(var(--line-strong)); text-underline-offset: 4px; white-space: normal; overflow-wrap: anywhere; }
 .analytics-model-link:hover { color: rgb(var(--text-link)); }
 .analytics-model-link > span { color: rgb(var(--ink-2)); flex-shrink: 0; }
-.analytics-drilldown { display: flex; align-items: center; gap: 8px; max-width: 100%; }
+.analytics-drilldown { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; max-width: 100%; }
 .analytics-drilldown select { min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid rgb(var(--line)); border-radius: 12px; background: rgb(var(--surface)); color: rgb(var(--ink)); font-size: 14px; }
 .analytics-drilldown button { min-height: 44px; padding: 8px 12px; border: 1px solid rgb(var(--line)); border-radius: 999px; color: rgb(var(--ink)); white-space: nowrap; }
-.analytics-panel { container-type: inline-size; border: 1px solid rgb(var(--line)); border-radius: 16px; padding: 20px; min-width: 0; background: rgb(var(--surface)); }
-.analytics-panel header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.analytics-panel { container-type: inline-size; border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); padding: 0 18px 18px; min-width: 0; background: rgb(var(--surface)); }
+.analytics-panel header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; min-height: 70px; margin: 0 -18px 18px; padding: 12px 18px; border-bottom: 1px solid rgb(var(--line)); }
 .analytics-panel h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; margin: 0; }
 .analytics-panel h3 svg { color: rgb(var(--ink-2)); }
 .analytics-segment { display: flex; background: rgb(var(--surface-2)); border-radius: 10px; padding: 3px; }
-.analytics-segment button { min-height: 44px; padding: 7px 10px; border: 0; border-radius: 7px; font-size: 13px; background: transparent; color: rgb(var(--ink-2)); white-space: nowrap; }
+.analytics-segment button { min-height: 34px; padding: 6px 10px; border: 0; border-radius: 7px; font-size: 12px; background: transparent; color: rgb(var(--ink-2)); white-space: nowrap; }
 .analytics-segment button[aria-pressed='true'] { background: rgb(var(--surface)); color: rgb(var(--ink)); box-shadow: var(--shadow-panel); }
-.analytics-distribution { display: flex; align-items: center; gap: 18px; min-height: 210px; }
-.analytics-doughnut { width: 136px; height: 136px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.analytics-distribution { display: flex; align-items: center; gap: 16px; min-height: 290px; }
+.analytics-doughnut { width: 124px; height: 124px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .analytics-zero { color: rgb(var(--ink-2)); font-size: 13px; text-align: center; border: 14px solid rgb(var(--surface-2)); width: 136px; height: 136px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-.analytics-table-scroll { min-width: 0; flex: 1; max-height: 264px; overflow: auto; }
-.analytics-table-scroll table { border-collapse: collapse; width: 100%; font-size: 14px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.analytics-table-scroll th { font-weight: 500; color: rgb(var(--ink-2)); text-align: right; padding: 0 10px 10px; }
-.analytics-table-scroll td { padding: 12px 10px; border-top: 1px solid rgb(var(--line)); text-align: right; color: rgb(var(--ink-2)); }
+.analytics-table-scroll { min-width: 0; flex: 1; max-height: 302px; overflow: auto; overscroll-behavior: contain; }
+.analytics-table-scroll table { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.analytics-table-scroll th { font-weight: 500; color: rgb(var(--ink-2)); text-align: right; padding: 0 6px 10px; }
+.analytics-table-scroll td { padding: 6px; border-top: 1px solid rgb(var(--line)); text-align: right; color: rgb(var(--ink-2)); }
 .analytics-table-scroll td:first-child, .analytics-table-scroll th:first-child { text-align: left; padding-left: 0; }
-.analytics-row-label { display: flex; gap: 6px; align-items: center; color: rgb(var(--ink)); max-width: 180px; }
-.analytics-row-label > span { overflow: hidden; text-overflow: ellipsis; }
+.analytics-row-label { display: flex; gap: 6px; align-items: center; color: rgb(var(--ink)); min-width: 100px; max-width: 180px; white-space: normal; overflow-wrap: anywhere; }
 .analytics-row-label i { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .analytics-row-label :deep(svg) { flex-shrink: 0; }
-.analytics-table-scroll .analytics-actual { color: var(--chart-1); }
+.analytics-table-scroll .analytics-actual { color: rgb(var(--text-ok)); font-weight: 500; }
 .analytics-state { min-height: 210px; display: flex; align-items: center; justify-content: center; text-align: center; color: rgb(var(--ink-2)); }
 .analytics-error { color: rgb(var(--text-err)); }
 .analytics-line { height: 260px; min-width: 0; }
@@ -245,8 +238,9 @@ onBeforeUnmount(() => { requestSequence++ })
 .portal-usage-analytics button { transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease); }
 .analytics-refresh:hover:not(:disabled) { background: rgb(var(--surface-2)); }
 .analytics-apply:hover { background: rgb(var(--action-hover)); }
-@container (max-width: 550px) { .analytics-distribution { flex-direction: column; align-items: stretch; } .analytics-doughnut { align-self: center; } .analytics-table-scroll { width: 100%; } }
+@container (min-width: 660px) { .analytics-doughnut { width: 180px; height: 180px; } .analytics-table-scroll table { font-size: 13px; } }
+@container (max-width: 480px) { .analytics-distribution { flex-direction: column; align-items: stretch; gap: 20px; } .analytics-doughnut { align-self: center; width: 144px; height: 144px; } .analytics-table-scroll { width: 100%; flex: auto; } }
 @media (min-width: 768px) and (max-width: 1199px) { .analytics-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 767px) { .analytics-summary { grid-template-columns: repeat(auto-fit, minmax(min(100%, 152px), 1fr)); } .analytics-heading { align-items: flex-start; } .analytics-heading h2 { font-size: 22px; } .analytics-grid { grid-template-columns: 1fr; } .analytics-panel { padding: 16px; } .analytics-summary article { gap: 8px; padding: 18px 12px; } .analytics-summary .analytics-metric-icon { display: none; } .analytics-controls { display: grid; grid-template-columns: minmax(0, 1fr); } .analytics-controls label { display: grid; grid-template-columns: 76px minmax(0, 1fr); } .analytics-controls select, .analytics-controls input { width: 100%; font-size: 16px; } .analytics-granularity { margin-left: 0; } .analytics-apply { width: 100%; } .analytics-line { height: 260px; } }
+@media (max-width: 767px) { .analytics-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .analytics-grid { grid-template-columns: 1fr; } .analytics-summary article { gap: 8px; padding: 18px 12px; } .analytics-summary .analytics-metric-icon { display: none; } .analytics-controls { display: grid; grid-template-columns: minmax(0, 1fr); padding: 14px; } .analytics-controls label { display: grid; grid-template-columns: 76px minmax(0, 1fr); } .analytics-controls label > svg { display: none; } .analytics-controls select, .analytics-controls input { width: 100%; font-size: 16px; } .analytics-range { padding: 0; } .analytics-granularity { margin-left: 0; } .analytics-refresh { justify-content: center; } .analytics-apply { width: 100%; } .analytics-segment button, .analytics-model-link { min-height: 44px; } .analytics-line { height: 260px; } }
 @media (prefers-reduced-motion: reduce) { .portal-usage-analytics button { transition: none; } }
 </style>

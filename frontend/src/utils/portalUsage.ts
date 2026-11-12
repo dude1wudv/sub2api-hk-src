@@ -58,18 +58,18 @@ export function isTokenUsage(row: UsageLog): boolean {
 }
 
 export const portalUsageColumns = [
-  { key: 'created_at', label: '时间', default: true, fixed: true, sortable: true },
-  { key: 'type', label: '类型', default: true },
+  { key: 'api_key', label: 'API Key', default: true },
   { key: 'model', label: '模型', default: true, sortable: true },
+  { key: 'reasoning_effort', label: '推理强度', default: true },
+  { key: 'endpoint', label: '端点', default: true },
+  { key: 'ip_address', label: 'IP' },
+  { key: 'group', label: '分组', default: true },
+  { key: 'type', label: '类型', default: true },
+  { key: 'billing_mode', label: '计费模式', default: true },
   { key: 'tokens', label: 'Token', default: true },
   { key: 'cost', label: '费用', default: true },
   { key: 'latency', label: '延迟', default: true },
-  { key: 'api_key', label: 'API Key' },
-  { key: 'group', label: '分组' },
-  { key: 'endpoint', label: '端点' },
-  { key: 'ip_address', label: 'IP' },
-  { key: 'reasoning_effort', label: '推理强度' },
-  { key: 'billing_mode', label: '计费模式' },
+  { key: 'created_at', label: '时间', default: true, fixed: true, sortable: true },
   { key: 'user_agent', label: 'User-Agent' },
 ] as const
 export type PortalUsageColumnKey = (typeof portalUsageColumns)[number]['key']

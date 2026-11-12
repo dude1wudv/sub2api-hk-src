@@ -61,7 +61,7 @@ describe('PortalUsageAnalytics', () => {
     expect(getDashboardModels).toHaveBeenCalledWith(expect.objectContaining({ model_source: 'requested', timezone: expect.any(String) }))
     expect(getDashboardSnapshotV2).toHaveBeenCalledWith(expect.objectContaining({ include_trend: true, include_group_stats: true, include_model_stats: false }))
     expect(wrapper.get('[data-testid="analytics-requests"]').text()).toBe('42')
-    expect(wrapper.text()).toContain('Independent of the record filters below')
+    expect(wrapper.text()).toContain('All requests in the selected dates, independent of the record filters below. Time zone:')
     expect(wrapper.get('[data-distribution="models"] .model-icon').exists()).toBe(true)
     expect(wrapper.text()).toContain('/v1/responses')
     const line = wrapper.findComponent({ name: 'Line' })

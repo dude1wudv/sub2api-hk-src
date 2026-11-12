@@ -77,6 +77,21 @@ describe('portal UsageView access and request races', () => {
     wrapper.unmount()
   })
 
+  it('keeps the filter panel open after applying valid filters', async () => {
+    const wrapper = mountUsage()
+    await flushPromises()
+    const dates = usageMonthWindow()
+    const filters = wrapper.get('#usage-filters')
+    await filters.find('input[type="date"]').setValue(dates.currentStart)
+    await filters.findAll('input[type="date"]')[1].setValue(dates.end)
+    await filters.trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.get('#usage-filters').exists()).toBe(true)
+    expect(wrapper.get('[aria-controls="usage-filters"]').attributes('aria-expanded')).toBe('true')
+    expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ start_date: dates.currentStart, end_date: dates.end }), expect.anything())
+    wrapper.unmount()
+  })
   it('restores same-route drilldown conditions and clears unrelated filters on back navigation', async () => {
     const wrapper = mountUsage()
     await flushPromises()

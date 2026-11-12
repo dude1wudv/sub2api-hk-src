@@ -93,11 +93,11 @@ function latencyColor(ms: number | null | undefined, first = false) {
           <template v-else-if="column.key === 'cost'"><strong class="usage-actual-cost">{{ formatUsageMoney(row.actual_cost) }}</strong><small class="usage-standard-cost">{{ copy('标准', 'Standard') }} {{ formatUsageMoney(row.total_cost) }}</small><small v-if="row.billing_type === 1">{{ copy('订阅额度', 'Subscription quota') }}</small><small v-if="row.long_context_billing_applied">{{ copy('长上下文计费', 'Long-context pricing') }}</small></template>
           <template v-else-if="column.key === 'latency'"><div class="usage-latency-values" :style="{ '--latency-first': latencyColor(row.first_token_ms, true), '--latency-duration': latencyColor(row.duration_ms) }"><span>{{ copy('首字', 'First token') }}</span><b :style="{ color: latencyColor(row.first_token_ms, true) }">{{ formatUsageDuration(row.first_token_ms) }}</b><span>{{ copy('总耗时', 'Duration') }}</span><b :style="{ color: latencyColor(row.duration_ms) }">{{ formatUsageDuration(row.duration_ms) }}</b><template v-if="isTokenUsage(row)"><span :title="copy('输出 TPS = 输出 Token / 总耗时', 'Output TPS = output tokens / total duration')">{{ copy('输出 TPS', 'Output TPS') }}</span><b>{{ formatUsageRate(usageOutputRate(row)) }}</b></template></div></template>
           <template v-else-if="column.key === 'api_key'">{{ row.api_key?.name || `#${row.api_key_id}` }}</template>
-          <template v-else-if="column.key === 'group'">{{ row.group?.name || (row.group_id ? `#${row.group_id}` : '—') }}</template>
+          <template v-else-if="column.key === 'group'"><span class="usage-group-tag">{{ row.group?.name || (row.group_id ? `#${row.group_id}` : '—') }}</span></template>
           <template v-else-if="column.key === 'endpoint'"><span class="usage-long-text" :title="row.inbound_endpoint || ''">{{ row.inbound_endpoint || '—' }}</span></template>
           <template v-else-if="column.key === 'ip_address'">{{ row.ip_address || '—' }}</template>
           <template v-else-if="column.key === 'reasoning_effort'">{{ row.reasoning_effort || '—' }}</template>
-          <template v-else-if="column.key === 'billing_mode'">{{ usageBillingLabel(row, !zh) }}<small>{{ row.billing_type === 1 ? copy('订阅', 'Subscription') : copy('余额', 'Balance') }}</small></template>
+          <template v-else-if="column.key === 'billing_mode'"><span class="usage-badge">{{ usageBillingLabel(row, !zh) }}</span><small>{{ row.billing_type === 1 ? copy('订阅', 'Subscription') : copy('余额', 'Balance') }}</small></template>
           <template v-else-if="column.key === 'user_agent'"><span class="usage-long-text" :title="row.user_agent || ''">{{ row.user_agent || '—' }}</span></template>
         </td>
       </tr></tbody>
@@ -106,21 +106,22 @@ function latencyColor(ms: number | null | undefined, first = false) {
 </template>
 
 <style scoped>
-.usage-table-wrap { padding: 8px; }
+.usage-table-wrap { padding: 0; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); }
 .usage-table { width:max-content; min-width:100%; white-space: nowrap; font-size: 14px; }
-.usage-table th { font-size: 14px; text-transform: none; }
-.usage-table td { padding: 18px 12px; }
+.usage-table th { font-size: 13px; text-transform: none; padding:14px 12px; background:rgb(var(--table-head)); }
+.usage-table td { padding: 20px 12px; font-size:13px; }
+.usage-group-tag { display:inline-block; max-width:180px; padding:3px 8px; white-space:normal; overflow-wrap:anywhere; border-radius:5px; background:rgb(var(--brand-moss) / .1); color:rgb(var(--brand-moss)); }
 .usage-sort { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; font: inherit; }
 .usage-sort > span { color: rgb(var(--ink-3)); }
 .usage-table small, .usage-card small { display: block; font-size: 13px; color: rgb(var(--ink-3)); margin-top: 5px; line-height: 1.45; }
 .usage-detail-link { display: inline-block; margin-top: 7px; color: rgb(var(--ink-3)); text-decoration: underline; font-size: 13px; }
 .usage-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 5px; border: 1px solid rgb(var(--line)); background: rgb(var(--surface-2)); white-space:nowrap; }
-.usage-model-text { display: block; min-width: 140px; max-width: 220px; white-space: normal; overflow-wrap: break-word; }
+.usage-model-text { display: block; min-width: 110px; max-width: 200px; white-space: normal; overflow-wrap: break-word; }
 .usage-model-name { display: flex; align-items: flex-start; gap: 8px; }
 .usage-model-name :deep(svg), .usage-model-name :deep(.model-icon-fallback) { flex-shrink: 0; }
 .usage-request-stream, .usage-request-ws_v2, .usage-request-live { color: rgb(var(--text-accent)); background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); }
 .usage-request-sync { color: rgb(var(--text-link)); background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); }
-.usage-actual-cost { color: rgb(var(--text-link)); font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
+.usage-actual-cost { color: rgb(var(--text-ok)); font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; }
 .usage-table .usage-standard-cost, .usage-card .usage-standard-cost { color: rgb(var(--ink-3)); font-variant-numeric: tabular-nums; }
 .usage-latency-values { position:relative; display: grid; grid-template-columns: max-content max-content; gap: 4px 10px; padding-left: 13px; font-size: 13px; }
 .usage-latency-values::before { content:''; position:absolute; inset:0 auto 0 0; width:3px; border-radius:3px; background:linear-gradient(to bottom,var(--latency-first),var(--latency-duration)); }

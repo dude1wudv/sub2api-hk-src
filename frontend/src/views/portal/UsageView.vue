@@ -23,6 +23,7 @@ import PortalUsageErrorTable from '@/components/portal/PortalUsageErrorTable.vue
 import PortalUsageDetail from '@/components/portal/PortalUsageDetail.vue'
 import PortalDialog from '@/components/portal/PortalDialog.vue'
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import Icon from '@/components/icons/Icon.vue'
 import InflightRequests from '@/components/usage/InflightRequests.vue'
 import { parseUsageRoute, usageFiltersQuery, usageDrilldownQuery, validUsageDate, type UsageDrilldown } from './usageRoute'
 
@@ -47,7 +48,7 @@ const usageRows = ref<UsageLog[]>([])
 const errorRows = ref<UserErrorRequest[]>([])
 const rowsLoading = ref(false)
 const rowsError = ref('')
-const showFilters = ref(false)
+const showFilters = ref(true)
 const showColumns = ref(false)
 const filterError = ref('')
 const optionsError = ref('')
@@ -189,7 +190,6 @@ function applyFilters() {
   applied.value = { ...draft }
   pagination.usage.page = 1
   pagination.errors.page = 1
-  showFilters.value = false
   void loadRows()
   // The watcher ignores this same filter state; browser history still restores it.
   void router.push({ path: '/usage', query: usageFiltersQuery(applied.value) })
@@ -344,19 +344,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="portal-page usage-page">
-    <PortalPageHeader :title="copy('使用记录', 'Usage records')" />
-    <InflightRequests />
-    <div class="usage-overview">
-      <section class="usage-summary"><div><span class="portal-muted">{{ copy('账户余额', 'Account balance') }}</span><strong>{{ auth.user ? formatUsageMoney(auth.user.balance, 2) : '—' }}</strong></div><RouterLink v-if="!auth.isSimpleMode" to="/purchase" class="portal-button">{{ copy('充值', 'Recharge') }}</RouterLink></section>
-      <section class="usage-summary"><div><span class="portal-muted">{{ copy('本月消费', 'This month') }}</span><strong>{{ overviewLoading ? '—' : monthStats ? formatUsageMoney(monthStats.total_actual_cost, 2) : '—' }}</strong><small v-if="monthStats && !overviewLoading">{{ formatUsageNumber(monthStats.total_requests) }} {{ copy('次请求', 'requests') }}</small></div><span class="usage-summary-symbol" aria-hidden="true">↗</span></section>
-    </div>
-    <p v-if="monthError" class="portal-error" role="alert">{{ monthError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></p>
+    <PortalPageHeader :title="copy('使用记录', 'Usage records')">
+      <div class="usage-balance"><Icon name="creditCard" size="sm" /><span>{{ copy('余额', 'Balance') }}</span><strong>{{ auth.user ? formatUsageMoney(auth.user.balance, 2) : '—' }}</strong><RouterLink v-if="!auth.isSimpleMode" to="/purchase">{{ copy('充值', 'Recharge') }} ↗</RouterLink></div>
+    </PortalPageHeader>
     <PortalUsageAnalytics @drilldown="drilldown" />
-    <details class="usage-history"><summary>{{ copy('查看过去 12 个月的消费', 'View spending over the last 12 months') }}</summary>
-    <section class="usage-monthly" aria-labelledby="usage-monthly-title"><div class="usage-section-heading"><h2 id="usage-monthly-title">{{ copy('每月用量', 'Monthly usage') }}</h2><button class="portal-inline-button" :disabled="overviewLoading" @click="loadOverview">{{ overviewLoading ? copy('加载中…', 'Loading…') : copy('刷新', 'Refresh') }}</button></div><div v-if="overviewLoading" class="usage-chart-loading" role="status">{{ copy('正在加载每月用量…', 'Loading monthly usage…') }}</div><div v-else-if="trendError" class="portal-error" role="alert">{{ trendError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></div><PortalUsageChart v-else :months="months" /></section>
-    </details>
+
     <section id="usage-records" class="usage-records" aria-labelledby="usage-records-title">
-      <div class="usage-section-heading"><h2 id="usage-records-title">{{ copy('明细', 'Details') }}</h2><div class="usage-toolbar"><button class="portal-button secondary" :aria-expanded="showFilters" aria-controls="usage-filters" @click="showFilters = !showFilters">{{ copy('筛选', 'Filters') }}<span v-if="filtersActive" class="usage-filter-dot" :aria-label="copy('已应用筛选', 'Filters applied')"></span></button><button class="portal-button secondary" @click="showColumns = true">{{ copy('显示列', 'Columns') }}</button><button class="portal-button secondary" :disabled="exporting" @click="exportCsv">{{ exporting ? copy('导出中…', 'Exporting…') : copy('导出 CSV', 'Export CSV') }}</button></div></div>
+      <div class="usage-section-heading"><div><h2 id="usage-records-title">{{ copy('请求明细', 'Request details') }}</h2><p class="usage-record-description">{{ copy('查看每次请求的 Token、费用与响应表现。', 'Inspect tokens, cost and response performance for each request.') }}</p></div></div>
       <div v-if="errorsEnabled" class="usage-record-tabs" role="tablist" :aria-label="copy('明细类别', 'Record type')"><button role="tab" :aria-selected="activeTab === 'usage'" :class="{ active: activeTab === 'usage' }" @click="activeTab = 'usage'">{{ copy('用量记录', 'Usage logs') }}</button><button role="tab" :aria-selected="activeTab === 'errors'" :class="{ active: activeTab === 'errors' }" @click="activeTab = 'errors'">{{ copy('错误请求', 'Error requests') }}</button></div>
       <form v-if="showFilters" id="usage-filters" class="usage-filter-panel" @submit.prevent="applyFilters">
         <div class="usage-filter-grid"><label class="portal-field">{{ copy('开始日期', 'Start date') }}<input v-model="draft.start" type="date" :max="draft.end || dates.end" required /></label><label class="portal-field">{{ copy('结束日期', 'End date') }}<input v-model="draft.end" type="date" :min="draft.start" :max="dates.end" required /></label><label class="portal-field">API Key<select v-model="draft.key"><option value="">{{ copy('全部 Key', 'All keys') }}</option><option v-for="key in keys" :key="key.id" :value="String(key.id)">{{ key.name }}</option></select></label><label class="portal-field">{{ copy('模型', 'Model') }}<input v-model="draft.model" list="portal-usage-models" :placeholder="copy('全部模型', 'All models')" /><datalist id="portal-usage-models"><option v-for="model in modelNames" :key="model" :value="model" /></datalist></label>
@@ -364,11 +358,23 @@ onBeforeUnmount(() => {
           <template v-else><label class="portal-field">{{ copy('错误分类', 'Error category') }}<select v-model="draft.category"><option value="">{{ copy('全部分类', 'All categories') }}</option><option v-for="(label, key) in categoryOptions" :key="key" :value="key">{{ label }}</option></select></label><label class="portal-field">{{ copy('状态码', 'Status code') }}<select v-model="draft.status"><option value="">{{ copy('全部状态', 'All status codes') }}</option><option v-for="code in COMMON_ERROR_STATUS_CODES" :key="code" :value="String(code)">{{ code }}</option></select></label></template>
         </div><p v-if="optionsError" class="usage-options-note">{{ optionsError }} <button type="button" @click="loadOptions">{{ copy('重试', 'Retry') }}</button></p><p v-if="filterError" class="portal-error" role="alert">{{ filterError }}</p><div class="usage-filter-actions"><span>{{ copy('筛选仅应用于明细', 'Filters apply to details only') }} · {{ timezoneLabel(timezone) }}</span><button class="portal-button secondary" type="button" @click="resetFilters">{{ copy('重置', 'Reset') }}</button><button class="portal-button" type="submit">{{ copy('应用筛选', 'Apply filters') }}</button></div>
       </form>
-      <div class="usage-range"><div class="usage-filter-summary"><span>{{ applied.start }} — {{ applied.end }}</span><span v-if="applied.model" class="portal-tag">{{ applied.model }}</span><span v-if="applied.key" class="portal-tag">{{ keys.find(key => String(key.id) === applied.key)?.name || `Key #${applied.key}` }}</span><button v-if="filtersActive" class="portal-inline-button" @click="resetFilters">{{ copy('清除条件', 'Clear filters') }} ×</button></div><button class="portal-inline-button" :disabled="rowsLoading" @click="loadRows">{{ copy('刷新明细', 'Refresh details') }}</button></div>
+      <div class="usage-toolbar">
+        <button class="portal-button secondary" :disabled="rowsLoading" :aria-label="copy('刷新明细', 'Refresh details')" @click="loadRows"><Icon name="refresh" size="sm" /></button>
+        <button class="portal-button secondary" :aria-expanded="showFilters" aria-controls="usage-filters" @click="showFilters = !showFilters"><Icon name="filter" size="sm" />{{ copy('筛选', 'Filters') }}<span v-if="filtersActive" class="usage-filter-dot" :aria-label="copy('已应用筛选', 'Filters applied')"></span></button>
+        <button class="portal-button secondary" @click="showColumns = true"><Icon name="grid" size="sm" />{{ copy('显示列', 'Columns') }}</button>
+        <button class="portal-button" :disabled="exporting" @click="exportCsv"><Icon name="download" size="sm" />{{ exporting ? copy('导出中…', 'Exporting…') : copy('导出 CSV', 'Export CSV') }}</button>
+      </div>
+      <InflightRequests />
+      <div class="usage-range"><div class="usage-filter-summary"><span>{{ applied.start }} — {{ applied.end }}</span><span v-if="applied.model" class="portal-tag">{{ applied.model }}</span><span v-if="applied.key" class="portal-tag">{{ keys.find(key => String(key.id) === applied.key)?.name || `Key #${applied.key}` }}</span><button v-if="filtersActive" class="portal-inline-button" @click="resetFilters">{{ copy('清除条件', 'Clear filters') }} ×</button></div><span class="usage-record-count">{{ zh ? `共 ${pageState.total} 条记录` : `${pageState.total} records` }}</span></div>
       <p v-if="exportProgress" class="usage-export-status" role="status">{{ exportProgress }} <button v-if="exporting" @click="cancelExport">{{ copy('取消导出', 'Cancel export') }}</button></p><p v-if="exportError" class="portal-error" role="alert">{{ exportError }}</p>
       <div v-if="rowsLoading" class="usage-list-loading" role="status">{{ copy('正在加载明细…', 'Loading details…') }}</div><p v-else-if="rowsError" class="portal-error" role="alert">{{ rowsError }} <button @click="loadRows">{{ copy('重试', 'Retry') }}</button></p><PortalUsageTable v-else-if="activeTab === 'usage'" :rows="usageRows" :columns="usageColumns" :sort-by="sorting.usage.by" :sort-order="sorting.usage.order" @sort="changeSort" @detail="openDetail" /><PortalUsageErrorTable v-else-if="errorsEnabled" :rows="errorRows" :columns="errorColumns" :sort-by="sorting.errors.by" :sort-order="sorting.errors.order" @sort="changeSort" @detail="openErrorDetail" />
       <div v-if="!rowsError && pageState.total > 0" class="portal-pagination usage-pagination"><label>{{ copy('每页', 'Per page') }}<select :value="pageState.size" :disabled="rowsLoading" @change="changePageSize"><option :value="10">10</option><option :value="20">20</option><option :value="50">50</option></select></label><span class="portal-muted">{{ zh ? `共 ${pageState.total} 条` : `${pageState.total} records` }} · {{ pageState.page }} / {{ totalPages }}</span><button :disabled="rowsLoading || pageState.page <= 1" @click="changePage(pageState.page - 1)" :aria-label="copy('上一页', 'Previous page')">←</button><button :disabled="rowsLoading || pageState.page >= totalPages" @click="changePage(pageState.page + 1)" :aria-label="copy('下一页', 'Next page')">→</button></div>
     </section>
+    <details class="usage-history"><summary>{{ copy('查看过去 12 个月的消费', 'View spending over the last 12 months') }}</summary>
+    <div class="usage-history-summary"><span>{{ copy('本月消费', 'This month') }}</span><strong>{{ overviewLoading ? '—' : monthStats ? formatUsageMoney(monthStats.total_actual_cost, 2) : '—' }}</strong><small v-if="monthStats && !overviewLoading">{{ formatUsageNumber(monthStats.total_requests) }} {{ copy('次请求', 'requests') }}</small></div>
+      <p v-if="monthError" class="portal-error" role="alert">{{ monthError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></p>
+      <section class="usage-monthly" aria-labelledby="usage-monthly-title"><div class="usage-section-heading"><h2 id="usage-monthly-title">{{ copy('每月用量', 'Monthly usage') }}</h2><button class="portal-inline-button" :disabled="overviewLoading" @click="loadOverview">{{ overviewLoading ? copy('加载中…', 'Loading…') : copy('刷新', 'Refresh') }}</button></div><div v-if="overviewLoading" class="usage-chart-loading" role="status">{{ copy('正在加载每月用量…', 'Loading monthly usage…') }}</div><div v-else-if="trendError" class="portal-error" role="alert">{{ trendError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></div><PortalUsageChart v-else :months="months" /></section>
+    </details>
     <PortalDialog :open="showColumns" :title="copy('显示列', 'Visible columns')" @close="showColumns = false"><div class="usage-column-list"><label v-for="column in columnsAvailable" :key="column.key"><input type="checkbox" :checked="columnKeys.includes(column.key)" :disabled="'fixed' in column && column.fixed" @change="toggleColumn(column.key)" />{{ usageColumnLabel(column.key, !zh) }}</label></div></PortalDialog>
     <PortalUsageDetail :open="detailOpen" :row="detailRow" :loading="detailLoading" :error="detailError" @close="closeDetail" />
     <PortalDialog :open="errorDetailOpen && errorsEnabled" :title="copy('错误请求详情', 'Error request details')" wide @close="closeErrorDetail"><p v-if="errorDetailLoading" class="portal-muted" role="status">{{ copy('正在加载详情…', 'Loading details…') }}</p><p v-if="errorDetailError" class="portal-error" role="alert">{{ errorDetailError }}</p><template v-if="errorDetail"><dl class="usage-error-metadata"><dt>{{ copy('时间', 'Time') }}</dt><dd>{{ new Date(errorDetail.created_at).toLocaleString(locale, { hour12: false }) }}</dd><dt>{{ copy('模型', 'Model') }}</dt><dd>{{ errorDetail.model }}</dd><dt>{{ copy('类型', 'Type') }}</dt><dd>{{ usageErrorRequestLabel(errorDetail, !zh) }}</dd><dt>{{ copy('状态码', 'Status code') }}</dt><dd>{{ errorDetail.status_code }}</dd><dt v-if="errorDetail.upstream_status_code">{{ copy('上游状态码', 'Upstream status code') }}</dt><dd v-if="errorDetail.upstream_status_code">{{ errorDetail.upstream_status_code }}</dd><dt>{{ copy('分类', 'Category') }}</dt><dd>{{ categoryOptions[errorDetail.category] || errorDetail.category }}</dd><dt>API Key</dt><dd>{{ errorDetail.key_name }}<span v-if="errorDetail.key_deleted">{{ copy('（已删除）', ' (deleted)') }}</span></dd><dt>{{ copy('分组', 'Group') }}</dt><dd>{{ errorDetail.group_name || '—' }}</dd><dt>{{ copy('端点', 'Endpoint') }}</dt><dd>{{ errorDetail.inbound_endpoint || '—' }}</dd><dt>IP</dt><dd>{{ errorDetail.client_ip || '—' }}</dd><dt>{{ copy('平台', 'Platform') }}</dt><dd>{{ errorDetail.platform }}</dd><dt>{{ copy('消息', 'Message') }}</dt><dd>{{ errorDetail.message }}</dd><dt>User-Agent</dt><dd>{{ errorDetail.user_agent || '—' }}</dd></dl><h3 class="usage-error-body-title">{{ copy('错误响应', 'Error response') }}</h3><pre class="usage-error-body">{{ errorDetail.error_body || copy('未记录响应内容', 'No response body recorded') }}</pre></template></PortalDialog>
@@ -378,28 +384,37 @@ onBeforeUnmount(() => {
 <style scoped>
 .usage-filter-summary { display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-width:0; }
 .usage-filter-summary .portal-tag { overflow-wrap:anywhere; }
-.usage-records { scroll-margin-top:24px; border:1px solid rgb(var(--line)); border-radius:20px; background:rgb(var(--surface)); padding:24px; }
+.usage-records { scroll-margin-top:24px; min-width:0; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); padding:22px; }
 .usage-records .usage-section-heading h2 { font-size:19px; font-weight:600; }
 .usage-records .usage-filter-panel { background:rgb(var(--canvas)); }
 .usage-records .usage-range { gap:14px; align-items:flex-start; }
 @media(max-width:767px) { .usage-records { padding:18px 14px; } .usage-filter-summary { font-size:13px; } .usage-range > button { white-space:nowrap; flex-shrink:0; } }
 
-.usage-overview { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 40px; margin-bottom: 28px; }
-.usage-history { margin: 24px 0; border-top: 1px solid rgb(var(--line)); border-bottom: 1px solid rgb(var(--line)); padding: 18px 0; }
-.usage-history > summary { cursor: pointer; font-size: 13px; color: rgb(var(--ink-3)); }
-.usage-summary { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 0; }
-.usage-summary > div { display: flex; align-items: baseline; gap: 12px; }
-.usage-summary strong { font-size: 20px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
-.usage-summary small { color: rgb(var(--ink-3)); font-size: 13px; }
-.usage-summary-symbol { display: none; }
+.usage-page { max-width: 1680px; }
+.usage-balance { display:flex; align-items:center; gap:10px; padding:9px 14px; border:1px solid rgb(var(--line)); border-radius:var(--radius-control); background:rgb(var(--surface)); font-size:13px; }
+.usage-balance > span { color:rgb(var(--ink-2)); }
+.usage-balance strong { font-weight:600; font-variant-numeric:tabular-nums; }
+.usage-balance a { border-left:1px solid rgb(var(--line)); padding-left:12px; color:rgb(var(--text-link)); }
+.usage-history { margin:24px 0 0; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); padding:18px 22px; background:rgb(var(--surface)); }
+.usage-history > summary { cursor:pointer; font-size:13px; color:rgb(var(--ink-2)); }
+.usage-history-summary { display:flex; flex-wrap:wrap; align-items:baseline; gap:12px; margin-top:22px; }
+.usage-history-summary span, .usage-history-summary small { color:rgb(var(--ink-2)); font-size:13px; }
+.usage-history-summary strong { font-size:24px; font-weight:600; }
+.usage-record-description { color:rgb(var(--ink-2)); font-size:13px; margin-top:4px; }
+.usage-record-count { flex-shrink:0; }
+.usage-records :deep(.inflight) { margin:22px 0 18px; border:0; background:transparent; }
+.usage-records :deep(.inflight > summary) { width:fit-content; margin:0 auto; padding:9px 18px; border:1px solid rgb(var(--line-strong)); border-radius:999px; background:rgb(var(--surface-2)); color:rgb(var(--text-warn)); font-size:13px; font-weight:500; }
+.usage-records :deep(.inflight[open]) { border:1px solid rgb(var(--line-strong)); border-radius:var(--radius-card); background:rgb(var(--surface)); }
+.usage-records :deep(.inflight[open] > summary) { margin:12px auto; }
+.usage-records :deep(.inflight input) { background:rgb(var(--surface)); color:rgb(var(--ink)); }
 .usage-monthly { margin-top: 32px; }
 .usage-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
 .usage-section-heading h2 { font-size: 16px; font-weight: 500; }
 .usage-section-heading > button { font-size: 13px; color: rgb(var(--ink-3)); }
 .usage-chart-loading { height: 265px; display: grid; place-items: center; color: rgb(var(--ink-3)); }
 .usage-records { margin-top: 34px; }
-.usage-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
-.usage-toolbar .portal-button { min-height: 32px; font-size: 13px; padding: 6px 13px; }
+.usage-toolbar { display: flex; justify-content:flex-end; gap: 8px; flex-wrap: wrap; margin:18px 0; }
+.usage-toolbar .portal-button { min-height: 40px; font-size: 13px; padding: 8px 12px; }
 .usage-filter-dot { width: 5px; height: 5px; background: rgb(var(--action-bg)); border-radius: 50%; }
 .usage-record-tabs { display: flex; gap: 22px; margin: 0 0 20px; border-bottom: 1px solid rgb(var(--line)); }
 .usage-record-tabs button { padding: 0 0 12px; color: rgb(var(--ink-3)); border-bottom: 2px solid transparent; }
@@ -426,6 +441,6 @@ onBeforeUnmount(() => {
 .usage-error-body { padding: 16px; background: rgb(var(--surface-2)); border: 1px solid rgb(var(--line)); border-radius: 8px; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 340px; overflow: auto; }
 .portal-error { margin: 16px 0; }
 @media (max-width: 1100px) { .usage-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 767px) { .usage-overview { gap: 12px; } .usage-summary { padding: 4px 0; flex-wrap: wrap; gap: 14px; } .usage-summary strong { font-size: 20px; } .usage-summary .portal-button { font-size: 13px; padding: 5px 12px; min-height: 30px; } .usage-summary-symbol { display: none; } .usage-summary > div > .portal-muted { font-size: 13px; } .usage-section-heading { flex-wrap: wrap; align-items: flex-start; } .usage-toolbar { width: 100%; } .usage-toolbar .portal-button { flex: 1 1 calc(33% - 8px); } .usage-record-tabs { gap: 16px; overflow-x: auto; } .usage-filter-panel { padding: 16px; } .usage-filter-actions { flex-wrap: wrap; } .usage-filter-actions > span { width: 100%; margin-bottom: 6px; } .usage-pagination { justify-content: flex-start; } }
+@media (max-width: 767px) { .usage-section-heading { flex-wrap: wrap; align-items: flex-start; } .usage-toolbar { width: 100%; } .usage-toolbar .portal-button { min-height:44px; } .usage-toolbar .portal-button:last-child { flex:1; } .usage-record-tabs { gap: 16px; overflow-x: auto; } .usage-filter-panel { padding: 16px; } .usage-filter-actions { flex-wrap: wrap; } .usage-filter-actions > span { width: 100%; margin-bottom: 6px; } .usage-pagination { justify-content: flex-start; } }
 @media (max-width: 440px) { .usage-filter-grid { grid-template-columns: 1fr; } .usage-pagination { gap: 8px; } .usage-error-metadata { grid-template-columns: 80px minmax(0, 1fr); gap: 12px; } }
 </style>
