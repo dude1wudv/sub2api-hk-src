@@ -108,25 +108,25 @@ function latencyColor(ms: number | null | undefined, first = false) {
 <style scoped>
 .usage-table-wrap { padding: 0; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); }
 .usage-table { width:max-content; min-width:100%; white-space: nowrap; font-size: 14px; }
-.usage-table th { font-size: 13px; text-transform: none; padding:14px 12px; background:rgb(var(--table-head)); }
-.usage-table td { padding: 20px 12px; font-size:13px; }
-.usage-group-tag { display:inline-block; max-width:180px; padding:3px 8px; white-space:normal; overflow-wrap:anywhere; border-radius:5px; background:rgb(var(--brand-moss) / .1); color:rgb(var(--brand-moss)); }
+.usage-table th { font-size: 14px; font-weight:400; text-transform: none; padding:14px 12px; background:rgb(var(--table-head)); }
+.usage-table td { padding: 20px 12px; font-size:14px; }
+.usage-table .usage-api_key { font-weight:500; }
+.usage-group-tag { display:inline-block; max-width:200px; padding:2px 8px; font-size:13px; font-weight:500; line-height:1.5; white-space:normal; overflow-wrap:anywhere; border:1px solid rgb(var(--color-link-200)); border-radius:999px; background:rgb(var(--status-link-bg)); color:rgb(var(--text-link)); }
 .usage-sort { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; font: inherit; }
 .usage-sort > span { color: rgb(var(--ink-3)); }
 .usage-table small, .usage-card small { display: block; font-size: 13px; color: rgb(var(--ink-3)); margin-top: 5px; line-height: 1.45; }
 .usage-detail-link { display: inline-block; margin-top: 7px; color: rgb(var(--ink-3)); text-decoration: underline; font-size: 13px; }
-.usage-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 5px; border: 1px solid rgb(var(--line)); background: rgb(var(--surface-2)); white-space:nowrap; }
-.usage-model-text { display: block; min-width: 110px; max-width: 200px; white-space: normal; overflow-wrap: break-word; }
+.usage-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; border: 0; background: rgb(var(--status-link-bg)); color:rgb(var(--text-link)); font-size:13px; font-weight:500; white-space:nowrap; }
+.usage-model-text { @apply font-mono font-medium; display: block; min-width: 140px; max-width: 220px; white-space: normal; overflow-wrap: break-word; }
 .usage-model-name { display: flex; align-items: flex-start; gap: 8px; }
 .usage-model-name :deep(svg), .usage-model-name :deep(.model-icon-fallback) { flex-shrink: 0; }
-.usage-request-stream, .usage-request-ws_v2, .usage-request-live { color: rgb(var(--text-accent)); background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); }
-.usage-request-sync { color: rgb(var(--text-link)); background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); }
-.usage-actual-cost { color: rgb(var(--text-ok)); font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; }
+.usage-request-stream, .usage-request-ws_v2, .usage-request-live, .usage-request-sync { color: rgb(var(--text-link)); background: rgb(var(--status-link-bg)); }
+.usage-actual-cost { @apply font-mono font-semibold; color: rgb(var(--ink)); font-size: 14px; font-variant-numeric: tabular-nums; }
 .usage-table .usage-standard-cost, .usage-card .usage-standard-cost { color: rgb(var(--ink-3)); font-variant-numeric: tabular-nums; }
 .usage-latency-values { position:relative; display: grid; grid-template-columns: max-content max-content; gap: 4px 10px; padding-left: 13px; font-size: 13px; }
 .usage-latency-values::before { content:''; position:absolute; inset:0 auto 0 0; width:3px; border-radius:3px; background:linear-gradient(to bottom,var(--latency-first),var(--latency-duration)); }
 .usage-latency-values span { color: rgb(var(--ink-3)); }
-.usage-latency-values b { font-weight: 400; font-variant-numeric: tabular-nums; }
+.usage-latency-values b { font-weight: 500; font-variant-numeric: tabular-nums; }
 .usage-long-text { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .usage-empty { height: 170px; text-align: center; color: rgb(var(--ink-3)); }
 .usage-cards { display:grid; gap:12px; }

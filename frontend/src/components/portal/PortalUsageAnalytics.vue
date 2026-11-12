@@ -196,7 +196,7 @@ onBeforeUnmount(() => { requestSequence++ })
 .analytics-summary-wide { grid-column: 1 / -1; }
 .analytics-summary article > div { flex: 1; min-width: 0; container-type: inline-size; }
 .analytics-summary article > div > span { color: rgb(var(--ink-2)); font-size: 13px; }
-.analytics-summary strong { display: block; font-size: clamp(14px, calc(100cqi / var(--metric-width, 6)), 30px); line-height: 1.4; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.analytics-summary strong { display: block; margin:4px 0; font-size: clamp(14px, calc(100cqi / var(--metric-width, 6)), 30px); line-height: 1.2; font-weight: 600; letter-spacing:normal; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .analytics-summary small { display: block; color: rgb(var(--ink-2)); font-size: 13px; line-height: 1.7; }
 .analytics-metric-icon { width: 34px; height: 34px; padding: 8px; display: flex; flex-shrink: 0; border-radius: 10px; }
 .blue { background: color-mix(in srgb, var(--chart-1) 12%, transparent); color: var(--chart-1); }
@@ -213,7 +213,7 @@ onBeforeUnmount(() => { requestSequence++ })
 .analytics-drilldown button { min-height: 44px; padding: 8px 12px; border: 1px solid rgb(var(--line)); border-radius: 999px; color: rgb(var(--ink)); white-space: nowrap; }
 .analytics-panel { container-type: inline-size; border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); padding: 0 18px 18px; min-width: 0; background: rgb(var(--surface)); }
 .analytics-panel header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; min-height: 70px; margin: 0 -18px 18px; padding: 12px 18px; border-bottom: 1px solid rgb(var(--line)); }
-.analytics-panel h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; margin: 0; }
+.analytics-panel h3 { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin: 0; }
 .analytics-panel h3 svg { color: rgb(var(--ink-2)); }
 .analytics-segment { display: flex; background: rgb(var(--surface-2)); border-radius: 10px; padding: 3px; }
 .analytics-segment button { min-height: 34px; padding: 6px 10px; border: 0; border-radius: 7px; font-size: 12px; background: transparent; color: rgb(var(--ink-2)); white-space: nowrap; }
@@ -222,7 +222,9 @@ onBeforeUnmount(() => { requestSequence++ })
 .analytics-doughnut { width: 124px; height: 124px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .analytics-zero { color: rgb(var(--ink-2)); font-size: 13px; text-align: center; border: 14px solid rgb(var(--surface-2)); width: 136px; height: 136px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .analytics-table-scroll { min-width: 0; flex: 1; max-height: 302px; overflow: auto; overscroll-behavior: contain; }
-.analytics-table-scroll table { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.analytics-table-scroll table { border-collapse: collapse; width: 100%; font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.analytics-table-scroll td:not(:first-child) { @apply font-mono; }
+.analytics-model-link { @apply font-mono font-medium; }
 .analytics-table-scroll th { font-weight: 500; color: rgb(var(--ink-2)); text-align: right; padding: 0 6px 10px; }
 .analytics-table-scroll td { padding: 6px; border-top: 1px solid rgb(var(--line)); text-align: right; color: rgb(var(--ink-2)); }
 .analytics-table-scroll td:first-child, .analytics-table-scroll th:first-child { text-align: left; padding-left: 0; }

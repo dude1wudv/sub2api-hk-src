@@ -33,8 +33,8 @@ function compact(value: number) {
     <small v-if="row.image_output_tokens > 0">{{ copy('图像输出', 'Image output') }} {{ formatUsageNumber(row.image_output_tokens) }} Token</small>
     <div class="usage-token-rates">
       <span v-if="row.output_tokens_estimated" data-testid="output-tokens-estimated" :title="t('usage.outputTokensEstimatedHint')">{{ t('usage.outputTokensEstimated') }}</span>
-      <span :title="copy('缓存命中率 = 缓存读取 / (输入 + 缓存写入 + 缓存读取)', 'Cache hit rate = cache read / (input + cache write + cache read)')">{{ copy('缓存', 'Cache') }} {{ formatUsagePercent(usageCacheRate(row)) }}</span>
-      <span :title="copy('输出阶段速率 = 输出 Token / (总耗时 − 首字耗时)', 'Output stage rate = output tokens / (duration - first token)')">{{ copy('输出阶段', 'Output stage') }} {{ formatUsageRate(usageOutputStageRate(row)) }}</span>
+      <span class="usage-cache-rate" :title="copy('缓存命中率 = 缓存读取 / (输入 + 缓存写入 + 缓存读取)', 'Cache hit rate = cache read / (input + cache write + cache read)')">{{ copy('缓存', 'Cache') }} {{ formatUsagePercent(usageCacheRate(row)) }}</span>
+      <span class="usage-output-rate" :title="copy('输出阶段速率 = 输出 Token / (总耗时 − 首字耗时)', 'Output stage rate = output tokens / (duration - first token)')">{{ copy('输出阶段', 'Output stage') }} {{ formatUsageRate(usageOutputStageRate(row)) }}</span>
     </div>
     <small v-if="row.output_tokens_estimated" class="usage-estimate-note">{{ t('usage.outputTokensEstimatedHint') }}</small>
     <small v-if="usageBillingMode(row) === 'per_request'">{{ copy('按次计费', 'Billed per request') }}</small>
@@ -55,16 +55,16 @@ function compact(value: number) {
 small { display:block; margin-top:5px; color:rgb(var(--ink-3)); font-size:13px; line-height:1.45; }
 .usage-estimate-note { max-width:32em; }
 .usage-detail-link { display:inline-block; margin-top:7px; color:rgb(var(--ink-3)); font-size:13px; text-decoration:underline; }
-.usage-token-counts { display:flex; gap:12px; font-size:13px; font-variant-numeric:tabular-nums; }
+.usage-token-counts { @apply font-mono font-medium; display:flex; gap:12px; font-size:14px; font-variant-numeric:tabular-nums; }
 .usage-token-counts > span, .usage-cache > span { display:inline-flex; align-items:center; gap:4px; }
 .usage-input-icon { color:rgb(var(--text-ok)); }
 .usage-output-icon { color:rgb(var(--text-accent)); }
 .usage-cache-read { color:rgb(var(--text-link)); }
-.usage-cache-write { color:rgb(var(--text-err)); }
-.usage-cache { display:flex; gap:12px; margin-top:5px; color:rgb(var(--ink-3)); }
+.usage-cache-write { color:rgb(var(--text-warn)); }
+.usage-cache { display:flex; gap:12px; margin-top:5px; font-size:14px; font-weight:500; color:rgb(var(--ink-3)); }
 .usage-cache i { margin-left:5px; padding:1px 3px; border:1px solid rgb(var(--line)); border-radius:3px; font-size:13px; font-style:normal; }
-.usage-token-rates { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; font-size:13px; }
-.usage-token-rates span { padding:2px 5px; border:1px solid rgb(var(--text-ok) / .35); border-radius:4px; background:rgb(var(--surface-2)); color:rgb(var(--text-link)); }
-.usage-token-rates span + span { border-color:rgb(var(--text-ok) / .35); background:rgb(var(--surface-2)); color:rgb(var(--text-link)); }
+.usage-token-rates { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; font-size:11px; font-weight:600; line-height:1.25; font-variant-numeric:tabular-nums; }
+.usage-token-rates span { padding:2px 5px; border:1px solid rgb(var(--color-link-200)); border-radius:4px; background:rgb(var(--status-link-bg)); color:rgb(var(--text-link)); }
+.usage-token-rates .usage-output-rate { border-color:rgb(var(--color-warn-200)); background:rgb(var(--status-warn-bg)); color:rgb(var(--text-warn)); }
 .usage-media strong { font-size:13px; font-weight:500; }
 </style>
