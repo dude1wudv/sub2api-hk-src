@@ -462,9 +462,14 @@ func (p *incompleteProtocolProgress) observe(data []byte) {
 	typ := root.Get("type").String()
 	if typ == "error" || root.Get("error").Exists() {
 		p.rejected = !p.hasOutput()
-		return
+		// An Anthropic error may carry the final usage for work already
+		// generated. Capture that snapshot before the forwarding error exits;
+		// a rejection before any output still cannot authorize estimates.
+		if typ != "error" || !root.Get("usage").IsObject() {
+			return
+		}
 	}
-	if strings.HasPrefix(typ, "message_") || strings.HasPrefix(typ, "content_block_") || typ == "message" {
+	if strings.HasPrefix(typ, "message_") || strings.HasPrefix(typ, "content_block_") || typ == "message" || typ == "error" {
 		p.anthropic = true
 		p.anthropicOutput.Observe(root.Raw)
 		if typ == "message" {
@@ -520,10 +525,10 @@ func (p *incompleteProtocolProgress) observe(data []byte) {
 				p.outputReported = true
 			}
 		}
-		if typ == "message_stop" || typ == "message" || root.Get("delta.stop_reason").String() != "" {
+		if typ == "message_stop" || typ == "message" || typ == "error" || root.Get("delta.stop_reason").String() != "" {
 			p.terminal = true
 			if v, ok := streamOutputUsageTokenCount(u.Get("output_tokens")); ok {
-				p.anthropicOutput.ReportFinal(v, false)
+				p.anthropicOutput.ReportFinal(v, u.Get("output_tokens_estimated").Bool())
 			}
 		}
 		return

@@ -61,13 +61,14 @@ func TestNativeAnthropicStreamUsageRecoversReceivedOutput(t *testing.T) {
 		readErr    error
 		disconnect bool
 		wantErr    bool
+		finalZero  bool
 	}{
 		{name: "complete without final usage", tail: nativeAnthropicUsageSSE(`{"type":"message_stop"}`)},
 		{name: "missing terminal", wantErr: true},
 		{name: "upstream unexpected EOF", readErr: io.ErrUnexpectedEOF, wantErr: true},
 		{name: "client disconnect then upstream unexpected EOF", readErr: io.ErrUnexpectedEOF, disconnect: true, wantErr: true},
 		{name: "truncated final usage", tail: `data: {"type":"message_delta","usage":{"output_tokens":9999`, wantErr: true},
-		{name: "zero terminal usage with output", tail: nativeAnthropicUsageSSE(
+		{name: "zero terminal usage with output", finalZero: true, tail: nativeAnthropicUsageSSE(
 			`{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":0}}`,
 			`{"type":"message_stop"}`,
 		)},
@@ -83,8 +84,13 @@ func TestNativeAnthropicStreamUsageRecoversReceivedOutput(t *testing.T) {
 			require.NotNil(t, result)
 			require.Equal(t, "/v1/messages", result.UpstreamEndpoint)
 			require.Zero(t, result.Usage.InputTokens)
-			require.Equal(t, 3, result.Usage.OutputTokens, "ten received bytes must survive every termination path")
-			require.True(t, result.Usage.OutputTokensEstimated)
+			if tt.finalZero {
+				require.Zero(t, result.Usage.OutputTokens, "explicit final zero overrides a local estimate")
+				require.False(t, result.Usage.OutputTokensEstimated)
+			} else {
+				require.Equal(t, 3, result.Usage.OutputTokens, "unmetered received output survives every termination path")
+				require.True(t, result.Usage.OutputTokensEstimated)
+			}
 			require.Equal(t, tt.disconnect, result.ClientDisconnect)
 		})
 	}
@@ -108,19 +114,34 @@ func TestNativeAnthropicStreamUsagePreservesFinalMeasuredCountAndCache(t *testin
 }
 
 func TestNativeAnthropicStreamUsageReadsErrorUsageSnapshot(t *testing.T) {
-	payload := nativeAnthropicUsageSSE(
-		`{"type":"message_start","message":{"usage":{"input_tokens":0,"output_tokens":0}}}`,
-		`{"type":"content_block_delta","delta":{"type":"text_delta","text":"abcdefghij"}}`,
-		`{"type":"error","error":{"type":"upstream_error","message":"interrupted"},"usage":{"input_tokens":23,"cache_read_input_tokens":7,"cache_creation_input_tokens":4,"output_tokens":9,"output_tokens_estimated":true}}`,
-	)
-	result, err := runNativeAnthropicUsageStream(t, io.NopCloser(strings.NewReader(payload)), false, 0)
-	require.Error(t, err)
-	require.NotNil(t, result)
-	require.Equal(t, 34, result.Usage.InputTokens)
-	require.Equal(t, 7, result.Usage.CacheReadInputTokens)
-	require.Equal(t, 4, result.Usage.CacheCreationInputTokens)
-	require.Equal(t, 9, result.Usage.OutputTokens)
-	require.True(t, result.Usage.OutputTokensEstimated)
+	for _, tc := range []struct {
+		name, usage                   string
+		input, cache, created, output int
+		estimated                     bool
+	}{
+		{"real snapshot", `{"input_tokens":23,"cache_read_input_tokens":7,"cache_creation_input_tokens":4,"output_tokens":9}`, 34, 7, 4, 9, false},
+		{"estimated output snapshot", `{"input_tokens":23,"cache_read_input_tokens":7,"cache_creation_input_tokens":4,"output_tokens":9,"output_tokens_estimated":true}`, 34, 7, 4, 9, true},
+		{"explicit final zero", `{"input_tokens":0,"cache_read_input_tokens":0,"cache_creation_input_tokens":0,"output_tokens":0}`, 0, 0, 0, 0, false},
+		{"compatible cache snapshot", `{"input_tokens":1200,"prompt_cache_hit_tokens":800,"prompt_cache_miss_tokens":400,"output_tokens":9}`, 1200, 800, 0, 9, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			payload := nativeAnthropicUsageSSE(
+				`{"type":"message_start","message":{"usage":{"input_tokens":0,"output_tokens":0}}}`,
+				`{"type":"content_block_delta","delta":{"type":"text_delta","text":"abcdefghij"}}`,
+				`{"type":"error","error":{"type":"upstream_error","message":"interrupted"},"usage":`+tc.usage+`}`,
+			)
+			result, err := runNativeAnthropicUsageStream(t, io.NopCloser(strings.NewReader(payload)), false, 0)
+			require.Error(t, err)
+			require.NotNil(t, result)
+			require.Equal(t, tc.input, result.Usage.InputTokens)
+			require.Equal(t, tc.cache, result.Usage.CacheReadInputTokens)
+			require.Equal(t, tc.created, result.Usage.CacheCreationInputTokens)
+			require.Equal(t, tc.output, result.Usage.OutputTokens)
+			require.Equal(t, tc.estimated, result.Usage.OutputTokensEstimated)
+			require.False(t, result.Usage.InputTokensEstimated)
+			require.False(t, result.Usage.CacheReadTokensEstimated)
+		})
+	}
 }
 
 func TestNativeAnthropicStreamUsageEstimatesAllSemanticOutput(t *testing.T) {

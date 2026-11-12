@@ -216,6 +216,7 @@ type openAIIncompleteAttempt struct {
 	client                       context.Context
 	requestClient                context.Context
 	tracker                      openAIIncompleteUsage
+	additionalUsage              OpenAIUsage
 	inputEstimate                int
 	requestBody                  func() (io.ReadCloser, error)
 	model, endpoint              string
@@ -228,6 +229,28 @@ type openAIIncompleteAttempt struct {
 	transportErr                 error
 	upstreamEndedBeforeCancel    bool
 	stop                         func()
+}
+
+// Keep independently billed auxiliary requests separate from the main
+// response snapshot. The caller has already included these actual tokens in
+// result.Usage; finalizing the main request must neither erase nor double them.
+func recordOpenAIIncompleteAdditionalUsage(ctx context.Context, usage OpenAIUsage) {
+	a, ok := ctx.Value(openAIIncompleteContextKey{}).(*openAIIncompleteAttempt)
+	if !ok || !openAIUsageHasTokens(&usage) {
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	addOpenAIUsage(&a.additionalUsage, usage)
+}
+
+func subtractOpenAIAdditionalUsage(usage *OpenAIUsage, additional OpenAIUsage) {
+	usage.InputTokens = max(0, usage.InputTokens-additional.InputTokens)
+	usage.ImageInputTokens = max(0, usage.ImageInputTokens-additional.ImageInputTokens)
+	usage.OutputTokens = max(0, usage.OutputTokens-additional.OutputTokens)
+	usage.CacheCreationInputTokens = max(0, usage.CacheCreationInputTokens-additional.CacheCreationInputTokens)
+	usage.CacheReadInputTokens = max(0, usage.CacheReadInputTokens-additional.CacheReadInputTokens)
+	usage.ImageOutputTokens = max(0, usage.ImageOutputTokens-additional.ImageOutputTokens)
 }
 
 func openAIOriginalClientGone(ctx context.Context, c *gin.Context) bool {
@@ -332,7 +355,12 @@ func beginOpenAIIncompleteAttempt(ctx context.Context, c *gin.Context, body []by
 		abnormal := *forwardErr != nil || gone || a.tracker.failed || missingUsage || (stream && !a.tracker.terminal)
 		hasOutput := a.tracker.output.HasOutput() || a.tracker.usage.OutputTokens > 0
 		estimate := abnormal && (gone || hasOutput) && (!a.tracker.failed || hasOutput)
-		if estimate && !a.tracker.inputReported && (*result == nil || (*result).Usage.InputTokens == 0) {
+		mainUsage := OpenAIUsage{}
+		if *result != nil {
+			mainUsage = (*result).Usage
+			subtractOpenAIAdditionalUsage(&mainUsage, a.additionalUsage)
+		}
+		if estimate && !a.tracker.inputReported && mainUsage.InputTokens == 0 {
 			a.inspectRequest(true)
 		} else if *result == nil {
 			a.inspectRequest(false)
@@ -351,7 +379,9 @@ func beginOpenAIIncompleteAttempt(ctx context.Context, c *gin.Context, body []by
 			reason = "client_cancelled"
 			(*result).ClientDisconnect = true
 		}
-		a.tracker.Apply(&(*result).Usage, a.inputEstimate, estimate, reason)
+		a.tracker.Apply(&mainUsage, a.inputEstimate, estimate, reason)
+		addOpenAIUsage(&mainUsage, a.additionalUsage)
+		(*result).Usage = mainUsage
 	}
 }
 
@@ -368,6 +398,7 @@ func prepareOpenAIIncompleteRequest(req *http.Request) (*http.Request, func(*htt
 		a.stop()
 	}
 	a.tracker = openAIIncompleteUsage{}
+	a.additionalUsage = OpenAIUsage{}
 	a.dispatched.Store(false)
 	a.active = true
 	a.rejected = false

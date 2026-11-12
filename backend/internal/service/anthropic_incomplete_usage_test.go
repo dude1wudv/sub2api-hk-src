@@ -325,3 +325,14 @@ func TestIncompleteCaptureAnthropicInputZeroAndCompatibleCachePlaceholder(t *tes
 		})
 	}
 }
+
+func TestIncompleteCaptureAnthropicErrorBeforeOutputDoesNotEstimate(t *testing.T) {
+	f := newIncompleteForwardCapture(context.Background(), nil, nil)
+	p := &incompleteProtocolProgress{}
+	p.observe([]byte(`{"type":"error","error":{"type":"invalid_request_error"},"usage":{"input_tokens":0,"output_tokens":0}}`))
+	f.current = &incompleteForwardAttempt{resp: &http.Response{StatusCode: 200}, progress: p, body: []byte(`{"messages":[{"content":"hello world"}]}`)}
+	f.writeFailed.Store(true)
+	got, billable := f.usage(nil, errors.New("upstream rejection"), false)
+	require.Nil(t, got)
+	require.False(t, billable)
+}

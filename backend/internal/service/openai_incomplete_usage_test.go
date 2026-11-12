@@ -301,6 +301,90 @@ func TestOpenAIIncompleteInputEstimationIsLazy(t *testing.T) {
 	turn.Complete()
 	require.Nil(t, turn.request)
 }
+
+func TestOpenAIIncompleteAttemptPreservesAdditionalUsage(t *testing.T) {
+	requestBody := `{"model":"test","input":"Describe the supplied image and explain its main features."}`
+	inputEstimate := estimateRequestInputTokens([]byte(requestBody))
+	require.Positive(t, inputEstimate)
+	for _, tc := range []struct {
+		name          string
+		events        []string
+		mainUsage     OpenAIUsage
+		err           error
+		want          OpenAIUsage
+		wantBodyReads int
+	}{
+		{
+			name:      "actual_main",
+			events:    []string{`{"type":"response.completed","response":{"usage":{"input_tokens":3,"output_tokens":5}}}`},
+			mainUsage: OpenAIUsage{InputTokens: 3, OutputTokens: 5},
+			want:      OpenAIUsage{InputTokens: 14, OutputTokens: 12},
+		},
+		{
+			name: "final_main_zero",
+			events: []string{
+				`{"type":"response.in_progress","response":{"usage":{"input_tokens":3,"output_tokens":5}}}`,
+				`{"type":"response.completed","response":{"usage":{"input_tokens":0,"output_tokens":0}}}`,
+			},
+			mainUsage: OpenAIUsage{InputTokens: 3, OutputTokens: 5},
+			want:      OpenAIUsage{InputTokens: 11, OutputTokens: 7},
+		},
+		{
+			name: "confirmed_prefix_and_tail",
+			events: []string{
+				`{"type":"response.created","response":{"usage":{"input_tokens":3,"output_tokens":3}}}`,
+				`{"type":"response.output_text.delta","delta":"partial"}`,
+			},
+			mainUsage: OpenAIUsage{InputTokens: 3, OutputTokens: 3},
+			err:       io.ErrUnexpectedEOF,
+			want:      OpenAIUsage{InputTokens: 14, OutputTokens: 12, OutputTokensEstimated: true, UsageEstimationReason: "upstream_eof"},
+		},
+		{
+			name:   "missing_main_input",
+			events: []string{`{"type":"response.output_text.delta","delta":"partial"}`},
+			err:    io.ErrUnexpectedEOF,
+			want: OpenAIUsage{
+				InputTokens:              11 + inputEstimate,
+				CacheReadInputTokens:     splitIncompleteInput(inputEstimate).CacheRead,
+				OutputTokens:             9,
+				InputTokensEstimated:     true,
+				CacheReadTokensEstimated: splitIncompleteInput(inputEstimate).CacheRead > 0,
+				OutputTokensEstimated:    true,
+				UsageEstimationReason:    "upstream_eof",
+			},
+			wantBodyReads: 1,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+			ctx, finish := beginOpenAIIncompleteAttempt(context.Background(), c, []byte(`{"model":"test","stream":true}`))
+			a, ok := ctx.Value(openAIIncompleteContextKey{}).(*openAIIncompleteAttempt)
+			require.True(t, ok)
+			a.active = true
+			a.dispatched.Store(true)
+			bodyReads := 0
+			a.requestBody = func() (io.ReadCloser, error) {
+				bodyReads++
+				return io.NopCloser(strings.NewReader(requestBody)), nil
+			}
+			for _, event := range tc.events {
+				a.tracker.Observe([]byte(event))
+			}
+			result := &OpenAIForwardResult{Usage: tc.mainUsage}
+			additional := OpenAIUsage{InputTokens: 11, OutputTokens: 7}
+			addOpenAIUsage(&result.Usage, additional)
+			recordOpenAIIncompleteAdditionalUsage(ctx, additional)
+
+			err := tc.err
+			finish(&result, &err)
+
+			require.Equal(t, tc.want, result.Usage)
+			require.Equal(t, tc.wantBodyReads, bodyReads, "auxiliary input must not suppress missing main input estimation")
+		})
+	}
+}
+
 func TestOpenAIIncompleteUsageIntermediateZeroKeepsConfirmedPrefix(t *testing.T) {
 	var u openAIIncompleteUsage
 	u.Observe([]byte(`{"type":"response.in_progress","response":{"usage":{"input_tokens":4,"output_tokens":8}}}`))

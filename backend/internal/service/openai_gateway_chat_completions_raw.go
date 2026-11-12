@@ -279,6 +279,7 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletionsWithStartTime(
 	}
 	if result != nil {
 		addOpenAIUsage(&result.Usage, bridgeUsage)
+		recordOpenAIIncompleteAdditionalUsage(ctx, bridgeUsage)
 		result.UpstreamEndpoint = grokChatRawEndpoint
 	}
 	return result, forwardErr

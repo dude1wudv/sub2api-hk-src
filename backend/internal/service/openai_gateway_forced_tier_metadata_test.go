@@ -123,7 +123,20 @@ func TestOpenAIResponsesCompat_PartialStreamPreservesForcedTierAndEffort(t *test
 					require.Equal(t, tier, gjson.GetBytes(upstream.lastBody, "service_tier").String())
 					require.Equal(t, "high", gjson.GetBytes(upstream.lastBody, "reasoning.effort").String())
 					require.Equal(t, 7, result.Usage.InputTokens)
-					require.Equal(t, 3, result.Usage.OutputTokens)
+					wantOutput := 3
+					if failure == "read_error" {
+						// Confirmed 3 + unmetered "partial" tail 2.
+						wantOutput = 5
+					}
+					require.Equal(t, wantOutput, result.Usage.OutputTokens)
+					require.Equal(t, failure == "read_error", result.Usage.OutputTokensEstimated)
+					require.False(t, result.Usage.InputTokensEstimated)
+					require.False(t, result.Usage.CacheReadTokensEstimated)
+					if failure == "read_error" {
+						require.Equal(t, "upstream_error", result.Usage.UsageEstimationReason)
+					} else {
+						require.Empty(t, result.Usage.UsageEstimationReason)
+					}
 					require.NotNil(t, result.ServiceTier, "an interrupted billable stream keeps its actual outbound tier")
 					require.Equal(t, tier, *result.ServiceTier)
 					require.NotNil(t, result.ReasoningEffort)
@@ -142,7 +155,7 @@ func TestOpenAIResponsesCompat_PartialStreamPreservesForcedTierAndEffort(t *test
 						require.Equal(t, tier, *result.ServiceTier)
 					}
 					require.Equal(t, 7, result.Usage.InputTokens)
-					require.Equal(t, 3, result.Usage.OutputTokens)
+					require.Equal(t, wantOutput, result.Usage.OutputTokens)
 				})
 			}
 		}
