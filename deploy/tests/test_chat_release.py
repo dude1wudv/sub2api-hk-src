@@ -36,6 +36,25 @@ class ChatReleaseTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             release.verify_migrations({**previous_failed, '002_user_chat.sql': 'wrong'}, candidate, allowed)
 
+    def test_chat_migration_allowlist_preserves_legacy_letter_suffixes(self):
+        before = {'006b_guard_users_allowed_groups.sql': 'legacy', '341_previous.sql': 'current'}
+        candidate = {**before, '342_user_chat.sql': 'chat'}
+        self.assertEqual(release.migration_allowlist(before, candidate), {'342_user_chat.sql': 'chat'})
+        with self.assertRaises(RuntimeError):
+            release.migration_allowlist(before, {**candidate, '006b_guard_users_allowed_groups.sql': 'changed'})
+        with self.assertRaises(RuntimeError):
+            release.migration_allowlist({'unversioned.sql': 'old'}, {'unversioned.sql': 'old', '342_user_chat.sql': 'chat'})
+
+    def test_chat_source_migrations_match_flat_sql_loader(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(release, 'RELEASES', Path(directory)):
+            worker = release.Release('a' * 40, 'b' * 40)
+            names = ['006b_guard_users_allowed_groups.sql', '108a_auth_report.sql', '341_previous.sql']
+            worker.git = lambda *args: '\n'.join(['backend/migrations/' + name for name in names] +
+                                                ['backend/migrations/test/999_fixture.sql', 'backend/migrations/embed.go'])
+            worker.run = lambda args: '\nSELECT 1;\n'
+            self.assertEqual(worker.source_migrations(worker.expected),
+                             {name: release.digest(b'SELECT 1;') for name in names})
+
     def test_chat_migration_checksum_matches_trimmed_lf_build(self):
         self.assertEqual(release.migration_checksum(b' \r\nSELECT 1;\r\n '), release.digest(b'SELECT 1;'))
 

@@ -78,7 +78,12 @@ def migration_allowlist(before, candidate):
     require(all(candidate.get(name) == checksum for name, checksum in before.items()),
             'Existing migration source removed or changed')
     added = {name: value for name, value in candidate.items() if name not in before}
-    maximum = max((int(name.split('_', 1)[0]) for name in before), default=0)
+    prefixes_before = []
+    for name in before:
+        prefix = re.match(r'^(\d+)[A-Za-z]*_', name)
+        require(prefix is not None, 'Unsupported migration filename: ' + name)
+        prefixes_before.append(int(prefix.group(1)))
+    maximum = max(prefixes_before, default=0)
     require(bool(added), 'Candidate must contain appended chat migrations')
     require(all(re.fullmatch(r'\d+_user_chat\.sql', name) for name in added), 'Only append-only user_chat migrations may be introduced')
     prefixes = sorted(int(name.split('_')[0]) for name in added)
@@ -317,7 +322,7 @@ class Release:
     def source_migrations(self, ref):
         names = self.git('ls-tree', '-r', '--name-only', ref, 'backend/migrations/').splitlines()
         return {Path(name).name: migration_checksum(self.run(['git', '-C', str(self.src), 'show', f'{ref}:{name}']).encode())
-                for name in names if re.fullmatch(r'\d+_.+\.sql', Path(name).name)}
+                for name in names if Path(name).parent.as_posix() == 'backend/migrations' and name.endswith('.sql')}
 
     def build(self):
         require(not self.manifest_path.exists(), 'Release manifest already exists; use a new candidate SHA instead of overwriting evidence')
