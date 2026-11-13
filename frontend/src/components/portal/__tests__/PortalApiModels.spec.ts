@@ -72,6 +72,25 @@ const group = {
 } as any
 
 describe('PortalApiModels pricing display', () => {
+  it('defaults to a populated connection without hiding empty connections', () => {
+    const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, id: 2, models: [] }, group], selectedGroupId: null } })
+    expect(wrapper.emitted('update:selectedGroupId')).toEqual([[1]])
+    expect(wrapper.findAll('.portal-api-group-nav button')).toHaveLength(2)
+    wrapper.unmount()
+  })
+
+  it('distinguishes same-named models on different connection platforms', async () => {
+    const models = ['anthropic', 'openai'].map(platform => ({ ...group.models[0], name: 'claude-shared', platform }))
+    const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, platform: 'composite', models }], selectedGroupId: 1 } })
+    const rows = wrapper.findAll('.portal-api-model-row')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].text()).toContain('Platform: Anthropic')
+    expect(rows[1].text()).toContain('Platform: OpenAI')
+    await rows[1].get('.portal-api-model-name').trigger('click')
+    expect(wrapper.get('.portal-api-detail-platform').text()).toContain('Connection platform: OpenAI')
+    wrapper.unmount()
+  })
+
   it('groups models by vendor rather than the OpenAI-compatible transport', async () => {
     const models = ['deepseek-v4.1-flash', 'claude-sonnet', 'gpt-6-sol'].map(name => ({ ...group.models[0], name, platform: 'openai' }))
     const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, models }], selectedGroupId: 1 } })

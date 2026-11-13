@@ -50,7 +50,7 @@
               <tr v-for="model in platform.models" :key="model.platform + ':' + model.name" class="portal-api-model-row">
                 <td>
                   <button type="button" class="portal-api-model-name" @click="detailModel = model"><ModelIcon :model="model.name" size="20px" /><span>{{ model.name }}</span><Icon name="chevronRight" size="xs" aria-hidden="true" /></button>
-                  <span v-if="model.context_window || model.reasoning || model.tool_call" class="portal-api-model-capabilities"><span v-if="model.context_window">{{ compactTokens(model.context_window) }} {{ text('上下文', 'context') }}</span><span v-if="model.reasoning">{{ text('推理', 'Reasoning') }}</span><span v-if="model.tool_call">{{ text('工具调用', 'Tools') }}</span></span>
+                  <span class="portal-api-model-capabilities"><span>{{ text('接入', 'Platform') }}: {{ platformLabel(model.platform) }}</span><span v-if="model.context_window">{{ compactTokens(model.context_window) }} {{ text('上下文', 'context') }}</span><span v-if="model.reasoning">{{ text('推理', 'Reasoning') }}</span><span v-if="model.tool_call">{{ text('工具调用', 'Tools') }}</span></span>
                   <span v-if="modelBadges(model).length" class="portal-api-model-badges"><span v-for="badge in modelBadges(model)" :key="badge">{{ badge }}</span></span>
                 </td>
                 <td v-if="!model.pricing" colspan="4" class="portal-api-price-missing">{{ text('尚未提供实际单价', 'Actual pricing is not provided') }}</td>
@@ -77,6 +77,7 @@
 
     <PortalDialog :open="!!detailModel" :title="detailModel?.name || text('定价详情', 'Pricing details')" wide @close="detailModel = null">
       <div v-if="detailModel" class="portal-api-price-detail">
+        <p class="portal-api-detail-platform">{{ text('接入平台', 'Connection platform') }}: {{ platformLabel(detailModel.platform) }}</p>
         <ModelCapabilities :model="detailModel" />
         <p v-if="!detailModel.pricing">{{ text('此模型尚未提供实际单价。', 'Actual pricing is not provided for this model.') }}</p>
         <template v-else-if="selectedGroup">
@@ -138,6 +139,7 @@ import Icon from '@/components/icons/Icon.vue'
 import ModelIcon from '@/components/common/ModelIcon.vue'
 import ModelCapabilities from '@/components/modelPlaza/ModelCapabilities.vue'
 import { matchesCatalogModel, modelVendor } from '@/utils/modelCatalog'
+import { platformLabel } from '@/utils/platformColors'
 import PortalDialog from './PortalDialog.vue'
 import type { ModelPlazaGroup, PlazaModel } from '@/api/modelPlaza'
 import type { UserPricingInterval } from '@/api/channels'
@@ -211,7 +213,7 @@ const officialTiers = computed<UserPricingInterval[]>(() => {
 const peakWindow = computed(() => formatPeakRateWindow(selectedGroup.value, serverTimezoneLabel(props.serverUtcOffset) || text('服务器时区', 'server timezone')))
 
 watch(connections, groups => {
-  if (!groups.some(group => group.id === props.selectedGroupId)) emit('update:selectedGroupId', groups[0]?.id ?? null)
+  if (!groups.some(group => group.id === props.selectedGroupId)) emit('update:selectedGroupId', groups.find(group => group.count > 0)?.id ?? groups[0]?.id ?? null)
 }, { immediate: true })
 watch(() => props.selectedGroupId, () => { detailModel.value = null; selectedPlatform.value = '' })
 watch(() => props.search, () => { selectedPlatform.value = '' })
