@@ -35,8 +35,55 @@ func plazaPricedChannel(id int64, name string, groupIDs []int64, platform string
 	}
 }
 
+func TestListPlazaGroups_GroupPricingWithoutChannel(t *testing.T) {
+	groups := []Group{{ID: 10, Name: "group-only", Platform: PlatformOpenAI, ModelPricing: []ChannelModelPricing{
+		{Models: []string{"gpt-group-only"}, BillingMode: BillingModeToken, InputPrice: testPtrFloat64(2e-6)},
+		{Platform: PlatformOpenAI, Models: []string{"image-only"}, BillingMode: BillingModeImage, PerRequestPrice: testPtrFloat64(0.2)},
+		{Platform: PlatformOpenAI, Models: []string{"gpt-*"}, BillingMode: BillingModeToken},
+		{Platform: PlatformAnthropic, Models: []string{"wrong-platform"}, BillingMode: BillingModeToken},
+	}}}
+	out, err := newPlazaService(nil, groups, nil).ListGroups(context.Background())
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	require.Len(t, out[0].Models, 2)
+	require.Equal(t, "gpt-group-only", out[0].Models[0].Name)
+	require.Equal(t, PlatformOpenAI, out[0].Models[0].Platform)
+	require.InDelta(t, 2e-6, *out[0].Models[0].Pricing.InputPrice, 1e-12)
+	require.Equal(t, "image-only", out[0].Models[1].Name)
+	require.Equal(t, 0.2, *out[0].Models[1].Pricing.PerRequestPrice)
+	require.Empty(t, groups[0].ModelPricing[0].Platform, "do not mutate repository-owned pricing")
+}
+
+func TestListPlazaGroups_GroupPricingUnionAndIsolation(t *testing.T) {
+	channels := []Channel{plazaPricedChannel(1, "channel", []int64{10}, PlatformOpenAI, "gpt-shared", "gpt-channel")}
+	groups := []Group{
+		{ID: 10, Name: "ordinary", Platform: PlatformOpenAI, ModelPricing: []ChannelModelPricing{
+			{Platform: PlatformOpenAI, Models: []string{"gpt-shared", "gpt-group"}, BillingMode: BillingModeToken, InputPrice: testPtrFloat64(1e-6)},
+		}},
+		{ID: 20, Name: "composite", Platform: PlatformComposite, ModelPricing: []ChannelModelPricing{
+			{Platform: PlatformOpenAI, Models: []string{"shared"}},
+			{Platform: PlatformAnthropic, Models: []string{"shared"}},
+			{Platform: PlatformComposite, Models: []string{"unspecified"}},
+			{Platform: "unknown", Models: []string{"unknown"}},
+		}},
+	}
+	out, err := newPlazaService(channels, groups, nil).ListGroups(context.Background())
+	require.NoError(t, err)
+	require.Len(t, out, 2)
+	byID := make(map[int64]PlazaGroup)
+	for _, group := range out {
+		byID[group.ID] = group
+	}
+	require.Len(t, byID[10].Models, 3)
+	models := plazaModelsByName(byID[10].Models)
+	require.InDelta(t, 1e-6, *models["gpt-shared"].Pricing.InputPrice, 1e-12)
+	require.Len(t, byID[20].Models, 2)
+	require.Equal(t, PlatformAnthropic, byID[20].Models[0].Platform)
+	require.Equal(t, PlatformOpenAI, byID[20].Models[1].Platform)
+}
+
 func TestListPlazaGroups_GroupCentricAggregation(t *testing.T) {
-	// 两个渠道挂同一分组:模型并入同一 PlazaGroup;无模型的分组不返回。
+	// 两个渠道合并模型；活跃空组保留入口，但不虚构模型。
 	channels := []Channel{
 		plazaPricedChannel(1, "chA", []int64{10}, "anthropic", "claude-sonnet"),
 		plazaPricedChannel(2, "chB", []int64{10}, "anthropic", "claude-opus"),
@@ -48,13 +95,15 @@ func TestListPlazaGroups_GroupCentricAggregation(t *testing.T) {
 	svc := newPlazaService(channels, groups, nil)
 	out, err := svc.ListGroups(context.Background())
 	require.NoError(t, err)
-	require.Len(t, out, 1, "无模型的分组不应返回")
-	require.Equal(t, int64(10), out[0].ID)
-	require.Equal(t, "desc", out[0].Description)
-	require.Len(t, out[0].Models, 2)
-	// 组内模型按名称排序
-	require.Equal(t, "claude-opus", out[0].Models[0].Name)
-	require.Equal(t, "claude-sonnet", out[0].Models[1].Name)
+	require.Len(t, out, 2)
+	require.Equal(t, int64(20), out[0].ID)
+	require.NotNil(t, out[0].Models)
+	require.Empty(t, out[0].Models)
+	require.Equal(t, int64(10), out[1].ID)
+	require.Equal(t, "desc", out[1].Description)
+	require.Len(t, out[1].Models, 2)
+	require.Equal(t, "claude-opus", out[1].Models[0].Name)
+	require.Equal(t, "claude-sonnet", out[1].Models[1].Name)
 }
 
 func TestListPlazaGroups_Fable51HasNoImplicitReasoningMultiplier(t *testing.T) {
@@ -186,7 +235,8 @@ func TestListPlazaGroups_InactiveChannelSkipped(t *testing.T) {
 	svc := newPlazaService([]Channel{inactive}, groups, nil)
 	out, err := svc.ListGroups(context.Background())
 	require.NoError(t, err)
-	require.Empty(t, out)
+	require.Len(t, out, 1)
+	require.Empty(t, out[0].Models, "inactive channels must not contribute models")
 }
 
 func TestListPlazaGroups_SortedByRateMultiplierAsc(t *testing.T) {

@@ -1,5 +1,8 @@
 // Adapted from ranxi2001/sub2api @ 9620d315, licensed under LGPL-3.0-or-later.
 export default {
+  overview: '流量概览', noCharge: '仅统计 · 不扣费', composition: '流量构成', average: '平均每次请求', peakBucket: '单时段峰值',
+  totalHint: '上传与下载正文之和', uploadHint: '客户端 → 网关', downloadHint: '网关 → 客户端', requestsHint: '含失败和取消的请求',
+  scopeTitle: '统计口径与记录说明', scopeShort: 'HTTP / SSE · 非实时 · 可能不完整', emptyHint: '试试切换日期或 API 密钥，历史未采集流量无法补全。', recordsHint: '按请求开始时间展示；含失败与取消请求。',
   identityFailed: '用户候选加载失败，请重新搜索。',
   loadingRecords: '正在加载请求明细…', recordsFailed: '请求明细加载失败，请重试。',
   queueSummary: '内存排队 {queued}/{capacity} 条 · 处理中 {processing} 条 · 本次启动后丢弃 {dropped} 条',

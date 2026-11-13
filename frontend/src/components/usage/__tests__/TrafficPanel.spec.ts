@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import TrafficPanel from '../TrafficPanel.vue'
 import Select from '@/components/common/Select.vue'
-import { Bar } from 'vue-chartjs'
+import { Bar, Doughnut } from 'vue-chartjs'
 import type { TrafficReport } from '@/api/traffic'
 
 const { getTraffic, getTrafficKeys, getTrafficHealth, searchUsers, searchApiKeys, listGroups } = vi.hoisted(() => ({
@@ -13,7 +13,10 @@ vi.mock('@/api/admin', () => ({ adminAPI: { usage: { searchUsers, searchApiKeys 
 vi.mock('@/api/traffic', async importOriginal => ({ ...await importOriginal<typeof import('@/api/traffic')>(), getTraffic, getTrafficKeys, getTrafficHealth }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 vi.mock('@/api/client', () => ({ apiClient: { get: vi.fn() } }))
-vi.mock('vue-chartjs', () => ({ Bar: { name: 'Bar', props: ['data', 'options'], template: '<div data-testid="traffic-chart" />' } }))
+vi.mock('vue-chartjs', () => ({
+  Bar: { name: 'Bar', props: ['data', 'options'], template: '<div data-testid="traffic-chart" />' },
+  Doughnut: { name: 'Doughnut', props: ['data', 'options'], template: '<div data-testid="traffic-composition-chart" />' }
+}))
 
 const fixture = (): TrafficReport => ({
   upload_bytes: 1024, download_bytes: 2048, total_bytes: 3072, requests: 1,
@@ -37,6 +40,18 @@ beforeEach(() => {
 const render = (admin = false) => { const wrapper = mount(TrafficPanel, { props: { admin, apiKeyOptions: [{ value: null, label: 'All keys' }, { value: 8, label: 'Production key' }, { value: 9, label: 'Test key' }] }, global: { stubs: { Teleport: true } } }); wrappers.push(wrapper); return wrapper }
 
 describe('TrafficPanel', () => {
+  it('shows a total-led overview and calculates composition from the same report', async () => {
+    const wrapper = render(); await flushPromises()
+    expect(wrapper.findAll('.traffic-metric')).toHaveLength(4)
+    expect(wrapper.get('.traffic-metric').text()).toContain('traffic.total')
+    expect(wrapper.getComponent(Doughnut).props('data').datasets[0].data).toEqual([1024, 2048])
+    expect(wrapper.get('.traffic-direction-legend').text()).toContain('33.3%')
+    expect(wrapper.get('.traffic-direction-legend').text()).toContain('66.7%')
+    expect(wrapper.get('.traffic-insights').text()).toContain('3.00 KiB')
+    expect(wrapper.get('.traffic-measurement-notes').attributes('open')).toBeUndefined()
+    expect(wrapper.get('.traffic-status').classes()).toContain('is-canceled')
+  })
+
   it.each([['day', 'hour'], ['week', 'day'], ['month', 'day'], ['year', 'month']] as const)('plots independent %s buckets, including decreases and idle buckets', async (period, bucket) => {
     const uploads = [900, 100, 0, 400], downloads = [1800, 200, 0, 800]
     const trend = uploads.map((upload, i) => ({ bucket: `bucket-${i}`, upload_bytes: upload, download_bytes: downloads[i]!, total_bytes: upload + downloads[i]!, requests: upload ? 1 : 0 }))

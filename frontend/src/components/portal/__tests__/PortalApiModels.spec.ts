@@ -72,15 +72,46 @@ const group = {
 } as any
 
 describe('PortalApiModels pricing display', () => {
+  it('groups models by vendor rather than the OpenAI-compatible transport', async () => {
+    const models = ['deepseek-v4.1-flash', 'claude-sonnet', 'gpt-6-sol'].map(name => ({ ...group.models[0], name, platform: 'openai' }))
+    const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, models }], selectedGroupId: 1 } })
+    const vendors = wrapper.get('.portal-model-platforms')
+    expect(vendors.text()).toContain('DeepSeek')
+    expect(vendors.text()).toContain('Claude')
+    await vendors.findAll('button').find(button => button.text().includes('DeepSeek'))!.trigger('click')
+    expect(wrapper.findAll('.portal-api-model-name').map(button => button.text())).toEqual([expect.stringContaining('deepseek-v4.1-flash')])
+    wrapper.unmount()
+  })
+
+  it('shows twelve-hour cache prices in both the catalogue and pricing details', async () => {
+    const model = { ...group.models[0], pricing: { ...group.models[0].pricing, cache_write_12h_price: 0.000004 } }
+    const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, models: [model] }], selectedGroupId: 1 } })
+    expect(wrapper.get('.portal-api-model-table').text()).toContain('12h $6.00')
+    await wrapper.get('.portal-api-model-name').trigger('click')
+    expect(wrapper.get('.portal-api-detail-table').text()).toContain('Cache write 12h')
+    expect(wrapper.get('.portal-api-detail-table').text()).toContain('$6.00')
+    wrapper.unmount()
+  })
+
+  it('keeps empty published groups selectable and distinguishes missing prices from zero', async () => {
+    const wrapper = mount(PortalApiModels, { props: { groups: [group, { ...group, id: 2, name: 'New connection', models: [] }], selectedGroupId: 2 } })
+    expect(wrapper.get('.portal-api-group-nav').text()).toContain('New connection')
+    expect(wrapper.text()).toContain('No model pricing is published for this group.')
+    await wrapper.setProps({ selectedGroupId: 1, groups: [{ ...group, models: [{ ...group.models[0], pricing: { ...group.models[0].pricing, input_price: 0, output_price: null } }] }] })
+    expect(wrapper.get('.portal-api-model-table').text()).toContain('$0.00')
+    expect(wrapper.get('.portal-api-model-table').text()).toContain('—')
+    wrapper.unmount()
+  })
+
   it('applies user-specific token rates and independent image/video rates in list and detail views', async () => {
     const wrapper = mount(PortalApiModels, {
       props: { groups: [group], selectedGroupId: 1, bindableGroupIds: [1] },
     })
 
     const table = wrapper.get('.portal-api-model-table')
-    expect(table.find('tbody tr').text()).toContain('token-model')
-    expect(table.find('tbody tr').text()).toContain('$1.50')
-    expect(table.find('tbody tr').text()).toContain('1h $3.00')
+    expect(table.find('.portal-api-model-row').text()).toContain('token-model')
+    expect(table.find('.portal-api-model-row').text()).toContain('$1.50')
+    expect(table.find('.portal-api-model-row').text()).toContain('1h $3.00')
     const imageRow = table.findAll('tbody tr').find(row => row.text().includes('image-model'))!
     const videoRow = table.findAll('tbody tr').find(row => row.text().includes('video-model'))!
     expect(imageRow.text()).toContain('$1.00 / image')

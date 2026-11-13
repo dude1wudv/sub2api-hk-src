@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { getModelPlaza, type ModelPlazaResponse } from '@/api/modelPlaza'
 import { useAuthStore, useAppStore } from '@/stores'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
+import { matchesCatalogModel } from '@/utils/modelCatalog'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
 import PortalApiModels from '@/components/portal/PortalApiModels.vue'
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
@@ -41,7 +42,7 @@ watch(() => route.query.model, value => { search.value = typeof value === 'strin
 watch([search, data], () => {
   const query = search.value.trim().toLowerCase()
   if (!query) return
-  const matching = (data.value?.groups || []).filter(group => group.models.some(model => (model.name + ' ' + model.platform).toLowerCase().includes(query)))
+  const matching = (data.value?.groups || []).filter(group => group.models.some(model => matchesCatalogModel(model, query)))
   if (matching.length && !matching.some(group => group.id === groupId.value)) groupId.value = matching[0].id
 })
 onMounted(load)

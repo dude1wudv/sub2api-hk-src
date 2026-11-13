@@ -1,5 +1,8 @@
 // Adapted from ranxi2001/sub2api @ 9620d315, licensed under LGPL-3.0-or-later.
 export default {
+  overview: 'Traffic overview', noCharge: 'Statistics only · No charges', composition: 'Traffic breakdown', average: 'Average per request', peakBucket: 'Peak bucket',
+  totalHint: 'Uploaded + downloaded payload', uploadHint: 'Client → gateway', downloadHint: 'Gateway → client', requestsHint: 'Includes failed and canceled requests',
+  scopeTitle: 'Measurement & recording notes', scopeShort: 'HTTP / SSE · Delayed · May be incomplete', emptyHint: 'Try another date or API key. Previously uncollected traffic cannot be recovered.', recordsHint: 'By request start time, including failures and cancellations.',
   identityFailed: 'User search failed. Please search again.',
   loadingRecords: 'Loading request details…', recordsFailed: 'Could not load request details. Please retry.',
   queueSummary: 'Memory queue: {queued}/{capacity} · Processing: {processing} · Dropped since restart: {dropped}',

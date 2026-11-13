@@ -35,9 +35,9 @@ type PlazaModel struct {
 
 // PlazaGroup 模型广场中以分组为顶层的条目。
 //
-// 与 AvailableGroupRef 相比多了 Description 与 Models；Models 来自该分组关联渠道的
-// 支持模型（普通分组按分组平台隔离，Composite 分组展开关联渠道已配置的
-// 具体平台），与「可用渠道」页口径一致。
+// 与 AvailableGroupRef 相比多了 Description 与 Models；Models 合并关联渠道与分组
+// 自身价卡中的具体模型，普通分组按平台隔离，Composite 仅展开明确的具体平台。
+// 空目录保留分组入口；价格目录不代表实时可调用性或分组绑定权限。
 type PlazaGroup struct {
 	ID                 int64
 	Name               string
@@ -65,7 +65,7 @@ type PlazaGroup struct {
 
 // ModelPlazaService 聚合模型广场数据。
 //
-// 模型枚举来自渠道配置；token 模型的展示单价与阶梯由 BillingService 的阶梯表
+// 模型枚举来自渠道和分组价卡配置；token 模型的展示单价与阶梯由 BillingService 的阶梯表
 // 查询给出（与扣费走同一条解析链与计费函数），图片/按次模型沿用渠道/分组档位价。
 type ModelPlazaService struct {
 	channelRepo     ChannelRepository
@@ -95,15 +95,15 @@ func NewModelPlazaService(
 
 // ListGroups 返回模型广场数据：每个活跃分组附带其可用模型与定价。
 //
-// 模型枚举口径与 ListAvailable 一致（Active 渠道、SupportedModels ∪ 全局定价回落、
-// 平台隔离），仅把顶层从渠道换成分组：
+// 模型枚举沿用 ListAvailable 的 Active 渠道、全局定价回落与平台隔离，
+// 再合并独立分组价卡中的具体模型：
 //   - 渠道按 lower(name) 排序后遍历，保证同名模型去重结果确定；
 //   - 同分组同名模型「先见者胜」，仅当已存条目无定价而新条目有定价时升级替换；
 //   - token 模型的单价与阶梯按实收口径合成（见 ResolveContextPricingSchedule），
 //     图片计费模型的档位价按实收口径合成（见 plazaImageDisplayPricing）；
 //   - 每个模型附带官方参考价（查不到为 nil）；
-//   - 只返回 Models 非空的分组；分组按 RateMultiplier 升序（同倍率按名称），
-//     组内模型按名称排序。
+//   - 保留没有公布模型的活跃分组，由前端明确显示空目录；
+//   - 分组按 RateMultiplier 升序（同倍率按名称），组内模型按名称排序。
 //
 // 可见性过滤（专属分组）不在此层做，由 handler 按登录态裁剪。
 func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error) {
@@ -143,6 +143,7 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 			VideoRateIndependent:      g.VideoRateIndependent,
 			VideoRateMultiplier:       g.VideoRateMultiplier,
 			LongContextPricingEnabled: g.LongContextPricingEnabled,
+			Models:                    make([]PlazaModel, 0),
 		}
 		groupEnt[g.ID] = g
 		order = append(order, g.ID)
@@ -154,6 +155,33 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 	}
 	// modelIdx[groupID][platform+modelName] = index into byGroup[groupID].Models
 	modelIdx := make(map[int64]map[modelKey]int, len(groups))
+	addModel := func(gid int64, m SupportedModel) {
+		pg, ok := byGroup[gid]
+		if !ok {
+			return
+		}
+		if pg.Platform == PlatformComposite {
+			if !isConcreteRequestPlatform(m.Platform) {
+				return
+			}
+		} else if m.Platform != pg.Platform {
+			return
+		}
+		idx := modelIdx[gid]
+		if idx == nil {
+			idx = make(map[modelKey]int)
+			modelIdx[gid] = idx
+		}
+		key := modelKey{platform: m.Platform, name: strings.ToLower(m.Name)}
+		if at, seen := idx[key]; seen {
+			if pg.Models[at].Pricing == nil && m.Pricing != nil {
+				pg.Models[at].Pricing = m.Pricing
+			}
+			return
+		}
+		idx[key] = len(pg.Models)
+		pg.Models = append(pg.Models, PlazaModel{Name: m.Name, Platform: m.Platform, Pricing: m.Pricing})
+	}
 	for i := range channels {
 		ch := &channels[i]
 		if ch.Status != StatusActive {
@@ -164,39 +192,24 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 		fillGlobalPricingFallback(s.pricingService, supported)
 
 		for _, gid := range ch.GroupIDs {
-			pg, ok := byGroup[gid]
-			if !ok {
-				continue
+			for _, model := range supported {
+				addModel(gid, model)
 			}
-			idx := modelIdx[gid]
-			if idx == nil {
-				idx = make(map[modelKey]int, len(supported))
-				modelIdx[gid] = idx
+		}
+	}
+	for i := range groups {
+		g := &groups[i]
+		// Reuse concrete-name/wildcard filtering without mutating repository-owned price cards.
+		configured := Channel{ModelPricing: make([]ChannelModelPricing, 0, len(g.ModelPricing))}
+		for _, entry := range g.ModelPricing {
+			pricing := entry.Clone()
+			if pricing.Platform == "" {
+				pricing.Platform = g.Platform
 			}
-			for j := range supported {
-				m := supported[j]
-				if pg.Platform == PlatformComposite {
-					if !isConcreteRequestPlatform(m.Platform) {
-						continue
-					}
-				} else if m.Platform != pg.Platform {
-					continue
-				}
-				key := modelKey{platform: m.Platform, name: m.Name}
-				if at, seen := idx[key]; seen {
-					// 先见者胜；仅当已存条目无定价而新条目有定价时升级。
-					if pg.Models[at].Pricing == nil && m.Pricing != nil {
-						pg.Models[at].Pricing = m.Pricing
-					}
-					continue
-				}
-				idx[key] = len(pg.Models)
-				pg.Models = append(pg.Models, PlazaModel{
-					Name:     m.Name,
-					Platform: m.Platform,
-					Pricing:  m.Pricing,
-				})
-			}
+			configured.ModelPricing = append(configured.ModelPricing, pricing)
+		}
+		for _, model := range configured.SupportedModels() {
+			addModel(g.ID, model)
 		}
 	}
 
@@ -204,9 +217,6 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 	out := make([]PlazaGroup, 0, len(order))
 	for _, gid := range order {
 		pg := byGroup[gid]
-		if len(pg.Models) == 0 {
-			continue
-		}
 		sort.SliceStable(pg.Models, func(i, j int) bool {
 			if pg.Models[i].Name != pg.Models[j].Name {
 				return pg.Models[i].Name < pg.Models[j].Name

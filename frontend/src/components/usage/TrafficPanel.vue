@@ -1,114 +1,90 @@
 <!-- Adapted from ranxi2001/sub2api @ 9620d315, licensed under LGPL-3.0-or-later. -->
 <template>
-  <section class="space-y-5 p-4 sm:p-6" :aria-label="t('traffic.title')" :aria-busy="loading">
-    <p class="rounded-lg bg-sky-50 p-3 text-sm text-sky-900 dark:bg-sky-950/40 dark:text-sky-200">{{ t('traffic.scope') }}</p>
-    <div v-if="admin" class="rounded-lg border p-3 text-sm" :class="healthError || health?.status === 'degraded' ? 'border-red-300 text-red-700 dark:text-red-300' : health?.status === 'delayed' ? 'border-amber-300 text-amber-700 dark:text-amber-300' : 'border-gray-200 text-gray-600 dark:border-dark-700 dark:text-gray-300'" data-testid="traffic-health">
-      <template v-if="health">
-        <p class="font-medium">{{ t('traffic.nodeHealth') }} · {{ t(`traffic.healthStatuses.${health.status}`) }}</p>
-        <p>{{ t('traffic.queueSummary', { queued: health.queued_events ?? 0, capacity: health.queue_capacity ?? 0, processing: health.processing_events ?? 0, dropped: health.dropped_events ?? 0 }) }}</p>
-        <p>{{ t('traffic.healthSummary', { pending: health.pending_events, age: health.oldest_pending_age_seconds, quarantined: health.quarantined_events, lost: health.persistence_failures }) }}</p>
-        <p v-if="health.storage_available === false" role="alert">{{ t('traffic.storageUnavailable') }}</p>
-        <p class="mt-1 text-xs">{{ t('traffic.nodeHealthScope') }} · {{ displayTime(health.checked_at) }}</p>
-      </template>
-      <p v-if="!health && !healthError">{{ t('common.loading') }}</p>
-      <p v-if="healthError" role="alert">{{ t('traffic.healthFailed') }}</p>
-    </div>
-    <form class="flex flex-wrap items-end gap-3" @submit.prevent="applyFilters">
-      <div>
-        <label for="traffic-period" class="input-label">{{ t('traffic.period') }}</label>
-        <select id="traffic-period" v-model="period" class="input">
-          <option v-for="value in periods" :key="value" :value="value">{{ t(`traffic.periods.${value}`) }}</option>
-        </select>
-      </div>
-      <div>
-        <label for="traffic-date" class="input-label">{{ t('traffic.date') }}</label>
-        <input id="traffic-date" :value="date || currentDate" type="date" class="input" @change="setDate" />
-      </div>
-      <UsageFilters
-        v-if="admin"
-        :key="searchResetKey"
-        v-model="searchFilters"
-        :api-key-search="searchAdminKeys"
-        @change="applyFilters"
-      />
-      <div v-else class="w-full sm:w-auto sm:min-w-[220px]">
-        <label for="traffic-key" class="input-label">{{ t('usage.apiKeyFilter') }}</label>
-        <Select :key="searchResetKey" id="traffic-key" v-model="searchFilters.api_key_id" :options="ownKeyOptions" searchable remote :loading="ownKeyLoading" @click="onOwnKeyOpen" @keydown.down="onOwnKeyOpen" @keydown.up="onOwnKeyOpen" @search="searchOwnKeys" @change="selectOwnKey">
-          <template #selected="{ option }">{{ searchFilters.api_key_id ? selectedKeyLabel : option?.label || t('usage.allApiKeys') }}</template>
-        </Select>
-        <p v-if="ownKeyError" role="alert" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ t('traffic.keysFailed') }} <button type="button" class="underline" @click="searchOwnKeys(ownKeyQuery)">{{ t('common.refresh') }}</button></p>
-      </div>
-      <button class="btn btn-primary" type="submit" :disabled="loading">{{ t('traffic.apply') }}</button>
-      <button class="btn btn-secondary" type="button" :disabled="loading" @click="load">{{ t('common.refresh') }}</button>
-      <button class="btn btn-secondary" type="button" @click="reset">{{ t('common.reset') }}</button>
-    </form>
-    <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('traffic.keyHistoryHint') }}</p>
-    <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
-      <div class="flex gap-2">
-        <button class="btn btn-secondary btn-sm" type="button" :disabled="loading || !report" @click="shift(-1)">{{ t('traffic.previousPeriod') }}</button>
-        <button class="btn btn-secondary btn-sm" type="button" :disabled="loading || !report" @click="shift(1)">{{ t('traffic.nextPeriod') }}</button>
-      </div>
-      <span v-if="report" class="text-gray-500 dark:text-gray-400">{{ rangeLabel }} · {{ report.timezone }}</span>
-    </div>
-    <p v-if="error" role="alert" class="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{{ error }}</p>
-    <p v-if="detailsError" role="alert" class="text-sm text-red-700 dark:text-red-300">{{ detailsError }} <button type="button" class="underline" @click="loadDetails(requestedPage)">{{ t('common.refresh') }}</button></p>
-    <p v-if="summaryLoading" role="status" class="py-8 text-center text-sm text-gray-500">{{ t('traffic.loading') }}</p>
-    <template v-if="summary">
-      <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div v-for="card in cards" :key="card.label" class="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm dark:border-dark-700 dark:bg-dark-800">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ card.label }}</p>
-          <p class="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-gray-900 dark:text-white" :title="card.raw">{{ card.value }}</p>
+  <section class="traffic-panel" :aria-label="t('traffic.title')" :aria-busy="loading">
+    <div class="traffic-toolbar">
+      <form class="traffic-filter-form" @submit.prevent="applyFilters">
+        <div><label for="traffic-period" class="input-label">{{ t('traffic.period') }}</label><select id="traffic-period" v-model="period" class="input"><option v-for="value in periods" :key="value" :value="value">{{ t(`traffic.periods.${value}`) }}</option></select></div>
+        <div><label for="traffic-date" class="input-label">{{ t('traffic.date') }}</label><input id="traffic-date" :value="date || currentDate" type="date" class="input" @change="setDate" /></div>
+        <UsageFilters v-if="admin" :key="searchResetKey" v-model="searchFilters" :api-key-search="searchAdminKeys" @change="applyFilters" />
+        <div v-else class="traffic-key-filter">
+          <label for="traffic-key" class="input-label">{{ t('usage.apiKeyFilter') }}</label>
+          <Select :key="searchResetKey" id="traffic-key" v-model="searchFilters.api_key_id" :options="ownKeyOptions" searchable remote :loading="ownKeyLoading" @click="onOwnKeyOpen" @keydown.down="onOwnKeyOpen" @keydown.up="onOwnKeyOpen" @search="searchOwnKeys" @change="selectOwnKey"><template #selected="{ option }">{{ searchFilters.api_key_id ? selectedKeyLabel : option?.label || t('usage.allApiKeys') }}</template></Select>
+          <p v-if="ownKeyError" role="alert" class="traffic-error">{{ t('traffic.keysFailed') }} <button type="button" class="underline" @click="searchOwnKeys(ownKeyQuery)">{{ t('common.refresh') }}</button></p>
         </div>
+        <div class="traffic-filter-actions">
+          <button class="btn btn-primary" type="submit" :disabled="loading"><Icon name="search" size="sm" />{{ t('traffic.apply') }}</button>
+          <button class="btn btn-secondary" type="button" :disabled="loading" @click="load"><Icon name="refresh" size="sm" />{{ t('common.refresh') }}</button>
+          <button class="traffic-reset" type="button" @click="reset">{{ t('common.reset') }}</button>
+        </div>
+      </form>
+      <div class="traffic-toolbar-footer"><p>{{ t('traffic.keyHistoryHint') }}</p><span class="traffic-scope-badge"><Icon name="shield" size="xs" />{{ t('traffic.noCharge') }}</span></div>
+    </div>
+
+    <div class="traffic-range-row">
+      <div><span class="traffic-section-label">{{ t('traffic.overview') }}</span><p v-if="report">{{ rangeLabel }}<span class="traffic-timezone">{{ report.timezone }}</span></p></div>
+      <div class="traffic-period-navigation"><button class="btn btn-secondary btn-sm" type="button" :disabled="loading || !report" @click="shift(-1)"><Icon name="chevronLeft" size="sm" /><span>{{ t('traffic.previousPeriod') }}</span></button><button class="btn btn-secondary btn-sm" type="button" :disabled="loading || !report" @click="shift(1)"><span>{{ t('traffic.nextPeriod') }}</span><Icon name="chevronRight" size="sm" /></button></div>
+    </div>
+    <p v-if="error" role="alert" class="traffic-error">{{ error }}</p>
+    <p v-if="summaryLoading" role="status" class="traffic-loading">{{ t('traffic.loading') }}</p>
+
+    <template v-if="summary">
+      <div class="traffic-metrics">
+        <article v-for="card in cards" :key="card.label" class="traffic-metric" :class="card.tone">
+          <div class="traffic-metric-top"><span>{{ card.label }}</span><span class="traffic-metric-icon"><Icon :name="card.icon" size="sm" /></span></div>
+          <strong :title="card.raw">{{ card.value }}</strong><span class="traffic-metric-hint">{{ card.hint }}</span>
+        </article>
       </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400">{{ summary.recorded_since ? t('traffic.since', { time: displayTime(summary.recorded_since) }) : t('traffic.notRecorded') }} {{ t('traffic.history') }}</p>
-      <div v-if="summary.requests" class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm dark:border-dark-700 dark:bg-dark-800">
-        <h3 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">{{ t('traffic.trend') }}</h3>
-        <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">{{ t(`traffic.trendScopes.${trendBucket}`) }}</p>
-        <div class="h-64" role="img" :aria-label="t('traffic.trend')"><Bar :data="chartData" :options="chartOptions" /></div>
+      <div v-if="summary.requests" class="traffic-analysis">
+        <article class="traffic-chart-card">
+          <header class="traffic-card-heading"><div><h3>{{ t('traffic.trend') }}</h3><p>{{ t(`traffic.trendScopes.${trendBucket}`) }}</p></div><span class="traffic-card-tag">{{ t(`traffic.periods.${summary.period}`) }}</span></header>
+          <div class="traffic-trend-chart" role="img" :aria-label="t('traffic.trend')"><Bar :data="chartData" :options="chartOptions" /></div>
+        </article>
+        <article class="traffic-chart-card traffic-composition">
+          <header class="traffic-card-heading"><h3>{{ t('traffic.composition') }}</h3></header>
+          <div class="traffic-donut" role="img" :aria-label="t('traffic.composition')"><Doughnut :data="directionData" :options="directionOptions" /><div aria-hidden="true"><strong>{{ bytes(summary.total_bytes) }}</strong><span>{{ t('traffic.total') }}</span></div></div>
+          <div class="traffic-direction-legend"><span><i :style="{ background: palette[0] }" />{{ t('traffic.upload') }}</span><strong>{{ share(summary.upload_bytes) }}</strong><span><i :style="{ background: palette[2] }" />{{ t('traffic.download') }}</span><strong>{{ share(summary.download_bytes) }}</strong></div>
+          <dl class="traffic-insights"><div><dt>{{ t('traffic.average') }}</dt><dd>{{ bytes(summary.requests ? Math.round(summary.total_bytes / summary.requests) : 0) }}</dd></div><div><dt>{{ t('traffic.peakBucket') }}</dt><dd>{{ peakBucket ? bytes(peakBucket.total_bytes) : '—' }}<small v-if="peakBucket">{{ peakBucket.bucket }}</small></dd></div></dl>
+        </article>
       </div>
-      <details v-if="summary.requests" class="overflow-x-auto rounded-xl border border-gray-200 dark:border-dark-700">
-        <summary class="cursor-pointer px-4 py-3 text-sm font-medium">{{ t('traffic.trendDetails') }}</summary>
-        <table class="w-full text-left text-sm">
-          <caption class="px-4 py-3 text-left font-medium">{{ t('traffic.trend') }} · {{ t('traffic.upload') }} / {{ t('traffic.download') }}</caption>
-          <thead class="bg-gray-50 text-gray-500 dark:bg-dark-800"><tr><th class="px-4 py-2">{{ t('traffic.bucket') }}</th><th class="min-w-40 px-4 py-2">{{ t('traffic.upload') }}</th><th class="min-w-40 px-4 py-2">{{ t('traffic.download') }}</th><th class="px-4 py-2">{{ t('traffic.total') }}</th></tr></thead>
-          <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
-            <tr v-for="point in summary.trend" :key="point.bucket">
-              <td class="whitespace-nowrap px-4 py-2 font-mono text-xs">{{ point.bucket }}</td>
-              <td v-for="direction in directions" :key="direction" class="px-4 py-2 tabular-nums" :title="`${point[direction]} B`">
-                {{ bytes(point[direction]) }}
-                <div class="mt-1 h-1.5 rounded-sm bg-gray-100 dark:bg-dark-700"><div class="h-full rounded-sm" :class="direction === 'upload_bytes' ? 'bg-sky-500' : 'bg-emerald-500'" :style="{ width: `${point[direction] / maxBytes * 100}%` }" /></div>
-              </td>
-              <td class="px-4 py-2 tabular-nums">{{ bytes(point.total_bytes) }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-else class="traffic-empty"><Icon name="chart" size="lg" /><h3>{{ t('traffic.empty') }}</h3><p>{{ t('traffic.emptyHint') }}</p></div>
+
+      <details v-if="summary.requests" class="traffic-trend-details">
+        <summary><Icon name="chart" size="sm" />{{ t('traffic.trendDetails') }}</summary>
+        <div class="traffic-table-scroll"><table class="traffic-table"><caption class="sr-only">{{ t('traffic.trend') }} · {{ t('traffic.upload') }} / {{ t('traffic.download') }}</caption>
+          <thead><tr><th scope="col">{{ t('traffic.bucket') }}</th><th scope="col">{{ t('traffic.upload') }}</th><th scope="col">{{ t('traffic.download') }}</th><th scope="col">{{ t('traffic.total') }}</th></tr></thead>
+          <tbody><tr v-for="point in summary.trend" :key="point.bucket"><td>{{ point.bucket }}</td><td v-for="direction in directions" :key="direction" :title="`${point[direction]} B`">{{ bytes(point[direction]) }}</td><td>{{ bytes(point.total_bytes) }}</td></tr></tbody>
+        </table></div>
       </details>
     </template>
-    <p v-if="detailsLoading" role="status" class="py-8 text-center text-sm text-gray-500">{{ t('traffic.loadingRecords') }}</p>
-    <template v-if="details && !detailsLoading">
-      <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-dark-700">
-        <table class="w-full text-left text-sm">
-          <caption class="px-4 py-3 text-left font-medium">{{ t('traffic.records') }}</caption>
-          <thead class="bg-gray-50 text-gray-500 dark:bg-dark-800"><tr><th class="px-4 py-2">{{ t('usage.time') }}</th><th v-if="admin" class="px-4 py-2">{{ t('traffic.user') }}</th><th class="px-4 py-2">API Key</th><th class="px-4 py-2">{{ t('traffic.endpoint') }}</th><th class="px-4 py-2">{{ t('traffic.upload') }}</th><th class="px-4 py-2">{{ t('traffic.download') }}</th><th class="px-4 py-2">{{ t('traffic.result') }}</th></tr></thead>
-          <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
+
+    <section class="traffic-records-card" :aria-label="t('traffic.records')">
+      <header class="traffic-card-heading"><div><h3>{{ t('traffic.records') }}</h3><p>{{ t('traffic.recordsHint') }}</p></div><span v-if="details" class="traffic-card-tag">{{ t('traffic.page', { page }) }}</span></header>
+      <p v-if="detailsError" role="alert" class="traffic-error">{{ detailsError }} <button type="button" class="underline" @click="loadDetails(requestedPage)">{{ t('common.refresh') }}</button></p>
+      <p v-if="detailsLoading" role="status" class="traffic-loading">{{ t('traffic.loadingRecords') }}</p>
+      <template v-if="details && !detailsLoading">
+        <div class="traffic-table-scroll"><table class="traffic-table traffic-records-table">
+          <caption class="sr-only">{{ t('traffic.records') }}</caption>
+          <thead><tr><th scope="col">{{ t('usage.time') }}</th><th v-if="admin" scope="col">{{ t('traffic.user') }}</th><th scope="col">API Key</th><th scope="col">{{ t('traffic.endpoint') }}</th><th scope="col">{{ t('traffic.upload') }}</th><th scope="col">{{ t('traffic.download') }}</th><th scope="col">{{ t('traffic.result') }}</th></tr></thead>
+          <tbody>
             <tr v-for="item in details.items" :key="item.event_id">
-              <td class="whitespace-nowrap px-4 py-3 text-xs">{{ displayTime(item.started_at) }}</td>
-              <td v-if="admin" class="px-4 py-3">#{{ item.user_id }}</td>
-              <td class="px-4 py-3">#{{ item.api_key_id }}</td>
-              <td class="px-4 py-3"><span class="whitespace-nowrap font-mono text-xs">{{ item.method }} {{ item.endpoint }}</span><span class="block text-xs text-gray-500" :title="item.event_id">{{ item.request_id || item.event_id }}</span></td>
-              <td class="whitespace-nowrap px-4 py-3 tabular-nums" :title="`${item.upload_bytes} B`">{{ bytes(item.upload_bytes) }}<span v-if="!item.request_complete" class="block text-xs text-amber-700 dark:text-amber-400">{{ t('traffic.partialRead') }}</span></td>
-              <td class="whitespace-nowrap px-4 py-3 tabular-nums" :title="`${item.download_bytes} B`">{{ bytes(item.download_bytes) }}</td>
-              <td class="whitespace-nowrap px-4 py-3 text-xs">HTTP {{ item.status_code }}<span class="block" :class="item.outcome === 'completed' ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'">{{ t(`traffic.outcomes.${item.outcome}`) }}</span></td>
+              <td class="traffic-timestamp">{{ displayTime(item.started_at) }}</td><td v-if="admin">#{{ item.user_id }}</td><td><span class="traffic-key-id"><Icon name="key" size="xs" />#{{ item.api_key_id }}</span></td>
+              <td><div class="traffic-endpoint"><span class="traffic-method">{{ item.method }}</span><code>{{ item.endpoint }}</code></div><span class="traffic-request-id" :title="item.request_id || item.event_id">{{ item.request_id || item.event_id }}</span></td>
+              <td :title="`${item.upload_bytes} B`">{{ bytes(item.upload_bytes) }}<small v-if="!item.request_complete" class="traffic-partial">{{ t('traffic.partialRead') }}</small></td><td :title="`${item.download_bytes} B`">{{ bytes(item.download_bytes) }}</td>
+              <td><span class="traffic-status" :class="item.outcome === 'completed' ? 'is-complete' : item.outcome === 'canceled' ? 'is-canceled' : 'is-error'">{{ item.status_code ? 'HTTP ' + item.status_code : '—' }}</span><small>{{ t(`traffic.outcomes.${item.outcome}`) }}</small></td>
             </tr>
-            <tr v-if="!details.items.length"><td :colspan="admin ? 7 : 6" class="p-8 text-center text-gray-500">{{ t('traffic.empty') }}</td></tr>
+            <tr v-if="!details.items.length"><td :colspan="admin ? 7 : 6" class="traffic-table-empty">{{ t('traffic.empty') }}</td></tr>
           </tbody>
-        </table>
-      </div>
-      <div class="flex items-center justify-between text-sm">
-        <span>{{ t('traffic.page', { page }) }}</span>
-        <div class="flex gap-2"><button type="button" class="btn btn-secondary" :disabled="page <= 1 || detailsLoading" @click="previousPage">{{ t('traffic.previous') }}</button><button type="button" class="btn btn-secondary" :disabled="!details?.next_cursor || detailsLoading" @click="nextPage">{{ t('traffic.next') }}</button></div>
-      </div>
-    </template>
+        </table></div>
+        <footer class="traffic-pagination"><span>{{ t('traffic.page', { page }) }}</span><div><button type="button" class="btn btn-secondary btn-sm" :disabled="page <= 1 || detailsLoading" @click="previousPage">{{ t('traffic.previous') }}</button><button type="button" class="btn btn-secondary btn-sm" :disabled="!details.next_cursor || detailsLoading" @click="nextPage">{{ t('traffic.next') }}</button></div></footer>
+      </template>
+    </section>
+
+    <details class="traffic-measurement-notes"><summary><Icon name="infoCircle" size="sm" />{{ t('traffic.scopeTitle') }}<span>{{ t('traffic.scopeShort') }}</span></summary><div><p>{{ t('traffic.scope') }}</p><p v-if="summary">{{ summary.recorded_since ? t('traffic.since', { time: displayTime(summary.recorded_since) }) : t('traffic.notRecorded') }} {{ t('traffic.history') }}</p></div></details>
+    <details v-if="admin" class="traffic-node-health" :open="healthError || health?.status === 'degraded' || health?.status === 'delayed'" :class="{ 'needs-attention': healthError || (health && health.status !== 'ok') }" data-testid="traffic-health">
+      <summary>{{ t('traffic.nodeHealth') }} · {{ health ? t(`traffic.healthStatuses.${health.status}`) : t('common.loading') }}</summary>
+      <div v-if="health"><p>{{ t('traffic.queueSummary', { queued: health.queued_events ?? 0, capacity: health.queue_capacity ?? 0, processing: health.processing_events ?? 0, dropped: health.dropped_events ?? 0 }) }}</p><p>{{ t('traffic.healthSummary', { pending: health.pending_events, age: health.oldest_pending_age_seconds, quarantined: health.quarantined_events, lost: health.persistence_failures }) }}</p><p v-if="health.storage_available === false" role="alert">{{ t('traffic.storageUnavailable') }}</p><p>{{ t('traffic.nodeHealthScope') }} · {{ displayTime(health.checked_at) }}</p></div>
+      <p v-if="healthError" role="alert">{{ t('traffic.healthFailed') }}</p>
+    </details>
   </section>
 </template>
 
@@ -116,8 +92,9 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { useI18n } from 'vue-i18n'
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend, type ChartOptions } from 'chart.js'
-import { Bar } from 'vue-chartjs'
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend, type ChartOptions } from 'chart.js'
+import { Bar, Doughnut } from 'vue-chartjs'
+import Icon from '@/components/icons/Icon.vue'
 import UsageFilters from '@/components/usage/TrafficIdentityFilters.vue'
 import trafficZh from '@/i18n/locales/zh/traffic'
 import trafficEn from '@/i18n/locales/en/traffic'
@@ -126,7 +103,7 @@ import { getTraffic, getTrafficKeys, getTrafficHealth, formatTrafficBytes as byt
 
 const props = withDefaults(defineProps<{ admin?: boolean; apiKeyOptions?: SelectOption[] }>(), { admin: false, apiKeyOptions: () => [] })
 const { t } = useI18n({ useScope: 'local', messages: { zh: { traffic: trafficZh }, en: { traffic: trafficEn } } })
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 const palette = useChartPalette()
 const chartTheme = useChartTheme()
 const periods: TrafficPeriod[] = ['day', 'week', 'month', 'year']
@@ -181,12 +158,15 @@ const currentDate = computed(() => report.value ? siteDate(new Date()) : '')
 const displayTime = (value: string) => new Intl.DateTimeFormat(undefined, { timeZone: report.value?.timezone || 'UTC', dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value))
 const rangeLabel = computed(() => report.value ? `${siteDate(report.value.start)} — ${siteDate(new Date(new Date(report.value.end).getTime() - 1))}` : '')
 const cards = computed(() => summary.value ? [
-  { label: t('traffic.upload'), value: bytes(summary.value.upload_bytes), raw: `${summary.value.upload_bytes} B` },
-  { label: t('traffic.download'), value: bytes(summary.value.download_bytes), raw: `${summary.value.download_bytes} B` },
-  { label: t('traffic.total'), value: bytes(summary.value.total_bytes), raw: `${summary.value.total_bytes} B` },
-  { label: t('traffic.requests'), value: summary.value.requests.toLocaleString(), raw: String(summary.value.requests) }
+  { label: t('traffic.total'), value: bytes(summary.value.total_bytes), raw: `${summary.value.total_bytes} B`, icon: 'chart' as const, tone: 'total', hint: t('traffic.totalHint') },
+  { label: t('traffic.upload'), value: bytes(summary.value.upload_bytes), raw: `${summary.value.upload_bytes} B`, icon: 'arrowUp' as const, tone: 'upload', hint: t('traffic.uploadHint') },
+  { label: t('traffic.download'), value: bytes(summary.value.download_bytes), raw: `${summary.value.download_bytes} B`, icon: 'arrowDown' as const, tone: 'download', hint: t('traffic.downloadHint') },
+  { label: t('traffic.requests'), value: summary.value.requests.toLocaleString(), raw: String(summary.value.requests), icon: 'bolt' as const, tone: 'requests', hint: t('traffic.requestsHint') }
 ] : [])
-const maxBytes = computed(() => Math.max(1, ...(summary.value?.trend.flatMap(p => [p.upload_bytes, p.download_bytes]) || [])))
+const peakBucket = computed(() => summary.value?.trend.reduce<(TrafficReport['trend'][number]) | null>((peak, point) => !peak || point.total_bytes > peak.total_bytes ? point : peak, null))
+const share = (value: number) => summary.value?.total_bytes ? `${(value / summary.value.total_bytes * 100).toFixed(1)}%` : '0%'
+const directionData = computed(() => ({ labels: [t('traffic.upload'), t('traffic.download')], datasets: [{ data: [summary.value?.upload_bytes ?? 0, summary.value?.download_bytes ?? 0], backgroundColor: [palette.value[0], palette.value[2]], borderWidth: 0, hoverOffset: 3 }] }))
+const directionOptions = computed<ChartOptions<'doughnut'>>(() => ({ responsive: true, maintainAspectRatio: false, cutout: '80%', animation: false, plugins: { legend: { display: false }, tooltip: { ...chartTheme.value.tooltip, callbacks: { label: context => `${context.label}: ${bytes(Number(context.raw))}` } } } }))
 const trendBucket = computed(() => summary.value?.period === 'day' ? 'hour' : summary.value?.period === 'year' ? 'month' : 'day')
 const chartData = computed(() => ({
   labels: summary.value?.trend.map(point => point.bucket) || [],
@@ -285,3 +265,5 @@ void load()
 if (!props.admin) void searchOwnKeys()
 onUnmounted(() => { controller?.abort(); detailsController?.abort(); keyController?.abort() })
 </script>
+
+<style scoped src="./TrafficPanel.css"></style>
