@@ -105,7 +105,8 @@ describe('PortalApiModels pricing display', () => {
   it('shows twelve-hour cache prices in both the catalogue and pricing details', async () => {
     const model = { ...group.models[0], pricing: { ...group.models[0].pricing, cache_write_12h_price: 0.000004 } }
     const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, models: [model] }], selectedGroupId: 1 } })
-    expect(wrapper.get('.portal-api-model-table').text()).toContain('12h $6.00')
+    expect(wrapper.get('.portal-api-model-table').text()).toContain('12h $4.00')
+    expect(wrapper.get('.portal-api-model-table').text()).toContain('$6.00')
     await wrapper.get('.portal-api-model-name').trigger('click')
     expect(wrapper.get('.portal-api-detail-table').text()).toContain('Cache write 12h')
     expect(wrapper.get('.portal-api-detail-table').text()).toContain('$6.00')
@@ -122,24 +123,86 @@ describe('PortalApiModels pricing display', () => {
     wrapper.unmount()
   })
 
-  it('applies user-specific token rates and independent image/video rates in list and detail views', async () => {
+  it('separates base and personal token prices while showing only base prices for media', async () => {
     const wrapper = mount(PortalApiModels, {
       props: { groups: [group], selectedGroupId: 1, bindableGroupIds: [1] },
     })
 
     const table = wrapper.get('.portal-api-model-table')
     expect(table.find('.portal-api-model-row').text()).toContain('token-model')
-    expect(table.find('.portal-api-model-row').text()).toContain('$1.50')
-    expect(table.find('.portal-api-model-row').text()).toContain('1h $3.00')
+    const tokenRow = table.find('.portal-api-model-row')
+    expect(tokenRow.findAll('.portal-model-price-base').map(price => price.text())).toContain('$1.00')
+    expect(tokenRow.findAll('.portal-model-price-adjusted').map(price => price.text())).toContain('Adjusted ×1.5 $1.50')
+    expect(tokenRow.text()).toContain('1h $2.00')
     const imageRow = table.findAll('tbody tr').find(row => row.text().includes('image-model'))!
     const videoRow = table.findAll('tbody tr').find(row => row.text().includes('video-model'))!
-    expect(imageRow.text()).toContain('$1.00 / image')
-    expect(videoRow.text()).toContain('$6.00 / request')
+    expect(imageRow.text()).toContain('$2.00 / image')
+    expect(videoRow.text()).toContain('$2.00 / request')
+    expect(imageRow.find('.portal-model-price-adjusted').exists()).toBe(false)
+    expect(videoRow.find('.portal-model-price-adjusted').exists()).toBe(false)
 
     await wrapper.get('button.portal-api-model-name').trigger('click')
     await flushPromises()
     expect(wrapper.get('.portal-api-price-summary').text()).toContain('×1.5')
     expect(wrapper.text()).toContain('Replaces the default group multiplier')
+    wrapper.unmount()
+  })
+
+  it.each([0, 0.3, 1, 1.5])('shows the base price and correctly labels a group rate of %s', (rate) => {
+    const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, rate_multiplier: rate, user_rate_multiplier: null, models: [group.models[0]] }], selectedGroupId: 1 } })
+    const price = wrapper.get('.portal-api-model-row td:nth-child(2)')
+    expect(price.get('.portal-model-price-base').text()).toBe('$1.00')
+    expect(price.find('.portal-model-price-adjusted').exists()).toBe(rate !== 1)
+    if (rate !== 1) expect(price.get('.portal-model-price-adjusted').text()).toBe(`${rate < 1 ? 'Discounted' : 'Adjusted'} ×${rate} $${rate.toFixed(2)}`)
+    wrapper.unmount()
+  })
+
+  it('keeps base and adjusted tier ranges distinct in the list and details', async () => {
+    const model = { ...group.models[0], pricing: { ...group.models[0].pricing, intervals: [
+      { min_tokens: 0, max_tokens: 100000, input_price: 0.000001 },
+      { min_tokens: 100000, max_tokens: null, input_price: 0.000002 },
+    ] } }
+    const tierGroup = { ...group, rate_multiplier: 0.3, user_rate_multiplier: null, models: [model] }
+    const wrapper = mount(PortalApiModels, { props: { groups: [tierGroup], selectedGroupId: 1 } })
+    const price = wrapper.get('.portal-api-model-row td:nth-child(2)')
+    expect(price.get('.portal-model-price-base').text()).toBe('$1.00–$2.00')
+    expect(price.get('.portal-model-price-adjusted').text()).toBe('Discounted ×0.3 $0.30–$0.60')
+    await wrapper.get('.portal-api-model-name').trigger('click')
+    const tiers = wrapper.findAll('.portal-api-detail-table tbody tr')
+    expect(tiers[1].get('td:nth-child(2) .portal-model-price-base').text()).toBe('$2.00')
+    expect(tiers[1].get('td:nth-child(2) .portal-model-price-adjusted').text()).toBe('Discounted ×0.3 $0.60')
+    await wrapper.setProps({ groups: [{ ...tierGroup, long_context_pricing_enabled: false }] })
+    expect(wrapper.get('.portal-api-model-row td:nth-child(2) .portal-model-price-base').text()).toBe('$1.00')
+    wrapper.unmount()
+  })
+
+  it.each(['image', 'video'])('shows only original prices in %s details with an independent rate of one', async (mode) => {
+    const model = group.models.find((item: { pricing: { billing_mode: string } }) => item.pricing.billing_mode === mode)
+    const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, image_rate_multiplier: 1, video_rate_multiplier: 1, models: [model] }], selectedGroupId: 1 } })
+    expect(wrapper.get('.portal-api-model-row .portal-model-price-base').text()).toContain('$2.00')
+    await wrapper.get('.portal-api-model-name').trigger('click')
+    expect(wrapper.get('.portal-api-detail-table .portal-model-price-base').text()).toContain('$2.00')
+    expect(wrapper.get('.portal-api-detail-table').find('.portal-model-price-adjusted').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('shows scroll controls only when the connection list overflows and updates at each edge', async () => {
+    const wrapper = mount(PortalApiModels, { props: { groups: [group], selectedGroupId: 1 } })
+    const nav = wrapper.get('.portal-api-group-nav')
+    expect(wrapper.find('.portal-api-group-scroll-hint').exists()).toBe(false)
+    Object.defineProperties(nav.element, { clientHeight: { configurable: true, value: 200 }, scrollHeight: { configurable: true, value: 500 } })
+    const scrollBy = vi.fn()
+    Object.defineProperty(nav.element, 'scrollBy', { configurable: true, value: scrollBy })
+    await nav.trigger('scroll')
+    const up = wrapper.get('button[aria-label="Scroll connections up"]')
+    const down = wrapper.get('button[aria-label="Scroll connections down"]')
+    expect(up.attributes('disabled')).toBeDefined()
+    await down.trigger('click')
+    expect(scrollBy).toHaveBeenCalledWith({ top: 150, behavior: 'auto' })
+    nav.element.scrollTop = 300
+    await nav.trigger('scroll')
+    expect(up.attributes('disabled')).toBeUndefined()
+    expect(down.attributes('disabled')).toBeDefined()
     wrapper.unmount()
   })
 
