@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
+	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
@@ -398,6 +399,21 @@ func (_c *APIKeyCreate) AddWorkbenchLaunchGrants(v ...*WorkbenchLaunchGrant) *AP
 	return _c.AddWorkbenchLaunchGrantIDs(ids...)
 }
 
+// AddChatCredentialIDs adds the "chat_credentials" edge to the ChatCredential entity by IDs.
+func (_c *APIKeyCreate) AddChatCredentialIDs(ids ...int64) *APIKeyCreate {
+	_c.mutation.AddChatCredentialIDs(ids...)
+	return _c
+}
+
+// AddChatCredentials adds the "chat_credentials" edges to the ChatCredential entity.
+func (_c *APIKeyCreate) AddChatCredentials(v ...*ChatCredential) *APIKeyCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatCredentialIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_c *APIKeyCreate) Mutation() *APIKeyMutation {
 	return _c.mutation
@@ -772,6 +788,22 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.ChatCredentialsTable,
+			Columns: []string{apikey.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

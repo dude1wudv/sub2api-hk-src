@@ -1,5 +1,6 @@
 import { createServer as createHttpServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer as createViteServer } from 'vite'
@@ -8,6 +9,7 @@ import {
   PREVIEW_PASSWORD, PREVIEW_ACCOUNTS, publicSettings,
   createPreviewFixtures, paginate, filterUsage, aggregateUsage, buildUsageSnapshot, buildTrafficReport,
 } from './user-preview-fixtures.mjs'
+import { createChatPreview } from './chat-preview-fixtures.mjs'
 
 const HOST = '127.0.0.1'
 const VITE_PORT = 3410
@@ -29,6 +31,7 @@ function json(response, status, data) {
 const ok = (response, data) => json(response, 200, { code: 0, message: 'Synthetic local preview', data, preview: true })
 const error = (response, status, code, message) => json(response, status, { code, message, preview: true })
 const unavailable = (response) => error(response, 501, 'PREVIEW_UNAVAILABLE', '此操作在本地合成预览中不可用。不会执行真实注册、付款、验证码或外部操作。 / This action is unavailable in the synthetic preview; no real operation was performed.')
+const chatPreview = createChatPreview(fixtures, { ok, error, unavailable, readJson })
 
 async function readJson(request) {
   let length = 0
@@ -169,7 +172,7 @@ async function handleApi(request, response) {
     const body = await readJson(request)
     const account = PREVIEW_ACCOUNTS[String(body.email || '').trim().toLowerCase()]
     if (!account || body.password !== PREVIEW_PASSWORD) return error(response, 401, 'PREVIEW_LOGIN_REQUIRED', '仅接受文档中的合成预览账户。 / Use the synthetic account listed in dev/README.md.')
-    const session = { userId: account.id, accessToken: `preview-access-${randomUUID()}`, refreshToken: `preview-refresh-${randomUUID()}`, expiresAt: Date.now() + 3600000 }
+    const session = { userId: account.id, accessToken: `preview.${Buffer.from(JSON.stringify({ user_id: account.id })).toString('base64url')}.${randomUUID()}`, refreshToken: `preview-refresh-${randomUUID()}`, expiresAt: Date.now() + 3600000 }
     sessions.set(session.accessToken, session)
     refreshSessions.set(session.refreshToken, session)
     return ok(response, authResponse(session))
@@ -201,6 +204,7 @@ async function handleApi(request, response) {
   if (!user) return error(response, 401, 'PREVIEW_LOGIN_REQUIRED', '请先登录本地预览账户。 / Sign in to the local preview.')
   if (path.startsWith('/api/v1/admin/') && user.role !== 'admin') return error(response, 403, 'PREVIEW_ADMIN_REQUIRED', 'The synthetic administrator account is required.')
   const localPath = path.replace(/^\/api\/v1/, '')
+  if (localPath.startsWith('/chat/')) return chatPreview(request, response, user, localPath, params)
   const records = filterUsage(userUsage(user), params)
   const snapshot = buildUsageSnapshot(records, params)
 
@@ -384,10 +388,24 @@ function previewHtml() {
       },
     },
     configureServer(server) {
-      server.middlewares.use((request, response, next) => {
+      server.middlewares.use(async (request, response, next) => {
         if (request.headers.host !== `${HOST}:${VITE_PORT}`) {
           response.statusCode = 403
           response.end('Local preview host only.')
+          return
+        }
+        if ((request.url || '').split('?')[0].startsWith('/chat-app/')) {
+          const output = resolve(frontendDirectory, '../backend/internal/web/dist/chat-app')
+          try {
+            const name = decodeURIComponent(new URL(request.url, PREVIEW_ORIGIN).pathname.slice('/chat-app/'.length)) || 'index.html'
+            const target = resolve(output, name)
+            if (!target.startsWith(output + (process.platform === 'win32' ? String.fromCharCode(92) : '/'))) throw new Error('Invalid asset')
+            const bytes = await readFile(target)
+            const extension = target.split('.').at(-1)
+            response.setHeader('Content-Type', ({ html: 'text/html; charset=utf-8', js: 'text/javascript', css: 'text/css', svg: 'image/svg+xml', woff2: 'font/woff2', png: 'image/png' })[extension] || 'application/octet-stream')
+            response.setHeader('X-Content-Type-Options', 'nosniff')
+            response.end(bytes)
+          } catch { response.statusCode = 404; response.end('Chat bundle missing. Run pnpm build first.') }
           return
         }
         next()
@@ -441,7 +459,7 @@ try {
       hmr: { host: HOST, port: VITE_PORT },
       fs: { strict: true, allow: [frontendDirectory], deny: ['.env', '.env.*', '*.{crt,pem,key}', '**/.git/**'] },
       headers: {
-        'Content-Security-Policy': `default-src 'self'; connect-src 'self' ws://${HOST}:${VITE_PORT}; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'`,
+        'Content-Security-Policy': `default-src 'self'; connect-src 'self' ws://${HOST}:${VITE_PORT}; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'self'; frame-ancestors 'self'`,
         'Referrer-Policy': 'no-referrer',
         'Cache-Control': 'no-store',
       },

@@ -15,6 +15,8 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/account"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
+	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
+	"github.com/Wei-Shaw/sub2api/ent/chatmodelpreset"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
 	"github.com/Wei-Shaw/sub2api/ent/redeemcode"
@@ -22,6 +24,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
+	"github.com/google/uuid"
 )
 
 // GroupUpdate is the builder for updating Group entities.
@@ -60,6 +63,18 @@ func (_u *GroupUpdate) SetNillableDeletedAt(v *time.Time) *GroupUpdate {
 // ClearDeletedAt clears the value of the "deleted_at" field.
 func (_u *GroupUpdate) ClearDeletedAt() *GroupUpdate {
 	_u.mutation.ClearDeletedAt()
+	return _u
+}
+
+// SetChatModelPolicies sets the "chat_model_policies" field.
+func (_u *GroupUpdate) SetChatModelPolicies(v map[string]domain.ChatModelPolicy) *GroupUpdate {
+	_u.mutation.SetChatModelPolicies(v)
+	return _u
+}
+
+// ClearChatModelPolicies clears the value of the "chat_model_policies" field.
+func (_u *GroupUpdate) ClearChatModelPolicies() *GroupUpdate {
+	_u.mutation.ClearChatModelPolicies()
 	return _u
 }
 
@@ -1421,6 +1436,36 @@ func (_u *GroupUpdate) AddUsageLogs(v ...*UsageLog) *GroupUpdate {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddChatModelPresetIDs adds the "chat_model_presets" edge to the ChatModelPreset entity by IDs.
+func (_u *GroupUpdate) AddChatModelPresetIDs(ids ...uuid.UUID) *GroupUpdate {
+	_u.mutation.AddChatModelPresetIDs(ids...)
+	return _u
+}
+
+// AddChatModelPresets adds the "chat_model_presets" edges to the ChatModelPreset entity.
+func (_u *GroupUpdate) AddChatModelPresets(v ...*ChatModelPreset) *GroupUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChatModelPresetIDs(ids...)
+}
+
+// AddChatCredentialIDs adds the "chat_credentials" edge to the ChatCredential entity by IDs.
+func (_u *GroupUpdate) AddChatCredentialIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.AddChatCredentialIDs(ids...)
+	return _u
+}
+
+// AddChatCredentials adds the "chat_credentials" edges to the ChatCredential entity.
+func (_u *GroupUpdate) AddChatCredentials(v ...*ChatCredential) *GroupUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChatCredentialIDs(ids...)
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_u *GroupUpdate) AddAccountIDs(ids ...int64) *GroupUpdate {
 	_u.mutation.AddAccountIDs(ids...)
@@ -1538,6 +1583,48 @@ func (_u *GroupUpdate) RemoveUsageLogs(v ...*UsageLog) *GroupUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearChatModelPresets clears all "chat_model_presets" edges to the ChatModelPreset entity.
+func (_u *GroupUpdate) ClearChatModelPresets() *GroupUpdate {
+	_u.mutation.ClearChatModelPresets()
+	return _u
+}
+
+// RemoveChatModelPresetIDs removes the "chat_model_presets" edge to ChatModelPreset entities by IDs.
+func (_u *GroupUpdate) RemoveChatModelPresetIDs(ids ...uuid.UUID) *GroupUpdate {
+	_u.mutation.RemoveChatModelPresetIDs(ids...)
+	return _u
+}
+
+// RemoveChatModelPresets removes "chat_model_presets" edges to ChatModelPreset entities.
+func (_u *GroupUpdate) RemoveChatModelPresets(v ...*ChatModelPreset) *GroupUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChatModelPresetIDs(ids...)
+}
+
+// ClearChatCredentials clears all "chat_credentials" edges to the ChatCredential entity.
+func (_u *GroupUpdate) ClearChatCredentials() *GroupUpdate {
+	_u.mutation.ClearChatCredentials()
+	return _u
+}
+
+// RemoveChatCredentialIDs removes the "chat_credentials" edge to ChatCredential entities by IDs.
+func (_u *GroupUpdate) RemoveChatCredentialIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.RemoveChatCredentialIDs(ids...)
+	return _u
+}
+
+// RemoveChatCredentials removes "chat_credentials" edges to ChatCredential entities.
+func (_u *GroupUpdate) RemoveChatCredentials(v ...*ChatCredential) *GroupUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChatCredentialIDs(ids...)
 }
 
 // ClearAccounts clears all "accounts" edges to the Account entity.
@@ -1714,6 +1801,12 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DeletedAtCleared() {
 		_spec.ClearField(group.FieldDeletedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ChatModelPolicies(); ok {
+		_spec.SetField(group.FieldChatModelPolicies, field.TypeJSON, value)
+	}
+	if _u.mutation.ChatModelPoliciesCleared() {
+		_spec.ClearField(group.FieldChatModelPolicies, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.SlowTtftExemptUntil(); ok {
 		_spec.SetField(group.FieldSlowTtftExemptUntil, field.TypeTime, value)
@@ -2279,6 +2372,96 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ChatModelPresetsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatModelPresetsTable,
+			Columns: []string{group.ChatModelPresetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatmodelpreset.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChatModelPresetsIDs(); len(nodes) > 0 && !_u.mutation.ChatModelPresetsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatModelPresetsTable,
+			Columns: []string{group.ChatModelPresetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatmodelpreset.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChatModelPresetsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatModelPresetsTable,
+			Columns: []string{group.ChatModelPresetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatmodelpreset.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChatCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatCredentialsTable,
+			Columns: []string{group.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChatCredentialsIDs(); len(nodes) > 0 && !_u.mutation.ChatCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatCredentialsTable,
+			Columns: []string{group.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChatCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatCredentialsTable,
+			Columns: []string{group.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.AccountsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
@@ -2436,6 +2619,18 @@ func (_u *GroupUpdateOne) SetNillableDeletedAt(v *time.Time) *GroupUpdateOne {
 // ClearDeletedAt clears the value of the "deleted_at" field.
 func (_u *GroupUpdateOne) ClearDeletedAt() *GroupUpdateOne {
 	_u.mutation.ClearDeletedAt()
+	return _u
+}
+
+// SetChatModelPolicies sets the "chat_model_policies" field.
+func (_u *GroupUpdateOne) SetChatModelPolicies(v map[string]domain.ChatModelPolicy) *GroupUpdateOne {
+	_u.mutation.SetChatModelPolicies(v)
+	return _u
+}
+
+// ClearChatModelPolicies clears the value of the "chat_model_policies" field.
+func (_u *GroupUpdateOne) ClearChatModelPolicies() *GroupUpdateOne {
+	_u.mutation.ClearChatModelPolicies()
 	return _u
 }
 
@@ -3797,6 +3992,36 @@ func (_u *GroupUpdateOne) AddUsageLogs(v ...*UsageLog) *GroupUpdateOne {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddChatModelPresetIDs adds the "chat_model_presets" edge to the ChatModelPreset entity by IDs.
+func (_u *GroupUpdateOne) AddChatModelPresetIDs(ids ...uuid.UUID) *GroupUpdateOne {
+	_u.mutation.AddChatModelPresetIDs(ids...)
+	return _u
+}
+
+// AddChatModelPresets adds the "chat_model_presets" edges to the ChatModelPreset entity.
+func (_u *GroupUpdateOne) AddChatModelPresets(v ...*ChatModelPreset) *GroupUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChatModelPresetIDs(ids...)
+}
+
+// AddChatCredentialIDs adds the "chat_credentials" edge to the ChatCredential entity by IDs.
+func (_u *GroupUpdateOne) AddChatCredentialIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.AddChatCredentialIDs(ids...)
+	return _u
+}
+
+// AddChatCredentials adds the "chat_credentials" edges to the ChatCredential entity.
+func (_u *GroupUpdateOne) AddChatCredentials(v ...*ChatCredential) *GroupUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChatCredentialIDs(ids...)
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_u *GroupUpdateOne) AddAccountIDs(ids ...int64) *GroupUpdateOne {
 	_u.mutation.AddAccountIDs(ids...)
@@ -3914,6 +4139,48 @@ func (_u *GroupUpdateOne) RemoveUsageLogs(v ...*UsageLog) *GroupUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearChatModelPresets clears all "chat_model_presets" edges to the ChatModelPreset entity.
+func (_u *GroupUpdateOne) ClearChatModelPresets() *GroupUpdateOne {
+	_u.mutation.ClearChatModelPresets()
+	return _u
+}
+
+// RemoveChatModelPresetIDs removes the "chat_model_presets" edge to ChatModelPreset entities by IDs.
+func (_u *GroupUpdateOne) RemoveChatModelPresetIDs(ids ...uuid.UUID) *GroupUpdateOne {
+	_u.mutation.RemoveChatModelPresetIDs(ids...)
+	return _u
+}
+
+// RemoveChatModelPresets removes "chat_model_presets" edges to ChatModelPreset entities.
+func (_u *GroupUpdateOne) RemoveChatModelPresets(v ...*ChatModelPreset) *GroupUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChatModelPresetIDs(ids...)
+}
+
+// ClearChatCredentials clears all "chat_credentials" edges to the ChatCredential entity.
+func (_u *GroupUpdateOne) ClearChatCredentials() *GroupUpdateOne {
+	_u.mutation.ClearChatCredentials()
+	return _u
+}
+
+// RemoveChatCredentialIDs removes the "chat_credentials" edge to ChatCredential entities by IDs.
+func (_u *GroupUpdateOne) RemoveChatCredentialIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.RemoveChatCredentialIDs(ids...)
+	return _u
+}
+
+// RemoveChatCredentials removes "chat_credentials" edges to ChatCredential entities.
+func (_u *GroupUpdateOne) RemoveChatCredentials(v ...*ChatCredential) *GroupUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChatCredentialIDs(ids...)
 }
 
 // ClearAccounts clears all "accounts" edges to the Account entity.
@@ -4120,6 +4387,12 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if _u.mutation.DeletedAtCleared() {
 		_spec.ClearField(group.FieldDeletedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ChatModelPolicies(); ok {
+		_spec.SetField(group.FieldChatModelPolicies, field.TypeJSON, value)
+	}
+	if _u.mutation.ChatModelPoliciesCleared() {
+		_spec.ClearField(group.FieldChatModelPolicies, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.SlowTtftExemptUntil(); ok {
 		_spec.SetField(group.FieldSlowTtftExemptUntil, field.TypeTime, value)
@@ -4678,6 +4951,96 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChatModelPresetsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatModelPresetsTable,
+			Columns: []string{group.ChatModelPresetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatmodelpreset.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChatModelPresetsIDs(); len(nodes) > 0 && !_u.mutation.ChatModelPresetsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatModelPresetsTable,
+			Columns: []string{group.ChatModelPresetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatmodelpreset.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChatModelPresetsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatModelPresetsTable,
+			Columns: []string{group.ChatModelPresetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatmodelpreset.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChatCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatCredentialsTable,
+			Columns: []string{group.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChatCredentialsIDs(); len(nodes) > 0 && !_u.mutation.ChatCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatCredentialsTable,
+			Columns: []string{group.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChatCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatCredentialsTable,
+			Columns: []string{group.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

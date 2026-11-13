@@ -174,6 +174,7 @@ func GroupFromServiceAdmin(g *service.Group) *AdminGroup {
 		MessagesDispatchModelConfig: g.MessagesDispatchModelConfig,
 		ModelAllowlist:              g.ModelAllowlist,
 		CodexModelsManifestConfig:   g.CodexModelsManifestConfig,
+		ChatModelPolicies:              service.CloneChatModelPolicies(g.ChatModelPolicies),
 		SupportedModelScopes:        g.SupportedModelScopes,
 		AccountCount:                g.AccountCount,
 		ActiveAccountCount:          g.ActiveAccountCount,

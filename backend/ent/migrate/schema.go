@@ -806,6 +806,401 @@ var (
 			},
 		},
 	}
+	// ChatAttachmentsColumns holds the columns for the "chat_attachments" table.
+	ChatAttachmentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "storage_key", Type: field.TypeString, Unique: true, Size: 200},
+		{Name: "original_name", Type: field.TypeString, Size: 255},
+		{Name: "mime_type", Type: field.TypeString, Size: 128, Default: ""},
+		{Name: "byte_size", Type: field.TypeInt64},
+		{Name: "sha256", Type: field.TypeString, Size: 64, Default: ""},
+		{Name: "purpose", Type: field.TypeEnum, Enums: []string{"image", "rich_layout_recognition", "user_data"}},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"uploading", "ready", "staged", "orphan", "deleting"}, Default: "uploading"},
+		{Name: "import_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// ChatAttachmentsTable holds the schema information for the "chat_attachments" table.
+	ChatAttachmentsTable = &schema.Table{
+		Name:       "chat_attachments",
+		Columns:    ChatAttachmentsColumns,
+		PrimaryKey: []*schema.Column{ChatAttachmentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_attachments_users_chat_attachments",
+				Columns:    []*schema.Column{ChatAttachmentsColumns[11]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatattachment_user_id_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChatAttachmentsColumns[11], ChatAttachmentsColumns[0]},
+			},
+			{
+				Name:    "chatattachment_user_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{ChatAttachmentsColumns[11], ChatAttachmentsColumns[9]},
+			},
+			{
+				Name:    "chatattachment_status_updated_at",
+				Unique:  false,
+				Columns: []*schema.Column{ChatAttachmentsColumns[9], ChatAttachmentsColumns[2]},
+			},
+		},
+	}
+	// ChatAttachmentUploadsColumns holds the columns for the "chat_attachment_uploads" table.
+	ChatAttachmentUploadsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "account_id", Type: field.TypeInt64},
+		{Name: "remote_file_id", Type: field.TypeString, Size: 512, Default: ""},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"uploading", "ready", "invalid", "deleting", "error"}, Default: "uploading"},
+		{Name: "cleanup_attempts", Type: field.TypeInt, Default: 0},
+		{Name: "attachment_id", Type: field.TypeUUID},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// ChatAttachmentUploadsTable holds the schema information for the "chat_attachment_uploads" table.
+	ChatAttachmentUploadsTable = &schema.Table{
+		Name:       "chat_attachment_uploads",
+		Columns:    ChatAttachmentUploadsColumns,
+		PrimaryKey: []*schema.Column{ChatAttachmentUploadsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_attachment_uploads_chat_attachments_uploads",
+				Columns:    []*schema.Column{ChatAttachmentUploadsColumns[7]},
+				RefColumns: []*schema.Column{ChatAttachmentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "chat_attachment_uploads_users_chat_attachment_uploads",
+				Columns:    []*schema.Column{ChatAttachmentUploadsColumns[8]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatattachmentupload_attachment_id_account_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChatAttachmentUploadsColumns[7], ChatAttachmentUploadsColumns[3]},
+			},
+			{
+				Name:    "chatattachmentupload_user_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{ChatAttachmentUploadsColumns[8], ChatAttachmentUploadsColumns[5]},
+			},
+		},
+	}
+	// ChatCredentialsColumns holds the columns for the "chat_credentials" table.
+	ChatCredentialsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "api_key_id", Type: field.TypeInt64},
+		{Name: "group_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// ChatCredentialsTable holds the schema information for the "chat_credentials" table.
+	ChatCredentialsTable = &schema.Table{
+		Name:       "chat_credentials",
+		Columns:    ChatCredentialsColumns,
+		PrimaryKey: []*schema.Column{ChatCredentialsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_credentials_api_keys_chat_credentials",
+				Columns:    []*schema.Column{ChatCredentialsColumns[3]},
+				RefColumns: []*schema.Column{APIKeysColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "chat_credentials_groups_chat_credentials",
+				Columns:    []*schema.Column{ChatCredentialsColumns[4]},
+				RefColumns: []*schema.Column{GroupsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "chat_credentials_users_chat_credentials",
+				Columns:    []*schema.Column{ChatCredentialsColumns[5]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatcredential_user_id_group_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChatCredentialsColumns[5], ChatCredentialsColumns[4]},
+			},
+			{
+				Name:    "chatcredential_api_key_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChatCredentialsColumns[3]},
+			},
+		},
+	}
+	// ChatGenerationRunsColumns holds the columns for the "chat_generation_runs" table.
+	ChatGenerationRunsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "assistant_message_id", Type: field.TypeString, Size: 200},
+		{Name: "preset_id", Type: field.TypeUUID},
+		{Name: "group_id", Type: field.TypeInt64},
+		{Name: "model", Type: field.TypeString, Size: 256},
+		{Name: "options", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "request_id", Type: field.TypeUUID},
+		{Name: "operation", Type: field.TypeEnum, Enums: []string{"send", "regenerate", "continue"}},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"running", "done", "stopped", "error"}, Default: "running"},
+		{Name: "owner_instance_id", Type: field.TypeUUID},
+		{Name: "lease_expires_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "started_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "heartbeat_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "ended_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "gateway_request_ids", Type: field.TypeJSON},
+		{Name: "session_id", Type: field.TypeUUID},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// ChatGenerationRunsTable holds the schema information for the "chat_generation_runs" table.
+	ChatGenerationRunsTable = &schema.Table{
+		Name:       "chat_generation_runs",
+		Columns:    ChatGenerationRunsColumns,
+		PrimaryKey: []*schema.Column{ChatGenerationRunsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_generation_runs_chat_sessions_generation_runs",
+				Columns:    []*schema.Column{ChatGenerationRunsColumns[17]},
+				RefColumns: []*schema.Column{ChatSessionsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "chat_generation_runs_users_chat_generation_runs",
+				Columns:    []*schema.Column{ChatGenerationRunsColumns[18]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatgenerationrun_user_id_request_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChatGenerationRunsColumns[18], ChatGenerationRunsColumns[8]},
+			},
+			{
+				Name:    "chat_runs_one_active",
+				Unique:  true,
+				Columns: []*schema.Column{ChatGenerationRunsColumns[17]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "status = 'running'",
+				},
+			},
+			{
+				Name:    "chatgenerationrun_status_lease_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{ChatGenerationRunsColumns[10], ChatGenerationRunsColumns[12]},
+			},
+		},
+	}
+	// ChatImportsColumns holds the columns for the "chat_imports" table.
+	ChatImportsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "committed", "failed"}, Default: "pending"},
+		{Name: "expires_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "history_revision", Type: field.TypeInt64},
+		{Name: "manifest", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// ChatImportsTable holds the schema information for the "chat_imports" table.
+	ChatImportsTable = &schema.Table{
+		Name:       "chat_imports",
+		Columns:    ChatImportsColumns,
+		PrimaryKey: []*schema.Column{ChatImportsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_imports_users_chat_imports",
+				Columns:    []*schema.Column{ChatImportsColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatimport_user_id_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChatImportsColumns[7], ChatImportsColumns[0]},
+			},
+			{
+				Name:    "chatimport_status_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{ChatImportsColumns[3], ChatImportsColumns[4]},
+			},
+		},
+	}
+	// ChatModelPresetsColumns holds the columns for the "chat_model_presets" table.
+	ChatModelPresetsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "model", Type: field.TypeString, Size: 256},
+		{Name: "display_name", Type: field.TypeString, Size: 200, Default: ""},
+		{Name: "sort_order", Type: field.TypeInt, Default: 0},
+		{Name: "is_default", Type: field.TypeBool, Default: false},
+		{Name: "group_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// ChatModelPresetsTable holds the schema information for the "chat_model_presets" table.
+	ChatModelPresetsTable = &schema.Table{
+		Name:       "chat_model_presets",
+		Columns:    ChatModelPresetsColumns,
+		PrimaryKey: []*schema.Column{ChatModelPresetsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_model_presets_groups_chat_model_presets",
+				Columns:    []*schema.Column{ChatModelPresetsColumns[7]},
+				RefColumns: []*schema.Column{GroupsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "chat_model_presets_users_chat_model_presets",
+				Columns:    []*schema.Column{ChatModelPresetsColumns[8]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatmodelpreset_user_id_group_id_model",
+				Unique:  true,
+				Columns: []*schema.Column{ChatModelPresetsColumns[8], ChatModelPresetsColumns[7], ChatModelPresetsColumns[3]},
+			},
+			{
+				Name:    "chat_presets_one_default",
+				Unique:  true,
+				Columns: []*schema.Column{ChatModelPresetsColumns[8]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "is_default",
+				},
+			},
+			{
+				Name:    "chatmodelpreset_user_id_sort_order",
+				Unique:  false,
+				Columns: []*schema.Column{ChatModelPresetsColumns[8], ChatModelPresetsColumns[5]},
+			},
+		},
+	}
+	// ChatPreferencesColumns holds the columns for the "chat_preferences" table.
+	ChatPreferencesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "preferences", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "history_revision", Type: field.TypeInt64, Default: 0},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// ChatPreferencesTable holds the schema information for the "chat_preferences" table.
+	ChatPreferencesTable = &schema.Table{
+		Name:       "chat_preferences",
+		Columns:    ChatPreferencesColumns,
+		PrimaryKey: []*schema.Column{ChatPreferencesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_preferences_users_chat_preferences",
+				Columns:    []*schema.Column{ChatPreferencesColumns[5]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// ChatSessionsColumns holds the columns for the "chat_sessions" table.
+	ChatSessionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "title", Type: field.TypeString, Size: 500, Default: ""},
+		{Name: "title_manual", Type: field.TypeBool, Default: false},
+		{Name: "snapshot", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "revision", Type: field.TypeInt64, Default: 0},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// ChatSessionsTable holds the schema information for the "chat_sessions" table.
+	ChatSessionsTable = &schema.Table{
+		Name:       "chat_sessions",
+		Columns:    ChatSessionsColumns,
+		PrimaryKey: []*schema.Column{ChatSessionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_sessions_users_chat_sessions",
+				Columns:    []*schema.Column{ChatSessionsColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatsession_user_id_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChatSessionsColumns[7], ChatSessionsColumns[0]},
+			},
+			{
+				Name:    "chatsession_user_id_updated_at_id",
+				Unique:  false,
+				Columns: []*schema.Column{ChatSessionsColumns[7], ChatSessionsColumns[2], ChatSessionsColumns[0]},
+			},
+		},
+	}
+	// ChatSessionAttachmentsColumns holds the columns for the "chat_session_attachments" table.
+	ChatSessionAttachmentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "attachment_id", Type: field.TypeUUID},
+		{Name: "session_id", Type: field.TypeUUID},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// ChatSessionAttachmentsTable holds the schema information for the "chat_session_attachments" table.
+	ChatSessionAttachmentsTable = &schema.Table{
+		Name:       "chat_session_attachments",
+		Columns:    ChatSessionAttachmentsColumns,
+		PrimaryKey: []*schema.Column{ChatSessionAttachmentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_session_attachments_chat_attachments_session_refs",
+				Columns:    []*schema.Column{ChatSessionAttachmentsColumns[3]},
+				RefColumns: []*schema.Column{ChatAttachmentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "chat_session_attachments_chat_sessions_attachment_refs",
+				Columns:    []*schema.Column{ChatSessionAttachmentsColumns[4]},
+				RefColumns: []*schema.Column{ChatSessionsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "chat_session_attachments_users_chat_session_attachments",
+				Columns:    []*schema.Column{ChatSessionAttachmentsColumns[5]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatsessionattachment_session_id_attachment_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChatSessionAttachmentsColumns[4], ChatSessionAttachmentsColumns[3]},
+			},
+			{
+				Name:    "chatsessionattachment_attachment_id",
+				Unique:  false,
+				Columns: []*schema.Column{ChatSessionAttachmentsColumns[3]},
+			},
+		},
+	}
 	// CompositeModelRoutesColumns holds the columns for the "composite_model_routes" table.
 	CompositeModelRoutesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -911,6 +1306,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
 		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
 		{Name: "deleted_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "chat_model_policies", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
 		{Name: "slow_ttft_exempt_until", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
 		{Name: "independent_scheduling", Type: field.TypeBool, Default: false},
 		{Name: "scheduling_initialized", Type: field.TypeBool, Default: false},
@@ -993,22 +1389,22 @@ var (
 			{
 				Name:    "group_status",
 				Unique:  false,
-				Columns: []*schema.Column{GroupsColumns[18]},
+				Columns: []*schema.Column{GroupsColumns[19]},
 			},
 			{
 				Name:    "group_platform",
 				Unique:  false,
-				Columns: []*schema.Column{GroupsColumns[20]},
+				Columns: []*schema.Column{GroupsColumns[21]},
 			},
 			{
 				Name:    "group_subscription_type",
 				Unique:  false,
-				Columns: []*schema.Column{GroupsColumns[21]},
+				Columns: []*schema.Column{GroupsColumns[22]},
 			},
 			{
 				Name:    "group_is_exclusive",
 				Unique:  false,
-				Columns: []*schema.Column{GroupsColumns[17]},
+				Columns: []*schema.Column{GroupsColumns[18]},
 			},
 			{
 				Name:    "group_deleted_at",
@@ -1018,12 +1414,12 @@ var (
 			{
 				Name:    "group_sort_order",
 				Unique:  false,
-				Columns: []*schema.Column{GroupsColumns[56]},
+				Columns: []*schema.Column{GroupsColumns[57]},
 			},
 			{
 				Name:    "idx_groups_duplicate_operation_id_active",
 				Unique:  true,
-				Columns: []*schema.Column{GroupsColumns[19]},
+				Columns: []*schema.Column{GroupsColumns[20]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "duplicate_operation_id IS NOT NULL AND deleted_at IS NULL",
 				},
@@ -2260,6 +2656,15 @@ var (
 		ChannelMonitorDailyRollupsTable,
 		ChannelMonitorHistoriesTable,
 		ChannelMonitorRequestTemplatesTable,
+		ChatAttachmentsTable,
+		ChatAttachmentUploadsTable,
+		ChatCredentialsTable,
+		ChatGenerationRunsTable,
+		ChatImportsTable,
+		ChatModelPresetsTable,
+		ChatPreferencesTable,
+		ChatSessionsTable,
+		ChatSessionAttachmentsTable,
 		CompositeModelRoutesTable,
 		ErrorPassthroughRulesTable,
 		GroupsTable,
@@ -2346,6 +2751,49 @@ func init() {
 	}
 	ChannelMonitorRequestTemplatesTable.Annotation = &entsql.Annotation{
 		Table: "channel_monitor_request_templates",
+	}
+	ChatAttachmentsTable.ForeignKeys[0].RefTable = UsersTable
+	ChatAttachmentsTable.Annotation = &entsql.Annotation{
+		Table: "chat_attachments",
+	}
+	ChatAttachmentUploadsTable.ForeignKeys[0].RefTable = ChatAttachmentsTable
+	ChatAttachmentUploadsTable.ForeignKeys[1].RefTable = UsersTable
+	ChatAttachmentUploadsTable.Annotation = &entsql.Annotation{
+		Table: "chat_attachment_uploads",
+	}
+	ChatCredentialsTable.ForeignKeys[0].RefTable = APIKeysTable
+	ChatCredentialsTable.ForeignKeys[1].RefTable = GroupsTable
+	ChatCredentialsTable.ForeignKeys[2].RefTable = UsersTable
+	ChatCredentialsTable.Annotation = &entsql.Annotation{
+		Table: "chat_credentials",
+	}
+	ChatGenerationRunsTable.ForeignKeys[0].RefTable = ChatSessionsTable
+	ChatGenerationRunsTable.ForeignKeys[1].RefTable = UsersTable
+	ChatGenerationRunsTable.Annotation = &entsql.Annotation{
+		Table: "chat_generation_runs",
+	}
+	ChatImportsTable.ForeignKeys[0].RefTable = UsersTable
+	ChatImportsTable.Annotation = &entsql.Annotation{
+		Table: "chat_imports",
+	}
+	ChatModelPresetsTable.ForeignKeys[0].RefTable = GroupsTable
+	ChatModelPresetsTable.ForeignKeys[1].RefTable = UsersTable
+	ChatModelPresetsTable.Annotation = &entsql.Annotation{
+		Table: "chat_model_presets",
+	}
+	ChatPreferencesTable.ForeignKeys[0].RefTable = UsersTable
+	ChatPreferencesTable.Annotation = &entsql.Annotation{
+		Table: "chat_preferences",
+	}
+	ChatSessionsTable.ForeignKeys[0].RefTable = UsersTable
+	ChatSessionsTable.Annotation = &entsql.Annotation{
+		Table: "chat_sessions",
+	}
+	ChatSessionAttachmentsTable.ForeignKeys[0].RefTable = ChatAttachmentsTable
+	ChatSessionAttachmentsTable.ForeignKeys[1].RefTable = ChatSessionsTable
+	ChatSessionAttachmentsTable.ForeignKeys[2].RefTable = UsersTable
+	ChatSessionAttachmentsTable.Annotation = &entsql.Annotation{
+		Table: "chat_session_attachments",
 	}
 	CompositeModelRoutesTable.ForeignKeys[0].RefTable = GroupsTable
 	CompositeModelRoutesTable.Annotation = &entsql.Annotation{

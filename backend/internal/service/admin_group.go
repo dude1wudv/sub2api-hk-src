@@ -578,6 +578,9 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	if err != nil {
 		return nil, err
 	}
+	if err := domain.ValidateChatModelPolicies(input.ChatModelPolicies); err != nil {
+		return nil, infraerrors.BadRequest("INVALID_CHAT_MODEL_POLICIES", err.Error())
+	}
 
 	group := &Group{
 		Name:                            input.Name,
@@ -617,6 +620,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		VideoPrice720P:                  videoPrice720P,
 		VideoPrice1080P:                 videoPrice1080P,
 		VideoModelPrices:                NormalizeVideoModelPrices(input.VideoModelPrices),
+		ChatModelPolicies:              CloneChatModelPolicies(input.ChatModelPolicies),
 		WebSearchPricePerCall:           webSearchPricePerCall,
 		SearchPricePer1k:                searchPricePer1k,
 		AudioRealtimePricePerMin:        audioRealtimePricePerMin,
@@ -961,6 +965,12 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	// nil = leave unchanged; empty map = clear per-model prices.
 	if input.VideoModelPrices != nil {
 		group.VideoModelPrices = NormalizeVideoModelPrices(input.VideoModelPrices)
+	}
+	if input.ChatModelPolicies != nil {
+		if err := domain.ValidateChatModelPolicies(input.ChatModelPolicies); err != nil {
+			return nil, infraerrors.BadRequest("INVALID_CHAT_MODEL_POLICIES", err.Error())
+		}
+		group.ChatModelPolicies = CloneChatModelPolicies(input.ChatModelPolicies)
 	}
 	if input.WebSearchPricePerCall != nil {
 		group.WebSearchPricePerCall = normalizePrice(input.WebSearchPricePerCall)

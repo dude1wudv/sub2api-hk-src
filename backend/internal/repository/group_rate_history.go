@@ -14,7 +14,7 @@ func (r *groupRepository) GetRecentRateChanges(ctx context.Context, ids []int64,
 	if len(ids) == 0 {
 		return out, nil
 	}
-	rows, err := r.sql.QueryContext(ctx, `SELECT DISTINCT ON (group_id)
+	rows, err := sqlExecutorFromContext(ctx, r.sql).QueryContext(ctx, `SELECT DISTINCT ON (group_id)
         group_id, old_rate_multiplier, new_rate_multiplier, changed_at
         FROM group_rate_history WHERE group_id = ANY($1) AND changed_at >= $2
         ORDER BY group_id, changed_at DESC, id DESC`, pq.Array(ids), since)

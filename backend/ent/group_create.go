@@ -14,12 +14,15 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/account"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
+	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
+	"github.com/Wei-Shaw/sub2api/ent/chatmodelpreset"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/redeemcode"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
+	"github.com/google/uuid"
 )
 
 // GroupCreate is the builder for creating a Group entity.
@@ -69,6 +72,12 @@ func (_c *GroupCreate) SetNillableDeletedAt(v *time.Time) *GroupCreate {
 	if v != nil {
 		_c.SetDeletedAt(*v)
 	}
+	return _c
+}
+
+// SetChatModelPolicies sets the "chat_model_policies" field.
+func (_c *GroupCreate) SetChatModelPolicies(v map[string]domain.ChatModelPolicy) *GroupCreate {
+	_c.mutation.SetChatModelPolicies(v)
 	return _c
 }
 
@@ -1084,6 +1093,36 @@ func (_c *GroupCreate) AddUsageLogs(v ...*UsageLog) *GroupCreate {
 	return _c.AddUsageLogIDs(ids...)
 }
 
+// AddChatModelPresetIDs adds the "chat_model_presets" edge to the ChatModelPreset entity by IDs.
+func (_c *GroupCreate) AddChatModelPresetIDs(ids ...uuid.UUID) *GroupCreate {
+	_c.mutation.AddChatModelPresetIDs(ids...)
+	return _c
+}
+
+// AddChatModelPresets adds the "chat_model_presets" edges to the ChatModelPreset entity.
+func (_c *GroupCreate) AddChatModelPresets(v ...*ChatModelPreset) *GroupCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatModelPresetIDs(ids...)
+}
+
+// AddChatCredentialIDs adds the "chat_credentials" edge to the ChatCredential entity by IDs.
+func (_c *GroupCreate) AddChatCredentialIDs(ids ...int64) *GroupCreate {
+	_c.mutation.AddChatCredentialIDs(ids...)
+	return _c
+}
+
+// AddChatCredentials adds the "chat_credentials" edges to the ChatCredential entity.
+func (_c *GroupCreate) AddChatCredentials(v ...*ChatCredential) *GroupCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatCredentialIDs(ids...)
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_c *GroupCreate) AddAccountIDs(ids ...int64) *GroupCreate {
 	_c.mutation.AddAccountIDs(ids...)
@@ -1617,6 +1656,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 		_spec.SetField(group.FieldDeletedAt, field.TypeTime, value)
 		_node.DeletedAt = &value
 	}
+	if value, ok := _c.mutation.ChatModelPolicies(); ok {
+		_spec.SetField(group.FieldChatModelPolicies, field.TypeJSON, value)
+		_node.ChatModelPolicies = value
+	}
 	if value, ok := _c.mutation.SlowTtftExemptUntil(); ok {
 		_spec.SetField(group.FieldSlowTtftExemptUntil, field.TypeTime, value)
 		_node.SlowTtftExemptUntil = &value
@@ -1969,6 +2012,38 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.ChatModelPresetsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatModelPresetsTable,
+			Columns: []string{group.ChatModelPresetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatmodelpreset.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ChatCredentialsTable,
+			Columns: []string{group.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.AccountsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
@@ -2088,6 +2163,24 @@ func (u *GroupUpsert) UpdateDeletedAt() *GroupUpsert {
 // ClearDeletedAt clears the value of the "deleted_at" field.
 func (u *GroupUpsert) ClearDeletedAt() *GroupUpsert {
 	u.SetNull(group.FieldDeletedAt)
+	return u
+}
+
+// SetChatModelPolicies sets the "chat_model_policies" field.
+func (u *GroupUpsert) SetChatModelPolicies(v map[string]domain.ChatModelPolicy) *GroupUpsert {
+	u.Set(group.FieldChatModelPolicies, v)
+	return u
+}
+
+// UpdateChatModelPolicies sets the "chat_model_policies" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateChatModelPolicies() *GroupUpsert {
+	u.SetExcluded(group.FieldChatModelPolicies)
+	return u
+}
+
+// ClearChatModelPolicies clears the value of the "chat_model_policies" field.
+func (u *GroupUpsert) ClearChatModelPolicies() *GroupUpsert {
+	u.SetNull(group.FieldChatModelPolicies)
 	return u
 }
 
@@ -3329,6 +3422,27 @@ func (u *GroupUpsertOne) UpdateDeletedAt() *GroupUpsertOne {
 func (u *GroupUpsertOne) ClearDeletedAt() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.ClearDeletedAt()
+	})
+}
+
+// SetChatModelPolicies sets the "chat_model_policies" field.
+func (u *GroupUpsertOne) SetChatModelPolicies(v map[string]domain.ChatModelPolicy) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetChatModelPolicies(v)
+	})
+}
+
+// UpdateChatModelPolicies sets the "chat_model_policies" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateChatModelPolicies() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateChatModelPolicies()
+	})
+}
+
+// ClearChatModelPolicies clears the value of the "chat_model_policies" field.
+func (u *GroupUpsertOne) ClearChatModelPolicies() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearChatModelPolicies()
 	})
 }
 
@@ -4929,6 +5043,27 @@ func (u *GroupUpsertBulk) UpdateDeletedAt() *GroupUpsertBulk {
 func (u *GroupUpsertBulk) ClearDeletedAt() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.ClearDeletedAt()
+	})
+}
+
+// SetChatModelPolicies sets the "chat_model_policies" field.
+func (u *GroupUpsertBulk) SetChatModelPolicies(v map[string]domain.ChatModelPolicy) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetChatModelPolicies(v)
+	})
+}
+
+// UpdateChatModelPolicies sets the "chat_model_policies" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateChatModelPolicies() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateChatModelPolicies()
+	})
+}
+
+// ClearChatModelPolicies clears the value of the "chat_model_policies" field.
+func (u *GroupUpsertBulk) ClearChatModelPolicies() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearChatModelPolicies()
 	})
 }
 

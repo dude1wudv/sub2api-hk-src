@@ -22,6 +22,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
 	FieldDeletedAt = "deleted_at"
+	// FieldChatModelPolicies holds the string denoting the chat_model_policies field in the database.
+	FieldChatModelPolicies = "chat_model_policies"
 	// FieldSlowTtftExemptUntil holds the string denoting the slow_ttft_exempt_until field in the database.
 	FieldSlowTtftExemptUntil = "slow_ttft_exempt_until"
 	// FieldIndependentScheduling holds the string denoting the independent_scheduling field in the database.
@@ -174,6 +176,10 @@ const (
 	EdgeSubscriptions = "subscriptions"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
+	// EdgeChatModelPresets holds the string denoting the chat_model_presets edge name in mutations.
+	EdgeChatModelPresets = "chat_model_presets"
+	// EdgeChatCredentials holds the string denoting the chat_credentials edge name in mutations.
+	EdgeChatCredentials = "chat_credentials"
 	// EdgeAccounts holds the string denoting the accounts edge name in mutations.
 	EdgeAccounts = "accounts"
 	// EdgeAllowedUsers holds the string denoting the allowed_users edge name in mutations.
@@ -212,6 +218,20 @@ const (
 	UsageLogsInverseTable = "usage_logs"
 	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
 	UsageLogsColumn = "group_id"
+	// ChatModelPresetsTable is the table that holds the chat_model_presets relation/edge.
+	ChatModelPresetsTable = "chat_model_presets"
+	// ChatModelPresetsInverseTable is the table name for the ChatModelPreset entity.
+	// It exists in this package in order to avoid circular dependency with the "chatmodelpreset" package.
+	ChatModelPresetsInverseTable = "chat_model_presets"
+	// ChatModelPresetsColumn is the table column denoting the chat_model_presets relation/edge.
+	ChatModelPresetsColumn = "group_id"
+	// ChatCredentialsTable is the table that holds the chat_credentials relation/edge.
+	ChatCredentialsTable = "chat_credentials"
+	// ChatCredentialsInverseTable is the table name for the ChatCredential entity.
+	// It exists in this package in order to avoid circular dependency with the "chatcredential" package.
+	ChatCredentialsInverseTable = "chat_credentials"
+	// ChatCredentialsColumn is the table column denoting the chat_credentials relation/edge.
+	ChatCredentialsColumn = "group_id"
 	// AccountsTable is the table that holds the accounts relation/edge. The primary key declared below.
 	AccountsTable = "account_groups"
 	// AccountsInverseTable is the table name for the Account entity.
@@ -244,6 +264,7 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldDeletedAt,
+	FieldChatModelPolicies,
 	FieldSlowTtftExemptUntil,
 	FieldIndependentScheduling,
 	FieldSchedulingInitialized,
@@ -869,6 +890,34 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByChatModelPresetsCount orders the results by chat_model_presets count.
+func ByChatModelPresetsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatModelPresetsStep(), opts...)
+	}
+}
+
+// ByChatModelPresets orders the results by chat_model_presets terms.
+func ByChatModelPresets(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatModelPresetsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByChatCredentialsCount orders the results by chat_credentials count.
+func ByChatCredentialsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatCredentialsStep(), opts...)
+	}
+}
+
+// ByChatCredentials orders the results by chat_credentials terms.
+func ByChatCredentials(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatCredentialsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByAccountsCount orders the results by accounts count.
 func ByAccountsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -950,6 +999,20 @@ func newUsageLogsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UsageLogsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
+	)
+}
+func newChatModelPresetsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatModelPresetsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatModelPresetsTable, ChatModelPresetsColumn),
+	)
+}
+func newChatCredentialsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatCredentialsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatCredentialsTable, ChatCredentialsColumn),
 	)
 }
 func newAccountsStep() *sqlgraph.Step {

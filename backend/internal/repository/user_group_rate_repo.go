@@ -21,7 +21,7 @@ func NewUserGroupRateRepository(sqlDB *sql.DB) service.UserGroupRateRepository {
 // GetByUserID 获取用户所有专属分组 rate_multiplier（仅返回非 NULL 的条目）
 func (r *userGroupRateRepository) GetByUserID(ctx context.Context, userID int64) (map[int64]float64, error) {
 	query := `SELECT group_id, rate_multiplier FROM user_group_rate_multipliers WHERE user_id = $1 AND rate_multiplier IS NOT NULL`
-	rows, err := r.sql.QueryContext(ctx, query, userID)
+	rows, err := sqlExecutorFromContext(ctx, r.sql).QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}

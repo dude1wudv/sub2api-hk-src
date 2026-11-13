@@ -95,6 +95,24 @@ const (
 	EdgeWorkbenchCredentials = "workbench_credentials"
 	// EdgeWorkbenchLaunchGrants holds the string denoting the workbench_launch_grants edge name in mutations.
 	EdgeWorkbenchLaunchGrants = "workbench_launch_grants"
+	// EdgeChatModelPresets holds the string denoting the chat_model_presets edge name in mutations.
+	EdgeChatModelPresets = "chat_model_presets"
+	// EdgeChatCredentials holds the string denoting the chat_credentials edge name in mutations.
+	EdgeChatCredentials = "chat_credentials"
+	// EdgeChatSessions holds the string denoting the chat_sessions edge name in mutations.
+	EdgeChatSessions = "chat_sessions"
+	// EdgeChatGenerationRuns holds the string denoting the chat_generation_runs edge name in mutations.
+	EdgeChatGenerationRuns = "chat_generation_runs"
+	// EdgeChatAttachments holds the string denoting the chat_attachments edge name in mutations.
+	EdgeChatAttachments = "chat_attachments"
+	// EdgeChatSessionAttachments holds the string denoting the chat_session_attachments edge name in mutations.
+	EdgeChatSessionAttachments = "chat_session_attachments"
+	// EdgeChatAttachmentUploads holds the string denoting the chat_attachment_uploads edge name in mutations.
+	EdgeChatAttachmentUploads = "chat_attachment_uploads"
+	// EdgeChatImports holds the string denoting the chat_imports edge name in mutations.
+	EdgeChatImports = "chat_imports"
+	// EdgeChatPreferences holds the string denoting the chat_preferences edge name in mutations.
+	EdgeChatPreferences = "chat_preferences"
 	// EdgeUserAllowedGroups holds the string denoting the user_allowed_groups edge name in mutations.
 	EdgeUserAllowedGroups = "user_allowed_groups"
 	// Table holds the table name of the user in the database.
@@ -202,6 +220,69 @@ const (
 	WorkbenchLaunchGrantsInverseTable = "workbench_launch_grants"
 	// WorkbenchLaunchGrantsColumn is the table column denoting the workbench_launch_grants relation/edge.
 	WorkbenchLaunchGrantsColumn = "user_id"
+	// ChatModelPresetsTable is the table that holds the chat_model_presets relation/edge.
+	ChatModelPresetsTable = "chat_model_presets"
+	// ChatModelPresetsInverseTable is the table name for the ChatModelPreset entity.
+	// It exists in this package in order to avoid circular dependency with the "chatmodelpreset" package.
+	ChatModelPresetsInverseTable = "chat_model_presets"
+	// ChatModelPresetsColumn is the table column denoting the chat_model_presets relation/edge.
+	ChatModelPresetsColumn = "user_id"
+	// ChatCredentialsTable is the table that holds the chat_credentials relation/edge.
+	ChatCredentialsTable = "chat_credentials"
+	// ChatCredentialsInverseTable is the table name for the ChatCredential entity.
+	// It exists in this package in order to avoid circular dependency with the "chatcredential" package.
+	ChatCredentialsInverseTable = "chat_credentials"
+	// ChatCredentialsColumn is the table column denoting the chat_credentials relation/edge.
+	ChatCredentialsColumn = "user_id"
+	// ChatSessionsTable is the table that holds the chat_sessions relation/edge.
+	ChatSessionsTable = "chat_sessions"
+	// ChatSessionsInverseTable is the table name for the ChatSession entity.
+	// It exists in this package in order to avoid circular dependency with the "chatsession" package.
+	ChatSessionsInverseTable = "chat_sessions"
+	// ChatSessionsColumn is the table column denoting the chat_sessions relation/edge.
+	ChatSessionsColumn = "user_id"
+	// ChatGenerationRunsTable is the table that holds the chat_generation_runs relation/edge.
+	ChatGenerationRunsTable = "chat_generation_runs"
+	// ChatGenerationRunsInverseTable is the table name for the ChatGenerationRun entity.
+	// It exists in this package in order to avoid circular dependency with the "chatgenerationrun" package.
+	ChatGenerationRunsInverseTable = "chat_generation_runs"
+	// ChatGenerationRunsColumn is the table column denoting the chat_generation_runs relation/edge.
+	ChatGenerationRunsColumn = "user_id"
+	// ChatAttachmentsTable is the table that holds the chat_attachments relation/edge.
+	ChatAttachmentsTable = "chat_attachments"
+	// ChatAttachmentsInverseTable is the table name for the ChatAttachment entity.
+	// It exists in this package in order to avoid circular dependency with the "chatattachment" package.
+	ChatAttachmentsInverseTable = "chat_attachments"
+	// ChatAttachmentsColumn is the table column denoting the chat_attachments relation/edge.
+	ChatAttachmentsColumn = "user_id"
+	// ChatSessionAttachmentsTable is the table that holds the chat_session_attachments relation/edge.
+	ChatSessionAttachmentsTable = "chat_session_attachments"
+	// ChatSessionAttachmentsInverseTable is the table name for the ChatSessionAttachment entity.
+	// It exists in this package in order to avoid circular dependency with the "chatsessionattachment" package.
+	ChatSessionAttachmentsInverseTable = "chat_session_attachments"
+	// ChatSessionAttachmentsColumn is the table column denoting the chat_session_attachments relation/edge.
+	ChatSessionAttachmentsColumn = "user_id"
+	// ChatAttachmentUploadsTable is the table that holds the chat_attachment_uploads relation/edge.
+	ChatAttachmentUploadsTable = "chat_attachment_uploads"
+	// ChatAttachmentUploadsInverseTable is the table name for the ChatAttachmentUpload entity.
+	// It exists in this package in order to avoid circular dependency with the "chatattachmentupload" package.
+	ChatAttachmentUploadsInverseTable = "chat_attachment_uploads"
+	// ChatAttachmentUploadsColumn is the table column denoting the chat_attachment_uploads relation/edge.
+	ChatAttachmentUploadsColumn = "user_id"
+	// ChatImportsTable is the table that holds the chat_imports relation/edge.
+	ChatImportsTable = "chat_imports"
+	// ChatImportsInverseTable is the table name for the ChatImport entity.
+	// It exists in this package in order to avoid circular dependency with the "chatimport" package.
+	ChatImportsInverseTable = "chat_imports"
+	// ChatImportsColumn is the table column denoting the chat_imports relation/edge.
+	ChatImportsColumn = "user_id"
+	// ChatPreferencesTable is the table that holds the chat_preferences relation/edge.
+	ChatPreferencesTable = "chat_preferences"
+	// ChatPreferencesInverseTable is the table name for the ChatPreference entity.
+	// It exists in this package in order to avoid circular dependency with the "chatpreference" package.
+	ChatPreferencesInverseTable = "chat_preferences"
+	// ChatPreferencesColumn is the table column denoting the chat_preferences relation/edge.
+	ChatPreferencesColumn = "user_id"
 	// UserAllowedGroupsTable is the table that holds the user_allowed_groups relation/edge.
 	UserAllowedGroupsTable = "user_allowed_groups"
 	// UserAllowedGroupsInverseTable is the table name for the UserAllowedGroup entity.
@@ -658,6 +739,132 @@ func ByWorkbenchLaunchGrants(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOp
 	}
 }
 
+// ByChatModelPresetsCount orders the results by chat_model_presets count.
+func ByChatModelPresetsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatModelPresetsStep(), opts...)
+	}
+}
+
+// ByChatModelPresets orders the results by chat_model_presets terms.
+func ByChatModelPresets(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatModelPresetsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByChatCredentialsCount orders the results by chat_credentials count.
+func ByChatCredentialsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatCredentialsStep(), opts...)
+	}
+}
+
+// ByChatCredentials orders the results by chat_credentials terms.
+func ByChatCredentials(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatCredentialsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByChatSessionsCount orders the results by chat_sessions count.
+func ByChatSessionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatSessionsStep(), opts...)
+	}
+}
+
+// ByChatSessions orders the results by chat_sessions terms.
+func ByChatSessions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatSessionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByChatGenerationRunsCount orders the results by chat_generation_runs count.
+func ByChatGenerationRunsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatGenerationRunsStep(), opts...)
+	}
+}
+
+// ByChatGenerationRuns orders the results by chat_generation_runs terms.
+func ByChatGenerationRuns(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatGenerationRunsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByChatAttachmentsCount orders the results by chat_attachments count.
+func ByChatAttachmentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatAttachmentsStep(), opts...)
+	}
+}
+
+// ByChatAttachments orders the results by chat_attachments terms.
+func ByChatAttachments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatAttachmentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByChatSessionAttachmentsCount orders the results by chat_session_attachments count.
+func ByChatSessionAttachmentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatSessionAttachmentsStep(), opts...)
+	}
+}
+
+// ByChatSessionAttachments orders the results by chat_session_attachments terms.
+func ByChatSessionAttachments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatSessionAttachmentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByChatAttachmentUploadsCount orders the results by chat_attachment_uploads count.
+func ByChatAttachmentUploadsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatAttachmentUploadsStep(), opts...)
+	}
+}
+
+// ByChatAttachmentUploads orders the results by chat_attachment_uploads terms.
+func ByChatAttachmentUploads(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatAttachmentUploadsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByChatImportsCount orders the results by chat_imports count.
+func ByChatImportsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatImportsStep(), opts...)
+	}
+}
+
+// ByChatImports orders the results by chat_imports terms.
+func ByChatImports(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatImportsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByChatPreferencesCount orders the results by chat_preferences count.
+func ByChatPreferencesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatPreferencesStep(), opts...)
+	}
+}
+
+// ByChatPreferences orders the results by chat_preferences terms.
+func ByChatPreferences(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatPreferencesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByUserAllowedGroupsCount orders the results by user_allowed_groups count.
 func ByUserAllowedGroupsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -774,6 +981,69 @@ func newWorkbenchLaunchGrantsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(WorkbenchLaunchGrantsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, WorkbenchLaunchGrantsTable, WorkbenchLaunchGrantsColumn),
+	)
+}
+func newChatModelPresetsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatModelPresetsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatModelPresetsTable, ChatModelPresetsColumn),
+	)
+}
+func newChatCredentialsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatCredentialsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatCredentialsTable, ChatCredentialsColumn),
+	)
+}
+func newChatSessionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatSessionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatSessionsTable, ChatSessionsColumn),
+	)
+}
+func newChatGenerationRunsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatGenerationRunsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatGenerationRunsTable, ChatGenerationRunsColumn),
+	)
+}
+func newChatAttachmentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatAttachmentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatAttachmentsTable, ChatAttachmentsColumn),
+	)
+}
+func newChatSessionAttachmentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatSessionAttachmentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatSessionAttachmentsTable, ChatSessionAttachmentsColumn),
+	)
+}
+func newChatAttachmentUploadsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatAttachmentUploadsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatAttachmentUploadsTable, ChatAttachmentUploadsColumn),
+	)
+}
+func newChatImportsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatImportsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatImportsTable, ChatImportsColumn),
+	)
+}
+func newChatPreferencesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatPreferencesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatPreferencesTable, ChatPreferencesColumn),
 	)
 }
 func newUserAllowedGroupsStep() *sqlgraph.Step {

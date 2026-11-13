@@ -111,6 +111,10 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			return
 		}
 
+		if serveChatStatic(c, s.distFS) {
+			return
+		}
+
 		if s.serveImage2(c) {
 			return
 		}
@@ -140,6 +144,44 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 
 func (s *FrontendServer) serveImage2(c *gin.Context) bool {
 	return serveImage2Static(c, s.image2DistFS, s.image2FileServer, filepath.Join(s.overrideDir, "image2"))
+}
+
+// serveChatStatic never falls back to either SPA for a missing chat resource.
+// The fork is exclusively served from this build's embedded dist, not overrides.
+func serveChatStatic(c *gin.Context, distFS fs.FS) bool {
+	requestPath := c.Request.URL.Path
+	if requestPath != "/chat-app" && !strings.HasPrefix(requestPath, "/chat-app/") {
+		return false
+	}
+	if requestPath == "/chat-app" {
+		c.Redirect(http.StatusPermanentRedirect, "/chat-app/")
+		c.Abort()
+		return true
+	}
+	name := strings.TrimPrefix(requestPath, "/")
+	if name == "chat-app/" {
+		name += "index.html"
+	}
+	info, err := fs.Stat(distFS, name)
+	if !fs.ValidPath(name) || err != nil || info.IsDir() {
+		c.String(http.StatusNotFound, "Chat resource not found")
+		c.Abort()
+		return true
+	}
+	if name == "chat-app/index.html" {
+		content, readErr := fs.ReadFile(distFS, name)
+		if readErr != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return true
+		}
+		c.Header("Cache-Control", "no-cache")
+		c.Data(http.StatusOK, "text/html; charset=utf-8", content)
+	} else {
+		applyStaticAssetCacheHeaders(c.Writer.Header(), name)
+		http.FileServer(http.FS(distFS)).ServeHTTP(c.Writer, c.Request)
+	}
+	c.Abort()
+	return true
 }
 
 func serveImage2Static(c *gin.Context, distFS fs.FS, fileServer http.Handler, overrideDir string) bool {
@@ -397,6 +439,10 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 
 		if shouldBypassEmbeddedFrontend(path) {
 			c.Next()
+			return
+		}
+
+		if serveChatStatic(c, distFS) {
 			return
 		}
 

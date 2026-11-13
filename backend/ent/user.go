@@ -105,11 +105,29 @@ type UserEdges struct {
 	WorkbenchCredentials []*WorkbenchCredential `json:"workbench_credentials,omitempty"`
 	// WorkbenchLaunchGrants holds the value of the workbench_launch_grants edge.
 	WorkbenchLaunchGrants []*WorkbenchLaunchGrant `json:"workbench_launch_grants,omitempty"`
+	// ChatModelPresets holds the value of the chat_model_presets edge.
+	ChatModelPresets []*ChatModelPreset `json:"chat_model_presets,omitempty"`
+	// ChatCredentials holds the value of the chat_credentials edge.
+	ChatCredentials []*ChatCredential `json:"chat_credentials,omitempty"`
+	// ChatSessions holds the value of the chat_sessions edge.
+	ChatSessions []*ChatSession `json:"chat_sessions,omitempty"`
+	// ChatGenerationRuns holds the value of the chat_generation_runs edge.
+	ChatGenerationRuns []*ChatGenerationRun `json:"chat_generation_runs,omitempty"`
+	// ChatAttachments holds the value of the chat_attachments edge.
+	ChatAttachments []*ChatAttachment `json:"chat_attachments,omitempty"`
+	// ChatSessionAttachments holds the value of the chat_session_attachments edge.
+	ChatSessionAttachments []*ChatSessionAttachment `json:"chat_session_attachments,omitempty"`
+	// ChatAttachmentUploads holds the value of the chat_attachment_uploads edge.
+	ChatAttachmentUploads []*ChatAttachmentUpload `json:"chat_attachment_uploads,omitempty"`
+	// ChatImports holds the value of the chat_imports edge.
+	ChatImports []*ChatImport `json:"chat_imports,omitempty"`
+	// ChatPreferences holds the value of the chat_preferences edge.
+	ChatPreferences []*ChatPreference `json:"chat_preferences,omitempty"`
 	// UserAllowedGroups holds the value of the user_allowed_groups edge.
 	UserAllowedGroups []*UserAllowedGroup `json:"user_allowed_groups,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [16]bool
+	loadedTypes [25]bool
 }
 
 // APIKeysOrErr returns the APIKeys value or an error if the edge
@@ -247,10 +265,91 @@ func (e UserEdges) WorkbenchLaunchGrantsOrErr() ([]*WorkbenchLaunchGrant, error)
 	return nil, &NotLoadedError{edge: "workbench_launch_grants"}
 }
 
+// ChatModelPresetsOrErr returns the ChatModelPresets value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ChatModelPresetsOrErr() ([]*ChatModelPreset, error) {
+	if e.loadedTypes[15] {
+		return e.ChatModelPresets, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_model_presets"}
+}
+
+// ChatCredentialsOrErr returns the ChatCredentials value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ChatCredentialsOrErr() ([]*ChatCredential, error) {
+	if e.loadedTypes[16] {
+		return e.ChatCredentials, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_credentials"}
+}
+
+// ChatSessionsOrErr returns the ChatSessions value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ChatSessionsOrErr() ([]*ChatSession, error) {
+	if e.loadedTypes[17] {
+		return e.ChatSessions, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_sessions"}
+}
+
+// ChatGenerationRunsOrErr returns the ChatGenerationRuns value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ChatGenerationRunsOrErr() ([]*ChatGenerationRun, error) {
+	if e.loadedTypes[18] {
+		return e.ChatGenerationRuns, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_generation_runs"}
+}
+
+// ChatAttachmentsOrErr returns the ChatAttachments value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ChatAttachmentsOrErr() ([]*ChatAttachment, error) {
+	if e.loadedTypes[19] {
+		return e.ChatAttachments, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_attachments"}
+}
+
+// ChatSessionAttachmentsOrErr returns the ChatSessionAttachments value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ChatSessionAttachmentsOrErr() ([]*ChatSessionAttachment, error) {
+	if e.loadedTypes[20] {
+		return e.ChatSessionAttachments, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_session_attachments"}
+}
+
+// ChatAttachmentUploadsOrErr returns the ChatAttachmentUploads value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ChatAttachmentUploadsOrErr() ([]*ChatAttachmentUpload, error) {
+	if e.loadedTypes[21] {
+		return e.ChatAttachmentUploads, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_attachment_uploads"}
+}
+
+// ChatImportsOrErr returns the ChatImports value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ChatImportsOrErr() ([]*ChatImport, error) {
+	if e.loadedTypes[22] {
+		return e.ChatImports, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_imports"}
+}
+
+// ChatPreferencesOrErr returns the ChatPreferences value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ChatPreferencesOrErr() ([]*ChatPreference, error) {
+	if e.loadedTypes[23] {
+		return e.ChatPreferences, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_preferences"}
+}
+
 // UserAllowedGroupsOrErr returns the UserAllowedGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) UserAllowedGroupsOrErr() ([]*UserAllowedGroup, error) {
-	if e.loadedTypes[15] {
+	if e.loadedTypes[24] {
 		return e.UserAllowedGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "user_allowed_groups"}
@@ -534,6 +633,51 @@ func (_m *User) QueryWorkbenchCredentials() *WorkbenchCredentialQuery {
 // QueryWorkbenchLaunchGrants queries the "workbench_launch_grants" edge of the User entity.
 func (_m *User) QueryWorkbenchLaunchGrants() *WorkbenchLaunchGrantQuery {
 	return NewUserClient(_m.config).QueryWorkbenchLaunchGrants(_m)
+}
+
+// QueryChatModelPresets queries the "chat_model_presets" edge of the User entity.
+func (_m *User) QueryChatModelPresets() *ChatModelPresetQuery {
+	return NewUserClient(_m.config).QueryChatModelPresets(_m)
+}
+
+// QueryChatCredentials queries the "chat_credentials" edge of the User entity.
+func (_m *User) QueryChatCredentials() *ChatCredentialQuery {
+	return NewUserClient(_m.config).QueryChatCredentials(_m)
+}
+
+// QueryChatSessions queries the "chat_sessions" edge of the User entity.
+func (_m *User) QueryChatSessions() *ChatSessionQuery {
+	return NewUserClient(_m.config).QueryChatSessions(_m)
+}
+
+// QueryChatGenerationRuns queries the "chat_generation_runs" edge of the User entity.
+func (_m *User) QueryChatGenerationRuns() *ChatGenerationRunQuery {
+	return NewUserClient(_m.config).QueryChatGenerationRuns(_m)
+}
+
+// QueryChatAttachments queries the "chat_attachments" edge of the User entity.
+func (_m *User) QueryChatAttachments() *ChatAttachmentQuery {
+	return NewUserClient(_m.config).QueryChatAttachments(_m)
+}
+
+// QueryChatSessionAttachments queries the "chat_session_attachments" edge of the User entity.
+func (_m *User) QueryChatSessionAttachments() *ChatSessionAttachmentQuery {
+	return NewUserClient(_m.config).QueryChatSessionAttachments(_m)
+}
+
+// QueryChatAttachmentUploads queries the "chat_attachment_uploads" edge of the User entity.
+func (_m *User) QueryChatAttachmentUploads() *ChatAttachmentUploadQuery {
+	return NewUserClient(_m.config).QueryChatAttachmentUploads(_m)
+}
+
+// QueryChatImports queries the "chat_imports" edge of the User entity.
+func (_m *User) QueryChatImports() *ChatImportQuery {
+	return NewUserClient(_m.config).QueryChatImports(_m)
+}
+
+// QueryChatPreferences queries the "chat_preferences" edge of the User entity.
+func (_m *User) QueryChatPreferences() *ChatPreferenceQuery {
+	return NewUserClient(_m.config).QueryChatPreferences(_m)
 }
 
 // QueryUserAllowedGroups queries the "user_allowed_groups" edge of the User entity.

@@ -16,16 +16,11 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/antigravity"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	pkgerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/typesafe"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"github.com/Wei-Shaw/sub2api/internal/securityaudit"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -1186,80 +1181,36 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		c.Set(modelMetadataCatalogContextKey, h.modelMetadataCatalog)
 	}
 	if models, ok := service.SmartRoutingModelsFromContext(c.Request.Context()); ok {
-		writeOpenAIModelsList(c, models)
+		writeModelsListResponse(c, service.GatewayModelsForIDs(service.PlatformOpenAI, models))
 		return
 	}
-
 	apiKey, _ := middleware2.GetAPIKeyFromContext(c)
-
-	var groupID *int64
-	var platform string
-
-	if apiKey != nil && apiKey.Group != nil {
-		groupID = &apiKey.Group.ID
-		platform = apiKey.Group.Platform
+	var group *service.Group
+	if apiKey != nil {
+		group = apiKey.Group
 	}
-	if forcedPlatform, ok := middleware2.GetForcePlatformFromContext(c); ok && strings.TrimSpace(forcedPlatform) != "" {
-		platform = forcedPlatform
-	}
-
-	if platform == service.PlatformOpenAI && apiKey != nil && apiKey.Group != nil &&
-		apiKey.Group.Platform == service.PlatformOpenAI && apiKey.Group.CodexModelsManifestConfig.Enabled {
-		h.pinnedOpenAIModels(c, apiKey.Group)
-		return
-	}
-
-	if platform == service.PlatformComposite {
-		availableModels := h.compositeAvailableModels(c.Request.Context(), groupID, "", true)
-		if apiKey != nil && apiKey.Group != nil && apiKey.Group.ModelAllowlistEnabled() {
-			source := availableModels
-			if len(source) == 0 {
-				source = defaultModelIDsForPlatform(service.PlatformComposite)
-			}
-			writeAllowlistedModelsList(c, service.PlatformComposite, apiKey.Group.ModelAllowlist.FilterForListing(source))
-			return
+	if forced, ok := middleware2.GetForcePlatformFromContext(c); ok && strings.TrimSpace(forced) != "" {
+		selected := service.Group{}
+		if group != nil {
+			selected = *group
 		}
-		if len(availableModels) > 0 {
-			writeModelsList(c, service.PlatformComposite, availableModels)
-			return
+		if selected.Platform != forced {
+			selected.CodexModelsManifestConfig.Enabled = false
 		}
-		writeModelsList(c, service.PlatformComposite, defaultModelIDsForPlatform(service.PlatformComposite))
+		selected.Platform = forced
+		group = &selected
+	}
+	if group != nil && group.Platform == service.PlatformOpenAI && group.CodexModelsManifestConfig.Enabled {
+		h.pinnedOpenAIModels(c, group)
 		return
 	}
-
-	// Get available models from account configurations for the selected group platform.
-	availableModels := h.gatewayService.GetAvailableModels(c.Request.Context(), groupID, platform)
-	if apiKey != nil && apiKey.Group != nil && apiKey.Group.ModelAllowlistEnabled() {
-		source := modelListingSource(platform, availableModels, defaultModelIDsForPlatform(platform))
-		writeAllowlistedModelsList(c, platform, apiKey.Group.ModelAllowlist.FilterForListing(source))
+	catalog := service.NewGatewayModelCatalogService(h.gatewayService, h.openAIGatewayService, h.maxAccountSwitches)
+	models, err := catalog.ListForGroup(c.Request.Context(), group)
+	if err != nil {
+		writeOpenAIModelsError(c, pkgerrors.Code(err), "api_error", pkgerrors.Message(err))
 		return
 	}
-
-	if len(availableModels) > 0 || (platform == service.PlatformOpenAI && availableModels != nil) {
-		writeModelsList(c, platform, availableModels)
-		return
-	}
-
-	// Fallback to default models
-	if platform == service.PlatformOpenAI {
-		writeModelsListResponse(c, openai.DefaultModels)
-		return
-	}
-
-	if platform == service.PlatformGemini {
-		writeModelsListResponse(c, geminicli.DefaultModels)
-		return
-	}
-	if platform == service.PlatformGrok {
-		writeGrokModelsList(c, xai.DefaultModelIDs())
-		return
-	}
-	if platform == service.PlatformTypeSafe {
-		writeModelsList(c, platform, []string{typesafe.JevLatestModel})
-		return
-	}
-
-	writeModelsListResponse(c, claude.DefaultModels)
+	writeModelsListResponse(c, models)
 }
 
 // CodexModels returns the effective group model list using the manifest shape
@@ -1281,7 +1232,8 @@ func (h *GatewayHandler) CodexModels(c *gin.Context) {
 	if value, exists := middleware2.GetForcePlatformFromContext(c); exists {
 		forcedPlatform = strings.TrimSpace(value)
 	}
-	modelIDs := h.codexModelIDsForGroup(c.Request.Context(), apiKey.Group, forcedPlatform)
+	catalog := service.NewGatewayModelCatalogService(h.gatewayService, h.openAIGatewayService, h.maxAccountSwitches)
+	modelIDs := catalog.CodexModelIDsForGroup(c.Request.Context(), apiKey.Group, forcedPlatform)
 	modelIDs = service.FilterCodexModelIDsForGroup(modelIDs, apiKey.Group)
 	body, err := h.gatewayService.BuildCodexModelsManifestForGroup(
 		c.Request.Context(),
@@ -1301,306 +1253,6 @@ func (h *GatewayHandler) CodexModels(c *gin.Context) {
 		return
 	}
 	c.Data(http.StatusOK, "application/json", body)
-}
-
-func (h *GatewayHandler) codexModelIDsForGroup(ctx context.Context, group *service.Group, platformOverride string) []string {
-	if h == nil || h.gatewayService == nil || group == nil {
-		return nil
-	}
-
-	groupID := &group.ID
-	platform := strings.TrimSpace(platformOverride)
-	if platform == "" {
-		platform = group.Platform
-	}
-	if platform == service.PlatformComposite {
-		availableModels := h.compositeAvailableModels(ctx, groupID, service.CompositeRouteEndpointResponses, false)
-		fallbackModels := defaultCodexModelIDsForPlatform(service.PlatformComposite)
-		models := availableModels
-		if len(models) == 0 {
-			models = fallbackModels
-		}
-		if group.ModelAllowlistEnabled() {
-			models = group.ModelAllowlist.FilterForListing(models)
-		}
-		if filtered, err := h.gatewayService.FilterCompositeCodexModels(ctx, group.ID, models); err == nil {
-			return filtered
-		}
-		return models
-	}
-
-	availableModels := h.gatewayService.GetAvailableModels(ctx, groupID, platform)
-	fallbackModels := defaultCodexModelIDsForPlatform(platform)
-	if group.ModelAllowlistEnabled() {
-		return group.ModelAllowlist.FilterForListing(modelListingSource(platform, availableModels, fallbackModels))
-	}
-	if len(availableModels) > 0 {
-		return availableModels
-	}
-	return fallbackModels
-}
-
-// compositeAvailableModels lists the models the composite group can serve.
-// includeSystemOne adds TypeSafe models, which only work through /v1/systemone;
-// LLM client catalogs (Codex) must exclude them.
-func (h *GatewayHandler) compositeAvailableModels(ctx context.Context, groupID *int64, endpoint string, includeSystemOne bool) []string {
-	if h == nil || h.gatewayService == nil {
-		return nil
-	}
-	seen := make(map[string]struct{})
-	models := make([]string, 0)
-	schedulablePlatforms := h.gatewayService.GetSchedulablePlatforms(ctx, groupID)
-	for _, platform := range domain.CompositePrecedencePlatformIDs() {
-		if platform == service.PlatformTypeSafe && !includeSystemOne {
-			continue
-		}
-		platformModels := h.gatewayService.GetAvailableModels(ctx, groupID, platform)
-		if len(platformModels) == 0 && (platform != service.PlatformOpenAI || platformModels == nil) {
-			// CN 供应商没有静态默认模型列表（defaultModelIDsForPlatform 的
-			// default 分支是 Claude 列表），composite 下只暴露账号映射键。
-			if _, ok := schedulablePlatforms[platform]; ok && !service.IsMultiProtocolAPIKeyProvider(platform) {
-				platformModels = defaultModelIDsForPlatform(platform)
-			}
-		}
-		for _, model := range platformModels {
-			model = strings.TrimSpace(model)
-			if model == "" {
-				continue
-			}
-			if _, ok := seen[model]; ok {
-				continue
-			}
-			seen[model] = struct{}{}
-			models = append(models, model)
-		}
-	}
-	// A route can expose a public ID that no account model mapping contains.
-	// On lookup failure, retain the existing account-derived catalog only.
-	if routeModels, err := h.gatewayService.GetCompositeRouteModels(ctx, groupID, endpoint, includeSystemOne); err == nil {
-		for _, model := range routeModels {
-			if _, ok := seen[model]; !ok {
-				seen[model] = struct{}{}
-				models = append(models, model)
-			}
-		}
-	}
-	return models
-}
-
-func writeModelsList(c *gin.Context, platform string, modelIDs []string) {
-	if platform == service.PlatformOpenAI {
-		writeOpenAIModelsList(c, modelIDs)
-		return
-	}
-	if platform == service.PlatformGrok {
-		writeGrokModelsList(c, modelIDs)
-		return
-	}
-	models := make([]claude.Model, 0, len(modelIDs))
-	for _, modelID := range modelIDs {
-		models = append(models, claude.Model{
-			ID:          modelID,
-			Type:        "model",
-			DisplayName: modelID,
-			CreatedAt:   "2024-01-01T00:00:00Z",
-		})
-	}
-	writeModelsListResponse(c, models)
-}
-
-func writeAllowlistedModelsList(c *gin.Context, platform string, modelIDs []string) {
-	if platform == service.PlatformOpenAI {
-		writeOpenAIModelsList(c, modelIDs)
-		return
-	}
-	writeModelsList(c, platform, modelIDs)
-}
-
-type grokReasoningEffortOption struct {
-	Value   string `json:"value"`
-	Label   string `json:"label"`
-	Default bool   `json:"default,omitempty"`
-}
-
-type grokModelListItem struct {
-	xai.Model
-	SupportsReasoningEffort bool                        `json:"supportsReasoningEffort,omitempty"`
-	ReasoningEffort         string                      `json:"reasoningEffort,omitempty"`
-	ReasoningEfforts        []grokReasoningEffortOption `json:"reasoningEfforts,omitempty"`
-}
-
-func writeGrokModelsList(c *gin.Context, modelIDs []string) {
-	defaults := xai.DefaultModels()
-	defaultsByID := make(map[string]xai.Model, len(defaults))
-	for _, model := range defaults {
-		defaultsByID[model.ID] = model
-	}
-
-	models := make([]grokModelListItem, 0, len(modelIDs))
-	for _, modelID := range modelIDs {
-		model, ok := defaultsByID[modelID]
-		if !ok {
-			model = xai.Model{
-				ID:          modelID,
-				Object:      "model",
-				OwnedBy:     "xai",
-				DisplayName: modelID,
-			}
-		}
-		item := grokModelListItem{Model: model}
-		if grokModelSupportsConfigurableReasoning(modelID) {
-			item.SupportsReasoningEffort = true
-			item.ReasoningEffort = "high"
-			efforts := []grokReasoningEffortOption{
-				{Value: "low", Label: "Low"},
-				{Value: "medium", Label: "Medium"},
-				{Value: "high", Label: "High", Default: true},
-			}
-			if service.GrokSupportsXHighReasoningEffort(modelID) {
-				efforts = append(efforts, grokReasoningEffortOption{Value: "xhigh", Label: "xHigh"})
-			}
-			item.ReasoningEfforts = efforts
-		}
-		models = append(models, item)
-	}
-
-	writeModelsListResponse(c, models)
-}
-
-func grokModelSupportsConfigurableReasoning(modelID string) bool {
-	switch strings.ToLower(strings.TrimSpace(modelID)) {
-	case "grok-4.7", "grok-4.7-latest", "grok-4.6", "grok-4.6-latest", "grok-4.5", "grok-4.5-latest", "grok", "grok-latest", "grok-build", "grok-build-latest", "grok-build-0.1":
-		return true
-	default:
-		return false
-	}
-}
-
-func writeOpenAIModelsList(c *gin.Context, modelIDs []string) {
-	defaultsByID := make(map[string]openai.Model, len(openai.DefaultModels))
-	for _, model := range openai.DefaultModels {
-		defaultsByID[model.ID] = model
-	}
-
-	models := make([]openai.Model, 0, len(modelIDs))
-	for _, modelID := range modelIDs {
-		if model, ok := defaultsByID[modelID]; ok {
-			models = append(models, model)
-			continue
-		}
-		models = append(models, openai.Model{
-			ID:          modelID,
-			Object:      "model",
-			Created:     1704067200,
-			OwnedBy:     "openai",
-			Type:        "model",
-			DisplayName: modelID,
-		})
-	}
-	writeModelsListResponse(c, models)
-}
-
-// modelListingSource 汇总模型列表过滤的候选来源：账号映射键（availableModels）
-// 与平台默认列表（fallbackModels）。账号映射为空时回落默认列表；Anthropic
-// 平台两者取并集，其余平台以账号映射键为准。
-func modelListingSource(platform string, availableModels, fallbackModels []string) []string {
-	if platform == service.PlatformOpenAI && availableModels != nil {
-		return availableModels
-	}
-	if len(availableModels) == 0 {
-		return fallbackModels
-	}
-	if platform == service.PlatformAnthropic {
-		return mergeModelIDs(availableModels, fallbackModels)
-	}
-	return availableModels
-}
-
-func defaultCodexModelIDsForPlatform(platform string) []string {
-	switch platform {
-	case service.PlatformDeepseek:
-		return []string{"deepseek-v4-pro", "deepseek-v4-flash", "deepseek-flash"}
-	case service.PlatformMiniMax:
-		return []string{"MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.5"}
-	case service.PlatformStepFun:
-		return []string{"step-3.5-flash", "step-3.5-flash-2603", "step-3.7-flash", "step-5-preview", "step-image-edit-2", "step-router-v1", "stepaudio-2.5-asr", "stepaudio-2.5-chat", "stepaudio-2.5-realtime", "stepaudio-2.5-tts"}
-	default:
-		return defaultModelIDsForPlatform(platform)
-	}
-}
-
-func defaultModelIDsForPlatform(platform string) []string {
-	switch platform {
-	case service.PlatformOpenAI:
-		return openai.DefaultModelIDs()
-	case service.PlatformGemini:
-		ids := make([]string, 0, len(geminicli.DefaultModels))
-		for _, model := range geminicli.DefaultModels {
-			ids = append(ids, model.ID)
-		}
-		return ids
-	case service.PlatformAntigravity:
-		models := antigravity.DefaultModels()
-		ids := make([]string, 0, len(models))
-		for _, model := range models {
-			ids = append(ids, model.ID)
-		}
-		return ids
-	case service.PlatformAnthropic:
-		return claude.DefaultModelIDs()
-	case service.PlatformGrok:
-		return xai.DefaultModelIDs()
-	case service.PlatformOpenCodeGo:
-		return service.DefaultOpenCodeGoModelIDs()
-	case service.PlatformMirasim:
-		return service.DefaultMirasimModelIDs()
-	case service.PlatformTypeSafe:
-		return []string{"jev-latest"}
-	case service.PlatformComposite:
-		ids := make([]string, 0)
-		seen := make(map[string]struct{})
-		for _, concretePlatform := range domain.CompositePrecedencePlatformIDs() {
-			// TypeSafe is deliberately skipped: jev-latest only works through
-			// /v1/systemone, so the static fallback never advertises it to LLM
-			// clients. compositeAvailableModels lists it when the group can serve it.
-			if concretePlatform == service.PlatformTypeSafe {
-				continue
-			}
-			for _, id := range defaultModelIDsForPlatform(concretePlatform) {
-				if _, ok := seen[id]; ok {
-					continue
-				}
-				seen[id] = struct{}{}
-				ids = append(ids, id)
-			}
-		}
-		return ids
-	default:
-		ids := make([]string, 0, len(claude.DefaultModels))
-		for _, model := range claude.DefaultModels {
-			ids = append(ids, model.ID)
-		}
-		return ids
-	}
-}
-
-func mergeModelIDs(primary, secondary []string) []string {
-	seen := make(map[string]struct{}, len(primary)+len(secondary))
-	merged := make([]string, 0, len(primary)+len(secondary))
-	for _, models := range [][]string{primary, secondary} {
-		for _, model := range models {
-			model = strings.TrimSpace(model)
-			if model == "" {
-				continue
-			}
-			if _, ok := seen[model]; ok {
-				continue
-			}
-			seen[model] = struct{}{}
-			merged = append(merged, model)
-		}
-	}
-	return merged
 }
 
 // AntigravityModels 返回 Antigravity 支持的全部模型

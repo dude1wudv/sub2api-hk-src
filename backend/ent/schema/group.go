@@ -35,6 +35,9 @@ func (Group) Mixin() []ent.Mixin {
 
 func (Group) Fields() []ent.Field {
 	return []ent.Field{
+		field.JSON("chat_model_policies", map[string]domain.ChatModelPolicy{}).
+			Optional().
+			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
 		// 唯一约束通过部分索引实现（WHERE deleted_at IS NULL），支持软删除后重用
 		// 见迁移文件 016_soft_delete_partial_unique_indexes.sql
 		field.Time("slow_ttft_exempt_until").Optional().Nillable().SchemaType(map[string]string{dialect.Postgres: "timestamptz"}),
@@ -333,6 +336,8 @@ func (Group) Edges() []ent.Edge {
 		edge.To("redeem_codes", RedeemCode.Type),
 		edge.To("subscriptions", UserSubscription.Type),
 		edge.To("usage_logs", UsageLog.Type),
+		edge.To("chat_model_presets", ChatModelPreset.Type),
+		edge.To("chat_credentials", ChatCredential.Type),
 		edge.From("accounts", Account.Type).
 			Ref("groups").
 			Through("account_groups", AccountGroup.Type),

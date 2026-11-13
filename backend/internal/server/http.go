@@ -44,7 +44,8 @@ func ProvideRouter(
 	compositeResolver *service.CompositeRouteResolver,
 	redisClient *redis.Client,
 	balanceNotifyService *service.BalanceNotifyService,
-) *gin.Engine {
+	chat *service.ChatService,
+) (*gin.Engine, error) {
 	if cfg.Server.Mode == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -89,7 +90,11 @@ func ProvideRouter(
 		service.SetWebSearchManager(websearch.NewManager(configs, redisClient))
 	})
 
-	return SetupRouter(r, handlers, jwtAuth, optionalJWTAuth, adminAuth, apiKeyAuth, auditLog, stepUpAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg, redisClient, balanceNotifyService)
+	r = SetupRouter(r, handlers, jwtAuth, optionalJWTAuth, adminAuth, apiKeyAuth, auditLog, stepUpAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg, redisClient, balanceNotifyService)
+	if err := chat.BindGatewayDispatch(r.ServeHTTP); err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 func configureTrustedProxies(r *gin.Engine, cfg config.ServerConfig) {

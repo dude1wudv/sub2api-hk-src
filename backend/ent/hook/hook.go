@@ -177,6 +177,114 @@ func (f ChannelMonitorRequestTemplateFunc) Mutate(ctx context.Context, m ent.Mut
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChannelMonitorRequestTemplateMutation", m)
 }
 
+// The ChatAttachmentFunc type is an adapter to allow the use of ordinary
+// function as ChatAttachment mutator.
+type ChatAttachmentFunc func(context.Context, *ent.ChatAttachmentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatAttachmentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatAttachmentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatAttachmentMutation", m)
+}
+
+// The ChatAttachmentUploadFunc type is an adapter to allow the use of ordinary
+// function as ChatAttachmentUpload mutator.
+type ChatAttachmentUploadFunc func(context.Context, *ent.ChatAttachmentUploadMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatAttachmentUploadFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatAttachmentUploadMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatAttachmentUploadMutation", m)
+}
+
+// The ChatCredentialFunc type is an adapter to allow the use of ordinary
+// function as ChatCredential mutator.
+type ChatCredentialFunc func(context.Context, *ent.ChatCredentialMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatCredentialFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatCredentialMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatCredentialMutation", m)
+}
+
+// The ChatGenerationRunFunc type is an adapter to allow the use of ordinary
+// function as ChatGenerationRun mutator.
+type ChatGenerationRunFunc func(context.Context, *ent.ChatGenerationRunMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatGenerationRunFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatGenerationRunMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatGenerationRunMutation", m)
+}
+
+// The ChatImportFunc type is an adapter to allow the use of ordinary
+// function as ChatImport mutator.
+type ChatImportFunc func(context.Context, *ent.ChatImportMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatImportFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatImportMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatImportMutation", m)
+}
+
+// The ChatModelPresetFunc type is an adapter to allow the use of ordinary
+// function as ChatModelPreset mutator.
+type ChatModelPresetFunc func(context.Context, *ent.ChatModelPresetMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatModelPresetFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatModelPresetMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatModelPresetMutation", m)
+}
+
+// The ChatPreferenceFunc type is an adapter to allow the use of ordinary
+// function as ChatPreference mutator.
+type ChatPreferenceFunc func(context.Context, *ent.ChatPreferenceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatPreferenceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatPreferenceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatPreferenceMutation", m)
+}
+
+// The ChatSessionFunc type is an adapter to allow the use of ordinary
+// function as ChatSession mutator.
+type ChatSessionFunc func(context.Context, *ent.ChatSessionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatSessionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatSessionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatSessionMutation", m)
+}
+
+// The ChatSessionAttachmentFunc type is an adapter to allow the use of ordinary
+// function as ChatSessionAttachment mutator.
+type ChatSessionAttachmentFunc func(context.Context, *ent.ChatSessionAttachmentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatSessionAttachmentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatSessionAttachmentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatSessionAttachmentMutation", m)
+}
+
 // The CompositeModelRouteFunc type is an adapter to allow the use of ordinary
 // function as CompositeModelRoute mutator.
 type CompositeModelRouteFunc func(context.Context, *ent.CompositeModelRouteMutation) (ent.Value, error)

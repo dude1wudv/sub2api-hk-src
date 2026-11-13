@@ -16,6 +16,15 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/announcementread"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
+	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
+	"github.com/Wei-Shaw/sub2api/ent/chatgenerationrun"
+	"github.com/Wei-Shaw/sub2api/ent/chatimport"
+	"github.com/Wei-Shaw/sub2api/ent/chatmodelpreset"
+	"github.com/Wei-Shaw/sub2api/ent/chatpreference"
+	"github.com/Wei-Shaw/sub2api/ent/chatsession"
+	"github.com/Wei-Shaw/sub2api/ent/chatsessionattachment"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
 	"github.com/Wei-Shaw/sub2api/ent/pendingauthsession"
@@ -35,27 +44,36 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx                       *QueryContext
-	order                     []user.OrderOption
-	inters                    []Interceptor
-	predicates                []predicate.User
-	withAPIKeys               *APIKeyQuery
-	withRedeemCodes           *RedeemCodeQuery
-	withSubscriptions         *UserSubscriptionQuery
-	withAssignedSubscriptions *UserSubscriptionQuery
-	withAnnouncementReads     *AnnouncementReadQuery
-	withAllowedGroups         *GroupQuery
-	withUsageLogs             *UsageLogQuery
-	withAttributeValues       *UserAttributeValueQuery
-	withPromoCodeUsages       *PromoCodeUsageQuery
-	withPaymentOrders         *PaymentOrderQuery
-	withAuthIdentities        *AuthIdentityQuery
-	withPendingAuthSessions   *PendingAuthSessionQuery
-	withPlatformQuotas        *UserPlatformQuotaQuery
-	withWorkbenchCredentials  *WorkbenchCredentialQuery
-	withWorkbenchLaunchGrants *WorkbenchLaunchGrantQuery
-	withUserAllowedGroups     *UserAllowedGroupQuery
-	modifiers                 []func(*sql.Selector)
+	ctx                        *QueryContext
+	order                      []user.OrderOption
+	inters                     []Interceptor
+	predicates                 []predicate.User
+	withAPIKeys                *APIKeyQuery
+	withRedeemCodes            *RedeemCodeQuery
+	withSubscriptions          *UserSubscriptionQuery
+	withAssignedSubscriptions  *UserSubscriptionQuery
+	withAnnouncementReads      *AnnouncementReadQuery
+	withAllowedGroups          *GroupQuery
+	withUsageLogs              *UsageLogQuery
+	withAttributeValues        *UserAttributeValueQuery
+	withPromoCodeUsages        *PromoCodeUsageQuery
+	withPaymentOrders          *PaymentOrderQuery
+	withAuthIdentities         *AuthIdentityQuery
+	withPendingAuthSessions    *PendingAuthSessionQuery
+	withPlatformQuotas         *UserPlatformQuotaQuery
+	withWorkbenchCredentials   *WorkbenchCredentialQuery
+	withWorkbenchLaunchGrants  *WorkbenchLaunchGrantQuery
+	withChatModelPresets       *ChatModelPresetQuery
+	withChatCredentials        *ChatCredentialQuery
+	withChatSessions           *ChatSessionQuery
+	withChatGenerationRuns     *ChatGenerationRunQuery
+	withChatAttachments        *ChatAttachmentQuery
+	withChatSessionAttachments *ChatSessionAttachmentQuery
+	withChatAttachmentUploads  *ChatAttachmentUploadQuery
+	withChatImports            *ChatImportQuery
+	withChatPreferences        *ChatPreferenceQuery
+	withUserAllowedGroups      *UserAllowedGroupQuery
+	modifiers                  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -422,6 +440,204 @@ func (_q *UserQuery) QueryWorkbenchLaunchGrants() *WorkbenchLaunchGrantQuery {
 	return query
 }
 
+// QueryChatModelPresets chains the current query on the "chat_model_presets" edge.
+func (_q *UserQuery) QueryChatModelPresets() *ChatModelPresetQuery {
+	query := (&ChatModelPresetClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(chatmodelpreset.Table, chatmodelpreset.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatModelPresetsTable, user.ChatModelPresetsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChatCredentials chains the current query on the "chat_credentials" edge.
+func (_q *UserQuery) QueryChatCredentials() *ChatCredentialQuery {
+	query := (&ChatCredentialClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(chatcredential.Table, chatcredential.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatCredentialsTable, user.ChatCredentialsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChatSessions chains the current query on the "chat_sessions" edge.
+func (_q *UserQuery) QueryChatSessions() *ChatSessionQuery {
+	query := (&ChatSessionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(chatsession.Table, chatsession.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatSessionsTable, user.ChatSessionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChatGenerationRuns chains the current query on the "chat_generation_runs" edge.
+func (_q *UserQuery) QueryChatGenerationRuns() *ChatGenerationRunQuery {
+	query := (&ChatGenerationRunClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(chatgenerationrun.Table, chatgenerationrun.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatGenerationRunsTable, user.ChatGenerationRunsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChatAttachments chains the current query on the "chat_attachments" edge.
+func (_q *UserQuery) QueryChatAttachments() *ChatAttachmentQuery {
+	query := (&ChatAttachmentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(chatattachment.Table, chatattachment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatAttachmentsTable, user.ChatAttachmentsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChatSessionAttachments chains the current query on the "chat_session_attachments" edge.
+func (_q *UserQuery) QueryChatSessionAttachments() *ChatSessionAttachmentQuery {
+	query := (&ChatSessionAttachmentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(chatsessionattachment.Table, chatsessionattachment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatSessionAttachmentsTable, user.ChatSessionAttachmentsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChatAttachmentUploads chains the current query on the "chat_attachment_uploads" edge.
+func (_q *UserQuery) QueryChatAttachmentUploads() *ChatAttachmentUploadQuery {
+	query := (&ChatAttachmentUploadClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(chatattachmentupload.Table, chatattachmentupload.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatAttachmentUploadsTable, user.ChatAttachmentUploadsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChatImports chains the current query on the "chat_imports" edge.
+func (_q *UserQuery) QueryChatImports() *ChatImportQuery {
+	query := (&ChatImportClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(chatimport.Table, chatimport.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatImportsTable, user.ChatImportsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChatPreferences chains the current query on the "chat_preferences" edge.
+func (_q *UserQuery) QueryChatPreferences() *ChatPreferenceQuery {
+	query := (&ChatPreferenceClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(chatpreference.Table, chatpreference.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatPreferencesTable, user.ChatPreferencesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // QueryUserAllowedGroups chains the current query on the "user_allowed_groups" edge.
 func (_q *UserQuery) QueryUserAllowedGroups() *UserAllowedGroupQuery {
 	query := (&UserAllowedGroupClient{config: _q.config}).Query()
@@ -631,27 +847,36 @@ func (_q *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:                    _q.config,
-		ctx:                       _q.ctx.Clone(),
-		order:                     append([]user.OrderOption{}, _q.order...),
-		inters:                    append([]Interceptor{}, _q.inters...),
-		predicates:                append([]predicate.User{}, _q.predicates...),
-		withAPIKeys:               _q.withAPIKeys.Clone(),
-		withRedeemCodes:           _q.withRedeemCodes.Clone(),
-		withSubscriptions:         _q.withSubscriptions.Clone(),
-		withAssignedSubscriptions: _q.withAssignedSubscriptions.Clone(),
-		withAnnouncementReads:     _q.withAnnouncementReads.Clone(),
-		withAllowedGroups:         _q.withAllowedGroups.Clone(),
-		withUsageLogs:             _q.withUsageLogs.Clone(),
-		withAttributeValues:       _q.withAttributeValues.Clone(),
-		withPromoCodeUsages:       _q.withPromoCodeUsages.Clone(),
-		withPaymentOrders:         _q.withPaymentOrders.Clone(),
-		withAuthIdentities:        _q.withAuthIdentities.Clone(),
-		withPendingAuthSessions:   _q.withPendingAuthSessions.Clone(),
-		withPlatformQuotas:        _q.withPlatformQuotas.Clone(),
-		withWorkbenchCredentials:  _q.withWorkbenchCredentials.Clone(),
-		withWorkbenchLaunchGrants: _q.withWorkbenchLaunchGrants.Clone(),
-		withUserAllowedGroups:     _q.withUserAllowedGroups.Clone(),
+		config:                     _q.config,
+		ctx:                        _q.ctx.Clone(),
+		order:                      append([]user.OrderOption{}, _q.order...),
+		inters:                     append([]Interceptor{}, _q.inters...),
+		predicates:                 append([]predicate.User{}, _q.predicates...),
+		withAPIKeys:                _q.withAPIKeys.Clone(),
+		withRedeemCodes:            _q.withRedeemCodes.Clone(),
+		withSubscriptions:          _q.withSubscriptions.Clone(),
+		withAssignedSubscriptions:  _q.withAssignedSubscriptions.Clone(),
+		withAnnouncementReads:      _q.withAnnouncementReads.Clone(),
+		withAllowedGroups:          _q.withAllowedGroups.Clone(),
+		withUsageLogs:              _q.withUsageLogs.Clone(),
+		withAttributeValues:        _q.withAttributeValues.Clone(),
+		withPromoCodeUsages:        _q.withPromoCodeUsages.Clone(),
+		withPaymentOrders:          _q.withPaymentOrders.Clone(),
+		withAuthIdentities:         _q.withAuthIdentities.Clone(),
+		withPendingAuthSessions:    _q.withPendingAuthSessions.Clone(),
+		withPlatformQuotas:         _q.withPlatformQuotas.Clone(),
+		withWorkbenchCredentials:   _q.withWorkbenchCredentials.Clone(),
+		withWorkbenchLaunchGrants:  _q.withWorkbenchLaunchGrants.Clone(),
+		withChatModelPresets:       _q.withChatModelPresets.Clone(),
+		withChatCredentials:        _q.withChatCredentials.Clone(),
+		withChatSessions:           _q.withChatSessions.Clone(),
+		withChatGenerationRuns:     _q.withChatGenerationRuns.Clone(),
+		withChatAttachments:        _q.withChatAttachments.Clone(),
+		withChatSessionAttachments: _q.withChatSessionAttachments.Clone(),
+		withChatAttachmentUploads:  _q.withChatAttachmentUploads.Clone(),
+		withChatImports:            _q.withChatImports.Clone(),
+		withChatPreferences:        _q.withChatPreferences.Clone(),
+		withUserAllowedGroups:      _q.withUserAllowedGroups.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -823,6 +1048,105 @@ func (_q *UserQuery) WithWorkbenchLaunchGrants(opts ...func(*WorkbenchLaunchGran
 	return _q
 }
 
+// WithChatModelPresets tells the query-builder to eager-load the nodes that are connected to
+// the "chat_model_presets" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChatModelPresets(opts ...func(*ChatModelPresetQuery)) *UserQuery {
+	query := (&ChatModelPresetClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChatModelPresets = query
+	return _q
+}
+
+// WithChatCredentials tells the query-builder to eager-load the nodes that are connected to
+// the "chat_credentials" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChatCredentials(opts ...func(*ChatCredentialQuery)) *UserQuery {
+	query := (&ChatCredentialClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChatCredentials = query
+	return _q
+}
+
+// WithChatSessions tells the query-builder to eager-load the nodes that are connected to
+// the "chat_sessions" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChatSessions(opts ...func(*ChatSessionQuery)) *UserQuery {
+	query := (&ChatSessionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChatSessions = query
+	return _q
+}
+
+// WithChatGenerationRuns tells the query-builder to eager-load the nodes that are connected to
+// the "chat_generation_runs" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChatGenerationRuns(opts ...func(*ChatGenerationRunQuery)) *UserQuery {
+	query := (&ChatGenerationRunClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChatGenerationRuns = query
+	return _q
+}
+
+// WithChatAttachments tells the query-builder to eager-load the nodes that are connected to
+// the "chat_attachments" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChatAttachments(opts ...func(*ChatAttachmentQuery)) *UserQuery {
+	query := (&ChatAttachmentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChatAttachments = query
+	return _q
+}
+
+// WithChatSessionAttachments tells the query-builder to eager-load the nodes that are connected to
+// the "chat_session_attachments" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChatSessionAttachments(opts ...func(*ChatSessionAttachmentQuery)) *UserQuery {
+	query := (&ChatSessionAttachmentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChatSessionAttachments = query
+	return _q
+}
+
+// WithChatAttachmentUploads tells the query-builder to eager-load the nodes that are connected to
+// the "chat_attachment_uploads" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChatAttachmentUploads(opts ...func(*ChatAttachmentUploadQuery)) *UserQuery {
+	query := (&ChatAttachmentUploadClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChatAttachmentUploads = query
+	return _q
+}
+
+// WithChatImports tells the query-builder to eager-load the nodes that are connected to
+// the "chat_imports" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChatImports(opts ...func(*ChatImportQuery)) *UserQuery {
+	query := (&ChatImportClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChatImports = query
+	return _q
+}
+
+// WithChatPreferences tells the query-builder to eager-load the nodes that are connected to
+// the "chat_preferences" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChatPreferences(opts ...func(*ChatPreferenceQuery)) *UserQuery {
+	query := (&ChatPreferenceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChatPreferences = query
+	return _q
+}
+
 // WithUserAllowedGroups tells the query-builder to eager-load the nodes that are connected to
 // the "user_allowed_groups" edge. The optional arguments are used to configure the query builder of the edge.
 func (_q *UserQuery) WithUserAllowedGroups(opts ...func(*UserAllowedGroupQuery)) *UserQuery {
@@ -912,7 +1236,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [16]bool{
+		loadedTypes = [25]bool{
 			_q.withAPIKeys != nil,
 			_q.withRedeemCodes != nil,
 			_q.withSubscriptions != nil,
@@ -928,6 +1252,15 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withPlatformQuotas != nil,
 			_q.withWorkbenchCredentials != nil,
 			_q.withWorkbenchLaunchGrants != nil,
+			_q.withChatModelPresets != nil,
+			_q.withChatCredentials != nil,
+			_q.withChatSessions != nil,
+			_q.withChatGenerationRuns != nil,
+			_q.withChatAttachments != nil,
+			_q.withChatSessionAttachments != nil,
+			_q.withChatAttachmentUploads != nil,
+			_q.withChatImports != nil,
+			_q.withChatPreferences != nil,
 			_q.withUserAllowedGroups != nil,
 		}
 	)
@@ -1062,6 +1395,75 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			func(n *User, e *WorkbenchLaunchGrant) {
 				n.Edges.WorkbenchLaunchGrants = append(n.Edges.WorkbenchLaunchGrants, e)
 			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChatModelPresets; query != nil {
+		if err := _q.loadChatModelPresets(ctx, query, nodes,
+			func(n *User) { n.Edges.ChatModelPresets = []*ChatModelPreset{} },
+			func(n *User, e *ChatModelPreset) { n.Edges.ChatModelPresets = append(n.Edges.ChatModelPresets, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChatCredentials; query != nil {
+		if err := _q.loadChatCredentials(ctx, query, nodes,
+			func(n *User) { n.Edges.ChatCredentials = []*ChatCredential{} },
+			func(n *User, e *ChatCredential) { n.Edges.ChatCredentials = append(n.Edges.ChatCredentials, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChatSessions; query != nil {
+		if err := _q.loadChatSessions(ctx, query, nodes,
+			func(n *User) { n.Edges.ChatSessions = []*ChatSession{} },
+			func(n *User, e *ChatSession) { n.Edges.ChatSessions = append(n.Edges.ChatSessions, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChatGenerationRuns; query != nil {
+		if err := _q.loadChatGenerationRuns(ctx, query, nodes,
+			func(n *User) { n.Edges.ChatGenerationRuns = []*ChatGenerationRun{} },
+			func(n *User, e *ChatGenerationRun) {
+				n.Edges.ChatGenerationRuns = append(n.Edges.ChatGenerationRuns, e)
+			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChatAttachments; query != nil {
+		if err := _q.loadChatAttachments(ctx, query, nodes,
+			func(n *User) { n.Edges.ChatAttachments = []*ChatAttachment{} },
+			func(n *User, e *ChatAttachment) { n.Edges.ChatAttachments = append(n.Edges.ChatAttachments, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChatSessionAttachments; query != nil {
+		if err := _q.loadChatSessionAttachments(ctx, query, nodes,
+			func(n *User) { n.Edges.ChatSessionAttachments = []*ChatSessionAttachment{} },
+			func(n *User, e *ChatSessionAttachment) {
+				n.Edges.ChatSessionAttachments = append(n.Edges.ChatSessionAttachments, e)
+			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChatAttachmentUploads; query != nil {
+		if err := _q.loadChatAttachmentUploads(ctx, query, nodes,
+			func(n *User) { n.Edges.ChatAttachmentUploads = []*ChatAttachmentUpload{} },
+			func(n *User, e *ChatAttachmentUpload) {
+				n.Edges.ChatAttachmentUploads = append(n.Edges.ChatAttachmentUploads, e)
+			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChatImports; query != nil {
+		if err := _q.loadChatImports(ctx, query, nodes,
+			func(n *User) { n.Edges.ChatImports = []*ChatImport{} },
+			func(n *User, e *ChatImport) { n.Edges.ChatImports = append(n.Edges.ChatImports, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChatPreferences; query != nil {
+		if err := _q.loadChatPreferences(ctx, query, nodes,
+			func(n *User) { n.Edges.ChatPreferences = []*ChatPreference{} },
+			func(n *User, e *ChatPreference) { n.Edges.ChatPreferences = append(n.Edges.ChatPreferences, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1550,6 +1952,276 @@ func (_q *UserQuery) loadWorkbenchLaunchGrants(ctx context.Context, query *Workb
 	}
 	query.Where(predicate.WorkbenchLaunchGrant(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.WorkbenchLaunchGrantsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadChatModelPresets(ctx context.Context, query *ChatModelPresetQuery, nodes []*User, init func(*User), assign func(*User, *ChatModelPreset)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatmodelpreset.FieldUserID)
+	}
+	query.Where(predicate.ChatModelPreset(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChatModelPresetsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadChatCredentials(ctx context.Context, query *ChatCredentialQuery, nodes []*User, init func(*User), assign func(*User, *ChatCredential)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatcredential.FieldUserID)
+	}
+	query.Where(predicate.ChatCredential(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChatCredentialsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadChatSessions(ctx context.Context, query *ChatSessionQuery, nodes []*User, init func(*User), assign func(*User, *ChatSession)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatsession.FieldUserID)
+	}
+	query.Where(predicate.ChatSession(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChatSessionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadChatGenerationRuns(ctx context.Context, query *ChatGenerationRunQuery, nodes []*User, init func(*User), assign func(*User, *ChatGenerationRun)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatgenerationrun.FieldUserID)
+	}
+	query.Where(predicate.ChatGenerationRun(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChatGenerationRunsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadChatAttachments(ctx context.Context, query *ChatAttachmentQuery, nodes []*User, init func(*User), assign func(*User, *ChatAttachment)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatattachment.FieldUserID)
+	}
+	query.Where(predicate.ChatAttachment(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChatAttachmentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadChatSessionAttachments(ctx context.Context, query *ChatSessionAttachmentQuery, nodes []*User, init func(*User), assign func(*User, *ChatSessionAttachment)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatsessionattachment.FieldUserID)
+	}
+	query.Where(predicate.ChatSessionAttachment(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChatSessionAttachmentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadChatAttachmentUploads(ctx context.Context, query *ChatAttachmentUploadQuery, nodes []*User, init func(*User), assign func(*User, *ChatAttachmentUpload)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatattachmentupload.FieldUserID)
+	}
+	query.Where(predicate.ChatAttachmentUpload(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChatAttachmentUploadsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadChatImports(ctx context.Context, query *ChatImportQuery, nodes []*User, init func(*User), assign func(*User, *ChatImport)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatimport.FieldUserID)
+	}
+	query.Where(predicate.ChatImport(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChatImportsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadChatPreferences(ctx context.Context, query *ChatPreferenceQuery, nodes []*User, init func(*User), assign func(*User, *ChatPreference)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatpreference.FieldUserID)
+	}
+	query.Where(predicate.ChatPreference(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChatPreferencesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

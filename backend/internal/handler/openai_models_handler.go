@@ -23,9 +23,8 @@ func (h *GatewayHandler) pinnedOpenAIModels(c *gin.Context, group *service.Group
 	if c.Param("model") != "" {
 		etag = "" // A collection ETag cannot validate a single-model representation.
 	}
-	response, account, err := h.openAIGatewayService.FetchPinnedOpenAIModelsList(
-		c.Request.Context(), group, h.maxAccountSwitches, etag,
-	)
+	catalog := service.NewGatewayModelCatalogService(h.gatewayService, h.openAIGatewayService, h.maxAccountSwitches)
+	response, account, err := catalog.ListPinnedForGroup(c.Request.Context(), group, etag)
 	if c.Request.Context().Err() != nil {
 		return
 	}

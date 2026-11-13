@@ -30,6 +30,14 @@ func clientFromContext(ctx context.Context, defaultClient *dbent.Client) *dbent.
 	return defaultClient
 }
 
+// sqlExecutorFromContext keeps raw SQL reads on the same connection as Ent.
+func sqlExecutorFromContext(ctx context.Context, fallback sqlExecutor) sqlExecutor {
+	if tx := dbent.TxFromContext(ctx); tx != nil {
+		return tx.Client()
+	}
+	return fallback
+}
+
 // translatePersistenceError 将数据库层错误翻译为业务层错误。
 //
 // 这是 Repository 层的核心错误处理函数，确保数据库细节不会泄露到业务层。

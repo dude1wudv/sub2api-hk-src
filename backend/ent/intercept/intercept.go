@@ -22,6 +22,15 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitordailyrollup"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
+	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
+	"github.com/Wei-Shaw/sub2api/ent/chatgenerationrun"
+	"github.com/Wei-Shaw/sub2api/ent/chatimport"
+	"github.com/Wei-Shaw/sub2api/ent/chatmodelpreset"
+	"github.com/Wei-Shaw/sub2api/ent/chatpreference"
+	"github.com/Wei-Shaw/sub2api/ent/chatsession"
+	"github.com/Wei-Shaw/sub2api/ent/chatsessionattachment"
 	"github.com/Wei-Shaw/sub2api/ent/compositemodelroute"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
@@ -485,6 +494,249 @@ func (f TraverseChannelMonitorRequestTemplate) Traverse(ctx context.Context, q e
 		return f(ctx, q)
 	}
 	return fmt.Errorf("unexpected query type %T. expect *ent.ChannelMonitorRequestTemplateQuery", q)
+}
+
+// The ChatAttachmentFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChatAttachmentFunc func(context.Context, *ent.ChatAttachmentQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChatAttachmentFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChatAttachmentQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChatAttachmentQuery", q)
+}
+
+// The TraverseChatAttachment type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChatAttachment func(context.Context, *ent.ChatAttachmentQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChatAttachment) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChatAttachment) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChatAttachmentQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChatAttachmentQuery", q)
+}
+
+// The ChatAttachmentUploadFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChatAttachmentUploadFunc func(context.Context, *ent.ChatAttachmentUploadQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChatAttachmentUploadFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChatAttachmentUploadQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChatAttachmentUploadQuery", q)
+}
+
+// The TraverseChatAttachmentUpload type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChatAttachmentUpload func(context.Context, *ent.ChatAttachmentUploadQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChatAttachmentUpload) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChatAttachmentUpload) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChatAttachmentUploadQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChatAttachmentUploadQuery", q)
+}
+
+// The ChatCredentialFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChatCredentialFunc func(context.Context, *ent.ChatCredentialQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChatCredentialFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChatCredentialQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChatCredentialQuery", q)
+}
+
+// The TraverseChatCredential type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChatCredential func(context.Context, *ent.ChatCredentialQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChatCredential) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChatCredential) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChatCredentialQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChatCredentialQuery", q)
+}
+
+// The ChatGenerationRunFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChatGenerationRunFunc func(context.Context, *ent.ChatGenerationRunQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChatGenerationRunFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChatGenerationRunQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChatGenerationRunQuery", q)
+}
+
+// The TraverseChatGenerationRun type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChatGenerationRun func(context.Context, *ent.ChatGenerationRunQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChatGenerationRun) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChatGenerationRun) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChatGenerationRunQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChatGenerationRunQuery", q)
+}
+
+// The ChatImportFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChatImportFunc func(context.Context, *ent.ChatImportQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChatImportFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChatImportQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChatImportQuery", q)
+}
+
+// The TraverseChatImport type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChatImport func(context.Context, *ent.ChatImportQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChatImport) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChatImport) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChatImportQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChatImportQuery", q)
+}
+
+// The ChatModelPresetFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChatModelPresetFunc func(context.Context, *ent.ChatModelPresetQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChatModelPresetFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChatModelPresetQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChatModelPresetQuery", q)
+}
+
+// The TraverseChatModelPreset type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChatModelPreset func(context.Context, *ent.ChatModelPresetQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChatModelPreset) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChatModelPreset) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChatModelPresetQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChatModelPresetQuery", q)
+}
+
+// The ChatPreferenceFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChatPreferenceFunc func(context.Context, *ent.ChatPreferenceQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChatPreferenceFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChatPreferenceQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChatPreferenceQuery", q)
+}
+
+// The TraverseChatPreference type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChatPreference func(context.Context, *ent.ChatPreferenceQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChatPreference) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChatPreference) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChatPreferenceQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChatPreferenceQuery", q)
+}
+
+// The ChatSessionFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChatSessionFunc func(context.Context, *ent.ChatSessionQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChatSessionFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChatSessionQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChatSessionQuery", q)
+}
+
+// The TraverseChatSession type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChatSession func(context.Context, *ent.ChatSessionQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChatSession) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChatSession) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChatSessionQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChatSessionQuery", q)
+}
+
+// The ChatSessionAttachmentFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChatSessionAttachmentFunc func(context.Context, *ent.ChatSessionAttachmentQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChatSessionAttachmentFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChatSessionAttachmentQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChatSessionAttachmentQuery", q)
+}
+
+// The TraverseChatSessionAttachment type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChatSessionAttachment func(context.Context, *ent.ChatSessionAttachmentQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChatSessionAttachment) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChatSessionAttachment) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChatSessionAttachmentQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChatSessionAttachmentQuery", q)
 }
 
 // The CompositeModelRouteFunc type is an adapter to allow the use of ordinary function as a Querier.
@@ -1274,6 +1526,24 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.ChannelMonitorHistoryQuery, predicate.ChannelMonitorHistory, channelmonitorhistory.OrderOption]{typ: ent.TypeChannelMonitorHistory, tq: q}, nil
 	case *ent.ChannelMonitorRequestTemplateQuery:
 		return &query[*ent.ChannelMonitorRequestTemplateQuery, predicate.ChannelMonitorRequestTemplate, channelmonitorrequesttemplate.OrderOption]{typ: ent.TypeChannelMonitorRequestTemplate, tq: q}, nil
+	case *ent.ChatAttachmentQuery:
+		return &query[*ent.ChatAttachmentQuery, predicate.ChatAttachment, chatattachment.OrderOption]{typ: ent.TypeChatAttachment, tq: q}, nil
+	case *ent.ChatAttachmentUploadQuery:
+		return &query[*ent.ChatAttachmentUploadQuery, predicate.ChatAttachmentUpload, chatattachmentupload.OrderOption]{typ: ent.TypeChatAttachmentUpload, tq: q}, nil
+	case *ent.ChatCredentialQuery:
+		return &query[*ent.ChatCredentialQuery, predicate.ChatCredential, chatcredential.OrderOption]{typ: ent.TypeChatCredential, tq: q}, nil
+	case *ent.ChatGenerationRunQuery:
+		return &query[*ent.ChatGenerationRunQuery, predicate.ChatGenerationRun, chatgenerationrun.OrderOption]{typ: ent.TypeChatGenerationRun, tq: q}, nil
+	case *ent.ChatImportQuery:
+		return &query[*ent.ChatImportQuery, predicate.ChatImport, chatimport.OrderOption]{typ: ent.TypeChatImport, tq: q}, nil
+	case *ent.ChatModelPresetQuery:
+		return &query[*ent.ChatModelPresetQuery, predicate.ChatModelPreset, chatmodelpreset.OrderOption]{typ: ent.TypeChatModelPreset, tq: q}, nil
+	case *ent.ChatPreferenceQuery:
+		return &query[*ent.ChatPreferenceQuery, predicate.ChatPreference, chatpreference.OrderOption]{typ: ent.TypeChatPreference, tq: q}, nil
+	case *ent.ChatSessionQuery:
+		return &query[*ent.ChatSessionQuery, predicate.ChatSession, chatsession.OrderOption]{typ: ent.TypeChatSession, tq: q}, nil
+	case *ent.ChatSessionAttachmentQuery:
+		return &query[*ent.ChatSessionAttachmentQuery, predicate.ChatSessionAttachment, chatsessionattachment.OrderOption]{typ: ent.TypeChatSessionAttachment, tq: q}, nil
 	case *ent.CompositeModelRouteQuery:
 		return &query[*ent.CompositeModelRouteQuery, predicate.CompositeModelRoute, compositemodelroute.OrderOption]{typ: ent.TypeCompositeModelRoute, tq: q}, nil
 	case *ent.ErrorPassthroughRuleQuery:

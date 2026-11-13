@@ -331,16 +331,30 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	workbenchIntegrationRepository := repository.NewWorkbenchIntegrationRepository(client)
 	workbenchIntegrationService := service.NewWorkbenchIntegrationService(workbenchIntegrationRepository, apiKeyService, configConfig)
 	workbenchHandler := handler.NewWorkbenchHandler(workbenchIntegrationService, configConfig)
+	chatRepository := repository.NewChatRepository(client)
+	chatPresetRepository := repository.NewChatPresetRepository(client)
+	gatewayModelCatalogService := service.ProvideGatewayModelCatalogService(gatewayService, openAIGatewayService, configConfig)
+	chatModelService := service.NewChatModelService(chatPresetRepository, apiKeyService, gatewayModelCatalogService, accountRepository, gatewayService, openAIGatewayService, compositeRouteResolver, modelMetadataCatalog, billingService, modelPricingResolver, pricingService)
+	chatCredentialRepository := repository.NewChatCredentialRepository(client)
+	chatCredentialService := service.NewChatCredentialService(chatCredentialRepository, apiKeyService)
+	chatService, err := provideChatService(chatRepository, configConfig, chatModelService, chatCredentialService)
+	if err != nil {
+		return nil, err
+	}
+	chatHandler := handler.NewChatHandler(chatService, chatModelService)
 	idempotencyCleanupService := service.ProvideIdempotencyCleanupService(idempotencyRepository, configConfig)
 	openAIQuotaAutoResetService := service.ProvideOpenAIQuotaAutoResetService(accountRepository, openAIQuotaService, rateLimitService, idempotencyCoordinator, auditLogService, settingService, leaderLockCache)
-	handlers := handler.ProvideHandlers(authHandler, userHandler, mcpoAuthHandler, apiKeyHandler, usageHandler, redeemHandler, subscriptionHandler, announcementHandler, channelMonitorUserHandler, channelMonitorV2Handler, adminHandlers, gatewayHandler, openAIGatewayHandler, handlerSettingHandler, totpHandler, passkeyHandler, handlerPaymentHandler, paymentWebhookHandler, availableChannelHandler, modelPlazaHandler, asyncImageHandler, batchImageHandler, workbenchHandler, idempotencyCoordinator, idempotencyCleanupService, openAIQuotaAutoResetService)
+	handlers := handler.ProvideHandlers(authHandler, userHandler, mcpoAuthHandler, apiKeyHandler, usageHandler, redeemHandler, subscriptionHandler, announcementHandler, channelMonitorUserHandler, channelMonitorV2Handler, adminHandlers, gatewayHandler, openAIGatewayHandler, handlerSettingHandler, totpHandler, passkeyHandler, handlerPaymentHandler, paymentWebhookHandler, availableChannelHandler, modelPlazaHandler, asyncImageHandler, batchImageHandler, workbenchHandler, chatHandler, idempotencyCoordinator, idempotencyCleanupService, openAIQuotaAutoResetService)
 	jwtAuthMiddleware := middleware.NewJWTAuthMiddleware(authService, userService, settingService, auditLogService)
 	optionalJWTAuthMiddleware := middleware.NewOptionalJWTAuthMiddleware(authService, userService, settingService, auditLogService)
 	adminAuthMiddleware := middleware.NewAdminAuthMiddleware(authService, userService, settingService, auditLogService)
 	apiKeyAuthMiddleware := middleware.ProvideSmartRoutingAPIKeyAuthMiddleware(apiKeyService, subscriptionService, configConfig, openAIGatewayService, gatewayService, balanceNotifyService)
 	auditLogMiddleware := middleware.NewAuditLogMiddleware(auditLogService)
 	stepUpAuthMiddleware := middleware.NewStepUpAuthMiddleware(totpService, userService, settingService)
-	engine := server.ProvideRouter(configConfig, handlers, jwtAuthMiddleware, optionalJWTAuthMiddleware, adminAuthMiddleware, apiKeyAuthMiddleware, auditLogMiddleware, stepUpAuthMiddleware, apiKeyService, subscriptionService, opsService, settingService, compositeRouteResolver, redisClient, balanceNotifyService)
+	engine, err := server.ProvideRouter(configConfig, handlers, jwtAuthMiddleware, optionalJWTAuthMiddleware, adminAuthMiddleware, apiKeyAuthMiddleware, auditLogMiddleware, stepUpAuthMiddleware, apiKeyService, subscriptionService, opsService, settingService, compositeRouteResolver, redisClient, balanceNotifyService, chatService)
+	if err != nil {
+		return nil, err
+	}
 	httpServer := server.ProvideHTTPServer(configConfig, engine)
 	opsMetricsCollector := service.ProvideOpsMetricsCollector(opsRepository, settingRepository, accountRepository, concurrencyService, db, redisClient, configConfig)
 	opsAggregationService := service.ProvideOpsAggregationService(opsRepository, settingRepository, db, redisClient, configConfig)
@@ -464,6 +478,12 @@ func provideCleanup(
 		}
 
 		parallelSteps := []cleanupStep{
+			{"ChatService", func() error {
+				if handlers != nil && handlers.Chat != nil {
+					return handlers.Chat.Stop()
+				}
+				return nil
+			}},
 			{"TrafficDelivery", func() error {
 				if handlers != nil && handlers.Admin != nil && handlers.Admin.Usage != nil {
 					handlers.Admin.Usage.StopTrafficDelivery()

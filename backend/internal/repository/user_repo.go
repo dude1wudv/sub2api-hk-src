@@ -177,7 +177,7 @@ func (r *userRepository) create(ctx context.Context, userIn *service.User, guard
 }
 
 func (r *userRepository) GetByID(ctx context.Context, id int64) (*service.User, error) {
-	m, err := r.client.User.Query().Where(dbuser.IDEQ(id)).Only(ctx)
+	m, err := clientFromContext(ctx, r.client).User.Query().Where(dbuser.IDEQ(id)).Only(ctx)
 	if err != nil {
 		return nil, translatePersistenceError(err, service.ErrUserNotFound, nil)
 	}
@@ -496,6 +496,12 @@ func (r *userRepository) Delete(ctx context.Context, id int64) error {
 
 // deleteUser 在给定 client（可能是外部事务 client）上删除用户及其身份关联记录，自身不开启/提交事务。
 func (r *userRepository) deleteUser(ctx context.Context, exec *dbent.Client, id int64) error {
+	if _, err := exec.User.Query().Where(dbuser.IDEQ(id)).ForUpdate().Only(ctx); err != nil {
+		return translatePersistenceError(err, service.ErrUserNotFound, nil)
+	}
+	if err := deleteChatUser(ctx, exec, id); err != nil {
+		return err
+	}
 	identityIDs, err := exec.AuthIdentity.Query().
 		Where(authidentity.UserIDEQ(id)).
 		IDs(ctx)
@@ -1461,7 +1467,7 @@ func (r *userRepository) loadAllowedGroups(ctx context.Context, userIDs []int64)
 		return out, nil
 	}
 
-	rows, err := r.client.UserAllowedGroup.Query().
+	rows, err := clientFromContext(ctx, r.client).UserAllowedGroup.Query().
 		Where(userallowedgroup.UserIDIn(userIDs...)).
 		All(ctx)
 	if err != nil {

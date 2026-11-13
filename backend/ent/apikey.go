@@ -90,9 +90,11 @@ type APIKeyEdges struct {
 	WorkbenchCredentials []*WorkbenchCredential `json:"workbench_credentials,omitempty"`
 	// WorkbenchLaunchGrants holds the value of the workbench_launch_grants edge.
 	WorkbenchLaunchGrants []*WorkbenchLaunchGrant `json:"workbench_launch_grants,omitempty"`
+	// ChatCredentials holds the value of the chat_credentials edge.
+	ChatCredentials []*ChatCredential `json:"chat_credentials,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [5]bool
+	loadedTypes [6]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -142,6 +144,15 @@ func (e APIKeyEdges) WorkbenchLaunchGrantsOrErr() ([]*WorkbenchLaunchGrant, erro
 		return e.WorkbenchLaunchGrants, nil
 	}
 	return nil, &NotLoadedError{edge: "workbench_launch_grants"}
+}
+
+// ChatCredentialsOrErr returns the ChatCredentials value or an error if the edge
+// was not loaded in eager-loading.
+func (e APIKeyEdges) ChatCredentialsOrErr() ([]*ChatCredential, error) {
+	if e.loadedTypes[5] {
+		return e.ChatCredentials, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_credentials"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -385,6 +396,11 @@ func (_m *APIKey) QueryWorkbenchCredentials() *WorkbenchCredentialQuery {
 // QueryWorkbenchLaunchGrants queries the "workbench_launch_grants" edge of the APIKey entity.
 func (_m *APIKey) QueryWorkbenchLaunchGrants() *WorkbenchLaunchGrantQuery {
 	return NewAPIKeyClient(_m.config).QueryWorkbenchLaunchGrants(_m)
+}
+
+// QueryChatCredentials queries the "chat_credentials" edge of the APIKey entity.
+func (_m *APIKey) QueryChatCredentials() *ChatCredentialQuery {
+	return NewAPIKeyClient(_m.config).QueryChatCredentials(_m)
 }
 
 // Update returns a builder for updating this APIKey.

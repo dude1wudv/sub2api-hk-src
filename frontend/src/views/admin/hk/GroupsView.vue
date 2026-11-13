@@ -1198,6 +1198,7 @@
         </div>
 </section>
 <section v-show="createTab === 'routing'" id="create-group-form-routing-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="create-group-form-routing-tab" data-admin-tab="routing">
+  <ChatModelPoliciesEditor ref="createChatPoliciesRef" v-model="createForm.chat_model_policies" />
 <ReasoningEffortPolicyFields
           v-if="supportsReasoningEffortPolicyPlatform(createForm.platform)"
           ref="createReasoningEffortPolicyRef"
@@ -2866,6 +2867,7 @@
         </div>
 </section>
 <section v-show="editTab === 'routing'" id="edit-group-form-routing-panel" class="admin-form-panel" role="tabpanel" aria-labelledby="edit-group-form-routing-tab" data-admin-tab="routing">
+  <ChatModelPoliciesEditor ref="editChatPoliciesRef" v-model="editForm.chat_model_policies" />
 <ReasoningEffortPolicyFields
           v-if="supportsReasoningEffortPolicyPlatform(editForm.platform)"
           ref="editReasoningEffortPolicyRef"
@@ -4323,6 +4325,7 @@ import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { unref } from 'vue'
 import AdminFormTabs from '@/components/admin/AdminFormTabs.vue'
+import ChatModelPoliciesEditor from '@/components/admin/ChatModelPoliciesEditor.vue'
 import { useAdminFormTabs } from '@/composables/useAdminFormTabs'
 import { useAdminDraft } from '@/composables/useAdminDraft'
 import ActionMenu from '@/components/common/ActionMenu.vue'
@@ -4336,6 +4339,7 @@ import { adminAPI } from "@/api/admin";
 import type {
   AdminGroup,
   CodexModelsManifestConfig,
+  ChatModelPolicies,
   CompositeModelRoute,
   CompositeModelRouteInput,
   CompositeRouteDecision,
@@ -4987,6 +4991,8 @@ const createCodexManifestDefaults = (): CodexModelsManifestConfig => ({
   fallback_to_scheduler: false,
 });
 const editCodexManifestConfig = ref<CodexModelsManifestConfig>(createCodexManifestDefaults());
+const createChatPoliciesRef = ref<{ validate: () => boolean } | null>(null);
+const editChatPoliciesRef = ref<{ validate: () => boolean } | null>(null);
 const editCodexManifestAccountNames = ref<Record<number, string>>({});
 const modelAllowlistCandidatesTracker = createModelAllowlistCandidatesTracker();
 const createModelAllowlistSelectedCount = computed(
@@ -5059,6 +5065,7 @@ const createForm = reactive({
   video_price_720p: null as number | null,
   video_price_1080p: null as number | null,
   video_model_prices: createVideoModelPricesForm(),
+  chat_model_policies: {} as ChatModelPolicies,
   // Codex 网页搜索按次计费（仅 openai 平台使用）；null = 使用默认价 0.01
   web_search_price_per_call: null as number | null,
   search_price_per_1k: null as number | null,
@@ -5428,6 +5435,7 @@ const editForm = reactive({
   video_price_720p: null as number | null,
   video_price_1080p: null as number | null,
   video_model_prices: createVideoModelPricesForm(),
+  chat_model_policies: {} as ChatModelPolicies,
   // Codex 网页搜索按次计费（仅 openai 平台使用）；null = 使用默认价 0.01
   web_search_price_per_call: null as number | null,
   search_price_per_1k: null as number | null,
@@ -5904,6 +5912,7 @@ const closeCreateModal = () => {
   createForm.video_price_720p = null;
   createForm.video_price_1080p = null;
   createForm.video_model_prices = createVideoModelPricesForm();
+  createForm.chat_model_policies = {};
   createForm.long_context_pricing_enabled = true;
   createForm.force_openai_fast = false;
   createForm.free_openai_fast = false;
@@ -6000,6 +6009,10 @@ const validateGroupReasoningMultipliers = (pricing: PricingFormEntry[]): boolean
 
 const handleCreateGroup = async () => {
   if (submitting.value) return
+  if (createChatPoliciesRef.value?.validate() === false) {
+    createTab.value = 'routing';
+    return;
+  }
   if (!createForm.name.trim()) {
     createTab.value = 'basic';
     appStore.showError(t("admin.groups.nameRequired"));
@@ -6226,6 +6239,9 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.video_model_prices = createVideoModelPricesForm(
     group.video_model_prices,
   );
+  editForm.chat_model_policies = Object.fromEntries(
+    Object.entries(group.chat_model_policies ?? {}).map(([model, policy]) => [model, { ...policy }]),
+  );
   editForm.web_search_price_per_call = group.web_search_price_per_call ?? null;
   editForm.search_price_per_1k = group.search_price_per_1k ?? null;
   editForm.audio_realtime_price_per_min = group.audio_realtime_price_per_min ?? null;
@@ -6337,6 +6353,7 @@ const closeEditModal = () => {
   editForm.video_price_720p = null;
   editForm.video_price_1080p = null;
   editForm.video_model_prices = createVideoModelPricesForm();
+  editForm.chat_model_policies = {};
   editForm.long_context_pricing_enabled = true;
   editForm.force_openai_fast = false;
   editForm.free_openai_fast = false;
@@ -6359,6 +6376,10 @@ const closeEditModal = () => {
 const handleUpdateGroup = async () => {
   if (submitting.value) return
   if (!editingGroup.value) return;
+  if (editChatPoliciesRef.value?.validate() === false) {
+    editTab.value = 'routing';
+    return;
+  }
   if (!editForm.name.trim()) {
     editTab.value = 'basic';
     appStore.showError(t("admin.groups.nameRequired"));
@@ -6435,6 +6456,7 @@ const handleUpdateGroup = async () => {
       video_model_prices: serializeVideoModelPrices(
         editForm.video_model_prices,
       ),
+      chat_model_policies: editForm.chat_model_policies,
       fallback_group_id:
         editForm.fallback_group_id === null ? 0 : editForm.fallback_group_id,
       fallback_group_id_on_invalid_request:

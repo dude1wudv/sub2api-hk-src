@@ -142,6 +142,15 @@ func (User) Edges() []ent.Edge {
 		edge.To("platform_quotas", UserPlatformQuota.Type),
 		edge.To("workbench_credentials", WorkbenchCredential.Type),
 		edge.To("workbench_launch_grants", WorkbenchLaunchGrant.Type),
+		edge.To("chat_model_presets", ChatModelPreset.Type),
+		edge.To("chat_credentials", ChatCredential.Type),
+		edge.To("chat_sessions", ChatSession.Type),
+		edge.To("chat_generation_runs", ChatGenerationRun.Type),
+		edge.To("chat_attachments", ChatAttachment.Type),
+		edge.To("chat_session_attachments", ChatSessionAttachment.Type),
+		edge.To("chat_attachment_uploads", ChatAttachmentUpload.Type),
+		edge.To("chat_imports", ChatImport.Type),
+		edge.To("chat_preferences", ChatPreference.Type),
 	}
 }
 

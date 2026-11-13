@@ -35,6 +35,7 @@ backend/.gocache/
 node_modules/
 frontend/node_modules/
 frontend/dist/
+frontend/public/chat-app/
 *.local
 *.tsbuildinfo
 vite.config.d.ts
@@ -125,6 +126,11 @@ CLAUDE.md
 scripts
 !backend/scripts/
 !backend/scripts/resolve-version.sh
+!frontend/scripts/
+!frontend/scripts/build-chat.mjs
+!frontend/scripts/build-chat.test.mjs
+/deploy/__pycache__/
+/deploy/tests/__pycache__/
 .code-review-state
 #openspec/
 code-reviews/

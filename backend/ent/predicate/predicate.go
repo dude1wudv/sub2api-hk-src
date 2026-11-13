@@ -48,6 +48,33 @@ type ChannelMonitorHistory func(*sql.Selector)
 // ChannelMonitorRequestTemplate is the predicate function for channelmonitorrequesttemplate builders.
 type ChannelMonitorRequestTemplate func(*sql.Selector)
 
+// ChatAttachment is the predicate function for chatattachment builders.
+type ChatAttachment func(*sql.Selector)
+
+// ChatAttachmentUpload is the predicate function for chatattachmentupload builders.
+type ChatAttachmentUpload func(*sql.Selector)
+
+// ChatCredential is the predicate function for chatcredential builders.
+type ChatCredential func(*sql.Selector)
+
+// ChatGenerationRun is the predicate function for chatgenerationrun builders.
+type ChatGenerationRun func(*sql.Selector)
+
+// ChatImport is the predicate function for chatimport builders.
+type ChatImport func(*sql.Selector)
+
+// ChatModelPreset is the predicate function for chatmodelpreset builders.
+type ChatModelPreset func(*sql.Selector)
+
+// ChatPreference is the predicate function for chatpreference builders.
+type ChatPreference func(*sql.Selector)
+
+// ChatSession is the predicate function for chatsession builders.
+type ChatSession func(*sql.Selector)
+
+// ChatSessionAttachment is the predicate function for chatsessionattachment builders.
+type ChatSessionAttachment func(*sql.Selector)
+
 // CompositeModelRoute is the predicate function for compositemodelroute builders.
 type CompositeModelRoute func(*sql.Selector)
 

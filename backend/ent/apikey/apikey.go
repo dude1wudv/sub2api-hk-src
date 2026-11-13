@@ -77,6 +77,8 @@ const (
 	EdgeWorkbenchCredentials = "workbench_credentials"
 	// EdgeWorkbenchLaunchGrants holds the string denoting the workbench_launch_grants edge name in mutations.
 	EdgeWorkbenchLaunchGrants = "workbench_launch_grants"
+	// EdgeChatCredentials holds the string denoting the chat_credentials edge name in mutations.
+	EdgeChatCredentials = "chat_credentials"
 	// Table holds the table name of the apikey in the database.
 	Table = "api_keys"
 	// UserTable is the table that holds the user relation/edge.
@@ -114,6 +116,13 @@ const (
 	WorkbenchLaunchGrantsInverseTable = "workbench_launch_grants"
 	// WorkbenchLaunchGrantsColumn is the table column denoting the workbench_launch_grants relation/edge.
 	WorkbenchLaunchGrantsColumn = "api_key_id"
+	// ChatCredentialsTable is the table that holds the chat_credentials relation/edge.
+	ChatCredentialsTable = "chat_credentials"
+	// ChatCredentialsInverseTable is the table name for the ChatCredential entity.
+	// It exists in this package in order to avoid circular dependency with the "chatcredential" package.
+	ChatCredentialsInverseTable = "chat_credentials"
+	// ChatCredentialsColumn is the table column denoting the chat_credentials relation/edge.
+	ChatCredentialsColumn = "api_key_id"
 )
 
 // Columns holds all SQL columns for apikey fields.
@@ -383,6 +392,20 @@ func ByWorkbenchLaunchGrants(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOp
 		sqlgraph.OrderByNeighborTerms(s, newWorkbenchLaunchGrantsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByChatCredentialsCount orders the results by chat_credentials count.
+func ByChatCredentialsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatCredentialsStep(), opts...)
+	}
+}
+
+// ByChatCredentials orders the results by chat_credentials terms.
+func ByChatCredentials(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatCredentialsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -416,5 +439,12 @@ func newWorkbenchLaunchGrantsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(WorkbenchLaunchGrantsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, WorkbenchLaunchGrantsTable, WorkbenchLaunchGrantsColumn),
+	)
+}
+func newChatCredentialsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatCredentialsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatCredentialsTable, ChatCredentialsColumn),
 	)
 }

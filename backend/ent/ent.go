@@ -26,6 +26,15 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitordailyrollup"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
+	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
+	"github.com/Wei-Shaw/sub2api/ent/chatgenerationrun"
+	"github.com/Wei-Shaw/sub2api/ent/chatimport"
+	"github.com/Wei-Shaw/sub2api/ent/chatmodelpreset"
+	"github.com/Wei-Shaw/sub2api/ent/chatpreference"
+	"github.com/Wei-Shaw/sub2api/ent/chatsession"
+	"github.com/Wei-Shaw/sub2api/ent/chatsessionattachment"
 	"github.com/Wei-Shaw/sub2api/ent/compositemodelroute"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
@@ -128,6 +137,15 @@ func checkColumn(t, c string) error {
 			channelmonitordailyrollup.Table:     channelmonitordailyrollup.ValidColumn,
 			channelmonitorhistory.Table:         channelmonitorhistory.ValidColumn,
 			channelmonitorrequesttemplate.Table: channelmonitorrequesttemplate.ValidColumn,
+			chatattachment.Table:                chatattachment.ValidColumn,
+			chatattachmentupload.Table:          chatattachmentupload.ValidColumn,
+			chatcredential.Table:                chatcredential.ValidColumn,
+			chatgenerationrun.Table:             chatgenerationrun.ValidColumn,
+			chatimport.Table:                    chatimport.ValidColumn,
+			chatmodelpreset.Table:               chatmodelpreset.ValidColumn,
+			chatpreference.Table:                chatpreference.ValidColumn,
+			chatsession.Table:                   chatsession.ValidColumn,
+			chatsessionattachment.Table:         chatsessionattachment.ValidColumn,
 			compositemodelroute.Table:           compositemodelroute.ValidColumn,
 			errorpassthroughrule.Table:          errorpassthroughrule.ValidColumn,
 			group.Table:                         group.ValidColumn,

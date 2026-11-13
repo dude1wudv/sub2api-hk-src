@@ -26,6 +26,8 @@ type Group struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// DeletedAt holds the value of the "deleted_at" field.
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	// ChatModelPolicies holds the value of the "chat_model_policies" field.
+	ChatModelPolicies map[string]domain.ChatModelPolicy `json:"chat_model_policies,omitempty"`
 	// SlowTtftExemptUntil holds the value of the "slow_ttft_exempt_until" field.
 	SlowTtftExemptUntil *time.Time `json:"slow_ttft_exempt_until,omitempty"`
 	// IndependentScheduling holds the value of the "independent_scheduling" field.
@@ -186,6 +188,10 @@ type GroupEdges struct {
 	Subscriptions []*UserSubscription `json:"subscriptions,omitempty"`
 	// UsageLogs holds the value of the usage_logs edge.
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
+	// ChatModelPresets holds the value of the chat_model_presets edge.
+	ChatModelPresets []*ChatModelPreset `json:"chat_model_presets,omitempty"`
+	// ChatCredentials holds the value of the chat_credentials edge.
+	ChatCredentials []*ChatCredential `json:"chat_credentials,omitempty"`
 	// Accounts holds the value of the accounts edge.
 	Accounts []*Account `json:"accounts,omitempty"`
 	// AllowedUsers holds the value of the allowed_users edge.
@@ -196,7 +202,7 @@ type GroupEdges struct {
 	UserAllowedGroups []*UserAllowedGroup `json:"user_allowed_groups,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [8]bool
+	loadedTypes [10]bool
 }
 
 // APIKeysOrErr returns the APIKeys value or an error if the edge
@@ -235,10 +241,28 @@ func (e GroupEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 	return nil, &NotLoadedError{edge: "usage_logs"}
 }
 
+// ChatModelPresetsOrErr returns the ChatModelPresets value or an error if the edge
+// was not loaded in eager-loading.
+func (e GroupEdges) ChatModelPresetsOrErr() ([]*ChatModelPreset, error) {
+	if e.loadedTypes[4] {
+		return e.ChatModelPresets, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_model_presets"}
+}
+
+// ChatCredentialsOrErr returns the ChatCredentials value or an error if the edge
+// was not loaded in eager-loading.
+func (e GroupEdges) ChatCredentialsOrErr() ([]*ChatCredential, error) {
+	if e.loadedTypes[5] {
+		return e.ChatCredentials, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_credentials"}
+}
+
 // AccountsOrErr returns the Accounts value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) AccountsOrErr() ([]*Account, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[6] {
 		return e.Accounts, nil
 	}
 	return nil, &NotLoadedError{edge: "accounts"}
@@ -247,7 +271,7 @@ func (e GroupEdges) AccountsOrErr() ([]*Account, error) {
 // AllowedUsersOrErr returns the AllowedUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) AllowedUsersOrErr() ([]*User, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[7] {
 		return e.AllowedUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "allowed_users"}
@@ -256,7 +280,7 @@ func (e GroupEdges) AllowedUsersOrErr() ([]*User, error) {
 // AccountGroupsOrErr returns the AccountGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) AccountGroupsOrErr() ([]*AccountGroup, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[8] {
 		return e.AccountGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "account_groups"}
@@ -265,7 +289,7 @@ func (e GroupEdges) AccountGroupsOrErr() ([]*AccountGroup, error) {
 // UserAllowedGroupsOrErr returns the UserAllowedGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) UserAllowedGroupsOrErr() ([]*UserAllowedGroup, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[9] {
 		return e.UserAllowedGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "user_allowed_groups"}
@@ -276,7 +300,7 @@ func (*Group) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case group.FieldI18n, group.FieldVideoModelPrices, group.FieldModelPricing, group.FieldModelRouting, group.FieldSupportedModelScopes, group.FieldMessagesDispatchModelConfig, group.FieldModelAllowlist, group.FieldCodexModelsManifestConfig, group.FieldReasoningEffortMappings:
+		case group.FieldChatModelPolicies, group.FieldI18n, group.FieldVideoModelPrices, group.FieldModelPricing, group.FieldModelRouting, group.FieldSupportedModelScopes, group.FieldMessagesDispatchModelConfig, group.FieldModelAllowlist, group.FieldCodexModelsManifestConfig, group.FieldReasoningEffortMappings:
 			values[i] = new([]byte)
 		case group.FieldIndependentScheduling, group.FieldSchedulingInitialized, group.FieldPeakRateEnabled, group.FieldIsExclusive, group.FieldAllowImageGeneration, group.FieldAllowBatchImageGeneration, group.FieldImageCountBilling, group.FieldImageRateIndependent, group.FieldVideoRateIndependent, group.FieldLongContextPricingEnabled, group.FieldClaudeCodeOnly, group.FieldModelRoutingEnabled, group.FieldMcpXMLInject, group.FieldAllowMessagesDispatch, group.FieldAllowLive, group.FieldForceOpenaiFast, group.FieldFreeOpenaiFast, group.FieldForceOpenaiUltrafast, group.FieldFreeOpenaiUltrafast, group.FieldRequireOauthOnly, group.FieldRequirePrivacySet, group.FieldProfitControlEnabled:
 			values[i] = new(sql.NullBool)
@@ -327,6 +351,14 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DeletedAt = new(time.Time)
 				*_m.DeletedAt = value.Time
+			}
+		case group.FieldChatModelPolicies:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field chat_model_policies", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.ChatModelPolicies); err != nil {
+					return fmt.Errorf("unmarshal field chat_model_policies: %w", err)
+				}
 			}
 		case group.FieldSlowTtftExemptUntil:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -832,6 +864,16 @@ func (_m *Group) QueryUsageLogs() *UsageLogQuery {
 	return NewGroupClient(_m.config).QueryUsageLogs(_m)
 }
 
+// QueryChatModelPresets queries the "chat_model_presets" edge of the Group entity.
+func (_m *Group) QueryChatModelPresets() *ChatModelPresetQuery {
+	return NewGroupClient(_m.config).QueryChatModelPresets(_m)
+}
+
+// QueryChatCredentials queries the "chat_credentials" edge of the Group entity.
+func (_m *Group) QueryChatCredentials() *ChatCredentialQuery {
+	return NewGroupClient(_m.config).QueryChatCredentials(_m)
+}
+
 // QueryAccounts queries the "accounts" edge of the Group entity.
 func (_m *Group) QueryAccounts() *AccountQuery {
 	return NewGroupClient(_m.config).QueryAccounts(_m)
@@ -885,6 +927,9 @@ func (_m *Group) String() string {
 		builder.WriteString("deleted_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("chat_model_policies=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ChatModelPolicies))
 	builder.WriteString(", ")
 	if v := _m.SlowTtftExemptUntil; v != nil {
 		builder.WriteString("slow_ttft_exempt_until=")

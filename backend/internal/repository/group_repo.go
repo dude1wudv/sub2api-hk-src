@@ -123,6 +123,7 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *servi
 		SetNillableVideoPrice720p(groupIn.VideoPrice720P).
 		SetNillableVideoPrice1080p(groupIn.VideoPrice1080P).
 		SetVideoModelPrices(service.NormalizeVideoModelPrices(groupIn.VideoModelPrices)).
+		SetChatModelPolicies(service.CloneChatModelPolicies(groupIn.ChatModelPolicies)).
 		SetNillableWebSearchPricePerCall(groupIn.WebSearchPricePerCall).
 		SetNillableSearchPricePer1k(groupIn.SearchPricePer1k).
 		SetNillableAudioRealtimePricePerMin(groupIn.AudioRealtimePricePerMin).
@@ -276,7 +277,7 @@ func (r *groupRepository) GetByID(ctx context.Context, id int64) (*service.Group
 
 func (r *groupRepository) GetByIDLite(ctx context.Context, id int64) (*service.Group, error) {
 	// AccountCount is intentionally not loaded here; use GetByID when needed.
-	m, err := r.client.Group.Query().
+	m, err := clientFromContext(ctx, r.client).Group.Query().
 		Where(group.IDEQ(id)).
 		Only(ctx)
 	if err != nil {
@@ -318,6 +319,7 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		SetNillableVideoPrice720p(groupIn.VideoPrice720P).
 		SetNillableVideoPrice1080p(groupIn.VideoPrice1080P).
 		SetVideoModelPrices(service.NormalizeVideoModelPrices(groupIn.VideoModelPrices)).
+		SetChatModelPolicies(service.CloneChatModelPolicies(groupIn.ChatModelPolicies)).
 		SetLongContextPricingEnabled(groupIn.LongContextPricingEnabled).
 		SetModelPricing(modelPricing).
 		SetDefaultValidityDays(groupIn.DefaultValidityDays).
@@ -690,7 +692,7 @@ func groupListOrder(params pagination.PaginationParams) []func(*entsql.Selector)
 }
 
 func (r *groupRepository) ListActive(ctx context.Context) ([]service.Group, error) {
-	groups, err := r.client.Group.Query().
+	groups, err := clientFromContext(ctx, r.client).Group.Query().
 		Where(group.StatusEQ(service.StatusActive)).
 		Order(dbent.Asc(group.FieldSortOrder), dbent.Asc(group.FieldID)).
 		All(ctx)
@@ -1048,7 +1050,7 @@ func (r *groupRepository) loadAccountCounts(ctx context.Context, groupIDs []int6
 		return counts, nil
 	}
 
-	rows, err := r.sql.QueryContext(
+	rows, err := sqlExecutorFromContext(ctx, r.sql).QueryContext(
 		ctx,
 		fmt.Sprintf(`SELECT ag.group_id,
 			COUNT(*) FILTER (WHERE a.deleted_at IS NULL) AS total,

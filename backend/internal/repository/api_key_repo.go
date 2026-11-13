@@ -44,7 +44,7 @@ func (r *apiKeyRepository) activeQuery() *dbent.APIKeyQuery {
 }
 
 func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) error {
-	builder := r.client.APIKey.Create().
+	builder := clientFromContext(ctx, r.client).APIKey.Create().
 		SetRoutingGroupIds(key.RoutingGroupIDs).
 		SetAnthropicCacheTTLMode(service.NormalizeAnthropicCacheTTLMode(key.AnthropicCacheTTLMode)).
 		SetConcurrencyLimit(key.ConcurrencyLimit).
@@ -202,6 +202,7 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 				group.FieldVideoPrice720p,
 				group.FieldVideoPrice1080p,
 				group.FieldVideoModelPrices,
+				group.FieldChatModelPolicies,
 				group.FieldWebSearchPricePerCall,
 				group.FieldSearchPricePer1k,
 				group.FieldAudioRealtimePricePerMin,
@@ -631,7 +632,7 @@ func (r *apiKeyRepository) VerifyOwnership(ctx context.Context, userID int64, ap
 }
 
 func (r *apiKeyRepository) CountByUserID(ctx context.Context, userID int64) (int64, error) {
-	count, err := r.activeQuery().Where(apikey.UserIDEQ(userID)).Count(ctx)
+	count, err := clientFromContext(ctx, r.client).APIKey.Query().Where(apikey.DeletedAtIsNil(), apikey.UserIDEQ(userID)).Count(ctx)
 	return int64(count), err
 }
 
@@ -1086,6 +1087,7 @@ func groupEntityToService(g *dbent.Group) *service.Group {
 		VideoPrice720P:                  g.VideoPrice720p,
 		VideoPrice1080P:                 g.VideoPrice1080p,
 		VideoModelPrices:                service.NormalizeVideoModelPrices(g.VideoModelPrices),
+		ChatModelPolicies:               service.CloneChatModelPolicies(g.ChatModelPolicies),
 		WebSearchPricePerCall:           g.WebSearchPricePerCall,
 		SearchPricePer1k:                g.SearchPricePer1k,
 		AudioRealtimePricePerMin:        g.AudioRealtimePricePerMin,

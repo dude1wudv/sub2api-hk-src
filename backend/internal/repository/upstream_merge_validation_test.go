@@ -23,11 +23,12 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 343
+	candidateMigrationCount         = 344
 	mcpOAuthMigration               = "249_mcp_oauth.sql"
 )
 
 var currentOnlineFollowupMigrations = []string{
+	"342_user_chat.sql",
 	"341_add_usage_log_input_estimation.sql",
 	"339_group_rate_history.sql",
 	"340_api_key_anthropic_cache_ttl_mode.sql",
@@ -37,6 +38,7 @@ var currentOnlineFollowupMigrations = []string{
 }
 
 var postHKBaselineMigrations = []string{
+	"342_user_chat.sql",
 	"341_add_usage_log_input_estimation.sql",
 	"339_group_rate_history.sql",
 	"340_api_key_anthropic_cache_ttl_mode.sql",
@@ -63,6 +65,7 @@ var currentReleaseMigrations = []string{
 }
 
 var candidateOnlyMigrations = []string{
+	"342_user_chat.sql",
 	"341_add_usage_log_input_estimation.sql",
 	"339_group_rate_history.sql",
 	"340_api_key_anthropic_cache_ttl_mode.sql",
@@ -273,7 +276,7 @@ func TestUpstreamMergeValidation_FeatureBaselineHistoryAndFreshSchemaConverge(t 
 	ctx := context.Background()
 	history := fstest.MapFS{}
 	for _, name := range migrationFiles(t, migrations.FS) {
-		if name == "339_group_rate_history.sql" || name == "340_api_key_anthropic_cache_ttl_mode.sql" || name == "341_add_usage_log_input_estimation.sql" {
+		if name == "339_group_rate_history.sql" || name == "340_api_key_anthropic_cache_ttl_mode.sql" || name == "341_add_usage_log_input_estimation.sql" || name == "342_user_chat.sql" {
 			continue
 		}
 		content, err := migrations.FS.ReadFile(name)

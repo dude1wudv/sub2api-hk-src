@@ -110,6 +110,7 @@ type Config struct {
 	Idempotency                   IdempotencyConfig             `mapstructure:"idempotency"`
 	BatchImage                    BatchImageConfig              `mapstructure:"batch_image"`
 	ImageStorage                  ImageStorageConfig            `mapstructure:"image_storage"`
+	Chat                          ChatConfig                    `mapstructure:"chat"`
 	Plugins                       PluginConfig                  `mapstructure:"plugins"`
 	HeliosWorkbench               HeliosWorkbenchConfig         `mapstructure:"helios_workbench"`
 	SimpleModeKeyRateLimitEnabled bool                          `mapstructure:"simple_mode_key_rate_limit_enabled" yaml:"simple_mode_key_rate_limit_enabled"`
@@ -321,6 +322,12 @@ type BatchImageConfig struct {
 	VertexOutputRetentionHours   int    `mapstructure:"vertex_output_retention_hours"`
 	VertexBatchPredictionBaseURL string `mapstructure:"vertex_batch_prediction_base_url"`
 	VertexGCSBaseURL             string `mapstructure:"vertex_gcs_base_url"`
+}
+
+// ChatConfig keeps private chat files in the application's persistent data directory.
+type ChatConfig struct {
+	StorageDir          string `mapstructure:"storage_dir"`
+	UserStorageMaxBytes int64  `mapstructure:"user_storage_max_bytes"`
 }
 
 // ImageStorageConfig 配置异步图片任务结果上传的 S3 兼容对象存储。
@@ -2161,6 +2168,8 @@ func configureConfigSource(setConfigFile, addConfigPath func(string)) {
 
 func setDefaults() {
 	viper.SetDefault("run_mode", RunModeStandard)
+	viper.SetDefault("chat.storage_dir", "")
+	viper.SetDefault("chat.user_storage_max_bytes", int64(2<<30))
 	// Hosted HeliosGen workbench handoff. Defaults are registered explicitly so
 	// AutomaticEnv includes every key in Viper's AllKeys set.
 	viper.SetDefault("helios_workbench.enabled", false)

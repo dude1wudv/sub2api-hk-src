@@ -515,6 +515,16 @@ func DeletedAtNotNil() predicate.Group {
 	return predicate.Group(sql.FieldNotNull(FieldDeletedAt))
 }
 
+// ChatModelPoliciesIsNil applies the IsNil predicate on the "chat_model_policies" field.
+func ChatModelPoliciesIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldChatModelPolicies))
+}
+
+// ChatModelPoliciesNotNil applies the NotNil predicate on the "chat_model_policies" field.
+func ChatModelPoliciesNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldChatModelPolicies))
+}
+
 // SlowTtftExemptUntilEQ applies the EQ predicate on the "slow_ttft_exempt_until" field.
 func SlowTtftExemptUntilEQ(v time.Time) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldSlowTtftExemptUntil, v))
@@ -2974,6 +2984,52 @@ func HasUsageLogs() predicate.Group {
 func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.Group {
 	return predicate.Group(func(s *sql.Selector) {
 		step := newUsageLogsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasChatModelPresets applies the HasEdge predicate on the "chat_model_presets" edge.
+func HasChatModelPresets() predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ChatModelPresetsTable, ChatModelPresetsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasChatModelPresetsWith applies the HasEdge predicate on the "chat_model_presets" edge with a given conditions (other predicates).
+func HasChatModelPresetsWith(preds ...predicate.ChatModelPreset) predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := newChatModelPresetsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasChatCredentials applies the HasEdge predicate on the "chat_credentials" edge.
+func HasChatCredentials() predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ChatCredentialsTable, ChatCredentialsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasChatCredentialsWith applies the HasEdge predicate on the "chat_credentials" edge with a given conditions (other predicates).
+func HasChatCredentialsWith(preds ...predicate.ChatCredential) predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := newChatCredentialsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

@@ -129,6 +129,10 @@ func SecurityHeaders(cfg config.CSPConfig, getFrameSrcOrigins func() []string) g
 
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("X-Frame-Options", "DENY")
+		if c.Request.URL.Path == "/chat-app" || strings.HasPrefix(c.Request.URL.Path, "/chat-app/") {
+			c.Header("X-Frame-Options", "SAMEORIGIN")
+			finalPolicy = chatFrameAncestors(finalPolicy)
+		}
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		if isAPIRoutePath(c) {
 			c.Next()
@@ -149,6 +153,21 @@ func SecurityHeaders(cfg config.CSPConfig, getFrameSrcOrigins func() []string) g
 		}
 		c.Next()
 	}
+}
+
+// Replace every configured frame-ancestors directive (including duplicates),
+// preserving all other directives and their values exactly.
+func chatFrameAncestors(policy string) string {
+	parts := strings.Split(policy, ";")
+	kept := make([]string, 0, len(parts)+1)
+	for _, part := range parts {
+		fields := strings.Fields(part)
+		if len(fields) > 0 && strings.EqualFold(fields[0], "frame-ancestors") {
+			continue
+		}
+		kept = append(kept, part)
+	}
+	return strings.TrimRight(strings.Join(kept, ";"), "; ") + "; frame-ancestors 'self'"
 }
 
 func isAPIRoutePath(c *gin.Context) bool {

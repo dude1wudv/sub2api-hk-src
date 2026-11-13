@@ -135,6 +135,7 @@ func (APIKey) Edges() []ent.Edge {
 		edge.To("usage_logs", UsageLog.Type),
 		edge.To("workbench_credentials", WorkbenchCredential.Type),
 		edge.To("workbench_launch_grants", WorkbenchLaunchGrant.Type),
+		edge.To("chat_credentials", ChatCredential.Type),
 	}
 }
 

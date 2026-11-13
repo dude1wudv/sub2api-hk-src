@@ -6,6 +6,7 @@ import { resetWorkspaceWarmup, scheduleWorkspaceWarmup } from '@/composables/use
 const workspacePaths = new Set([
   '/dashboard',
   '/keys',
+  '/chat-models',
   '/batch-image',
   '/usage',
   '/traffic',

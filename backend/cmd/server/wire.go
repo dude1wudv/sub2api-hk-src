@@ -53,6 +53,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 		// BuildInfo provider
 		provideServiceBuildInfo,
 		providePluginHostInfo,
+		provideChatService,
 
 		// Cleanup function provider
 		provideCleanup,
@@ -147,6 +148,12 @@ func provideCleanup(
 
 		// 应用层清理步骤可并行执行，基础设施资源（Redis/Ent）最后按顺序关闭。
 		parallelSteps := []cleanupStep{
+			{"ChatService", func() error {
+				if handlers != nil && handlers.Chat != nil {
+					return handlers.Chat.Stop()
+				}
+				return nil
+			}},
 			{"TrafficDelivery", func() error {
 				if handlers != nil && handlers.Admin != nil && handlers.Admin.Usage != nil {
 					handlers.Admin.Usage.StopTrafficDelivery()

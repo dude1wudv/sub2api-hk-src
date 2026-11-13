@@ -982,6 +982,12 @@ export default {
         bufferRangeError: '安全缓冲应在 0 到 99.99 之间',
         sumTooHigh: '最低毛利率与安全缓冲之和必须小于 100%，否则将排除全部账号'
       },
+      chatPolicies: {
+        title: '站内聊天模型能力',
+        hint: '以精确公开模型名为键的 JSON（不支持通配符）。空配置使用通用文本 Chat Completions。最终能力取所选分组、可调度账号及协议适配器的交集，不授予权限或绕过计费。',
+        example: '查看配置示例',
+        invalid: '策略无效：请使用精确模型名、受支持的 transport 和布尔能力值。DeepSeek 原生能力要求 messages，文档输入要求 native_files。',
+      },
       modelAllowlist: {
         title: '模型白名单',
         hint: '开启后，不在白名单中的模型会被拒绝（404 model_not_found），模型列表接口也只展示白名单内的模型。条目支持精确模型 ID 与任意位置的 * 通配（如 gpt-*-codex）。注意：Claude Code 会用 haiku 系小模型做标题/摘要等探测，/messages/count_tokens 同样受白名单控制，请一并勾选所需的小模型。',

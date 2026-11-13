@@ -14,6 +14,15 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/announcementread"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
+	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
+	"github.com/Wei-Shaw/sub2api/ent/chatgenerationrun"
+	"github.com/Wei-Shaw/sub2api/ent/chatimport"
+	"github.com/Wei-Shaw/sub2api/ent/chatmodelpreset"
+	"github.com/Wei-Shaw/sub2api/ent/chatpreference"
+	"github.com/Wei-Shaw/sub2api/ent/chatsession"
+	"github.com/Wei-Shaw/sub2api/ent/chatsessionattachment"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
 	"github.com/Wei-Shaw/sub2api/ent/pendingauthsession"
@@ -26,6 +35,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 	"github.com/Wei-Shaw/sub2api/ent/workbenchcredential"
 	"github.com/Wei-Shaw/sub2api/ent/workbenchlaunchgrant"
+	"github.com/google/uuid"
 )
 
 // UserCreate is the builder for creating a User entity.
@@ -595,6 +605,141 @@ func (_c *UserCreate) AddWorkbenchLaunchGrants(v ...*WorkbenchLaunchGrant) *User
 	return _c.AddWorkbenchLaunchGrantIDs(ids...)
 }
 
+// AddChatModelPresetIDs adds the "chat_model_presets" edge to the ChatModelPreset entity by IDs.
+func (_c *UserCreate) AddChatModelPresetIDs(ids ...uuid.UUID) *UserCreate {
+	_c.mutation.AddChatModelPresetIDs(ids...)
+	return _c
+}
+
+// AddChatModelPresets adds the "chat_model_presets" edges to the ChatModelPreset entity.
+func (_c *UserCreate) AddChatModelPresets(v ...*ChatModelPreset) *UserCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatModelPresetIDs(ids...)
+}
+
+// AddChatCredentialIDs adds the "chat_credentials" edge to the ChatCredential entity by IDs.
+func (_c *UserCreate) AddChatCredentialIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddChatCredentialIDs(ids...)
+	return _c
+}
+
+// AddChatCredentials adds the "chat_credentials" edges to the ChatCredential entity.
+func (_c *UserCreate) AddChatCredentials(v ...*ChatCredential) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatCredentialIDs(ids...)
+}
+
+// AddChatSessionIDs adds the "chat_sessions" edge to the ChatSession entity by IDs.
+func (_c *UserCreate) AddChatSessionIDs(ids ...uuid.UUID) *UserCreate {
+	_c.mutation.AddChatSessionIDs(ids...)
+	return _c
+}
+
+// AddChatSessions adds the "chat_sessions" edges to the ChatSession entity.
+func (_c *UserCreate) AddChatSessions(v ...*ChatSession) *UserCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatSessionIDs(ids...)
+}
+
+// AddChatGenerationRunIDs adds the "chat_generation_runs" edge to the ChatGenerationRun entity by IDs.
+func (_c *UserCreate) AddChatGenerationRunIDs(ids ...uuid.UUID) *UserCreate {
+	_c.mutation.AddChatGenerationRunIDs(ids...)
+	return _c
+}
+
+// AddChatGenerationRuns adds the "chat_generation_runs" edges to the ChatGenerationRun entity.
+func (_c *UserCreate) AddChatGenerationRuns(v ...*ChatGenerationRun) *UserCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatGenerationRunIDs(ids...)
+}
+
+// AddChatAttachmentIDs adds the "chat_attachments" edge to the ChatAttachment entity by IDs.
+func (_c *UserCreate) AddChatAttachmentIDs(ids ...uuid.UUID) *UserCreate {
+	_c.mutation.AddChatAttachmentIDs(ids...)
+	return _c
+}
+
+// AddChatAttachments adds the "chat_attachments" edges to the ChatAttachment entity.
+func (_c *UserCreate) AddChatAttachments(v ...*ChatAttachment) *UserCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatAttachmentIDs(ids...)
+}
+
+// AddChatSessionAttachmentIDs adds the "chat_session_attachments" edge to the ChatSessionAttachment entity by IDs.
+func (_c *UserCreate) AddChatSessionAttachmentIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddChatSessionAttachmentIDs(ids...)
+	return _c
+}
+
+// AddChatSessionAttachments adds the "chat_session_attachments" edges to the ChatSessionAttachment entity.
+func (_c *UserCreate) AddChatSessionAttachments(v ...*ChatSessionAttachment) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatSessionAttachmentIDs(ids...)
+}
+
+// AddChatAttachmentUploadIDs adds the "chat_attachment_uploads" edge to the ChatAttachmentUpload entity by IDs.
+func (_c *UserCreate) AddChatAttachmentUploadIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddChatAttachmentUploadIDs(ids...)
+	return _c
+}
+
+// AddChatAttachmentUploads adds the "chat_attachment_uploads" edges to the ChatAttachmentUpload entity.
+func (_c *UserCreate) AddChatAttachmentUploads(v ...*ChatAttachmentUpload) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatAttachmentUploadIDs(ids...)
+}
+
+// AddChatImportIDs adds the "chat_imports" edge to the ChatImport entity by IDs.
+func (_c *UserCreate) AddChatImportIDs(ids ...uuid.UUID) *UserCreate {
+	_c.mutation.AddChatImportIDs(ids...)
+	return _c
+}
+
+// AddChatImports adds the "chat_imports" edges to the ChatImport entity.
+func (_c *UserCreate) AddChatImports(v ...*ChatImport) *UserCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatImportIDs(ids...)
+}
+
+// AddChatPreferenceIDs adds the "chat_preferences" edge to the ChatPreference entity by IDs.
+func (_c *UserCreate) AddChatPreferenceIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddChatPreferenceIDs(ids...)
+	return _c
+}
+
+// AddChatPreferences adds the "chat_preferences" edges to the ChatPreference entity.
+func (_c *UserCreate) AddChatPreferences(v ...*ChatPreference) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatPreferenceIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_c *UserCreate) Mutation() *UserMutation {
 	return _c.mutation
@@ -1162,6 +1307,150 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatModelPresetsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ChatModelPresetsTable,
+			Columns: []string{user.ChatModelPresetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatmodelpreset.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ChatCredentialsTable,
+			Columns: []string{user.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatSessionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ChatSessionsTable,
+			Columns: []string{user.ChatSessionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatsession.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatGenerationRunsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ChatGenerationRunsTable,
+			Columns: []string{user.ChatGenerationRunsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatgenerationrun.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatAttachmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ChatAttachmentsTable,
+			Columns: []string{user.ChatAttachmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatattachment.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatSessionAttachmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ChatSessionAttachmentsTable,
+			Columns: []string{user.ChatSessionAttachmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatsessionattachment.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatAttachmentUploadsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ChatAttachmentUploadsTable,
+			Columns: []string{user.ChatAttachmentUploadsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatattachmentupload.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatImportsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ChatImportsTable,
+			Columns: []string{user.ChatImportsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatimport.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatPreferencesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ChatPreferencesTable,
+			Columns: []string{user.ChatPreferencesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatpreference.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

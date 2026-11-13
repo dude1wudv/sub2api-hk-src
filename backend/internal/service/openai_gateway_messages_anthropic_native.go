@@ -78,7 +78,10 @@ func (s *OpenAIGatewayService) forwardAnthropicViaNativeAnthropicEndpoint(
 	// 与 Anthropic 平台 passthrough 相同的 pre-filter：剥离空文本块与上游
 	// 无法接受的 web-search 历史块（GLM/Kimi/DeepSeek 对 server_tool_use 400）。
 	body = StripEmptyTextBlocks(body)
-	body = FilterWebSearchHistoryBlocks(body, upstreamModel)
+	native, _ := ctx.Value(chatNativeContextKey{}).(*chatNativeRequest)
+	if native == nil || !native.extensions {
+		body = FilterWebSearchHistoryBlocks(body, upstreamModel)
+	}
 
 	logger.LegacyPrintf("service.gateway", "[CN Anthropic 直通] account=%d(%s) platform=%s model=%s upstream=%s stream=%v",
 		account.ID, account.Name, account.Platform, originalModel, upstreamModel, clientStream)
@@ -97,20 +100,36 @@ func (s *OpenAIGatewayService) forwardAnthropicViaNativeAnthropicEndpoint(
 		proxyURL = account.Proxy.URL()
 	}
 
-	upstreamCtx, releaseUpstreamCtx := detachStreamUpstreamContext(ctx, clientStream)
-	upstreamReq, _, err := s.buildNativeAnthropicUpstreamRequest(upstreamCtx, c, account, body, apiKey, targetURL)
-	releaseUpstreamCtx()
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := capture.Do(upstreamReq, func(request *http.Request) (*http.Response, error) {
-
-		return s.doOpenAIUpstream(request, proxyURL, account)
-
-	})
-	if err != nil {
-		return nil, s.handleOpenAIUpstreamTransportError(ctx, c, account, err, true)
+	sourceBody := body
+	var resp *http.Response
+	for attempt := 0; ; attempt++ {
+		body, err = s.PrepareChatAttachments(ctx, account, sourceBody)
+		if err != nil {
+			return nil, err
+		}
+		upstreamCtx, releaseUpstreamCtx := detachStreamUpstreamContext(ctx, clientStream)
+		upstreamReq, _, buildErr := s.buildNativeAnthropicUpstreamRequest(upstreamCtx, c, account, body, apiKey, targetURL)
+		releaseUpstreamCtx()
+		if buildErr != nil {
+			return nil, buildErr
+		}
+		resp, err = capture.Do(upstreamReq, func(request *http.Request) (*http.Response, error) {
+			return s.doOpenAIUpstream(request, proxyURL, account)
+		})
+		if err != nil {
+			return nil, s.handleOpenAIUpstreamTransportError(ctx, c, account, err, true)
+		}
+		if attempt == 0 && native != nil && len(native.files) > 0 && (resp.StatusCode == 400 || resp.StatusCode == 404 || resp.StatusCode == 410) {
+			failure, _, complete := s.readOpenAIUpstreamErrorWithCompleteness(resp)
+			if complete && chatExplicitlyExpiredFile(failure) {
+				_ = resp.Body.Close()
+				if err = invalidateChatRemoteFiles(ctx, account); err != nil {
+					return nil, err
+				}
+				continue
+			}
+		}
+		break
 	}
 	defer func() { _ = resp.Body.Close() }()
 

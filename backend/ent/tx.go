@@ -42,6 +42,24 @@ type Tx struct {
 	ChannelMonitorHistory *ChannelMonitorHistoryClient
 	// ChannelMonitorRequestTemplate is the client for interacting with the ChannelMonitorRequestTemplate builders.
 	ChannelMonitorRequestTemplate *ChannelMonitorRequestTemplateClient
+	// ChatAttachment is the client for interacting with the ChatAttachment builders.
+	ChatAttachment *ChatAttachmentClient
+	// ChatAttachmentUpload is the client for interacting with the ChatAttachmentUpload builders.
+	ChatAttachmentUpload *ChatAttachmentUploadClient
+	// ChatCredential is the client for interacting with the ChatCredential builders.
+	ChatCredential *ChatCredentialClient
+	// ChatGenerationRun is the client for interacting with the ChatGenerationRun builders.
+	ChatGenerationRun *ChatGenerationRunClient
+	// ChatImport is the client for interacting with the ChatImport builders.
+	ChatImport *ChatImportClient
+	// ChatModelPreset is the client for interacting with the ChatModelPreset builders.
+	ChatModelPreset *ChatModelPresetClient
+	// ChatPreference is the client for interacting with the ChatPreference builders.
+	ChatPreference *ChatPreferenceClient
+	// ChatSession is the client for interacting with the ChatSession builders.
+	ChatSession *ChatSessionClient
+	// ChatSessionAttachment is the client for interacting with the ChatSessionAttachment builders.
+	ChatSessionAttachment *ChatSessionAttachmentClient
 	// CompositeModelRoute is the client for interacting with the CompositeModelRoute builders.
 	CompositeModelRoute *CompositeModelRouteClient
 	// ErrorPassthroughRule is the client for interacting with the ErrorPassthroughRule builders.
@@ -243,6 +261,15 @@ func (tx *Tx) init() {
 	tx.ChannelMonitorDailyRollup = NewChannelMonitorDailyRollupClient(tx.config)
 	tx.ChannelMonitorHistory = NewChannelMonitorHistoryClient(tx.config)
 	tx.ChannelMonitorRequestTemplate = NewChannelMonitorRequestTemplateClient(tx.config)
+	tx.ChatAttachment = NewChatAttachmentClient(tx.config)
+	tx.ChatAttachmentUpload = NewChatAttachmentUploadClient(tx.config)
+	tx.ChatCredential = NewChatCredentialClient(tx.config)
+	tx.ChatGenerationRun = NewChatGenerationRunClient(tx.config)
+	tx.ChatImport = NewChatImportClient(tx.config)
+	tx.ChatModelPreset = NewChatModelPresetClient(tx.config)
+	tx.ChatPreference = NewChatPreferenceClient(tx.config)
+	tx.ChatSession = NewChatSessionClient(tx.config)
+	tx.ChatSessionAttachment = NewChatSessionAttachmentClient(tx.config)
 	tx.CompositeModelRoute = NewCompositeModelRouteClient(tx.config)
 	tx.ErrorPassthroughRule = NewErrorPassthroughRuleClient(tx.config)
 	tx.Group = NewGroupClient(tx.config)

@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
+	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
@@ -548,6 +549,21 @@ func (_u *APIKeyUpdate) AddWorkbenchLaunchGrants(v ...*WorkbenchLaunchGrant) *AP
 	return _u.AddWorkbenchLaunchGrantIDs(ids...)
 }
 
+// AddChatCredentialIDs adds the "chat_credentials" edge to the ChatCredential entity by IDs.
+func (_u *APIKeyUpdate) AddChatCredentialIDs(ids ...int64) *APIKeyUpdate {
+	_u.mutation.AddChatCredentialIDs(ids...)
+	return _u
+}
+
+// AddChatCredentials adds the "chat_credentials" edges to the ChatCredential entity.
+func (_u *APIKeyUpdate) AddChatCredentials(v ...*ChatCredential) *APIKeyUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChatCredentialIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdate) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -626,6 +642,27 @@ func (_u *APIKeyUpdate) RemoveWorkbenchLaunchGrants(v ...*WorkbenchLaunchGrant) 
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveWorkbenchLaunchGrantIDs(ids...)
+}
+
+// ClearChatCredentials clears all "chat_credentials" edges to the ChatCredential entity.
+func (_u *APIKeyUpdate) ClearChatCredentials() *APIKeyUpdate {
+	_u.mutation.ClearChatCredentials()
+	return _u
+}
+
+// RemoveChatCredentialIDs removes the "chat_credentials" edge to ChatCredential entities by IDs.
+func (_u *APIKeyUpdate) RemoveChatCredentialIDs(ids ...int64) *APIKeyUpdate {
+	_u.mutation.RemoveChatCredentialIDs(ids...)
+	return _u
+}
+
+// RemoveChatCredentials removes "chat_credentials" edges to ChatCredential entities.
+func (_u *APIKeyUpdate) RemoveChatCredentials(v ...*ChatCredential) *APIKeyUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChatCredentialIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1039,6 +1076,51 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChatCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.ChatCredentialsTable,
+			Columns: []string{apikey.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChatCredentialsIDs(); len(nodes) > 0 && !_u.mutation.ChatCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.ChatCredentialsTable,
+			Columns: []string{apikey.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChatCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.ChatCredentialsTable,
+			Columns: []string{apikey.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -1580,6 +1662,21 @@ func (_u *APIKeyUpdateOne) AddWorkbenchLaunchGrants(v ...*WorkbenchLaunchGrant) 
 	return _u.AddWorkbenchLaunchGrantIDs(ids...)
 }
 
+// AddChatCredentialIDs adds the "chat_credentials" edge to the ChatCredential entity by IDs.
+func (_u *APIKeyUpdateOne) AddChatCredentialIDs(ids ...int64) *APIKeyUpdateOne {
+	_u.mutation.AddChatCredentialIDs(ids...)
+	return _u
+}
+
+// AddChatCredentials adds the "chat_credentials" edges to the ChatCredential entity.
+func (_u *APIKeyUpdateOne) AddChatCredentials(v ...*ChatCredential) *APIKeyUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChatCredentialIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdateOne) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -1658,6 +1755,27 @@ func (_u *APIKeyUpdateOne) RemoveWorkbenchLaunchGrants(v ...*WorkbenchLaunchGran
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveWorkbenchLaunchGrantIDs(ids...)
+}
+
+// ClearChatCredentials clears all "chat_credentials" edges to the ChatCredential entity.
+func (_u *APIKeyUpdateOne) ClearChatCredentials() *APIKeyUpdateOne {
+	_u.mutation.ClearChatCredentials()
+	return _u
+}
+
+// RemoveChatCredentialIDs removes the "chat_credentials" edge to ChatCredential entities by IDs.
+func (_u *APIKeyUpdateOne) RemoveChatCredentialIDs(ids ...int64) *APIKeyUpdateOne {
+	_u.mutation.RemoveChatCredentialIDs(ids...)
+	return _u
+}
+
+// RemoveChatCredentials removes "chat_credentials" edges to ChatCredential entities.
+func (_u *APIKeyUpdateOne) RemoveChatCredentials(v ...*ChatCredential) *APIKeyUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChatCredentialIDs(ids...)
 }
 
 // Where appends a list predicates to the APIKeyUpdate builder.
@@ -2101,6 +2219,51 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(workbenchlaunchgrant.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChatCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.ChatCredentialsTable,
+			Columns: []string{apikey.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChatCredentialsIDs(); len(nodes) > 0 && !_u.mutation.ChatCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.ChatCredentialsTable,
+			Columns: []string{apikey.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChatCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.ChatCredentialsTable,
+			Columns: []string{apikey.ChatCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatcredential.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

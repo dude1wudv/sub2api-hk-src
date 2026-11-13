@@ -167,20 +167,20 @@ func TestGatewayCompositeRouteModelsAppearInBothCatalogs(t *testing.T) {
 }
 
 func TestDefaultModelIDsForCompositeIncludesAntigravityDefaults(t *testing.T) {
-	antigravityIDs := defaultModelIDsForPlatform(service.PlatformAntigravity)
+	antigravityIDs := service.DefaultGatewayModelIDs(service.PlatformAntigravity)
 	require.NotEmpty(t, antigravityIDs)
 
-	compositeIDs := defaultModelIDsForPlatform(service.PlatformComposite)
+	compositeIDs := service.DefaultGatewayModelIDs(service.PlatformComposite)
 	require.Contains(t, compositeIDs, antigravityIDs[0])
 }
 
 // Scenario: Anthropic defaults contain only Claude while Antigravity keeps its own Gemini models.
 func TestDefaultModelIDsForAnthropicExcludeAntigravityGemini(t *testing.T) {
-	anthropicIDs := defaultModelIDsForPlatform(service.PlatformAnthropic)
+	anthropicIDs := service.DefaultGatewayModelIDs(service.PlatformAnthropic)
 	require.Contains(t, anthropicIDs, "claude-opus-4-6")
 	require.NotContains(t, anthropicIDs, "gemini-2.5-flash")
 
-	antigravityIDs := defaultModelIDsForPlatform(service.PlatformAntigravity)
+	antigravityIDs := service.DefaultGatewayModelIDs(service.PlatformAntigravity)
 	require.Contains(t, antigravityIDs, "gemini-2.5-flash")
 }
 
@@ -957,7 +957,7 @@ func TestGatewayModels_CompositeUnmappedAccountsFallbackToLinkedPlatformsOnly(t 
 }
 
 // CN 供应商没有静态默认模型列表：composite 下无映射的可调度 CN 账号不得把
-// defaultModelIDsForPlatform default 分支的 Claude 列表挂到 CN 平台名下。
+// service.DefaultGatewayModelIDs default 分支的 Claude 列表挂到 CN 平台名下。
 func TestGatewayModels_CompositeUnmappedCNAccountsContributeNoDefaults(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -1003,23 +1003,23 @@ func TestDefaultModelIDsForPlatform_CNProvidersKeepClaudeDefaults(t *testing.T) 
 		want = append(want, model.ID)
 	}
 	for _, platform := range []string{service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek, service.PlatformMiniMax} {
-		require.Equal(t, want, defaultModelIDsForPlatform(platform), "platform=%s", platform)
+		require.Equal(t, want, service.DefaultGatewayModelIDs(platform), "platform=%s", platform)
 	}
 }
 
 func TestDefaultCodexModelIDsForPlatform_DeepSeekUsesDeepSeekModels(t *testing.T) {
-	require.Equal(t, []string{"deepseek-v4-pro", "deepseek-v4-flash", "deepseek-flash"}, defaultCodexModelIDsForPlatform(service.PlatformDeepseek))
-	require.Equal(t, []string{"MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.5"}, defaultCodexModelIDsForPlatform(service.PlatformMiniMax))
+	require.Equal(t, []string{"deepseek-v4-pro", "deepseek-v4-flash", "deepseek-flash"}, service.DefaultCodexModelIDsForPlatform(service.PlatformDeepseek))
+	require.Equal(t, []string{"MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.5"}, service.DefaultCodexModelIDsForPlatform(service.PlatformMiniMax))
 	require.Equal(t, []string{
 		"step-3.5-flash", "step-3.5-flash-2603", "step-3.7-flash", "step-5-preview",
 		"step-image-edit-2", "step-router-v1", "stepaudio-2.5-asr", "stepaudio-2.5-chat",
 		"stepaudio-2.5-realtime", "stepaudio-2.5-tts",
-	}, defaultCodexModelIDsForPlatform(service.PlatformStepFun))
-	require.Equal(t, defaultModelIDsForPlatform(service.PlatformAnthropic), defaultCodexModelIDsForPlatform(service.PlatformAnthropic))
+	}, service.DefaultCodexModelIDsForPlatform(service.PlatformStepFun))
+	require.Equal(t, service.DefaultGatewayModelIDs(service.PlatformAnthropic), service.DefaultCodexModelIDsForPlatform(service.PlatformAnthropic))
 }
 
 func TestDefaultModelIDsForPlatform_TypeSafeUsesJev(t *testing.T) {
-	require.Equal(t, []string{"jev-latest"}, defaultModelIDsForPlatform(service.PlatformTypeSafe))
+	require.Equal(t, []string{"jev-latest"}, service.DefaultGatewayModelIDs(service.PlatformTypeSafe))
 }
 
 func TestGatewayCodexModels_DeepSeekWithoutMappingUsesDeepSeekDefaults(t *testing.T) {
@@ -1707,8 +1707,8 @@ func TestGatewayModels_CompositeTypeSafeListingScope(t *testing.T) {
 }
 
 func TestDefaultModelIDsForPlatform_CompositeFallbackExcludesTypeSafe(t *testing.T) {
-	require.NotContains(t, defaultModelIDsForPlatform(service.PlatformComposite), "jev-latest")
-	require.NotContains(t, defaultCodexModelIDsForPlatform(service.PlatformComposite), "jev-latest")
+	require.NotContains(t, service.DefaultGatewayModelIDs(service.PlatformComposite), "jev-latest")
+	require.NotContains(t, service.DefaultCodexModelIDsForPlatform(service.PlatformComposite), "jev-latest")
 }
 
 func TestGatewayModels_CompositeExactRoutesRespectTypeSafeIsolation(t *testing.T) {
@@ -1764,7 +1764,7 @@ func TestGatewayModels_CompositeExactRoutesRespectTypeSafeIsolation(t *testing.T
 func TestGatewayModels_CompositeCodexFiltersEffectiveResponsesRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	const groupID int64 = 7793
-	defaultModel := defaultModelIDsForPlatform(service.PlatformOpenAI)[0]
+	defaultModel := service.DefaultGatewayModelIDs(service.PlatformOpenAI)[0]
 	for _, scenario := range []struct {
 		name     string
 		model    string
@@ -1868,7 +1868,7 @@ func TestGatewayModels_CompositeCodexFiltersEffectiveResponsesRoutes(t *testing.
 func TestGatewayModels_CompositeCodexRouteLookupErrorKeepsFallback(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	const groupID int64 = 7793
-	model := defaultCodexModelIDsForPlatform(service.PlatformComposite)[0]
+	model := service.DefaultCodexModelIDsForPlatform(service.PlatformComposite)[0]
 	for _, allowlisted := range []bool{false, true} {
 		name := "unrestricted"
 		if allowlisted {

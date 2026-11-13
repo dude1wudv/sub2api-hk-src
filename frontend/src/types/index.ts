@@ -578,6 +578,18 @@ export interface GroupLocaleText {
 /** 以语言代码（en、zh…）为键的分组文案译文。 */
 export type GroupI18n = Record<string, GroupLocaleText>
 
+export interface ChatModelPolicy {
+  transport: 'chat_completions' | 'messages' | 'responses'
+  image_input: boolean
+  document_input: boolean
+  native_deepseek_extensions: boolean
+  native_files: boolean
+  native_search: boolean
+  native_read_url: boolean
+}
+
+export type ChatModelPolicies = Record<string, ChatModelPolicy>
+
 // 用户侧接口返回的 name / description 已由后端按请求语言（Accept-Language）选好
 export interface Group {
   recent_rate_change?: { old_rate: number; new_rate: number; changed_at: string } | null
@@ -680,6 +692,7 @@ export interface AdminGroup extends Group {
   messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   model_allowlist?: ModelAllowlist
   codex_models_manifest_config?: CodexModelsManifestConfig
+  chat_model_policies?: ChatModelPolicies | null
 
   // 分组排序
   sort_order: number
@@ -880,6 +893,7 @@ export interface CreateGroupRequest {
   supported_model_scopes?: string[]
   model_allowlist?: ModelAllowlist
   codex_models_manifest_config?: CodexModelsManifestConfig
+  chat_model_policies?: ChatModelPolicies
   allow_messages_dispatch?: boolean
   allow_live?: boolean
   default_mapped_model?: string
@@ -951,6 +965,7 @@ export interface UpdateGroupRequest {
   supported_model_scopes?: string[]
   model_allowlist?: ModelAllowlist
   codex_models_manifest_config?: CodexModelsManifestConfig
+  chat_model_policies?: ChatModelPolicies
   allow_messages_dispatch?: boolean
   allow_live?: boolean
   default_mapped_model?: string

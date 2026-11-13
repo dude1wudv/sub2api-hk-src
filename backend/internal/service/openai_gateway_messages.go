@@ -35,6 +35,12 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 ) (forwardResult *OpenAIForwardResult, forwardErr error) {
 	ctx, finishIncomplete := beginOpenAIIncompleteAttempt(ctx, c, body)
 	defer func() { finishIncomplete(&forwardResult, &forwardErr) }()
+	if native, _ := ctx.Value(chatNativeContextKey{}).(*chatNativeRequest); native != nil && (native.extensions || len(native.files) > 0) {
+		model := upstreamRoutingModel(account, body, defaultMappedModel)
+		if account.Type != AccountTypeAPIKey || s.resolveUpstreamProtocolFor(ctx, account, APIProtocolAnthropic, model) != APIProtocolAnthropic || !(account.IsDeepseek() || strings.HasPrefix(strings.ToLower(model), "deepseek-")) {
+			return nil, ErrChatCapability
+		}
+	}
 	// 工具 Schema 清洗必须先于所有分流：下游每条路径（原生 Anthropic 直通、
 	// Chat Completions 转换、Responses 转换）都会把 tools 原样带给上游，而
 	// xAI / Moonshot 等严格校验方会因 input_schema 里的 required:null 或

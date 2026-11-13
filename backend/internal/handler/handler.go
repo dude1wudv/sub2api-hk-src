@@ -69,6 +69,7 @@ type Handlers struct {
 	AsyncImage       *AsyncImageHandler
 	BatchImage       *BatchImageHandler
 	Workbench        *WorkbenchHandler
+	Chat             *ChatHandler
 }
 
 // BuildInfo contains build-time information

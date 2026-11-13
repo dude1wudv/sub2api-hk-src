@@ -985,6 +985,12 @@ export default {
         bufferRangeError: 'Safety buffer must be between 0 and 99.99',
         sumTooHigh: 'Min gross margin plus safety buffer must be less than 100%, otherwise every account would be excluded'
       },
+      chatPolicies: {
+        title: 'Web chat model capabilities',
+        hint: 'JSON keyed by exact public model names (no wildcards). Empty configuration uses text Chat Completions. Capabilities are intersected with the selected group, eligible accounts and protocol adapter; this does not grant access or bypass billing.',
+        example: 'Show configuration example',
+        invalid: 'Invalid policy. Use an exact model name, a supported transport and boolean capabilities. Native DeepSeek features require messages; document input requires native_files.',
+      },
       modelAllowlist: {
         title: 'Model Allowlist',
         hint: 'When enabled, models outside the allowlist are rejected with 404 model_not_found, and model listing endpoints only show allowlisted models. Entries support exact model IDs and * wildcards anywhere (e.g., gpt-*-codex). Note: Claude Code probes with haiku-family models for titles/summaries and /messages/count_tokens is also allowlist-controlled, so make sure the small models you need are selected too.',

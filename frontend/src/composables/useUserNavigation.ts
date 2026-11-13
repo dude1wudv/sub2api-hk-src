@@ -56,6 +56,8 @@ export function useUserNavigation() {
       { path: '/subscriptions', label: subscriptionLabel.value, icon: 'document', group: 'primary', hideInSimpleMode: true, enabled: enabled('subscription') && subscriptionVisible.value },
       { path: '/profile', label: zh.value ? '账户' : 'Account', icon: 'user', group: 'primary' },
       { path: '/settings/mcp', label: t('mcp.title'), icon: 'mcp', group: 'tools', enabled: enabled('mcp') },
+      { path: '/chat', label: zh.value ? '聊天' : 'Chat', icon: 'document', group: 'services' },
+      { path: '/chat-models', label: zh.value ? '聊天模型' : 'Chat models', icon: 'cube', group: 'services' },
       { path: '/model-plaza', query: { embedded: '1' }, label: t('nav.modelPlaza'), icon: 'cube', group: 'services', enabled: enabled('modelPlaza') },
       { path: '/monitor', label: t('nav.channelStatus'), icon: 'bolt', group: 'services', enabled: enabled('channelMonitor') },
       { path: '/image2', href: '/image2/', label: t('nav.image2'), icon: 'sparkles', group: 'tools', hideInSimpleMode: true },

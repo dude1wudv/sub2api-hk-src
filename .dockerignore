@@ -34,6 +34,10 @@ build/
 # Node modules (will be installed in container)
 frontend/node_modules/
 node_modules/
+chat-demo/node_modules/
+chat-demo/dist/
+chat-demo/.git
+frontend/public/chat-app/
 
 # Go build cache (will be built in container)
 backend/vendor/
