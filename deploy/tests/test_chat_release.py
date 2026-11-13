@@ -77,9 +77,84 @@ class ChatReleaseTests(unittest.TestCase):
             called = []
             worker.containers = lambda: called.append('containers')
             worker.compose = lambda *args: called.append('compose')
-            with self.assertRaises(RuntimeError):
-                worker.deploy()
+            for manual in (False, True):
+                with self.assertRaises(RuntimeError):
+                    worker.deploy(manual=manual)
             self.assertEqual(called, [])
+
+    def test_chat_manual_acceptance_requires_explicit_fresh_authorization(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(release, 'RELEASES', Path(directory)):
+            worker = release.Release('a' * 40, 'b' * 40)
+            proof = {'deployment_authorized': True, 'paid_acceptance_by': 'user',
+                     'automatic_paid_calls': False, 'prepared_at': release.now().isoformat(),
+                     'authorization_evidence': {'path': 'authorization.txt', 'sha256': 'c' * 64}}
+            worker.evidence = lambda name: proof
+            artifacts = []
+            worker.artifact = lambda value: artifacts.append(value)
+            self.assertEqual(worker.manual_acceptance_authorization(), proof)
+            self.assertEqual(artifacts, [proof['authorization_evidence']])
+            for field, value in (('deployment_authorized', False), ('paid_acceptance_by', 'agent'),
+                                 ('automatic_paid_calls', True),
+                                 ('prepared_at', (release.now() - dt.timedelta(hours=5)).isoformat())):
+                previous = proof[field]
+                proof[field] = value
+                with self.subTest(field=field), self.assertRaises(RuntimeError):
+                    worker.manual_acceptance_authorization()
+                proof[field] = previous
+
+    def test_chat_manual_deploy_keeps_guards_without_identity_or_paid_calls(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(release, 'RELEASES', Path(directory)), \
+                patch.object(release, 'COMPOSE', Path(directory) / 'compose.yml'):
+            worker = release.Release('a' * 40, 'b' * 40)
+            original = 'services:\n  sub2api:\n    image: old:tag\n'
+            release.COMPOSE.write_text(original)
+            worker.load = lambda: None
+            worker.manifest = {'phase': 'built', 'old_image_id': 'old-image', 'image': 'new:tag',
+                               'image_id': 'new-image', 'migration_allowlist': {'002_user_chat.sql': 'chat'}}
+            app = {'Id': 'old-container', 'Image': 'old-image',
+                   'Config': {'Labels': {'org.opencontainers.image.revision': worker.expected}}}
+            worker.inspect = lambda name: app if name == 'sub2api' else {'Id': 'new-image'}
+            worker.containers = lambda: {'sub2api': app}
+            worker.run = lambda args, **kwargs: worker.expected if args[0] == 'docker' else ''
+            worker.source_migrations = lambda ref: {'001_initial.sql': 'old'}
+            worker.evidence = lambda name: {'deployment_authorized': True, 'paid_acceptance_by': 'user',
+                    'automatic_paid_calls': False, 'prepared_at': release.now().isoformat(),
+                    'authorization_evidence': {}}
+            worker.artifact = lambda value: value
+            worker.identity = lambda: self.fail('manual deployment must not acquire a paid-test identity')
+            worker.sql = lambda statement: self.fail('manual deployment must not mutate account/billing data')
+            worker.real_acceptance = lambda: self.fail('manual deployment must not claim paid acceptance')
+            calls = []
+            def backup(before):
+                calls.append('backup')
+                release.atomic_write(worker.audit / 'compose.before.yml', release.COMPOSE.read_bytes())
+                worker.save('migrations.before.json', {'001_initial.sql': 'old'})
+            worker.backup = backup
+            worker.compose = lambda *args: calls.append(args[0])
+            worker.guard_after = lambda: calls.append('guard')
+            worker.health_and_assets = lambda: calls.append('health')
+            worker.rollback = lambda: self.fail('successful manual deploy must not roll back')
+            worker.deploy(manual=True)
+            self.assertEqual(calls, ['backup', 'config', 'up', 'guard', 'health'])
+            self.assertEqual(worker.manifest['phase'], 'deployed-awaiting-user-acceptance')
+            self.assertEqual(worker.manifest['acceptance_mode'], 'user_manual')
+            self.assertFalse(worker.manifest['paid_acceptance'])
+            self.assertNotIn('acceptance_user_id', worker.manifest)
+            self.assertIn('image: new:tag', release.COMPOSE.read_text())
+
+    def test_chat_manual_handoff_is_not_an_automated_verification_shortcut(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(release, 'RELEASES', Path(directory)):
+            worker = release.Release('a' * 40, 'b' * 40)
+            worker.load = lambda: None
+            worker.manifest = {'phase': 'deployed-awaiting-user-acceptance'}
+            worker.rollback = lambda: self.fail('manual handoff must not trigger an automatic rollback')
+            with self.assertRaises(RuntimeError):
+                worker.verify()
+            self.assertEqual(worker.manifest['phase'], 'deployed-awaiting-user-acceptance')
+        with patch.object(release.sys, 'argv', ['chat_release.py', '--phase', 'verify', '--sha', 'a' * 40,
+                                             '--expected-current-sha', 'b' * 40, '--manual-acceptance']):
+            with self.assertRaisesRegex(RuntimeError, 'only valid for deploy'):
+                release.main()
 
     def test_chat_existing_subscription_identity_requires_bounded_prepared_runner(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(release, 'RELEASES', Path(directory)):

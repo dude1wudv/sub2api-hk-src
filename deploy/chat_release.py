@@ -1,11 +1,12 @@
 """HK-only, application-only chat releases. Evidence and backups never leave HK.
 
-External evidence is deliberately required, not synthesized by health checks:
+Automated acceptance (default) requires private, SHA256-pinned evidence:
   <release-dir>/acceptance-identity.json before deploy;
   <release-dir>/real-acceptance.json before verify.
-Both documents bind sha/expected_current_sha and reference private, SHA256-pinned
-artifacts relative to the release directory. See validation functions for schema.
-No credentials belong in either document. All DB access below is read-only.
+Explicit user handoff requires --manual-acceptance on deploy and a private
+manual-acceptance.json bound to this release. It leaves paid acceptance pending;
+health checks never substitute for real authenticated model/billing evidence.
+No credentials belong in evidence documents. All DB access below is read-only.
 """
 import argparse
 import datetime as dt
@@ -259,6 +260,18 @@ class Release:
                 'Evidence is not bound to this release and baseline')
         return value
 
+    def manual_acceptance_authorization(self):
+        evidence = self.evidence('manual-acceptance.json')
+        require(evidence.get('deployment_authorized') is True and
+                evidence.get('paid_acceptance_by') == 'user' and
+                evidence.get('automatic_paid_calls') is False,
+                'Explicit user authorization to deploy with manual paid acceptance required')
+        require(dt.timedelta(0) <= now() - timestamp(evidence['prepared_at']) <= dt.timedelta(hours=4),
+                'Manual acceptance authorization is stale')
+        self.artifact(evidence['authorization_evidence'])
+        self.save('manual-acceptance-preflight.json', evidence)
+        return evidence
+
     def identity(self):
         evidence = self.evidence('acceptance-identity.json')
         user_id = evidence.get('user_id')
@@ -464,10 +477,14 @@ class Release:
         require(self.sha in version, 'Binary version does not contain release SHA')
         return result
 
-    def deploy(self):
+    def deploy(self, manual=False):
         self.load()
         require(self.manifest['phase'] == 'built', 'Deploy requires a freshly built manifest')
-        identity = self.identity()  # MUST complete before backups or switching.
+        identity = None
+        if manual:
+            self.manual_acceptance_authorization()
+        else:
+            identity = self.identity()  # MUST complete before backups or switching.
         before = self.containers()
         app = before['sub2api']
         require(app['Config']['Labels'].get('org.opencontainers.image.revision') == self.expected and
@@ -487,7 +504,10 @@ class Release:
         require(all(old_migrations[name] == allowed[name] for name in old_migrations.keys() & allowed.keys()),
                 'Previously applied chat migration differs from candidate')
         self.manifest['preapplied_chat_migrations'] = sorted(old_migrations.keys() & allowed.keys())
-        self.manifest['acceptance_user_id'] = identity['user_id']
+        self.manifest['acceptance_mode'] = 'user_manual' if manual else 'automated'
+        self.manifest['paid_acceptance'] = False
+        if identity is not None:
+            self.manifest['acceptance_user_id'] = identity['user_id']
         self.manifest['deploy_started_at'] = now().isoformat()
         self.manifest['phase'] = 'switching'
         self.persist()
@@ -495,7 +515,10 @@ class Release:
             # Recheck immediately before mutation, not only before a potentially slow dump.
             require(self.inspect('sub2api')['Id'] == app['Id'], 'Application replaced during backup')
             require(COMPOSE.read_bytes() == (self.audit / 'compose.before.yml').read_bytes(), 'Compose changed during backup')
-            self.identity()
+            if manual:
+                self.manual_acceptance_authorization()
+            else:
+                self.identity()
             updated = replace_application_image(COMPOSE.read_text(), self.manifest['image'])
             self.manifest['candidate_compose_sha256'] = digest(updated.encode())
             self.persist()
@@ -504,7 +527,8 @@ class Release:
             self.compose('up', '-d', '--no-deps', 'sub2api')
             self.guard_after()
             self.health_and_assets()
-            self.manifest['phase'] = 'deployed-awaiting-real-acceptance'
+            self.manifest['phase'] = ('deployed-awaiting-user-acceptance' if manual
+                                      else 'deployed-awaiting-real-acceptance')
             self.persist()
         except Exception as error:
             self.save('rollback-trigger.json', {'phase': 'deploy', 'error': str(error), 'at': now().isoformat()})
@@ -666,7 +690,11 @@ def main():
     parser.add_argument('--phase', choices=('build', 'deploy', 'verify', 'rollback'), required=True)
     parser.add_argument('--sha', required=True)
     parser.add_argument('--expected-current-sha', required=True)
+    parser.add_argument('--manual-acceptance', action='store_true',
+                        help='Deploy with explicit user-owned paid acceptance; requires pinned authorization evidence')
     args = parser.parse_args()
+    require(not args.manual_acceptance or args.phase == 'deploy',
+            '--manual-acceptance is only valid for deploy, never a paid verify shortcut')
     require(all(re.fullmatch(r'[0-9a-f]{40}', value) for value in (args.sha, args.expected_current_sha)), 'Fixed lowercase 40-hex SHAs required')
     require(args.sha != args.expected_current_sha, 'Release SHA must differ from production baseline')
     require(sys.platform == 'linux' and COMPOSE.is_file() and Path('/etc/caddy/Caddyfile').is_file(), 'Run only on the designated HK deployment host')
@@ -678,7 +706,10 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         release = Release(args.sha, args.expected_current_sha)
         try:
-            getattr(release, args.phase)()
+            if args.manual_acceptance:
+                release.deploy(manual=True)
+            else:
+                getattr(release, args.phase)()
         except Exception as error:
             release.save('failure-' + str(time.time_ns()) + '.json', {'phase': args.phase, 'error': str(error), 'at': now().isoformat()})
             print('Chat release failed; inspect private HK evidence: ' + str(release.audit), file=sys.stderr)
