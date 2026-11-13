@@ -174,7 +174,8 @@ func serveChatStatic(c *gin.Context, distFS fs.FS) bool {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return true
 		}
-		c.Header("Cache-Control", "no-cache")
+		// Keep CDN transformations out of this immutable, same-origin app shell.
+		c.Header("Cache-Control", "no-cache, no-transform")
 		c.Data(http.StatusOK, "text/html; charset=utf-8", content)
 	} else {
 		applyStaticAssetCacheHeaders(c.Writer.Header(), name)

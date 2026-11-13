@@ -570,7 +570,9 @@ class Release:
             _, headers = self.fetch(host + '/chat-app', expected=308)
             require('location: /chat-app/' in headers, 'Chat slash redirect missing')
             chat_index, _ = self.fetch(host + '/chat-app/')
-            require(digest(chat_index) == self.manifest['assets']['chat-app/index.html'], 'Chat root did not serve this release bundle')
+            if digest(chat_index) != self.manifest['assets']['chat-app/index.html']:
+                atomic_write(self.audit / 'chat-index-mismatch.html', chat_index)
+                raise RuntimeError('Chat root did not serve this release bundle: ' + host)
             for name, checksum in self.manifest['assets'].items():
                 if not (name.startswith('chat-app/') or name.startswith('assets/')):
                     continue
