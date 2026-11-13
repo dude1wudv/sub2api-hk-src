@@ -215,7 +215,7 @@ export function createPreviewFixtures() {
   const createdAt = iso(now - 45 * 86400000)
   const timestamp = iso(now)
   const groups = [
-    { id: 1, name: 'OpenAI · Preview', platform: 'openai' },
+    { id: 1, name: 'OpenAI · Preview · 超长分组名称与高峰倍率 · multimodal-long-context-preview-group', platform: 'openai' },
     { id: 2, name: 'Claude · Preview', platform: 'anthropic' },
     { id: 3, name: 'Creative · Preview', platform: 'gemini' },
     { id: 72, name: 'Cache test · Preview', platform: 'anthropic' },
@@ -249,10 +249,10 @@ export function createPreviewFixtures() {
     audio_realtime_price_per_min: null,
     audio_tts_price_per_million_chars: null,
     audio_stt_price_per_hour: null,
-    peak_rate_enabled: false,
-    peak_start: '',
-    peak_end: '',
-    peak_rate_multiplier: 1,
+    peak_rate_enabled: group.id === 1,
+    peak_start: group.id === 1 ? '09:00' : '',
+    peak_end: group.id === 1 ? '18:00' : '',
+    peak_rate_multiplier: group.id === 1 ? 1.5 : 1,
     claude_code_only: false,
     fallback_group_id: null,
     fallback_group_id_on_invalid_request: null,
@@ -264,7 +264,7 @@ export function createPreviewFixtures() {
     updated_at: timestamp,
   }))
   const users = Object.fromEntries(Object.entries(PREVIEW_ACCOUNTS).map(([email, account]) => [account.id, {
-    ...account, email, balance: 128.64, frozen_balance: 0, concurrency: 10, rpm_limit: 60,
+    ...account, email, balance: 98765.43, frozen_balance: 0, concurrency: 10, rpm_limit: 60,
     status: 'active', allowed_groups: [1, 2, 3, 72], email_bound: true,
     auth_bindings: { email: true, github: false, google: false, oidc: false, linuxdo: false, wechat: false, dingtalk: false },
     balance_notify_enabled: true, balance_notify_threshold: 10, balance_notify_extra_emails: [],
@@ -281,7 +281,7 @@ export function createPreviewFixtures() {
     reset_5h_at: null, reset_1d_at: null, reset_7d_at: null,
   })
   const keys = new Map(Object.values(users).map((user) => [user.id, [
-    makeKey(1001, user.id, 'Studio application', 1),
+    makeKey(1001, user.id, 'Studio application · mobile-reading-long-key-name-for-responsive-preview', 1),
     makeKey(1002, user.id, 'Local development', 2),
     makeKey(1003, user.id, 'Archive key', 1, 'inactive'),
     ...(user.role === 'admin' ? [makeKey(1072, user.id, 'Cache test · Preview', 72)] : []),

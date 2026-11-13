@@ -577,17 +577,18 @@ defineExpose({ replayTour: replayUserGuide })
   .user-portal :is(.user-icon-button, .user-language-toggle, .user-account-trigger, .user-signin-link) { min-width: 44px; min-height: 44px; }
   .user-portal :is(.user-nav-item, .user-account-action, .user-language-menu button, .user-balance-pill) { min-height: 44px; }
   .user-portal .user-announcement-control :deep(button) { min-width: 44px; min-height: 44px; }
-  .user-portal .user-topbar-actions { flex-wrap:wrap; justify-content:flex-end; }
-  .user-portal .user-account-trigger { width:100%; max-width:112px; }
-}
-@media (max-width:479px) {
+  .user-portal .user-topbar-actions { flex:1; flex-wrap:nowrap; justify-content:flex-end; gap:4px; }
+  .user-portal .user-topbar-actions > :not(.user-balance-pill) { flex-shrink:0; }
+  .user-portal .user-balance-pill { min-width:0; padding-inline:6px; gap:4px; font-size:12.5px; line-height:16px; }
+  .user-portal .user-balance-pill::before { display:none; }
+  .user-portal .user-balance-pill > span:last-child { min-width:0; white-space:normal; overflow-wrap:anywhere; text-align:center; }
   .user-portal .user-account-control { flex:0 0 44px; }
   .user-portal .user-account-trigger { width:44px; padding:0; justify-content:center; }
   .user-portal .user-account-name, .user-portal .user-account-trigger > :deep(svg) { display:none; }
 }
-@media (max-width: 359px) {
-  .user-portal { --user-topbar-height:106px; }
-  .user-portal .user-topbar-actions { gap:4px; padding-block:6px; }
+@media (max-width:479px) {
+  .user-portal .user-topbar { gap:2px; padding-inline:6px; }
+  .user-portal .user-topbar-actions { gap:2px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .user-portal :is(.user-sidebar, .user-account-popover, .user-language-menu) { animation: none; }
