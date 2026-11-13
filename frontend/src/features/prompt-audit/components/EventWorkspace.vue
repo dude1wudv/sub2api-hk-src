@@ -57,7 +57,28 @@
     </form>
     <div v-if="error" role="alert" class="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{{ error }}</div>
     <div class="mt-5 overflow-x-auto rounded-xl border border-gray-200 dark:border-dark-700/60">
-      <table class="min-w-[1120px] w-full text-left text-sm">
+<div v-if="mobile" class="mobile-records">
+<label class="flex min-h-11 items-center gap-3 px-4"><input type="checkbox" :checked="allSelected" @change="toggleAll" />{{ t('admin.promptAudit.events.selectAll') }}</label>
+          <div v-if="loading" class="mobile-record-state">{{ t('common.loading') }}</div>
+          <div v-else-if="events.length === 0" class="mobile-record-state">{{ t('admin.promptAudit.events.empty') }}</div>
+          <dl v-for="event in events" v-else :key="event.id" :data-test="`event-${event.id}`" class="mobile-record">
+            <div class="mobile-record-field"><dt>{{ t('admin.promptAudit.events.selectEvent', { id: event.id }) }}</dt><dd><label class="flex min-h-11 min-w-11 items-center"><input type="checkbox" :checked="selectedIds.includes(event.id)" :aria-label="t('admin.promptAudit.events.selectEvent', { id: event.id })" @change="toggleOne(event.id)" /></label></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('admin.promptAudit.events.time') }}</dt><dd >{{ formatDate(event.created_at) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('admin.promptAudit.events.identity') }}</dt><dd ><CopyLine :label="t('admin.promptAudit.events.user')" :value="event.snapshot.username" />
+              <CopyLine :label="t('admin.promptAudit.events.email')" :value="event.snapshot.user_email" />
+              <CopyLine :label="t('admin.promptAudit.events.apiKey')" :value="event.snapshot.api_key_name" /></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('admin.promptAudit.events.group') }}</dt><dd >{{ event.snapshot.group_name || '—' }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('admin.promptAudit.events.route') }}</dt><dd ><p class="font-medium text-gray-900 dark:text-white">{{ event.snapshot.endpoint }}</p>
+              <p class="mt-1 text-xs text-gray-500">{{ event.snapshot.model }} · {{ event.snapshot.protocol }} · {{ event.snapshot.stage || 'http' }}</p></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('admin.promptAudit.events.result') }}</dt><dd ><span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="decisionClass(event.decision)">{{ formatDecisionRisk(event.decision, event.risk_level) }}</span>
+              <p class="mt-2 text-xs text-gray-500">{{ formatCategories(event.categories) }}</p></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('admin.promptAudit.events.preview') }}</dt><dd ><p class="line-clamp-2 break-words text-gray-600 dark:text-dark-300">{{ event.snapshot.redacted_preview || '—' }}</p></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('admin.promptAudit.common.actions') }}</dt><dd ><button type="button" class="btn btn-ghost btn-sm" @click="$emit('view', event.id)">{{ t('common.view') }}</button>
+              <button type="button" class="btn btn-ghost btn-sm text-red-600" @click="$emit('delete', event.id)">{{ t('common.delete') }}</button></dd></div>
+</dl>
+
+</div>
+      <table v-else class="min-w-[1120px] w-full text-left text-sm">
         <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-dark-900/70 dark:text-dark-400">
           <tr>
             <th class="w-10 px-3 py-3"><input type="checkbox" :checked="allSelected" :aria-label="t('admin.promptAudit.events.selectAll')" @change="toggleAll" /></th>
@@ -104,6 +125,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { computed, defineComponent, h, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Pagination from '@/components/common/Pagination.vue'
@@ -148,9 +172,9 @@ const FilterInput = defineComponent({
 const CopyLine = defineComponent({
   props: { label: { type: String, required: true }, value: { type: String, default: '' } },
   setup(componentProps) {
-    return () => h('div', { class: 'flex max-w-56 items-center gap-1 text-xs' }, [
+    return () => h('div', { class: ['flex items-center gap-1 text-xs', mobile.value ? 'min-w-0 flex-wrap' : 'max-w-56'] }, [
       h('span', { class: 'w-16 flex-none text-gray-500 dark:text-dark-400' }, componentProps.label),
-      h('span', { class: 'min-w-0 flex-1 truncate text-gray-800 dark:text-dark-100' }, componentProps.value || '—'),
+      h('span', { class: ['min-w-0 flex-1 text-gray-800 dark:text-dark-100', mobile.value ? '[overflow-wrap:anywhere]' : 'truncate'] }, componentProps.value || '—'),
       componentProps.value ? h('button', {
         type: 'button', class: 'text-primary-600 hover:underline', 'aria-label': `${t('common.copy')} ${componentProps.label}`,
         onClick: () => navigator.clipboard?.writeText(componentProps.value),

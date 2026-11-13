@@ -49,7 +49,23 @@
           <button v-for="platform in platforms" :key="platform.id" type="button" :aria-pressed="selectedPlatform === platform.id" @click="selectedPlatform = platform.id"><ModelIcon :model="platform.models[0]!.name" size="18px" />{{ vendorLabel(platform) }}<span>{{ platform.models.length }}</span></button>
         </div>
         <div class="portal-api-table-heading"><span>{{ text('原价 · 未乘分组倍率', 'Base prices · before group multipliers') }} <span class="portal-api-price-key">{{ text('标记价为倍率后价格', 'Badges show adjusted prices') }}</span></span><span>USD / 1M tokens · {{ text('其他计费单位单独标注', 'Other billing units are labelled') }}</span></div>
-        <div class="portal-api-model-table-wrap">
+        <div v-if="mobile" class="portal-model-cards">
+          <section v-for="platform in visiblePlatforms" :key="platform.id">
+            <h3>{{ vendorLabel(platform) }} · {{ platform.models.length }} {{ text('个模型', 'models') }}</h3>
+            <article v-for="model in platform.models" :key="model.platform + ':' + model.name" class="portal-model-card">
+              <button type="button" class="portal-api-model-name" @click="detailModel = model"><ModelIcon :model="model.name" size="20px" /><span>{{ model.name }}</span><Icon name="chevronRight" size="xs" aria-hidden="true" /></button>
+              <span class="portal-api-model-capabilities"><span>{{ text('接入', 'Platform') }}: {{ platformLabel(model.platform) }}</span><span v-if="model.context_window">{{ compactTokens(model.context_window) }} {{ text('上下文', 'context') }}</span><span v-if="model.reasoning">{{ text('推理', 'Reasoning') }}</span><span v-if="model.tool_call">{{ text('工具调用', 'Tools') }}</span></span>
+              <span v-if="modelBadges(model).length" class="portal-api-model-badges"><span v-for="badge in modelBadges(model)" :key="badge">{{ badge }}</span></span>
+              <p v-if="!model.pricing" class="portal-api-price-missing">{{ text('尚未提供实际单价', 'Actual pricing is not provided') }}</p>
+              <dl v-else-if="model.pricing.billing_mode === 'token'" class="portal-price-fields">
+                <div v-for="field in summaryTokenFields" :key="field"><dt>{{ fieldLabel(field) }}</dt><dd><PortalModelPrice v-bind="rangePrice(model, field)" /><template v-if="field === 'cache_write_price'"><template v-for="duration in cacheDurations" :key="duration.field"><PortalModelPrice v-if="hasCacheDuration(model, duration.field)" v-bind="rangePrice(model, duration.field)" :caption="duration.label" /></template></template></dd></div>
+              </dl>
+              <dl v-else class="portal-price-fields"><div><dt>{{ billingLabel(model) }}<span v-if="independentMediaRate(model)"> · {{ text('独立倍率', 'Independent rate') }} ×{{ effectiveRate(model) }}</span></dt><dd><PortalModelPrice v-bind="rangePrice(model, 'per_request_price')" :unit="unitLabel(model)" /></dd></div></dl>
+            </article>
+          </section>
+          <p v-if="!visiblePlatforms.length" class="portal-api-model-empty">{{ emptyMessage }}</p>
+        </div>
+        <div v-else class="portal-api-model-table-wrap">
           <table class="portal-api-model-table">
             <thead><tr><th scope="col">{{ text('模型', 'Model') }}</th><th scope="col">{{ text('输入', 'Input') }}</th><th scope="col">{{ text('缓存写入', 'Cache write') }}</th><th scope="col">{{ text('缓存读取', 'Cache read') }}</th><th scope="col">{{ text('输出', 'Output') }}</th></tr></thead>
             <tbody v-for="platform in visiblePlatforms" :key="platform.id">
@@ -102,7 +118,14 @@
           <p v-if="detailModel.pricing.billing_mode === 'token'">{{ text('单位：USD / 1M tokens。缓存写入按 5 分钟、1 小时及 12 小时分别列出；未配置价格显示 —。', 'Unit: USD / 1M tokens. Cache writes are listed for 5m, 1h and 12h; unconfigured prices show —.') }}</p>
           <p v-if="detailTiers.length > 1">{{ detailModel.long_context_basis === 'marginal' ? text('阶梯采用边际计价：仅超出阈值的部分按对应档位计费。', 'Marginal tiers: only usage beyond a threshold is charged at that tier.') : text('阶梯采用整单计价：整个请求按所处档位的单价计费。', 'Whole-request tiers: the entire request uses the matching tier price.') }}</p>
           <p v-if="detailModel.pricing.billing_mode === 'token' && selectedGroup.long_context_pricing_enabled === false">{{ text('此分组未启用长上下文阶梯，当前展示基础档位。', 'Long-context tiering is disabled for this group; the base tier is shown.') }}</p>
-          <div class="portal-api-detail-table-wrap">
+          <div v-if="mobile" class="portal-model-cards">
+            <article v-for="(tier, index) in detailTiers" :key="index" class="portal-model-card">
+              <h3>{{ text('档位', 'Tier') }} · {{ tierLabel(tier) }}</h3>
+              <dl v-if="detailModel.pricing.billing_mode === 'token'" class="portal-price-fields"><div v-for="field in tokenFields" :key="field"><dt>{{ fieldLabel(field) }}</dt><dd><PortalModelPrice v-bind="priceDisplay(detailModel, [tier[field]])" /></dd></div></dl>
+              <dl v-else class="portal-price-fields"><div><dt>{{ text('价格', 'Price') }} {{ unitLabel(detailModel) }}</dt><dd><PortalModelPrice v-bind="priceDisplay(detailModel, [tier.per_request_price])" /></dd></div></dl>
+            </article>
+          </div>
+          <div v-else class="portal-api-detail-table-wrap">
             <table class="portal-api-detail-table">
               <thead><tr><th>{{ text('档位', 'Tier') }}</th><template v-if="detailModel.pricing.billing_mode === 'token'"><th>{{ text('输入', 'Input') }}</th><th>{{ text('缓存写 5m', 'Cache write 5m') }}</th><th>{{ text('缓存写 1h', 'Cache write 1h') }}</th><th>{{ text('缓存写 12h', 'Cache write 12h') }}</th><th>{{ text('缓存读', 'Cache read') }}</th><th>{{ text('输出', 'Output') }}</th></template><th v-else>{{ text('价格', 'Price') }} {{ unitLabel(detailModel) }}</th></tr></thead>
               <tbody><tr v-for="(tier, index) in detailTiers" :key="index"><td>{{ tierLabel(tier) }}</td><template v-if="detailModel.pricing.billing_mode === 'token'"><td v-for="field in tokenFields" :key="field"><PortalModelPrice v-bind="priceDisplay(detailModel, [tier[field]])" /></td></template><td v-else><PortalModelPrice v-bind="priceDisplay(detailModel, [tier.per_request_price])" /></td></tr></tbody>
@@ -111,7 +134,8 @@
           <details v-if="detailModel.pricing.billing_mode === 'token' && detailModel.official_pricing" class="portal-api-catalogue-notes">
             <summary>{{ text('官方参考价 · USD / 1M tokens', 'Official reference · USD / 1M tokens') }}</summary>
             <p>{{ text('参考价不参与本站扣费，也不应用分组倍率。', 'Reference prices are not charged here and do not apply group multipliers.') }}</p>
-            <div class="portal-api-detail-table-wrap"><table class="portal-api-detail-table">
+            <div v-if="mobile" class="portal-model-cards"><article v-for="(tier, index) in officialTiers" :key="index" class="portal-model-card"><h3>{{ text('档位', 'Tier') }} · {{ tierLabel(tier) }}</h3><dl class="portal-price-fields"><div v-for="field in tokenFields" :key="field"><dt>{{ fieldLabel(field) }}</dt><dd>{{ tier[field] == null ? '—' : formatScaled(tier[field]!, 1_000_000, 2) }}</dd></div></dl></article></div>
+            <div v-else class="portal-api-detail-table-wrap"><table class="portal-api-detail-table">
               <thead><tr><th>{{ text('档位', 'Tier') }}</th><th>{{ text('输入', 'Input') }}</th><th>{{ text('缓存写 5m', 'Cache write 5m') }}</th><th>{{ text('缓存写 1h', 'Cache write 1h') }}</th><th>{{ text('缓存写 12h', 'Cache write 12h') }}</th><th>{{ text('缓存读', 'Cache read') }}</th><th>{{ text('输出', 'Output') }}</th></tr></thead>
               <tbody><tr v-for="(tier, index) in officialTiers" :key="index"><td>{{ tierLabel(tier) }}</td><td v-for="field in tokenFields" :key="field">{{ tier[field] == null ? '—' : formatScaled(tier[field]!, 1_000_000, 2) }}</td></tr></tbody>
             </table></div>
@@ -135,15 +159,17 @@
             <ul><li v-for="[effort, multiplier] in reasoningRates(detailModel)" :key="effort">{{ effort }} · ×{{ multiplier }}</li></ul>
           </div>
         </template>
-        <footer class="portal-dialog-actions"><button type="button" class="portal-button secondary" @click="detailModel = null">{{ text('关闭', 'Close') }}</button><button v-if="showCreate && detailModel.pricing?.billing_mode === 'token'" type="button" class="portal-button" @click="chooseExampleModel">{{ text('查看调用示例', 'View request example') }}</button></footer>
       </div>
+      <template v-if="detailModel" #footer><div class="portal-dialog-actions"><button type="button" class="portal-button secondary" @click="detailModel = null">{{ text('关闭', 'Close') }}</button><button v-if="showCreate && detailModel.pricing?.billing_mode === 'token'" type="button" class="portal-button" @click="chooseExampleModel">{{ text('查看调用示例', 'View request example') }}</button></div></template>
     </PortalDialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useResizeObserver } from '@vueuse/core'
+import { useMediaQuery, useResizeObserver } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -187,6 +213,7 @@ type PriceField = 'input_price' | 'cache_write_price' | 'cache_write_1h_price' |
 const tokenFields = ['input_price', 'cache_write_price', 'cache_write_1h_price', 'cache_write_12h_price', 'cache_read_price', 'output_price'] as const
 const summaryTokenFields = ['input_price', 'cache_write_price', 'cache_read_price', 'output_price'] as const
 const cacheDurations = [{ field: 'cache_write_1h_price', label: '1h' }, { field: 'cache_write_12h_price', label: '12h' }] as const
+const fieldLabel = (field: typeof tokenFields[number]) => ({ input_price: text('输入', 'Input'), cache_write_price: text('缓存写 5m', 'Cache write 5m'), cache_write_1h_price: text('缓存写 1h', 'Cache write 1h'), cache_write_12h_price: text('缓存写 12h', 'Cache write 12h'), cache_read_price: text('缓存读', 'Cache read'), output_price: text('输出', 'Output') })[field]
 const detailModel = ref<PlazaModel | null>(null)
 const groupSearch = ref('')
 const groupNav = ref<HTMLElement | null>(null)
@@ -410,5 +437,11 @@ function chooseExampleModel() {
 .portal-api-pricing-rule p { margin:6px 0; }
 .portal-api-pricing-rule ul { margin:8px 0; padding-left:20px; list-style:disc; }
 @media(max-width:1100px) { .portal-api-models { grid-template-columns:205px minmax(0,1fr); } .portal-api-catalogue { padding:22px 18px; } .portal-api-catalogue-header { flex-wrap:wrap; } .portal-api-model-search { width:100%; } }
-@media(max-width:760px) { .portal-api-models { grid-template-columns:minmax(0,1fr); } .portal-api-sidebar { border-right:0; border-bottom:1px solid rgb(var(--line)); padding:16px; } .portal-api-sidebar-heading { padding:0; margin-bottom:10px; } .portal-api-group-nav,.portal-api-group-search,.portal-api-group-scroll-hint { display:none; } .portal-api-mobile-groups { display:block; width:100%; } .portal-api-catalogue { padding:20px 16px; } .portal-api-catalogue-header h2 { font-size:19px; } .portal-model-platforms { flex-wrap:nowrap; overflow-x:auto; padding-bottom:6px; } .portal-model-platforms > button { flex-shrink:0; } .portal-api-model-table td:first-child { min-width:200px; } }
+@media (max-width:767px), (max-width:1023px) and (max-height:500px) and (pointer:coarse) { .portal-api-models { grid-template-columns:minmax(0,1fr); } .portal-api-sidebar { border-right:0; border-bottom:1px solid rgb(var(--line)); padding:16px; } .portal-api-sidebar-heading { padding:0; margin-bottom:10px; } .portal-api-group-nav,.portal-api-group-search,.portal-api-group-scroll-hint { display:none; } .portal-api-mobile-groups { display:block; width:100%; } .portal-api-catalogue { padding:20px 16px; } .portal-api-catalogue-header h2 { font-size:19px; } .portal-model-platforms { flex-wrap:nowrap; overflow-x:auto; padding-bottom:6px; } .portal-model-platforms > button { flex-shrink:0; } .portal-api-model-name { min-width:0; width:100%; } .portal-api-model-name span { min-width:0; } .portal-api-models :is(button, select, summary), .portal-api-price-detail summary { min-height:44px; } }
+.portal-model-cards { display:grid; min-width:0; gap:14px; }
+.portal-model-card { min-width:0; padding:16px; border:1px solid rgb(var(--line)); border-radius:10px; margin-top:12px; overflow-wrap:anywhere; }
+.portal-model-card h3 { margin:0 0 12px; font-size:14px; }
+.portal-price-fields { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; margin:14px 0 0; }
+.portal-price-fields dt { font-size:12px; color:rgb(var(--ink-3)); }
+.portal-price-fields dd { min-width:0; margin:4px 0 0; overflow-wrap:anywhere; }
 </style>

@@ -63,6 +63,9 @@
 .traffic-endpoint code { font-size:11.5px; }
 .traffic-method { padding:2px 5px; border-radius:4px; background:rgb(var(--surface-2)); color:rgb(var(--ink-3)); font-size:9px; font-weight:650; }
 .traffic-request-id { display:block; max-width:260px; overflow:hidden; text-overflow:ellipsis; margin-top:6px; font-size:10px; color:rgb(var(--ink-3)); font-family:var(--font-mono); }
+.mobile-record .traffic-endpoint { flex-wrap:wrap; min-width:0; }
+.mobile-record .traffic-request-id { max-width:100%; overflow:visible; overflow-wrap:anywhere; }
+.traffic-panel .mobile-records { padding:12px; }
 .traffic-status { display:inline-flex; align-items:center; gap:5px; padding:3px 7px; border-radius:5px; font-size:10.5px; font-weight:550; }
 .traffic-status::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; }
 .traffic-status.is-complete { color:rgb(var(--brand-moss)); background:rgb(var(--brand-moss) / .1); }

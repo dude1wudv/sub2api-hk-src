@@ -534,6 +534,8 @@ function formatBucketRange(value: string) {
 
 <style scoped>
 .telemetry-matrix-shell {
+  min-width: 0;
+  max-width: 100%;
   background: rgb(var(--surface));
   border: 1px solid rgb(var(--line));
   border-radius: var(--radius-card);
@@ -572,6 +574,8 @@ function formatBucketRange(value: string) {
   border-color: rgb(var(--line-strong));
 }
 .matrix-scroll {
+  min-width: 0;
+  overscroll-behavior-x: contain;
   border: 1px solid rgb(var(--line));
   background: rgb(var(--surface));
 }

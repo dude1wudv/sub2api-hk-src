@@ -102,8 +102,44 @@
 
         <div v-else>
           <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-dark-600">
-            <div class="max-h-[420px] overflow-auto">
-              <table class="w-full min-w-max text-sm">
+            <div :class="{ 'max-h-[420px] overflow-auto': !mobile }">
+              <div v-if="mobile" class="mobile-records">
+                  <dl v-for="entry in paginatedLocalEntries"
+                    :key="entry.user_id" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t('admin.groups.columns.userEmail') }}</dt><dd>{{ entry.user_email }}</dd></div>
+  <div class="mobile-record-field"><dt>ID</dt><dd>{{ entry.user_id }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groups.columns.userName') }}</dt><dd>{{ entry.user_name || '-' }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groups.columns.userNotes') }}</dt><dd :title="entry.user_notes">{{ entry.user_notes || '-' }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groups.columns.userStatus') }}</dt><dd><span
+                        :class="[
+                          'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
+                          entry.user_status === 'active'
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-gray-100 text-gray-600 dark:bg-dark-600 dark:text-gray-400'
+                        ]"
+                      >
+                        {{ entry.user_status }}
+                      </span></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groups.columns.rpmOverride') }}</dt><dd><input
+                        type="number"
+                        step="1"
+                        min="0"
+                        autocomplete="off"
+                        :value="entry.rpm_override"
+                        class="hide-spinner w-20 rounded border border-gray-200 bg-white px-2 py-1 text-center text-sm font-medium transition-colors focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20 dark:border-dark-500 dark:bg-dark-700 dark:focus:border-primary-500"
+                        @change="updateLocalRpm(entry.user_id, ($event.target as HTMLInputElement).value)"
+                      /></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('common.actions') }}</dt><dd><button
+                        type="button"
+                        class="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                        @click="removeLocal(entry.user_id)"
+                      >
+                        <Icon name="trash" size="sm" />
+                      </button></dd></div>
+</dl>
+
+</div>
+<table v-else class="w-full min-w-max text-sm">
                 <thead class="sticky top-0 z-[1]">
                   <tr class="border-b border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-700">
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.userEmail') }}</th>
@@ -206,6 +242,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

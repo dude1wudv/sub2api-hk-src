@@ -17,7 +17,65 @@
       </p>
       <div v-if="loading" class="py-10 text-center text-gray-500">{{ t('common.loading') }}</div>
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <div v-if="mobile" class="mobile-records">
+            <dl v-for="row in quotas" :key="row.platform" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t('admin.users.platformQuota.columns.platform') }}</dt><dd>{{ row.platform }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.users.platformQuota.columns.daily') }}</dt><dd><div class="flex items-center gap-1">
+                  <input
+                    v-model.number="row.daily_limit_usd"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="input w-24"
+                    :placeholder="t('admin.users.platformQuota.placeholder')"
+                  />
+                  <button
+                    type="button"
+                    class="text-xs text-gray-400 hover:text-amber-500 disabled:opacity-50"
+                    :disabled="!!resetting[`${row.platform}.daily`] || !savedConfigured.has(row.platform)"
+                    :title="t(savedConfigured.has(row.platform) ? 'admin.users.platformQuota.reset.button' : 'admin.users.platformQuota.reset.unavailable')"
+                    @click="onReset(row.platform, 'daily')"
+                  >↻</button>
+                </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.users.platformQuota.columns.weekly') }}</dt><dd><div class="flex items-center gap-1">
+                  <input
+                    v-model.number="row.weekly_limit_usd"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="input w-24"
+                    :placeholder="t('admin.users.platformQuota.placeholder')"
+                  />
+                  <button
+                    type="button"
+                    class="text-xs text-gray-400 hover:text-amber-500 disabled:opacity-50"
+                    :disabled="!!resetting[`${row.platform}.weekly`] || !savedConfigured.has(row.platform)"
+                    :title="t(savedConfigured.has(row.platform) ? 'admin.users.platformQuota.reset.button' : 'admin.users.platformQuota.reset.unavailable')"
+                    @click="onReset(row.platform, 'weekly')"
+                  >↻</button>
+                </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.users.platformQuota.columns.monthly') }}</dt><dd><div class="flex items-center gap-1">
+                  <input
+                    v-model.number="row.monthly_limit_usd"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="input w-24"
+                    :placeholder="t('admin.users.platformQuota.placeholder')"
+                  />
+                  <button
+                    type="button"
+                    class="text-xs text-gray-400 hover:text-amber-500 disabled:opacity-50"
+                    :disabled="!!resetting[`${row.platform}.monthly`] || !savedConfigured.has(row.platform)"
+                    :title="t(savedConfigured.has(row.platform) ? 'admin.users.platformQuota.reset.button' : 'admin.users.platformQuota.reset.unavailable')"
+                    @click="onReset(row.platform, 'monthly')"
+                  >↻</button>
+                </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.users.platformQuota.columns.usage') }}</dt><dd>{{ formatUsage(row.daily_usage_usd) }} / {{ formatUsage(row.weekly_usage_usd) }} / {{ formatUsage(row.monthly_usage_usd) }}</dd></div>
+</dl>
+
+</div>
+<table v-else class="min-w-full text-sm">
           <thead>
             <tr class="border-b border-gray-200 text-gray-700 dark:border-dark-700 dark:text-gray-300">
               <th class="px-3 py-2 text-left font-medium">{{ t('admin.users.platformQuota.columns.platform') }}</th>
@@ -115,6 +173,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { ref, reactive, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

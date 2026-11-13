@@ -348,8 +348,10 @@ textarea.portal-field:focus {
 }
 .portal-dialog {
   width: min(540px, 100%);
-  max-height: calc(100dvh - 48px);
-  overflow: auto;
+  max-height: calc(var(--visual-height, 100dvh) - 48px);
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
   background: rgb(var(--surface-elevated));
   color: rgb(var(--ink));
   border: 1px solid rgb(var(--line));
@@ -381,6 +383,7 @@ textarea.portal-field:focus {
 .portal-dialog-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 24px;
   padding-top: 16px;

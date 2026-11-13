@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import { flushPromises, mount } from '@vue/test-utils'
 import { RouterLinkStub } from '@vue/test-utils'
 import PortalRedeemHistory from '../PortalRedeemHistory.vue'
@@ -12,7 +13,12 @@ vi.mock('vue-i18n', async () => {
   return { ...actual, useI18n: () => ({ locale: ref('en-US'), t: (key: string) => key }) }
 })
 
-describe('PortalRedeemHistory', () => {
+describe.each([false, true])('PortalRedeemHistory (mobile=%s)', (mobile) => {
+  const originalMatchMedia = window.matchMedia
+  beforeEach(() => vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
+    ...originalMatchMedia(query), matches: query === MOBILE_CONTENT_QUERY ? mobile : originalMatchMedia(query).matches,
+  })))
+  afterEach(() => vi.restoreAllMocks())
   beforeEach(() => {
     vi.clearAllMocks()
     getHistory.mockResolvedValue({

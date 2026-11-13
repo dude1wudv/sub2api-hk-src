@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import type { UserErrorRequest } from '@/types'
 import { portalErrorColumns, type PortalErrorColumnKey, usageErrorRequestLabel, usageColumnLabel } from '@/utils/portalUsage'
 const props = defineProps<{ rows: UserErrorRequest[]; columns: PortalErrorColumnKey[]; sortBy: string; sortOrder: 'asc' | 'desc' }>()
@@ -9,7 +10,7 @@ const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const copy = (cn: string, en: string) => zh.value ? cn : en
 const emit = defineEmits<{ sort: [key: string]; detail: [row: UserErrorRequest] }>()
-const mobile = useMediaQuery('(max-width: 767px)')
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 const visible = computed(() => portalErrorColumns.filter(column => props.columns.includes(column.key)))
 const primaryKeys = new Set(['created_at', 'type', 'model', 'status_code', 'category', 'message'])
 const extras = computed(() => visible.value.filter(column => !primaryKeys.has(column.key)))

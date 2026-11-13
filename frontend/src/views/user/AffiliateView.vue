@@ -119,7 +119,17 @@
             {{ t('affiliate.invitees.empty') }}
           </div>
           <div v-else class="mt-4 overflow-x-auto">
-            <table class="w-full min-w-[560px] text-left text-sm">
+            <div v-if="mobile" class="mobile-records">
+                <dl v-for="item in detail.invitees"
+                  :key="item.user_id" class="mobile-record">
+  <div  class="mobile-record-field"><dt>{{ t('affiliate.invitees.columns.email') }}</dt><dd >{{ item.email || '-' }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('affiliate.invitees.columns.username') }}</dt><dd >{{ item.username || '-' }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('affiliate.invitees.columns.rebate') }}</dt><dd >{{ formatCurrency(item.total_rebate) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('affiliate.invitees.columns.joinedAt') }}</dt><dd >{{ formatDateTime(item.created_at) || '-' }}</dd></div>
+</dl>
+
+</div>
+<table v-else class="w-full min-w-[560px] text-left text-sm">
               <thead>
                 <tr class="border-b border-gray-200 text-gray-500 dark:border-dark-700 dark:text-dark-400">
                   <th class="px-3 py-2 font-medium">{{ t('affiliate.invitees.columns.email') }}</th>
@@ -157,6 +167,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'

@@ -7,7 +7,7 @@ vi.mock('@/api/keys', () => ({ keysAPI: { update, create } }))
 vi.mock('@/stores/onboarding', () => ({
   useOnboardingStore: () => ({ isCurrentStep: () => false, nextStep: vi.fn() }),
 }))
-vi.mock('@/components/portal/PortalDialog.vue', () => ({ default: { props: ['open', 'title', 'wide'], template: '<div class="portal-dialog-test"><slot /></div>' } }))
+vi.mock('@/components/portal/PortalDialog.vue', () => ({ default: { props: ['open', 'title', 'wide'], template: '<div class="portal-dialog-test"><slot /><slot name="footer" /></div>' } }))
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   const { ref } = await import('vue')

@@ -77,7 +77,7 @@ describe('Select dropdown viewport constraints', () => {
     expect(dropdown).not.toBeNull()
     expect(dropdown?.style.left).toBe('20px')
     expect(dropdown?.style.minWidth).toBe('200px')
-    expect(dropdown?.style.maxWidth).toBe('996px')
+    expect(dropdown?.style.maxWidth).toBe('992px')
   })
 
   it('moves a right-edge dropdown left so its options retain their usable width', async () => {
@@ -87,7 +87,7 @@ describe('Select dropdown viewport constraints', () => {
     const dropdown = await openSelect()
 
     expect(dropdown).not.toBeNull()
-    expect(dropdown?.style.left).toBe('112px')
+    expect(dropdown?.style.left).toBe('108px')
     expect(dropdown?.style.minWidth).toBe('200px')
     expect(dropdown?.style.maxWidth).toBe('200px')
   })
@@ -99,9 +99,9 @@ describe('Select dropdown viewport constraints', () => {
     const dropdown = await openSelect()
 
     expect(dropdown).not.toBeNull()
-    expect(dropdown?.style.left).toBe('8px')
+    expect(dropdown?.style.left).toBe('12px')
     expect(dropdown?.style.minWidth).toBe('200px')
-    expect(dropdown?.style.maxWidth).toBe('304px')
+    expect(dropdown?.style.maxWidth).toBe('296px')
   })
 
   it('keeps the complete dropdown inside the viewport even for an offscreen trigger', async () => {
@@ -111,7 +111,7 @@ describe('Select dropdown viewport constraints', () => {
     const dropdown = await openSelect()
 
     expect(dropdown).not.toBeNull()
-    expect(dropdown?.style.left).toBe('112px')
+    expect(dropdown?.style.left).toBe('108px')
     expect(dropdown?.style.minWidth).toBe('200px')
     expect(dropdown?.style.maxWidth).toBe('200px')
   })
@@ -122,9 +122,9 @@ describe('Select dropdown viewport constraints', () => {
 
     const dropdown = await openSelect()
 
-    expect(dropdown?.style.left).toBe('8px')
-    expect(dropdown?.style.minWidth).toBe('344px')
-    expect(dropdown?.style.maxWidth).toBe('344px')
+    expect(dropdown?.style.left).toBe('12px')
+    expect(dropdown?.style.minWidth).toBe('336px')
+    expect(dropdown?.style.maxWidth).toBe('336px')
   })
 
   it('uses the larger space above a low trigger and bounds the menu height', async () => {
@@ -134,9 +134,9 @@ describe('Select dropdown viewport constraints', () => {
     const dropdown = await openSelect()
     await nextTick()
 
-    expect(dropdown?.style.bottom).toBe('104px')
-    expect(dropdown?.style.maxHeight).toBe('128px')
-    expect(dropdown?.style.top).toBe('')
+    expect(dropdown?.style.top).toBe('12px')
+    expect(dropdown?.style.maxHeight).toBe('124px')
+    expect(dropdown?.style.bottom).toBe('')
   })
 })
 

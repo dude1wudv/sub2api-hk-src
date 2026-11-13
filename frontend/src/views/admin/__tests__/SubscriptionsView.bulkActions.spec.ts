@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import SubscriptionsView from '../SubscriptionsView.vue'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 
 const { list, bulkAction, bulkAssign, listUsers, showError } = vi.hoisted(() => ({
   list: vi.fn(), bulkAction: vi.fn(), bulkAssign: vi.fn(), listUsers: vi.fn(), showError: vi.fn()
@@ -41,6 +42,7 @@ function mountView() {
 }
 
 let wrapper: ReturnType<typeof mountView>
+const originalMatchMedia = window.matchMedia
 
 beforeEach(async () => {
   vi.clearAllMocks()
@@ -54,6 +56,7 @@ beforeEach(async () => {
 afterEach(() => {
   wrapper.unmount()
   vi.useRealTimers()
+  window.matchMedia = originalMatchMedia
 })
 
 async function select(ids: number[]) {
@@ -62,6 +65,17 @@ async function select(ids: number[]) {
 }
 
 describe('subscription bulk operations', () => {
+  it('opens the guide as mobile fields and closes from its footer', async () => {
+    wrapper.unmount()
+    window.matchMedia = query => ({ ...originalMatchMedia(query), matches: query === MOBILE_CONTENT_QUERY })
+    wrapper = mountView()
+    await flushPromises()
+    await wrapper.get('[title="admin.subscriptions.guide.showGuide"]').trigger('click')
+    expect(wrapper.text()).toContain('admin.subscriptions.guide.step3.title')
+    expect(wrapper.findAll('.mobile-record-field').length).toBeGreaterThan(0)
+    await wrapper.findAll('button').find(button => button.text() === 'common.close')!.trigger('click')
+    expect(wrapper.text()).not.toContain('admin.subscriptions.guide.step3.title')
+  })
   it('uses eligible selected rows and retains failures and untouched selections after a partial result', async () => {
     bulkAction.mockResolvedValue({ success_count: 1, failed_count: 1, results: [
       { subscription_id: 1, success: true },

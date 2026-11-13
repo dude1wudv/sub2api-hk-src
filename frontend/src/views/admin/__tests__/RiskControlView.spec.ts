@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { DOMWrapper, VueWrapper } from '@vue/test-utils'
 
 import RiskControlView from '../RiskControlView.vue'
 import type { ContentModerationAPIKeyStatus, ContentModerationConfig, UpdateContentModerationConfig } from '@/api/admin/riskControl'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 
 const {
   getConfig,
@@ -193,6 +194,7 @@ function findButtonByText(wrapper: VueWrapper, text: string): DOMWrapper<HTMLBut
 }
 
 describe('admin RiskControlView', () => {
+  afterEach(() => vi.restoreAllMocks())
   beforeEach(() => {
     getConfig.mockReset()
     updateConfig.mockReset()
@@ -534,5 +536,18 @@ describe('admin RiskControlView', () => {
       'max-h-[280px]',
       'overflow-y-auto',
     ]))
+  })
+  it('keeps all mobile log fields and opens the full input detail', async () => {
+    const matchMedia = window.matchMedia
+    vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ ...matchMedia(query), matches: query === MOBILE_CONTENT_QUERY }))
+    listLogs.mockResolvedValue({ items: [{ id: 1, created_at: '2026-10-10T12:00:00Z', group_name: 'Synthetic group', user_email: 'preview@example.test', user_id: 1, api_key_name: 'Synthetic key', endpoint: '/v1/messages', provider: 'anthropic', model: 'preview-model', highest_category: 'violence', highest_score: 0.8, input_excerpt: 'long preview input', upstream_latency_ms: 123, queue_delay_ms: 45 }], total: 1, page: 1, page_size: 20, pages: 1 })
+    const wrapper = mount(RiskControlView, { global: { stubs: { BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
+    await flushPromises()
+    const card = wrapper.get('.mobile-record')
+    expect(card.findAll('dt')).toHaveLength(10)
+    for (const value of ['Synthetic group', 'preview@example.test', 'Synthetic key', '/v1/messages', 'preview-model', 'violence', '123 ms']) expect(card.text()).toContain(value)
+    await card.get('button[title="long preview input"]').trigger('click')
+    expect(wrapper.findAllComponents(BaseDialogStub).some(dialog => dialog.props('show') && dialog.text().includes('long preview input'))).toBe(true)
+    wrapper.unmount()
   })
 })

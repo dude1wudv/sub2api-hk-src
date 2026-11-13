@@ -62,7 +62,20 @@
       <p v-if="detailsError" role="alert" class="traffic-error">{{ detailsError }} <button type="button" class="underline" @click="loadDetails(requestedPage)">{{ t('common.refresh') }}</button></p>
       <p v-if="detailsLoading" role="status" class="traffic-loading">{{ t('traffic.loadingRecords') }}</p>
       <template v-if="details && !detailsLoading">
-        <div class="traffic-table-scroll"><table class="traffic-table traffic-records-table">
+        <div class="traffic-table-scroll"><div v-if="mobile" class="mobile-records">
+            <dl v-for="item in details.items" :key="item.event_id" class="mobile-record">
+  <div  class="mobile-record-field"><dt>{{ t('usage.time') }}</dt><dd >{{ displayTime(item.started_at) }}</dd></div>
+  <div v-if="admin" class="mobile-record-field"><dt>{{ t('traffic.user') }}</dt><dd >#{{ item.user_id }}</dd></div>
+  <div  class="mobile-record-field"><dt>API Key</dt><dd ><span class="traffic-key-id"><Icon name="key" size="xs" />#{{ item.api_key_id }}</span></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('traffic.endpoint') }}</dt><dd ><div class="traffic-endpoint"><span class="traffic-method">{{ item.method }}</span><code>{{ item.endpoint }}</code></div><span class="traffic-request-id" :title="item.request_id || item.event_id">{{ item.request_id || item.event_id }}</span></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('traffic.upload') }}</dt><dd :title="`${item.upload_bytes} B`">{{ bytes(item.upload_bytes) }}<small v-if="!item.request_complete" class="traffic-partial">{{ t('traffic.partialRead') }}</small></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('traffic.download') }}</dt><dd :title="`${item.download_bytes} B`">{{ bytes(item.download_bytes) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('traffic.result') }}</dt><dd ><span class="traffic-status" :class="item.outcome === 'completed' ? 'is-complete' : item.outcome === 'canceled' ? 'is-canceled' : 'is-error'">{{ item.status_code ? 'HTTP ' + item.status_code : '—' }}</span><small>{{ t(`traffic.outcomes.${item.outcome}`) }}</small></dd></div>
+</dl>
+            <div v-if="!details.items.length" class="mobile-record-state">{{ t('traffic.empty') }}</div>
+
+</div>
+<table v-else class="traffic-table traffic-records-table">
           <caption class="sr-only">{{ t('traffic.records') }}</caption>
           <thead><tr><th scope="col">{{ t('usage.time') }}</th><th v-if="admin" scope="col">{{ t('traffic.user') }}</th><th scope="col">API Key</th><th scope="col">{{ t('traffic.endpoint') }}</th><th scope="col">{{ t('traffic.upload') }}</th><th scope="col">{{ t('traffic.download') }}</th><th scope="col">{{ t('traffic.result') }}</th></tr></thead>
           <tbody>
@@ -89,6 +102,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { useI18n } from 'vue-i18n'

@@ -1,6 +1,6 @@
 <template>
   <PortalDialog :open="open" :title="text('批量编辑 API Keys', 'Edit API keys in bulk')" wide @close="close">
-    <form class="portal-api-bulk-form" @submit.prevent="submit">
+    <form :id="formId" class="portal-api-bulk-form" @submit.prevent="submit">
       <p class="portal-api-bulk-intro">{{ text('仅修改勾选的字段，其余设置保持不变。', 'Only checked fields will change. Other settings stay as they are.') }}</p>
       <details class="portal-api-bulk-selection"><summary>{{ text('本次选择 ', 'Selected: ') }}{{ initialKeys.length }}{{ text(' 个密钥', ' keys') }}</summary><ul><li v-for="key in initialKeys" :key="key.id">#{{ key.id }} {{ key.name }}</li></ul></details>
 
@@ -40,21 +40,24 @@
         <details v-if="succeededKeys.length" class="portal-api-bulk-successes"><summary>{{ text('查看成功项', 'Show successful keys') }}</summary><ul><li v-for="key in succeededKeys" :key="key.id">#{{ key.id }} {{ key.name }}</li></ul></details>
         <ul v-if="failures.length" class="portal-api-bulk-failures" role="alert"><li v-for="failure in failures" :key="failure.id">#{{ failure.id }} {{ failure.name }}：{{ failure.message }}</li></ul>
       </section>
-      <footer class="portal-dialog-actions">
-        <button type="button" class="portal-button secondary" :disabled="submitting" @click="close">{{ attempted ? text('关闭', 'Close') : text('取消', 'Cancel') }}</button>
-        <button v-if="pendingKeys.length" type="submit" class="portal-button" :disabled="!canSubmit" data-test="submit">{{ submitting ? text('更新中…', 'Updating…') : attempted ? text('仅重试失败项', 'Retry failed keys only') : text('应用到 ', 'Apply to ') + pendingKeys.length + text(' 个密钥', ' keys') }}</button>
-      </footer>
     </form>
+    <template #footer>
+      <div class="portal-dialog-actions">
+        <button type="button" class="portal-button secondary" :disabled="submitting" @click="close">{{ attempted ? text('关闭', 'Close') : text('取消', 'Cancel') }}</button>
+        <button v-if="pendingKeys.length" type="submit" :form="formId" class="portal-button" :disabled="!canSubmit" data-test="submit">{{ submitting ? text('更新中…', 'Updating…') : attempted ? text('仅重试失败项', 'Retry failed keys only') : text('应用到 ', 'Apply to ') + pendingKeys.length + text(' 个密钥', ' keys') }}</button>
+      </div>
+    </template>
   </PortalDialog>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PortalDialog from './PortalDialog.vue'
 import { keysAPI } from '@/api/keys'
 import { useAppStore } from '@/stores/app'
 import type { ApiKey, Group, UpdateApiKeyRequest } from '@/types'
+const formId = useId()
 
 type SelectedKey = Pick<ApiKey, 'id' | 'name' | 'routing_group_ids'>
 type LimitField = 'quota' | 'rate_limit_5h' | 'rate_limit_1d' | 'rate_limit_7d'

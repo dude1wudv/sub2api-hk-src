@@ -6,6 +6,7 @@ import { resolve } from 'node:path'
 
 import AnnouncementPopup from '../AnnouncementPopup.vue'
 import { useAnnouncementStore } from '@/stores/announcements'
+import BaseDialog from '../BaseDialog.vue'
 
 const announcementMarkdownStyles = readFileSync(
   resolve(process.cwd(), 'src/styles/announcement-markdown.css'),
@@ -72,6 +73,19 @@ describe('AnnouncementPopup', () => {
     expect(content?.querySelector('script')).toBeNull()
 
     wrapper.unmount()
+  })
+
+  it('retains the other overlay lock until the final owner closes', async () => {
+    const drawer = mount(BaseDialog, { props: { show: true, title: 'Drawer' } })
+    const popup = mount(AnnouncementPopup, { props: { announcement, preview: true } })
+    await popup.vm.$nextTick()
+    expect(document.body.style.overflow).toBe('hidden')
+    await popup.setProps({ announcement: null })
+    expect(document.body.style.overflow).toBe('hidden')
+    await drawer.setProps({ show: false })
+    expect(document.body.style.overflow).toBe('')
+    popup.unmount()
+    drawer.unmount()
   })
 
   it.each(['h2', 'h3', 'ul', 'li', 'blockquote', 'table', 'th', 'td', 'code'])(

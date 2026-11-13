@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
 import EndpointPool from '../components/EndpointPool.vue'
@@ -8,6 +8,7 @@ import EventDetailDialog from '../components/EventDetailDialog.vue'
 import FilterDeleteDialog from '../components/FilterDeleteDialog.vue'
 import type { PromptAuditDraft, PromptAuditEndpointDraft, PromptAuditEvent, PromptEventFilters } from '../types'
 import { emptyEventFilters, resolveDeleteRangeFilters, SCANNER_CATALOG } from '../viewModel'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
@@ -25,6 +26,7 @@ const endpoint = (): PromptAuditEndpointDraft => ({
 
 describe('Prompt Audit components', () => {
   beforeEach(() => vi.restoreAllMocks())
+  afterEach(() => vi.restoreAllMocks())
 
   it('edits a saved endpoint with blank-secret keep, explicit clear, replacement, and probe actions', async () => {
     const wrapper = mount(EndpointPool, {
@@ -84,7 +86,9 @@ describe('Prompt Audit components', () => {
     expect(emitted.worker_count).toBe(6)
   })
 
-  it('keeps identity fields separate, supports selection, and opens filter deletion from the toolbar', async () => {
+  it.each([false, true])('keeps identity, selection and actions (mobile=%s)', async (mobile) => {
+    const matchMedia = window.matchMedia
+    vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ ...matchMedia(query), matches: query === MOBILE_CONTENT_QUERY ? mobile : matchMedia(query).matches }))
     const event: PromptAuditEvent = {
       id: 1, job_id: 1, decision: 'critical', risk_level: 'critical', action: 'Block', categories: ['pii'], matched_scanners: ['pii'], scanner_scores: { pii: 1 }, scanner_evidence: { pii: 'redacted' }, scanner_backend: 'qwen3guard-openai', scanner_version: '1', guard_endpoint_id: 'guard-1', policy_id: 'priority', policy_version: 1, config_version: 1, chunk_total: 1, latency_ms: 10, issue_summaries: [], created_at: '2026-07-16T00:00:00Z',
       snapshot: { request_id: 'req-1', user_id: 1, username: 'alice', user_email: 'alice@example.test', api_key_id: 2, api_key_name: 'alice-key', group_id: 3, group_name: 'Alpha', provider: 'openai', endpoint: '/v1/chat/completions', protocol: 'openai_chat', model: 'gpt-test', prompt_hash: 'a'.repeat(64), redacted_preview: 'redacted preview', full_prompt: 'full prompt text', prompt_length: 10, message_count: 1, stage: 'http' },
@@ -103,6 +107,15 @@ describe('Prompt Audit components', () => {
     expect(wrapper.emitted('preview-delete')).toHaveLength(1)
     await wrapper.get('[aria-label="admin.promptAudit.events.selectEvent"]').setValue(true)
     expect(wrapper.emitted('selection')?.at(-1)?.[0]).toEqual([1])
+    expect(wrapper.findAll('.mobile-record')).toHaveLength(mobile ? 1 : 0)
+    await wrapper.get('[data-test="event-1"]').findAll('button').find(button => button.text() === 'common.view')!.trigger('click')
+    expect(wrapper.emitted('view')).toEqual([[1]])
+    expect(wrapper.emitted('selection')).toHaveLength(1)
+    await wrapper.setProps({ events: [], total: 0 })
+    expect(wrapper.text()).toContain('admin.promptAudit.events.empty')
+    await wrapper.setProps({ loading: true })
+    expect(wrapper.text()).toContain('common.loading')
+    wrapper.unmount()
   })
 
   it('resolves delete range presets to an epoch start and a cutoff end', () => {

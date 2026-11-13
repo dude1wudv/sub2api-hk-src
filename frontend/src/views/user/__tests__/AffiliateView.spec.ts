@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 
 import AffiliateView from '../AffiliateView.vue'
 
@@ -51,7 +52,12 @@ function mountAffiliate() {
   })
 }
 
-describe('AffiliateView', () => {
+describe.each([false, true])('AffiliateView (mobile=%s)', (mobile) => {
+  const originalMatchMedia = window.matchMedia
+  beforeEach(() => vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
+    ...originalMatchMedia(query), matches: query === MOBILE_CONTENT_QUERY ? mobile : originalMatchMedia(query).matches,
+  })))
+  afterEach(() => vi.restoreAllMocks())
   const affiliateCode = 'affiliate-code-that-is-long-enough-to-overflow-a-mobile-viewport'
 
   beforeEach(() => {

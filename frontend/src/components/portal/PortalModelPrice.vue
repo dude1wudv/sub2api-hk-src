@@ -22,4 +22,5 @@ defineProps<{
 .portal-model-price-caption { color:rgb(var(--ink-3)); font-size:11px; }
 .portal-model-price-adjusted { display:inline-flex; align-items:baseline; gap:4px; flex-wrap:wrap; justify-content:flex-end; padding:3px 6px; border:1px solid rgb(var(--brand-moss) / .2); border-radius:5px; background:rgb(var(--brand-moss) / .08); color:rgb(var(--brand-moss)); font-size:11px; line-height:1.5; }
 .portal-model-price-adjusted strong { font-size:12px; font-weight:600; white-space:nowrap; }
+@media (max-width:767px), (max-width:1023px) and (max-height:500px) and (pointer:coarse) { .portal-model-price { align-items:flex-start; min-width:0; max-width:100%; overflow-wrap:anywhere; } .portal-model-price-base, .portal-model-price-adjusted strong { white-space:normal; } .portal-model-price-adjusted { justify-content:flex-start; max-width:100%; } }
 </style>

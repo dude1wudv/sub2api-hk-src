@@ -233,6 +233,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import GroupBadge from '@/components/common/GroupBadge.vue'
 import GroupChangeIndicator from '@/components/common/GroupChangeIndicator.vue'
 import InkSurface from '@/components/common/InkSurface.vue'
@@ -276,7 +277,7 @@ const emit = defineEmits<{
 
 const { locale } = useI18n()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
-const mobile = useMediaQuery('(max-width: 767px)')
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 const busy = computed(() => props.busyIds.size > 0)
 const selectedOnPage = computed(() => props.keys.filter(key => props.selectedIds.includes(key.id)))
 const allSelected = computed(() => props.keys.length > 0 && selectedOnPage.value.length === props.keys.length)
@@ -387,10 +388,11 @@ function money(value: number) {
 .portal-api-card-name { min-width:0; flex:1; overflow:hidden; font-size:15px; font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
 .portal-api-card .portal-api-secret { max-width:none; width:100%; justify-content:space-between; min-height:38px; }
 .portal-api-card .portal-api-secret code { flex:1; }
+.portal-api-card .portal-api-secret button { width:44px; height:44px; }
 .portal-api-card .portal-api-group { max-width:none; width:100%; min-height:44px; padding:8px 10px; border:1px solid rgb(var(--line)); background:rgb(var(--surface-2) / .65); }
 .portal-api-card .portal-api-group:not(:disabled):is(:hover, :focus-visible) { background:rgb(var(--brand-moss) / .12); border-color:rgb(var(--brand-moss) / .35); }
 .portal-api-card .portal-api-group :deep(.truncate) { max-width:100%; }
-.portal-api-facts { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin:0; font-variant-numeric:tabular-nums; }
+.portal-api-facts { display:grid; grid-template-columns:minmax(0,1fr); gap:10px 16px; margin:0; font-variant-numeric:tabular-nums; }
 .portal-api-facts div:last-child { grid-column:1 / -1; }
 .portal-api-facts dt { color:rgb(var(--ink-3)); font-size:12.5px; }
 .portal-api-facts dd { margin:2px 0 0; color:rgb(var(--ink)); font-size:13.5px; font-weight:500; overflow-wrap:anywhere; }

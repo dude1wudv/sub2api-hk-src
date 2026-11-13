@@ -380,7 +380,75 @@
         </div>
 
         <div v-if="items.length" class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
-          <table class="w-full min-w-[860px] table-fixed divide-y divide-gray-200 text-sm dark:divide-dark-700">
+          <div v-if="mobile" class="mobile-records">
+              <dl v-for="item in items"
+                :key="itemPreviewKey(item)"
+
+                :class="detailItemRowClass(item)" class="mobile-record">
+  <div class="mobile-record-field"><dt>Custom ID</dt><dd><span
+                    class="block min-w-0 truncate font-mono text-sm"
+                    :class="isRecoveredOriginalFailure(item) ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'"
+                    :title="item.custom_id"
+                  >
+                    {{ item.custom_id }}
+                  </span></dd></div>
+  <div class="mobile-record-field"><dt>Prompt</dt><dd :class="isRecoveredOriginalFailure(item) ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'"><div
+                    class="batch-prompt-trigger cursor-default truncate rounded px-1 text-sm leading-6 focus:outline-none"
+                    tabindex="0"
+                    @pointerenter="schedulePromptPopoverOpen($event, item.prompt_preview || '-')"
+                    @pointerleave="schedulePromptPopoverClose"
+                    @mouseenter="schedulePromptPopoverOpen($event, item.prompt_preview || '-')"
+                    @mouseleave="schedulePromptPopoverClose"
+                    @click="showPromptPopover($event, item.prompt_preview || '-')"
+                    @focus="showPromptPopover($event, item.prompt_preview || '-')"
+                    @focusin="showPromptPopover($event, item.prompt_preview || '-')"
+                    @blur="schedulePromptPopoverClose"
+                  >
+                    {{ item.prompt_preview || '-' }}
+                  </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('common.status') }}</dt><dd><span :class="itemDisplayStatusBadgeClass(item)" class="badge max-w-full truncate whitespace-nowrap" :title="itemDisplayStatusLabel(item)">
+                    {{ itemDisplayStatusLabel(item) }}
+                  </span></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('batchImage.detail.preview') }}</dt><dd><div class="mx-auto h-12 w-12 overflow-hidden rounded-md border border-gray-200 bg-gray-50 dark:border-dark-700 dark:bg-dark-800">
+                    <button
+                      v-if="itemPreviewUrls[itemPreviewKey(item)] && !previewErrorIds.has(itemPreviewKey(item))"
+                      type="button"
+                      class="block h-full w-full overflow-hidden"
+                      :title="t('batchImage.detail.previewZoom', { id: item.custom_id })"
+                      @click="openImagePreview(item)"
+                    >
+                      <img
+                        :src="itemPreviewUrls[itemPreviewKey(item)]"
+                        class="h-full w-full object-cover"
+                        alt=""
+                        @error="handlePreviewError(itemPreviewKey(item))"
+                      />
+                    </button>
+                    <button
+                      v-else-if="canLoadItemPreview(item)"
+                      type="button"
+                      class="flex h-full w-full items-center justify-center text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 disabled:cursor-wait disabled:opacity-70 dark:text-gray-400 dark:hover:bg-dark-700"
+                      :disabled="previewLoadingIds.has(itemPreviewKey(item))"
+                      :title="previewErrorIds.has(itemPreviewKey(item)) ? t('batchImage.detail.previewReload') : t('batchImage.detail.previewLoad')"
+                      @click="loadItemPreview(item)"
+                    >
+                      <Icon :name="previewLoadingIds.has(itemPreviewKey(item)) ? 'refresh' : 'eye'" size="sm" :class="previewLoadingIds.has(itemPreviewKey(item)) ? 'animate-spin' : ''" />
+                    </button>
+                    <div v-else class="flex h-full w-full items-center justify-center text-gray-400" :title="item.image_count > 0 ? t('batchImage.detail.previewUnavailable') : t('batchImage.detail.noImage')">
+                      <Icon name="document" size="sm" />
+                    </div>
+                  </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('batchImage.detail.result') }}</dt><dd><span
+                    class="inline-flex max-w-full items-center justify-center truncate rounded-md px-2.5 py-1 text-xs font-medium leading-5 ring-1 ring-inset"
+                    :class="itemResultClass(item)"
+                    :title="itemResultLabel(item)"
+                  >
+                    {{ itemResultLabel(item) }}
+                  </span></dd></div>
+</dl>
+
+</div>
+<table v-else class="w-full min-w-[860px] table-fixed divide-y divide-gray-200 text-sm dark:divide-dark-700">
             <colgroup>
               <col class="w-[18%]" />
               <col class="w-[34%]" />
@@ -528,7 +596,7 @@
         <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
           {{ t('batchImage.imagePreview.notice') }}
         </div>
-        <div class="flex min-h-[420px] items-center justify-center rounded-lg bg-gray-50 p-4 dark:bg-dark-900">
+        <div class="flex min-h-0 items-center justify-center rounded-lg bg-gray-50 p-4 dark:bg-dark-900 sm:min-h-[420px]">
           <img
             v-if="previewImageUrl"
             :src="previewImageUrl"
@@ -754,6 +822,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { formatCurrency } from '@/utils/format'
@@ -2665,6 +2736,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.mobile-record .truncate { white-space:normal; overflow-wrap:anywhere; max-width:100%; }
+.mobile-record img { object-fit:contain; }
 .batch-row-action {
   display: flex !important;
   flex-direction: column !important;

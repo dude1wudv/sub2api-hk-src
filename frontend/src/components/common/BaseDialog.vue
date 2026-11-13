@@ -4,6 +4,7 @@
       <div
         v-if="show"
         class="modal-overlay"
+        ref="overlayRef"
         :class="{ 'admin-detail-overlay': adminSurfaceActive && presentation === 'drawer' }"
         :style="zIndexStyle"
         :aria-labelledby="dialogId"
@@ -11,6 +12,7 @@
         aria-modal="true"
         @click.self="handleClose"
       >
+        <div class="modal-backdrop" aria-hidden="true" />
         <!-- Modal panel -->
         <div ref="dialogRef" :class="['modal-content', widthClasses, { 'admin-edit-modal': adminSurfaceActive && presentation === 'editor' }]" tabindex="-1" @click.stop>
           <!-- Header -->
@@ -55,16 +57,20 @@ const openDialogs = new Set<string>()
 </script>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, onUnmounted, ref, nextTick, getCurrentInstance } from 'vue'
+import { computed, watch, onMounted, onUnmounted, ref, nextTick, getCurrentInstance, provide } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
 import { adminSurfaceActive } from '@/composables/adminSurface'
 import { useScrollLock } from '@/composables/useScrollLock'
+import { useVisualViewport } from '@/composables/useVisualViewport'
+import { overlayHostKey } from '@/composables/overlayHost'
 
 // 生成唯一ID以避免多个对话框时ID冲突
 const dialogId = `modal-title-${++dialogIdCounter}`
 
 // 焦点管理
 const dialogRef = ref<HTMLElement | null>(null)
+const overlayRef = ref<HTMLElement | null>(null)
+provide(overlayHostKey, overlayRef)
 const modalBodyRef = ref<HTMLElement | null>(null)
 let previousActiveElement: HTMLElement | null = null
 
@@ -100,6 +106,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 useScrollLock(() => props.show)
+const viewport = useVisualViewport(() => props.show)
 const instance = getCurrentInstance()
 const zh = computed(() => String(instance?.appContext.config.globalProperties.$i18n?.locale ?? document.documentElement.lang).startsWith('zh'))
 const confirmDiscard = ref(false)
@@ -119,7 +126,11 @@ defineExpose({ requestClose })
 
 // Custom z-index style (overrides the default z-50 from CSS)
 const zIndexStyle = computed(() => {
-  return props.zIndex !== 50 ? { zIndex: props.zIndex } : undefined
+  const rect = viewport.value
+  return { ...(props.zIndex !== 50 ? { zIndex: props.zIndex } : {}), ...(rect.width > 0 ? {
+    top: `${rect.top}px`, left: `${rect.left}px`, right: 'auto', bottom: 'auto', width: `${rect.width}px`, height: `${rect.height}px`,
+    '--visual-height': `${rect.height}px`, '--visual-width': `${rect.width}px`,
+  } : {}) }
 })
 
 const widthClasses = computed(() => {
@@ -143,7 +154,7 @@ const handleClose = () => {
 }
 
 const handleEscape = (event: KeyboardEvent) => {
-  if (!props.show || [...openDialogs].pop() !== dialogId) return
+  if (event.defaultPrevented || !props.show || [...openDialogs].pop() !== dialogId) return
   if (event.key === 'Escape') {
     event.preventDefault()
     event.stopPropagation()
@@ -153,7 +164,7 @@ const handleEscape = (event: KeyboardEvent) => {
     }
   }
   if (event.key === 'Tab') {
-    const panel = confirmDiscard.value ? discardRef.value : dialogRef.value
+    const panel = confirmDiscard.value ? discardRef.value : overlayRef.value
     const focusable = [...(panel?.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])') ?? [])]
       .filter(el => !el.closest('[hidden],[inert]') && getComputedStyle(el).visibility !== 'hidden' && !hasHiddenParent(el, panel))
     const first = focusable[0], last = focusable[focusable.length - 1]
@@ -221,15 +232,18 @@ onUnmounted(() => {
 
 <style scoped>
 .modal-overlay { padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px)); }
-.modal-content { max-height: calc(100dvh - 48px); color: rgb(var(--ink)); background: rgb(var(--surface)); font-family: var(--font-sans); }
-.modal-body { overscroll-behavior: contain; }
+.modal-backdrop { position: absolute; inset: 0; pointer-events: none; }
+.modal-content { position: relative; min-width: 0; min-height: 0; max-height: calc(var(--visual-height, 100dvh) - 48px); color: rgb(var(--ink)); background: rgb(var(--surface)); font-family: var(--font-sans); }
+.modal-body { min-width: 0; min-height: 0; overflow-y: auto; overflow-wrap: anywhere; overscroll-behavior: contain; }
+.modal-header, .modal-footer { flex-shrink: 0; min-width: 0; }
+.modal-footer { flex-wrap: wrap; }
 .modal-close { display: inline-grid; place-items: center; flex-shrink: 0; transition-duration: var(--motion-fast, 160ms); }
-.modal-title { font-family: var(--font-sans); }
+.modal-title { min-width: 0; overflow-wrap: anywhere; font-family: var(--font-sans); }
 .modal-enter-active, .modal-leave-active { transition-duration: var(--motion-overlay, 260ms); }
 .modal-enter-active .modal-content, .modal-leave-active .modal-content { transition-duration: var(--motion-overlay, 260ms); transition-timing-function: var(--motion-ease, cubic-bezier(.2,.8,.2,1)); }
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) and (pointer: coarse) {
   .modal-overlay { padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
-  .modal-content { max-height: calc(100dvh - 24px); }
+  .modal-content { max-height: calc(var(--visual-height, 100dvh) - 24px); }
   .modal-close { min-width: 44px; min-height: 44px; }
   .modal-header { padding-top: max(16px, env(safe-area-inset-top, 0px)); }
   .modal-footer { padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }

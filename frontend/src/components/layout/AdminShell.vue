@@ -2,7 +2,7 @@
   <div class="admin-portal" :data-collapsed="collapsed" :data-overlay="overlayOpen" :data-mode="desktop ? 'desktop' : rail ? 'rail' : 'mobile'">
     <a class="admin-skip" href="#admin-content">{{ zh ? '跳至主要内容' : 'Skip to content' }}</a>
     <button v-if="overlayOpen" type="button" tabindex="-1" class="admin-nav-scrim" :aria-label="t('common.close')" @click="closeNavigation()" @wheel.prevent @touchmove.prevent />
-    <aside v-show="desktop || rail || navOpen" id="admin-navigation" ref="sidebar" class="admin-sidebar" :role="overlayOpen ? 'dialog' : undefined" :aria-modal="overlayOpen || undefined" :aria-label="zh ? '管理导航' : 'Administration navigation'" tabindex="-1" @keydown="onNavKeydown">
+    <aside v-show="desktop || rail || navOpen" id="admin-navigation" ref="sidebar" class="admin-sidebar" :style="overlayOpen && viewport.width > 0 ? { top: `${viewport.top}px`, left: `${viewport.left}px`, bottom: 'auto', height: `${viewport.height}px`, maxHeight: `${viewport.height}px` } : undefined" :role="overlayOpen ? 'dialog' : undefined" :aria-modal="overlayOpen || undefined" :aria-label="zh ? '管理导航' : 'Administration navigation'" tabindex="-1" @keydown="onNavKeydown">
       <RouterLink to="/admin/dashboard" class="admin-brand" aria-label="patrickapi" @click="closeNavigation()"><PatrickBrand :compact="collapsed" /><small v-if="!collapsed">{{ zh ? '管理后台' : 'Administration' }}</small></RouterLink>
       <button v-if="overlayOpen" class="admin-icon-button admin-nav-close" :aria-label="t('common.close')" @click="closeNavigation()"><Icon name="x" size="md" /></button>
       <label v-if="!collapsed" class="admin-menu-search"><Icon name="search" size="sm" /><input v-model="query" :placeholder="zh ? '搜索功能…' : 'Search navigation…'" :aria-label="zh ? '搜索功能' : 'Search navigation'" /></label>
@@ -67,6 +67,7 @@ import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
 import { prefetchRoutePath } from '@/composables/useRoutePrefetch'
 import { useColorMode } from '@/composables/useColorMode'
 import { useScrollLock } from '@/composables/useScrollLock'
+import { useVisualViewport } from '@/composables/useVisualViewport'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 import { launchHeliosWorkbench } from '@/utils/heliosLaunch'
 import { useOnboardingTour } from '@/composables/useOnboardingTour'
@@ -86,6 +87,7 @@ try { desktopCollapsed.value = localStorage.getItem('patrick-admin-sidebar-colla
 const collapsed = computed(() => desktop.value ? desktopCollapsed.value : rail.value && !navOpen.value)
 const overlayOpen = computed(() => !desktop.value && navOpen.value)
 useScrollLock(overlayOpen)
+const viewport = useVisualViewport(overlayOpen)
 const sidebar = ref<HTMLElement>(), navigation = ref<HTMLElement>(), navToggle = ref<HTMLButtonElement>(), accountMenu = ref<HTMLElement>()
 const accountToggle = ref<HTMLButtonElement>()
 const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()

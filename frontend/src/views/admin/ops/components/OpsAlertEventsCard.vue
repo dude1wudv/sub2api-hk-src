@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import Select from '@/components/common/Select.vue'
@@ -13,8 +14,7 @@ import { formatDateTime } from '../utils/opsFormatters'
 const { t } = useI18n()
 const appStore = useAppStore()
 
-// 与 DataTable 一致：< 768px 切换为卡片视图，避免宽表在移动端被截断。
-const isDesktopViewport = useMediaQuery('(min-width: 768px)')
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 
 const PAGE_SIZE = 10
 
@@ -407,12 +407,16 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
 
     <div v-else class="overflow-hidden rounded-xl border border-gray-200 dark:border-dark-700">
       <div class="max-h-[600px] overflow-y-auto" @scroll="onScroll">
-        <div v-if="!isDesktopViewport" class="divide-y divide-gray-100 dark:divide-dark-800">
+        <div v-if="mobile" class="divide-y divide-gray-100 [overflow-wrap:anywhere] dark:divide-dark-800">
           <div
             v-for="row in events"
             :key="row.id"
             class="cursor-pointer space-y-2 p-4 hover:bg-gray-50 dark:hover:bg-dark-700/50"
             @click="openDetail(row)"
+            role="button"
+            tabindex="0"
+            @keydown.enter="openDetail(row)"
+            @keydown.space.prevent="openDetail(row)"
           >
             <div class="flex flex-wrap items-center gap-2">
               <span class="rounded-full px-2 py-1 text-[10px] font-bold" :class="severityBadgeClass(String(row.severity || ''))">
@@ -448,6 +452,7 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
               </span>
             </div>
             <div class="text-[11px] text-gray-400 dark:text-gray-500">{{ formatDimensionsSummary(row) }}</div>
+            <p class="text-xs text-gray-500">{{ t('admin.ops.alertEvents.table.platform') }}: {{ getDimensionString(row, 'platform') || '-' }}</p>
           </div>
         </div>
         <table v-else class="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
@@ -670,7 +675,20 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
             {{ t('admin.ops.alertEvents.detail.historyEmpty') }}
           </div>
           <div v-else class="overflow-hidden rounded-lg border border-gray-100 dark:border-dark-700">
-            <table class="min-w-full divide-y divide-gray-100 dark:divide-dark-700">
+            <div v-if="mobile" class="mobile-records">
+                <dl v-for="it in history" :key="it.id" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t('admin.ops.alertEvents.table.time') }}</dt><dd>{{ formatDateTime(it.fired_at || it.created_at) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.ops.alertEvents.table.status') }}</dt><dd><span class="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-bold ring-1 ring-inset" :class="statusBadgeClass(it.status)">
+                      {{ formatStatusLabel(it.status) }}
+                    </span></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.ops.alertEvents.table.metric') }}</dt><dd><span v-if="typeof it.metric_value === 'number' && typeof it.threshold_value === 'number'">
+                      {{ it.metric_value.toFixed(2) }} / {{ it.threshold_value.toFixed(2) }}
+                    </span>
+                    <span v-else>-</span></dd></div>
+</dl>
+
+</div>
+<table v-else class="min-w-full divide-y divide-gray-100 dark:divide-dark-700">
               <thead class="bg-gray-50 dark:bg-dark-900">
                 <tr>
                   <th class="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ t('admin.ops.alertEvents.table.time') }}</th>

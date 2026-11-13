@@ -21,14 +21,24 @@
           <div><small>Tokens</small><strong>{{ number(data.range.total_tokens) }}</strong></div>
           <div><small>{{ text('今日费用', 'Today') }}</small><strong>{{ money(data.today.actual_cost) }}</strong></div>
         </div>
-        <div class="key-usage-scroll"><table><thead><tr><th>{{ text('日期', 'Date') }}</th><th>{{ text('请求', 'Requests') }}</th><th>Tokens</th><th>{{ text('实际费用', 'Actual cost') }}</th></tr></thead><tbody><tr v-for="row in data.items" :key="row.date"><td>{{ row.date }}</td><td>{{ number(row.requests) }}</td><td>{{ number(row.total_tokens) }}</td><td>{{ money(row.actual_cost) }}</td></tr></tbody></table></div>
+        <div class="key-usage-scroll"><div v-if="mobile" class="mobile-records"><dl v-for="row in data.items" :key="row.date" class="mobile-record">
+  <div  class="mobile-record-field"><dt>{{ text('日期', 'Date') }}</dt><dd >{{ row.date }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ text('请求', 'Requests') }}</dt><dd >{{ number(row.requests) }}</dd></div>
+  <div  class="mobile-record-field"><dt>Tokens</dt><dd >{{ number(row.total_tokens) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ text('实际费用', 'Actual cost') }}</dt><dd >{{ money(row.actual_cost) }}</dd></div>
+</dl>
+</div>
+<table v-else><thead><tr><th>{{ text('日期', 'Date') }}</th><th>{{ text('请求', 'Requests') }}</th><th>Tokens</th><th>{{ text('实际费用', 'Actual cost') }}</th></tr></thead><tbody><tr v-for="row in data.items" :key="row.date"><td>{{ row.date }}</td><td>{{ number(row.requests) }}</td><td>{{ number(row.total_tokens) }}</td><td>{{ money(row.actual_cost) }}</td></tr></tbody></table></div>
         <p v-if="!data.items.length">{{ text('该时间范围没有用量记录。', 'No usage in this range.') }}</p>
       </template>
-      <footer class="portal-dialog-actions"><button type="button" class="portal-button secondary" @click="$emit('close')">{{ text('关闭', 'Close') }}</button></footer>
     </div>
+    <template #footer><div class="portal-dialog-actions"><button type="button" class="portal-button secondary" @click="$emit('close')">{{ text('关闭', 'Close') }}</button></div></template>
   </PortalDialog>
 </template>
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getKeyUsageDetail, type KeyUsageDetail } from '@/api/usage'
@@ -69,5 +79,5 @@ onBeforeUnmount(() => { ++sequence; controller?.abort() })
 .key-usage-controls,.key-usage-dates { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; align-items:center; }
 .key-usage-controls button { padding:7px 12px; border:1px solid rgb(var(--line)); border-radius:6px; } .key-usage-controls button[aria-pressed=true] { background:rgb(var(--action-bg)); color:rgb(var(--action-text)); }
 .key-usage-dates label { display:flex; align-items:center; gap:6px; } .key-usage-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:16px 0; } .key-usage-summary div { display:grid; gap:6px; padding:12px; background:rgb(var(--surface-2)); border-radius:8px; } .key-usage-summary small { color:rgb(var(--ink-3)); } .key-usage-scroll { overflow:auto; max-height:300px; } table { width:100%; border-collapse:collapse; font-size:13px; } th,td { padding:10px; border-bottom:1px solid rgb(var(--line)); text-align:right; white-space:nowrap; } th:first-child,td:first-child { text-align:left; }
-@media(max-width:600px) { .key-usage { padding:0 16px 16px; } .key-usage-summary { grid-template-columns:repeat(2,1fr); } }
+@media (max-width:767px), (max-width:1023px) and (max-height:500px) and (pointer:coarse) { .key-usage { padding:0 0 16px; } .key-usage-summary { grid-template-columns:repeat(2,minmax(0,1fr)); overflow-wrap:anywhere; } .key-usage-scroll { max-height:none; overflow:visible; } .key-usage-dates label { flex-wrap:wrap; min-width:0; } .key-usage-dates input { min-width:0; max-width:100%; min-height:44px; } .key-usage-controls button { min-height:44px; } }
 </style>

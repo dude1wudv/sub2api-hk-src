@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import type { UsageLog } from '@/types'
 import Icon from '@/components/icons/Icon.vue'
 import ModelIcon from '@/components/common/ModelIcon.vue'
@@ -16,7 +17,7 @@ const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const copy = (cn: string, en: string) => zh.value ? cn : en
 const emit = defineEmits<{ sort: [key: string]; detail: [row: UsageLog] }>()
-const mobile = useMediaQuery('(max-width: 767px)')
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 const visible = computed(() => portalUsageColumns.filter(column => props.columns.includes(column.key)))
 const primaryKeys = new Set(['created_at', 'type', 'model', 'tokens', 'cost', 'latency'])
 const extras = computed(() => visible.value.filter(column => !primaryKeys.has(column.key)))

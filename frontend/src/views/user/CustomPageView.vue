@@ -28,7 +28,7 @@
         </div>
 
         <!-- Markdown mode with TOC -->
-        <div v-else-if="isMarkdownMode" class="flex h-full overflow-hidden">
+        <div v-else-if="isMarkdownMode" class="relative flex h-full min-w-0 overflow-hidden" @keydown.esc="tocVisible = false">
           <!-- TOC Sidebar -->
           <aside
             v-show="tocVisible"
@@ -36,7 +36,7 @@
           >
             <div class="toc-header">
               <span class="toc-title">{{ t('customPage.tableOfContents') }}</span>
-              <button class="toc-close-btn" @click="tocVisible = false">
+              <button class="toc-close-btn" :aria-label="t('common.close')" @click="tocVisible = false">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
               </button>
             </div>
@@ -71,7 +71,7 @@
           <div
             ref="markdownContainer"
             data-ink-hover="off"
-            class="markdown-page-content flex-1 h-full overflow-auto p-6 md:p-10"
+            class="markdown-page-content flex-1 min-w-0 h-full overflow-auto p-6 md:p-10"
             v-html="renderedHtml"
             @scroll="onContentScroll"
           ></div>
@@ -127,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useResizeObserver } from '@vueuse/core'
@@ -160,7 +161,7 @@ const { mode: pageTheme } = useColorMode()
 const renderedHtml = ref('')
 const markdownContainer = ref<HTMLElement | null>(null)
 const tocItems = ref<TocItem[]>([])
-const tocVisible = ref(typeof window !== 'undefined' ? window.innerWidth > 768 : true)
+const tocVisible = ref(typeof window !== 'undefined' ? !window.matchMedia(MOBILE_CONTENT_QUERY).matches : true)
 const activeHeadingId = ref('')
 let markdownRequestVersion = 0
 
@@ -357,7 +358,7 @@ function scrollToHeading(id: string) {
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     activeHeadingId.value = id
-    if (window.innerWidth <= 640) {
+    if (window.matchMedia(MOBILE_CONTENT_QUERY).matches) {
       tocVisible.value = false
     }
   }
@@ -445,6 +446,9 @@ onUnmounted(() => {
 .custom-page-layout {
   @apply flex flex-col;
   height: calc(100vh - 64px - 4rem);
+  height: calc(100dvh - var(--user-topbar-height, 64px) - 4rem - env(safe-area-inset-top, 0px));
+  min-width: 0;
+  max-width: 100%;
 }
 
 .toc-sidebar {
@@ -455,7 +459,10 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-@media (max-width: 640px) {
+@media (max-width:767px), (max-width:1023px) and (max-height:500px) and (pointer:coarse) {
+  .custom-page-layout { height: calc(100dvh - var(--user-topbar-height, 56px) - 24px - env(safe-area-inset-top, 0px)); }
+  .toc-close-btn, .toc-toggle-btn { min-width:44px; min-height:44px; }
+  .toc-item { min-height:44px; white-space:normal; overflow-wrap:anywhere; }
   .toc-sidebar {
     position: absolute;
     left: 0;
@@ -526,6 +533,8 @@ onUnmounted(() => {
   display: block;
   margin: 0;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   height: 100%;
   border: 0;
   border-radius: 0;
@@ -538,6 +547,8 @@ onUnmounted(() => {
 .markdown-page-content {
   line-height: 1.7;
   color: inherit;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .markdown-page-content h1 { @apply text-3xl font-bold mt-8 mb-4 pb-2 border-b border-gray-200 dark:border-dark-600; }
 .markdown-page-content h2 { @apply text-2xl font-bold mt-6 mb-3; }

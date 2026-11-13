@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import DataTable from '../DataTable.vue'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
@@ -13,7 +14,7 @@ const stubDesktopMatchMedia = () => {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
-      matches: true,
+      matches: query !== MOBILE_CONTENT_QUERY,
       media: query,
       onchange: null,
       addEventListener: vi.fn(),
@@ -29,7 +30,7 @@ const stubMobileMatchMedia = () => {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
-      matches: false,
+      matches: query === MOBILE_CONTENT_QUERY,
       media: query,
       onchange: null,
       addEventListener: vi.fn(),
@@ -118,7 +119,7 @@ describe('DataTable', () => {
 
     const media = vi.mocked(window.matchMedia).mock.results.at(-1)!.value
     const change = media.addEventListener.mock.calls.find(([event]: [string]) => event === 'change')[1]
-    change({ matches: true })
+    change({ matches: false })
     await flushPromises()
     expect(wrapper.find('[data-test="mobile-sort"]').exists()).toBe(false)
     expect(wrapper.findAll('th')[2].attributes('aria-sort')).toBe('descending')

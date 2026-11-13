@@ -60,11 +60,13 @@ async function purchase() {
       <p class="portal-muted">{{ text('确认后从余额扣款并开通或续期此订阅。', 'Confirm to deduct your balance and activate or extend this subscription.') }}</p>
       <p v-if="validation" class="portal-error" role="alert">{{ validation }}</p>
       <p v-if="error" class="portal-error" role="alert">{{ error }}</p>
-      <footer class="portal-dialog-actions">
+    </template>
+    <template v-if="plan" #footer>
+      <div class="portal-dialog-actions">
         <button class="portal-button secondary" :disabled="submitting" @click="close">{{ text('取消', 'Cancel') }}</button>
         <RouterLink v-if="balance < plan.price" class="portal-button" to="/purchase" @click="close">{{ text('前往充值', 'Top up') }}</RouterLink>
         <button v-else class="portal-button" :disabled="submitting || !!validation" @click="purchase">{{ submitting ? text('处理中…', 'Processing…') : text('确认使用余额订阅', 'Confirm balance purchase') }}</button>
-      </footer>
+      </div>
     </template>
   </PortalDialog>
 </template>

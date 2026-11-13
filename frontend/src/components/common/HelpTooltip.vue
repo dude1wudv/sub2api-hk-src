@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, type CSSProperties } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch, inject, type CSSProperties } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useMediaQuery } from '@vueuse/core'
+import { useVisualViewport } from '@/composables/useVisualViewport'
+import { overlayHostKey } from '@/composables/overlayHost'
+const overlayHost = inject(overlayHostKey, ref(null))
 
 const props = withDefaults(defineProps<{
   content?: string
@@ -17,6 +21,9 @@ const { t } = useI18n()
 const generatedId = useId()
 const tooltipId = computed(() => props.id || `help-tooltip-${generatedId}`)
 const show = ref(false)
+const viewport = useVisualViewport(show)
+const noHover = useMediaQuery('(hover: none)')
+const effectiveTrigger = computed(() => props.trigger === 'hover' && noHover.value ? 'both' : props.trigger)
 const pinned = ref(false)
 const placement = ref<'top' | 'bottom'>('top')
 const triggerRef = useTemplateRef<HTMLElement>('trigger')
@@ -24,10 +31,10 @@ const tooltipRef = useTemplateRef<HTMLElement>('tooltip')
 const contentRef = useTemplateRef<HTMLElement>('content')
 const tooltipStyle = ref<CSSProperties>({ top: '12px', left: '12px', maxWidth: 'calc(100vw - 24px)' })
 const triggerAttrs = computed(() => ({
-  'aria-describedby': props.trigger === 'hover' ? tooltipId.value : undefined,
-  'aria-controls': props.trigger !== 'hover' ? tooltipId.value : undefined,
-  'aria-expanded': props.trigger !== 'hover' ? show.value : undefined,
-  'aria-haspopup': props.trigger !== 'hover' ? 'dialog' as const : undefined,
+  'aria-describedby': effectiveTrigger.value === 'hover' ? tooltipId.value : undefined,
+  'aria-controls': effectiveTrigger.value !== 'hover' ? tooltipId.value : undefined,
+  'aria-expanded': effectiveTrigger.value !== 'hover' ? show.value : undefined,
+  'aria-haspopup': effectiveTrigger.value !== 'hover' ? 'dialog' as const : undefined,
 }))
 let restoringFocus = false
 let resizeObserver: ResizeObserver | undefined
@@ -50,7 +57,7 @@ function closeTooltip(restoreFocus = false) {
 }
 
 function onEnter() {
-  if (props.trigger !== 'click') void openTooltip()
+  if (effectiveTrigger.value !== 'click') void openTooltip()
 }
 
 function isInside(container: HTMLElement | null, target: EventTarget | null): boolean {
@@ -58,21 +65,21 @@ function isInside(container: HTMLElement | null, target: EventTarget | null): bo
 }
 
 function onLeave(event: MouseEvent) {
-  if (props.trigger === 'click' || pinned.value) return
+  if (effectiveTrigger.value === 'click' || pinned.value) return
   if (isInside(tooltipRef.value, event.relatedTarget)) return
   if (isInside(triggerRef.value, document.activeElement) || isInside(tooltipRef.value, document.activeElement)) return
   closeTooltip()
 }
 
 function onTooltipLeave(event: MouseEvent) {
-  if (props.trigger === 'click' || pinned.value) return
+  if (effectiveTrigger.value === 'click' || pinned.value) return
   if (isInside(triggerRef.value, event.relatedTarget)) return
   if (isInside(triggerRef.value, document.activeElement) || isInside(tooltipRef.value, document.activeElement)) return
   closeTooltip()
 }
 
 function onFocusIn() {
-  if (props.trigger !== 'click' && !restoringFocus) void openTooltip()
+  if (effectiveTrigger.value !== 'click' && !restoringFocus) void openTooltip()
 }
 
 function onFocusOut(event: FocusEvent) {
@@ -81,9 +88,9 @@ function onFocusOut(event: FocusEvent) {
 }
 
 function onClick(event: MouseEvent) {
-  if (props.trigger === 'hover') return
+  if (effectiveTrigger.value === 'hover') return
   event.stopPropagation()
-  if (show.value && (props.trigger === 'click' || pinned.value)) closeTooltip()
+  if (show.value && (effectiveTrigger.value === 'click' || pinned.value)) closeTooltip()
   else {
     pinned.value = true
     void openTooltip(event.detail === 0)
@@ -91,6 +98,7 @@ function onClick(event: MouseEvent) {
 }
 
 function onTriggerKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') { onEscape(event); return }
   if (event.key !== 'ArrowDown') return
   event.preventDefault()
   event.stopPropagation()
@@ -99,16 +107,16 @@ function onTriggerKeydown(event: KeyboardEvent) {
 }
 
 function onDocumentClick(event: MouseEvent) {
-  if (props.trigger === 'hover' || !show.value) return
+  if (effectiveTrigger.value === 'hover' || !show.value) return
   if (isInside(triggerRef.value, event.target) || isInside(tooltipRef.value, event.target)) return
   closeTooltip()
 }
 
-function onDocumentKeydown(event: KeyboardEvent) {
+function onEscape(event: KeyboardEvent) {
   if (event.key !== 'Escape' || !show.value) return
   event.preventDefault()
   event.stopPropagation()
-  closeTooltip(isInside(tooltipRef.value, document.activeElement))
+  closeTooltip(true)
 }
 
 function onViewportChange(event: Event) {
@@ -121,13 +129,10 @@ async function updatePosition() {
   const el = triggerRef.value
   const tooltip = tooltipRef.value
   if (!show.value || !el || !tooltip) return
-  const viewport = window.visualViewport
-  const width = viewport?.width || document.documentElement.clientWidth || window.innerWidth
-  const height = viewport?.height || document.documentElement.clientHeight || window.innerHeight
-  const leftEdge = (viewport?.offsetLeft || 0) + 12
-  const topEdge = (viewport?.offsetTop || 0) + 12
-  const maxWidth = Math.max(0, width - 24)
-  const maxHeight = Math.max(0, height - 24)
+  const view = viewport.value
+  const leftEdge = view.left + 12, topEdge = view.top + 12
+  const maxWidth = Math.max(0, view.width - 24)
+  const maxHeight = Math.max(0, view.height - 24)
   tooltipStyle.value = { ...tooltipStyle.value, maxWidth: `${maxWidth}px` }
   await nextTick()
   if (!show.value) return
@@ -151,6 +156,7 @@ async function updatePosition() {
     maxHeight: `${availableHeight}px`,
   }
 }
+watch(viewport, () => { if (show.value) void updatePosition() })
 
 onMounted(() => {
   if (typeof ResizeObserver !== 'undefined') {
@@ -161,21 +167,15 @@ onMounted(() => {
     if (tooltipRef.value) resizeObserver.observe(tooltipRef.value)
   }
   document.addEventListener('click', onDocumentClick, true)
-  document.addEventListener('keydown', onDocumentKeydown)
   window.addEventListener('resize', onViewportChange)
   window.addEventListener('scroll', onViewportChange, true)
-  window.visualViewport?.addEventListener('resize', onViewportChange)
-  window.visualViewport?.addEventListener('scroll', onViewportChange)
 })
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   document.removeEventListener('click', onDocumentClick, true)
-  document.removeEventListener('keydown', onDocumentKeydown)
   window.removeEventListener('resize', onViewportChange)
   window.removeEventListener('scroll', onViewportChange, true)
-  window.visualViewport?.removeEventListener('resize', onViewportChange)
-  window.visualViewport?.removeEventListener('scroll', onViewportChange)
 })
 </script>
 
@@ -203,13 +203,13 @@ onBeforeUnmount(() => {
       </button>
     </slot>
 
-    <Teleport to="body">
+    <Teleport :to="overlayHost ?? 'body'">
       <div
         ref="tooltip"
         v-show="show"
         :id="tooltipId"
-        :role="props.trigger !== 'hover' ? 'dialog' : 'tooltip'"
-        :aria-label="props.trigger !== 'hover' ? props.label || t('common.info') : undefined"
+        :role="effectiveTrigger !== 'hover' ? 'dialog' : 'tooltip'"
+        :aria-label="effectiveTrigger !== 'hover' ? props.label || t('common.info') : undefined"
         :data-placement="placement"
         tabindex="-1"
         :class="[
@@ -221,17 +221,18 @@ onBeforeUnmount(() => {
         @mouseleave="onTooltipLeave"
         @focusin="onFocusIn"
         @focusout="onFocusOut"
+        @keydown="onEscape"
       >
         <div
           ref="content"
           class="overflow-y-auto overscroll-contain whitespace-normal p-3 [overflow-wrap:anywhere]"
-          :class="{ 'pr-12': props.trigger !== 'hover' }"
+          :class="{ 'pr-12': effectiveTrigger !== 'hover' }"
           :style="{ maxHeight: tooltipStyle.maxHeight }"
         >
           <slot :open="show">{{ content }}</slot>
         </div>
         <button
-          v-if="props.trigger !== 'hover'"
+          v-if="effectiveTrigger !== 'hover'"
           type="button"
           class="absolute right-0 top-0 flex min-h-11 min-w-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:ring-white"
           :aria-label="t('common.close')"

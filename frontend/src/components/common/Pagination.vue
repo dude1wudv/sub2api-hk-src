@@ -1,32 +1,11 @@
 <template>
   <div
-    class="table-pagination flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 dark:border-dark-700 dark:bg-dark-800 sm:px-6"
+    class="table-pagination flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-white px-4 py-3 dark:border-dark-700 dark:bg-dark-800 sm:px-6"
+    :class="{ 'mobile-pagination': mobile }"
   >
-    <div class="flex flex-1 items-center justify-between sm:hidden">
-      <!-- Mobile pagination -->
-      <button
-        @click="goToPage(page - 1)"
-        :disabled="page === 1"
-        class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-200 dark:hover:bg-dark-600"
-      >
-        {{ t('pagination.previous') }}
-      </button>
-      <span class="text-sm text-gray-700 dark:text-gray-300">
-        {{ t('pagination.pageOf', { page, total: totalPages }) }}
-      </span>
-      <button
-        @click="goToPage(page + 1)"
-        :disabled="page === totalPages"
-        class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-200 dark:hover:bg-dark-600"
-      >
-        {{ t('pagination.next') }}
-      </button>
-    </div>
 
-    <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-      <!-- Desktop pagination info -->
-      <div class="flex items-center space-x-4">
-        <p class="text-sm text-gray-700 dark:text-gray-300">
+      <div class="pagination-tools flex min-w-0 flex-wrap items-center gap-3">
+        <p class="pagination-summary text-sm text-gray-700 dark:text-gray-300">
           {{ t('pagination.showing') }}
           <span class="font-medium">{{ fromItem }}</span>
           {{ t('pagination.to') }}
@@ -66,9 +45,30 @@
           </button>
         </div>
       </div>
+    <div v-if="mobile" class="pagination-navigation">
+      <!-- Mobile pagination -->
+      <button
+        @click="goToPage(page - 1)"
+        :disabled="page === 1"
+        class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-200 dark:hover:bg-dark-600"
+      >
+        {{ t('pagination.previous') }}
+      </button>
+      <span class="text-sm text-gray-700 dark:text-gray-300">
+        {{ t('pagination.pageOf', { page, total: totalPages }) }}
+      </span>
+      <button
+        @click="goToPage(page + 1)"
+        :disabled="page === totalPages"
+        class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-200 dark:hover:bg-dark-600"
+      >
+        {{ t('pagination.next') }}
+      </button>
+    </div>
 
       <!-- Desktop pagination buttons -->
       <nav
+        v-if="!mobile"
         class="relative z-0 inline-flex -space-x-px rounded-md shadow-sm"
         aria-label="Pagination"
       >
@@ -113,7 +113,6 @@
           <Icon name="chevronRight" size="md" />
         </button>
       </nav>
-    </div>
   </div>
 </template>
 
@@ -124,6 +123,9 @@ import Icon from '@/components/icons/Icon.vue'
 import Select from './Select.vue'
 import { getConfiguredTablePageSizeOptions, normalizeTablePageSize } from '@/utils/tablePreferences'
 import { setPersistedPageSize } from '@/composables/usePersistedPageSize'
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 
 const { t } = useI18n()
 
@@ -149,7 +151,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-const totalPages = computed(() => Math.ceil(props.total / props.pageSize))
+const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
 
 const fromItem = computed(() => {
   if (props.total === 0) return 0
@@ -232,15 +234,20 @@ const handlePageSizeChange = (value: string | number | boolean | null) => {
 const submitJump = () => {
   const value = String(jumpPage.value).trim()
   if (!value) return
-  const pageNum = Number.parseInt(value, 10)
-  if (Number.isNaN(pageNum)) return
-  const nextPage = Math.min(Math.max(pageNum, 1), totalPages.value)
+  const nextPage = Number(value)
+  if (!Number.isInteger(nextPage) || nextPage < 1 || nextPage > totalPages.value) return
   jumpPage.value = ''
   goToPage(nextPage)
 }
 </script>
 
 <style scoped>
+.mobile-pagination { align-items: stretch; flex-direction: column; }
+.mobile-pagination .pagination-summary { flex-basis: 100%; }
+.mobile-pagination button, .mobile-pagination input, .mobile-pagination :deep(.select-trigger) { min-height: 44px; }
+.mobile-pagination .pagination-navigation { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; }
+.mobile-pagination .pagination-navigation button { max-width: 40%; white-space: normal; }
+.pagination-tools { max-width: 100%; }
 .page-size-select :deep(.select-trigger) {
   @apply px-3 py-1.5 text-sm;
 }

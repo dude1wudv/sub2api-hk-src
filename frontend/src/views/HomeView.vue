@@ -1,6 +1,6 @@
 <template>
   <div v-if="homeContent" class="min-h-screen" data-ink-hover="off">
-    <iframe v-if="/^https?:\/\//.test(homeContent.trim())" :src="homeContent.trim()" :title="text('自定义首页','Custom homepage')" class="h-screen w-full border-0" allowfullscreen />
+    <iframe v-if="/^https?:\/\//.test(homeContent.trim())" :src="homeContent.trim()" :title="text('自定义首页','Custom homepage')" class="h-screen supports-[height:100dvh]:h-dvh w-full min-w-0 max-w-full border-0" allowfullscreen />
     <div v-else v-html="homeContent" />
   </div>
   <div v-else class="patrick-surface ink-home" :data-testid="compact ? 'compact-home' : 'patrick-home'" @keydown.esc="closeMenu(); servicesOpen = false">

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -188,7 +191,18 @@ onMounted(async () => {
       <section class="subscription-history" aria-labelledby="subscription-history-title">
         <div class="history-heading"><h2 id="subscription-history-title">{{ copy('历史订阅', 'Subscription history') }}</h2><RouterLink to="/orders">{{ copy('兑换记录', 'Redemption history') }} ↗</RouterLink></div>
         <p v-if="historyError" class="portal-error" role="alert">{{ historyError }} <button @click="load">{{ copy('重新加载', 'Reload') }}</button></p>
-        <div class="subscription-table-wrap"><table class="portal-table subscription-history-table">
+        <div class="subscription-table-wrap"><div v-if="mobile" class="mobile-records">
+            <div v-if="!owned.length && !historyError" class="mobile-record-state">{{ copy('暂无订阅记录', 'No subscriptions yet') }}</div>
+            <dl v-for="subscription in owned" :key="subscription.id" class="mobile-record">
+  <div  class="mobile-record-field"><dt>{{ copy('创建时间', 'Created') }}</dt><dd >{{ date(subscription.created_at) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ copy('订阅', 'Subscription') }}</dt><dd >{{ subscription.group?.name || `#${subscription.group_id}` }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ copy('开始时间', 'Start') }}</dt><dd >{{ date(subscription.starts_at) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ copy('有效期', 'Expiry') }}</dt><dd >{{ date(subscription.expires_at) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ copy('状态', 'Status') }}</dt><dd ><span class="subscription-state" :class="{ active: subscription.status === 'active' }">{{ ({ active: copy('有效', 'Active'), expired: copy('已到期', 'Expired'), revoked: copy('已撤销', 'Revoked'), suspended: copy('已暂停', 'Suspended') })[subscription.status] || subscription.status }}</span></dd></div>
+</dl>
+
+</div>
+<table v-else class="portal-table subscription-history-table">
           <thead><tr><th>{{ copy('创建时间', 'Created') }}</th><th>{{ copy('订阅', 'Subscription') }}</th><th>{{ copy('开始时间', 'Start') }}</th><th>{{ copy('有效期', 'Expiry') }}</th><th>{{ copy('状态', 'Status') }}</th></tr></thead>
           <tbody>
             <tr v-if="!owned.length && !historyError"><td colspan="5" class="history-empty">{{ copy('暂无订阅记录', 'No subscriptions yet') }}</td></tr>

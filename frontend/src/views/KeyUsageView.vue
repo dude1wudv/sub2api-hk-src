@@ -308,7 +308,20 @@
               </div>
             </div>
             <div v-if="dailyUsageRows.length > 0" class="overflow-x-auto">
-              <table class="w-full">
+              <div v-if="mobile" class="mobile-records">
+                  <dl v-for="row in dailyUsageRows"
+                    :key="row.date" class="mobile-record">
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.date') }}</dt><dd >{{ row.date }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.requests') }}</dt><dd >{{ fmtNum(row.requests) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.inputTokens') }}</dt><dd >{{ fmtNum(row.input_tokens) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.outputTokens') }}</dt><dd >{{ fmtNum(row.output_tokens) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.cacheReadTokens') }}</dt><dd >{{ fmtNum(row.cache_read_tokens) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.cacheWriteTokens') }}</dt><dd >{{ fmtNum(row.cache_write_tokens) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.cost') }}</dt><dd >{{ usd(row.actual_cost != null ? row.actual_cost : row.cost) }}</dd></div>
+</dl>
+
+</div>
+<table v-else class="w-full">
                 <thead>
                   <tr class="border-b border-[rgb(var(--line))] bg-[rgb(var(--table-head))]">
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.date') }}</th>
@@ -351,7 +364,21 @@
               <h3 class="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--ink-3))]">{{ t('keyUsage.modelStats') }}</h3>
             </div>
             <div class="overflow-x-auto">
-              <table class="w-full">
+              <div v-if="mobile" class="mobile-records">
+                  <dl v-for="(m, i) in modelStats"
+                    :key="i" class="mobile-record">
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.model') }}</dt><dd >{{ m.model || '-' }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.requests') }}</dt><dd >{{ fmtNum(m.requests) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.inputTokens') }}</dt><dd >{{ fmtNum(m.input_tokens) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.outputTokens') }}</dt><dd >{{ fmtNum(m.output_tokens) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.cacheCreationTokens') }}</dt><dd >{{ fmtNum(m.cache_creation_tokens) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.cacheReadTokens') }}</dt><dd >{{ fmtNum(m.cache_read_tokens) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.totalTokens') }}</dt><dd >{{ fmtNum(m.total_tokens) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('keyUsage.cost') }}</dt><dd >{{ usd(m.actual_cost != null ? m.actual_cost : m.cost) }}</dd></div>
+</dl>
+
+</div>
+<table v-else class="w-full">
                 <thead>
                   <tr class="border-b border-[rgb(var(--line))] bg-[rgb(var(--table-head))]">
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">{{ t('keyUsage.model') }}</th>
@@ -413,6 +440,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import ColorModeToggle from '@/components/common/ColorModeToggle.vue'
 import { ref, computed, onBeforeUnmount, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'

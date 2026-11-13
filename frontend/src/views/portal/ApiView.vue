@@ -132,7 +132,7 @@
       <p>{{ text('删除后，使用此密钥的应用将无法继续请求。', 'Applications using this key will no longer be able to send requests.') }}</p>
       <p class="portal-api-delete-name">{{ deleteTarget?.name }}</p>
       <p v-if="deleteError" class="portal-error" role="alert">{{ deleteError }}</p>
-      <footer class="portal-dialog-actions"><button type="button" class="portal-button secondary" :disabled="deleting" @click="closeDelete">{{ text('取消', 'Cancel') }}</button><button type="button" class="portal-button" :disabled="deleting" @click="deleteKey">{{ deleting ? text('删除中…', 'Deleting…') : text('确认删除', 'Delete key') }}</button></footer>
+      <template #footer><div class="portal-dialog-actions"><button type="button" class="portal-button secondary" :disabled="deleting" @click="closeDelete">{{ text('取消', 'Cancel') }}</button><button type="button" class="portal-button" :disabled="deleting" @click="deleteKey">{{ deleting ? text('删除中…', 'Deleting…') : text('确认删除', 'Delete key') }}</button></div></template>
     </PortalDialog>
     <PortalDialog :open="docsOpen" :title="text('API 接入指南', 'API quick start')" @close="docsOpen = false">
       <ol class="portal-api-guide">
@@ -141,7 +141,7 @@
         <li>{{ text('使用页面下方的接口地址和调用示例，以所选分组支持的模型发送请求。', 'Use the base URL and examples below to request a model supported by your group.') }}</li>
         <li v-if="!authStore.isSimpleMode"><RouterLink to="/usage">{{ text('在用量信息中查看请求与费用。', 'Review requests and costs in Usage.') }}</RouterLink> <RouterLink to="/purchase">{{ text('需要补充额度时前往充值。', 'Recharge when you need more balance.') }}</RouterLink></li>
       </ol>
-      <footer class="portal-dialog-actions"><button type="button" class="portal-button" @click="docsOpen = false; showExamples()">{{ text('查看示例', 'View examples') }}</button></footer>
+      <template #footer><div class="portal-dialog-actions"><button type="button" class="portal-button" @click="docsOpen = false; showExamples()">{{ text('查看示例', 'View examples') }}</button></div></template>
     </PortalDialog>
   </div>
 </template>
@@ -595,7 +595,9 @@ onBeforeUnmount(() => {
 @media(max-width:1199px) {
   .portal-api-page { width:calc(100% - 48px); }
 }
-@media(max-width:767px) {
+@media (max-width:767px), (max-width:1023px) and (max-height:500px) and (pointer:coarse) {
+  .portal-api-icon-button, .portal-api-endpoint button { width:44px; height:44px; }
+  .portal-api-header-actions .portal-button { min-height:44px; white-space:normal; }
   .portal-api-access-strip { padding:18px; align-items:flex-start; flex-direction:column; gap:14px; }
   .portal-api-ink-route { display:none; }
   .portal-api-page { width:calc(100% - 32px); padding:18px 0 48px; }

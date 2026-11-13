@@ -6,6 +6,7 @@
       aria-haspopup="dialog"
       :aria-expanded="isOpen"
       @click="toggle"
+      @keydown="handleEscape"
       :class="['date-picker-trigger', isOpen && 'date-picker-trigger-open']"
     >
       <span class="date-picker-icon">
@@ -23,9 +24,9 @@
       </span>
     </button>
 
-    <Teleport to="body">
+    <Teleport :to="overlayHost ?? 'body'">
     <Transition name="date-picker-dropdown">
-      <div v-if="isOpen" ref="dropdownRef" class="date-picker-dropdown" :style="dropdownStyle" role="dialog" :aria-label="t('dates.selectDateRange')">
+      <div v-if="isOpen" ref="dropdownRef" class="date-picker-dropdown" :style="dropdownStyle" role="dialog" :aria-label="t('dates.selectDateRange')" @keydown="handleEscape">
         <!-- Quick presets -->
         <div class="date-picker-presets">
           <button
@@ -81,9 +82,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
+import { useVisualViewport } from '@/composables/useVisualViewport'
+import { overlayHostKey } from '@/composables/overlayHost'
+const overlayHost = inject(overlayHostKey, ref(null))
 
 interface DatePreset {
   labelKey: string
@@ -108,6 +112,7 @@ const emit = defineEmits<Emits>()
 const { t, locale } = useI18n()
 
 const isOpen = ref(false)
+const viewport = useVisualViewport(isOpen)
 const containerRef = ref<HTMLElement | null>(null)
 const triggerRef = ref<HTMLButtonElement | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
@@ -118,17 +123,18 @@ let positionFrame = 0
 function positionDropdown() {
   if (!isOpen.value || !triggerRef.value) return
   const rect = triggerRef.value.getBoundingClientRect()
-  const padding = 8
-  const width = Math.min(320, window.innerWidth - padding * 2)
-  const below = window.innerHeight - rect.bottom - padding * 2
-  const above = rect.top - padding * 2
+  const view = viewport.value, padding = 12, gap = 8
+  const width = Math.min(320, Math.max(0, view.width - padding * 2))
+  const below = Math.max(0, view.bottom - padding - rect.bottom - gap)
+  const above = Math.max(0, rect.top - view.top - padding - gap)
   const height = dropdownRef.value?.scrollHeight || 310
-  const placeAbove = below < height && above > below
-  const available = Math.max(80, placeAbove ? above : below)
-  const top = placeAbove ? Math.max(padding, rect.top - Math.min(height, available) - padding) : Math.max(padding, rect.bottom + padding)
+  const placeAbove = above > below
+  const available = Math.min(Math.max(0, view.height - padding * 2), placeAbove ? above : below)
+  const renderedHeight = Math.min(height, available)
+  const top = placeAbove ? rect.top - renderedHeight - gap : rect.bottom + gap
   dropdownStyle.value = {
-    left: `${Math.max(padding, Math.min(rect.left, window.innerWidth - width - padding))}px`,
-    top: `${Math.min(top, window.innerHeight - 88)}px`,
+    left: `${Math.max(view.left + padding, Math.min(rect.left, view.right - width - padding))}px`,
+    top: `${Math.max(view.top + padding, Math.min(top, view.bottom - padding - renderedHeight))}px`,
     width: `${width}px`, maxHeight: `${available}px`
   }
 }
@@ -136,6 +142,7 @@ function schedulePosition() {
   if (!isOpen.value || positionFrame) return
   positionFrame = requestAnimationFrame(() => { positionFrame = 0; positionDropdown() })
 }
+watch(viewport, schedulePosition)
 watch(isOpen, async (open) => {
   if (open) {
     positionDropdown()
@@ -327,6 +334,8 @@ const handleClickOutside = (event: MouseEvent) => {
 
 const handleEscape = (event: KeyboardEvent) => {
   if (event.key === 'Escape' && isOpen.value) {
+    event.preventDefault()
+    event.stopPropagation()
     isOpen.value = false
     triggerRef.value?.focus({ preventScroll: true })
   }
@@ -359,7 +368,6 @@ watch(
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  document.addEventListener('keydown', handleEscape)
   // Initialize active preset detection
   onDateChange()
 })
@@ -369,7 +377,6 @@ onUnmounted(() => {
   window.removeEventListener('resize', schedulePosition)
   cancelAnimationFrame(positionFrame)
   document.removeEventListener('click', handleClickOutside)
-  document.removeEventListener('keydown', handleEscape)
 })
 </script>
 

@@ -25,7 +25,7 @@ describe('DateRangePicker unapplied changes', () => {
   it.each(['outside', 'escape', 'toggle'])('discards draft dates when dismissed with %s', async (method) => {
     await chooseDraft()
     if (method === 'outside') document.body.click()
-    else if (method === 'escape') document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    else if (method === 'escape') await wrapper.get('.date-picker-trigger').trigger('keydown', { key: 'Escape' })
     else await wrapper.get('.date-picker-trigger').trigger('click')
     await nextTick()
     expect(wrapper.emitted('change')).toBeUndefined()

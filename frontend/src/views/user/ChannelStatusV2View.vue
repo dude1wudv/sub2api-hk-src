@@ -286,9 +286,33 @@
             </button>
           </nav>
         </div>
-        <div class="min-h-0 max-h-[min(52vh,520px)] overflow-auto p-4 sm:p-5">
+        <div class="monitor-records min-h-0 max-h-[min(52vh,520px)] overflow-auto p-4 sm:p-5">
           <div v-if="activeTab === 'models'" class="table-container observatory-table-wrap">
-            <table class="table monitor-table min-w-[720px] tabular-nums">
+            <div v-if="mobile" class="mobile-records">
+                <dl v-for="row in modelRows"
+                  :key="`${row.platform}:${row.model}`"
+
+                  @click="drillModel(row)" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t('channelMonitorV2.table.platformModel') }}</dt><dd><div class="flex items-center gap-2.5">
+                      <span :class="statusDot(row.health)" aria-hidden="true"></span>
+                      <div>
+                        <span class="observatory-muted block text-xs">{{ row.platform }}</span>
+                        <strong class="observatory-strong font-semibold">
+                          {{ row.model === '__other__' ? t('channelMonitorV2.otherModels') : row.model }}
+                        </strong>
+                      </div>
+                    </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelMonitorV2.metrics.successRate') }}</dt><dd><span class="observatory-strong block font-medium tabular-nums">{{ formatPercent(1 - row.metrics.error_rate) }}</span>
+                    <small class="observatory-muted text-xs tabular-nums">{{ t('channelMonitorV2.metrics.errorRateValue', { value: formatPercent(row.metrics.error_rate) }) }}</small></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelMonitorV2.metrics.ttftP50') }}</dt><dd><span class="observatory-strong block font-medium tabular-nums">{{ formatMs(row.metrics.ttft.p50_ms) }}</span>
+                    <small class="observatory-muted text-xs tabular-nums">{{ latencyDetail(row.metrics.ttft) }}</small></dd></div>
+  <div v-if="showThroughput" class="mobile-record-field"><dt>{{ t('channelMonitorV2.metrics.tps') }}</dt><dd :title="exactTps(row.metrics.tpm)">{{ formatTps(row.metrics.tpm) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelMonitorV2.metrics.cacheRate') }}</dt><dd>{{ formatPercent(row.metrics.cache_rate) }}</dd></div>
+  <div v-if="showThroughput" class="mobile-record-field"><dt>{{ t('channelMonitorV2.metrics.rpm') }}</dt><dd>{{ formatRate(row.metrics.rpm) }}</dd></div>
+</dl>
+
+</div>
+<table v-else class="table monitor-table min-w-[720px] tabular-nums">
               <thead>
                 <tr>
                   <th>{{ t('channelMonitorV2.table.platformModel') }}</th>
@@ -385,7 +409,32 @@
           </div>
 
           <div v-else class="table-container observatory-table-wrap">
-            <table class="table monitor-table min-w-[640px] tabular-nums">
+            <div v-if="mobile" class="mobile-records">
+                <dl v-for="row in userRows"
+                  :key="row.user_id || row.display_label"
+                  :class="row.is_self ? 'monitor-self-row' : ''" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t('channelMonitorV2.table.rank') }}</dt><dd><MonitorRankBadge :rank="row.rank" /></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelMonitorV2.table.user') }}</dt><dd><strong
+                      class="font-semibold"
+                      :class="row.is_self ? 'text-primary-700 dark:text-primary-300' : 'observatory-strong'"
+                    >
+                      {{ row.display_label }}
+                      <span
+                        v-if="row.is_self"
+                        class="badge badge-primary ml-2 !px-1.5 !py-0 text-[10px]"
+                      >{{ t('channelMonitorV2.currentUser') }}</span>
+                    </strong></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelMonitorV2.metrics.successRate') }}</dt><dd><span class="observatory-strong block font-medium tabular-nums">{{ formatPercent(1 - row.metrics.error_rate) }}</span>
+                    <small class="observatory-muted text-xs tabular-nums">{{ t('channelMonitorV2.metrics.errorRateValue', { value: formatPercent(row.metrics.error_rate) }) }}</small></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelMonitorV2.metrics.ttftP50') }}</dt><dd><span class="observatory-strong block font-medium tabular-nums">{{ formatMs(row.metrics.ttft.p50_ms) }}</span>
+                    <small class="observatory-muted text-xs tabular-nums">{{ latencyDetail(row.metrics.ttft) }}</small></dd></div>
+  <div v-if="showThroughput" class="mobile-record-field"><dt>{{ t('channelMonitorV2.metrics.tps') }}</dt><dd :title="exactTps(row.metrics.tpm)">{{ formatTps(row.metrics.tpm) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelMonitorV2.metrics.cacheRate') }}</dt><dd>{{ formatPercent(row.metrics.cache_rate) }}</dd></div>
+  <div v-if="showThroughput" class="mobile-record-field"><dt>{{ t('channelMonitorV2.metrics.rpm') }}</dt><dd>{{ formatRate(row.metrics.rpm) }}</dd></div>
+</dl>
+
+</div>
+<table v-else class="table monitor-table min-w-[640px] tabular-nums">
               <thead>
                 <tr>
                   <th class="w-16">{{ t('channelMonitorV2.table.rank') }}</th>
@@ -456,6 +505,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { useI18n } from 'vue-i18n'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -1103,7 +1155,8 @@ onBeforeUnmount(() => {
 .observatory-error-details {
   border-top: 1px solid rgb(var(--line));
 }
-@media (max-width: 767px) {
+@media (max-width:767px), (max-width:1023px) and (max-height:500px) and (pointer:coarse) {
+  .monitor-records { max-height:none; overflow:visible; }
   .observatory-header {
     padding: 16px 18px;
   }

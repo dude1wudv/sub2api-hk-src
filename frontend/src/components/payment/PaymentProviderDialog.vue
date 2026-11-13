@@ -7,7 +7,7 @@
   >
     <form id="provider-form" @submit.prevent="handleSave" class="space-y-4">
       <!-- Name + Key -->
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label class="input-label">
             {{ t('admin.settings.payment.providerName') }}
@@ -34,9 +34,9 @@
         <ToggleSwitch :label="t('common.enabled')" :checked="form.enabled" @toggle="form.enabled = !form.enabled" />
         <ToggleSwitch :label="t('admin.settings.payment.refundEnabled')" :checked="form.refund_enabled" @toggle="form.refund_enabled = !form.refund_enabled; if (!form.refund_enabled) form.allow_user_refund = false" />
         <ToggleSwitch v-if="form.refund_enabled" :label="t('admin.settings.payment.allowUserRefund')" :checked="form.allow_user_refund" @toggle="form.allow_user_refund = !form.allow_user_refund" />
-        <div v-if="supportsPaymentMode" class="flex items-center gap-2">
+        <div v-if="supportsPaymentMode" class="flex min-w-0 flex-wrap items-center gap-2">
           <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.paymentMode') }}</span>
-          <div class="flex gap-1.5">
+          <div class="flex flex-wrap gap-1.5">
             <button
               v-for="mode in paymentModeOptions"
               :key="mode.value"
@@ -51,7 +51,7 @@
             >{{ mode.label }}</button>
           </div>
         </div>
-        <div v-if="availableTypes.length > 1" class="flex items-center gap-2">
+        <div v-if="availableTypes.length > 1" class="flex min-w-0 flex-wrap items-center gap-2">
           <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.supportedTypes') }}</span>
           <div class="flex flex-wrap gap-1.5">
             <button

@@ -395,9 +395,9 @@
   /* ============ 模态框 ============ */
   .modal-overlay {
     @apply fixed inset-0 z-50;
-    @apply bg-black/50 backdrop-blur-sm;
     @apply flex items-center justify-center p-2 sm:p-4;
   }
+  .modal-backdrop { @apply bg-black/50 backdrop-blur-sm; }
 
   .modal-content {
     @apply w-full;

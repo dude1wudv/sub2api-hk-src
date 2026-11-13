@@ -24,6 +24,7 @@
       id="user-workspace-navigation"
       ref="sidebarRef"
       class="user-sidebar"
+      :style="overlayOpen && viewport.width > 0 ? { top: `${viewport.top}px`, left: `${viewport.left}px`, bottom: 'auto', height: `${viewport.height}px`, maxHeight: `${viewport.height}px` } : undefined"
       :role="overlayOpen ? 'dialog' : undefined"
       :aria-modal="overlayOpen ? true : undefined"
       :aria-label="zh ? '用户导航' : 'User navigation'"
@@ -267,6 +268,7 @@ import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import { useUserNavigation, type UserNavigationItem } from '@/composables/useUserNavigation'
 import { useColorMode } from '@/composables/useColorMode'
 import { useScrollLock } from '@/composables/useScrollLock'
+import { useVisualViewport } from '@/composables/useVisualViewport'
 import { useReducedMotion } from '@/composables/useReducedMotion'
 import { prefetchRoutePath } from '@/composables/useRoutePrefetch'
 import { resolveRouteMetaKeys } from '@/router/title'
@@ -308,6 +310,7 @@ const collapsed = ref(false)
 const mobileOpen = ref(false)
 const overlayOpen = computed(() => mobileOpen.value && !desktop.value)
 useScrollLock(overlayOpen)
+const viewport = useVisualViewport(overlayOpen)
 const sidebarCollapsed = computed(() => desktop.value ? collapsed.value : railViewport.value && !mobileOpen.value)
 const accountOpen = ref(false)
 const localeOpen = ref(false)
@@ -570,15 +573,21 @@ defineExpose({ replayTour: replayUserGuide })
 @keyframes user-menu-enter { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes user-drawer-enter { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (max-width: 767px) {
-  .user-portal .user-topbar { align-items: center; }
+  .user-portal .user-topbar { align-items: center; height:auto; min-height:calc(var(--user-topbar-height) + env(safe-area-inset-top, 0px)); }
   .user-portal :is(.user-icon-button, .user-language-toggle, .user-account-trigger, .user-signin-link) { min-width: 44px; min-height: 44px; }
   .user-portal :is(.user-nav-item, .user-account-action, .user-language-menu button, .user-balance-pill) { min-height: 44px; }
   .user-portal .user-announcement-control :deep(button) { min-width: 44px; min-height: 44px; }
-  .user-portal .user-account-trigger { max-width: 112px; }
+  .user-portal .user-topbar-actions { flex-wrap:wrap; justify-content:flex-end; }
+  .user-portal .user-account-trigger { width:100%; max-width:112px; }
+}
+@media (max-width:479px) {
+  .user-portal .user-account-control { flex:0 0 44px; }
+  .user-portal .user-account-trigger { width:44px; padding:0; justify-content:center; }
+  .user-portal .user-account-name, .user-portal .user-account-trigger > :deep(svg) { display:none; }
 }
 @media (max-width: 359px) {
-  .user-portal .user-topbar-actions { gap: 4px; }
-  .user-portal .user-account-trigger { max-width: 76px; }
+  .user-portal { --user-topbar-height:106px; }
+  .user-portal .user-topbar-actions { gap:4px; padding-block:6px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .user-portal :is(.user-sidebar, .user-account-popover, .user-language-menu) { animation: none; }

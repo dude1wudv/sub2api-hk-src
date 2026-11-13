@@ -33,7 +33,7 @@ function render() {
   return mount(ApiView, { global: { stubs: {
     RouterLink: RouterLinkStub, Icon: true, PortalKeyForm: true, PortalApiKeyTable: true,
     UseKeyModal: true, PortalApiBulkForm: true,
-    PortalDialog: { props: ['open', 'title'], template: '<div v-if="open"><slot /></div>' },
+    PortalDialog: { props: ['open', 'title'], template: '<div v-if="open"><slot /><slot name="footer" /></div>' },
     PortalApiExamples: true,
   } } })
 }

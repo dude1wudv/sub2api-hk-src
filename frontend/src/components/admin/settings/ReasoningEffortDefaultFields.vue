@@ -8,7 +8,17 @@
       <Toggle :model-value="modelValue.enabled" @update:model-value="emit('update:modelValue', { ...modelValue, enabled: $event })" />
     </div>
     <div class="mt-3 overflow-x-auto">
-      <table v-if="modelValue.rules.length" class="w-full text-left text-xs">
+<div v-if="mobile && modelValue.rules.length" class="mobile-records">
+          <dl v-for="(rule, index) in modelValue.rules" :key="index" class="mobile-record">
+  <div  class="mobile-record-field"><dt>{{ t('admin.groups.form.platform') }}</dt><dd ><select class="input" :value="rule.platform" :aria-label="t('admin.groups.form.platform')" @change="updateRule(index, 'platform', $event)"><option v-for="platform in platforms" :key="platform" :value="platform">{{ platform }}</option></select></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('admin.groups.form.reasoningEffortMatchType') }}</dt><dd ><select class="input" :value="rule.match_type" :aria-label="t('admin.groups.form.reasoningEffortMatchType')" @change="updateRule(index, 'match_type', $event)"><option v-for="match in matchTypes" :key="match" :value="match">{{ match }}</option></select></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('admin.groups.form.reasoningEffortModel') }}</dt><dd ><input class="input min-w-44" :value="rule.model" :aria-label="t('admin.groups.form.reasoningEffortModel')" @input="updateRule(index, 'model', $event)" /></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('usage.reasoningEffort') }}</dt><dd ><select class="input" :value="rule.effort" :aria-label="t('usage.reasoningEffort')" @change="updateRule(index, 'effort', $event)"><option v-for="effort in efforts" :key="effort" :value="effort">{{ effort }}</option></select></dd></div>
+  <div  class="mobile-record-field"><dt>{{ t('common.actions') }}</dt><dd ><button type="button" class="btn btn-secondary" @click="removeRule(index)">{{ t('common.delete') }}</button></dd></div>
+</dl>
+
+</div>
+<table v-else-if="modelValue.rules.length" class="w-full text-left text-xs">
         <thead class="text-gray-500 dark:text-gray-400">
           <tr>
             <th class="pb-2">{{ t('admin.groups.form.platform') }}</th>
@@ -34,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import { useI18n } from 'vue-i18n'
 import Toggle from '@/components/common/Toggle.vue'
 import type { SystemSettings } from '@/api/admin/settings'
@@ -43,6 +55,7 @@ type Rule = Config['rules'][number]
 const props = defineProps<{ modelValue: Config }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Config] }>()
 const { t } = useI18n()
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 const platforms = ['openai', 'anthropic', 'composite']
 const matchTypes = ['exact', 'prefix', 'suffix']
 const efforts = ['minimal', 'low', 'medium', 'high', 'xhigh', 'max']

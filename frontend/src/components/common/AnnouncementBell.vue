@@ -23,11 +23,12 @@
       <Transition name="modal-fade">
         <div
           v-if="isModalOpen"
-          class="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-gradient-to-br from-black/70 via-black/60 to-black/70 p-4 pt-[8vh] backdrop-blur-md"
+          class="announcement-overlay fixed z-[100] flex items-center justify-center bg-gradient-to-br from-black/70 via-black/60 to-black/70 p-3 backdrop-blur-md"
+          :style="viewportStyle"
           @click="closeModal"
         >
           <div
-            class="w-full max-w-[620px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+            class="announcement-panel w-full max-w-[620px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
             @click.stop
           >
             <!-- Header with Gradient -->
@@ -70,7 +71,7 @@
             </div>
 
             <!-- Body -->
-            <div class="max-h-[65vh] overflow-y-auto">
+            <div class="announcement-body overflow-y-auto">
               <!-- Loading -->
               <div v-if="loading" class="flex items-center justify-center py-16">
                 <div class="relative">
@@ -183,11 +184,12 @@
       <Transition name="modal-fade">
         <div
           v-if="detailModalOpen && selectedAnnouncement"
-          class="fixed inset-0 z-[110] flex items-start justify-center overflow-y-auto bg-gradient-to-br from-black/70 via-black/60 to-black/70 p-4 pt-[6vh] backdrop-blur-md"
+          class="announcement-overlay fixed z-[110] flex items-center justify-center bg-gradient-to-br from-black/70 via-black/60 to-black/70 p-3 backdrop-blur-md"
+          :style="viewportStyle"
           @click="closeDetail"
         >
           <div
-            class="w-full max-w-[780px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+            class="announcement-panel w-full max-w-[780px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
             @click.stop
           >
             <!-- Header with Decorative Elements -->
@@ -258,7 +260,7 @@
             </div>
 
             <!-- Body with Enhanced Markdown -->
-            <div class="max-h-[60vh] overflow-y-auto bg-white px-8 py-8 dark:bg-dark-800">
+            <div class="announcement-body overflow-y-auto bg-white px-8 py-8 dark:bg-dark-800">
               <!-- Content with decorative border -->
               <div class="relative">
                 <!-- Decorative left border -->
@@ -312,7 +314,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { marked } from 'marked'
@@ -323,6 +325,8 @@ import { formatRelativeTime, formatRelativeWithDateTime } from '@/utils/format'
 import type { UserAnnouncement } from '@/types'
 import Icon from '@/components/icons/Icon.vue'
 import '@/styles/announcement-markdown.css'
+import { useScrollLock } from '@/composables/useScrollLock'
+import { useVisualViewport } from '@/composables/useVisualViewport'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -342,6 +346,9 @@ const unreadCount = computed(() => announcementStore.unreadCount)
 const isModalOpen = ref(false)
 const detailModalOpen = ref(false)
 const selectedAnnouncement = ref<UserAnnouncement | null>(null)
+useScrollLock(() => isModalOpen.value || detailModalOpen.value)
+const viewport = useVisualViewport(() => isModalOpen.value || detailModalOpen.value)
+const viewportStyle = computed(() => ({ top: `${viewport.value.top}px`, left: `${viewport.value.left}px`, width: `${viewport.value.width}px`, height: `${viewport.value.height}px` }))
 
 // Methods
 function renderMarkdown(content: string): string {
@@ -413,18 +420,19 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleEscape)
-  document.body.style.overflow = ''
 })
 
-watch(
-  [isModalOpen, detailModalOpen, () => announcementStore.currentPopup],
-  ([modal, detail, popup]) => {
-    document.body.style.overflow = (modal || detail || popup) ? 'hidden' : ''
-  }
-)
 </script>
 
 <style scoped>
+.announcement-panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; max-height: 100%; overflow-wrap: anywhere; }
+.announcement-panel > :not(.announcement-body) { flex-shrink: 0; }
+.announcement-body { min-height: 0; overscroll-behavior: contain; }
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) and (pointer: coarse) {
+  .announcement-panel > div { padding: 16px; }
+  .announcement-panel button { min-width: 44px; min-height: 44px; }
+  .announcement-panel .justify-between { flex-wrap: wrap; gap: 8px; }
+}
 /* Modal Animations */
 .modal-fade-enter-active {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);

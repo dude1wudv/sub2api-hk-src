@@ -4,6 +4,7 @@ import { nextTick, reactive, ref } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import type { PublicSettings, User } from '@/types'
 import UserShell from '../UserShell.vue'
+import { initMotionPreferences } from '@/composables/useMotionPreferences'
 
 const spies = vi.hoisted(() => ({
   launchHelios: vi.fn().mockResolvedValue(true),
@@ -236,6 +237,7 @@ describe('personal workspace navigation', () => {
 
   it('opens the API guide without smooth scrolling when reduced motion is preferred', async () => {
     const media = vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as MediaQueryList)
+    initMotionPreferences()
     const target = document.createElement('div')
     target.id = 'api-quick-start'
     target.scrollIntoView = vi.fn()
@@ -246,7 +248,7 @@ describe('personal workspace navigation', () => {
       await wrapper.get('button.user-account-action:not(.user-signout)').trigger('click')
       await flushPromises()
       expect(target.scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' })
-    } finally { target.remove(); media.mockRestore() }
+    } finally { target.remove(); media.mockRestore(); initMotionPreferences() }
   })
 
   it('gives administrators personal navigation and an explicit return to administration', async () => {

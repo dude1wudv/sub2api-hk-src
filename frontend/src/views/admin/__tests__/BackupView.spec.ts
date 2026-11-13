@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 
 import BackupView from '../BackupView.vue'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 
 const {
   getS3Config,
@@ -129,7 +130,9 @@ describe('admin BackupView', () => {
     }
   })
 
-  it('显示分卷数并在下载时列出每个分卷链接', async () => {
+  it.each([false, true])('shows every download part and closes the migrated dialog (mobile=%s)', async (mobile) => {
+    const matchMedia = window.matchMedia
+    vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ ...matchMedia(query), matches: query === MOBILE_CONTENT_QUERY ? mobile : matchMedia(query).matches }))
     listBackups.mockResolvedValue({
       items: [baseRecord('split', [{ index: 1 }, { index: 2 }, { index: 3 }])],
     })
@@ -155,6 +158,13 @@ describe('admin BackupView', () => {
     expect(document.body.textContent).toContain('admin.backup.actions.partLabel:1')
     expect(document.body.textContent).toContain('admin.backup.actions.partLabel:3')
     expect(document.body.querySelector('a[href="https://example.test/part-2"]')).not.toBeNull()
+    expect(wrapper.findAll('.mobile-record')).toHaveLength(mobile ? 1 : 0)
+    const dialog = document.body.querySelector('[role="dialog"]')!
+    expect(dialog).not.toBeNull()
+    const close = [...dialog.querySelectorAll('button')].find(button => button.textContent?.trim() === 'common.close')!
+    close.click()
+    await flushPromises()
+    await vi.waitFor(() => expect(document.body.querySelector('[role="dialog"]')).toBeNull())
   })
 
   it('旧单文件记录仍使用单个下载地址', async () => {

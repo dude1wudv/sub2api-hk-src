@@ -16,7 +16,7 @@ vi.mock('@/api/payment', () => ({ paymentAPI: { getCheckoutInfo, purchaseSubscri
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ cachedPublicSettings: { subscription_enabled: true, server_utc_offset: '+00:00' } }) }))
 vi.mock('@/stores/subscriptions', () => ({ useSubscriptionStore: () => ({ fetchActiveSubscriptions, invalidateCache }) }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { balance: 50 }, refreshUser: vi.fn().mockResolvedValue(undefined) }) }))
-vi.mock('@/components/portal/PortalDialog.vue', () => ({ default: { props: ['open', 'title'], template: '<div class="portal-dialog-test"><slot /></div>' } }))
+vi.mock('@/components/portal/PortalDialog.vue', () => ({ default: { props: ['open', 'title'], template: '<div class="portal-dialog-test"><slot /><slot name="footer" /></div>' } }))
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
   return { ...actual, useRoute: () => ({ query: {} }) }

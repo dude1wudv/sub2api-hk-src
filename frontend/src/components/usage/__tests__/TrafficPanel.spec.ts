@@ -1,5 +1,6 @@
 // Adapted from ranxi2001/sub2api @ 9620d315, licensed under LGPL-3.0-or-later.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import { flushPromises, mount } from '@vue/test-utils'
 import TrafficPanel from '../TrafficPanel.vue'
 import Select from '@/components/common/Select.vue'
@@ -39,7 +40,12 @@ beforeEach(() => {
 })
 const render = (admin = false) => { const wrapper = mount(TrafficPanel, { props: { admin, apiKeyOptions: [{ value: null, label: 'All keys' }, { value: 8, label: 'Production key' }, { value: 9, label: 'Test key' }] }, global: { stubs: { Teleport: true } } }); wrappers.push(wrapper); return wrapper }
 
-describe('TrafficPanel', () => {
+describe.each([false, true])('TrafficPanel (mobile=%s)', (mobile) => {
+  const originalMatchMedia = window.matchMedia
+  beforeEach(() => vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
+    ...originalMatchMedia(query), matches: query === MOBILE_CONTENT_QUERY ? mobile : originalMatchMedia(query).matches,
+  })))
+  afterEach(() => vi.restoreAllMocks())
   it('shows a total-led overview and calculates composition from the same report', async () => {
     const wrapper = render(); await flushPromises()
     expect(wrapper.findAll('.traffic-metric')).toHaveLength(4)

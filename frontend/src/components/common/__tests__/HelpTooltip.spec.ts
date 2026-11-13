@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
@@ -14,6 +14,10 @@ function getTooltipElement(): HTMLDivElement {
 }
 
 describe('HelpTooltip', () => {
+  beforeEach(() => {
+    const original = window.matchMedia
+    vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ ...original(query), matches: query === '(hover: none)' ? false : original(query).matches }))
+  })
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
@@ -146,7 +150,7 @@ describe('HelpTooltip', () => {
     await trigger.trigger('focusin')
     await nextTick()
     expect(tooltip.style.display).not.toBe('none')
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    tooltip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
     expect(tooltip.style.display).toBe('none')
 
@@ -168,7 +172,7 @@ describe('HelpTooltip', () => {
     await nextTick()
     expect(tooltip.style.display).not.toBe('none')
 
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    tooltip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
     expect(tooltip.style.display).toBe('none')
 
@@ -223,7 +227,7 @@ describe('HelpTooltip', () => {
     await button.trigger('click')
     await nextTick()
     expect(tooltip.style.display).not.toBe('none')
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    tooltip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
     expect(tooltip.style.display).toBe('none')
     expect(button.attributes('aria-expanded')).toBe('false')
@@ -259,6 +263,9 @@ describe('HelpTooltip', () => {
   })
 
   it('positions against visualViewport offsets on a short screen and repositions after viewport changes', async () => {
+    let frame: FrameRequestCallback | undefined
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => { frame = callback; return 1 })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
     const viewport = new EventTarget() as VisualViewport
     Object.defineProperties(viewport, {
       width: { configurable: true, value: 320, writable: true },
@@ -291,6 +298,7 @@ describe('HelpTooltip', () => {
     })
     triggerBounds.mockReturnValue(rect(280, 230, 24, 24))
     viewport.dispatchEvent(new Event('scroll'))
+    frame?.(0)
     await flushPromises()
     expect(tooltip.style.left).toBe('62px')
     expect(tooltip.style.top).toBe('262px')
@@ -372,7 +380,7 @@ describe('HelpTooltip', () => {
     await nextTick()
     expect(tooltip.style.display).not.toBe('none')
 
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    tooltip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
     expect(tooltip.style.display).toBe('none')
     expect(button.attributes('aria-expanded')).toBe('false')

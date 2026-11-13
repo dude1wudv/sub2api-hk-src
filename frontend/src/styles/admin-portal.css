@@ -453,16 +453,16 @@ body.admin-navigation-open {
   background: rgb(var(--surface-elevated));
   border-color: rgb(var(--line));
 }
-:root body[data-admin-surface='true'] .modal-overlay {
+:root body[data-admin-surface='true'] .modal-backdrop {
   background: rgb(var(--overlay-scrim));
   backdrop-filter: blur(4px);
 }
 :root body[data-admin-surface='true'] .modal-content {
-  max-height: calc(100dvh - 48px);
+  max-height: calc(var(--visual-height, 100dvh) - 48px);
 }
 :root body[data-admin-surface='true'] .modal-content.admin-edit-modal {
   width: 960px;
-  max-width: calc(100vw - 48px);
+  max-width: calc(var(--visual-width, 100vw) - 48px);
 }
 :root body[data-admin-surface='true'] .admin-detail-overlay {
   justify-content: flex-end;
@@ -471,9 +471,9 @@ body.admin-navigation-open {
 }
 :root body[data-admin-surface='true'] .admin-detail-overlay .modal-content {
   width: 640px;
-  max-width: 100vw;
-  max-height: 100dvh;
-  height: 100dvh;
+  max-width: var(--visual-width, 100vw);
+  max-height: var(--visual-height, 100dvh);
+  height: var(--visual-height, 100dvh);
   border-radius: 0;
   margin: 0;
   box-shadow: var(--shadow-overlay);
@@ -1175,8 +1175,8 @@ body.admin-navigation-open {
 }
 .admin-page .table-record-fields > [data-field] {
   display: grid;
-  grid-template-columns: minmax(84px, .35fr) minmax(0, 1fr);
-  gap: 8px 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
   padding: 8px 0;
   border-bottom: 1px solid rgb(var(--line));
 }
@@ -1253,15 +1253,16 @@ body.admin-navigation-open {
     align-items: stretch;
   }
   :root body[data-admin-surface='true'] .modal-content {
-    width: 100vw;
-    max-width: 100vw;
-    min-height: 100dvh;
-    max-height: 100dvh;
+    width: var(--visual-width, 100vw);
+    max-width: var(--visual-width, 100vw);
+    min-height: 0;
+    height: var(--visual-height, 100dvh);
+    max-height: var(--visual-height, 100dvh);
     border-radius: 0;
     margin: 0;
   }
   :root body[data-admin-surface='true'] .modal-content.admin-edit-modal {
-    max-width: 100vw;
+    max-width: var(--visual-width, 100vw);
   }
   :root body[data-admin-surface='true'] .modal-body {
     padding: 20px 16px;
@@ -1314,7 +1315,7 @@ body.admin-navigation-open {
     padding: 16px;
   }
   :root body[data-admin-surface='true'] .settings-tabs-shell {
-    top: 64px;
+    top: calc(56px + env(safe-area-inset-top, 0px));
   }
   .admin-sticky-submit-bar {
     bottom: max(8px, env(safe-area-inset-bottom, 0px));

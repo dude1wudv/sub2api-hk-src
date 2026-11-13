@@ -201,7 +201,59 @@
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[800px] text-sm">
+          <div v-if="mobile" class="mobile-records">
+              <dl v-for="record in backups" :key="record.id" class="mobile-record">
+  <div class="mobile-record-field"><dt>ID</dt><dd>{{ record.id }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.backup.columns.status') }}</dt><dd><span
+                    class="rounded px-2 py-0.5 text-xs"
+                    :class="statusClass(record.status)"
+                  >
+                    {{ record.status === 'running' && record.progress
+                      ? t(`admin.backup.progress.${record.progress}`)
+                      : t(`admin.backup.status.${record.status}`) }}
+                  </span></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.backup.columns.fileName') }}</dt><dd>{{ record.file_name }}
+                  <span v-if="record.monthly_archive" class="ml-1 inline-block rounded bg-primary-50 px-1.5 py-0.5 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">{{ t('admin.backup.archive.badge') }}</span>
+                  <div v-if="record.monthly_archive" class="mt-1 text-gray-500 dark:text-gray-400">{{ record.monthly_archive.dates.join(' / ') }}</div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.backup.columns.size') }}</dt><dd>{{ formatSize(record.size_bytes) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.backup.columns.parts') }}</dt><dd>{{ record.parts?.length || (record.status === 'running' ? '-' : 1) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.backup.columns.expiresAt') }}</dt><dd>{{ record.monthly_archive
+                    ? record.monthly_archive.retain_count === 0 ? t('admin.backup.archive.forever') : t('admin.backup.archive.retainLatest', { count: record.monthly_archive.retain_count })
+                    : record.expires_at ? formatDate(record.expires_at) : t('admin.backup.neverExpire') }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.backup.columns.triggeredBy') }}</dt><dd>{{ record.triggered_by === 'scheduled' ? t('admin.backup.trigger.scheduled') : t('admin.backup.trigger.manual') }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.backup.columns.startedAt') }}</dt><dd>{{ formatDate(record.started_at) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.backup.columns.actions') }}</dt><dd><div class="flex flex-wrap gap-1">
+                    <button
+                      v-if="record.status === 'completed'"
+                      type="button"
+                      class="btn btn-secondary btn-xs"
+                      @click="downloadBackup(record.id)"
+                    >
+                      {{ t('admin.backup.actions.download') }}
+                    </button>
+                    <button
+                      v-if="record.status === 'completed'"
+                      type="button"
+                      class="btn btn-secondary btn-xs"
+                      :disabled="restoringId === record.id"
+                      @click="restoreBackup(record.id)"
+                    >
+                      {{ restoringId === record.id ? t('common.loading') : t('admin.backup.actions.restore') }}
+                    </button>
+                    <button
+                      v-if="record.status !== 'running'"
+                      type="button"
+                      class="btn btn-danger btn-xs"
+                      @click="removeBackup(record.id)"
+                    >
+                      {{ t('common.delete') }}
+                    </button>
+                  </div></dd></div>
+</dl>
+              <div v-if="backups.length === 0" class="mobile-record-state">{{ t('admin.backup.empty') }}</div>
+
+</div>
+<table v-else class="w-full min-w-[800px] text-sm">
             <thead>
               <tr class="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-dark-700 dark:text-gray-400">
                 <th class="py-2 pr-4">ID</th>
@@ -286,16 +338,7 @@
     </div>
 
     <!-- Cloudflare R2 Setup Guide Modal -->
-    <teleport to="body">
-      <transition name="modal">
-        <div v-if="showR2Guide" class="fixed inset-0 z-50 flex items-center justify-center p-4" @mousedown.self="showR2Guide = false">
-          <div class="fixed inset-0 bg-black/50" @click="showR2Guide = false"></div>
-          <div class="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl dark:bg-dark-800">
-            <button type="button" class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="showR2Guide = false">
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-
-            <h2 class="mb-4 text-lg font-bold text-gray-900 dark:text-white">{{ t('admin.backup.r2Guide.title') }}</h2>
+    <BaseDialog :show="showR2Guide" :title="t('admin.backup.r2Guide.title')" width="wide" @close="showR2Guide = false">
             <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.backup.r2Guide.intro') }}</p>
 
             <!-- Step 1 -->
@@ -335,7 +378,7 @@
                 {{ t('admin.backup.r2Guide.step3.title') }}
               </h3>
               <p class="ml-8 text-sm text-gray-600 dark:text-gray-300">{{ t('admin.backup.r2Guide.step3.desc') }}</p>
-              <code class="ml-8 mt-1 block rounded bg-gray-100 px-3 py-2 text-xs text-gray-800 dark:bg-dark-700 dark:text-gray-200">https://&lt;{{ t('admin.backup.r2Guide.step3.accountId') }}&gt;.r2.cloudflarestorage.com</code>
+              <code class="ml-8 mt-1 block break-all rounded bg-gray-100 px-3 py-2 text-xs text-gray-800 dark:bg-dark-700 dark:text-gray-200">https://&lt;{{ t('admin.backup.r2Guide.step3.accountId') }}&gt;.r2.cloudflarestorage.com</code>
             </div>
 
             <!-- Step 4: Fill form -->
@@ -345,7 +388,10 @@
                 {{ t('admin.backup.r2Guide.step4.title') }}
               </h3>
               <div class="ml-8 overflow-hidden rounded-lg border border-gray-200 dark:border-dark-600">
-                <table class="w-full text-sm">
+                <dl v-if="mobile" class="mobile-record">
+                  <div v-for="(row, i) in r2ConfigRows" :key="i" class="mobile-record-field"><dt>{{ row.field }}</dt><dd><code>{{ row.value }}</code></dd></div>
+                </dl>
+                <table v-else class="w-full text-sm">
                   <tbody>
                     <tr v-for="(row, i) in r2ConfigRows" :key="i" class="border-b border-gray-100 dark:border-dark-700 last:border-0">
                       <td class="whitespace-nowrap bg-gray-50 px-3 py-2 font-medium text-gray-700 dark:bg-dark-700 dark:text-gray-300">{{ row.field }}</td>
@@ -361,38 +407,20 @@
               {{ t('admin.backup.r2Guide.freeTier') }}
             </div>
 
+          <template #footer>
             <div class="mt-4 text-right">
               <button type="button" class="btn btn-primary btn-sm" @click="showR2Guide = false">{{ t('common.close') }}</button>
             </div>
-          </div>
-        </div>
-      </transition>
-    </teleport>
+          </template>
+    </BaseDialog>
     <!-- 分卷下载链接 -->
-    <teleport to="body">
-      <transition name="modal">
-        <div
-          v-if="downloadPartsModalOpen"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4"
-          @mousedown.self="closeDownloadParts"
-        >
-          <div class="fixed inset-0 bg-black/50" @click="closeDownloadParts"></div>
-          <div class="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-2xl dark:bg-dark-800">
-            <button
-              type="button"
-              class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-              :aria-label="t('common.close')"
-              @click="closeDownloadParts"
-            >
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-            <h2 class="mb-1 text-lg font-bold text-gray-900 dark:text-white">{{ t('admin.backup.actions.downloadParts') }}</h2>
+    <BaseDialog :show="downloadPartsModalOpen" :title="t('admin.backup.actions.downloadParts')" width="wide" @close="closeDownloadParts">
             <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.backup.actions.downloadPartsHint') }}</p>
             <div class="space-y-2">
               <div
                 v-for="part in downloadParts"
                 :key="part.index"
-                class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-dark-600"
+                class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-dark-600"
               >
                 <span class="text-sm text-gray-700 dark:text-gray-300">
                   {{ t('admin.backup.actions.partLabel', { index: part.index }) }}
@@ -403,17 +431,20 @@
                 </a>
               </div>
             </div>
+          <template #footer>
             <div class="mt-4 text-right">
               <button type="button" class="btn btn-primary btn-sm" @click="closeDownloadParts">{{ t('common.close') }}</button>
             </div>
-          </div>
-        </div>
-      </transition>
-    </teleport>
+          </template>
+    </BaseDialog>
     <TotpStepUpDialog :controller="backupStepUp" />
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api'
@@ -939,14 +970,3 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
-
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s ease;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-</style>

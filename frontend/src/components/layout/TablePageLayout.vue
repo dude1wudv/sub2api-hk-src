@@ -31,7 +31,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 
 withDefaults(defineProps<{
   pageScroll?: boolean
@@ -39,26 +40,15 @@ withDefaults(defineProps<{
   pageScroll: false
 })
 
-const isMobile = ref(false)
-
-const checkMobile = () => {
-  isMobile.value = window.innerWidth < 768
-}
-
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
-})
+const isMobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 </script>
 
 <style scoped>
 /* 桌面端：Flexbox 布局 */
 .table-page-layout {
   @apply flex flex-col gap-6;
+  min-width: 0;
+  max-width: 100%;
   height: calc(100vh - 64px - 4rem); /* 减去 header + lg:p-8 的上下padding */
 }
 
@@ -84,6 +74,8 @@ onUnmounted(() => {
 
 .layout-section-scrollable {
   @apply flex-1 min-h-0 flex flex-col;
+  min-width: 0;
+  max-width: 100%;
   position: relative;
   z-index: 0;
 }
@@ -153,6 +145,7 @@ onUnmounted(() => {
 }
 
 /* 移动端：恢复正常滚动 */
+.table-page-layout.mobile-mode { height: auto; min-height: 0; }
 .table-page-layout.mobile-mode .table-scroll-container {
   @apply h-auto overflow-visible border-none shadow-none bg-transparent;
 }

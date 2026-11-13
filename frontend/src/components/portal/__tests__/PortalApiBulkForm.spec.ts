@@ -6,7 +6,7 @@ const { bulkUpdate, showSuccess } = vi.hoisted(() => ({ bulkUpdate: vi.fn(), sho
 
 vi.mock('@/api/keys', () => ({ keysAPI: { bulkUpdate } }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showSuccess }) }))
-vi.mock('@/components/portal/PortalDialog.vue', () => ({ default: { props: ['open', 'title'], template: '<div class="portal-dialog-test"><slot /></div>' } }))
+vi.mock('@/components/portal/PortalDialog.vue', () => ({ default: { props: ['open', 'title'], template: '<div class="portal-dialog-test"><slot /><slot name="footer" /></div>' } }))
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   const { ref } = await import('vue')

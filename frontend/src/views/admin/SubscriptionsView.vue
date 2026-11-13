@@ -246,7 +246,7 @@
           </template>
 
           <template #cell-usage="{ row }">
-            <div class="min-w-[280px] space-y-2">
+            <div class="space-y-2" :class="mobile ? 'min-w-0 w-full' : 'min-w-[280px]'">
               <!-- Daily Usage -->
               <div v-if="row.group?.daily_limit_usd" class="usage-row">
                 <div class="flex items-center gap-2">
@@ -758,16 +758,7 @@
       @cancel="showResetQuotaConfirm = false"
     />
     <!-- Subscription Guide Modal -->
-    <teleport to="body">
-      <transition name="modal">
-        <div v-if="showGuideModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @mousedown.self="showGuideModal = false">
-          <div class="fixed inset-0 bg-black/50" @click="showGuideModal = false"></div>
-          <div class="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl dark:bg-dark-800">
-            <button type="button" class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="showGuideModal = false">
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-
-            <h2 class="mb-4 text-lg font-bold text-gray-900 dark:text-white">{{ t('admin.subscriptions.guide.title') }}</h2>
+    <BaseDialog :show="showGuideModal" :title="t('admin.subscriptions.guide.title')" width="wide" @close="showGuideModal = false">
             <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.subscriptions.guide.subtitle') }}</p>
 
             <!-- Step 1 -->
@@ -813,7 +804,10 @@
                 {{ t('admin.subscriptions.guide.step3.title') }}
               </h3>
               <div class="ml-8 overflow-hidden rounded-lg border border-gray-200 dark:border-dark-600">
-                <table class="w-full text-sm">
+                <dl v-if="mobile" class="mobile-record">
+                  <div v-for="(row, i) in guideActionRows" :key="i" class="mobile-record-field"><dt>{{ row.action }}</dt><dd>{{ row.desc }}</dd></div>
+                </dl>
+                <table v-else class="w-full text-sm">
                   <tbody>
                     <tr v-for="(row, i) in guideActionRows" :key="i" class="border-b border-gray-100 dark:border-dark-700 last:border-0">
                       <td class="whitespace-nowrap bg-gray-50 px-3 py-2 font-medium text-gray-700 dark:bg-dark-700 dark:text-gray-300">{{ row.action }}</td>
@@ -829,17 +823,19 @@
               {{ t('admin.subscriptions.guide.tip') }}
             </div>
 
+          <template #footer>
             <div class="mt-4 text-right">
               <button type="button" class="btn btn-primary btn-sm" @click="showGuideModal = false">{{ t('common.close') }}</button>
             </div>
-          </div>
-        </div>
-      </transition>
-    </teleport>
+          </template>
+    </BaseDialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

@@ -6,7 +6,7 @@ import { createServer as createViteServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import {
   PREVIEW_PASSWORD, PREVIEW_ACCOUNTS, publicSettings,
-  createPreviewFixtures, paginate, filterUsage, aggregateUsage, buildUsageSnapshot,
+  createPreviewFixtures, paginate, filterUsage, aggregateUsage, buildUsageSnapshot, buildTrafficReport,
 } from './user-preview-fixtures.mjs'
 
 const HOST = '127.0.0.1'
@@ -213,6 +213,18 @@ async function handleApi(request, response) {
   if (method === 'GET' && localPath === '/groups/rates') return ok(response, {})
   if (method === 'GET' && localPath === '/channels/available') return ok(response, [{ name: 'Synthetic preview routes', description: 'No upstream is connected.', platforms: fixtures.plaza.groups.map((group) => ({ platform: group.platform, groups: [group], supported_models: group.models })) }])
   if (method === 'GET' && localPath === '/announcements') return ok(response, fixtures.announcements)
+  if (method === 'GET' && localPath === '/usage/traffic') return ok(response, buildTrafficReport(fixtures.keys.get(user.id), params))
+  if (method === 'GET' && localPath === '/usage/traffic/keys') return ok(response, fixtures.keys.get(user.id).filter(key => key.name.toLowerCase().includes((params.get('q') || '').toLowerCase())).map(key => ({ id: key.id, name: key.name, deleted: false })))
+  if (method === 'GET' && localPath === '/user/mcp/config') return ok(response, { resource: 'https://example.test/mcp' })
+  if (method === 'GET' && localPath === '/user/mcp/grants') return ok(response, [{ id: 'preview-mcp-grant', client_id: 'preview-client', client_name: 'Synthetic preview client', scope: 'user', read_only: true, created_at: user.created_at, expires_at: new Date(Date.now() + 86400000).toISOString(), last_used_at: null, revoked_at: null, invalidated: false }])
+  if (method === 'GET' && localPath === '/user/mcp/authorize') return ok(response, { client_id: 'preview-client', client_name: 'Synthetic preview client', redirect_uri: 'https://example.test/callback', resource: 'https://example.test/mcp', scope: 'mcp' })
+  if (method === 'GET' && localPath === '/user/aff') return ok(response, { user_id: user.id, aff_code: 'PREVIEW-INVITE', inviter_id: null, aff_count: 1, aff_quota: 5, aff_frozen_quota: 1, aff_history_quota: 6, effective_rebate_rate_percent: 5, invitees: [{ user_id: 301, email: 'invitee@example.test', username: 'Synthetic invitee', created_at: user.created_at, total_rebate: 6 }] })
+  if (method === 'GET' && localPath === '/subscriptions/availability') return ok(response, { has_sale_plans: fixtures.plans.length > 0, has_active_subscriptions: true, has_subscription_history: true })
+  if (method === 'GET' && localPath === '/keys/concurrency') return ok(response, { queue_policy: { max_waiting: 10, timeout_seconds: 30 }, items: fixtures.keys.get(user.id).map(key => ({ id: key.id, current_concurrency: 1, current_waiting: 0 })) })
+  if (method === 'GET' && localPath === '/pages/preview') {
+    response.writeHead(200, { 'Content-Type': 'text/markdown; charset=utf-8', 'Cache-Control': 'no-store' })
+    return response.end('# Synthetic preview guide\n\nThis page contains no production data.\n\n## Long content\n\n' + 'preview-long-content-'.repeat(15) + '\n\n## Code\n\n```text\n' + 'synthetic-code-'.repeat(25) + '\n```\n\n## Last section\n\nAll instructions are local preview examples.')
+  }
 
   if (localPath === '/keys' && method === 'GET') {
     let rows = fixtures.keys.get(user.id)

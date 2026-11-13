@@ -3936,7 +3936,60 @@
               {{ t("admin.groups.compositeRoutes.empty") }}
             </div>
             <div v-else class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-dark-600">
+              <div v-if="mobile" class="mobile-records">
+                  <dl v-for="route in compositeRoutes"
+                    :key="route.id"
+                    :class="!route.enabled && 'opacity-60'" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t("admin.groups.compositeRoutes.publicModel") }}</dt><dd><div class="break-all font-medium text-gray-900 dark:text-white">
+                        {{ route.public_model }}
+                      </div>
+                      <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span class="badge badge-gray">{{
+                          compositeRouteMatchLabel(route.match_type)
+                        }}</span>
+                        <span
+                          v-if="!route.enabled"
+                          class="badge badge-danger"
+                        >
+                          {{ t("admin.accounts.status.inactive") }}
+                        </span>
+                      </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t("admin.groups.compositeRoutes.target") }}</dt><dd><div class="flex items-center gap-1.5 text-gray-900 dark:text-white">
+                        <PlatformIcon :platform="route.target_platform" size="xs" />
+                        <span>{{ formatCompositePlatform(route.target_platform) }}</span>
+                      </div>
+                      <div class="mt-1 break-all text-xs text-gray-500 dark:text-gray-400">
+                        {{ route.upstream_model || route.public_model }}
+                      </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t("admin.groups.compositeRoutes.scope") }}</dt><dd><div class="text-gray-700 dark:text-gray-300">
+                        {{ formatCompositeEndpoint(route.endpoint) }}
+                      </div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.groups.compositeRoutes.priority") }}:
+                        {{ route.priority }}
+                      </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t("admin.groups.columns.actions") }}</dt><dd><div class="flex justify-end gap-1">
+                        <button
+                          type="button"
+                          class="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+                          :title="t('common.edit')"
+                          @click="editCompositeRoute(route)"
+                        >
+                          <Icon name="edit" size="sm" />
+                        </button>
+                        <button
+                          type="button"
+                          class="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                          :title="t('common.delete')"
+                          @click="deleteCompositeRoute(route)"
+                        >
+                          <Icon name="trash" size="sm" />
+                        </button>
+                      </div></dd></div>
+</dl>
+
+</div>
+<table v-else class="min-w-full divide-y divide-gray-200 text-sm dark:divide-dark-600">
                 <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:bg-dark-800 dark:text-gray-400">
                   <tr>
                     <th class="px-3 py-2">
@@ -4265,6 +4318,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { unref } from 'vue'
 import AdminFormTabs from '@/components/admin/AdminFormTabs.vue'
 import { useAdminFormTabs } from '@/composables/useAdminFormTabs'

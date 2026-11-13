@@ -281,7 +281,59 @@
           </div>
 
           <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
+            <div v-if="mobile" class="mobile-records">
+                <div v-if="logsLoading" class="mobile-record-state">{{ t('common.loading') }}</div>
+                <div v-else-if="logs.length === 0" class="mobile-record-state">{{ t('admin.riskControl.emptyLogs') }}</div>
+                <template v-else>
+                  <dl v-for="row in logs" :key="row.id" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t('admin.riskControl.table.time') }}</dt><dd>{{ formatDateTime(row.created_at) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.riskControl.table.group') }}</dt><dd>{{ row.group_name || '-' }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.riskControl.table.user') }}</dt><dd><div>{{ row.user_email || '-' }}</div>
+                      <div v-if="row.user_id" class="text-xs text-gray-400">UID {{ row.user_id }}</div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.riskControl.table.apiKey') }}</dt><dd>{{ row.api_key_name || '-' }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.riskControl.table.endpoint') }}</dt><dd><div>{{ row.endpoint || '-' }}</div>
+                      <div class="text-xs text-gray-400">{{ row.provider || '-' }} / {{ row.model || '-' }}</div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.riskControl.table.result') }}</dt><dd><span class="inline-flex rounded-md px-2 py-1 text-xs font-medium" :class="resultBadgeClass(row)">
+                        {{ resultLabel(row) }}
+                      </span></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.riskControl.table.highest') }}</dt><dd><div>{{ row.highest_category || '-' }}</div>
+                      <div class="text-xs text-gray-400">{{ percent(row.highest_score) }}</div>
+                      <div v-if="row.matched_keyword" class="mt-0.5 text-xs font-medium text-red-600 dark:text-red-300" :title="t('admin.riskControl.matchedKeyword') + ': ' + row.matched_keyword">
+                        {{ t('admin.riskControl.matchedKeyword') }}: {{ row.matched_keyword }}
+                      </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.riskControl.table.actionMeta') }}</dt><dd><div>{{ violationCountText(row) }}</div>
+                      <div class="text-xs text-gray-400">
+                        {{ row.email_sent ? t('admin.riskControl.emailSent') : t('admin.riskControl.emailNotSent') }}
+                        <span v-if="row.auto_banned"> / {{ t('admin.riskControl.autoBanned') }}</span>
+                      </div>
+                      <button
+                        v-if="canUnbanRow(row)"
+                        type="button"
+                        class="mt-2 inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-900/60 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+                        :disabled="unbanningUserID === row.user_id"
+                        @click="unbanUser(row)"
+                      >
+                        <Icon name="checkCircle" size="xs" :class="unbanningUserID === row.user_id ? 'animate-spin' : ''" />
+                        {{ unbanningUserID === row.user_id ? t('common.processing') : t('admin.riskControl.unbanUser') }}
+                      </button></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.riskControl.table.latency') }}</dt><dd><div>{{ latencyText(row.upstream_latency_ms) }}</div>
+                      <div v-if="row.queue_delay_ms !== null && row.queue_delay_ms !== undefined" class="text-xs text-gray-400">
+                        {{ t('admin.riskControl.queueDelay', { ms: row.queue_delay_ms }) }}
+                      </div></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.riskControl.table.input') }}</dt><dd><button
+                        type="button"
+                        class="group flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-gray-100 dark:hover:bg-dark-700"
+                        :title="inputSummaryText(row)"
+                        @click="openInputDetail(row)"
+                      >
+                        <span class="min-w-0 flex-1 truncate">{{ inputSummaryText(row) }}</span>
+                        <Icon name="eye" size="xs" class="flex-shrink-0 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-500" />
+                      </button></dd></div>
+</dl>
+                </template>
+
+</div>
+<table v-else class="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
               <thead class="bg-gray-50 dark:bg-dark-800">
                 <tr>
                   <th class="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.table.time') }}</th>
@@ -1147,6 +1199,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { computed, onMounted, onUnmounted, reactive, ref, toRaw } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'

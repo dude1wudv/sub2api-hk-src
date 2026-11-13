@@ -194,7 +194,7 @@ body { background: rgb(var(--canvas)); color: rgb(var(--ink)); font: 14.5px/1.6 
 .ui-popover { background: rgb(var(--surface-elevated)); color: rgb(var(--ink)); border: 1px solid rgb(var(--line)); box-shadow: var(--shadow-overlay); }
 .ui-popover-arrow { background: rgb(var(--surface-elevated)); border-color: rgb(var(--line)); }
 .ui-code-panel { background: rgb(var(--surface-2)); color: rgb(var(--ink)); border: 1px solid rgb(var(--line)); }
-.modal-overlay { background: rgb(var(--overlay-scrim)); backdrop-filter: blur(4px); }
+.modal-backdrop { background: rgb(var(--overlay-scrim)); backdrop-filter: blur(4px); }
 .modal-title { font: 600 20px/1.35 var(--font-sans); letter-spacing: -0.015em; }
 .metric-value, .stat-value { color: rgb(var(--ink)); font: 650 30px/1.2 var(--font-sans); letter-spacing: -0.025em; overflow-wrap: anywhere; }
 .metric-label, .stat-label { font-size: 13px; font-weight: 500; color: rgb(var(--ink-3)); }
@@ -250,6 +250,17 @@ tbody .sticky-col { background: rgb(var(--table-surface)); }
 .channel-card { border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); padding: 20px; background: rgb(var(--surface)); box-shadow: var(--shadow-panel); }
 .channel-card h2 { font-size: 16px; font-weight: 600; }
 .channel-section { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.5fr); gap: 24px; border-top: 1px solid rgb(var(--line)); margin-top: 16px; padding-top: 16px; }
+.mobile-records { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; min-width: 0; max-width: 100%; }
+.mobile-record { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 16px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); background: rgb(var(--surface)); overflow-wrap: anywhere; }
+.mobile-record-field { min-width: 0; }
+.mobile-record-field > dt { margin-bottom: 4px; color: rgb(var(--ink-3)); font-size: 12px; }
+.mobile-record-field > dd { min-width: 0; max-width: 100%; margin: 0; font-size: 14px; color: rgb(var(--ink)); white-space: normal; overflow-wrap: anywhere; }
+.mobile-record-field :is(input,select,textarea,button) { max-width: 100%; min-height: 44px; }
+.mobile-record-field :is(input[type='checkbox'],input[type='radio']) { min-height: auto; }
+.mobile-record-field button { min-width: 44px; }
+.mobile-record-field .flex { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+.mobile-record-field img { max-width: 100%; object-fit: contain; }
+.mobile-record-state { padding: 24px 16px; color: rgb(var(--ink-3)); text-align: center; overflow-wrap: anywhere; }
 .channel-label { color: rgb(var(--ink-3)); font-size: 13px; margin-bottom: 8px; }
 .color-mode-toggle { display: inline-grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0; border: 1px solid rgb(var(--line)); border-radius: var(--radius-control); color: rgb(var(--ink-2)); background: rgb(var(--surface)); }
 .color-mode-toggle:hover { color: rgb(var(--ink)); background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); }
@@ -262,7 +273,7 @@ tbody .sticky-col { background: rgb(var(--table-surface)); }
   .dashboard-analytics { grid-template-columns: minmax(0,1fr); }
   .dashboard-analytics :is(.dashboard-trend,.dashboard-models,.dashboard-groups,.dashboard-endpoints) { grid-column: auto; grid-row: auto; }
 }
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) and (pointer: coarse) {
   :is(.portal-page,.admin-content,.chart-panel,.portal-dialog,.modal-content,dialog) button { min-height: 44px !important; }
   /* Existing switches use the button as their track. Keep its geometry compact;
      reserve a 44px layout footprint and extend only the transparent hit area. */

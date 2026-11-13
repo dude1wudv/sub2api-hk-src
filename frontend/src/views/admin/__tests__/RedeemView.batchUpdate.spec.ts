@@ -175,7 +175,9 @@ describe('admin RedeemView batch update', () => {
     await wrapper.get('[data-test="batch-status-select"]').setValue('disabled')
     await wrapper.get('[data-test="batch-field-notes"]').setValue(true)
     await wrapper.get('[data-test="batch-notes-input"]').setValue('maintenance')
-    await wrapper.get('[data-test="batch-update-form"]').trigger('submit')
+    const submit = wrapper.get<HTMLButtonElement>('[data-test="batch-update-submit"]')
+    expect(submit.element.form).toBe(wrapper.get('[data-test="batch-update-form"]').element)
+    await submit.trigger('click')
     await flushPromises()
 
     expect(batchUpdateRedeemCodes).toHaveBeenCalledWith([1], {
@@ -183,5 +185,7 @@ describe('admin RedeemView batch update', () => {
       notes: 'maintenance'
     })
     expect(showSuccess).toHaveBeenCalledWith('admin.redeem.batchUpdateSuccess')
+    expect(batchUpdateRedeemCodes).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
   })
 })

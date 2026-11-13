@@ -1,6 +1,6 @@
 <template>
   <PortalDialog :open="open" :title="editing ? text('编辑 API Key', 'Edit API key') : text('创建 API Key', 'Create API key')" wide @close="!saving && $emit('close')">
-    <form class="key-editor" @submit.prevent="submit">
+    <form :id="formId" class="key-editor" @submit.prevent="submit">
       <div class="key-editor-body">
         <section class="key-picker" data-tour="key-form-group" :aria-label="text('选择分组', 'Choose a group')">
           <h3><span class="key-step">1</span>{{ text('选择分组', 'Choose a group') }}</h3>
@@ -54,13 +54,15 @@
           </details>
         </section>
       </div>
-      <footer class="key-editor-footer"><span aria-live="polite">{{ form.smart ? text(`已选择 ${form.routing.length} 个路由分组`, `${form.routing.length} routing groups selected`) : selectedGroup?.name || text('请选择分组', 'Select a group') }}</span><button type="button" class="portal-button secondary" :disabled="saving" @click="$emit('close')">{{ text('取消', 'Cancel') }}</button><button class="portal-button" data-tour="key-form-submit" :disabled="saving">{{ saving ? text('保存中…', 'Saving…') : editing ? text('保存修改', 'Save changes') : text('确认并创建', 'Create API key') }}</button></footer>
     </form>
+    <template #footer>
+      <div class="key-editor-footer"><span aria-live="polite">{{ form.smart ? text(`已选择 ${form.routing.length} 个路由分组`, `${form.routing.length} routing groups selected`) : selectedGroup?.name || text('请选择分组', 'Select a group') }}</span><button type="button" class="portal-button secondary" :disabled="saving" @click="$emit('close')">{{ text('取消', 'Cancel') }}</button><button type="submit" :form="formId" class="portal-button" data-tour="key-form-submit" :disabled="saving">{{ saving ? text('保存中…', 'Saving…') : editing ? text('保存修改', 'Save changes') : text('确认并创建', 'Create API key') }}</button></div>
+    </template>
   </PortalDialog>
 </template>
 <script setup lang="ts">
 import { userFacingError } from '@/utils/userFacingError'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PortalDialog from './PortalDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -72,6 +74,7 @@ import { getKeyGroupProvider, type KeyGroupProvider } from '@/utils/keyGroupProv
 import type { ApiKey, Group } from '@/types'
 const props = withDefaults(defineProps<{ open: boolean; editing: ApiKey | null; groups: Group[]; selectedGroup?: number; groupRates?: Record<number, number> }>(), { groupRates: () => ({}) })
 const emit = defineEmits<{ close: []; saved: [key: ApiKey] }>()
+const formId = useId()
 const { locale } = useI18n()
 const onboardingStore = useOnboardingStore()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
@@ -152,10 +155,10 @@ async function submit() {
 }
 </script>
 <style scoped>
-:global(dialog.portal-dialog.wide:has(.key-editor)) { width: min(1120px, calc(100vw - 48px)); max-width:1120px; padding:0; overflow:hidden; }
+@media (min-width: 1024px), (min-width: 768px) and (min-height: 501px), (min-width: 768px) and (pointer: fine) { :global(dialog.portal-dialog.wide:has(.key-editor)) { width: min(1120px, calc(var(--visual-width, 100vw) - 48px)); max-width:1120px; padding:0; } }
 :global(dialog.portal-dialog:has(.key-editor) > .portal-dialog-header) { margin:0; padding:22px 28px; border-bottom:1px solid rgb(var(--line)); }
 .key-editor { color:rgb(var(--ink)); background:rgb(var(--surface-elevated)); }
-.key-editor-body { display:grid; grid-template-columns:1fr 1fr; max-height:calc(90dvh - 160px); overflow-y:auto; }
+.key-editor-body { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
 .key-picker,.key-configuration { min-width:0; padding:24px 28px; }
 .key-picker { border-right:1px solid rgb(var(--line)); background:rgb(var(--surface-sidebar) / .6); }
 .key-editor h3 { display:flex; align-items:center; gap:10px; margin:0 0 20px; font-size:15.5px; font-weight:650; letter-spacing:-0.01em; }
@@ -221,10 +224,10 @@ async function submit() {
 .route-actions button { width:27px; height:28px; border:0; border-radius:6px; background:transparent; color:rgb(var(--ink-2)); cursor:pointer; }
 .route-actions button:hover:not(:disabled) { background:rgb(var(--surface)); color:rgb(var(--ink)); }
 .route-actions button:disabled { opacity:.25; cursor:default; }
-.key-editor-footer { display:flex; align-items:center; gap:10px; padding:16px 28px; border-top:1px solid rgb(var(--line)); background:rgb(var(--surface)); }
-.key-editor-footer>span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:rgb(var(--ink-2)); }
+.key-editor-footer { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:16px 28px; border-top:1px solid rgb(var(--line)); background:rgb(var(--surface)); }
+.key-editor-footer>span { flex:1; min-width:0; overflow-wrap:anywhere; font-size:13px; color:rgb(var(--ink-2)); }
 .key-editor-footer .portal-button { font-size:13.5px; }
 .key-editor button:focus-visible { outline:2px solid rgb(var(--focus-ring)); outline-offset:2px; }
-@media(max-width:767px) { :global(dialog.portal-dialog.wide:has(.key-editor)) { width:calc(100vw - 20px); } :global(dialog.portal-dialog:has(.key-editor) > .portal-dialog-header) { padding:20px; } .key-editor-body { grid-template-columns:1fr; max-height:calc(90dvh - 154px); } .key-picker,.key-configuration { padding:20px; } .key-picker { border-right:0; border-bottom:1px solid rgb(var(--line)); } .key-group-list { max-height:300px; } .key-editor-footer { padding:15px 20px; } .key-editor-footer>span { display:none; } .key-editor-footer .portal-button:first-of-type { margin-left:auto; } }
+@media (max-width:767px), (max-width:1023px) and (max-height:500px) and (pointer:coarse) { .key-editor-body { grid-template-columns:minmax(0,1fr); } .key-picker,.key-configuration { padding:20px 0; } .key-picker { border-right:0; border-bottom:1px solid rgb(var(--line)); } .key-group-list { max-height:none; overflow:visible; } .key-editor-footer { padding:16px 0 0; } .key-editor-footer>span { flex-basis:100%; } .route-actions button { width:44px; height:44px; } .routing-order li { flex-wrap:wrap; } }
 @media(max-width:420px) { .key-common-fields { grid-template-columns:1fr; gap:0; } .key-group-card { flex-wrap:wrap; } .key-group-rate { flex-basis:100%; max-width:none; text-align:left; padding-left:29px; } .key-rate-fields { grid-template-columns:1fr; } }
 </style>

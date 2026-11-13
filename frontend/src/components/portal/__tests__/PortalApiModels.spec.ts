@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import PortalApiModels from '../PortalApiModels.vue'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+afterEach(() => vi.restoreAllMocks())
 
 vi.mock('@/components/portal/PortalDialog.vue', () => ({
-  default: { props: ['open', 'title'], template: '<div class="portal-dialog-test"><slot /></div>' },
+  default: { props: ['open', 'title'], template: '<div class="portal-dialog-test"><slot /><slot name="footer" /></div>' },
 }))
 vi.mock('@/components/icons/Icon.vue', () => ({ default: { template: '<span />' } }))
 vi.mock('vue-i18n', async () => {
@@ -173,6 +175,31 @@ describe('PortalApiModels pricing display', () => {
     expect(tiers[1].get('td:nth-child(2) .portal-model-price-adjusted').text()).toBe('Discounted ×0.3 $0.60')
     await wrapper.setProps({ groups: [{ ...tierGroup, long_context_pricing_enabled: false }] })
     expect(wrapper.get('.portal-api-model-row td:nth-child(2) .portal-model-price-base').text()).toBe('$1.00')
+    wrapper.unmount()
+  })
+
+  it('keeps mobile token tiers, cache durations, missing/free and media prices complete', async () => {
+    const matchMedia = window.matchMedia
+    vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ ...matchMedia(query), matches: query === MOBILE_CONTENT_QUERY }))
+    const model = { ...group.models[0], pricing: { ...group.models[0].pricing, cache_write_12h_price: 0.000004, input_price: 0, output_price: null, intervals: [{ min_tokens: 0, max_tokens: 100000, input_price: 0 }, { min_tokens: 100000, max_tokens: null, input_price: 0.000002 }] } }
+    const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, models: [model, ...group.models.slice(1)] }], selectedGroupId: 1 } })
+    expect(wrapper.find('table').exists()).toBe(false)
+    const cards = wrapper.findAll('.portal-model-card')
+    expect(cards).toHaveLength(3)
+    expect(cards[0].text()).toContain('Cache write 5m')
+    expect(cards[0].text()).toContain('1h $2.00')
+    expect(cards[0].text()).toContain('12h $4.00')
+    expect(cards[0].text()).toContain('Adjusted ×1.5')
+    expect(cards[1].text()).toContain('$2.00 / image')
+    expect(cards[2].text()).toContain('$2.00 / request')
+    await cards[0].get('.portal-api-model-name').trigger('click')
+    const detail = wrapper.get('.portal-api-price-detail')
+    expect(detail.find('table').exists()).toBe(false)
+    expect(detail.findAll('.portal-model-card')).toHaveLength(2)
+    expect(detail.findAll('dt').map(node => node.text())).toContain('Cache write 12h')
+    expect(detail.text()).toContain('$0.00')
+    expect(detail.text()).toContain('—')
+    expect(detail.text()).toContain('$3.00')
     wrapper.unmount()
   })
 

@@ -16,7 +16,32 @@
 
     <!-- Table -->
     <div class="overflow-x-auto">
-      <table class="w-full min-w-max divide-y divide-gray-200 dark:divide-dark-700">
+      <div v-if="mobile" class="mobile-records p-4">
+        <label class="flex flex-wrap items-center gap-2">
+          <span class="text-sm">{{ t('common.sortBy') }}</span>
+          <Select :model-value="sortBy" :options="sortableColumns.map(col => ({ value: col.key, label: `${t(col.label)} ↓` }))" class="min-w-0 flex-1" @update:model-value="setSort($event as SortKey)" />
+        </label>
+        <div v-if="loading" class="mobile-record-state"><LoadingSpinner /></div>
+        <div v-else-if="items.length === 0" class="mobile-record-state">{{ t('admin.dashboard.noDataAvailable') }}</div>
+        <template v-else>
+          <dl v-for="(item, index) in items" :key="item.user_id" class="mobile-record">
+            <div class="mobile-record-field"><dt>#</dt><dd>{{ index + 1 }}</dd></div>
+            <div class="mobile-record-field">
+              <dt>{{ t('admin.usage.tokenRanking.columns.user') }}</dt>
+              <dd>
+                <button type="button" class="text-left text-primary-600 [overflow-wrap:anywhere]" :title="t('admin.usage.tokenRanking.rowHint')" @click="$emit('select-user', item.user_id, item.email)">
+                  {{ item.email || `User #${item.user_id}` }} <span class="text-gray-500">#{{ item.user_id }}</span>
+                </button>
+              </dd>
+            </div>
+            <div v-for="col in sortableColumns" :key="col.key" class="mobile-record-field">
+              <dt>{{ t(col.label) }}</dt>
+              <dd>{{ col.key === 'actual_cost' ? `$${fmtCost(item.actual_cost)}` : col.key === 'requests' ? item.requests.toLocaleString() : fmtTokens(item[col.key]) }}</dd>
+            </div>
+          </dl>
+        </template>
+      </div>
+      <table v-else class="w-full min-w-max divide-y divide-gray-200 dark:divide-dark-700">
         <thead class="bg-gray-50 dark:bg-dark-800">
           <tr>
             <th class="w-16 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-dark-400 sm:px-6">#</th>
@@ -80,6 +105,8 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getUserBreakdown, type UserBreakdownParams } from '@/api/admin/dashboard'
@@ -98,6 +125,7 @@ const props = defineProps<{
 defineEmits<{ (e: 'select-user', userId: number, email: string): void }>()
 
 const { t } = useI18n()
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 
 type SortKey = NonNullable<UserBreakdownParams['sort_by']>
 const sortableColumns: { key: SortKey; label: string }[] = [

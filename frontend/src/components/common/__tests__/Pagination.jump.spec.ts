@@ -23,11 +23,11 @@ describe('pagination jump input', () => {
     expect((input.element as HTMLInputElement).value).toBe('')
   })
 
-  it('clamps an entered page to the last page', async () => {
+  it.each(['99', '0', '1.5', '-2'])('ignores an invalid jump page %s', async (page) => {
     const wrapper = mountPagination()
-    await wrapper.get('input').setValue('99')
+    await wrapper.get('input').setValue(page)
     await wrapper.get('.btn').trigger('click')
-    expect(wrapper.emitted('update:page')).toEqual([[10]])
+    expect(wrapper.emitted('update:page')).toBeUndefined()
   })
 
   it('ignores an empty jump input', async () => {

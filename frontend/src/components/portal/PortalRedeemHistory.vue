@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { redeemAPI, type RedeemHistoryItem } from '@/api/redeem'
@@ -96,7 +99,18 @@ onBeforeUnmount(() => { request++ })
     </header>
     <div v-if="error" class="portal-error redeem-history-error" role="alert"><p>{{ error }}</p><button type="button" class="portal-button secondary" :disabled="loading" @click="retry">{{ copy('重试', 'Retry') }}</button></div>
     <div class="portal-table-wrap" :aria-busy="loading">
-      <table class="portal-table redeem-history-table">
+      <div v-if="mobile" class="mobile-records">
+          <div v-if="loading" class="mobile-record-state">{{ copy('正在加载兑换记录…', 'Loading redemption history…') }}</div>
+          <div v-else-if="!rows.length" class="mobile-record-state">{{ error ? copy('记录暂时无法显示', 'History is temporarily unavailable') : copy('暂无兑换记录', 'No redemptions yet') }}</div>
+          <dl v-for="item in loading ? [] : rows" :key="item.id" class="mobile-record">
+  <div  class="mobile-record-field"><dt>{{ copy('时间', 'Date') }}</dt><dd ><time :datetime="item.used_at || item.created_at">{{ formattedDate(item.used_at || item.created_at) }}</time><small>#{{ item.id }}</small></dd></div>
+  <div  class="mobile-record-field"><dt>{{ copy('类型', 'Type') }}</dt><dd >{{ typeLabel(item.type) }}<small v-if="item.type === 'subscription' && item.group?.name">{{ item.group.name }}</small></dd></div>
+  <div  class="mobile-record-field"><dt>{{ copy('金额 / 额度', 'Amount / allowance') }}</dt><dd >{{ valueLabel(item) }}</dd></div>
+  <div  class="mobile-record-field"><dt>{{ copy('兑换码', 'Code') }}</dt><dd >{{ item.maskedCode }}</dd></div>
+</dl>
+
+</div>
+<table v-else class="portal-table redeem-history-table">
         <thead><tr><th scope="col">{{ copy('时间', 'Date') }}</th><th scope="col">{{ copy('类型', 'Type') }}</th><th scope="col">{{ copy('金额 / 额度', 'Amount / allowance') }}</th><th scope="col">{{ copy('兑换码', 'Code') }}</th></tr></thead>
         <tbody>
           <tr v-if="loading"><td colspan="4" class="redeem-history-empty" role="status">{{ copy('正在加载兑换记录…', 'Loading redemption history…') }}</td></tr>

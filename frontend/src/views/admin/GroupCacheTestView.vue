@@ -55,7 +55,20 @@
               </div>
               <p class="cache-hint">{{ t('admin.groupCacheTest.resultHint') }}</p>
               <div class="mt-4 overflow-x-auto">
-                <table class="cache-table"><thead><tr><th>{{ t('admin.groupCacheTest.round') }}</th><th>{{ t('admin.groupCacheTest.input') }}</th><th>{{ t('admin.groupCacheTest.cacheRead') }}</th><th>{{ t('admin.groupCacheTest.cacheWrite') }}</th><th>{{ t('admin.groupCacheTest.hitRate') }}</th><th>{{ t('admin.groupCacheTest.output') }}</th><th>{{ t('admin.groupCacheTest.firstText') }}</th><th>{{ t('admin.groupCacheTest.billed') }}</th></tr></thead><tbody>
+                <div v-if="mobile" class="mobile-records">
+                  <dl v-for="round in selected.rounds" :key="round.index" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t('admin.groupCacheTest.round') }}</dt><dd><button class="text-left text-primary-600 underline underline-offset-4" :aria-expanded="detailIndex === round.index" @click="detailIndex = detailIndex === round.index ? null : round.index">{{ round.index === 1 ? t('admin.groupCacheTest.baseline') : t('admin.groupCacheTest.repeat', { index: round.index - 1 }) }}</button><small :class="round.status === 'failed' ? 'text-red-600' : ''">{{ t('admin.groupCacheTest.status.' + round.status) }}</small></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groupCacheTest.input') }}</dt><dd>{{ number(round.tokens?.input) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groupCacheTest.cacheRead') }}</dt><dd>{{ number(round.tokens?.read) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groupCacheTest.cacheWrite') }}</dt><dd>{{ number(round.tokens?.write) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groupCacheTest.hitRate') }}</dt><dd>{{ percent(cacheHitRate(round.tokens)) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groupCacheTest.output') }}</dt><dd>{{ number(round.tokens?.output) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groupCacheTest.firstText') }}</dt><dd>{{ ms(round.firstTextMs) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.groupCacheTest.billed') }}</dt><dd>{{ money(round.bill?.actualCost) }}<small>{{ t('admin.groupCacheTest.billing.' + round.billingState) }}</small></dd></div>
+</dl>
+
+</div>
+<table v-else class="cache-table"><thead><tr><th>{{ t('admin.groupCacheTest.round') }}</th><th>{{ t('admin.groupCacheTest.input') }}</th><th>{{ t('admin.groupCacheTest.cacheRead') }}</th><th>{{ t('admin.groupCacheTest.cacheWrite') }}</th><th>{{ t('admin.groupCacheTest.hitRate') }}</th><th>{{ t('admin.groupCacheTest.output') }}</th><th>{{ t('admin.groupCacheTest.firstText') }}</th><th>{{ t('admin.groupCacheTest.billed') }}</th></tr></thead><tbody>
                   <tr v-for="round in selected.rounds" :key="round.index"><td><button class="text-left text-primary-600 underline underline-offset-4" :aria-expanded="detailIndex === round.index" @click="detailIndex = detailIndex === round.index ? null : round.index">{{ round.index === 1 ? t('admin.groupCacheTest.baseline') : t('admin.groupCacheTest.repeat', { index: round.index - 1 }) }}</button><small :class="round.status === 'failed' ? 'text-red-600' : ''">{{ t('admin.groupCacheTest.status.' + round.status) }}</small></td><td>{{ number(round.tokens?.input) }}</td><td>{{ number(round.tokens?.read) }}</td><td>{{ number(round.tokens?.write) }}</td><td>{{ percent(cacheHitRate(round.tokens)) }}</td><td>{{ number(round.tokens?.output) }}</td><td>{{ ms(round.firstTextMs) }}</td><td>{{ money(round.bill?.actualCost) }}<small>{{ t('admin.groupCacheTest.billing.' + round.billingState) }}</small></td></tr>
                 </tbody></table>
               </div>
@@ -82,6 +95,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'

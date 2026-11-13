@@ -12,7 +12,25 @@
       {{ t('channelStatus.detailLoadError') }}
     </div>
     <div v-else class="overflow-x-auto">
-      <table class="w-full text-left text-sm">
+      <div v-if="mobile" class="mobile-records">
+          <dl v-for="m in detail.models"
+            :key="m.model" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t('channelStatus.detailColumns.model') }}</dt><dd>{{ formatMonitorModel(m.model) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelStatus.detailColumns.latestStatus') }}</dt><dd><span
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px]"
+                :class="statusBadgeClass(m.latest_status)"
+              >
+                {{ statusLabel(m.latest_status) }}
+              </span></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelStatus.detailColumns.latestLatency') }}</dt><dd>{{ formatLatency(m.latest_latency_ms) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelStatus.detailColumns.availability7d') }}</dt><dd>{{ formatPercent(m.availability_7d) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelStatus.detailColumns.availability15d') }}</dt><dd>{{ formatPercent(m.availability_15d) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelStatus.detailColumns.availability30d') }}</dt><dd>{{ formatPercent(m.availability_30d) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('channelStatus.detailColumns.avgLatency7d') }}</dt><dd>{{ formatLatency(m.avg_latency_7d_ms) }}</dd></div>
+</dl>
+
+</div>
+<table v-else class="w-full text-left text-sm">
         <thead class="border-b border-gray-200 dark:border-dark-700">
           <tr class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
             <th class="py-2 pr-3">{{ t('channelStatus.detailColumns.model') }}</th>
@@ -60,6 +78,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

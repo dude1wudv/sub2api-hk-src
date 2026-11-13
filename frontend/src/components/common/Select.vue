@@ -46,7 +46,7 @@
     </button>
 
     <!-- Teleport dropdown to body to escape stacking context -->
-    <Teleport to="body">
+    <Teleport :to="overlayHost ?? 'body'">
       <Transition name="select-dropdown">
         <div
           v-if="isOpen"
@@ -122,9 +122,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
+import { useVisualViewport } from '@/composables/useVisualViewport'
+import { overlayHostKey } from '@/composables/overlayHost'
+const overlayHost = inject(overlayHostKey, ref(null))
 
 const { t } = useI18n()
 
@@ -183,6 +186,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const isOpen = ref(false)
+const viewport = useVisualViewport(isOpen)
 const searchQuery = ref('')
 const focusedIndex = ref(-1)
 const containerRef = ref<HTMLElement | null>(null)
@@ -192,7 +196,8 @@ const dropdownRef = ref<HTMLElement | null>(null)
 const optionsListRef = ref<HTMLElement | null>(null)
 const dropdownPosition = ref<'bottom' | 'top'>('bottom')
 const triggerRect = ref<DOMRect | null>(null)
-const dropdownViewportPadding = 8
+const dropdownViewportPadding = 12
+const dropdownHeight = ref(240)
 const dropdownMinimumWidth = 200
 
 // i18n placeholders
@@ -214,33 +219,19 @@ const isSearchable = computed(() => {
 // Computed style for teleported dropdown
 const dropdownStyle = computed(() => {
   if (!triggerRect.value) return {}
-
-  const rect = triggerRect.value
-  const viewportRight = Math.max(dropdownViewportPadding, window.innerWidth - dropdownViewportPadding)
-  const preferredMinWidth = Math.max(dropdownMinimumWidth, rect.width)
-  const minWidth = Math.min(preferredMinWidth, Math.max(0, viewportRight - dropdownViewportPadding))
-  const left = Math.min(
-    Math.max(dropdownViewportPadding, rect.left),
-    viewportRight - minWidth
-  )
-  const availableWidth = Math.max(0, viewportRight - left)
-  const style: Record<string, string> = {
-    position: 'fixed',
-    left: `${left}px`,
-    minWidth: `${minWidth}px`,
-    maxWidth: `${availableWidth}px`,
-    zIndex: '100000020'
+  const rect = triggerRect.value, view = viewport.value
+  const leftEdge = view.left + dropdownViewportPadding, rightEdge = view.right - dropdownViewportPadding
+  const topEdge = view.top + dropdownViewportPadding, bottomEdge = view.bottom - dropdownViewportPadding
+  const minWidth = Math.min(Math.max(dropdownMinimumWidth, rect.width), Math.max(0, view.width - 24))
+  const left = Math.max(leftEdge, Math.min(rect.left, rightEdge - minWidth))
+  const above = Math.max(0, rect.top - topEdge - 4), below = Math.max(0, bottomEdge - rect.bottom - 4)
+  const available = Math.min(Math.max(0, view.height - 24), dropdownPosition.value === 'top' ? above : below)
+  const height = Math.min(dropdownHeight.value, available)
+  const desiredTop = dropdownPosition.value === 'top' ? rect.top - 4 - height : rect.bottom + 4
+  return {
+    position: 'fixed' as const, left: `${left}px`, top: `${Math.max(topEdge, Math.min(desiredTop, bottomEdge - height))}px`,
+    minWidth: `${minWidth}px`, maxWidth: `${Math.max(0, rightEdge - left)}px`, maxHeight: `${available}px`, zIndex: '100000020',
   }
-
-  if (dropdownPosition.value === 'top') {
-    style.bottom = `${window.innerHeight - rect.top + 4}px`
-    style.maxHeight = `${Math.max(0, rect.top - dropdownViewportPadding - 4)}px`
-  } else {
-    style.top = `${rect.bottom + 4}px`
-    style.maxHeight = `${Math.max(0, window.innerHeight - rect.bottom - dropdownViewportPadding - 4)}px`
-  }
-
-  return style
 })
 
 const getOptionValue = (option: any): any => {
@@ -362,19 +353,15 @@ const calculateDropdownPosition = () => {
     if (!dropdownRef.value || !triggerRect.value) return
     const optionsHeight = optionsListRef.value?.scrollHeight ?? 0
     const searchHeight = searchInputRef.value?.parentElement?.offsetHeight ?? 0
-    const dropdownHeight = optionsHeight > 0
+    dropdownHeight.value = optionsHeight > 0
       ? Math.min(optionsHeight, 320) + searchHeight + 2
       : dropdownRef.value.scrollHeight || 240
-    const spaceBelow = window.innerHeight - triggerRect.value.bottom - dropdownViewportPadding - 4
-    const spaceAbove = triggerRect.value.top - dropdownViewportPadding - 4
-
-    if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
-      dropdownPosition.value = 'top'
-    } else {
-      dropdownPosition.value = 'bottom'
-    }
+    const spaceBelow = viewport.value.bottom - triggerRect.value.bottom - dropdownViewportPadding - 4
+    const spaceAbove = triggerRect.value.top - viewport.value.top - dropdownViewportPadding - 4
+    dropdownPosition.value = spaceAbove > spaceBelow ? 'top' : 'bottom'
   })
 }
+watch(viewport, calculateDropdownPosition)
 
 const toggle = () => {
   if (props.disabled) return
@@ -473,11 +460,13 @@ const onDropdownKeyDown = (e: KeyboardEvent) => {
       break
     case 'Escape':
       e.preventDefault()
+      e.stopPropagation()
       isOpen.value = false
       triggerRef.value?.focus()
       break
     case 'Tab':
       isOpen.value = false
+      triggerRef.value?.focus({ preventScroll: true })
       break
   }
 }
@@ -647,8 +636,9 @@ onUnmounted(() => {
   transform: translateY(-8px);
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) and (pointer: coarse) {
   .select-dropdown-portal .select-search-input { font-size: 16px; }
   .select-dropdown-portal .select-option { min-height: 44px; }
+  .select-dropdown-portal .select-option-label { white-space: normal; overflow-wrap: anywhere; }
 }
 </style>

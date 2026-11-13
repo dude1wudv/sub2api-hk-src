@@ -877,8 +877,19 @@
           </div>
         </div>
 
-        <div class="max-h-80 overflow-auto rounded-lg border border-gray-200 dark:border-dark-600">
-          <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-dark-700">
+        <div class="rounded-lg border border-gray-200 dark:border-dark-600" :class="{ 'max-h-80 overflow-auto': !mobile }">
+          <div v-if="mobile" class="mobile-records">
+              <dl v-for="item in qualityReport.items" :key="item.target" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t('admin.proxies.qualityTableTarget') }}</dt><dd>{{ qualityTargetLabel(item.target) }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.proxies.qualityTableStatus') }}</dt><dd><span class="badge whitespace-nowrap" :class="qualityStatusClass(item.status)">{{ qualityStatusLabel(item.status) }}</span></dd></div>
+  <div class="mobile-record-field"><dt>HTTP</dt><dd>{{ item.http_status ?? '-' }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.proxies.qualityTableLatency') }}</dt><dd>{{ typeof item.latency_ms === 'number' ? `${item.latency_ms}ms` : '-' }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.proxies.qualityTableMessage') }}</dt><dd><span>{{ item.message || '-' }}</span>
+                  <span v-if="item.cf_ray" class="ml-1 text-xs text-gray-400">(cf-ray: {{ item.cf_ray }})</span></dd></div>
+</dl>
+
+</div>
+<table v-else class="min-w-full divide-y divide-gray-200 text-sm dark:divide-dark-700">
             <thead class="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-dark-800 dark:text-dark-400">
               <tr>
                 <th class="whitespace-nowrap px-3 py-2 text-left">{{ t('admin.proxies.qualityTableTarget') }}</th>
@@ -930,8 +941,16 @@
       <div v-else-if="proxyAccounts.length === 0" class="py-6 text-center text-sm text-gray-500">
         {{ t('admin.proxies.accountsEmpty') }}
       </div>
-      <div v-else class="max-h-80 overflow-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-dark-700">
+      <div v-else :class="{ 'max-h-80 overflow-auto': !mobile }">
+        <div v-if="mobile" class="mobile-records">
+            <dl v-for="account in proxyAccounts" :key="account.id" class="mobile-record">
+  <div class="mobile-record-field"><dt>{{ t('admin.proxies.accountName') }}</dt><dd>{{ account.name }}</dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.accounts.columns.platformType') }}</dt><dd><PlatformTypeBadge :platform="account.platform" :type="account.type" /></dd></div>
+  <div class="mobile-record-field"><dt>{{ t('admin.proxies.accountNotes') }}</dt><dd>{{ account.notes || '-' }}</dd></div>
+</dl>
+
+</div>
+<table v-else class="min-w-full divide-y divide-gray-200 text-sm dark:divide-dark-700">
           <thead class="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-dark-800 dark:text-dark-400">
             <tr>
               <th class="px-4 py-2 text-left">{{ t('admin.proxies.accountName') }}</th>
@@ -964,6 +983,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

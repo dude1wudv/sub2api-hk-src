@@ -45,8 +45,11 @@
 .portal-account-modal {
   margin: auto;
   width: min(480px, calc(100vw - 32px));
-  max-height: calc(100dvh - 40px);
-  overflow-y: auto;
+  max-height: calc(var(--visual-height, 100dvh) - 40px);
+  min-width: 0;
+  min-height: 0;
+  height: fit-content;
+  overflow: visible;
   box-sizing: border-box;
   padding: 26px;
   border: 1px solid rgb(var(--line));

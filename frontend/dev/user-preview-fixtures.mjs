@@ -38,10 +38,10 @@ export const publicSettings = Object.freeze({
   hide_ccs_import_button: true,
   payment_enabled: true,
   payment_balance_disabled: false,
-  risk_control_enabled: false,
+  risk_control_enabled: true,
   table_default_page_size: 20,
   table_page_size_options: [10, 20, 50, 100],
-  custom_menu_items: [],
+  custom_menu_items: [{ id: 'preview', label: 'Preview guide', icon_svg: '', url: '', page_slug: 'preview', visibility: 'user', sort_order: 0 }],
   custom_endpoints: [],
   linuxdo_oauth_enabled: false,
   dingtalk_oauth_enabled: false,
@@ -72,7 +72,7 @@ export const publicSettings = Object.freeze({
   model_plaza_require_auth: false,
   plugin_management_enabled: false,
   service_quota_enabled: false,
-  affiliate_enabled: false,
+  affiliate_enabled: true,
   allow_user_view_error_requests: false,
 })
 
@@ -183,6 +183,33 @@ export function buildUsageSnapshot(records, params = new URLSearchParams()) {
   }
 }
 
+// Traffic has its own wire DTO; usage token/cost records are not traffic reports.
+export function buildTrafficReport(keys, params) {
+  const period = ['day', 'week', 'month', 'year'].includes(params.get('period')) ? params.get('period') : 'day'
+  const requested = new Date(`${params.get('date') || day(Date.now())}T00:00:00Z`)
+  const start = Number.isFinite(requested.getTime()) ? requested : new Date(`${day(Date.now())}T00:00:00Z`)
+  if (period === 'week') start.setUTCDate(start.getUTCDate() - (start.getUTCDay() + 6) % 7)
+  if (period === 'month' || period === 'year') start.setUTCDate(1)
+  if (period === 'year') start.setUTCMonth(0)
+  const end = new Date(start)
+  if (period === 'year') end.setUTCFullYear(end.getUTCFullYear() + 1)
+  else if (period === 'month') end.setUTCMonth(end.getUTCMonth() + 1)
+  else end.setUTCDate(end.getUTCDate() + (period === 'week' ? 7 : 1))
+  const selected = keys.filter(key => (!params.get('user_id') || key.user_id === Number(params.get('user_id'))) && (!params.get('api_key_id') || key.id === Number(params.get('api_key_id'))))
+  const events = selected.flatMap((key, keyIndex) => Array.from({ length: 12 }, (_, index) => ({
+    event_id: `preview-traffic-${key.user_id}-${key.id}-${index}`, user_id: key.user_id, api_key_id: key.id, group_id: key.group_id,
+    request_id: `preview-request-${keyIndex}-${index}`, endpoint: '/v1/chat/completions', method: 'POST',
+    started_at: iso(start.getTime() + (index + 1) * 60000), finished_at: iso(start.getTime() + (index + 1) * 60000 + 1200),
+    upload_bytes: 1024 * (index + 1), download_bytes: 4096 * (index + 1), status_code: index === 11 ? 499 : 200,
+    outcome: index === 11 ? 'client_disconnected' : 'success', request_complete: index !== 11, measurement_version: 1,
+  })))
+  const totals = { upload_bytes: events.reduce((sum, event) => sum + event.upload_bytes, 0), download_bytes: events.reduce((sum, event) => sum + event.download_bytes, 0), requests: events.length }
+  totals.total_bytes = totals.upload_bytes + totals.download_bytes
+  const page = paginate(events, params)
+  return { ...totals, items: page.items, trend: [{ bucket: iso(start), ...totals }], has_more: page.page < page.pages,
+    page: page.page, page_size: page.page_size, period, start: iso(start), end: iso(end), timezone: 'UTC', recorded_since: iso(start), measurement_version: 1 }
+}
+
 export function createPreviewFixtures() {
   const now = Date.now()
   const createdAt = iso(now - 45 * 86400000)
@@ -191,6 +218,7 @@ export function createPreviewFixtures() {
     { id: 1, name: 'OpenAI · Preview', platform: 'openai' },
     { id: 2, name: 'Claude · Preview', platform: 'anthropic' },
     { id: 3, name: 'Creative · Preview', platform: 'gemini' },
+    { id: 72, name: 'Cache test · Preview', platform: 'anthropic' },
   ].map((group) => ({
     ...group,
     description: '合成分组，仅供界面预览 / Synthetic preview group',
@@ -237,7 +265,7 @@ export function createPreviewFixtures() {
   }))
   const users = Object.fromEntries(Object.entries(PREVIEW_ACCOUNTS).map(([email, account]) => [account.id, {
     ...account, email, balance: 128.64, frozen_balance: 0, concurrency: 10, rpm_limit: 60,
-    status: 'active', allowed_groups: [1, 2, 3], email_bound: true,
+    status: 'active', allowed_groups: [1, 2, 3, 72], email_bound: true,
     auth_bindings: { email: true, github: false, google: false, oidc: false, linuxdo: false, wechat: false, dingtalk: false },
     balance_notify_enabled: true, balance_notify_threshold: 10, balance_notify_extra_emails: [],
     avatar_url: null, created_at: createdAt, updated_at: timestamp, last_active_at: timestamp, run_mode: 'standard',
@@ -256,8 +284,9 @@ export function createPreviewFixtures() {
     makeKey(1001, user.id, 'Studio application', 1),
     makeKey(1002, user.id, 'Local development', 2),
     makeKey(1003, user.id, 'Archive key', 1, 'inactive'),
+    ...(user.role === 'admin' ? [makeKey(1072, user.id, 'Cache test · Preview', 72)] : []),
   ]]))
-  const modelNames = ['gpt-preview', 'claude-sonnet-preview', 'gemini-pro-preview']
+  const modelNames = ['gpt-preview', 'claude-sonnet-preview', 'gemini-pro-preview', 'claude-cache-preview']
   // Token pricing follows the API's USD/token unit; the plaza displays USD/1M tokens.
   const pricing = (index) => ({
     billing_mode: 'token', input_price: (1.5 + index) / 1_000_000, output_price: (6 + index * 2) / 1_000_000,

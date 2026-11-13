@@ -101,18 +101,18 @@
             v-for="column in dataColumns"
             :key="column.key"
             :data-field="column.key"
-            class="flex min-w-0 items-start justify-between gap-4"
+            class="flex min-w-0 flex-col items-start gap-1"
           >
             <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-dark-300">
               {{ column.label }}
             </span>
-            <div class="min-w-0 max-w-full [overflow-wrap:anywhere] text-right text-sm text-gray-900 dark:text-gray-100">
+            <div class="min-w-0 w-full max-w-full [overflow-wrap:anywhere] text-left text-sm text-gray-900 dark:text-gray-100">
               <slot :name="`cell-${column.key}`" :row="row" :value="row[column.key]" :expanded="actionsExpanded">
                 {{ column.formatter ? column.formatter(row[column.key], row) : row[column.key] }}
               </slot>
             </div>
           </div>
-          <div v-if="hasActionsColumn" class="border-t border-gray-200 pt-3 dark:border-dark-700">
+          <div v-if="hasActionsColumn" class="table-record-actions border-t border-gray-200 pt-3 dark:border-dark-700" @click.stop>
             <slot name="cell-actions" :row="row" :value="row['actions']" :expanded="actionsExpanded"></slot>
           </div>
         </div>
@@ -299,13 +299,13 @@ import { useVirtualizer, observeElementRect as observeElementRectDefault } from 
 import { useI18n } from 'vue-i18n'
 import type { Column } from './types'
 import Icon from '@/components/icons/Icon.vue'
+import { useMediaQuery } from '@vueuse/core'
+import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 
 const { t } = useI18n()
 
-const desktopViewportQuery = '(min-width: 768px)'
-const isDesktopViewport = ref(
-  typeof window === 'undefined' ? true : window.matchMedia(desktopViewportQuery).matches
-)
+const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
+const isDesktopViewport = computed(() => !mobile.value)
 
 const emit = defineEmits<{
   sort: [key: string, order: 'asc' | 'desc']
@@ -401,8 +401,6 @@ const checkActionsColumnWidth = () => {
 // 监听尺寸变化
 let resizeObserver: ResizeObserver | null = null
 let resizeHandler: (() => void) | null = null
-let desktopViewportMediaQuery: MediaQueryList | null = null
-let desktopViewportListener: ((event: MediaQueryListEvent) => void) | null = null
 
 const detachDesktopTableTracking = () => {
   resizeObserver?.disconnect()
@@ -432,32 +430,9 @@ const attachDesktopTableTracking = () => {
   }
 }
 
-onMounted(() => {
-  if (typeof window !== 'undefined') {
-    desktopViewportMediaQuery = window.matchMedia(desktopViewportQuery)
-    isDesktopViewport.value = desktopViewportMediaQuery.matches
-    desktopViewportListener = (event: MediaQueryListEvent) => {
-      isDesktopViewport.value = event.matches
-    }
-    if (typeof desktopViewportMediaQuery.addEventListener === 'function') {
-      desktopViewportMediaQuery.addEventListener('change', desktopViewportListener)
-    } else {
-      desktopViewportMediaQuery.addListener(desktopViewportListener)
-    }
-  }
-})
 
 onUnmounted(() => {
   detachDesktopTableTracking()
-  if (desktopViewportMediaQuery && desktopViewportListener) {
-    if (typeof desktopViewportMediaQuery.removeEventListener === 'function') {
-      desktopViewportMediaQuery.removeEventListener('change', desktopViewportListener)
-    } else {
-      desktopViewportMediaQuery.removeListener(desktopViewportListener)
-    }
-    desktopViewportListener = null
-  }
-  desktopViewportMediaQuery = null
 })
 
 interface Props {
@@ -980,6 +955,8 @@ defineExpose({
 </script>
 
 <style scoped>
+.table-record-fields :deep(.flex), .table-record-actions :deep(.flex) { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.table-record-fields :deep(.truncate) { white-space: normal; overflow-wrap: anywhere; }
 .table-wrapper :deep(tbody td) { padding-block: 8px; }
 .table-record-row:hover, .table-record-row:focus-within { background-color: rgb(var(--table-hover)); }
 .table-record-row > td { transition:background-color var(--motion-fast),color var(--motion-fast); }

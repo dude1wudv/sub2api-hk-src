@@ -112,5 +112,5 @@ kbd { font:550 11.5px/1.35 var(--font-mono); border:1px solid rgb(var(--line)); 
 .workspace-command-empty { display:grid; justify-items:center; gap:10px; padding:32px 16px; color:rgb(var(--ink-3)); text-align:center; }
 .workspace-command-error { padding:10px 12px; color:rgb(var(--text-err)); font-size:13.5px; }
 .workspace-command-error button { text-decoration:underline; }
-@media(max-width:767px) { .workspace-command-trigger { width:44px; height:44px; padding:0; justify-content:center; } .workspace-command-trigger > span,.workspace-command-trigger > kbd { display:none; } .workspace-command-results { max-height:45dvh; } }
+@media(max-width:767px) { .workspace-command-trigger { width:44px; min-width:44px; height:44px; padding:0; justify-content:center; } .workspace-command-trigger > span,.workspace-command-trigger > kbd { display:none; } .workspace-command-results { max-height:45dvh; } }
 </style>
