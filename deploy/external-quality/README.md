@@ -22,7 +22,11 @@ systemctl list-timers sub2api-external-quality.timer
 cat /opt/sub2api-external-quality/status.json
 ```
 
-定时器在上次执行结束后五分钟运行；单进程不重叠，超时180秒、内存上限96MiB。只允许固定 HTTPS 源站，拒绝重定向，JSON响应上限8MiB。服务器进程从已有本地数据库读取管理员集成密钥，仅用于 localhost 导入端点；日志和状态文件只包含分组、数量、原始检测时间及错误类型，不包含令牌或HTML。服务文件不携带凭据。
+定时器在上次执行结束后五分钟运行；单进程不重叠，超时180秒、内存上限96MiB。只允许固定 HTTPS 源站，拒绝重定向，JSON响应上限8MiB。
+
+本站导入鉴权优先从服务器 `/opt/sub2api-external-quality/admin.key` 读取管理 Key 明文。独立管理 Key 的数据库记录仅有摘要，无法通过查库取回明文；在管理页创建或轮换后，须将明文经 SSH 标准输入直接写入该文件（root 所有、0600），不要写入本地文件、命令参数、聊天或 Git。当前受限权限目录未登记该导入路由，独立 Key 需具备现有 `full_access` 权限；受限 Key 会返回 403。Key 只由此脚本发往 localhost 导入端点。轮换或撤销后须同步更新文件。
+
+仅在 `admin.key` 不存在时兼容从本地数据库读取旧版 `settings.admin_api_key`；空文件不会回退。两者均未配置时，状态文件和日志明确记录 `AdminIntegrationKeyMissing`，不再只是 `ValueError`。上游 RT 更新不能修复本站导入 Key 缺失。日志和状态文件只包含分组、数量、原始检测时间及错误类型，不包含密钥、令牌或 HTML；服务文件不携带凭据。
 
 ## 清理与展示
 

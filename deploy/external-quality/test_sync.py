@@ -16,6 +16,46 @@ SPEC.loader.exec_module(sync)
 
 
 class SyncTests(unittest.TestCase):
+    def setUp(self):
+        original_root = sync.ROOT
+        self.addCleanup(setattr, sync, 'ROOT', original_root)
+
+    def test_admin_key_prefers_server_file_without_reading_database(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sync.ROOT = Path(directory)
+            (sync.ROOT / 'admin.key').write_text('adm_sc_server-only-secret\n')
+            with mock.patch.object(sync.subprocess, 'check_output') as query:
+                self.assertEqual(sync.admin_key(), 'adm_sc_server-only-secret')
+            query.assert_not_called()
+
+    def test_admin_key_empty_server_file_does_not_fall_back(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sync.ROOT = Path(directory)
+            (sync.ROOT / 'admin.key').write_text(' \n')
+            with mock.patch.object(sync.subprocess, 'check_output') as query:
+                with self.assertRaises(sync.AdminIntegrationKeyMissing):
+                    sync.admin_key()
+            query.assert_not_called()
+
+    def test_admin_key_supports_legacy_setting_when_file_is_absent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sync.ROOT = Path(directory)
+            with mock.patch.object(sync.subprocess, 'check_output', return_value='legacy-secret\n') as query:
+                self.assertEqual(sync.admin_key(), 'legacy-secret')
+            self.assertIn("SELECT value FROM settings WHERE key='admin_api_key'", query.call_args.args[0])
+
+    def test_admin_key_missing_has_actionable_secret_free_status(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sync.ROOT = Path(directory)
+            stderr = io.StringIO()
+            with mock.patch.object(sync, 'access_token', return_value='access-secret'), \
+                    mock.patch.object(sync.subprocess, 'check_output', return_value=''), \
+                    contextlib.redirect_stderr(stderr):
+                self.assertEqual(sync.main(), 1)
+            status = json.loads((sync.ROOT / 'status.json').read_text())
+            self.assertEqual(status['error'], 'AdminIntegrationKeyMissing')
+            self.assertNotIn('access-secret', stderr.getvalue())
+
     def test_refresh_rotates_token_only_in_server_storage(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -87,19 +87,32 @@ def completed_events(data, remote_id):
     return selected
 
 
+class AdminIntegrationKeyMissing(ValueError):
+    """The local import credential needs operator configuration."""
+
+
 def admin_key():
-    # Capture only in server process memory, never logs or an on-disk export.
-    return subprocess.check_output([
-        'docker', 'exec', 'sub2api-postgres', 'psql', '-X', '-At', '-U', 'sub2api',
-        '-d', 'sub2api', '-c', "SELECT value FROM settings WHERE key='admin_api_key'"
-    ], text=True, timeout=15).strip()
+    # Independent admin keys are hashed in the database; their plaintext stays
+    # in a server-only 0600 file. Never fall back when that file is misconfigured.
+    try:
+        key = (ROOT / 'admin.key').read_text().strip()
+    except FileNotFoundError:
+        # Preserve compatibility with hosts still using the legacy global key.
+        # Capture only in process memory, never logs or an on-disk export.
+        key = subprocess.check_output([
+            'docker', 'exec', 'sub2api-postgres', 'psql', '-X', '-At', '-U', 'sub2api',
+            '-d', 'sub2api', '-c', "SELECT value FROM settings WHERE key='admin_api_key'"
+        ], text=True, timeout=15).strip()
+    if not key:
+        raise AdminIntegrationKeyMissing('local admin integration key missing')
+    return key
 
 
 def sync():
     token = access_token()
     key = admin_key()
     if not key:
-        raise ValueError('local admin integration key missing')
+        raise AdminIntegrationKeyMissing('local admin integration key missing')
     summaries = []
     for local_id, remote_id in BINDINGS:
         url = ORIGIN + f'/api/v1/channel-monitor-v2/quality/history/{remote_id}?include_status=1&timezone=Etc%2FGMT%2B7'
