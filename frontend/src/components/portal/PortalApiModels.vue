@@ -333,6 +333,7 @@ function chooseExampleModel() {
 .portal-api-model-name { display:inline-flex; align-items:center; gap:10px; min-height:30px; padding:0; border:0; background:none; color:rgb(var(--ink)); font-size:13px; font-weight:550; text-align:left; overflow-wrap:anywhere; cursor:pointer; }
 .portal-api-model-name > :last-child { color:rgb(var(--ink-3)); opacity:.6; }
 .portal-api-model-name :deep(svg) { flex-shrink:0; }
+.portal-api-models :deep(.model-icon path[fill='#000000']),.portal-api-models :deep(.model-icon path[fill='#16191E']) { fill:rgb(var(--ink)); }
 .portal-api-model-name:hover { color:rgb(var(--brand-moss)); }
 .portal-api-model-capabilities { display:flex; flex-wrap:wrap; gap:10px; margin:4px 0 0 30px; font-size:11px; color:rgb(var(--ink-3)); }
 .portal-api-model-badges { display:flex; flex-wrap:wrap; gap:5px; margin:6px 0 0 30px; }
