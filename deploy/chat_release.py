@@ -553,8 +553,8 @@ class Release:
             self.rollback()
             raise
 
-    def fetch(self, url, *, resolve=None, expected=200):
-        command = ['curl', '--silent', '--show-error', '--compressed', '--max-time', '25']
+    def fetch(self, url, *, resolve=None, expected=200, method='GET'):
+        command = ['curl', '--silent', '--show-error', '--compressed', '--max-time', '25', '--request', method]
         if resolve:
             command += ['--resolve', resolve]
         header = self.audit / 'http.headers'
@@ -597,6 +597,11 @@ class Release:
                     require("frame-ancestors 'self'" in csp, 'Chat CSP must permit only same-origin ancestors')
             self.fetch(host + '/chat-app/static/missing-chat-release-proof.js', expected=404)
             self.fetch(host + '/api/v1/chat/presets', expected=401)
+            # Exercise the real POST namespace with no credentials or paid calls.
+            # An embedded SPA must never swallow the private scope guard.
+            self.fetch(host + '/internal/chat/auxiliary/search', expected=404, method='POST')
+            for route in ('/speech/asr', '/speech/tts', '/attachments/00000000-0000-0000-0000-000000000001/parse'):
+                self.fetch(host + '/api/v1/chat' + route, expected=401, method='POST')
         self.save('health-static.json', {'sha': self.sha, 'checked_at': now().isoformat(),
                   'domains': DOMAINS, 'assets': len(self.manifest['assets']), 'paid_acceptance': False})
 

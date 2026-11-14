@@ -74,3 +74,29 @@ func TestChatEmbeddedMissingBundleIs404(t *testing.T) {
 		t.Fatalf("missing chat must not serve main SPA: %d %s", w.Code, w.Body.String())
 	}
 }
+
+func TestChatAuxiliaryRoutesBypassEmbeddedSPA(t *testing.T) {
+	server, err := NewFrontendServer(&mockSettingsProvider{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, middleware := range map[string]gin.HandlerFunc{"settings": server.Middleware(), "legacy": ServeEmbeddedFrontend()} {
+		t.Run(name, func(t *testing.T) {
+			router := gin.New()
+			router.Use(middleware)
+			called := false
+			router.POST("/internal/chat/auxiliary/:kind", func(c *gin.Context) {
+				called = true
+				c.AbortWithStatus(http.StatusNotFound)
+			})
+			for _, path := range []string{"/internal/chat/auxiliary/search", "/internal/chat/auxiliary/tts", "/internal/chat/auxiliary/ocr"} {
+				called = false
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`)))
+				if !called || w.Code != http.StatusNotFound || strings.Contains(w.Body.String(), "<html") {
+					t.Fatalf("auxiliary guard swallowed by SPA for %s: called=%v status=%d", path, called, w.Code)
+				}
+			}
+		})
+	}
+}

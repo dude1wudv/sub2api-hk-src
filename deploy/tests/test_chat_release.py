@@ -127,6 +127,22 @@ class ChatReleaseTests(unittest.TestCase):
             precise = '{"id":1,"created_at":"2026-11-14T00:00:00+00:00","actual_cost":999999999.00000001}'
             self.assertNotEqual(fingerprint(precise), fingerprint(precise.replace('.00000001', '.00000002')))
 
+    def test_chat_anonymous_auxiliary_probe_uses_post(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(release, 'RELEASES', Path(directory)):
+            worker = release.Release('a' * 40, 'b' * 40)
+            commands = []
+
+            def fake_run(args):
+                commands.append(args)
+                (worker.audit / 'http.headers').write_text('HTTP/1.1 404 Not Found\n')
+                (worker.audit / 'http.body').write_bytes(b'')
+                return '404'
+
+            worker.run = fake_run
+            worker.fetch('http://127.0.0.1:8080/internal/chat/auxiliary/search', expected=404, method='POST')
+            self.assertEqual(commands[0][commands[0].index('--request') + 1], 'POST')
+            self.assertNotIn('Authorization', ' '.join(commands[0]))
+
     def test_chat_unrelated_container_restart_is_fatal(self):
         before = {'postgres': {'Id': 'db', 'State': {'StartedAt': 'then'}, 'RestartCount': 0}}
         release.verify_other_containers(before, before)
