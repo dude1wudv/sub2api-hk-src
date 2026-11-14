@@ -73,6 +73,7 @@ func (s *ChatModelService) modelCapabilities(ctx context.Context, group *Group, 
 	caps.NativeSearch = policy.NativeSearch && allNative
 	caps.NativeReadURL = policy.NativeReadURL && allNative
 	caps.Reasoning = metadata.MetadataMatch == "exact" && metadata.Reasoning != nil && *metadata.Reasoning
+	caps.ReasoningEfforts = chatReasoningEfforts(model, caps)
 	caps.ToolCall = metadata.MetadataMatch == "exact" && metadata.ToolCall != nil && *metadata.ToolCall
 	tools := false
 	if caps.ToolCall && (group.Platform == PlatformOpenAI || group.Platform == PlatformDeepseek) {

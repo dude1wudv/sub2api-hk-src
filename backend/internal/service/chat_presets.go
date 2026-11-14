@@ -11,20 +11,24 @@ import (
 var ErrChatPresetDuplicate = infraerrors.Conflict("CHAT_PRESET_DUPLICATE", "该分组的模型已在个人列表中")
 
 type ChatModelPreset struct {
-	ID          uuid.UUID `json:"id"`
-	UserID      int64     `json:"-"`
-	GroupID     int64     `json:"group_id"`
-	Model       string    `json:"model"`
-	DisplayName string    `json:"display_name"`
-	SortOrder   int       `json:"sort_order"`
-	IsDefault   bool      `json:"is_default"`
+	ID                      uuid.UUID `json:"id"`
+	UserID                  int64     `json:"-"`
+	GroupID                 int64     `json:"group_id"`
+	Model                   string    `json:"model"`
+	DisplayName             string    `json:"display_name"`
+	SortOrder               int       `json:"sort_order"`
+	IsDefault               bool      `json:"is_default"`
+	NormalReasoningEffort   string    `json:"normal_reasoning_effort"`
+	ThinkingReasoningEffort string    `json:"thinking_reasoning_effort"`
 }
 
 type ChatPresetPatch struct {
-	GroupID     *int64  `json:"group_id"`
-	Model       *string `json:"model"`
-	DisplayName *string `json:"display_name"`
-	IsDefault   *bool   `json:"is_default"`
+	GroupID                 *int64  `json:"group_id"`
+	Model                   *string `json:"model"`
+	DisplayName             *string `json:"display_name"`
+	IsDefault               *bool   `json:"is_default"`
+	NormalReasoningEffort   *string `json:"normal_reasoning_effort"`
+	ThinkingReasoningEffort *string `json:"thinking_reasoning_effort"`
 }
 
 type ChatPresetRepository interface {
@@ -41,4 +45,19 @@ func validateChatPreset(groupID int64, model, name string) error {
 		return ErrChatInvalid
 	}
 	return nil
+}
+
+func validChatReasoningEffort(effort string) bool {
+	return effort == "low" || effort == "medium" || effort == "high"
+}
+
+func (p *ChatModelPreset) reasoningEffort(thinking bool) string {
+	effort, fallback := p.NormalReasoningEffort, "low"
+	if thinking {
+		effort, fallback = p.ThinkingReasoningEffort, "high"
+	}
+	if validChatReasoningEffort(effort) {
+		return effort
+	}
+	return fallback
 }

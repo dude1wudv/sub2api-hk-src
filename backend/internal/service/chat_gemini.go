@@ -57,16 +57,13 @@ func chatGeminiAssistantParts(message ChatMessage) []any {
 	return parts
 }
 
-func chatGeminiThinking(model string, enabled bool) map[string]any {
+func chatGeminiThinking(model, effort string, includeThoughts bool) map[string]any {
 	param := geminiThinkingParamForModel(model)
 	if param == geminiThinkingParamNone {
 		return nil
 	}
-	result := map[string]any{"includeThoughts": enabled}
-	intent := claudeThinkingIntent{}
-	if !enabled {
-		intent.thinkingType, intent.tier = "disabled", "minimal"
-	}
+	result := map[string]any{"includeThoughts": includeThoughts}
+	intent := claudeThinkingIntent{tier: effort}
 	if !geminiModelNameCarriesThinkingTier(model) {
 		switch param {
 		case geminiThinkingParamLevel:

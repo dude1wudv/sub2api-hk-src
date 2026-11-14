@@ -1051,6 +1051,8 @@ var (
 		{Name: "display_name", Type: field.TypeString, Size: 200, Default: ""},
 		{Name: "sort_order", Type: field.TypeInt, Default: 0},
 		{Name: "is_default", Type: field.TypeBool, Default: false},
+		{Name: "normal_reasoning_effort", Type: field.TypeString, Size: 6, Default: "low"},
+		{Name: "thinking_reasoning_effort", Type: field.TypeString, Size: 6, Default: "high"},
 		{Name: "group_id", Type: field.TypeInt64},
 		{Name: "user_id", Type: field.TypeInt64},
 	}
@@ -1062,13 +1064,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "chat_model_presets_groups_chat_model_presets",
-				Columns:    []*schema.Column{ChatModelPresetsColumns[7]},
+				Columns:    []*schema.Column{ChatModelPresetsColumns[9]},
 				RefColumns: []*schema.Column{GroupsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "chat_model_presets_users_chat_model_presets",
-				Columns:    []*schema.Column{ChatModelPresetsColumns[8]},
+				Columns:    []*schema.Column{ChatModelPresetsColumns[10]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -1077,12 +1079,12 @@ var (
 			{
 				Name:    "chatmodelpreset_user_id_group_id_model",
 				Unique:  true,
-				Columns: []*schema.Column{ChatModelPresetsColumns[8], ChatModelPresetsColumns[7], ChatModelPresetsColumns[3]},
+				Columns: []*schema.Column{ChatModelPresetsColumns[10], ChatModelPresetsColumns[9], ChatModelPresetsColumns[3]},
 			},
 			{
 				Name:    "chat_presets_one_default",
 				Unique:  true,
-				Columns: []*schema.Column{ChatModelPresetsColumns[8]},
+				Columns: []*schema.Column{ChatModelPresetsColumns[10]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "is_default",
 				},
@@ -1090,7 +1092,7 @@ var (
 			{
 				Name:    "chatmodelpreset_user_id_sort_order",
 				Unique:  false,
-				Columns: []*schema.Column{ChatModelPresetsColumns[8], ChatModelPresetsColumns[5]},
+				Columns: []*schema.Column{ChatModelPresetsColumns[10], ChatModelPresetsColumns[5]},
 			},
 		},
 	}

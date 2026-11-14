@@ -28,12 +28,13 @@ type ChatGenerateRequest struct {
 }
 
 type ChatRunOptions struct {
-	Thinking       bool          `json:"thinking"`
-	Search         bool          `json:"search"`
-	Location       *ChatLocation `json:"location,omitempty"`
-	Transport      string        `json:"transport"`
-	Locale         string        `json:"locale,omitempty"`
-	LatestReminder string        `json:"latest_reminder,omitempty"`
+	Thinking        bool          `json:"thinking"`
+	ReasoningEffort string        `json:"reasoning_effort,omitempty"`
+	Search          bool          `json:"search"`
+	Location        *ChatLocation `json:"location,omitempty"`
+	Transport       string        `json:"transport"`
+	Locale          string        `json:"locale,omitempty"`
+	LatestReminder  string        `json:"latest_reminder,omitempty"`
 }
 
 type ChatRunRecord struct {

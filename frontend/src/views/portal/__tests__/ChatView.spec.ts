@@ -49,7 +49,10 @@ describe('ChatView standalone Vue host', () => {
       $onAction: vi.fn((callback: (context: { name: string }) => void) => { action = callback; return ctx.stopActions }),
     })
   })
-  afterEach(() => wrappers.splice(0).forEach((wrapper) => wrapper.unmount()))
+  afterEach(() => {
+    wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
+    vi.unstubAllGlobals()
+  })
 
   it('uses only the fixed full-height iframe and leaves navigation to in-app settings', async () => {
     const wrapper = render()
@@ -66,6 +69,31 @@ describe('ChatView standalone Vue host', () => {
     expect(ctx.frameLoaded).toHaveBeenCalledTimes(1)
     await ctx.options!.navigate('/dashboard')
     expect(ctx.push).toHaveBeenCalledWith('/dashboard')
+  })
+
+  it('keeps the same iframe within the visible viewport when the keyboard opens and closes', async () => {
+    const viewport = Object.assign(new EventTarget(), { width: 390, height: 844, offsetLeft: 0, offsetTop: 0, scale: 1 })
+    vi.stubGlobal('visualViewport', viewport)
+    const wrapper = render()
+    const frame = wrapper.get('iframe').element
+    const host = wrapper.get('main').element
+    expect(host.style.height).toBe('844px')
+    Object.assign(viewport, { height: 360, offsetTop: 40 })
+    viewport.dispatchEvent(new Event('resize'))
+    viewport.dispatchEvent(new Event('scroll'))
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    await flushPromises()
+    expect(host.style.height).toBe('360px')
+    expect(host.style.top).toBe('40px')
+    expect(wrapper.get('iframe').element).toBe(frame)
+    Object.assign(viewport, { height: 844, offsetTop: 0 })
+    viewport.dispatchEvent(new Event('resize'))
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    await flushPromises()
+    expect(host.style.height).toBe('844px')
+    expect(host.style.top).toBe('0px')
+    expect(ctx.mount).toHaveBeenCalledTimes(1)
+    expect(ctx.disconnect).not.toHaveBeenCalled()
   })
 
   it('does not tear down a same-user refresh while setToken reloads /auth/me', async () => {

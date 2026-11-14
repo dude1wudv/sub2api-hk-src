@@ -10,6 +10,7 @@ export interface ChatCapabilities {
   native_search: boolean
   native_read_url: boolean
   reasoning: boolean
+  reasoning_efforts?: ChatReasoningEffort[]
   tool_call: boolean
   search: boolean
   read_url: boolean
@@ -32,6 +33,7 @@ export interface ChatCatalogModel {
   unavailable_reason: string
 }
 export interface ChatCatalog { group: ChatCatalogGroup; models: ChatCatalogModel[] }
+export type ChatReasoningEffort = 'low' | 'medium' | 'high'
 export interface ChatPreset {
   id: string
   group_id: number
@@ -39,6 +41,8 @@ export interface ChatPreset {
   display_name: string
   sort_order: number
   is_default: boolean
+  normal_reasoning_effort: ChatReasoningEffort
+  thinking_reasoning_effort: ChatReasoningEffort
 }
 export interface ChatPresetView extends ChatPreset {
   group: ChatCatalogGroup
@@ -47,7 +51,7 @@ export interface ChatPresetView extends ChatPreset {
   unavailable_reason: string
 }
 export interface ChatPresetBinding { group_id: number; model: string; display_name?: string }
-export type ChatPresetPatch = Partial<ChatPresetBinding> & { is_default?: boolean }
+export type ChatPresetPatch = Partial<ChatPresetBinding> & { is_default?: boolean; normal_reasoning_effort?: ChatReasoningEffort; thinking_reasoning_effort?: ChatReasoningEffort }
 
 export const chatAPI = {
   async catalog(groupId: number, search = '', signal?: AbortSignal): Promise<ChatCatalog> {

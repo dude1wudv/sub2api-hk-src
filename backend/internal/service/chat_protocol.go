@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
@@ -217,6 +218,12 @@ func (s *ChatService) chatUserContent(ctx context.Context, userID int64, message
 
 func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapshot *ChatSnapshot, preset *ChatModelPreset, model *ChatCatalogModel, options ChatRunOptions, operation string) (*chatPreparedRequest, error) {
 	caps := model.Capabilities
+	if caps.Reasoning && options.ReasoningEffort == "" {
+		options.ReasoningEffort = preset.reasoningEffort(options.Thinking)
+	}
+	if caps.Reasoning && !slices.Contains(chatReasoningEfforts(preset.Model, caps), options.ReasoningEffort) {
+		return nil, ErrChatCapability
+	}
 	prepared := &chatPreparedRequest{caps: caps, options: options, files: map[uuid.UUID]bool{}, body: map[string]any{"model": preset.Model, "stream": true}}
 	messages := snapshot.VisibleMessages()
 	if len(messages) < 2 {
@@ -289,7 +296,7 @@ func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapsh
 	}
 	if operation == "continue" {
 		if caps.NativeDeepSeekExtensions {
-			blocks := chatAssistantBlocks(target, true, options.Thinking)
+			blocks := chatAssistantBlocks(target, true, options.Thinking || caps.Reasoning)
 			if len(blocks) == 0 {
 				return nil, ErrChatInvalid
 			}
@@ -326,18 +333,13 @@ func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapsh
 		}
 		prepared.path = chatGeminiPrefix + preset.Model + chatGeminiSuffix
 		prepared.body = map[string]any{"contents": chatGeminiContents(wire), "generationConfig": map[string]any{"maxOutputTokens": 8192}}
-		if caps.Reasoning {
-			if thinking := chatGeminiThinking(preset.Model, options.Thinking); len(thinking) > 0 {
-				prepared.body["generationConfig"].(map[string]any)["thinkingConfig"] = thinking
-			}
-		}
 	default:
 		return nil, ErrChatCapability
 	}
 	tools := []any{}
 	if caps.NativeDeepSeekExtensions {
 		thinking := "disabled"
-		if options.Thinking {
+		if caps.Reasoning {
 			thinking = "enabled"
 		}
 		prepared.body["thinking"] = map[string]any{"type": thinking}
@@ -350,6 +352,7 @@ func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapsh
 			tools = append(tools, map[string]any{"type": "deepseek_read_url", "name": "deepseek_read_url"})
 		}
 	}
+	applyChatReasoning(prepared, preset.Model)
 	if options.Search && caps.Search && !caps.NativeSearch {
 		tools = append(tools, chatToolDefinition(caps.Transport, "chat_search", "Search the web using this selected channel.", "query"))
 	}

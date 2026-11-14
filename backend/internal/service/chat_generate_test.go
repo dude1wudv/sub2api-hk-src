@@ -262,12 +262,20 @@ func TestChatGenerateFailedFinalSaveNeverDeclaresCompletion(t *testing.T) {
 
 func TestChatGenerateContinueUsesRecordedOptions(t *testing.T) {
 	s, repo, req := chatGenerationFixture(t)
+	s.models.metadata = seededModelMetadataCatalog()
+	s.models.repo.(*chatGenerationPresets).preset.Model = "gpt-fixture-a"
+	s.models.catalog.(*chatCatalogStub).models = []GatewayModel{{ID: "gpt-fixture-a"}}
+	s.models.groups.(*chatGroupsStub).groups[0].ChatModelPolicies = map[string]ChatModelPolicy{"gpt-fixture-a": {Transport: "chat_completions"}}
 	calls := 0
-	s.dispatch = func(w http.ResponseWriter, _ *http.Request) {
+	s.dispatch = func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		require.Equal(t, "low", body["reasoning_effort"])
 		calls++
 		_, _ = w.Write([]byte(chatTestFrames(`{"choices":[{"delta":{"content":"answer"},"finish_reason":"stop"}]}`, `[DONE]`)))
 	}
 	require.NoError(t, s.Generate(context.Background(), 7, repo.record.ID, req, "192.0.2.1", httptest.NewRecorder()))
+	s.models.repo.(*chatGenerationPresets).preset.NormalReasoningEffort = "high"
 	message, err := ChatAssistantJSON(repo.record.Snapshot, "reply")
 	require.NoError(t, err)
 	message["status"], message["thinking"], message["search"] = "pending", true, true
@@ -285,6 +293,7 @@ func TestChatGenerateContinueUsesRecordedOptions(t *testing.T) {
 	require.NoError(t, json.Unmarshal(repo.run.Options, &options))
 	require.False(t, options.Thinking)
 	require.False(t, options.Search)
+	require.Equal(t, "low", options.ReasoningEffort)
 	require.Equal(t, 2, calls)
 	message, err = ChatAssistantJSON(repo.record.Snapshot, "reply")
 	require.NoError(t, err)

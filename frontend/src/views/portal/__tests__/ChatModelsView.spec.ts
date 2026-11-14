@@ -17,7 +17,7 @@ vi.mock('vue-i18n', async () => ({
 }))
 const group = (id: number) => ({ id, name: `Group ${id}`, platform: 'openai', subscription_type: 'standard', rate_multiplier: 2, user_rate_multiplier: 0.5 })
 const model = { id: 'shared-model', available: true, unavailable_reason: '', pricing: { billing_mode: 'token', input_price: 0.000001, output_price: 0.000002 }, capabilities: { image_input: false, document_input: false, search: false } }
-const preset = (id: string, groupId: number, available = true) => ({ id, group_id: groupId, model: 'shared-model', display_name: '', is_default: false, sort_order: 0, group: group(groupId), available, unavailable_reason: available ? '' : '分组权限已撤销' })
+const preset = (id: string, groupId: number, available = true) => ({ id, group_id: groupId, model: 'shared-model', display_name: '', is_default: false, sort_order: 0, normal_reasoning_effort: 'low', thinking_reasoning_effort: 'high', capabilities: { reasoning: true }, group: group(groupId), available, unavailable_reason: available ? '' : '分组权限已撤销' })
 const render = () => mount(ChatModelsView, { global: { stubs: { RouterLink: RouterLinkStub } } })
 
 describe('ChatModelsView', () => {
@@ -86,6 +86,42 @@ describe('ChatModelsView', () => {
     expect(chat.reconnectPreset).not.toHaveBeenCalled()
     await wrapper.get('[data-preset-id=a]').findAll('button').find(button => button.text() === '重新连接')!.trigger('click'); await flushPromises()
     expect(chat.reconnectPreset).toHaveBeenCalledWith('a')
+    wrapper.unmount()
+  })
+
+  it('saves independent normal and deep effort only for the selected model', async () => {
+    const first = preset('a', 11), second = preset('b', 12)
+    chat.presets.mockResolvedValue([first, second])
+    const wrapper = render(); await flushPromises()
+    const form = wrapper.get('[data-preset-id=a] .chat-reasoning')
+    expect((form.get('#normal-effort-a').element as HTMLSelectElement).value).toBe('low')
+    expect((form.get('#thinking-effort-a').element as HTMLSelectElement).value).toBe('high')
+    expect(form.get('button').attributes('disabled')).toBeDefined()
+    await form.get('#normal-effort-a').setValue('medium')
+    await form.get('#thinking-effort-a').setValue('low')
+    expect(chat.updatePreset).not.toHaveBeenCalled()
+    chat.presets.mockResolvedValue([{ ...first, normal_reasoning_effort: 'medium', thinking_reasoning_effort: 'low' }, second])
+    await form.trigger('submit'); await flushPromises()
+    expect(chat.updatePreset).toHaveBeenCalledTimes(1)
+    expect(chat.updatePreset).toHaveBeenCalledWith('a', { normal_reasoning_effort: 'medium', thinking_reasoning_effort: 'low' })
+    expect((form.get('#normal-effort-a').element as HTMLSelectElement).value).toBe('medium')
+    expect((wrapper.get('#thinking-effort-b').element as HTMLSelectElement).value).toBe('high')
+    expect(form.get('button').attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+  })
+
+  it('keeps failed effort edits retryable and hides controls without reasoning capability', async () => {
+    chat.presets.mockResolvedValue([preset('a', 11), { ...preset('b', 12), capabilities: { reasoning: false } }, { ...preset('c', 11), capabilities: { reasoning: true, reasoning_efforts: ['low', 'high'] } }])
+    chat.updatePreset.mockRejectedValueOnce(new Error('保存失败'))
+    const wrapper = render(); await flushPromises()
+    expect(wrapper.find('[data-preset-id=b] .chat-reasoning').exists()).toBe(false)
+    expect(wrapper.findAll('#normal-effort-c option').map(option => option.attributes('value'))).toEqual(['low', 'high'])
+    const form = wrapper.get('[data-preset-id=a] .chat-reasoning')
+    await form.get('#normal-effort-a').setValue('high')
+    await form.trigger('submit'); await flushPromises()
+    expect(app.showError).toHaveBeenCalledWith('保存失败')
+    expect((form.get('#normal-effort-a').element as HTMLSelectElement).value).toBe('high')
+    expect(form.get('button').attributes('disabled')).toBeUndefined()
     wrapper.unmount()
   })
 

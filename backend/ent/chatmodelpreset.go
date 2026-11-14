@@ -36,6 +36,10 @@ type ChatModelPreset struct {
 	SortOrder int `json:"sort_order,omitempty"`
 	// IsDefault holds the value of the "is_default" field.
 	IsDefault bool `json:"is_default,omitempty"`
+	// NormalReasoningEffort holds the value of the "normal_reasoning_effort" field.
+	NormalReasoningEffort string `json:"normal_reasoning_effort,omitempty"`
+	// ThinkingReasoningEffort holds the value of the "thinking_reasoning_effort" field.
+	ThinkingReasoningEffort string `json:"thinking_reasoning_effort,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChatModelPresetQuery when eager-loading is set.
 	Edges        ChatModelPresetEdges `json:"edges"`
@@ -84,7 +88,7 @@ func (*ChatModelPreset) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case chatmodelpreset.FieldUserID, chatmodelpreset.FieldGroupID, chatmodelpreset.FieldSortOrder:
 			values[i] = new(sql.NullInt64)
-		case chatmodelpreset.FieldModel, chatmodelpreset.FieldDisplayName:
+		case chatmodelpreset.FieldModel, chatmodelpreset.FieldDisplayName, chatmodelpreset.FieldNormalReasoningEffort, chatmodelpreset.FieldThinkingReasoningEffort:
 			values[i] = new(sql.NullString)
 		case chatmodelpreset.FieldCreatedAt, chatmodelpreset.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -159,6 +163,18 @@ func (_m *ChatModelPreset) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.IsDefault = value.Bool
 			}
+		case chatmodelpreset.FieldNormalReasoningEffort:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field normal_reasoning_effort", values[i])
+			} else if value.Valid {
+				_m.NormalReasoningEffort = value.String
+			}
+		case chatmodelpreset.FieldThinkingReasoningEffort:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field thinking_reasoning_effort", values[i])
+			} else if value.Valid {
+				_m.ThinkingReasoningEffort = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -228,6 +244,12 @@ func (_m *ChatModelPreset) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("is_default=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsDefault))
+	builder.WriteString(", ")
+	builder.WriteString("normal_reasoning_effort=")
+	builder.WriteString(_m.NormalReasoningEffort)
+	builder.WriteString(", ")
+	builder.WriteString("thinking_reasoning_effort=")
+	builder.WriteString(_m.ThinkingReasoningEffort)
 	builder.WriteByte(')')
 	return builder.String()
 }

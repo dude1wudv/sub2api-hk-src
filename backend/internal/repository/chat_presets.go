@@ -13,7 +13,7 @@ func NewChatPresetRepository(client *dbent.Client) service.ChatPresetRepository 
 }
 
 func chatPresetRecord(row *dbent.ChatModelPreset) *service.ChatModelPreset {
-	return &service.ChatModelPreset{ID: row.ID, UserID: row.UserID, GroupID: row.GroupID, Model: row.Model, DisplayName: row.DisplayName, SortOrder: row.SortOrder, IsDefault: row.IsDefault}
+	return &service.ChatModelPreset{ID: row.ID, UserID: row.UserID, GroupID: row.GroupID, Model: row.Model, DisplayName: row.DisplayName, SortOrder: row.SortOrder, IsDefault: row.IsDefault, NormalReasoningEffort: row.NormalReasoningEffort, ThinkingReasoningEffort: row.ThinkingReasoningEffort}
 }
 
 func (r *chatRepository) ListPresets(ctx context.Context, userID int64) ([]service.ChatModelPreset, error) {
@@ -103,6 +103,12 @@ func (r *chatRepository) UpdatePreset(ctx context.Context, userID int64, id uuid
 		}
 		if patch.IsDefault != nil {
 			update.SetIsDefault(*patch.IsDefault)
+		}
+		if patch.NormalReasoningEffort != nil {
+			update.SetNormalReasoningEffort(*patch.NormalReasoningEffort)
+		}
+		if patch.ThinkingReasoningEffort != nil {
+			update.SetThinkingReasoningEffort(*patch.ThinkingReasoningEffort)
 		}
 		if _, err = update.Save(ctx); err != nil {
 			return err

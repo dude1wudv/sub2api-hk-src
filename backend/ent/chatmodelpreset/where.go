@@ -96,6 +96,16 @@ func IsDefault(v bool) predicate.ChatModelPreset {
 	return predicate.ChatModelPreset(sql.FieldEQ(FieldIsDefault, v))
 }
 
+// NormalReasoningEffort applies equality check predicate on the "normal_reasoning_effort" field. It's identical to NormalReasoningEffortEQ.
+func NormalReasoningEffort(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldEQ(FieldNormalReasoningEffort, v))
+}
+
+// ThinkingReasoningEffort applies equality check predicate on the "thinking_reasoning_effort" field. It's identical to ThinkingReasoningEffortEQ.
+func ThinkingReasoningEffort(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldEQ(FieldThinkingReasoningEffort, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.ChatModelPreset {
 	return predicate.ChatModelPreset(sql.FieldEQ(FieldCreatedAt, v))
@@ -394,6 +404,136 @@ func IsDefaultEQ(v bool) predicate.ChatModelPreset {
 // IsDefaultNEQ applies the NEQ predicate on the "is_default" field.
 func IsDefaultNEQ(v bool) predicate.ChatModelPreset {
 	return predicate.ChatModelPreset(sql.FieldNEQ(FieldIsDefault, v))
+}
+
+// NormalReasoningEffortEQ applies the EQ predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortEQ(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldEQ(FieldNormalReasoningEffort, v))
+}
+
+// NormalReasoningEffortNEQ applies the NEQ predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortNEQ(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldNEQ(FieldNormalReasoningEffort, v))
+}
+
+// NormalReasoningEffortIn applies the In predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortIn(vs ...string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldIn(FieldNormalReasoningEffort, vs...))
+}
+
+// NormalReasoningEffortNotIn applies the NotIn predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortNotIn(vs ...string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldNotIn(FieldNormalReasoningEffort, vs...))
+}
+
+// NormalReasoningEffortGT applies the GT predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortGT(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldGT(FieldNormalReasoningEffort, v))
+}
+
+// NormalReasoningEffortGTE applies the GTE predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortGTE(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldGTE(FieldNormalReasoningEffort, v))
+}
+
+// NormalReasoningEffortLT applies the LT predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortLT(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldLT(FieldNormalReasoningEffort, v))
+}
+
+// NormalReasoningEffortLTE applies the LTE predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortLTE(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldLTE(FieldNormalReasoningEffort, v))
+}
+
+// NormalReasoningEffortContains applies the Contains predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortContains(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldContains(FieldNormalReasoningEffort, v))
+}
+
+// NormalReasoningEffortHasPrefix applies the HasPrefix predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortHasPrefix(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldHasPrefix(FieldNormalReasoningEffort, v))
+}
+
+// NormalReasoningEffortHasSuffix applies the HasSuffix predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortHasSuffix(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldHasSuffix(FieldNormalReasoningEffort, v))
+}
+
+// NormalReasoningEffortEqualFold applies the EqualFold predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortEqualFold(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldEqualFold(FieldNormalReasoningEffort, v))
+}
+
+// NormalReasoningEffortContainsFold applies the ContainsFold predicate on the "normal_reasoning_effort" field.
+func NormalReasoningEffortContainsFold(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldContainsFold(FieldNormalReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortEQ applies the EQ predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortEQ(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldEQ(FieldThinkingReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortNEQ applies the NEQ predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortNEQ(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldNEQ(FieldThinkingReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortIn applies the In predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortIn(vs ...string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldIn(FieldThinkingReasoningEffort, vs...))
+}
+
+// ThinkingReasoningEffortNotIn applies the NotIn predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortNotIn(vs ...string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldNotIn(FieldThinkingReasoningEffort, vs...))
+}
+
+// ThinkingReasoningEffortGT applies the GT predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortGT(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldGT(FieldThinkingReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortGTE applies the GTE predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortGTE(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldGTE(FieldThinkingReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortLT applies the LT predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortLT(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldLT(FieldThinkingReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortLTE applies the LTE predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortLTE(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldLTE(FieldThinkingReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortContains applies the Contains predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortContains(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldContains(FieldThinkingReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortHasPrefix applies the HasPrefix predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortHasPrefix(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldHasPrefix(FieldThinkingReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortHasSuffix applies the HasSuffix predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortHasSuffix(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldHasSuffix(FieldThinkingReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortEqualFold applies the EqualFold predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortEqualFold(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldEqualFold(FieldThinkingReasoningEffort, v))
+}
+
+// ThinkingReasoningEffortContainsFold applies the ContainsFold predicate on the "thinking_reasoning_effort" field.
+func ThinkingReasoningEffortContainsFold(v string) predicate.ChatModelPreset {
+	return predicate.ChatModelPreset(sql.FieldContainsFold(FieldThinkingReasoningEffort, v))
 }
 
 // HasUser applies the HasEdge predicate on the "user" edge.

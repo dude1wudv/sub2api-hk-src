@@ -1129,6 +1129,18 @@ func init() {
 	chatmodelpresetDescIsDefault := chatmodelpresetFields[6].Descriptor()
 	// chatmodelpreset.DefaultIsDefault holds the default value on creation for the is_default field.
 	chatmodelpreset.DefaultIsDefault = chatmodelpresetDescIsDefault.Default.(bool)
+	// chatmodelpresetDescNormalReasoningEffort is the schema descriptor for normal_reasoning_effort field.
+	chatmodelpresetDescNormalReasoningEffort := chatmodelpresetFields[7].Descriptor()
+	// chatmodelpreset.DefaultNormalReasoningEffort holds the default value on creation for the normal_reasoning_effort field.
+	chatmodelpreset.DefaultNormalReasoningEffort = chatmodelpresetDescNormalReasoningEffort.Default.(string)
+	// chatmodelpreset.NormalReasoningEffortValidator is a validator for the "normal_reasoning_effort" field. It is called by the builders before save.
+	chatmodelpreset.NormalReasoningEffortValidator = chatmodelpresetDescNormalReasoningEffort.Validators[0].(func(string) error)
+	// chatmodelpresetDescThinkingReasoningEffort is the schema descriptor for thinking_reasoning_effort field.
+	chatmodelpresetDescThinkingReasoningEffort := chatmodelpresetFields[8].Descriptor()
+	// chatmodelpreset.DefaultThinkingReasoningEffort holds the default value on creation for the thinking_reasoning_effort field.
+	chatmodelpreset.DefaultThinkingReasoningEffort = chatmodelpresetDescThinkingReasoningEffort.Default.(string)
+	// chatmodelpreset.ThinkingReasoningEffortValidator is a validator for the "thinking_reasoning_effort" field. It is called by the builders before save.
+	chatmodelpreset.ThinkingReasoningEffortValidator = chatmodelpresetDescThinkingReasoningEffort.Validators[0].(func(string) error)
 	// chatmodelpresetDescID is the schema descriptor for id field.
 	chatmodelpresetDescID := chatmodelpresetFields[0].Descriptor()
 	// chatmodelpreset.DefaultID holds the default value on creation for the id field.

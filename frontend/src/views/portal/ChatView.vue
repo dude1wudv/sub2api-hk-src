@@ -4,12 +4,25 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { ChatHostBridge } from '@/api/chatBridge'
+import { useVisualViewport } from '@/composables/useVisualViewport'
+import { useScrollLock } from '@/composables/useScrollLock'
 
 const auth = useAuthStore()
 const router = useRouter()
 const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const frame = ref<HTMLIFrameElement | null>(null)
+// An iframe cannot observe the top-level keyboard viewport. Resize its host
+// without reloading it, so focus, drafts and active generations stay intact.
+const viewport = useVisualViewport(true)
+useScrollLock(true)
+const viewportStyle = computed(() => {
+  const rect = viewport.value
+  if (window.visualViewport && window.visualViewport.scale !== 1) return undefined
+  return rect.width > 0 && rect.height > 0
+    ? { top: `${rect.top}px`, left: `${rect.left}px`, width: `${rect.width}px`, height: `${rect.height}px` }
+    : undefined
+})
 const sessionUserID = ref<number | null>(auth.user?.id ?? null)
 const signingOut = ref(false)
 const bridge = new ChatHostBridge({
@@ -47,8 +60,8 @@ onBeforeUnmount(() => { stopActions(); bridge.destroy() })
 </script>
 
 <template>
-  <!-- No app shell or fixed overlay: App.vue's toast/announcement/compliance layers remain mounted. -->
-  <main class="chat-host" :aria-label="zh ? '站内聊天' : 'Web chat'">
+  <!-- No app shell: App.vue's toast/announcement/compliance layers remain mounted. -->
+  <main class="chat-host" :style="viewportStyle" :aria-label="zh ? '站内聊天' : 'Web chat'">
     <iframe
       v-if="sessionUserID && !signingOut"
       :key="sessionUserID"
@@ -69,6 +82,10 @@ onBeforeUnmount(() => { stopActions(); bridge.destroy() })
 
 <style scoped>
 .chat-host {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   height: 100vh;

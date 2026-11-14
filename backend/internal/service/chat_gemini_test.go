@@ -87,13 +87,14 @@ func TestChatGeminiPathsAreClosed(t *testing.T) {
 }
 
 func TestChatGeminiThinkingUsesModelRules(t *testing.T) {
-	require.Nil(t, chatGeminiThinking("unknown-alias", true))
-	require.Equal(t, 0, chatGeminiThinking("gemini-2.5-flash", false)["thinkingBudget"])
-	require.Equal(t, 128, chatGeminiThinking("gemini-2.5-pro", false)["thinkingBudget"])
-	require.Equal(t, "low", chatGeminiThinking("gemini-3-pro", false)["thinkingLevel"])
-	require.NotContains(t, chatGeminiThinking("gemini-3-pro", true), "thinkingBudget")
-	require.Equal(t, true, chatGeminiThinking("gemini-3-pro", true)["includeThoughts"])
-	require.NotContains(t, chatGeminiThinking("gemini-3-pro-high", false), "thinkingLevel")
+	require.Nil(t, chatGeminiThinking("unknown-alias", "high", true))
+	require.Equal(t, 1024, chatGeminiThinking("gemini-2.5-flash", "low", false)["thinkingBudget"])
+	require.Equal(t, 1024, chatGeminiThinking("gemini-2.5-pro", "low", false)["thinkingBudget"])
+	require.Equal(t, "low", chatGeminiThinking("gemini-3-pro", "low", false)["thinkingLevel"])
+	require.Equal(t, "high", chatGeminiThinking("gemini-3-pro", "high", true)["thinkingLevel"])
+	require.NotContains(t, chatGeminiThinking("gemini-3-pro", "high", true), "thinkingBudget")
+	require.Equal(t, true, chatGeminiThinking("gemini-3-pro", "high", true)["includeThoughts"])
+	require.NotContains(t, chatGeminiThinking("gemini-3-pro-high", "low", false), "thinkingLevel")
 }
 
 func TestChatGeminiRefusalsAndUnexpectedTools(t *testing.T) {

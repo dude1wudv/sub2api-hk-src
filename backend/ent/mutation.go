@@ -25257,24 +25257,26 @@ func (m *ChatImportMutation) ResetEdge(name string) error {
 // ChatModelPresetMutation represents an operation that mutates the ChatModelPreset nodes in the graph.
 type ChatModelPresetMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *uuid.UUID
-	created_at    *time.Time
-	updated_at    *time.Time
-	model         *string
-	display_name  *string
-	sort_order    *int
-	addsort_order *int
-	is_default    *bool
-	clearedFields map[string]struct{}
-	user          *int64
-	cleareduser   bool
-	group         *int64
-	clearedgroup  bool
-	done          bool
-	oldValue      func(context.Context) (*ChatModelPreset, error)
-	predicates    []predicate.ChatModelPreset
+	op                        Op
+	typ                       string
+	id                        *uuid.UUID
+	created_at                *time.Time
+	updated_at                *time.Time
+	model                     *string
+	display_name              *string
+	sort_order                *int
+	addsort_order             *int
+	is_default                *bool
+	normal_reasoning_effort   *string
+	thinking_reasoning_effort *string
+	clearedFields             map[string]struct{}
+	user                      *int64
+	cleareduser               bool
+	group                     *int64
+	clearedgroup              bool
+	done                      bool
+	oldValue                  func(context.Context) (*ChatModelPreset, error)
+	predicates                []predicate.ChatModelPreset
 }
 
 var _ ent.Mutation = (*ChatModelPresetMutation)(nil)
@@ -25689,6 +25691,78 @@ func (m *ChatModelPresetMutation) ResetIsDefault() {
 	m.is_default = nil
 }
 
+// SetNormalReasoningEffort sets the "normal_reasoning_effort" field.
+func (m *ChatModelPresetMutation) SetNormalReasoningEffort(s string) {
+	m.normal_reasoning_effort = &s
+}
+
+// NormalReasoningEffort returns the value of the "normal_reasoning_effort" field in the mutation.
+func (m *ChatModelPresetMutation) NormalReasoningEffort() (r string, exists bool) {
+	v := m.normal_reasoning_effort
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNormalReasoningEffort returns the old "normal_reasoning_effort" field's value of the ChatModelPreset entity.
+// If the ChatModelPreset object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatModelPresetMutation) OldNormalReasoningEffort(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNormalReasoningEffort is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNormalReasoningEffort requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNormalReasoningEffort: %w", err)
+	}
+	return oldValue.NormalReasoningEffort, nil
+}
+
+// ResetNormalReasoningEffort resets all changes to the "normal_reasoning_effort" field.
+func (m *ChatModelPresetMutation) ResetNormalReasoningEffort() {
+	m.normal_reasoning_effort = nil
+}
+
+// SetThinkingReasoningEffort sets the "thinking_reasoning_effort" field.
+func (m *ChatModelPresetMutation) SetThinkingReasoningEffort(s string) {
+	m.thinking_reasoning_effort = &s
+}
+
+// ThinkingReasoningEffort returns the value of the "thinking_reasoning_effort" field in the mutation.
+func (m *ChatModelPresetMutation) ThinkingReasoningEffort() (r string, exists bool) {
+	v := m.thinking_reasoning_effort
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThinkingReasoningEffort returns the old "thinking_reasoning_effort" field's value of the ChatModelPreset entity.
+// If the ChatModelPreset object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatModelPresetMutation) OldThinkingReasoningEffort(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThinkingReasoningEffort is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThinkingReasoningEffort requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThinkingReasoningEffort: %w", err)
+	}
+	return oldValue.ThinkingReasoningEffort, nil
+}
+
+// ResetThinkingReasoningEffort resets all changes to the "thinking_reasoning_effort" field.
+func (m *ChatModelPresetMutation) ResetThinkingReasoningEffort() {
+	m.thinking_reasoning_effort = nil
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *ChatModelPresetMutation) ClearUser() {
 	m.cleareduser = true
@@ -25777,7 +25851,7 @@ func (m *ChatModelPresetMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChatModelPresetMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 10)
 	if m.created_at != nil {
 		fields = append(fields, chatmodelpreset.FieldCreatedAt)
 	}
@@ -25801,6 +25875,12 @@ func (m *ChatModelPresetMutation) Fields() []string {
 	}
 	if m.is_default != nil {
 		fields = append(fields, chatmodelpreset.FieldIsDefault)
+	}
+	if m.normal_reasoning_effort != nil {
+		fields = append(fields, chatmodelpreset.FieldNormalReasoningEffort)
+	}
+	if m.thinking_reasoning_effort != nil {
+		fields = append(fields, chatmodelpreset.FieldThinkingReasoningEffort)
 	}
 	return fields
 }
@@ -25826,6 +25906,10 @@ func (m *ChatModelPresetMutation) Field(name string) (ent.Value, bool) {
 		return m.SortOrder()
 	case chatmodelpreset.FieldIsDefault:
 		return m.IsDefault()
+	case chatmodelpreset.FieldNormalReasoningEffort:
+		return m.NormalReasoningEffort()
+	case chatmodelpreset.FieldThinkingReasoningEffort:
+		return m.ThinkingReasoningEffort()
 	}
 	return nil, false
 }
@@ -25851,6 +25935,10 @@ func (m *ChatModelPresetMutation) OldField(ctx context.Context, name string) (en
 		return m.OldSortOrder(ctx)
 	case chatmodelpreset.FieldIsDefault:
 		return m.OldIsDefault(ctx)
+	case chatmodelpreset.FieldNormalReasoningEffort:
+		return m.OldNormalReasoningEffort(ctx)
+	case chatmodelpreset.FieldThinkingReasoningEffort:
+		return m.OldThinkingReasoningEffort(ctx)
 	}
 	return nil, fmt.Errorf("unknown ChatModelPreset field %s", name)
 }
@@ -25915,6 +26003,20 @@ func (m *ChatModelPresetMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetIsDefault(v)
+		return nil
+	case chatmodelpreset.FieldNormalReasoningEffort:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNormalReasoningEffort(v)
+		return nil
+	case chatmodelpreset.FieldThinkingReasoningEffort:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThinkingReasoningEffort(v)
 		return nil
 	}
 	return fmt.Errorf("unknown ChatModelPreset field %s", name)
@@ -26003,6 +26105,12 @@ func (m *ChatModelPresetMutation) ResetField(name string) error {
 		return nil
 	case chatmodelpreset.FieldIsDefault:
 		m.ResetIsDefault()
+		return nil
+	case chatmodelpreset.FieldNormalReasoningEffort:
+		m.ResetNormalReasoningEffort()
+		return nil
+	case chatmodelpreset.FieldThinkingReasoningEffort:
+		m.ResetThinkingReasoningEffort()
 		return nil
 	}
 	return fmt.Errorf("unknown ChatModelPreset field %s", name)

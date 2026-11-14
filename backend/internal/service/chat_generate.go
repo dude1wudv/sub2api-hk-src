@@ -125,6 +125,7 @@ func (s *ChatService) Generate(ctx context.Context, userID int64, sessionID uuid
 	if err != nil {
 		return err
 	}
+	options = prepared.options
 	key, err := s.credentials.Ensure(ctx, userID, preset.GroupID)
 	if err != nil {
 		return err

@@ -112,6 +112,34 @@ func (_u *ChatModelPresetUpdate) SetNillableIsDefault(v *bool) *ChatModelPresetU
 	return _u
 }
 
+// SetNormalReasoningEffort sets the "normal_reasoning_effort" field.
+func (_u *ChatModelPresetUpdate) SetNormalReasoningEffort(v string) *ChatModelPresetUpdate {
+	_u.mutation.SetNormalReasoningEffort(v)
+	return _u
+}
+
+// SetNillableNormalReasoningEffort sets the "normal_reasoning_effort" field if the given value is not nil.
+func (_u *ChatModelPresetUpdate) SetNillableNormalReasoningEffort(v *string) *ChatModelPresetUpdate {
+	if v != nil {
+		_u.SetNormalReasoningEffort(*v)
+	}
+	return _u
+}
+
+// SetThinkingReasoningEffort sets the "thinking_reasoning_effort" field.
+func (_u *ChatModelPresetUpdate) SetThinkingReasoningEffort(v string) *ChatModelPresetUpdate {
+	_u.mutation.SetThinkingReasoningEffort(v)
+	return _u
+}
+
+// SetNillableThinkingReasoningEffort sets the "thinking_reasoning_effort" field if the given value is not nil.
+func (_u *ChatModelPresetUpdate) SetNillableThinkingReasoningEffort(v *string) *ChatModelPresetUpdate {
+	if v != nil {
+		_u.SetThinkingReasoningEffort(*v)
+	}
+	return _u
+}
+
 // SetGroup sets the "group" edge to the Group entity.
 func (_u *ChatModelPresetUpdate) SetGroup(v *Group) *ChatModelPresetUpdate {
 	return _u.SetGroupID(v.ID)
@@ -176,6 +204,16 @@ func (_u *ChatModelPresetUpdate) check() error {
 			return &ValidationError{Name: "display_name", err: fmt.Errorf(`ent: validator failed for field "ChatModelPreset.display_name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.NormalReasoningEffort(); ok {
+		if err := chatmodelpreset.NormalReasoningEffortValidator(v); err != nil {
+			return &ValidationError{Name: "normal_reasoning_effort", err: fmt.Errorf(`ent: validator failed for field "ChatModelPreset.normal_reasoning_effort": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ThinkingReasoningEffort(); ok {
+		if err := chatmodelpreset.ThinkingReasoningEffortValidator(v); err != nil {
+			return &ValidationError{Name: "thinking_reasoning_effort", err: fmt.Errorf(`ent: validator failed for field "ChatModelPreset.thinking_reasoning_effort": %w`, err)}
+		}
+	}
 	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ChatModelPreset.user"`)
 	}
@@ -214,6 +252,12 @@ func (_u *ChatModelPresetUpdate) sqlSave(ctx context.Context) (_node int, err er
 	}
 	if value, ok := _u.mutation.IsDefault(); ok {
 		_spec.SetField(chatmodelpreset.FieldIsDefault, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.NormalReasoningEffort(); ok {
+		_spec.SetField(chatmodelpreset.FieldNormalReasoningEffort, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ThinkingReasoningEffort(); ok {
+		_spec.SetField(chatmodelpreset.FieldThinkingReasoningEffort, field.TypeString, value)
 	}
 	if _u.mutation.GroupCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -347,6 +391,34 @@ func (_u *ChatModelPresetUpdateOne) SetNillableIsDefault(v *bool) *ChatModelPres
 	return _u
 }
 
+// SetNormalReasoningEffort sets the "normal_reasoning_effort" field.
+func (_u *ChatModelPresetUpdateOne) SetNormalReasoningEffort(v string) *ChatModelPresetUpdateOne {
+	_u.mutation.SetNormalReasoningEffort(v)
+	return _u
+}
+
+// SetNillableNormalReasoningEffort sets the "normal_reasoning_effort" field if the given value is not nil.
+func (_u *ChatModelPresetUpdateOne) SetNillableNormalReasoningEffort(v *string) *ChatModelPresetUpdateOne {
+	if v != nil {
+		_u.SetNormalReasoningEffort(*v)
+	}
+	return _u
+}
+
+// SetThinkingReasoningEffort sets the "thinking_reasoning_effort" field.
+func (_u *ChatModelPresetUpdateOne) SetThinkingReasoningEffort(v string) *ChatModelPresetUpdateOne {
+	_u.mutation.SetThinkingReasoningEffort(v)
+	return _u
+}
+
+// SetNillableThinkingReasoningEffort sets the "thinking_reasoning_effort" field if the given value is not nil.
+func (_u *ChatModelPresetUpdateOne) SetNillableThinkingReasoningEffort(v *string) *ChatModelPresetUpdateOne {
+	if v != nil {
+		_u.SetThinkingReasoningEffort(*v)
+	}
+	return _u
+}
+
 // SetGroup sets the "group" edge to the Group entity.
 func (_u *ChatModelPresetUpdateOne) SetGroup(v *Group) *ChatModelPresetUpdateOne {
 	return _u.SetGroupID(v.ID)
@@ -424,6 +496,16 @@ func (_u *ChatModelPresetUpdateOne) check() error {
 			return &ValidationError{Name: "display_name", err: fmt.Errorf(`ent: validator failed for field "ChatModelPreset.display_name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.NormalReasoningEffort(); ok {
+		if err := chatmodelpreset.NormalReasoningEffortValidator(v); err != nil {
+			return &ValidationError{Name: "normal_reasoning_effort", err: fmt.Errorf(`ent: validator failed for field "ChatModelPreset.normal_reasoning_effort": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ThinkingReasoningEffort(); ok {
+		if err := chatmodelpreset.ThinkingReasoningEffortValidator(v); err != nil {
+			return &ValidationError{Name: "thinking_reasoning_effort", err: fmt.Errorf(`ent: validator failed for field "ChatModelPreset.thinking_reasoning_effort": %w`, err)}
+		}
+	}
 	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ChatModelPreset.user"`)
 	}
@@ -479,6 +561,12 @@ func (_u *ChatModelPresetUpdateOne) sqlSave(ctx context.Context) (_node *ChatMod
 	}
 	if value, ok := _u.mutation.IsDefault(); ok {
 		_spec.SetField(chatmodelpreset.FieldIsDefault, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.NormalReasoningEffort(); ok {
+		_spec.SetField(chatmodelpreset.FieldNormalReasoningEffort, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ThinkingReasoningEffort(); ok {
+		_spec.SetField(chatmodelpreset.FieldThinkingReasoningEffort, field.TypeString, value)
 	}
 	if _u.mutation.GroupCleared() {
 		edge := &sqlgraph.EdgeSpec{

@@ -31,6 +31,10 @@ const (
 	FieldSortOrder = "sort_order"
 	// FieldIsDefault holds the string denoting the is_default field in the database.
 	FieldIsDefault = "is_default"
+	// FieldNormalReasoningEffort holds the string denoting the normal_reasoning_effort field in the database.
+	FieldNormalReasoningEffort = "normal_reasoning_effort"
+	// FieldThinkingReasoningEffort holds the string denoting the thinking_reasoning_effort field in the database.
+	FieldThinkingReasoningEffort = "thinking_reasoning_effort"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeGroup holds the string denoting the group edge name in mutations.
@@ -64,6 +68,8 @@ var Columns = []string{
 	FieldDisplayName,
 	FieldSortOrder,
 	FieldIsDefault,
+	FieldNormalReasoningEffort,
+	FieldThinkingReasoningEffort,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -93,6 +99,14 @@ var (
 	DefaultSortOrder int
 	// DefaultIsDefault holds the default value on creation for the "is_default" field.
 	DefaultIsDefault bool
+	// DefaultNormalReasoningEffort holds the default value on creation for the "normal_reasoning_effort" field.
+	DefaultNormalReasoningEffort string
+	// NormalReasoningEffortValidator is a validator for the "normal_reasoning_effort" field. It is called by the builders before save.
+	NormalReasoningEffortValidator func(string) error
+	// DefaultThinkingReasoningEffort holds the default value on creation for the "thinking_reasoning_effort" field.
+	DefaultThinkingReasoningEffort string
+	// ThinkingReasoningEffortValidator is a validator for the "thinking_reasoning_effort" field. It is called by the builders before save.
+	ThinkingReasoningEffortValidator func(string) error
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
@@ -143,6 +157,16 @@ func BySortOrder(opts ...sql.OrderTermOption) OrderOption {
 // ByIsDefault orders the results by the is_default field.
 func ByIsDefault(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsDefault, opts...).ToFunc()
+}
+
+// ByNormalReasoningEffort orders the results by the normal_reasoning_effort field.
+func ByNormalReasoningEffort(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldNormalReasoningEffort, opts...).ToFunc()
+}
+
+// ByThinkingReasoningEffort orders the results by the thinking_reasoning_effort field.
+func ByThinkingReasoningEffort(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThinkingReasoningEffort, opts...).ToFunc()
 }
 
 // ByUserField orders the results by user field.

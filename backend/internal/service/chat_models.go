@@ -36,6 +36,7 @@ type ChatCapabilities struct {
 	NativeSearch             bool              `json:"native_search"`
 	NativeReadURL            bool              `json:"native_read_url"`
 	Reasoning                bool              `json:"reasoning"`
+	ReasoningEfforts         []string          `json:"reasoning_efforts,omitempty"`
 	ToolCall                 bool              `json:"tool_call"`
 	Search                   bool              `json:"search"`
 	ReadURL                  bool              `json:"read_url"`
@@ -252,6 +253,11 @@ func (s *ChatModelService) CreatePreset(ctx context.Context, userID, groupID int
 }
 
 func (s *ChatModelService) UpdatePreset(ctx context.Context, userID int64, id uuid.UUID, patch ChatPresetPatch) (*ChatModelPreset, error) {
+	for _, effort := range []*string{patch.NormalReasoningEffort, patch.ThinkingReasoningEffort} {
+		if effort != nil && !validChatReasoningEffort(*effort) {
+			return nil, ErrChatInvalid
+		}
+	}
 	current, err := s.repo.GetPreset(ctx, userID, id)
 	if err != nil {
 		return nil, err
@@ -268,13 +274,23 @@ func (s *ChatModelService) UpdatePreset(ctx context.Context, userID int64, id uu
 	if err := validateChatPreset(current.GroupID, current.Model, current.DisplayName); err != nil {
 		return nil, err
 	}
-	if patch.GroupID != nil || patch.Model != nil || (patch.IsDefault != nil && *patch.IsDefault) {
-		if _, _, err := s.resolveModel(ctx, userID, current.GroupID, current.Model); err != nil {
+	bindingChanged := patch.GroupID != nil || patch.Model != nil || (patch.IsDefault != nil && *patch.IsDefault)
+	effortChanged := patch.NormalReasoningEffort != nil || patch.ThinkingReasoningEffort != nil
+	if bindingChanged || effortChanged {
+		model, _, err := s.resolveModel(ctx, userID, current.GroupID, current.Model)
+		if err != nil {
 			return nil, err
 		}
-		// Persist the exact pair validated above, including a partially changed binding.
-		patch.GroupID = &current.GroupID
-		patch.Model = &current.Model
+		for _, effort := range []*string{patch.NormalReasoningEffort, patch.ThinkingReasoningEffort} {
+			if effort != nil && !slices.Contains(chatReasoningEfforts(current.Model, model.Capabilities), *effort) {
+				return nil, ErrChatCapability
+			}
+		}
+		if bindingChanged {
+			// Persist the exact pair validated above, including a partially changed binding.
+			patch.GroupID = &current.GroupID
+			patch.Model = &current.Model
+		}
 	}
 	return s.repo.UpdatePreset(ctx, userID, id, patch)
 }

@@ -30,6 +30,8 @@ func (ChatModelPreset) Fields() []ent.Field {
 		field.String("display_name").MaxLen(200).Default(""),
 		field.Int("sort_order").Default(0),
 		field.Bool("is_default").Default(false),
+		field.String("normal_reasoning_effort").MaxLen(6).Default("low"),
+		field.String("thinking_reasoning_effort").MaxLen(6).Default("high"),
 	}
 }
 

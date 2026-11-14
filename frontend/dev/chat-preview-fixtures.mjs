@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 export function createChatPreview(fixtures, { ok, error, unavailable, readJson }) {
   const owners = new Map()
   const capability = { transport: 'chat_completions', image_input: false, document_input: false, native_deepseek_extensions: false, native_files: false, native_search: false, native_read_url: false, reasoning: true, tool_call: false, search: false, read_url: false, voice: false, reasons: { image_input: '合成文本模型不支持图片', document_input: '合成文本模型不支持文档', search: '合成模型未配置搜索' } }
+  capability.reasoning_efforts = ['low', 'medium', 'high']
   const model = { id: 'preview-chat-model', pricing: { billing_mode: 'token', input_price: 0.000001, output_price: 0.000002 }, capabilities: capability, available: true, unavailable_reason: '' }
   const groupView = id => { const group = fixtures.groups.find(group => group.id === id); return group && { ...group, user_rate_multiplier: 1 } }
   return async (request, response, user, path, params) => {
@@ -20,7 +21,7 @@ export function createChatPreview(fixtures, { ok, error, unavailable, readJson }
         const body = await readJson(request), group = groupView(body.group_id)
         if (!group || body.model !== model.id) return fail(404, 'CHAT_NOT_FOUND', 'Synthetic model not found')
         let preset = state.presets.find(item => item.group_id === body.group_id && item.model === body.model)
-        if (!preset) { preset = { id: randomUUID(), group_id: group.id, group, model: model.id, display_name: body.display_name || '', sort_order: state.presets.length, is_default: false, available: true, unavailable_reason: '', capabilities: capability }; state.presets.push(preset) }
+        if (!preset) { preset = { id: randomUUID(), group_id: group.id, group, model: model.id, display_name: body.display_name || '', sort_order: state.presets.length, is_default: false, normal_reasoning_effort: 'low', thinking_reasoning_effort: 'high', available: true, unavailable_reason: '', capabilities: capability }; state.presets.push(preset) }
         return ok(response, preset)
       }
     }
@@ -34,7 +35,13 @@ export function createChatPreview(fixtures, { ok, error, unavailable, readJson }
       const preset = state.presets.find(item => item.id === id)
       if (!preset) return fail(404, 'CHAT_NOT_FOUND', 'Synthetic preset not found')
       if (method === 'DELETE') { state.presets = state.presets.filter(item => item.id !== id); return ok(response,{}) }
-      if (method === 'PATCH') { const body = await readJson(request); if (body.is_default) state.presets.forEach(item => { item.is_default = false }); for (const key of ['display_name','is_default']) if (key in body) preset[key] = body[key]; return ok(response,preset) }
+      if (method === 'PATCH') {
+        const body = await readJson(request)
+        for (const key of ['normal_reasoning_effort', 'thinking_reasoning_effort']) if (key in body && !capability.reasoning_efforts.includes(body[key])) return fail(400, 'CHAT_INVALID_REQUEST', 'Invalid reasoning effort')
+        if (body.is_default) state.presets.forEach(item => { item.is_default = false })
+        for (const key of ['display_name', 'is_default', 'normal_reasoning_effort', 'thinking_reasoning_effort']) if (key in body) preset[key] = body[key]
+        return ok(response, preset)
+      }
     }
     if (path === '/chat/preferences') {
       if (method === 'PUT') state.preferences = await readJson(request)

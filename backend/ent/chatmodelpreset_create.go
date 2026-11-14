@@ -114,6 +114,34 @@ func (_c *ChatModelPresetCreate) SetNillableIsDefault(v *bool) *ChatModelPresetC
 	return _c
 }
 
+// SetNormalReasoningEffort sets the "normal_reasoning_effort" field.
+func (_c *ChatModelPresetCreate) SetNormalReasoningEffort(v string) *ChatModelPresetCreate {
+	_c.mutation.SetNormalReasoningEffort(v)
+	return _c
+}
+
+// SetNillableNormalReasoningEffort sets the "normal_reasoning_effort" field if the given value is not nil.
+func (_c *ChatModelPresetCreate) SetNillableNormalReasoningEffort(v *string) *ChatModelPresetCreate {
+	if v != nil {
+		_c.SetNormalReasoningEffort(*v)
+	}
+	return _c
+}
+
+// SetThinkingReasoningEffort sets the "thinking_reasoning_effort" field.
+func (_c *ChatModelPresetCreate) SetThinkingReasoningEffort(v string) *ChatModelPresetCreate {
+	_c.mutation.SetThinkingReasoningEffort(v)
+	return _c
+}
+
+// SetNillableThinkingReasoningEffort sets the "thinking_reasoning_effort" field if the given value is not nil.
+func (_c *ChatModelPresetCreate) SetNillableThinkingReasoningEffort(v *string) *ChatModelPresetCreate {
+	if v != nil {
+		_c.SetThinkingReasoningEffort(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ChatModelPresetCreate) SetID(v uuid.UUID) *ChatModelPresetCreate {
 	_c.mutation.SetID(v)
@@ -193,6 +221,14 @@ func (_c *ChatModelPresetCreate) defaults() {
 		v := chatmodelpreset.DefaultIsDefault
 		_c.mutation.SetIsDefault(v)
 	}
+	if _, ok := _c.mutation.NormalReasoningEffort(); !ok {
+		v := chatmodelpreset.DefaultNormalReasoningEffort
+		_c.mutation.SetNormalReasoningEffort(v)
+	}
+	if _, ok := _c.mutation.ThinkingReasoningEffort(); !ok {
+		v := chatmodelpreset.DefaultThinkingReasoningEffort
+		_c.mutation.SetThinkingReasoningEffort(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := chatmodelpreset.DefaultID()
 		_c.mutation.SetID(v)
@@ -234,6 +270,22 @@ func (_c *ChatModelPresetCreate) check() error {
 	}
 	if _, ok := _c.mutation.IsDefault(); !ok {
 		return &ValidationError{Name: "is_default", err: errors.New(`ent: missing required field "ChatModelPreset.is_default"`)}
+	}
+	if _, ok := _c.mutation.NormalReasoningEffort(); !ok {
+		return &ValidationError{Name: "normal_reasoning_effort", err: errors.New(`ent: missing required field "ChatModelPreset.normal_reasoning_effort"`)}
+	}
+	if v, ok := _c.mutation.NormalReasoningEffort(); ok {
+		if err := chatmodelpreset.NormalReasoningEffortValidator(v); err != nil {
+			return &ValidationError{Name: "normal_reasoning_effort", err: fmt.Errorf(`ent: validator failed for field "ChatModelPreset.normal_reasoning_effort": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.ThinkingReasoningEffort(); !ok {
+		return &ValidationError{Name: "thinking_reasoning_effort", err: errors.New(`ent: missing required field "ChatModelPreset.thinking_reasoning_effort"`)}
+	}
+	if v, ok := _c.mutation.ThinkingReasoningEffort(); ok {
+		if err := chatmodelpreset.ThinkingReasoningEffortValidator(v); err != nil {
+			return &ValidationError{Name: "thinking_reasoning_effort", err: fmt.Errorf(`ent: validator failed for field "ChatModelPreset.thinking_reasoning_effort": %w`, err)}
+		}
 	}
 	if len(_c.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "ChatModelPreset.user"`)}
@@ -300,6 +352,14 @@ func (_c *ChatModelPresetCreate) createSpec() (*ChatModelPreset, *sqlgraph.Creat
 	if value, ok := _c.mutation.IsDefault(); ok {
 		_spec.SetField(chatmodelpreset.FieldIsDefault, field.TypeBool, value)
 		_node.IsDefault = value
+	}
+	if value, ok := _c.mutation.NormalReasoningEffort(); ok {
+		_spec.SetField(chatmodelpreset.FieldNormalReasoningEffort, field.TypeString, value)
+		_node.NormalReasoningEffort = value
+	}
+	if value, ok := _c.mutation.ThinkingReasoningEffort(); ok {
+		_spec.SetField(chatmodelpreset.FieldThinkingReasoningEffort, field.TypeString, value)
+		_node.ThinkingReasoningEffort = value
 	}
 	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -465,6 +525,30 @@ func (u *ChatModelPresetUpsert) UpdateIsDefault() *ChatModelPresetUpsert {
 	return u
 }
 
+// SetNormalReasoningEffort sets the "normal_reasoning_effort" field.
+func (u *ChatModelPresetUpsert) SetNormalReasoningEffort(v string) *ChatModelPresetUpsert {
+	u.Set(chatmodelpreset.FieldNormalReasoningEffort, v)
+	return u
+}
+
+// UpdateNormalReasoningEffort sets the "normal_reasoning_effort" field to the value that was provided on create.
+func (u *ChatModelPresetUpsert) UpdateNormalReasoningEffort() *ChatModelPresetUpsert {
+	u.SetExcluded(chatmodelpreset.FieldNormalReasoningEffort)
+	return u
+}
+
+// SetThinkingReasoningEffort sets the "thinking_reasoning_effort" field.
+func (u *ChatModelPresetUpsert) SetThinkingReasoningEffort(v string) *ChatModelPresetUpsert {
+	u.Set(chatmodelpreset.FieldThinkingReasoningEffort, v)
+	return u
+}
+
+// UpdateThinkingReasoningEffort sets the "thinking_reasoning_effort" field to the value that was provided on create.
+func (u *ChatModelPresetUpsert) UpdateThinkingReasoningEffort() *ChatModelPresetUpsert {
+	u.SetExcluded(chatmodelpreset.FieldThinkingReasoningEffort)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
@@ -607,6 +691,34 @@ func (u *ChatModelPresetUpsertOne) SetIsDefault(v bool) *ChatModelPresetUpsertOn
 func (u *ChatModelPresetUpsertOne) UpdateIsDefault() *ChatModelPresetUpsertOne {
 	return u.Update(func(s *ChatModelPresetUpsert) {
 		s.UpdateIsDefault()
+	})
+}
+
+// SetNormalReasoningEffort sets the "normal_reasoning_effort" field.
+func (u *ChatModelPresetUpsertOne) SetNormalReasoningEffort(v string) *ChatModelPresetUpsertOne {
+	return u.Update(func(s *ChatModelPresetUpsert) {
+		s.SetNormalReasoningEffort(v)
+	})
+}
+
+// UpdateNormalReasoningEffort sets the "normal_reasoning_effort" field to the value that was provided on create.
+func (u *ChatModelPresetUpsertOne) UpdateNormalReasoningEffort() *ChatModelPresetUpsertOne {
+	return u.Update(func(s *ChatModelPresetUpsert) {
+		s.UpdateNormalReasoningEffort()
+	})
+}
+
+// SetThinkingReasoningEffort sets the "thinking_reasoning_effort" field.
+func (u *ChatModelPresetUpsertOne) SetThinkingReasoningEffort(v string) *ChatModelPresetUpsertOne {
+	return u.Update(func(s *ChatModelPresetUpsert) {
+		s.SetThinkingReasoningEffort(v)
+	})
+}
+
+// UpdateThinkingReasoningEffort sets the "thinking_reasoning_effort" field to the value that was provided on create.
+func (u *ChatModelPresetUpsertOne) UpdateThinkingReasoningEffort() *ChatModelPresetUpsertOne {
+	return u.Update(func(s *ChatModelPresetUpsert) {
+		s.UpdateThinkingReasoningEffort()
 	})
 }
 
@@ -919,6 +1031,34 @@ func (u *ChatModelPresetUpsertBulk) SetIsDefault(v bool) *ChatModelPresetUpsertB
 func (u *ChatModelPresetUpsertBulk) UpdateIsDefault() *ChatModelPresetUpsertBulk {
 	return u.Update(func(s *ChatModelPresetUpsert) {
 		s.UpdateIsDefault()
+	})
+}
+
+// SetNormalReasoningEffort sets the "normal_reasoning_effort" field.
+func (u *ChatModelPresetUpsertBulk) SetNormalReasoningEffort(v string) *ChatModelPresetUpsertBulk {
+	return u.Update(func(s *ChatModelPresetUpsert) {
+		s.SetNormalReasoningEffort(v)
+	})
+}
+
+// UpdateNormalReasoningEffort sets the "normal_reasoning_effort" field to the value that was provided on create.
+func (u *ChatModelPresetUpsertBulk) UpdateNormalReasoningEffort() *ChatModelPresetUpsertBulk {
+	return u.Update(func(s *ChatModelPresetUpsert) {
+		s.UpdateNormalReasoningEffort()
+	})
+}
+
+// SetThinkingReasoningEffort sets the "thinking_reasoning_effort" field.
+func (u *ChatModelPresetUpsertBulk) SetThinkingReasoningEffort(v string) *ChatModelPresetUpsertBulk {
+	return u.Update(func(s *ChatModelPresetUpsert) {
+		s.SetThinkingReasoningEffort(v)
+	})
+}
+
+// UpdateThinkingReasoningEffort sets the "thinking_reasoning_effort" field to the value that was provided on create.
+func (u *ChatModelPresetUpsertBulk) UpdateThinkingReasoningEffort() *ChatModelPresetUpsertBulk {
+	return u.Update(func(s *ChatModelPresetUpsert) {
+		s.UpdateThinkingReasoningEffort()
 	})
 }
 

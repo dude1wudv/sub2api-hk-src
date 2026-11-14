@@ -39,6 +39,12 @@ func TestChatMigrationConstraints(t *testing.T) {
 	require.False(t, policy.Valid)
 	preset := uuid.New()
 	exec("INSERT INTO chat_model_presets(id,user_id,group_id,model,is_default) VALUES($1,$2,$3,'same-model',true)", preset, owner, groupID)
+	var normalEffort, thinkingEffort string
+	require.NoError(t, tx.QueryRow("SELECT normal_reasoning_effort,thinking_reasoning_effort FROM chat_model_presets WHERE id=$1", preset).Scan(&normalEffort, &thinkingEffort))
+	require.Equal(t, "low", normalEffort)
+	require.Equal(t, "high", thinkingEffort)
+	reject("UPDATE chat_model_presets SET normal_reasoning_effort='none' WHERE id=$1", preset)
+	reject("UPDATE chat_model_presets SET thinking_reasoning_effort='max' WHERE id=$1", preset)
 	reject("INSERT INTO chat_model_presets(id,user_id,group_id,model) VALUES($1,$2,$3,'same-model')", uuid.New(), owner, groupID)
 	reject("INSERT INTO chat_model_presets(id,user_id,group_id,model,is_default) VALUES($1,$2,$3,'different',true)", uuid.New(), owner, groupID)
 	exec("INSERT INTO chat_model_presets(id,user_id,group_id,model,is_default) VALUES($1,$2,$3,'same-model',true)", uuid.New(), other, groupID)

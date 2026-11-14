@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { chatAPI, type ChatCatalog, type ChatCatalogModel, type ChatPresetView } from '@/api/chat'
+import { chatAPI, type ChatCatalog, type ChatCatalogModel, type ChatPresetView, type ChatReasoningEffort } from '@/api/chat'
 import { getAvailable } from '@/api/groups'
 import type { Group } from '@/types'
 import { useAppStore } from '@/stores'
@@ -27,6 +27,11 @@ const error = ref('')
 const catalogError = ref('')
 const editingId = ref<string | null>(null)
 const names = ref<Record<string, string>>({})
+type ReasoningProfile = { normal_reasoning_effort: ChatReasoningEffort; thinking_reasoning_effort: ChatReasoningEffort }
+const reasoning = ref<Record<string, ReasoningProfile>>({})
+const effortOptions = (preset: ChatPresetView): ChatReasoningEffort[] => preset.capabilities.reasoning_efforts || ['low', 'medium', 'high']
+const effortLabel = (effort: ChatReasoningEffort) => ({ low: text('低', 'Low'), medium: text('中', 'Medium'), high: text('高', 'High') })[effort] + ` · ${effort}`
+const reasoningChanged = (preset: ChatPresetView) => reasoning.value[preset.id]?.normal_reasoning_effort !== preset.normal_reasoning_effort || reasoning.value[preset.id]?.thinking_reasoning_effort !== preset.thinking_reasoning_effort
 const editing = computed(() => presets.value.find(preset => preset.id === editingId.value))
 let request: AbortController | undefined
 const initialRequest = new AbortController()
@@ -39,6 +44,7 @@ async function loadPresets() {
   if (disposed) return
   presets.value = value
   names.value = Object.fromEntries(value.map(preset => [preset.id, preset.display_name]))
+  reasoning.value = Object.fromEntries(value.map(preset => [preset.id, { normal_reasoning_effort: preset.normal_reasoning_effort, thinking_reasoning_effort: preset.thinking_reasoning_effort }]))
 }
 async function load() {
   loading.value = true
@@ -164,6 +170,21 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(searchTimer); request?.abo
                 <label class="portal-field" :for="`name-${preset.id}`">{{ text('显示名', 'Display name') }}<input :id="`name-${preset.id}`" v-model="names[preset.id]" maxlength="200" :disabled="saving" :placeholder="preset.model" /></label>
                 <button class="portal-button" :disabled="saving || names[preset.id] === preset.display_name">{{ text('保存', 'Save') }}</button>
               </form>
+              <form v-if="preset.capabilities.reasoning" class="chat-reasoning" :aria-label="text('推理强度', 'Reasoning effort')" @submit.prevent="mutate(() => chatAPI.updatePreset(preset.id, reasoning[preset.id]!))">
+                <fieldset :disabled="saving" :aria-describedby="`reasoning-note-${preset.id}`">
+                  <legend>{{ text('推理强度', 'Reasoning effort') }}</legend>
+                  <div class="chat-reasoning-fields">
+                    <label class="portal-field" :for="`normal-effort-${preset.id}`">{{ text('普通模式', 'Normal mode') }}
+                      <select :id="`normal-effort-${preset.id}`" v-model="reasoning[preset.id]!.normal_reasoning_effort"><option v-for="effort in effortOptions(preset)" :key="effort" :value="effort">{{ effortLabel(effort) }}</option></select>
+                    </label>
+                    <label class="portal-field" :for="`thinking-effort-${preset.id}`">{{ text('深度思考', 'Deep thinking') }}
+                      <select :id="`thinking-effort-${preset.id}`" v-model="reasoning[preset.id]!.thinking_reasoning_effort"><option v-for="effort in effortOptions(preset)" :key="effort" :value="effort">{{ effortLabel(effort) }}</option></select>
+                    </label>
+                    <button class="portal-button secondary" :disabled="saving || !reasoningChanged(preset)">{{ text('保存强度', 'Save effort') }}</button>
+                  </div>
+                </fieldset>
+                <p :id="`reasoning-note-${preset.id}`">{{ text('默认普通 low、深度 high。保存后用于新一轮回答；强度越高可能越慢、费用越高。不同模型按支持的档位或预算映射，固定强度模型以渠道规则为准。', 'Defaults: normal low, deep high. Applies to new replies; higher effort may increase latency and cost. Levels map to each model’s supported tiers or budgets; fixed-effort models follow channel rules.') }}</p>
+              </form>
               <div class="chat-model-actions">
                 <div class="chat-binding-actions">
                   <button class="portal-button secondary" :disabled="saving || !preset.available || preset.is_default" @click="mutate(() => chatAPI.updatePreset(preset.id, { is_default: true }))">{{ text('设为默认', 'Set default') }}</button>
@@ -249,6 +270,12 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(searchTimer); request?.abo
 .chat-rename { display: grid; grid-template-columns: minmax(0, 440px) auto; justify-content: start; align-items: end; gap: 12px; padding: 8px 0 20px; }
 .chat-rename .portal-field { font-size: 14px; }
 .chat-rename input { min-width: 0; font-family: inherit; }
+.chat-reasoning { margin-bottom: 20px; padding: 16px 0; border-top: 1px solid rgb(var(--line)); border-bottom: 1px solid rgb(var(--line)); }
+.chat-reasoning fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.chat-reasoning legend { margin-bottom: 12px; padding: 0; font-size: 14px; font-weight: 600; }
+.chat-reasoning-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)) auto; align-items: end; justify-content: start; gap: 12px; }
+.chat-reasoning .portal-field { font-size: 14px; }
+.chat-reasoning p { max-width: 640px; margin: 10px 0 0; color: rgb(var(--ink-3)); font-size: 13px; line-height: 1.6; }
 .chat-model-actions, .chat-binding-actions, .chat-order-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .chat-model-actions { justify-content: space-between; gap: 16px; }
 .chat-models-page .portal-button { font-size: 14px; box-shadow: none; }
@@ -309,6 +336,9 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(searchTimer); request?.abo
   .chat-manage-label { gap: 2px; }
   .chat-preset-editor { padding: 0 16px 16px; }
   .chat-rename { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .chat-reasoning-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .chat-reasoning-fields .portal-button { grid-column: 1 / -1; justify-self: start; }
+  .chat-reasoning select, .chat-rename input { min-height: 44px; font-size: 16px; }
   .chat-binding-actions { width: 100%; }
   .chat-footnote { padding: 14px 16px; }
   .chat-models-page .portal-button { min-height: 44px; }
