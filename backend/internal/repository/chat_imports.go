@@ -33,7 +33,7 @@ func chatHistoryRevision(ctx context.Context, c *dbent.Client, userID int64) (in
 
 // Include reservations and not-yet-reclaimed staging, not just visible files.
 func chatReservedStorage(ctx context.Context, c *dbent.Client, userID int64, importID *uuid.UUID) (int64, error) {
-	query := `SELECT COALESCE((SELECT SUM(byte_size) FROM chat_attachments WHERE user_id=$1),0)+COALESCE((SELECT SUM((manifest->>'bytes')::bigint) FROM chat_imports WHERE user_id=$1),0)`
+	query := `SELECT COALESCE((SELECT SUM(byte_size) FROM chat_attachments WHERE user_id=$1),0)+COALESCE((SELECT SUM((manifest->>'bytes')::bigint) FROM chat_imports WHERE user_id=$1),0)+COALESCE((SELECT SUM(reserved_bytes+result_bytes) FROM chat_attachment_parses WHERE user_id=$1),0)`
 	args := []any{userID}
 	if importID != nil {
 		query = `SELECT COALESCE((SELECT SUM(byte_size) FROM chat_attachments WHERE user_id=$1 AND import_id=$2),0)+COALESCE((SELECT (manifest->>'bytes')::bigint FROM chat_imports WHERE user_id=$1 AND id=$2),0)`

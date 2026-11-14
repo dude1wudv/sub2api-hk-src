@@ -54,6 +54,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 		provideServiceBuildInfo,
 		providePluginHostInfo,
 		provideChatService,
+		service.NewChatAuxiliaryService,
 
 		// Cleanup function provider
 		provideCleanup,

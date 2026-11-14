@@ -2841,3 +2841,15 @@ func TestLoadSimpleModeAutoCreateDefaultGroups(t *testing.T) {
 		})
 	}
 }
+
+func TestChatAuxiliaryConfiguration(t *testing.T) {
+	resetViperWithJWTSecret(t)
+	setDefaults()
+	require.Zero(t, viper.GetInt64("chat.auxiliary_account_id"))
+	t.Setenv("CHAT_AUXILIARY_ACCOUNT_ID", "23")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, int64(23), cfg.Chat.AuxiliaryAccountID)
+	cfg.Chat.AuxiliaryAccountID = -1
+	require.ErrorContains(t, cfg.Validate(), "chat.auxiliary_account_id")
+}

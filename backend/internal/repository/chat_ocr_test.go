@@ -1,0 +1,145 @@
+//go:build integration
+
+package repository
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+)
+
+func TestChatOCRReceiptProtectsStorageAndDeletion(t *testing.T) {
+	tx := testEntTx(t)
+	ctx := dbent.NewTxContext(context.Background(), tx)
+	client := tx.Client()
+	repo := NewChatRepository(integrationEntClient)
+	owner := mustCreateUser(t, client, &service.User{})
+	other := mustCreateUser(t, client, &service.User{})
+	account := mustCreateAccount(t, client, &service.Account{Name: "synthetic-ocr"})
+	id := uuid.New()
+	_, err := client.ChatAttachment.Create().SetID(id).SetUserID(owner.ID).SetStorageKey(fmt.Sprintf("files/%d/%s", owner.ID, id)).SetOriginalName("doc.pdf").SetByteSize(4).SetPurpose(chatattachment.PurposeRichLayoutRecognition).SetStatus(chatattachment.StatusReady).SetUpdatedAt(time.Now().Add(-48 * time.Hour)).Save(ctx)
+	require.NoError(t, err)
+	_, _, err = repo.ClaimAttachmentParse(ctx, owner.ID, id, account.ID, service.ChatMaxParseBytes, false)
+	require.ErrorIs(t, err, service.ErrChatStorageFull)
+	claim, acquired, err := repo.ClaimAttachmentParse(ctx, owner.ID, id, account.ID, service.ChatMaxParseBytes+4, false)
+	require.NoError(t, err)
+	require.True(t, acquired)
+	same, acquired, err := repo.ClaimAttachmentParse(ctx, owner.ID, id, account.ID, service.ChatMaxParseBytes+4, true)
+	require.NoError(t, err)
+	require.False(t, acquired)
+	require.Equal(t, claim.OperationID, same.OperationID)
+	_, _, err = repo.ClaimAttachmentParse(ctx, other.ID, id, account.ID, service.ChatMaxParseBytes+4, false)
+	require.ErrorIs(t, err, service.ErrChatNotFound)
+	used, err := chatReservedStorage(ctx, client, owner.ID, nil)
+	require.NoError(t, err)
+	require.Equal(t, service.ChatMaxParseBytes+4, used)
+	require.NoError(t, repo.RenewAttachmentParse(ctx, claim))
+	require.ErrorIs(t, deleteChatUser(ctx, client, owner.ID), service.ErrChatParseBusy)
+	batch, err := repo.FindChatGarbage(ctx)
+	require.NoError(t, err)
+	require.Empty(t, batch.Files)
+	result := json.RawMessage(`{"page_count":1,"pages":[{"index":0,"text":"识别结果","finish_reason":"stop"}]}`)
+	receipt := json.RawMessage(`{"version":1,"request_id":"synthetic-receipt"}`)
+	require.NoError(t, repo.FinishAttachmentParse(ctx, claim, result, 1, receipt))
+	require.ErrorIs(t, repo.FinishAttachmentParse(ctx, claim, result, 1, receipt), service.ErrChatLeaseLost)
+	require.ErrorIs(t, chatDiscardSettledParseBodies(ctx, client, owner.ID, []uuid.UUID{id}), service.ErrChatParseBusy)
+	pending, err := repo.PendingChatParseReceipts(ctx)
+	require.NoError(t, err)
+	require.Len(t, pending, 1)
+	require.JSONEq(t, string(receipt), string(pending[0].Receipt))
+	used, err = chatReservedStorage(ctx, client, owner.ID, nil)
+	require.NoError(t, err)
+	require.Greater(t, used, int64(4))
+	require.Less(t, used, service.ChatMaxParseBytes)
+	require.NoError(t, repo.MarkAttachmentParseBilled(ctx, claim))
+	require.NoError(t, repo.MarkAttachmentParseBilled(ctx, claim))
+	require.NoError(t, chatDiscardSettledParseBodies(ctx, client, owner.ID, []uuid.UUID{id}))
+	persisted, err := repo.GetAttachmentParse(ctx, owner.ID, id, account.ID)
+	require.NoError(t, err)
+	require.Empty(t, persisted.Result)
+	require.True(t, persisted.BillingApplied)
+	require.JSONEq(t, string(receipt), string(persisted.Receipt))
+	batch, err = repo.FindChatGarbage(ctx)
+	require.NoError(t, err)
+	require.Len(t, batch.Files, 1)
+	require.NoError(t, repo.FinishLocalCleanup(ctx, owner.ID, id))
+}
+
+func TestChatOCRFailedRetryAndExpiredLeaseNeverResurrect(t *testing.T) {
+	tx := testEntTx(t)
+	ctx := dbent.NewTxContext(context.Background(), tx)
+	client := tx.Client()
+	repo := NewChatRepository(integrationEntClient)
+	owner := mustCreateUser(t, client, &service.User{})
+	account := mustCreateAccount(t, client, &service.Account{Name: "synthetic-ocr-expiry"})
+	id := uuid.New()
+	_, err := client.ChatAttachment.Create().SetID(id).SetUserID(owner.ID).SetStorageKey(fmt.Sprintf("files/%d/%s", owner.ID, id)).SetOriginalName("doc.pdf").SetByteSize(4).SetPurpose(chatattachment.PurposeRichLayoutRecognition).SetStatus(chatattachment.StatusReady).Save(ctx)
+	require.NoError(t, err)
+	first, _, err := repo.ClaimAttachmentParse(ctx, owner.ID, id, account.ID, 32<<20, false)
+	require.NoError(t, err)
+	require.NoError(t, repo.FailAttachmentParse(ctx, first, true))
+	_, acquired, err := repo.ClaimAttachmentParse(ctx, owner.ID, id, account.ID, 32<<20, false)
+	require.NoError(t, err)
+	require.False(t, acquired)
+	second, acquired, err := repo.ClaimAttachmentParse(ctx, owner.ID, id, account.ID, 32<<20, true)
+	require.NoError(t, err)
+	require.True(t, acquired)
+	require.NotEqual(t, first.OperationID, second.OperationID)
+	require.ErrorIs(t, repo.RenewAttachmentParse(ctx, first), service.ErrChatLeaseLost)
+	require.NoError(t, client.ChatAttachmentParse.UpdateOneID(second.ID).SetUpdatedAt(time.Now().Add(-2*time.Minute)).Exec(ctx))
+	require.ErrorIs(t, repo.RenewAttachmentParse(ctx, second), service.ErrChatLeaseLost)
+	expired, acquired, err := repo.ClaimAttachmentParse(ctx, owner.ID, id, account.ID, 32<<20, true)
+	require.NoError(t, err)
+	require.False(t, acquired)
+	require.Equal(t, "unknown", expired.Status)
+	require.ErrorIs(t, repo.FinishAttachmentParse(ctx, second, json.RawMessage(`{}`), 0, json.RawMessage(`{}`)), service.ErrChatLeaseLost)
+	used, err := chatReservedStorage(ctx, client, owner.ID, nil)
+	require.NoError(t, err)
+	require.EqualValues(t, 4, used)
+}
+
+func TestChatOCRReceiptSurvivesJSONBSizeExpansion(t *testing.T) {
+	tx := testEntTx(t)
+	ctx := dbent.NewTxContext(context.Background(), tx)
+	client := tx.Client()
+	repo := NewChatRepository(integrationEntClient)
+	owner := mustCreateUser(t, client, &service.User{})
+	account := mustCreateAccount(t, client, &service.Account{Name: "synthetic-ocr-large"})
+	id := uuid.New()
+	_, err := client.ChatAttachment.Create().SetID(id).SetUserID(owner.ID).SetStorageKey(fmt.Sprintf("files/%d/%s", owner.ID, id)).SetOriginalName("doc.pdf").SetByteSize(4).SetPurpose(chatattachment.PurposeRichLayoutRecognition).SetStatus(chatattachment.StatusReady).Save(ctx)
+	require.NoError(t, err)
+	claim, acquired, err := repo.ClaimAttachmentParse(ctx, owner.ID, id, account.ID, service.ChatMaxParseBytes+4, false)
+	require.NoError(t, err)
+	require.True(t, acquired)
+	// Compact JSON fits, but JSONB's canonical spacing exceeds the storage cap.
+	prefix, suffix := `{"page_count":1,"pages":[{"index":0,"text":"`, `","finish_reason":"stop"}]}`
+	result := json.RawMessage(prefix + strings.Repeat("x", int(service.ChatMaxParseBytes)-len(prefix)-len(suffix)) + suffix)
+	require.LessOrEqual(t, int64(len(result)), service.ChatMaxParseBytes)
+	receipt := json.RawMessage(`{"version":1,"request_id":"` + claim.RequestID + `"}`)
+	require.NoError(t, repo.FinishAttachmentParse(ctx, claim, result, 1, receipt))
+	persisted, err := repo.GetAttachmentParse(ctx, owner.ID, id, account.ID)
+	require.NoError(t, err)
+	require.Equal(t, "unknown", persisted.Status)
+	require.Empty(t, persisted.Result)
+	require.Equal(t, 1, *persisted.PageCount)
+	require.JSONEq(t, string(receipt), string(persisted.Receipt))
+	pending, err := repo.PendingChatParseReceipts(ctx)
+	require.NoError(t, err)
+	require.Len(t, pending, 1)
+	used, err := chatReservedStorage(ctx, client, owner.ID, nil)
+	require.NoError(t, err)
+	require.EqualValues(t, 4, used)
+	require.NoError(t, repo.MarkAttachmentParseBilled(ctx, claim))
+	_, acquired, err = repo.ClaimAttachmentParse(ctx, owner.ID, id, account.ID, service.ChatMaxParseBytes+4, true)
+	require.NoError(t, err)
+	require.False(t, acquired, "a confirmed billed operation must not be replayed")
+}

@@ -334,10 +334,11 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	chatRepository := repository.NewChatRepository(client)
 	chatPresetRepository := repository.NewChatPresetRepository(client)
 	gatewayModelCatalogService := service.ProvideGatewayModelCatalogService(gatewayService, openAIGatewayService, configConfig)
-	chatModelService := service.NewChatModelService(chatPresetRepository, apiKeyService, gatewayModelCatalogService, accountRepository, gatewayService, openAIGatewayService, compositeRouteResolver, modelMetadataCatalog, billingService, modelPricingResolver, pricingService)
+	chatAuxiliaryService := service.NewChatAuxiliaryService(configConfig, accountRepository)
+	chatModelService := service.NewChatModelService(chatPresetRepository, apiKeyService, gatewayModelCatalogService, accountRepository, gatewayService, openAIGatewayService, compositeRouteResolver, modelMetadataCatalog, billingService, modelPricingResolver, pricingService, chatAuxiliaryService)
 	chatCredentialRepository := repository.NewChatCredentialRepository(client)
 	chatCredentialService := service.NewChatCredentialService(chatCredentialRepository, apiKeyService)
-	chatService, err := provideChatService(chatRepository, configConfig, chatModelService, chatCredentialService)
+	chatService, err := provideChatService(chatRepository, configConfig, chatModelService, chatCredentialService, chatAuxiliaryService)
 	if err != nil {
 		return nil, err
 	}

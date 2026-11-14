@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"slices"
@@ -17,11 +18,12 @@ import (
 var ErrChatToolLimit = infraerrors.BadRequest("CHAT_TOOL_LIMIT", "已达到本轮工具调用上限，已保存部分内容")
 
 type chatPreparedRequest struct {
-	path    string
-	body    map[string]any
-	caps    ChatCapabilities
-	options ChatRunOptions
-	files   map[uuid.UUID]bool
+	path      string
+	body      map[string]any
+	caps      ChatCapabilities
+	options   ChatRunOptions
+	files     map[uuid.UUID]bool
+	documents map[uuid.UUID]bool
 }
 type chatNativeContextKey struct{}
 type chatNativeRequest struct {
@@ -153,6 +155,38 @@ func (s *ChatService) chatUserContent(ctx context.Context, userID int64, message
 		if err != nil {
 			return nil, err
 		}
+		if !prepared.caps.NativeFiles && !file.IsImage && file.Purpose == "user_data" {
+			text, err := s.localDocumentText(ctx, userID, id)
+			if err != nil {
+				return nil, err
+			}
+			part := map[string]any{"text": text}
+			if transport == "responses" {
+				part["type"] = "input_text"
+			} else if transport != "gemini" {
+				part["type"] = "text"
+			}
+			parts = append(parts, part)
+			continue
+		}
+		if !prepared.caps.NativeFiles && (!file.IsImage || !prepared.caps.ImageInput) && prepared.caps.OCR {
+			text, err := s.parsedAttachmentText(ctx, userID, id)
+			if errors.Is(err, ErrChatParseRequired) {
+				prepared.documents[id] = true
+				continue // Resolved after ClaimGeneration, before any model dispatch.
+			}
+			if err != nil {
+				return nil, err
+			}
+			part := map[string]any{"text": text}
+			if transport == "responses" {
+				part["type"] = "input_text"
+			} else if transport != "gemini" {
+				part["type"] = "text"
+			}
+			parts = append(parts, part)
+			continue
+		}
 		if file.IsImage && !prepared.caps.ImageInput {
 			return nil, ErrChatCapability
 		}
@@ -224,7 +258,7 @@ func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapsh
 	if caps.Reasoning && !slices.Contains(chatReasoningEfforts(preset.Model, caps), options.ReasoningEffort) {
 		return nil, ErrChatCapability
 	}
-	prepared := &chatPreparedRequest{caps: caps, options: options, files: map[uuid.UUID]bool{}, body: map[string]any{"model": preset.Model, "stream": true}}
+	prepared := &chatPreparedRequest{caps: caps, options: options, files: map[uuid.UUID]bool{}, documents: map[uuid.UUID]bool{}, body: map[string]any{"model": preset.Model, "stream": true}}
 	messages := snapshot.VisibleMessages()
 	if len(messages) < 2 {
 		return nil, ErrChatInvalid
@@ -354,10 +388,10 @@ func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapsh
 	}
 	applyChatReasoning(prepared, preset.Model)
 	if options.Search && caps.Search && !caps.NativeSearch {
-		tools = append(tools, chatToolDefinition(caps.Transport, "chat_search", "Search the web using this selected channel.", "query"))
+		tools = append(tools, chatToolDefinition(caps.Transport, "chat_search", "Search the web using the shared auxiliary service.", "query"))
 	}
 	if caps.ReadURL && !caps.NativeReadURL {
-		tools = append(tools, chatToolDefinition(caps.Transport, "chat_fetch", "Read a public URL using this selected channel.", "url"))
+		tools = append(tools, chatToolDefinition(caps.Transport, "chat_fetch", "Read a public URL using the shared auxiliary service.", "url"))
 	}
 	if len(tools) > 0 {
 		prepared.body["tools"] = tools
@@ -368,6 +402,9 @@ func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapsh
 func chatToolDefinition(transport, name, description, argument string) map[string]any {
 	schema := map[string]any{"type": "object", "properties": map[string]any{argument: map[string]any{"type": "string"}}, "required": []string{argument}, "additionalProperties": false}
 	switch transport {
+	case "gemini":
+		delete(schema, "additionalProperties")
+		return map[string]any{"functionDeclarations": []any{map[string]any{"name": name, "description": description, "parameters": schema}}}
 	case "messages":
 		return map[string]any{"name": name, "description": description, "input_schema": schema}
 	case "responses":
@@ -461,14 +498,13 @@ func (s *ChatService) executeChatTool(ctx context.Context, key *APIKey, run *Cha
 	if json.Unmarshal([]byte(call.Arguments), &arguments) != nil || len(arguments) != 1 {
 		return nil, ErrChatInvalid
 	}
-	toolPath, kind, name := "", "", ""
+	kind, name := "", ""
 	input := map[string]any{}
 	switch call.Name {
 	case "chat_search":
 		if !options.Search || !caps.Search || caps.NativeSearch {
 			return nil, ErrChatCapability
 		}
-		toolPath = "/v1/tools/search"
 		kind = "search"
 		name = "deepseek_web_search"
 		query := chatString(arguments["query"])
@@ -477,7 +513,6 @@ func (s *ChatService) executeChatTool(ctx context.Context, key *APIKey, run *Cha
 		if !caps.ReadURL || caps.NativeReadURL {
 			return nil, ErrChatCapability
 		}
-		toolPath = "/v1/tools/fetch"
 		kind = "read_link"
 		name = "deepseek_read_url"
 		input = map[string]any{"action": "read_link", "url": chatString(arguments["url"])}
@@ -495,6 +530,13 @@ func (s *ChatService) executeChatTool(ctx context.Context, key *APIKey, run *Cha
 	if _, err = ValidateDeepSeekToolRequest(toolKind, raw); err != nil {
 		return nil, ErrChatInvalid
 	}
+	auxKey, scope, err := s.resolveChatAuxiliary(ctx, run.UserID, run.PresetID, run.SessionID, string(toolKind))
+	if err != nil {
+		return nil, err
+	}
+	if scope.sourceGroupID != run.GroupID || auxKey.ID != key.ID {
+		return nil, ErrChatProviderContext
+	}
 	use := map[string]any{"type": "server_tool_use", "id": call.ID, "name": name, "input": input, "kind": kind, "caller": map[string]any{"type": "direct"}}
 	if err = emit(map[string]any{"type": "content_block_start", "index": index, "content_block": use}); err != nil {
 		return nil, err
@@ -503,7 +545,7 @@ func (s *ChatService) executeChatTool(ctx context.Context, key *APIKey, run *Cha
 		return nil, err
 	}
 	writer := &chatToolWriter{header: http.Header{}}
-	if _, err = s.dispatchGateway(ctx, writer, key, run.UserID, run.GroupID, run.SessionID, clientIP, toolPath, raw, before); err != nil {
+	if _, err = s.dispatchChatAuxiliary(ctx, writer, auxKey, scope, run.SessionID, clientIP, string(toolKind), bytes.NewReader(raw), "application/json", before); err != nil {
 		return nil, err
 	}
 	if writer.status != http.StatusOK {
@@ -561,6 +603,17 @@ func appendChatToolRound(prepared *chatPreparedRequest, decoder *chatStreamDecod
 		}
 	}
 	switch prepared.caps.Transport {
+	case "gemini":
+		contents, _ := prepared.body["contents"].([]any)
+		outputs := make([]any, 0, len(calls))
+		for i, call := range calls {
+			response := map[string]any{"name": call.Name, "response": results[i]}
+			if call.ProviderID != "" {
+				response["id"] = call.ProviderID
+			}
+			outputs = append(outputs, map[string]any{"functionResponse": response})
+		}
+		prepared.body["contents"] = append(contents, map[string]any{"role": "model", "parts": decoder.geminiParts}, map[string]any{"role": "user", "parts": outputs})
 	case "chat_completions":
 		messages, _ := prepared.body["messages"].([]any)
 		wireCalls := []any{}

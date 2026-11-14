@@ -4,11 +4,13 @@ package ent
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/account"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
@@ -963,6 +965,24 @@ func (_u *UsageLogUpdate) ClearImageSizeBreakdown() *UsageLogUpdate {
 	return _u
 }
 
+// SetChatAuxiliaryUsage sets the "chat_auxiliary_usage" field.
+func (_u *UsageLogUpdate) SetChatAuxiliaryUsage(v jsontext.Value) *UsageLogUpdate {
+	_u.mutation.SetChatAuxiliaryUsage(v)
+	return _u
+}
+
+// AppendChatAuxiliaryUsage appends value to the "chat_auxiliary_usage" field.
+func (_u *UsageLogUpdate) AppendChatAuxiliaryUsage(v jsontext.Value) *UsageLogUpdate {
+	_u.mutation.AppendChatAuxiliaryUsage(v)
+	return _u
+}
+
+// ClearChatAuxiliaryUsage clears the value of the "chat_auxiliary_usage" field.
+func (_u *UsageLogUpdate) ClearChatAuxiliaryUsage() *UsageLogUpdate {
+	_u.mutation.ClearChatAuxiliaryUsage()
+	return _u
+}
+
 // SetVideoCount sets the "video_count" field.
 func (_u *UsageLogUpdate) SetVideoCount(v int) *UsageLogUpdate {
 	_u.mutation.ResetVideoCount()
@@ -1483,6 +1503,17 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ImageSizeBreakdownCleared() {
 		_spec.ClearField(usagelog.FieldImageSizeBreakdown, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.ChatAuxiliaryUsage(); ok {
+		_spec.SetField(usagelog.FieldChatAuxiliaryUsage, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedChatAuxiliaryUsage(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, usagelog.FieldChatAuxiliaryUsage, value)
+		})
+	}
+	if _u.mutation.ChatAuxiliaryUsageCleared() {
+		_spec.ClearField(usagelog.FieldChatAuxiliaryUsage, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.VideoCount(); ok {
 		_spec.SetField(usagelog.FieldVideoCount, field.TypeInt, value)
@@ -2604,6 +2635,24 @@ func (_u *UsageLogUpdateOne) ClearImageSizeBreakdown() *UsageLogUpdateOne {
 	return _u
 }
 
+// SetChatAuxiliaryUsage sets the "chat_auxiliary_usage" field.
+func (_u *UsageLogUpdateOne) SetChatAuxiliaryUsage(v jsontext.Value) *UsageLogUpdateOne {
+	_u.mutation.SetChatAuxiliaryUsage(v)
+	return _u
+}
+
+// AppendChatAuxiliaryUsage appends value to the "chat_auxiliary_usage" field.
+func (_u *UsageLogUpdateOne) AppendChatAuxiliaryUsage(v jsontext.Value) *UsageLogUpdateOne {
+	_u.mutation.AppendChatAuxiliaryUsage(v)
+	return _u
+}
+
+// ClearChatAuxiliaryUsage clears the value of the "chat_auxiliary_usage" field.
+func (_u *UsageLogUpdateOne) ClearChatAuxiliaryUsage() *UsageLogUpdateOne {
+	_u.mutation.ClearChatAuxiliaryUsage()
+	return _u
+}
+
 // SetVideoCount sets the "video_count" field.
 func (_u *UsageLogUpdateOne) SetVideoCount(v int) *UsageLogUpdateOne {
 	_u.mutation.ResetVideoCount()
@@ -3154,6 +3203,17 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.ImageSizeBreakdownCleared() {
 		_spec.ClearField(usagelog.FieldImageSizeBreakdown, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.ChatAuxiliaryUsage(); ok {
+		_spec.SetField(usagelog.FieldChatAuxiliaryUsage, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedChatAuxiliaryUsage(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, usagelog.FieldChatAuxiliaryUsage, value)
+		})
+	}
+	if _u.mutation.ChatAuxiliaryUsageCleared() {
+		_spec.ClearField(usagelog.FieldChatAuxiliaryUsage, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.VideoCount(); ok {
 		_spec.SetField(usagelog.FieldVideoCount, field.TypeInt, value)

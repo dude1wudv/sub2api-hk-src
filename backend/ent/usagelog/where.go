@@ -2490,6 +2490,16 @@ func ImageSizeBreakdownNotNil() predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotNull(FieldImageSizeBreakdown))
 }
 
+// ChatAuxiliaryUsageIsNil applies the IsNil predicate on the "chat_auxiliary_usage" field.
+func ChatAuxiliaryUsageIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldChatAuxiliaryUsage))
+}
+
+// ChatAuxiliaryUsageNotNil applies the NotNil predicate on the "chat_auxiliary_usage" field.
+func ChatAuxiliaryUsageNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldChatAuxiliaryUsage))
+}
+
 // VideoCountEQ applies the EQ predicate on the "video_count" field.
 func VideoCountEQ(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldVideoCount, v))

@@ -29,6 +29,7 @@ func TestChatReasoningProfilesReachProtocolRequests(t *testing.T) {
 		{name: "completions custom deep", model: "gpt-5", transport: "chat_completions", thinking: true, deep: "low", want: map[string]string{"reasoning_effort": "low"}},
 		{name: "recorded continuation beats edited profile", model: "gpt-5", transport: "responses", normal: "high", recorded: "medium", want: map[string]string{"reasoning.effort": "medium"}},
 		{name: "native normal remains enabled", model: "deepseek-v4.1", transport: "messages", native: true, want: map[string]string{"thinking.type": "enabled", "output_config.effort": "low"}},
+		{name: "native normal explicitly disabled", model: "deepseek-v4.1", transport: "messages", native: true, normal: "none", want: map[string]string{"thinking.type": "disabled"}, absent: []string{"output_config"}},
 		{name: "native deep profile", model: "deepseek-v4.1", transport: "messages", native: true, thinking: true, want: map[string]string{"thinking.type": "enabled", "output_config.effort": "high"}},
 		{name: "adaptive Claude normal", model: "claude-sonnet-5-5", transport: "messages", want: map[string]string{"thinking.type": "adaptive", "output_config.effort": "low"}, absent: []string{"thinking.budget_tokens"}},
 		{name: "adaptive Claude deep", model: "claude-opus-4-6", transport: "messages", thinking: true, want: map[string]string{"thinking.type": "adaptive", "output_config.effort": "high"}},
@@ -55,7 +56,7 @@ func TestChatReasoningProfilesReachProtocolRequests(t *testing.T) {
 		})
 	}
 	native := ChatCapabilities{Transport: "messages", Reasoning: true, NativeDeepSeekExtensions: true}
-	require.Equal(t, []string{"low", "high"}, chatReasoningEfforts("native-alias", native))
+	require.Equal(t, []string{"none", "low", "high"}, chatReasoningEfforts("native-alias", native))
 	_, err = s.buildChatRequest(context.Background(), 7, snapshot, &ChatModelPreset{Model: "native-alias", NormalReasoningEffort: "medium"}, &ChatCatalogModel{Capabilities: native}, ChatRunOptions{}, "send")
 	require.ErrorIs(t, err, ErrChatCapability)
 	for _, transport := range []string{"responses", "chat_completions", "messages", "gemini"} {
@@ -73,10 +74,13 @@ func TestChatReasoningProfilesReachProtocolRequests(t *testing.T) {
 
 func TestChatPresetRejectsInvalidEffortBeforePersistence(t *testing.T) {
 	s := &ChatModelService{}
-	for _, effort := range []string{"", "none", "disabled", "max", " high", "LOW"} {
+	for _, effort := range []string{"", "disabled", "max", " high", "LOW"} {
 		for _, patch := range []ChatPresetPatch{{NormalReasoningEffort: &effort}, {ThinkingReasoningEffort: &effort}} {
 			_, err := s.UpdatePreset(context.Background(), 7, uuid.New(), patch)
 			require.ErrorIs(t, err, ErrChatInvalid)
 		}
 	}
+	none := "none"
+	_, err := s.UpdatePreset(context.Background(), 7, uuid.New(), ChatPresetPatch{ThinkingReasoningEffort: &none})
+	require.ErrorIs(t, err, ErrChatInvalid)
 }

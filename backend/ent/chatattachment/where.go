@@ -660,6 +660,29 @@ func HasUploadsWith(preds ...predicate.ChatAttachmentUpload) predicate.ChatAttac
 	})
 }
 
+// HasParses applies the HasEdge predicate on the "parses" edge.
+func HasParses() predicate.ChatAttachment {
+	return predicate.ChatAttachment(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ParsesTable, ParsesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasParsesWith applies the HasEdge predicate on the "parses" edge with a given conditions (other predicates).
+func HasParsesWith(preds ...predicate.ChatAttachmentParse) predicate.ChatAttachment {
+	return predicate.ChatAttachment(func(s *sql.Selector) {
+		step := newParsesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.ChatAttachment) predicate.ChatAttachment {
 	return predicate.ChatAttachment(sql.AndPredicates(predicates...))

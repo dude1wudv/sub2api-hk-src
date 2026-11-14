@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
+	"github.com/google/uuid"
 )
 
 // ChatAttachmentUploadUpdate is the builder for updating ChatAttachmentUpload entities.
@@ -80,6 +81,46 @@ func (_u *ChatAttachmentUploadUpdate) SetNillableCleanupAttempts(v *int) *ChatAt
 // AddCleanupAttempts adds value to the "cleanup_attempts" field.
 func (_u *ChatAttachmentUploadUpdate) AddCleanupAttempts(v int) *ChatAttachmentUploadUpdate {
 	_u.mutation.AddCleanupAttempts(v)
+	return _u
+}
+
+// SetLeaseToken sets the "lease_token" field.
+func (_u *ChatAttachmentUploadUpdate) SetLeaseToken(v uuid.UUID) *ChatAttachmentUploadUpdate {
+	_u.mutation.SetLeaseToken(v)
+	return _u
+}
+
+// SetNillableLeaseToken sets the "lease_token" field if the given value is not nil.
+func (_u *ChatAttachmentUploadUpdate) SetNillableLeaseToken(v *uuid.UUID) *ChatAttachmentUploadUpdate {
+	if v != nil {
+		_u.SetLeaseToken(*v)
+	}
+	return _u
+}
+
+// ClearLeaseToken clears the value of the "lease_token" field.
+func (_u *ChatAttachmentUploadUpdate) ClearLeaseToken() *ChatAttachmentUploadUpdate {
+	_u.mutation.ClearLeaseToken()
+	return _u
+}
+
+// SetLeaseExpiresAt sets the "lease_expires_at" field.
+func (_u *ChatAttachmentUploadUpdate) SetLeaseExpiresAt(v time.Time) *ChatAttachmentUploadUpdate {
+	_u.mutation.SetLeaseExpiresAt(v)
+	return _u
+}
+
+// SetNillableLeaseExpiresAt sets the "lease_expires_at" field if the given value is not nil.
+func (_u *ChatAttachmentUploadUpdate) SetNillableLeaseExpiresAt(v *time.Time) *ChatAttachmentUploadUpdate {
+	if v != nil {
+		_u.SetLeaseExpiresAt(*v)
+	}
+	return _u
+}
+
+// ClearLeaseExpiresAt clears the value of the "lease_expires_at" field.
+func (_u *ChatAttachmentUploadUpdate) ClearLeaseExpiresAt() *ChatAttachmentUploadUpdate {
+	_u.mutation.ClearLeaseExpiresAt()
 	return _u
 }
 
@@ -177,6 +218,18 @@ func (_u *ChatAttachmentUploadUpdate) sqlSave(ctx context.Context) (_node int, e
 	if value, ok := _u.mutation.AddedCleanupAttempts(); ok {
 		_spec.AddField(chatattachmentupload.FieldCleanupAttempts, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.LeaseToken(); ok {
+		_spec.SetField(chatattachmentupload.FieldLeaseToken, field.TypeUUID, value)
+	}
+	if _u.mutation.LeaseTokenCleared() {
+		_spec.ClearField(chatattachmentupload.FieldLeaseToken, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.LeaseExpiresAt(); ok {
+		_spec.SetField(chatattachmentupload.FieldLeaseExpiresAt, field.TypeTime, value)
+	}
+	if _u.mutation.LeaseExpiresAtCleared() {
+		_spec.ClearField(chatattachmentupload.FieldLeaseExpiresAt, field.TypeTime)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{chatattachmentupload.Label}
@@ -249,6 +302,46 @@ func (_u *ChatAttachmentUploadUpdateOne) SetNillableCleanupAttempts(v *int) *Cha
 // AddCleanupAttempts adds value to the "cleanup_attempts" field.
 func (_u *ChatAttachmentUploadUpdateOne) AddCleanupAttempts(v int) *ChatAttachmentUploadUpdateOne {
 	_u.mutation.AddCleanupAttempts(v)
+	return _u
+}
+
+// SetLeaseToken sets the "lease_token" field.
+func (_u *ChatAttachmentUploadUpdateOne) SetLeaseToken(v uuid.UUID) *ChatAttachmentUploadUpdateOne {
+	_u.mutation.SetLeaseToken(v)
+	return _u
+}
+
+// SetNillableLeaseToken sets the "lease_token" field if the given value is not nil.
+func (_u *ChatAttachmentUploadUpdateOne) SetNillableLeaseToken(v *uuid.UUID) *ChatAttachmentUploadUpdateOne {
+	if v != nil {
+		_u.SetLeaseToken(*v)
+	}
+	return _u
+}
+
+// ClearLeaseToken clears the value of the "lease_token" field.
+func (_u *ChatAttachmentUploadUpdateOne) ClearLeaseToken() *ChatAttachmentUploadUpdateOne {
+	_u.mutation.ClearLeaseToken()
+	return _u
+}
+
+// SetLeaseExpiresAt sets the "lease_expires_at" field.
+func (_u *ChatAttachmentUploadUpdateOne) SetLeaseExpiresAt(v time.Time) *ChatAttachmentUploadUpdateOne {
+	_u.mutation.SetLeaseExpiresAt(v)
+	return _u
+}
+
+// SetNillableLeaseExpiresAt sets the "lease_expires_at" field if the given value is not nil.
+func (_u *ChatAttachmentUploadUpdateOne) SetNillableLeaseExpiresAt(v *time.Time) *ChatAttachmentUploadUpdateOne {
+	if v != nil {
+		_u.SetLeaseExpiresAt(*v)
+	}
+	return _u
+}
+
+// ClearLeaseExpiresAt clears the value of the "lease_expires_at" field.
+func (_u *ChatAttachmentUploadUpdateOne) ClearLeaseExpiresAt() *ChatAttachmentUploadUpdateOne {
+	_u.mutation.ClearLeaseExpiresAt()
 	return _u
 }
 
@@ -375,6 +468,18 @@ func (_u *ChatAttachmentUploadUpdateOne) sqlSave(ctx context.Context) (_node *Ch
 	}
 	if value, ok := _u.mutation.AddedCleanupAttempts(); ok {
 		_spec.AddField(chatattachmentupload.FieldCleanupAttempts, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.LeaseToken(); ok {
+		_spec.SetField(chatattachmentupload.FieldLeaseToken, field.TypeUUID, value)
+	}
+	if _u.mutation.LeaseTokenCleared() {
+		_spec.ClearField(chatattachmentupload.FieldLeaseToken, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.LeaseExpiresAt(); ok {
+		_spec.SetField(chatattachmentupload.FieldLeaseExpiresAt, field.TypeTime, value)
+	}
+	if _u.mutation.LeaseExpiresAtCleared() {
+		_spec.ClearField(chatattachmentupload.FieldLeaseExpiresAt, field.TypeTime)
 	}
 	_node = &ChatAttachmentUpload{config: _u.config}
 	_spec.Assign = _node.assignValues

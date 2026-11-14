@@ -53,6 +53,11 @@ func TestChatRunOwnershipLeaseAndCanonicalMerge(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, claimed.Revision+1, renamed.Revision)
 	require.NoError(t, repo.AddGenerationRequest(ctx, run, uuid.NewString()))
+	auxiliaryID := "chat_auxiliary:" + uuid.NewString()
+	require.NoError(t, repo.AddGenerationRequest(ctx, run, auxiliaryID))
+	for _, invalid := range []string{"chat_auxiliary:", "other:" + uuid.NewString(), "chat_auxiliary:urn:uuid:" + uuid.NewString(), "chat_auxiliary:" + uuid.Nil.String()} {
+		require.ErrorIs(t, repo.AddGenerationRequest(ctx, run, invalid), service.ErrChatInvalid)
+	}
 	reply := json.RawMessage(`{"id":"reply","role":"assistant","parentId":"question","status":"streaming","blocks":[{"type":"text","text":"部分中文","citations":[{"url":"https://example.com"}]}]}`)
 	saved, err := repo.SaveGeneration(ctx, run, reply, "模型标题", "running")
 	require.NoError(t, err)
@@ -68,7 +73,8 @@ func TestChatRunOwnershipLeaseAndCanonicalMerge(t *testing.T) {
 	terminal, err := repo.GetGeneration(ctx, a.ID, run.SessionID, run.ID)
 	require.NoError(t, err)
 	require.Equal(t, "stopped", terminal.Status)
-	require.Len(t, terminal.GatewayRequestIDs, 1)
+	require.Len(t, terminal.GatewayRequestIDs, 2)
+	require.Contains(t, terminal.GatewayRequestIDs, auxiliaryID)
 	latest, err := repo.LastGeneration(ctx, a.ID, run.SessionID, run.AssistantMessageID)
 	require.NoError(t, err)
 	require.Equal(t, run.ID, latest.ID)

@@ -27,6 +27,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentparse"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
 	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
 	"github.com/Wei-Shaw/sub2api/ent/chatgenerationrun"
@@ -138,6 +139,7 @@ func checkColumn(t, c string) error {
 			channelmonitorhistory.Table:         channelmonitorhistory.ValidColumn,
 			channelmonitorrequesttemplate.Table: channelmonitorrequesttemplate.ValidColumn,
 			chatattachment.Table:                chatattachment.ValidColumn,
+			chatattachmentparse.Table:           chatattachmentparse.ValidColumn,
 			chatattachmentupload.Table:          chatattachmentupload.ValidColumn,
 			chatcredential.Table:                chatcredential.ValidColumn,
 			chatgenerationrun.Table:             chatgenerationrun.ValidColumn,

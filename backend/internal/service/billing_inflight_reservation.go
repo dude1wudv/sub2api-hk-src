@@ -368,6 +368,7 @@ const (
 	// InflightEstimateDeepSeekTool reserves one native tool call using the same
 	// group per-call price and base multiplier as final settlement.
 	InflightEstimateDeepSeekTool
+	InflightEstimateChatAuxiliary
 )
 
 // InflightEstimateRequest 单请求估算输入。
@@ -386,6 +387,8 @@ type InflightEstimateRequest struct {
 	// 音频：模式（tts/stt/realtime）与计量单位（百万字符/小时/分钟）。
 	AudioMode  string
 	AudioUnits float64
+	// ChatAuxiliaryCost is server-owned; never decoded from public request JSON.
+	ChatAuxiliaryCost float64
 }
 
 // inflightEstimateDeps 两种网关 service 共用的估算依赖。
@@ -643,6 +646,17 @@ func (d inflightEstimateDeps) estimateOne(ctx context.Context, apiKey *APIKey, m
 
 // estimate 返回保守的单请求费用（USD，已乘倍率）；无法定价返回 (0,false)。
 func (d inflightEstimateDeps) estimate(ctx context.Context, apiKey *APIKey, req InflightEstimateRequest) (float64, bool) {
+	if req.ChatAuxiliaryCost < 0 || math.IsNaN(req.ChatAuxiliaryCost) || math.IsInf(req.ChatAuxiliaryCost, 0) {
+		return 0, false
+	}
+	if req.Kind == InflightEstimateChatAuxiliary {
+		return req.ChatAuxiliaryCost, true
+	}
+	amount, priced := d.estimateBase(ctx, apiKey, req)
+	return amount + req.ChatAuxiliaryCost, priced
+}
+
+func (d inflightEstimateDeps) estimateBase(ctx context.Context, apiKey *APIKey, req InflightEstimateRequest) (float64, bool) {
 	if apiKey == nil || apiKey.User == nil {
 		return 0, false
 	}

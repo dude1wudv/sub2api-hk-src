@@ -9,7 +9,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/setup"
 )
 
-func provideChatService(repo service.ChatRepository, cfg *config.Config, models *service.ChatModelService, credentials *service.ChatCredentialService) (*service.ChatService, error) {
+func provideChatService(repo service.ChatRepository, cfg *config.Config, models *service.ChatModelService, credentials *service.ChatCredentialService, auxiliary *service.ChatAuxiliaryService) (*service.ChatService, error) {
 	directory := strings.TrimSpace(cfg.Chat.StorageDir)
 	if directory == "" {
 		directory = filepath.Join(setup.GetDataDir(), "chat")
@@ -18,7 +18,7 @@ func provideChatService(repo service.ChatRepository, cfg *config.Config, models 
 	if err != nil {
 		return nil, err
 	}
-	chat, err := service.NewChatService(repo, storage, cfg, models, credentials)
+	chat, err := service.NewChatService(repo, storage, cfg, models, credentials, auxiliary)
 	if err != nil {
 		_ = storage.Close()
 		return nil, err

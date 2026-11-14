@@ -30,6 +30,9 @@ MODEL = 'deepseek-v4.1-flash'
 CHECKS = ('stream_saved', 'second_browser_cloud_history', 'edit_regenerate_branches',
           'stop_partial_no_duplicate_billing', 'manual_group_and_compact_picker',
           'capability_boundaries', 'login_and_iframe_security')
+APPROVED_AUXILIARY_MIGRATIONS = {
+    '344_chat_auxiliary.sql': '9c05163ca0ff988bf29c021773f29e1215e778bb544785988597aa47c2113ffd',
+}
 
 
 def require(ok, message):
@@ -86,7 +89,9 @@ def migration_allowlist(before, candidate):
     maximum = max(prefixes_before, default=0)
     require(bool(added) or any(re.fullmatch(r'\d+_user_chat\.sql', name) for name in before),
             'Initial chat release must contain an appended chat migration')
-    require(all(re.fullmatch(r'\d+_user_chat\.sql', name) for name in added), 'Only append-only user_chat migrations may be introduced')
+    require(all(re.fullmatch(r'\d+_user_chat\.sql', name) or
+                (name in APPROVED_AUXILIARY_MIGRATIONS and APPROVED_AUXILIARY_MIGRATIONS[name] == checksum)
+                for name, checksum in added.items()), 'Only append-only chat migrations with approved auxiliary checksums may be introduced')
     prefixes = sorted(int(name.split('_')[0]) for name in added)
     require(prefixes == list(range(maximum + 1, maximum + 1 + len(added))), 'Chat migrations must use consecutive new prefixes')
     return added
@@ -242,8 +247,15 @@ class Release:
         with (self.audit / (filename + '.stderr')).open('wb') as error:
             proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=error)
             for line in proc.stdout:
-                row = json.loads(line)
-                rows[str(row['id'])] = {'created_at': row['created_at'], 'sha256': digest(line)}
+                row = json.loads(line, parse_float=Decimal)
+                # Migration 344 adds only this nullable column to historical bills.
+                # Ignore its absent/null representation, never non-null usage or other fields.
+                if row.get('chat_auxiliary_usage') is None:
+                    row.pop('chat_auxiliary_usage', None)
+                # PostgreSQL JSONB emits deterministic key order. Decimal repr
+                # preserves every numeric digit and its type without float rounding.
+                fingerprint = digest(repr(row).encode())
+                rows[str(row['id'])] = {'created_at': row['created_at'], 'sha256': fingerprint}
             require(proc.wait() == 0, 'Historical billing fingerprint query failed')
         self.save(filename, rows)
         return rows

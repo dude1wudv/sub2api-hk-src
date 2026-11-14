@@ -19,6 +19,8 @@ import { nextTick } from 'vue'
 import en from '@/i18n/locales/en/admin/resources'
 import zh from '@/i18n/locales/zh/admin/resources'
 import UsageTable from '../UsageTable.vue'
+import PortalUsageDetail from '@/components/portal/PortalUsageDetail.vue'
+import type { ChatAuxiliaryUsage, UsageLog } from '@/types'
 
 let locale: 'en' | 'zh' = 'en'
 const localizedMessages: Record<'en' | 'zh', Record<string, string>> = {
@@ -122,6 +124,7 @@ vi.mock('vue-i18n', async () => {
   return {
     ...actual,
     useI18n: () => ({
+      locale: { get value() { return locale } },
       t: (key: string, params?: Record<string, unknown>) => {
         let message = localizedMessages[locale][key] ?? messages[key] ?? key
         for (const [name, value] of Object.entries(params ?? {})) {
@@ -1465,5 +1468,42 @@ describe('admin UsageTable service tier downgrade audit', () => {
     } finally {
       wrapper.unmount()
     }
+  })
+})
+
+describe('chat auxiliary usage details', () => {
+  const usage: ChatAuxiliaryUsage = {
+    price_basis: 'deepseek-cny-list-1to1-v1', provider: 'deepseek',
+    items: [
+      { kind: 'ocr', quantity: 2, unit: 'page', unit_price: '0.0015', price_quantity: 1, charged_cost: '0.00300000', metering_status: 'confirmed', quantity_source: 'provider_usage' },
+      { kind: 'native_files', quantity: null, unit: 'page', unit_price: '0', price_quantity: 1, charged_cost: '0.00000000', metering_status: 'unreported', quantity_source: 'provider_unreported' },
+    ],
+  }
+  it('shows unmultiplied fees and unknown pages in the administrator popover', async () => {
+    locale = 'zh'
+    const wrapper = mount(UsageTable, {
+      props: { data: [{ ...baseImageRow, image_count: 0, billing_mode: 'per_request', chat_auxiliary_usage: usage }], loading: false, columns: [] },
+      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true } },
+    })
+    try {
+      const { tooltip } = await openUsageDetails(wrapper, 'usage-cost-details-trigger')
+      expect(tooltip.textContent).toContain('人民币刊例数值1:1记账，无倍率')
+      expect(tooltip.textContent).toContain('0.00300000')
+      expect(tooltip.textContent).toContain('未公开')
+      expect(tooltip.textContent).toContain('解析由平台承担，引用token另计')
+      expect(tooltip.textContent).not.toContain('0 页')
+    } finally { wrapper.unmount() }
+  })
+  it('uses the same audited auxiliary metadata in the user detail', () => {
+    locale = 'zh'
+    const wrapper = mount(PortalUsageDetail, {
+      props: { open: true, row: { ...baseImageRow, image_count: 0, billing_mode: 'per_request', created_at: '2026-11-13T00:00:00Z', chat_auxiliary_usage: usage } as unknown as UsageLog },
+      global: { stubs: { PortalDialog: { template: '<div><slot /></div>' }, ModelIcon: true, Icon: true } },
+    })
+    expect(wrapper.text()).toContain('独立辅助服务')
+    expect(wrapper.text()).toContain('0.00300000')
+    expect(wrapper.text()).toContain('未公开')
+    expect(wrapper.text()).toContain('deepseek-cny-list-1to1-v1')
+    wrapper.unmount()
   })
 })

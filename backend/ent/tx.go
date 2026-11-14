@@ -44,6 +44,8 @@ type Tx struct {
 	ChannelMonitorRequestTemplate *ChannelMonitorRequestTemplateClient
 	// ChatAttachment is the client for interacting with the ChatAttachment builders.
 	ChatAttachment *ChatAttachmentClient
+	// ChatAttachmentParse is the client for interacting with the ChatAttachmentParse builders.
+	ChatAttachmentParse *ChatAttachmentParseClient
 	// ChatAttachmentUpload is the client for interacting with the ChatAttachmentUpload builders.
 	ChatAttachmentUpload *ChatAttachmentUploadClient
 	// ChatCredential is the client for interacting with the ChatCredential builders.
@@ -262,6 +264,7 @@ func (tx *Tx) init() {
 	tx.ChannelMonitorHistory = NewChannelMonitorHistoryClient(tx.config)
 	tx.ChannelMonitorRequestTemplate = NewChannelMonitorRequestTemplateClient(tx.config)
 	tx.ChatAttachment = NewChatAttachmentClient(tx.config)
+	tx.ChatAttachmentParse = NewChatAttachmentParseClient(tx.config)
 	tx.ChatAttachmentUpload = NewChatAttachmentUploadClient(tx.config)
 	tx.ChatCredential = NewChatCredentialClient(tx.config)
 	tx.ChatGenerationRun = NewChatGenerationRunClient(tx.config)

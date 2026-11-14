@@ -171,6 +171,9 @@ func chatReplaceAttachmentRefs(ctx context.Context, client *dbent.Client, userID
 			return err
 		}
 		if !used {
+			if err = chatDiscardSettledParseBodies(ctx, client, userID, []uuid.UUID{ref.AttachmentID}); err != nil {
+				return err
+			}
 			if _, err = client.ChatAttachment.Update().Where(chatattachment.UserIDEQ(userID), chatattachment.IDEQ(ref.AttachmentID)).SetStatus(chatattachment.StatusDeleting).Save(ctx); err != nil {
 				return err
 			}

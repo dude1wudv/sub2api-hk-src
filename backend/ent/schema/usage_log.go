@@ -2,6 +2,7 @@
 package schema
 
 import (
+	"encoding/json"
 	"time"
 
 	"entgo.io/ent"
@@ -171,6 +172,9 @@ func (UsageLog) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 		field.JSON("image_size_breakdown", map[string]int{}).
+			Optional().
+			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
+		field.JSON("chat_auxiliary_usage", json.RawMessage{}).
 			Optional().
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
 

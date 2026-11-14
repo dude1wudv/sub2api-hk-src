@@ -55,9 +55,11 @@ type ChatAttachmentEdges struct {
 	SessionRefs []*ChatSessionAttachment `json:"session_refs,omitempty"`
 	// Uploads holds the value of the uploads edge.
 	Uploads []*ChatAttachmentUpload `json:"uploads,omitempty"`
+	// Parses holds the value of the parses edge.
+	Parses []*ChatAttachmentParse `json:"parses,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -87,6 +89,15 @@ func (e ChatAttachmentEdges) UploadsOrErr() ([]*ChatAttachmentUpload, error) {
 		return e.Uploads, nil
 	}
 	return nil, &NotLoadedError{edge: "uploads"}
+}
+
+// ParsesOrErr returns the Parses value or an error if the edge
+// was not loaded in eager-loading.
+func (e ChatAttachmentEdges) ParsesOrErr() ([]*ChatAttachmentParse, error) {
+	if e.loadedTypes[3] {
+		return e.Parses, nil
+	}
+	return nil, &NotLoadedError{edge: "parses"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -218,6 +229,11 @@ func (_m *ChatAttachment) QuerySessionRefs() *ChatSessionAttachmentQuery {
 // QueryUploads queries the "uploads" edge of the ChatAttachment entity.
 func (_m *ChatAttachment) QueryUploads() *ChatAttachmentUploadQuery {
 	return NewChatAttachmentClient(_m.config).QueryUploads(_m)
+}
+
+// QueryParses queries the "parses" edge of the ChatAttachment entity.
+func (_m *ChatAttachment) QueryParses() *ChatAttachmentParseQuery {
+	return NewChatAttachmentClient(_m.config).QueryParses(_m)
 }
 
 // Update returns a builder for updating this ChatAttachment.

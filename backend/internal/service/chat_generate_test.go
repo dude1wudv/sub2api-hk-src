@@ -143,7 +143,7 @@ func chatGenerationFixture(t *testing.T) (*ChatService, *chatGenerationRepoFake,
 	credentials := &ChatCredentialService{repo: &chatCredentialRepoStub{}, keys: &chatCredentialKeysStub{groups: []Group{{ID: 11}}}}
 	storage, err := NewChatStorage(t.TempDir())
 	require.NoError(t, err)
-	s, err := NewChatService(repo, storage, &config.Config{}, models, credentials)
+	s, err := NewChatService(repo, storage, &config.Config{}, models, credentials, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, s.Stop()) })
 	revision := int64(0)

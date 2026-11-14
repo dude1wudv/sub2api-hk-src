@@ -39,6 +39,17 @@ func RegisterGatewayRoutes(
 	compositeTarget := compositeTargetPlatformMiddleware(compositeResolver)
 	compositeGeminiTarget := compositeGeminiTargetPlatformMiddleware(compositeResolver)
 
+	chatAuxiliary := r.Group("/internal/chat/auxiliary")
+	chatAuxiliary.Use(func(c *gin.Context) {
+		if !service.HasChatAuxiliaryScope(c.Request.Context()) {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		c.Next()
+	})
+	chatAuxiliary.Use(clientRequestID, bodyLimit, gin.HandlerFunc(apiKeyAuth), middleware.UsageInflight)
+	chatAuxiliary.POST("/:kind", h.OpenAIGateway.ChatAuxiliary)
+
 	// 未分组 Key 拦截中间件（按协议格式区分错误响应）
 	requireGroupAnthropic := middleware.RequireGroupAssignment(settingService, middleware.AnthropicErrorWriter)
 	requireGroupOpenAI := middleware.RequireGroupAssignment(settingService, middleware.OpenAIErrorWriter)

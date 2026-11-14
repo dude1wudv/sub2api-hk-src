@@ -3,14 +3,15 @@ import { authenticatedChatFetch, requireChatResponse, streamAuthenticatedChat, C
 // The fork is the protocol authority; type-only imports do not bundle React into Vue.
 import type { BRIDGE_VERSION, BridgePayloads, BridgeRequest, BridgeResponse, ChatBootstrap, ChatPresetView } from '../../../chat-demo/src/services/sub2apiBridgeContract'
 
-export const CHAT_BRIDGE_VERSION: typeof BRIDGE_VERSION = 1
+export const CHAT_BRIDGE_VERSION: typeof BRIDGE_VERSION = 2
 const ID = '[A-Za-z0-9_-]+'
 const NONCE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
 const keysOnly = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every((key) => allowed.includes(key))
 const routes: Record<string, RegExp[]> = {
-  GET: [/^\/presets$/, /^\/preferences$/, /^\/sessions$/, new RegExp(`^/sessions/${ID}$`)],
-  POST: [/^\/imports$/, new RegExp(`^/imports/${ID}/commit$`), new RegExp(`^/sessions/${ID}/stop$`)],
+  GET: [/^\/presets$/, /^\/preferences$/, /^\/sessions$/, new RegExp(`^/sessions/${ID}$`), new RegExp(`^/attachments/${ID}/parse$`)],
+  POST: [/^\/imports$/, new RegExp(`^/imports/${ID}/commit$`), new RegExp(`^/sessions/${ID}/stop$`), new RegExp(`^/attachments/${ID}/parse$`)],
   PUT: [/^\/preferences$/, new RegExp(`^/sessions/${ID}$`), new RegExp(`^/imports/${ID}/sessions/${ID}$`)],
   PATCH: [new RegExp(`^/sessions/${ID}$`)],
   DELETE: [/^\/sessions$/, new RegExp(`^/sessions/${ID}$`), new RegExp(`^/imports/${ID}$`)],
@@ -23,6 +24,7 @@ function safePath(value: unknown): string | null {
   // No URL normalization, percent-decoding, fragments or encoded path separators.
   if (!path || path.includes('%') || extra !== undefined) return null
   if (query !== undefined) {
+    if (new RegExp(`^/attachments/${ID}/parse$`).test(path)) return /^preset_id=[0-9a-f-]{36}$/i.test(query) && UUID.test(query.slice(10)) ? path : null
     if (path !== '/sessions' || !query) return null
     const params = new URLSearchParams(query)
     const seen = new Set<string>()
@@ -45,6 +47,13 @@ export function isChatBridgeRequest(value: unknown, nonce: string): value is Bri
   if (value.command === 'bootstrap' || value.command === 'logout') return only()
   if (value.command === 'cancel') return only('target_request_id') && typeof value.target_request_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value.target_request_id)
   if (value.command === 'navigate') return only('path') && (value.path === '/dashboard' || value.path === '/chat-models')
+  if (value.command === 'asr' || value.command === 'tts') {
+    if (typeof value.preset_id !== 'string' || !UUID.test(value.preset_id)
+      || (value.session_id !== undefined && (typeof value.session_id !== 'string' || !UUID.test(value.session_id)))) return false
+    if (value.command === 'asr') return only('preset_id', 'session_id', 'audio') && value.audio instanceof Blob && value.audio.size > 0 && value.audio.size <= 8 * 1024 * 1024
+    return only('preset_id', 'session_id', 'text', 'voice_id', 'filter_markdown') && typeof value.text === 'string'
+      && value.text.trim().length > 0 && value.text.length <= 32768 && (value.voice_id === 'stella' || value.voice_id === 'tide') && typeof value.filter_markdown === 'boolean'
+  }
   const path = safePath(value.path)
   if (!path) return false
   if (value.command !== 'json' && typeof value.path === 'string' && value.path.includes('?')) return false
@@ -106,7 +115,13 @@ function presetView(value: unknown): ChatPresetView {
       native_deepseek_extensions: cap.native_deepseek_extensions === true, native_files: cap.native_files === true,
       native_search: cap.native_search === true, native_read_url: cap.native_read_url === true,
       reasoning: cap.reasoning === true, tool_call: cap.tool_call === true, search: cap.search === true, read_url: cap.read_url === true,
-      voice: false, reasons,
+      voice: cap.voice === true, asr: cap.asr === true, tts: cap.tts === true, ocr: cap.ocr === true, reasons,
+      document_mode: cap.document_mode === 'native' ? 'native' : cap.document_mode === 'ocr' ? 'ocr' : 'text',
+      accepted_document_extensions: Array.isArray(cap.accepted_document_extensions) ? cap.accepted_document_extensions.filter((item): item is string => typeof item === 'string' && /^[a-z0-9+_-]{1,32}$/.test(item)) : [],
+      search_source: cap.search_source === 'native' ? 'native' : cap.search_source === 'shared' ? 'shared' : 'unavailable',
+      read_url_source: cap.read_url_source === 'native' ? 'native' : cap.read_url_source === 'shared' ? 'shared' : 'unavailable',
+      reasoning_efforts: Array.isArray(cap.reasoning_efforts) ? cap.reasoning_efforts.filter((item): item is 'none' | 'low' | 'medium' | 'high' => ['none', 'low', 'medium', 'high'].includes(String(item))) : [],
+      auxiliary_prices: Array.isArray(cap.auxiliary_prices) ? cap.auxiliary_prices.filter((item) => record(item) && ['search', 'fetch', 'image_search', 'ocr', 'asr', 'tts'].includes(String(item.kind)) && typeof item.unit === 'string' && typeof item.unit_price === 'string' && /^\d+(\.\d+)?$/.test(item.unit_price) && Number.isSafeInteger(item.price_quantity) && Number(item.price_quantity) > 0).map((item) => ({ kind: item.kind as string, unit: item.unit as string, unit_price: item.unit_price as string, price_quantity: item.price_quantity as number })) : [],
     },
   }
 }
@@ -254,8 +269,9 @@ export class ChatHostBridge {
     this.seen.add(request.request_id)
     const controller = new AbortController()
     this.active.set(request.request_id, controller)
+    const streaming = request.command === 'stream' || request.command === 'tts'
     const timeout = request.command === 'stream' ? undefined : setTimeout(() => controller.abort(),
-      request.command === 'upload' || request.command === 'download' ? 120000 : 30000)
+      request.command === 'tts' ? 32 * 60 * 1000 : request.command === 'asr' ? 190000 : request.command === 'json' && request.path.endsWith('/parse') ? 250000 : request.command === 'upload' || request.command === 'download' ? 120000 : 30000)
     const reply = (message: Omit<BridgeResponse, 'nonce' | 'request_id'>) => {
       if (this.port !== port || this.nonce !== nonce || !this.sessionMatches(this.userID)) return
       try { port.postMessage({ ...message, request_id: request.request_id, nonce } satisfies BridgeResponse) }
@@ -264,7 +280,7 @@ export class ChatHostBridge {
     try {
       const data = await this.execute(request, controller.signal, (chunk) => reply({ type: 'chunk', data: chunk }))
       controller.signal.throwIfAborted()
-      reply({ type: request.command === 'stream' ? 'end' : 'result', ...(request.command === 'stream' ? {} : { data }) })
+      reply({ type: streaming ? 'end' : 'result', ...(streaming ? {} : { data }) })
     } catch (error) {
       // Never serialize Axios config, request headers, response objects or raw errors.
       let code = controller.signal.aborted ? 'CHAT_REQUEST_ABORTED' : 'CHAT_REQUEST_FAILED'
@@ -294,7 +310,7 @@ export class ChatHostBridge {
         return
       case 'json': {
         const body = request.method === 'PUT' && request.path === '/preferences' ? chatPreferences(request.body) : request.body
-        const response = await apiClient.request<unknown>({ method: request.method, url: `/chat${request.path}`, data: body, signal, transformRequest: chatRequestTransforms(this.userID!) })
+        const response = await apiClient.request<unknown>({ method: request.method, url: `/chat${request.path}`, data: body, signal, transformRequest: chatRequestTransforms(this.userID!), ...(request.path.endsWith('/parse') ? { timeout: 250000 } : {}) })
         if (request.method === 'GET' && request.path === '/presets') {
           if (!Array.isArray(response.data)) throw new ChatTransportError('聊天模型响应无效', 'CHAT_BRIDGE_PROTOCOL')
           return response.data.map(presetView)
@@ -320,6 +336,19 @@ export class ChatHostBridge {
       case 'download': {
         const response = await requireChatResponse(await authenticatedChatFetch(`/chat${request.path}`, { method: 'GET', signal }))
         return response.blob()
+      }
+      case 'asr': {
+        const body = new FormData()
+        body.append('preset_id', request.preset_id)
+        if (request.session_id) body.append('session_id', request.session_id)
+        body.append('file', request.audio, 'recording.wav')
+        const response = await requireChatResponse(await authenticatedChatFetch('/chat/speech/asr', { method: 'POST', body, signal }))
+        return response.json()
+      }
+      case 'tts': {
+        const { preset_id, session_id, text, voice_id, filter_markdown } = request
+        await streamAuthenticatedChat('/chat/speech/tts', { preset_id, session_id, text, voice_id, filter_markdown }, signal, chunk)
+        return
       }
       case 'stream': await streamAuthenticatedChat(`/chat${request.path}`, request.body, signal, chunk); return
     }

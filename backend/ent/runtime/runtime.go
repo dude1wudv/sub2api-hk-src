@@ -20,6 +20,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentparse"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
 	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
 	"github.com/Wei-Shaw/sub2api/ent/chatgenerationrun"
@@ -958,6 +959,71 @@ func init() {
 	chatattachmentDescID := chatattachmentFields[0].Descriptor()
 	// chatattachment.DefaultID holds the default value on creation for the id field.
 	chatattachment.DefaultID = chatattachmentDescID.Default.(func() uuid.UUID)
+	chatattachmentparseMixin := schema.ChatAttachmentParse{}.Mixin()
+	chatattachmentparseMixinFields0 := chatattachmentparseMixin[0].Fields()
+	_ = chatattachmentparseMixinFields0
+	chatattachmentparseFields := schema.ChatAttachmentParse{}.Fields()
+	_ = chatattachmentparseFields
+	// chatattachmentparseDescCreatedAt is the schema descriptor for created_at field.
+	chatattachmentparseDescCreatedAt := chatattachmentparseMixinFields0[0].Descriptor()
+	// chatattachmentparse.DefaultCreatedAt holds the default value on creation for the created_at field.
+	chatattachmentparse.DefaultCreatedAt = chatattachmentparseDescCreatedAt.Default.(func() time.Time)
+	// chatattachmentparseDescUpdatedAt is the schema descriptor for updated_at field.
+	chatattachmentparseDescUpdatedAt := chatattachmentparseMixinFields0[1].Descriptor()
+	// chatattachmentparse.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	chatattachmentparse.DefaultUpdatedAt = chatattachmentparseDescUpdatedAt.Default.(func() time.Time)
+	// chatattachmentparse.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	chatattachmentparse.UpdateDefaultUpdatedAt = chatattachmentparseDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// chatattachmentparseDescPurpose is the schema descriptor for purpose field.
+	chatattachmentparseDescPurpose := chatattachmentparseFields[4].Descriptor()
+	// chatattachmentparse.DefaultPurpose holds the default value on creation for the purpose field.
+	chatattachmentparse.DefaultPurpose = chatattachmentparseDescPurpose.Default.(string)
+	// chatattachmentparse.PurposeValidator is a validator for the "purpose" field. It is called by the builders before save.
+	chatattachmentparse.PurposeValidator = chatattachmentparseDescPurpose.Validators[0].(func(string) error)
+	// chatattachmentparseDescPageCount is the schema descriptor for page_count field.
+	chatattachmentparseDescPageCount := chatattachmentparseFields[7].Descriptor()
+	// chatattachmentparse.PageCountValidator is a validator for the "page_count" field. It is called by the builders before save.
+	chatattachmentparse.PageCountValidator = func() func(int) error {
+		validators := chatattachmentparseDescPageCount.Validators
+		fns := [...]func(int) error{
+			validators[0].(func(int) error),
+			validators[1].(func(int) error),
+		}
+		return func(page_count int) error {
+			for _, fn := range fns {
+				if err := fn(page_count); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// chatattachmentparseDescRequestID is the schema descriptor for request_id field.
+	chatattachmentparseDescRequestID := chatattachmentparseFields[9].Descriptor()
+	// chatattachmentparse.DefaultRequestID holds the default value on creation for the request_id field.
+	chatattachmentparse.DefaultRequestID = chatattachmentparseDescRequestID.Default.(string)
+	// chatattachmentparse.RequestIDValidator is a validator for the "request_id" field. It is called by the builders before save.
+	chatattachmentparse.RequestIDValidator = chatattachmentparseDescRequestID.Validators[0].(func(string) error)
+	// chatattachmentparseDescBillingApplied is the schema descriptor for billing_applied field.
+	chatattachmentparseDescBillingApplied := chatattachmentparseFields[11].Descriptor()
+	// chatattachmentparse.DefaultBillingApplied holds the default value on creation for the billing_applied field.
+	chatattachmentparse.DefaultBillingApplied = chatattachmentparseDescBillingApplied.Default.(bool)
+	// chatattachmentparseDescReservedBytes is the schema descriptor for reserved_bytes field.
+	chatattachmentparseDescReservedBytes := chatattachmentparseFields[12].Descriptor()
+	// chatattachmentparse.DefaultReservedBytes holds the default value on creation for the reserved_bytes field.
+	chatattachmentparse.DefaultReservedBytes = chatattachmentparseDescReservedBytes.Default.(int64)
+	// chatattachmentparse.ReservedBytesValidator is a validator for the "reserved_bytes" field. It is called by the builders before save.
+	chatattachmentparse.ReservedBytesValidator = chatattachmentparseDescReservedBytes.Validators[0].(func(int64) error)
+	// chatattachmentparseDescResultBytes is the schema descriptor for result_bytes field.
+	chatattachmentparseDescResultBytes := chatattachmentparseFields[13].Descriptor()
+	// chatattachmentparse.DefaultResultBytes holds the default value on creation for the result_bytes field.
+	chatattachmentparse.DefaultResultBytes = chatattachmentparseDescResultBytes.Default.(int64)
+	// chatattachmentparse.ResultBytesValidator is a validator for the "result_bytes" field. It is called by the builders before save.
+	chatattachmentparse.ResultBytesValidator = chatattachmentparseDescResultBytes.Validators[0].(func(int64) error)
+	// chatattachmentparseDescID is the schema descriptor for id field.
+	chatattachmentparseDescID := chatattachmentparseFields[0].Descriptor()
+	// chatattachmentparse.DefaultID holds the default value on creation for the id field.
+	chatattachmentparse.DefaultID = chatattachmentparseDescID.Default.(func() uuid.UUID)
 	chatattachmentuploadMixin := schema.ChatAttachmentUpload{}.Mixin()
 	chatattachmentuploadMixinFields0 := chatattachmentuploadMixin[0].Fields()
 	_ = chatattachmentuploadMixinFields0
@@ -2575,19 +2641,19 @@ func init() {
 	// usagelog.ImageSizeSourceValidator is a validator for the "image_size_source" field. It is called by the builders before save.
 	usagelog.ImageSizeSourceValidator = usagelogDescImageSizeSource.Validators[0].(func(string) error)
 	// usagelogDescVideoCount is the schema descriptor for video_count field.
-	usagelogDescVideoCount := usagelogFields[48].Descriptor()
+	usagelogDescVideoCount := usagelogFields[49].Descriptor()
 	// usagelog.DefaultVideoCount holds the default value on creation for the video_count field.
 	usagelog.DefaultVideoCount = usagelogDescVideoCount.Default.(int)
 	// usagelogDescVideoResolution is the schema descriptor for video_resolution field.
-	usagelogDescVideoResolution := usagelogFields[49].Descriptor()
+	usagelogDescVideoResolution := usagelogFields[50].Descriptor()
 	// usagelog.VideoResolutionValidator is a validator for the "video_resolution" field. It is called by the builders before save.
 	usagelog.VideoResolutionValidator = usagelogDescVideoResolution.Validators[0].(func(string) error)
 	// usagelogDescCacheTTLOverridden is the schema descriptor for cache_ttl_overridden field.
-	usagelogDescCacheTTLOverridden := usagelogFields[51].Descriptor()
+	usagelogDescCacheTTLOverridden := usagelogFields[52].Descriptor()
 	// usagelog.DefaultCacheTTLOverridden holds the default value on creation for the cache_ttl_overridden field.
 	usagelog.DefaultCacheTTLOverridden = usagelogDescCacheTTLOverridden.Default.(bool)
 	// usagelogDescCreatedAt is the schema descriptor for created_at field.
-	usagelogDescCreatedAt := usagelogFields[52].Descriptor()
+	usagelogDescCreatedAt := usagelogFields[53].Descriptor()
 	// usagelog.DefaultCreatedAt holds the default value on creation for the created_at field.
 	usagelog.DefaultCreatedAt = usagelogDescCreatedAt.Default.(func() time.Time)
 	userMixin := schema.User{}.Mixin()

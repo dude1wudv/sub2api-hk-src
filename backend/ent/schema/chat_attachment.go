@@ -41,6 +41,7 @@ func (ChatAttachment) Edges() []ent.Edge {
 		edge.From("user", User.Type).Ref("chat_attachments").Field("user_id").Unique().Required().Immutable(),
 		edge.To("session_refs", ChatSessionAttachment.Type),
 		edge.To("uploads", ChatAttachmentUpload.Type),
+		edge.To("parses", ChatAttachmentParse.Type),
 	}
 }
 

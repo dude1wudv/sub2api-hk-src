@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentparse"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
 	"github.com/Wei-Shaw/sub2api/ent/chatsessionattachment"
 	"github.com/Wei-Shaw/sub2api/ent/user"
@@ -188,6 +189,21 @@ func (_c *ChatAttachmentCreate) AddUploads(v ...*ChatAttachmentUpload) *ChatAtta
 		ids[i] = v[i].ID
 	}
 	return _c.AddUploadIDs(ids...)
+}
+
+// AddParseIDs adds the "parses" edge to the ChatAttachmentParse entity by IDs.
+func (_c *ChatAttachmentCreate) AddParseIDs(ids ...uuid.UUID) *ChatAttachmentCreate {
+	_c.mutation.AddParseIDs(ids...)
+	return _c
+}
+
+// AddParses adds the "parses" edges to the ChatAttachmentParse entity.
+func (_c *ChatAttachmentCreate) AddParses(v ...*ChatAttachmentParse) *ChatAttachmentCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddParseIDs(ids...)
 }
 
 // Mutation returns the ChatAttachmentMutation object of the builder.
@@ -439,6 +455,22 @@ func (_c *ChatAttachmentCreate) createSpec() (*ChatAttachment, *sqlgraph.CreateS
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(chatattachmentupload.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ParsesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   chatattachment.ParsesTable,
+			Columns: []string{chatattachment.ParsesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatattachmentparse.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

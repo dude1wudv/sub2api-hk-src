@@ -36,8 +36,9 @@ type ChatRepository interface {
 	ChatGenerationRepository
 	ChatAttachmentRepository
 	ChatRemoteFileRepository
- ChatImportRepository
- ChatCleanupRepository
+	ChatParseRepository
+	ChatImportRepository
+	ChatCleanupRepository
 	ListSessions(context.Context, int64, string, int) (*ChatSessionPage, error)
 	GetSession(context.Context, int64, uuid.UUID) (*ChatSessionRecord, error)
 	SaveSession(context.Context, int64, *ChatSnapshot, int64) (*ChatSessionRecord, error)

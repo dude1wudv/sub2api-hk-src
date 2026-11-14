@@ -14,6 +14,9 @@ func chatReasoningEfforts(model string, caps ChatCapabilities) []string {
 	if slash := strings.LastIndexByte(name, '/'); slash >= 0 {
 		name = name[slash+1:]
 	}
+	if caps.NativeDeepSeekExtensions {
+		return []string{"none", "low", "high"}
+	}
 	// DeepSeek has low/high/max, not medium; this UI exposes shared profiles.
 	if caps.NativeDeepSeekExtensions || strings.HasPrefix(name, "deepseek-") {
 		return []string{"low", "high"}
@@ -28,6 +31,11 @@ func applyChatReasoning(prepared *chatPreparedRequest, model string) {
 		return
 	}
 	effort := prepared.options.ReasoningEffort
+	if effort == "none" && prepared.caps.NativeDeepSeekExtensions {
+		prepared.body["thinking"] = map[string]any{"type": "disabled"}
+		delete(prepared.body, "output_config")
+		return
+	}
 	switch prepared.caps.Transport {
 	case "responses":
 		reasoning := map[string]any{"effort": effort}

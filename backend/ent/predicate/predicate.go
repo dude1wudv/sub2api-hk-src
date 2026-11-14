@@ -51,6 +51,9 @@ type ChannelMonitorRequestTemplate func(*sql.Selector)
 // ChatAttachment is the predicate function for chatattachment builders.
 type ChatAttachment func(*sql.Selector)
 
+// ChatAttachmentParse is the predicate function for chatattachmentparse builders.
+type ChatAttachmentParse func(*sql.Selector)
+
 // ChatAttachmentUpload is the predicate function for chatattachmentupload builders.
 type ChatAttachmentUpload func(*sql.Selector)
 

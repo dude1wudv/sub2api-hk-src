@@ -2,10 +2,12 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentparse"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
 	"github.com/Wei-Shaw/sub2api/ent/chatimport"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -63,12 +65,11 @@ func (r *chatRepository) FindChatGarbage(ctx context.Context) (*service.ChatClea
 			if row.Status != chatattachment.StatusDeleting && row.UpdatedAt.After(now.Add(-24*time.Hour)) {
 				return nil
 			}
-			active, err := c.ChatAttachmentUpload.Query().Where(chatattachmentupload.UserIDEQ(row.UserID), chatattachmentupload.AttachmentIDEQ(row.ID), chatattachmentupload.StatusEQ(chatattachmentupload.StatusUploading), chatattachmentupload.UpdatedAtGT(now.Add(-2*time.Minute))).Exist(ctx)
-			if err != nil {
+			if err = chatProtectAttachmentWork(ctx, c, row.UserID, []uuid.UUID{row.ID}); err != nil {
+				if errors.Is(err, service.ErrChatParseBusy) {
+					return nil
+				}
 				return err
-			}
-			if active {
-				return nil
 			}
 			if row.Status != chatattachment.StatusDeleting {
 				row, err = c.ChatAttachment.UpdateOne(row).SetStatus(chatattachment.StatusDeleting).Save(ctx)
@@ -95,6 +96,9 @@ func (r *chatRepository) ClaimRemoteCleanup(ctx context.Context, owner int64, id
 		}
 		if !eligible {
 			return nil
+		}
+		if err = chatProtectAttachmentWork(ctx, c, owner, []uuid.UUID{id}); err != nil {
+			return err
 		}
 		row, err := c.ChatAttachmentUpload.Query().Where(chatattachmentupload.UserIDEQ(owner), chatattachmentupload.AttachmentIDEQ(id), chatattachmentupload.RemoteFileIDNEQ(""), chatattachmentupload.CleanupAttemptsLT(3), chatattachmentupload.Or(chatattachmentupload.StatusEQ(chatattachmentupload.StatusReady), chatattachmentupload.StatusEQ(chatattachmentupload.StatusInvalid), chatattachmentupload.And(chatattachmentupload.StatusIn(chatattachmentupload.StatusDeleting, chatattachmentupload.StatusError), chatattachmentupload.UpdatedAtLTE(time.Now().Add(-2*time.Minute))))).Order(dbent.Asc(chatattachmentupload.FieldUpdatedAt)).First(ctx)
 		if dbent.IsNotFound(err) {
@@ -132,6 +136,9 @@ func (r *chatRepository) FinishLocalCleanup(ctx context.Context, owner int64, id
 		if err != nil {
 			return err
 		}
+		if err = chatProtectAttachmentWork(ctx, c, owner, []uuid.UUID{id}); err != nil {
+			return err
+		}
 		if err = c.ChatAttachment.UpdateOne(row).SetByteSize(0).Exec(ctx); err != nil {
 			return err
 		}
@@ -141,6 +148,9 @@ func (r *chatRepository) FinishLocalCleanup(ctx context.Context, owner int64, id
 		}
 		if pending {
 			return nil
+		}
+		if _, err = c.ChatAttachmentParse.Delete().Where(chatattachmentparse.UserIDEQ(owner), chatattachmentparse.AttachmentIDEQ(id)).Exec(ctx); err != nil {
+			return err
 		}
 		return c.ChatAttachment.DeleteOneID(id).Exec(ctx)
 	})

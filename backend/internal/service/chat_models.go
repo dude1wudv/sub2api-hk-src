@@ -28,20 +28,28 @@ type ChatCatalogGroup struct {
 }
 
 type ChatCapabilities struct {
-	Transport                string            `json:"transport"`
-	ImageInput               bool              `json:"image_input"`
-	DocumentInput            bool              `json:"document_input"`
-	NativeDeepSeekExtensions bool              `json:"native_deepseek_extensions"`
-	NativeFiles              bool              `json:"native_files"`
-	NativeSearch             bool              `json:"native_search"`
-	NativeReadURL            bool              `json:"native_read_url"`
-	Reasoning                bool              `json:"reasoning"`
-	ReasoningEfforts         []string          `json:"reasoning_efforts,omitempty"`
-	ToolCall                 bool              `json:"tool_call"`
-	Search                   bool              `json:"search"`
-	ReadURL                  bool              `json:"read_url"`
-	Voice                    bool              `json:"voice"`
-	Reasons                  map[string]string `json:"reasons"`
+	Transport                  string               `json:"transport"`
+	ImageInput                 bool                 `json:"image_input"`
+	DocumentInput              bool                 `json:"document_input"`
+	NativeDeepSeekExtensions   bool                 `json:"native_deepseek_extensions"`
+	NativeFiles                bool                 `json:"native_files"`
+	NativeSearch               bool                 `json:"native_search"`
+	NativeReadURL              bool                 `json:"native_read_url"`
+	Reasoning                  bool                 `json:"reasoning"`
+	ReasoningEfforts           []string             `json:"reasoning_efforts,omitempty"`
+	ToolCall                   bool                 `json:"tool_call"`
+	Search                     bool                 `json:"search"`
+	ReadURL                    bool                 `json:"read_url"`
+	Voice                      bool                 `json:"voice"`
+	OCR                        bool                 `json:"ocr"`
+	ASR                        bool                 `json:"asr"`
+	TTS                        bool                 `json:"tts"`
+	DocumentMode               string               `json:"document_mode"`
+	AcceptedDocumentExtensions []string             `json:"accepted_document_extensions"`
+	SearchSource               string               `json:"search_source"`
+	ReadURLSource              string               `json:"read_url_source"`
+	AuxiliaryPrices            []ChatAuxiliaryPrice `json:"auxiliary_prices,omitempty"`
+	Reasons                    map[string]string    `json:"reasons"`
 }
 
 type ChatCatalogModel struct {
@@ -78,10 +86,11 @@ type ChatModelService struct {
 	metadata     *ModelMetadataCatalog
 	billing      *BillingService
 	pricing      *ModelPricingResolver
+	auxiliary    *ChatAuxiliaryService
 }
 
-func NewChatModelService(repo ChatPresetRepository, keys *APIKeyService, catalog *GatewayModelCatalogService, accounts AccountRepository, gateway *GatewayService, openai *OpenAIGatewayService, routes *CompositeRouteResolver, metadata *ModelMetadataCatalog, billing *BillingService, pricing *ModelPricingResolver, priceCatalog *PricingService) *ChatModelService {
-	return &ChatModelService{repo: repo, groups: keys, catalog: catalog, accounts: accounts, gateway: gateway, openai: openai, routes: routes, metadata: metadata, billing: billing, pricing: pricing, priceCatalog: priceCatalog}
+func NewChatModelService(repo ChatPresetRepository, keys *APIKeyService, catalog *GatewayModelCatalogService, accounts AccountRepository, gateway *GatewayService, openai *OpenAIGatewayService, routes *CompositeRouteResolver, metadata *ModelMetadataCatalog, billing *BillingService, pricing *ModelPricingResolver, priceCatalog *PricingService, auxiliary *ChatAuxiliaryService) *ChatModelService {
+	return &ChatModelService{repo: repo, groups: keys, catalog: catalog, accounts: accounts, gateway: gateway, openai: openai, routes: routes, metadata: metadata, billing: billing, pricing: pricing, priceCatalog: priceCatalog, auxiliary: auxiliary}
 }
 
 func (s *ChatModelService) Catalog(ctx context.Context, userID, groupID int64, search string) (*ChatCatalog, error) {
@@ -253,10 +262,11 @@ func (s *ChatModelService) CreatePreset(ctx context.Context, userID, groupID int
 }
 
 func (s *ChatModelService) UpdatePreset(ctx context.Context, userID int64, id uuid.UUID, patch ChatPresetPatch) (*ChatModelPreset, error) {
-	for _, effort := range []*string{patch.NormalReasoningEffort, patch.ThinkingReasoningEffort} {
-		if effort != nil && !validChatReasoningEffort(*effort) {
-			return nil, ErrChatInvalid
-		}
+	if patch.NormalReasoningEffort != nil && *patch.NormalReasoningEffort != "none" && !validChatReasoningEffort(*patch.NormalReasoningEffort) {
+		return nil, ErrChatInvalid
+	}
+	if patch.ThinkingReasoningEffort != nil && !validChatReasoningEffort(*patch.ThinkingReasoningEffort) {
+		return nil, ErrChatInvalid
 	}
 	current, err := s.repo.GetPreset(ctx, userID, id)
 	if err != nil {

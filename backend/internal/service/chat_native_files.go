@@ -1,15 +1,11 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
-	"mime"
-	"mime/multipart"
 	"net/http"
-	"net/textproto"
 	"net/url"
 	"strings"
 	"time"
@@ -30,11 +26,13 @@ type ChatRemoteFileRecord struct {
 	Status          string
 	UpdatedAt       time.Time
 	CleanupAttempts int
+	LeaseToken      uuid.UUID
 }
 
 type ChatRemoteFileRepository interface {
 	ClaimRemoteFile(context.Context, int64, uuid.UUID, int64) (*ChatRemoteFileRecord, bool, error)
 	FinishRemoteFile(context.Context, *ChatRemoteFileRecord, string) error
+	RenewRemoteFile(context.Context, *ChatRemoteFileRecord) error
 	InvalidateRemoteFiles(context.Context, int64, int64, []uuid.UUID) error
 }
 
@@ -66,9 +64,34 @@ func (s *ChatService) remoteFile(ctx context.Context, userID int64, id uuid.UUID
 			return claim.RemoteID, nil
 		}
 		if acquired {
-			attempt, cancel := context.WithTimeout(ctx, 90*time.Second)
-			remoteID, uploadErr := upload(attempt)
+			attempt, cancel := context.WithTimeout(ctx, 10*time.Minute)
+			leaseCtx, lost := context.WithCancelCause(attempt)
+			renewed := make(chan struct{})
+			go func() {
+				defer close(renewed)
+				ticker := time.NewTicker(20 * time.Second)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-leaseCtx.Done():
+						return
+					case <-ticker.C:
+						live, done := context.WithTimeout(leaseCtx, 5*time.Second)
+						err := s.repo.RenewRemoteFile(live, claim)
+						done()
+						if err != nil {
+							lost(ErrChatLeaseLost)
+							return
+						}
+					}
+				}
+			}()
+			remoteID, uploadErr := upload(leaseCtx)
+			if context.Cause(leaseCtx) == ErrChatLeaseLost {
+				uploadErr = ErrChatLeaseLost
+			}
 			cancel()
+			<-renewed
 			if uploadErr == nil && !chatValidRemoteID(remoteID) {
 				uploadErr = ErrChatRemoteFile
 			}
@@ -107,7 +130,7 @@ func (s *OpenAIGatewayService) PrepareChatAttachments(ctx context.Context, accou
 		return nil, ErrChatCapability
 	}
 	model := upstreamRoutingModel(account, body, "")
-	if s.resolveUpstreamProtocolFor(ctx, account, APIProtocolAnthropic, model) != APIProtocolAnthropic || !(account.IsDeepseek() || strings.HasPrefix(strings.ToLower(model), "deepseek-")) {
+	if s.resolveUpstreamProtocolFor(ctx, account, APIProtocolAnthropic, model) != APIProtocolAnthropic || !chatNativeDeepSeekAccount(account) {
 		return nil, ErrChatCapability
 	}
 	var payload map[string]any
@@ -220,29 +243,18 @@ func (s *OpenAIGatewayService) uploadChatNativeFile(ctx context.Context, native 
 	if err != nil {
 		return "", err
 	}
-	var envelope bytes.Buffer
-	writer := multipart.NewWriter(&envelope)
-	if record.Purpose != "image" {
-		if err = writer.WriteField("purpose", record.Purpose); err != nil {
-			return "", err
-		}
+	purpose := record.Purpose
+	if purpose == "image" {
+		purpose = ""
 	}
-	headers := textproto.MIMEHeader{}
-	headers.Set("Content-Disposition", mime.FormatMediaType("form-data", map[string]string{"name": "file", "filename": record.Name}))
-	headers.Set("Content-Type", record.MIME)
-	if _, err = writer.CreatePart(headers); err != nil {
+	body, contentType, length, err := chatAttachmentMultipart(record, file, purpose)
+	if err != nil {
 		return "", err
 	}
-	prefix := bytes.Clone(envelope.Bytes())
-	envelope.Reset()
-	if err = writer.Close(); err != nil {
-		return "", err
-	}
-	suffix := bytes.Clone(envelope.Bytes())
-	request.Body = io.NopCloser(io.MultiReader(bytes.NewReader(prefix), file, bytes.NewReader(suffix)))
+	request.Body = io.NopCloser(body)
 	request.GetBody = nil
-	request.ContentLength = int64(len(prefix)) + record.Size + int64(len(suffix))
-	setHeaderRaw(request.Header, "content-type", writer.FormDataContentType())
+	request.ContentLength = length
+	setHeaderRaw(request.Header, "content-type", contentType)
 	response, err := s.doOpenAIUpstream(request, chatAccountProxy(account), account)
 	if err != nil {
 		return "", ErrChatRemoteFile

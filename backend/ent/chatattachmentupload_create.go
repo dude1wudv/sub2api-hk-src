@@ -113,6 +113,34 @@ func (_c *ChatAttachmentUploadCreate) SetNillableCleanupAttempts(v *int) *ChatAt
 	return _c
 }
 
+// SetLeaseToken sets the "lease_token" field.
+func (_c *ChatAttachmentUploadCreate) SetLeaseToken(v uuid.UUID) *ChatAttachmentUploadCreate {
+	_c.mutation.SetLeaseToken(v)
+	return _c
+}
+
+// SetNillableLeaseToken sets the "lease_token" field if the given value is not nil.
+func (_c *ChatAttachmentUploadCreate) SetNillableLeaseToken(v *uuid.UUID) *ChatAttachmentUploadCreate {
+	if v != nil {
+		_c.SetLeaseToken(*v)
+	}
+	return _c
+}
+
+// SetLeaseExpiresAt sets the "lease_expires_at" field.
+func (_c *ChatAttachmentUploadCreate) SetLeaseExpiresAt(v time.Time) *ChatAttachmentUploadCreate {
+	_c.mutation.SetLeaseExpiresAt(v)
+	return _c
+}
+
+// SetNillableLeaseExpiresAt sets the "lease_expires_at" field if the given value is not nil.
+func (_c *ChatAttachmentUploadCreate) SetNillableLeaseExpiresAt(v *time.Time) *ChatAttachmentUploadCreate {
+	if v != nil {
+		_c.SetLeaseExpiresAt(*v)
+	}
+	return _c
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_c *ChatAttachmentUploadCreate) SetUser(v *User) *ChatAttachmentUploadCreate {
 	return _c.SetUserID(v.ID)
@@ -278,6 +306,14 @@ func (_c *ChatAttachmentUploadCreate) createSpec() (*ChatAttachmentUpload, *sqlg
 		_spec.SetField(chatattachmentupload.FieldCleanupAttempts, field.TypeInt, value)
 		_node.CleanupAttempts = value
 	}
+	if value, ok := _c.mutation.LeaseToken(); ok {
+		_spec.SetField(chatattachmentupload.FieldLeaseToken, field.TypeUUID, value)
+		_node.LeaseToken = &value
+	}
+	if value, ok := _c.mutation.LeaseExpiresAt(); ok {
+		_spec.SetField(chatattachmentupload.FieldLeaseExpiresAt, field.TypeTime, value)
+		_node.LeaseExpiresAt = &value
+	}
 	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -418,6 +454,42 @@ func (u *ChatAttachmentUploadUpsert) AddCleanupAttempts(v int) *ChatAttachmentUp
 	return u
 }
 
+// SetLeaseToken sets the "lease_token" field.
+func (u *ChatAttachmentUploadUpsert) SetLeaseToken(v uuid.UUID) *ChatAttachmentUploadUpsert {
+	u.Set(chatattachmentupload.FieldLeaseToken, v)
+	return u
+}
+
+// UpdateLeaseToken sets the "lease_token" field to the value that was provided on create.
+func (u *ChatAttachmentUploadUpsert) UpdateLeaseToken() *ChatAttachmentUploadUpsert {
+	u.SetExcluded(chatattachmentupload.FieldLeaseToken)
+	return u
+}
+
+// ClearLeaseToken clears the value of the "lease_token" field.
+func (u *ChatAttachmentUploadUpsert) ClearLeaseToken() *ChatAttachmentUploadUpsert {
+	u.SetNull(chatattachmentupload.FieldLeaseToken)
+	return u
+}
+
+// SetLeaseExpiresAt sets the "lease_expires_at" field.
+func (u *ChatAttachmentUploadUpsert) SetLeaseExpiresAt(v time.Time) *ChatAttachmentUploadUpsert {
+	u.Set(chatattachmentupload.FieldLeaseExpiresAt, v)
+	return u
+}
+
+// UpdateLeaseExpiresAt sets the "lease_expires_at" field to the value that was provided on create.
+func (u *ChatAttachmentUploadUpsert) UpdateLeaseExpiresAt() *ChatAttachmentUploadUpsert {
+	u.SetExcluded(chatattachmentupload.FieldLeaseExpiresAt)
+	return u
+}
+
+// ClearLeaseExpiresAt clears the value of the "lease_expires_at" field.
+func (u *ChatAttachmentUploadUpsert) ClearLeaseExpiresAt() *ChatAttachmentUploadUpsert {
+	u.SetNull(chatattachmentupload.FieldLeaseExpiresAt)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -532,6 +604,48 @@ func (u *ChatAttachmentUploadUpsertOne) AddCleanupAttempts(v int) *ChatAttachmen
 func (u *ChatAttachmentUploadUpsertOne) UpdateCleanupAttempts() *ChatAttachmentUploadUpsertOne {
 	return u.Update(func(s *ChatAttachmentUploadUpsert) {
 		s.UpdateCleanupAttempts()
+	})
+}
+
+// SetLeaseToken sets the "lease_token" field.
+func (u *ChatAttachmentUploadUpsertOne) SetLeaseToken(v uuid.UUID) *ChatAttachmentUploadUpsertOne {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.SetLeaseToken(v)
+	})
+}
+
+// UpdateLeaseToken sets the "lease_token" field to the value that was provided on create.
+func (u *ChatAttachmentUploadUpsertOne) UpdateLeaseToken() *ChatAttachmentUploadUpsertOne {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.UpdateLeaseToken()
+	})
+}
+
+// ClearLeaseToken clears the value of the "lease_token" field.
+func (u *ChatAttachmentUploadUpsertOne) ClearLeaseToken() *ChatAttachmentUploadUpsertOne {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.ClearLeaseToken()
+	})
+}
+
+// SetLeaseExpiresAt sets the "lease_expires_at" field.
+func (u *ChatAttachmentUploadUpsertOne) SetLeaseExpiresAt(v time.Time) *ChatAttachmentUploadUpsertOne {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.SetLeaseExpiresAt(v)
+	})
+}
+
+// UpdateLeaseExpiresAt sets the "lease_expires_at" field to the value that was provided on create.
+func (u *ChatAttachmentUploadUpsertOne) UpdateLeaseExpiresAt() *ChatAttachmentUploadUpsertOne {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.UpdateLeaseExpiresAt()
+	})
+}
+
+// ClearLeaseExpiresAt clears the value of the "lease_expires_at" field.
+func (u *ChatAttachmentUploadUpsertOne) ClearLeaseExpiresAt() *ChatAttachmentUploadUpsertOne {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.ClearLeaseExpiresAt()
 	})
 }
 
@@ -815,6 +929,48 @@ func (u *ChatAttachmentUploadUpsertBulk) AddCleanupAttempts(v int) *ChatAttachme
 func (u *ChatAttachmentUploadUpsertBulk) UpdateCleanupAttempts() *ChatAttachmentUploadUpsertBulk {
 	return u.Update(func(s *ChatAttachmentUploadUpsert) {
 		s.UpdateCleanupAttempts()
+	})
+}
+
+// SetLeaseToken sets the "lease_token" field.
+func (u *ChatAttachmentUploadUpsertBulk) SetLeaseToken(v uuid.UUID) *ChatAttachmentUploadUpsertBulk {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.SetLeaseToken(v)
+	})
+}
+
+// UpdateLeaseToken sets the "lease_token" field to the value that was provided on create.
+func (u *ChatAttachmentUploadUpsertBulk) UpdateLeaseToken() *ChatAttachmentUploadUpsertBulk {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.UpdateLeaseToken()
+	})
+}
+
+// ClearLeaseToken clears the value of the "lease_token" field.
+func (u *ChatAttachmentUploadUpsertBulk) ClearLeaseToken() *ChatAttachmentUploadUpsertBulk {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.ClearLeaseToken()
+	})
+}
+
+// SetLeaseExpiresAt sets the "lease_expires_at" field.
+func (u *ChatAttachmentUploadUpsertBulk) SetLeaseExpiresAt(v time.Time) *ChatAttachmentUploadUpsertBulk {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.SetLeaseExpiresAt(v)
+	})
+}
+
+// UpdateLeaseExpiresAt sets the "lease_expires_at" field to the value that was provided on create.
+func (u *ChatAttachmentUploadUpsertBulk) UpdateLeaseExpiresAt() *ChatAttachmentUploadUpsertBulk {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.UpdateLeaseExpiresAt()
+	})
+}
+
+// ClearLeaseExpiresAt clears the value of the "lease_expires_at" field.
+func (u *ChatAttachmentUploadUpsertBulk) ClearLeaseExpiresAt() *ChatAttachmentUploadUpsertBulk {
+	return u.Update(func(s *ChatAttachmentUploadUpsert) {
+		s.ClearLeaseExpiresAt()
 	})
 }
 

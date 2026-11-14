@@ -1,5 +1,6 @@
 import datetime as dt
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -36,6 +37,16 @@ class ChatReleaseTests(unittest.TestCase):
                 release.migration_allowlist(before, candidate)
         with self.assertRaises(RuntimeError):
             release.verify_migrations(before, {**before, '003_unexpected.sql': 'c'}, allowed)
+
+    def test_auxiliary_migration_requires_exact_source_checksum(self):
+        source = Path(__file__).resolve().parents[2] / 'backend/migrations/344_chat_auxiliary.sql'
+        checksum = release.migration_checksum(source.read_bytes())
+        before = {'342_user_chat.sql': 'chat', '343_previous.sql': 'previous'}
+        candidate = {**before, '344_chat_auxiliary.sql': checksum}
+        self.assertEqual(release.migration_allowlist(before, candidate), {'344_chat_auxiliary.sql': checksum})
+        for name, value in [('344_chat_auxiliary.sql', 'modified'), ('344_unapproved.sql', checksum), ('345_chat_auxiliary.sql', checksum)]:
+            with self.assertRaises(RuntimeError):
+                release.migration_allowlist(before, {**before, name: value})
 
     def test_chat_retry_reuses_preapplied_chat_checksums_without_db_rollback(self):
         source_old = {'001_initial.sql': 'a'}
@@ -92,6 +103,29 @@ class ChatReleaseTests(unittest.TestCase):
             release.verify_history(before, {'2': before['2']}, 0, at)
         with self.assertRaises(RuntimeError):
             release.verify_history(before, {**before, '2': {**before['2'], 'sha256': 'changed'}}, 30, at)
+
+    def test_history_fingerprint_allows_only_new_null_auxiliary_column(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(release, 'RELEASES', Path(directory)):
+            worker = release.Release('a' * 40, 'b' * 40)
+            worker.pg_command = lambda command: [command]
+
+            def fingerprint(row):
+                with patch.object(release.subprocess, 'Popen') as popen:
+                    raw = row if isinstance(row, str) else json.dumps(row)
+                    popen.return_value.stdout = iter([(raw + '\n').encode()])
+                    popen.return_value.wait.return_value = 0
+                    return worker.history(1, 'history.json')['1']
+
+            row = {'id': 1, 'created_at': '2026-11-14T00:00:00+00:00', 'actual_cost': 0.5, 'old_nullable': None}
+            baseline = fingerprint(row)
+            self.assertEqual(baseline, fingerprint({**row, 'chat_auxiliary_usage': None}))
+            for changed in ({**row, 'actual_cost': 0.6},
+                            {**row, 'chat_auxiliary_usage': {'kind': 'tts'}},
+                            {**row, 'unexpected_column': None},
+                            {key: value for key, value in row.items() if key != 'old_nullable'}):
+                self.assertNotEqual(baseline, fingerprint(changed))
+            precise = '{"id":1,"created_at":"2026-11-14T00:00:00+00:00","actual_cost":999999999.00000001}'
+            self.assertNotEqual(fingerprint(precise), fingerprint(precise.replace('.00000001', '.00000002')))
 
     def test_chat_unrelated_container_restart_is_fatal(self):
         before = {'postgres': {'Id': 'db', 'State': {'StartedAt': 'then'}, 'RestartCount': 0}}

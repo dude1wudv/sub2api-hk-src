@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentparse"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
 	"github.com/Wei-Shaw/sub2api/ent/chatsessionattachment"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
@@ -178,6 +179,21 @@ func (_u *ChatAttachmentUpdate) AddUploads(v ...*ChatAttachmentUpload) *ChatAtta
 	return _u.AddUploadIDs(ids...)
 }
 
+// AddParseIDs adds the "parses" edge to the ChatAttachmentParse entity by IDs.
+func (_u *ChatAttachmentUpdate) AddParseIDs(ids ...uuid.UUID) *ChatAttachmentUpdate {
+	_u.mutation.AddParseIDs(ids...)
+	return _u
+}
+
+// AddParses adds the "parses" edges to the ChatAttachmentParse entity.
+func (_u *ChatAttachmentUpdate) AddParses(v ...*ChatAttachmentParse) *ChatAttachmentUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddParseIDs(ids...)
+}
+
 // Mutation returns the ChatAttachmentMutation object of the builder.
 func (_u *ChatAttachmentUpdate) Mutation() *ChatAttachmentMutation {
 	return _u.mutation
@@ -223,6 +239,27 @@ func (_u *ChatAttachmentUpdate) RemoveUploads(v ...*ChatAttachmentUpload) *ChatA
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUploadIDs(ids...)
+}
+
+// ClearParses clears all "parses" edges to the ChatAttachmentParse entity.
+func (_u *ChatAttachmentUpdate) ClearParses() *ChatAttachmentUpdate {
+	_u.mutation.ClearParses()
+	return _u
+}
+
+// RemoveParseIDs removes the "parses" edge to ChatAttachmentParse entities by IDs.
+func (_u *ChatAttachmentUpdate) RemoveParseIDs(ids ...uuid.UUID) *ChatAttachmentUpdate {
+	_u.mutation.RemoveParseIDs(ids...)
+	return _u
+}
+
+// RemoveParses removes "parses" edges to ChatAttachmentParse entities.
+func (_u *ChatAttachmentUpdate) RemoveParses(v ...*ChatAttachmentParse) *ChatAttachmentUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveParseIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -431,6 +468,51 @@ func (_u *ChatAttachmentUpdate) sqlSave(ctx context.Context) (_node int, err err
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ParsesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   chatattachment.ParsesTable,
+			Columns: []string{chatattachment.ParsesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatattachmentparse.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedParsesIDs(); len(nodes) > 0 && !_u.mutation.ParsesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   chatattachment.ParsesTable,
+			Columns: []string{chatattachment.ParsesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatattachmentparse.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ParsesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   chatattachment.ParsesTable,
+			Columns: []string{chatattachment.ParsesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatattachmentparse.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{chatattachment.Label}
@@ -598,6 +680,21 @@ func (_u *ChatAttachmentUpdateOne) AddUploads(v ...*ChatAttachmentUpload) *ChatA
 	return _u.AddUploadIDs(ids...)
 }
 
+// AddParseIDs adds the "parses" edge to the ChatAttachmentParse entity by IDs.
+func (_u *ChatAttachmentUpdateOne) AddParseIDs(ids ...uuid.UUID) *ChatAttachmentUpdateOne {
+	_u.mutation.AddParseIDs(ids...)
+	return _u
+}
+
+// AddParses adds the "parses" edges to the ChatAttachmentParse entity.
+func (_u *ChatAttachmentUpdateOne) AddParses(v ...*ChatAttachmentParse) *ChatAttachmentUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddParseIDs(ids...)
+}
+
 // Mutation returns the ChatAttachmentMutation object of the builder.
 func (_u *ChatAttachmentUpdateOne) Mutation() *ChatAttachmentMutation {
 	return _u.mutation
@@ -643,6 +740,27 @@ func (_u *ChatAttachmentUpdateOne) RemoveUploads(v ...*ChatAttachmentUpload) *Ch
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUploadIDs(ids...)
+}
+
+// ClearParses clears all "parses" edges to the ChatAttachmentParse entity.
+func (_u *ChatAttachmentUpdateOne) ClearParses() *ChatAttachmentUpdateOne {
+	_u.mutation.ClearParses()
+	return _u
+}
+
+// RemoveParseIDs removes the "parses" edge to ChatAttachmentParse entities by IDs.
+func (_u *ChatAttachmentUpdateOne) RemoveParseIDs(ids ...uuid.UUID) *ChatAttachmentUpdateOne {
+	_u.mutation.RemoveParseIDs(ids...)
+	return _u
+}
+
+// RemoveParses removes "parses" edges to ChatAttachmentParse entities.
+func (_u *ChatAttachmentUpdateOne) RemoveParses(v ...*ChatAttachmentParse) *ChatAttachmentUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveParseIDs(ids...)
 }
 
 // Where appends a list predicates to the ChatAttachmentUpdate builder.
@@ -874,6 +992,51 @@ func (_u *ChatAttachmentUpdateOne) sqlSave(ctx context.Context) (_node *ChatAtta
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(chatattachmentupload.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ParsesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   chatattachment.ParsesTable,
+			Columns: []string{chatattachment.ParsesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatattachmentparse.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedParsesIDs(); len(nodes) > 0 && !_u.mutation.ParsesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   chatattachment.ParsesTable,
+			Columns: []string{chatattachment.ParsesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatattachmentparse.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ParsesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   chatattachment.ParsesTable,
+			Columns: []string{chatattachment.ParsesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatattachmentparse.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

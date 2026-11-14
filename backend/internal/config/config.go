@@ -328,6 +328,7 @@ type BatchImageConfig struct {
 type ChatConfig struct {
 	StorageDir          string `mapstructure:"storage_dir"`
 	UserStorageMaxBytes int64  `mapstructure:"user_storage_max_bytes"`
+	AuxiliaryAccountID  int64  `mapstructure:"auxiliary_account_id"`
 }
 
 // ImageStorageConfig 配置异步图片任务结果上传的 S3 兼容对象存储。
@@ -2170,6 +2171,7 @@ func setDefaults() {
 	viper.SetDefault("run_mode", RunModeStandard)
 	viper.SetDefault("chat.storage_dir", "")
 	viper.SetDefault("chat.user_storage_max_bytes", int64(2<<30))
+	viper.SetDefault("chat.auxiliary_account_id", int64(0))
 	// Hosted HeliosGen workbench handoff. Defaults are registered explicitly so
 	// AutomaticEnv includes every key in Viper's AllKeys set.
 	viper.SetDefault("helios_workbench.enabled", false)
@@ -2869,6 +2871,9 @@ func setEnvReachableDefaults() {
 }
 
 func (c *Config) Validate() error {
+	if c.Chat.AuxiliaryAccountID < 0 {
+		return fmt.Errorf("chat.auxiliary_account_id must be non-negative")
+	}
 	if c.Gateway.APIKeyQueue.MaxWaiting < 0 || c.Gateway.APIKeyQueue.MaxWaiting > 10000 || c.Gateway.APIKeyQueue.TimeoutSeconds < 0 || c.Gateway.APIKeyQueue.TimeoutSeconds > 3600 {
 		return fmt.Errorf("gateway.api_key_queue must have 0..10000 waiters and 0..3600 timeout seconds")
 	}

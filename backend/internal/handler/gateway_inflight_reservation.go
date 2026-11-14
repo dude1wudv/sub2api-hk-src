@@ -53,6 +53,9 @@ func reserveInflightBalance(
 	if c == nil || c.Request == nil {
 		return inflightNoop, nil
 	}
+	if req.Kind == service.InflightEstimateToken {
+		req.ChatAuxiliaryCost += service.ChatNativeAuxiliaryReservationCost(c.Request.Context())
+	}
 	ctx, done, err := reserveInflightBalanceCtx(c.Request.Context(), billing, estimator, apiKey, subscription, req)
 	if err != nil {
 		return inflightNoop, err

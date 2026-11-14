@@ -19,6 +19,7 @@ type ChatService struct {
 	stopErr             error
 	models              *ChatModelService
 	credentials         *ChatCredentialService
+	auxiliary           *ChatAuxiliaryService
 	dispatchMu          sync.RWMutex
 	dispatch            ChatGatewayDispatch
 	maxRequestBodyBytes int64
@@ -30,7 +31,7 @@ type ChatService struct {
 	lifecycleDone       chan struct{}
 }
 
-func NewChatService(repo ChatRepository, storage *ChatStorage, cfg *config.Config, models *ChatModelService, credentials *ChatCredentialService) (*ChatService, error) {
+func NewChatService(repo ChatRepository, storage *ChatStorage, cfg *config.Config, models *ChatModelService, credentials *ChatCredentialService, auxiliary *ChatAuxiliaryService) (*ChatService, error) {
 	if repo == nil || storage == nil || cfg == nil || cfg.Chat.UserStorageMaxBytes < 0 {
 		return nil, ErrChatUnavailable
 	}
@@ -42,7 +43,7 @@ func NewChatService(repo ChatRepository, storage *ChatStorage, cfg *config.Confi
 	if maxBody <= 0 {
 		maxBody = cfg.Gateway.MaxBodySize
 	}
-	return &ChatService{repo: repo, storage: storage, storageLimit: limit, models: models, credentials: credentials, maxRequestBodyBytes: maxBody, instanceID: uuid.New(), active: make(map[uuid.UUID]*chatActiveRun)}, nil
+	return &ChatService{repo: repo, storage: storage, storageLimit: limit, models: models, credentials: credentials, auxiliary: auxiliary, maxRequestBodyBytes: maxBody, instanceID: uuid.New(), active: make(map[uuid.UUID]*chatActiveRun)}, nil
 }
 
 func (s *ChatService) Stop() error {

@@ -4,6 +4,7 @@ package ent
 
 import (
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"strings"
 	"time"
@@ -119,6 +120,8 @@ type UsageLog struct {
 	ImageSizeSource *string `json:"image_size_source,omitempty"`
 	// ImageSizeBreakdown holds the value of the "image_size_breakdown" field.
 	ImageSizeBreakdown map[string]int `json:"image_size_breakdown,omitempty"`
+	// ChatAuxiliaryUsage holds the value of the "chat_auxiliary_usage" field.
+	ChatAuxiliaryUsage jsontext.Value `json:"chat_auxiliary_usage,omitempty"`
 	// 视频生成数量；>0 表示本行是视频生成用量
 	VideoCount int `json:"video_count,omitempty"`
 	// 计费用视频分辨率 480p/720p/1080p
@@ -212,7 +215,7 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case usagelog.FieldImageSizeBreakdown:
+		case usagelog.FieldImageSizeBreakdown, usagelog.FieldChatAuxiliaryUsage:
 			values[i] = new([]byte)
 		case usagelog.FieldUpstreamModelMismatch, usagelog.FieldInputTokensEstimated, usagelog.FieldCacheReadTokensEstimated, usagelog.FieldOutputTokensEstimated, usagelog.FieldLongContextBillingApplied, usagelog.FieldStream, usagelog.FieldCacheTTLOverridden:
 			values[i] = new(sql.NullBool)
@@ -554,6 +557,14 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field image_size_breakdown: %w", err)
 				}
 			}
+		case usagelog.FieldChatAuxiliaryUsage:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field chat_auxiliary_usage", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.ChatAuxiliaryUsage); err != nil {
+					return fmt.Errorf("unmarshal field chat_auxiliary_usage: %w", err)
+				}
+			}
 		case usagelog.FieldVideoCount:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field video_count", values[i])
@@ -828,6 +839,9 @@ func (_m *UsageLog) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("image_size_breakdown=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ImageSizeBreakdown))
+	builder.WriteString(", ")
+	builder.WriteString("chat_auxiliary_usage=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ChatAuxiliaryUsage))
 	builder.WriteString(", ")
 	builder.WriteString("video_count=")
 	builder.WriteString(fmt.Sprintf("%v", _m.VideoCount))

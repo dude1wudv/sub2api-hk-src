@@ -18,6 +18,9 @@ import (
 // Called inside the existing user-deletion transaction. Files remain registered
 // until the chat sweeper removes them after commit; rollbacks never unlink data.
 func deleteChatUser(ctx context.Context, client *dbent.Client, userID int64) error {
+	if err := chatDiscardSettledParseBodies(ctx, client, userID, nil); err != nil {
+		return err
+	}
 	if _, err := client.ChatSession.Delete().Where(chatsession.UserIDEQ(userID)).Exec(ctx); err != nil {
 		return err
 	}

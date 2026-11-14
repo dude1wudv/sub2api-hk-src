@@ -152,12 +152,18 @@ func (s *OpenAIGatewayService) ForwardDeepSeekTool(ctx context.Context, c *gin.C
 		writeDeepSeekToolError(c, http.StatusBadGateway, "upstream_error", "Invalid upstream configuration")
 		return nil, err
 	}
+	return s.forwardDeepSeekToolJSON(ctx, c, account, kind, body, buildOpenAIEndpointURL(base, kind.Endpoint()), "deepseek_tools:"+uuid.NewString())
+}
+
+// Authorization belongs to the two separate callers; this helper only handles
+// validated JSON IO and authoritative non-empty result metering.
+func (s *OpenAIGatewayService) forwardDeepSeekToolJSON(ctx context.Context, c *gin.Context, account *Account, kind DeepSeekToolKind, body []byte, endpoint, requestID string) (*OpenAIForwardResult, error) {
 	token, _, err := s.GetAccessToken(ctx, account)
 	if err != nil {
 		writeDeepSeekToolError(c, http.StatusBadGateway, "upstream_error", "Invalid upstream credentials")
 		return nil, err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, buildOpenAIEndpointURL(base, kind.Endpoint()), bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(WithHTTPUpstreamRedirectsDisabled(ctx), http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		writeDeepSeekToolError(c, http.StatusBadGateway, "upstream_error", "Invalid upstream configuration")
 		return nil, err
@@ -172,11 +178,17 @@ func (s *OpenAIGatewayService) ForwardDeepSeekTool(ctx context.Context, c *gin.C
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
 	account.ApplyHeaderOverrides(request.Header)
+	if HasChatAuxiliaryScope(ctx) {
+		deleteHeaderAllForms(request.Header, "authorization")
+		deleteHeaderAllForms(request.Header, "x-api-key")
+		deleteHeaderAllForms(request.Header, "content-type")
+		request.Header.Set("Authorization", "Bearer "+account.GetCredential("api_key"))
+		request.Header.Set("Content-Type", "application/json")
+	}
 	// This is a unary JSON API even when a chat account overrides Accept to SSE.
 	deleteHeaderAllForms(request.Header, "accept")
 	request.Header.Set("Accept", "application/json")
 	SetActualOpenAIUpstreamEndpoint(c, kind.Endpoint())
-	requestID := "deepseek_tools:" + uuid.NewString()
 	started := time.Now()
 	response, err := s.doOpenAIUpstream(request, resolveAccountProxyURL(account), account)
 	SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(started).Milliseconds())

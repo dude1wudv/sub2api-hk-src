@@ -14,7 +14,15 @@ export interface ChatCapabilities {
   tool_call: boolean
   search: boolean
   read_url: boolean
-  voice: false
+  voice: boolean
+  asr?: boolean
+  tts?: boolean
+  ocr?: boolean
+  document_mode?: 'native' | 'text' | 'ocr'
+  accepted_document_extensions?: string[]
+  search_source?: 'native' | 'shared' | 'unavailable'
+  read_url_source?: 'native' | 'shared' | 'unavailable'
+  auxiliary_prices?: Array<{ kind: string; unit: string; unit_price: string; price_quantity: number }>
   reasons: Record<string, string>
 }
 export interface ChatCatalogGroup {
@@ -33,7 +41,7 @@ export interface ChatCatalogModel {
   unavailable_reason: string
 }
 export interface ChatCatalog { group: ChatCatalogGroup; models: ChatCatalogModel[] }
-export type ChatReasoningEffort = 'low' | 'medium' | 'high'
+export type ChatReasoningEffort = 'none' | 'low' | 'medium' | 'high'
 export interface ChatPreset {
   id: string
   group_id: number

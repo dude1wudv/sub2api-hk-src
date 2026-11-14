@@ -30,7 +30,7 @@ const names = ref<Record<string, string>>({})
 type ReasoningProfile = { normal_reasoning_effort: ChatReasoningEffort; thinking_reasoning_effort: ChatReasoningEffort }
 const reasoning = ref<Record<string, ReasoningProfile>>({})
 const effortOptions = (preset: ChatPresetView): ChatReasoningEffort[] => preset.capabilities.reasoning_efforts || ['low', 'medium', 'high']
-const effortLabel = (effort: ChatReasoningEffort) => ({ low: text('低', 'Low'), medium: text('中', 'Medium'), high: text('高', 'High') })[effort] + ` · ${effort}`
+const effortLabel = (effort: ChatReasoningEffort) => ({ none: text('关闭', 'Off'), low: text('低', 'Low'), medium: text('中', 'Medium'), high: text('高', 'High') })[effort] + ` · ${effort}`
 const reasoningChanged = (preset: ChatPresetView) => reasoning.value[preset.id]?.normal_reasoning_effort !== preset.normal_reasoning_effort || reasoning.value[preset.id]?.thinking_reasoning_effort !== preset.thinking_reasoning_effort
 const editing = computed(() => presets.value.find(preset => preset.id === editingId.value))
 let request: AbortController | undefined
@@ -178,7 +178,7 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(searchTimer); request?.abo
                       <select :id="`normal-effort-${preset.id}`" v-model="reasoning[preset.id]!.normal_reasoning_effort"><option v-for="effort in effortOptions(preset)" :key="effort" :value="effort">{{ effortLabel(effort) }}</option></select>
                     </label>
                     <label class="portal-field" :for="`thinking-effort-${preset.id}`">{{ text('深度思考', 'Deep thinking') }}
-                      <select :id="`thinking-effort-${preset.id}`" v-model="reasoning[preset.id]!.thinking_reasoning_effort"><option v-for="effort in effortOptions(preset)" :key="effort" :value="effort">{{ effortLabel(effort) }}</option></select>
+                      <select :id="`thinking-effort-${preset.id}`" v-model="reasoning[preset.id]!.thinking_reasoning_effort"><option v-for="effort in effortOptions(preset).filter(value => value !== 'none')" :key="effort" :value="effort">{{ effortLabel(effort) }}</option></select>
                     </label>
                     <button class="portal-button secondary" :disabled="saving || !reasoningChanged(preset)">{{ text('保存强度', 'Save effort') }}</button>
                   </div>

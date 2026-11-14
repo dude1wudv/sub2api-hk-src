@@ -31,6 +31,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentparse"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
 	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
 	"github.com/Wei-Shaw/sub2api/ent/chatgenerationrun"
@@ -106,6 +107,8 @@ type Client struct {
 	ChannelMonitorRequestTemplate *ChannelMonitorRequestTemplateClient
 	// ChatAttachment is the client for interacting with the ChatAttachment builders.
 	ChatAttachment *ChatAttachmentClient
+	// ChatAttachmentParse is the client for interacting with the ChatAttachmentParse builders.
+	ChatAttachmentParse *ChatAttachmentParseClient
 	// ChatAttachmentUpload is the client for interacting with the ChatAttachmentUpload builders.
 	ChatAttachmentUpload *ChatAttachmentUploadClient
 	// ChatCredential is the client for interacting with the ChatCredential builders.
@@ -204,6 +207,7 @@ func (c *Client) init() {
 	c.ChannelMonitorHistory = NewChannelMonitorHistoryClient(c.config)
 	c.ChannelMonitorRequestTemplate = NewChannelMonitorRequestTemplateClient(c.config)
 	c.ChatAttachment = NewChatAttachmentClient(c.config)
+	c.ChatAttachmentParse = NewChatAttachmentParseClient(c.config)
 	c.ChatAttachmentUpload = NewChatAttachmentUploadClient(c.config)
 	c.ChatCredential = NewChatCredentialClient(c.config)
 	c.ChatGenerationRun = NewChatGenerationRunClient(c.config)
@@ -347,6 +351,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ChannelMonitorHistory:         NewChannelMonitorHistoryClient(cfg),
 		ChannelMonitorRequestTemplate: NewChannelMonitorRequestTemplateClient(cfg),
 		ChatAttachment:                NewChatAttachmentClient(cfg),
+		ChatAttachmentParse:           NewChatAttachmentParseClient(cfg),
 		ChatAttachmentUpload:          NewChatAttachmentUploadClient(cfg),
 		ChatCredential:                NewChatCredentialClient(cfg),
 		ChatGenerationRun:             NewChatGenerationRunClient(cfg),
@@ -417,6 +422,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ChannelMonitorHistory:         NewChannelMonitorHistoryClient(cfg),
 		ChannelMonitorRequestTemplate: NewChannelMonitorRequestTemplateClient(cfg),
 		ChatAttachment:                NewChatAttachmentClient(cfg),
+		ChatAttachmentParse:           NewChatAttachmentParseClient(cfg),
 		ChatAttachmentUpload:          NewChatAttachmentUploadClient(cfg),
 		ChatCredential:                NewChatCredentialClient(cfg),
 		ChatGenerationRun:             NewChatGenerationRunClient(cfg),
@@ -486,9 +492,10 @@ func (c *Client) Use(hooks ...Hook) {
 		c.AuthIdentity, c.AuthIdentityChannel, c.BatchImageEvent, c.BatchImageItem,
 		c.BatchImageJob, c.ChannelMonitor, c.ChannelMonitorDailyRollup,
 		c.ChannelMonitorHistory, c.ChannelMonitorRequestTemplate, c.ChatAttachment,
-		c.ChatAttachmentUpload, c.ChatCredential, c.ChatGenerationRun, c.ChatImport,
-		c.ChatModelPreset, c.ChatPreference, c.ChatSession, c.ChatSessionAttachment,
-		c.CompositeModelRoute, c.ErrorPassthroughRule, c.Group, c.IdempotencyRecord,
+		c.ChatAttachmentParse, c.ChatAttachmentUpload, c.ChatCredential,
+		c.ChatGenerationRun, c.ChatImport, c.ChatModelPreset, c.ChatPreference,
+		c.ChatSession, c.ChatSessionAttachment, c.CompositeModelRoute,
+		c.ErrorPassthroughRule, c.Group, c.IdempotencyRecord,
 		c.IdentityAdoptionDecision, c.PaymentAuditLog, c.PaymentOrder,
 		c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode, c.PromoCodeUsage,
 		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
@@ -509,9 +516,10 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.AuthIdentity, c.AuthIdentityChannel, c.BatchImageEvent, c.BatchImageItem,
 		c.BatchImageJob, c.ChannelMonitor, c.ChannelMonitorDailyRollup,
 		c.ChannelMonitorHistory, c.ChannelMonitorRequestTemplate, c.ChatAttachment,
-		c.ChatAttachmentUpload, c.ChatCredential, c.ChatGenerationRun, c.ChatImport,
-		c.ChatModelPreset, c.ChatPreference, c.ChatSession, c.ChatSessionAttachment,
-		c.CompositeModelRoute, c.ErrorPassthroughRule, c.Group, c.IdempotencyRecord,
+		c.ChatAttachmentParse, c.ChatAttachmentUpload, c.ChatCredential,
+		c.ChatGenerationRun, c.ChatImport, c.ChatModelPreset, c.ChatPreference,
+		c.ChatSession, c.ChatSessionAttachment, c.CompositeModelRoute,
+		c.ErrorPassthroughRule, c.Group, c.IdempotencyRecord,
 		c.IdentityAdoptionDecision, c.PaymentAuditLog, c.PaymentOrder,
 		c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode, c.PromoCodeUsage,
 		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
@@ -557,6 +565,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ChannelMonitorRequestTemplate.mutate(ctx, m)
 	case *ChatAttachmentMutation:
 		return c.ChatAttachment.mutate(ctx, m)
+	case *ChatAttachmentParseMutation:
+		return c.ChatAttachmentParse.mutate(ctx, m)
 	case *ChatAttachmentUploadMutation:
 		return c.ChatAttachmentUpload.mutate(ctx, m)
 	case *ChatCredentialMutation:
@@ -3039,6 +3049,22 @@ func (c *ChatAttachmentClient) QueryUploads(_m *ChatAttachment) *ChatAttachmentU
 	return query
 }
 
+// QueryParses queries the parses edge of a ChatAttachment.
+func (c *ChatAttachmentClient) QueryParses(_m *ChatAttachment) *ChatAttachmentParseQuery {
+	query := (&ChatAttachmentParseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(chatattachment.Table, chatattachment.FieldID, id),
+			sqlgraph.To(chatattachmentparse.Table, chatattachmentparse.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, chatattachment.ParsesTable, chatattachment.ParsesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ChatAttachmentClient) Hooks() []Hook {
 	return c.hooks.ChatAttachment
@@ -3061,6 +3087,171 @@ func (c *ChatAttachmentClient) mutate(ctx context.Context, m *ChatAttachmentMuta
 		return (&ChatAttachmentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ChatAttachment mutation op: %q", m.Op())
+	}
+}
+
+// ChatAttachmentParseClient is a client for the ChatAttachmentParse schema.
+type ChatAttachmentParseClient struct {
+	config
+}
+
+// NewChatAttachmentParseClient returns a client for the ChatAttachmentParse from the given config.
+func NewChatAttachmentParseClient(c config) *ChatAttachmentParseClient {
+	return &ChatAttachmentParseClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `chatattachmentparse.Hooks(f(g(h())))`.
+func (c *ChatAttachmentParseClient) Use(hooks ...Hook) {
+	c.hooks.ChatAttachmentParse = append(c.hooks.ChatAttachmentParse, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `chatattachmentparse.Intercept(f(g(h())))`.
+func (c *ChatAttachmentParseClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ChatAttachmentParse = append(c.inters.ChatAttachmentParse, interceptors...)
+}
+
+// Create returns a builder for creating a ChatAttachmentParse entity.
+func (c *ChatAttachmentParseClient) Create() *ChatAttachmentParseCreate {
+	mutation := newChatAttachmentParseMutation(c.config, OpCreate)
+	return &ChatAttachmentParseCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ChatAttachmentParse entities.
+func (c *ChatAttachmentParseClient) CreateBulk(builders ...*ChatAttachmentParseCreate) *ChatAttachmentParseCreateBulk {
+	return &ChatAttachmentParseCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ChatAttachmentParseClient) MapCreateBulk(slice any, setFunc func(*ChatAttachmentParseCreate, int)) *ChatAttachmentParseCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ChatAttachmentParseCreateBulk{err: fmt.Errorf("calling to ChatAttachmentParseClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ChatAttachmentParseCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ChatAttachmentParseCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ChatAttachmentParse.
+func (c *ChatAttachmentParseClient) Update() *ChatAttachmentParseUpdate {
+	mutation := newChatAttachmentParseMutation(c.config, OpUpdate)
+	return &ChatAttachmentParseUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ChatAttachmentParseClient) UpdateOne(_m *ChatAttachmentParse) *ChatAttachmentParseUpdateOne {
+	mutation := newChatAttachmentParseMutation(c.config, OpUpdateOne, withChatAttachmentParse(_m))
+	return &ChatAttachmentParseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ChatAttachmentParseClient) UpdateOneID(id uuid.UUID) *ChatAttachmentParseUpdateOne {
+	mutation := newChatAttachmentParseMutation(c.config, OpUpdateOne, withChatAttachmentParseID(id))
+	return &ChatAttachmentParseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ChatAttachmentParse.
+func (c *ChatAttachmentParseClient) Delete() *ChatAttachmentParseDelete {
+	mutation := newChatAttachmentParseMutation(c.config, OpDelete)
+	return &ChatAttachmentParseDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ChatAttachmentParseClient) DeleteOne(_m *ChatAttachmentParse) *ChatAttachmentParseDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ChatAttachmentParseClient) DeleteOneID(id uuid.UUID) *ChatAttachmentParseDeleteOne {
+	builder := c.Delete().Where(chatattachmentparse.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ChatAttachmentParseDeleteOne{builder}
+}
+
+// Query returns a query builder for ChatAttachmentParse.
+func (c *ChatAttachmentParseClient) Query() *ChatAttachmentParseQuery {
+	return &ChatAttachmentParseQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeChatAttachmentParse},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ChatAttachmentParse entity by its id.
+func (c *ChatAttachmentParseClient) Get(ctx context.Context, id uuid.UUID) (*ChatAttachmentParse, error) {
+	return c.Query().Where(chatattachmentparse.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ChatAttachmentParseClient) GetX(ctx context.Context, id uuid.UUID) *ChatAttachmentParse {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a ChatAttachmentParse.
+func (c *ChatAttachmentParseClient) QueryUser(_m *ChatAttachmentParse) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(chatattachmentparse.Table, chatattachmentparse.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, chatattachmentparse.UserTable, chatattachmentparse.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryAttachment queries the attachment edge of a ChatAttachmentParse.
+func (c *ChatAttachmentParseClient) QueryAttachment(_m *ChatAttachmentParse) *ChatAttachmentQuery {
+	query := (&ChatAttachmentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(chatattachmentparse.Table, chatattachmentparse.FieldID, id),
+			sqlgraph.To(chatattachment.Table, chatattachment.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, chatattachmentparse.AttachmentTable, chatattachmentparse.AttachmentColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ChatAttachmentParseClient) Hooks() []Hook {
+	return c.hooks.ChatAttachmentParse
+}
+
+// Interceptors returns the client interceptors.
+func (c *ChatAttachmentParseClient) Interceptors() []Interceptor {
+	return c.inters.ChatAttachmentParse
+}
+
+func (c *ChatAttachmentParseClient) mutate(ctx context.Context, m *ChatAttachmentParseMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ChatAttachmentParseCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ChatAttachmentParseUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ChatAttachmentParseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ChatAttachmentParseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ChatAttachmentParse mutation op: %q", m.Op())
 	}
 }
 
@@ -7990,6 +8181,22 @@ func (c *UserClient) QueryChatAttachmentUploads(_m *User) *ChatAttachmentUploadQ
 	return query
 }
 
+// QueryChatAttachmentParses queries the chat_attachment_parses edge of a User.
+func (c *UserClient) QueryChatAttachmentParses(_m *User) *ChatAttachmentParseQuery {
+	query := (&ChatAttachmentParseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(chatattachmentparse.Table, chatattachmentparse.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatAttachmentParsesTable, user.ChatAttachmentParsesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryChatImports queries the chat_imports edge of a User.
 func (c *UserClient) QueryChatImports(_m *User) *ChatImportQuery {
 	query := (&ChatImportClient{config: c.config}).Query()
@@ -9183,12 +9390,13 @@ type (
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
 		AuthIdentityChannel, BatchImageEvent, BatchImageItem, BatchImageJob,
 		ChannelMonitor, ChannelMonitorDailyRollup, ChannelMonitorHistory,
-		ChannelMonitorRequestTemplate, ChatAttachment, ChatAttachmentUpload,
-		ChatCredential, ChatGenerationRun, ChatImport, ChatModelPreset, ChatPreference,
-		ChatSession, ChatSessionAttachment, CompositeModelRoute, ErrorPassthroughRule,
-		Group, IdempotencyRecord, IdentityAdoptionDecision, PaymentAuditLog,
-		PaymentOrder, PaymentProviderInstance, PendingAuthSession, PromoCode,
-		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
+		ChannelMonitorRequestTemplate, ChatAttachment, ChatAttachmentParse,
+		ChatAttachmentUpload, ChatCredential, ChatGenerationRun, ChatImport,
+		ChatModelPreset, ChatPreference, ChatSession, ChatSessionAttachment,
+		CompositeModelRoute, ErrorPassthroughRule, Group, IdempotencyRecord,
+		IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
+		PaymentProviderInstance, PendingAuthSession, PromoCode, PromoCodeUsage, Proxy,
+		RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		SubscriptionPurchaseClaim, TLSFingerprintProfile, UsageCleanupTask, UsageLog,
 		User, UserAllowedGroup, UserAttributeDefinition, UserAttributeValue,
 		UserPlatformQuota, UserSubscription, WorkbenchCredential,
@@ -9198,12 +9406,13 @@ type (
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
 		AuthIdentityChannel, BatchImageEvent, BatchImageItem, BatchImageJob,
 		ChannelMonitor, ChannelMonitorDailyRollup, ChannelMonitorHistory,
-		ChannelMonitorRequestTemplate, ChatAttachment, ChatAttachmentUpload,
-		ChatCredential, ChatGenerationRun, ChatImport, ChatModelPreset, ChatPreference,
-		ChatSession, ChatSessionAttachment, CompositeModelRoute, ErrorPassthroughRule,
-		Group, IdempotencyRecord, IdentityAdoptionDecision, PaymentAuditLog,
-		PaymentOrder, PaymentProviderInstance, PendingAuthSession, PromoCode,
-		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
+		ChannelMonitorRequestTemplate, ChatAttachment, ChatAttachmentParse,
+		ChatAttachmentUpload, ChatCredential, ChatGenerationRun, ChatImport,
+		ChatModelPreset, ChatPreference, ChatSession, ChatSessionAttachment,
+		CompositeModelRoute, ErrorPassthroughRule, Group, IdempotencyRecord,
+		IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
+		PaymentProviderInstance, PendingAuthSession, PromoCode, PromoCodeUsage, Proxy,
+		RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		SubscriptionPurchaseClaim, TLSFingerprintProfile, UsageCleanupTask, UsageLog,
 		User, UserAllowedGroup, UserAttributeDefinition, UserAttributeValue,
 		UserPlatformQuota, UserSubscription, WorkbenchCredential,

@@ -304,8 +304,10 @@ type OpenAIForwardResult struct {
 	WebSearchCalls int
 	// DeepSeekToolKind distinguishes native Search/Fetch from model requests,
 	// including successful empty results that must record zero per-request cost.
-	DeepSeekToolKind  DeepSeekToolKind
-	BillableToolCalls int
+	DeepSeekToolKind   DeepSeekToolKind
+	BillableToolCalls  int
+	ChatAuxiliaryUsage *ChatAuxiliaryUsage
+	chatAuxiliaryOnly  bool
 	// SearchCount is Grok-native web_search / tool search call count (per 1k pricing).
 	SearchCount int
 	// AudioUsage carries Voice billing units when present.
@@ -472,6 +474,7 @@ type OpenAIGatewayService struct {
 	billingCacheService   *BillingCacheService
 	userGroupRateResolver *userGroupRateResolver
 	httpUpstream          HTTPUpstream
+	chatTTSDial           chatSpeechDial
 	pluginManager         *PluginManager
 	deferredService       *DeferredService
 	openAITokenProvider   *OpenAITokenProvider

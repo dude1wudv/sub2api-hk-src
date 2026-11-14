@@ -15,6 +15,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentparse"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
 	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
 	"github.com/Wei-Shaw/sub2api/ent/chatgenerationrun"
@@ -708,6 +709,21 @@ func (_c *UserCreate) AddChatAttachmentUploads(v ...*ChatAttachmentUpload) *User
 		ids[i] = v[i].ID
 	}
 	return _c.AddChatAttachmentUploadIDs(ids...)
+}
+
+// AddChatAttachmentParseIDs adds the "chat_attachment_parses" edge to the ChatAttachmentParse entity by IDs.
+func (_c *UserCreate) AddChatAttachmentParseIDs(ids ...uuid.UUID) *UserCreate {
+	_c.mutation.AddChatAttachmentParseIDs(ids...)
+	return _c
+}
+
+// AddChatAttachmentParses adds the "chat_attachment_parses" edges to the ChatAttachmentParse entity.
+func (_c *UserCreate) AddChatAttachmentParses(v ...*ChatAttachmentParse) *UserCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChatAttachmentParseIDs(ids...)
 }
 
 // AddChatImportIDs adds the "chat_imports" edge to the ChatImport entity by IDs.
@@ -1419,6 +1435,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(chatattachmentupload.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChatAttachmentParsesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ChatAttachmentParsesTable,
+			Columns: []string{user.ChatAttachmentParsesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(chatattachmentparse.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

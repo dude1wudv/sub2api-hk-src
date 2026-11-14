@@ -70,7 +70,7 @@ onBeforeUnmount(() => { stopActions(); bridge.destroy() })
       :title="zh ? '聊天' : 'Chat'"
       class="chat-host__frame"
       referrerpolicy="same-origin"
-      allow="microphone 'none'; camera 'none'; geolocation 'none'"
+      allow="microphone 'self'; camera 'none'; geolocation 'none'"
       @load="bridge.frameLoaded"
     />
     <p v-else role="status" class="p-6">

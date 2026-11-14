@@ -109,6 +109,8 @@ const (
 	EdgeChatSessionAttachments = "chat_session_attachments"
 	// EdgeChatAttachmentUploads holds the string denoting the chat_attachment_uploads edge name in mutations.
 	EdgeChatAttachmentUploads = "chat_attachment_uploads"
+	// EdgeChatAttachmentParses holds the string denoting the chat_attachment_parses edge name in mutations.
+	EdgeChatAttachmentParses = "chat_attachment_parses"
 	// EdgeChatImports holds the string denoting the chat_imports edge name in mutations.
 	EdgeChatImports = "chat_imports"
 	// EdgeChatPreferences holds the string denoting the chat_preferences edge name in mutations.
@@ -269,6 +271,13 @@ const (
 	ChatAttachmentUploadsInverseTable = "chat_attachment_uploads"
 	// ChatAttachmentUploadsColumn is the table column denoting the chat_attachment_uploads relation/edge.
 	ChatAttachmentUploadsColumn = "user_id"
+	// ChatAttachmentParsesTable is the table that holds the chat_attachment_parses relation/edge.
+	ChatAttachmentParsesTable = "chat_attachment_parses"
+	// ChatAttachmentParsesInverseTable is the table name for the ChatAttachmentParse entity.
+	// It exists in this package in order to avoid circular dependency with the "chatattachmentparse" package.
+	ChatAttachmentParsesInverseTable = "chat_attachment_parses"
+	// ChatAttachmentParsesColumn is the table column denoting the chat_attachment_parses relation/edge.
+	ChatAttachmentParsesColumn = "user_id"
 	// ChatImportsTable is the table that holds the chat_imports relation/edge.
 	ChatImportsTable = "chat_imports"
 	// ChatImportsInverseTable is the table name for the ChatImport entity.
@@ -837,6 +846,20 @@ func ByChatAttachmentUploads(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOp
 	}
 }
 
+// ByChatAttachmentParsesCount orders the results by chat_attachment_parses count.
+func ByChatAttachmentParsesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChatAttachmentParsesStep(), opts...)
+	}
+}
+
+// ByChatAttachmentParses orders the results by chat_attachment_parses terms.
+func ByChatAttachmentParses(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChatAttachmentParsesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByChatImportsCount orders the results by chat_imports count.
 func ByChatImportsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -1030,6 +1053,13 @@ func newChatAttachmentUploadsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ChatAttachmentUploadsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ChatAttachmentUploadsTable, ChatAttachmentUploadsColumn),
+	)
+}
+func newChatAttachmentParsesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChatAttachmentParsesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChatAttachmentParsesTable, ChatAttachmentParsesColumn),
 	)
 }
 func newChatImportsStep() *sqlgraph.Step {

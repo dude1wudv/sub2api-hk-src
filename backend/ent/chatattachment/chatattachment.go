@@ -44,6 +44,8 @@ const (
 	EdgeSessionRefs = "session_refs"
 	// EdgeUploads holds the string denoting the uploads edge name in mutations.
 	EdgeUploads = "uploads"
+	// EdgeParses holds the string denoting the parses edge name in mutations.
+	EdgeParses = "parses"
 	// Table holds the table name of the chatattachment in the database.
 	Table = "chat_attachments"
 	// UserTable is the table that holds the user relation/edge.
@@ -67,6 +69,13 @@ const (
 	UploadsInverseTable = "chat_attachment_uploads"
 	// UploadsColumn is the table column denoting the uploads relation/edge.
 	UploadsColumn = "attachment_id"
+	// ParsesTable is the table that holds the parses relation/edge.
+	ParsesTable = "chat_attachment_parses"
+	// ParsesInverseTable is the table name for the ChatAttachmentParse entity.
+	// It exists in this package in order to avoid circular dependency with the "chatattachmentparse" package.
+	ParsesInverseTable = "chat_attachment_parses"
+	// ParsesColumn is the table column denoting the parses relation/edge.
+	ParsesColumn = "attachment_id"
 )
 
 // Columns holds all SQL columns for chatattachment fields.
@@ -270,6 +279,20 @@ func ByUploads(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newUploadsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByParsesCount orders the results by parses count.
+func ByParsesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newParsesStep(), opts...)
+	}
+}
+
+// ByParses orders the results by parses terms.
+func ByParses(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newParsesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -289,5 +312,12 @@ func newUploadsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UploadsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UploadsTable, UploadsColumn),
+	)
+}
+func newParsesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ParsesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ParsesTable, ParsesColumn),
 	)
 }

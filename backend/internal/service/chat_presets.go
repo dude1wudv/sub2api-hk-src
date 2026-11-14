@@ -56,6 +56,9 @@ func (p *ChatModelPreset) reasoningEffort(thinking bool) string {
 	if thinking {
 		effort, fallback = p.ThinkingReasoningEffort, "high"
 	}
+	if !thinking && effort == "none" {
+		return effort
+	}
 	if validChatReasoningEffort(effort) {
 		return effort
 	}

@@ -852,6 +852,57 @@ var (
 			},
 		},
 	}
+	// ChatAttachmentParsesColumns holds the columns for the "chat_attachment_parses" table.
+	ChatAttachmentParsesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "account_id", Type: field.TypeInt64},
+		{Name: "purpose", Type: field.TypeString, Size: 32, Default: "text_recognition"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"processing", "ready", "failed", "unknown"}, Default: "processing"},
+		{Name: "result", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "page_count", Type: field.TypeInt, Nullable: true},
+		{Name: "operation_id", Type: field.TypeUUID},
+		{Name: "request_id", Type: field.TypeString, Size: 128, Default: ""},
+		{Name: "billing_receipt", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "billing_applied", Type: field.TypeBool, Default: false},
+		{Name: "reserved_bytes", Type: field.TypeInt64, Default: 0},
+		{Name: "result_bytes", Type: field.TypeInt64, Default: 0},
+		{Name: "attachment_id", Type: field.TypeUUID},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// ChatAttachmentParsesTable holds the schema information for the "chat_attachment_parses" table.
+	ChatAttachmentParsesTable = &schema.Table{
+		Name:       "chat_attachment_parses",
+		Columns:    ChatAttachmentParsesColumns,
+		PrimaryKey: []*schema.Column{ChatAttachmentParsesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_attachment_parses_chat_attachments_parses",
+				Columns:    []*schema.Column{ChatAttachmentParsesColumns[14]},
+				RefColumns: []*schema.Column{ChatAttachmentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "chat_attachment_parses_users_chat_attachment_parses",
+				Columns:    []*schema.Column{ChatAttachmentParsesColumns[15]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatattachmentparse_attachment_id_account_id_purpose",
+				Unique:  true,
+				Columns: []*schema.Column{ChatAttachmentParsesColumns[14], ChatAttachmentParsesColumns[3], ChatAttachmentParsesColumns[4]},
+			},
+			{
+				Name:    "chatattachmentparse_user_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{ChatAttachmentParsesColumns[15], ChatAttachmentParsesColumns[5]},
+			},
+		},
+	}
 	// ChatAttachmentUploadsColumns holds the columns for the "chat_attachment_uploads" table.
 	ChatAttachmentUploadsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -861,6 +912,8 @@ var (
 		{Name: "remote_file_id", Type: field.TypeString, Size: 512, Default: ""},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"uploading", "ready", "invalid", "deleting", "error"}, Default: "uploading"},
 		{Name: "cleanup_attempts", Type: field.TypeInt, Default: 0},
+		{Name: "lease_token", Type: field.TypeUUID, Nullable: true},
+		{Name: "lease_expires_at", Type: field.TypeTime, Nullable: true},
 		{Name: "attachment_id", Type: field.TypeUUID},
 		{Name: "user_id", Type: field.TypeInt64},
 	}
@@ -872,13 +925,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "chat_attachment_uploads_chat_attachments_uploads",
-				Columns:    []*schema.Column{ChatAttachmentUploadsColumns[7]},
+				Columns:    []*schema.Column{ChatAttachmentUploadsColumns[9]},
 				RefColumns: []*schema.Column{ChatAttachmentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "chat_attachment_uploads_users_chat_attachment_uploads",
-				Columns:    []*schema.Column{ChatAttachmentUploadsColumns[8]},
+				Columns:    []*schema.Column{ChatAttachmentUploadsColumns[10]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -887,12 +940,12 @@ var (
 			{
 				Name:    "chatattachmentupload_attachment_id_account_id",
 				Unique:  true,
-				Columns: []*schema.Column{ChatAttachmentUploadsColumns[7], ChatAttachmentUploadsColumns[3]},
+				Columns: []*schema.Column{ChatAttachmentUploadsColumns[9], ChatAttachmentUploadsColumns[3]},
 			},
 			{
 				Name:    "chatattachmentupload_user_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{ChatAttachmentUploadsColumns[8], ChatAttachmentUploadsColumns[5]},
+				Columns: []*schema.Column{ChatAttachmentUploadsColumns[10], ChatAttachmentUploadsColumns[5]},
 			},
 		},
 	}
@@ -2138,6 +2191,7 @@ var (
 		{Name: "image_output_size", Type: field.TypeString, Nullable: true, Size: 32},
 		{Name: "image_size_source", Type: field.TypeString, Nullable: true, Size: 16},
 		{Name: "image_size_breakdown", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "chat_auxiliary_usage", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
 		{Name: "video_count", Type: field.TypeInt, Default: 0},
 		{Name: "video_resolution", Type: field.TypeString, Nullable: true, Size: 10},
 		{Name: "video_duration_seconds", Type: field.TypeInt, Nullable: true},
@@ -2157,31 +2211,31 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "usage_logs_api_keys_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[49]},
+				Columns:    []*schema.Column{UsageLogsColumns[50]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_accounts_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[50]},
+				Columns:    []*schema.Column{UsageLogsColumns[51]},
 				RefColumns: []*schema.Column{AccountsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_groups_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[51]},
+				Columns:    []*schema.Column{UsageLogsColumns[52]},
 				RefColumns: []*schema.Column{GroupsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "usage_logs_users_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[52]},
+				Columns:    []*schema.Column{UsageLogsColumns[53]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_user_subscriptions_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[53]},
+				Columns:    []*schema.Column{UsageLogsColumns[54]},
 				RefColumns: []*schema.Column{UserSubscriptionsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -2190,32 +2244,32 @@ var (
 			{
 				Name:    "usagelog_user_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[52]},
+				Columns: []*schema.Column{UsageLogsColumns[53]},
 			},
 			{
 				Name:    "usagelog_api_key_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[49]},
+				Columns: []*schema.Column{UsageLogsColumns[50]},
 			},
 			{
 				Name:    "usagelog_account_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[50]},
+				Columns: []*schema.Column{UsageLogsColumns[51]},
 			},
 			{
 				Name:    "usagelog_group_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[51]},
+				Columns: []*schema.Column{UsageLogsColumns[52]},
 			},
 			{
 				Name:    "usagelog_subscription_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[53]},
+				Columns: []*schema.Column{UsageLogsColumns[54]},
 			},
 			{
 				Name:    "usagelog_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[48]},
+				Columns: []*schema.Column{UsageLogsColumns[49]},
 			},
 			{
 				Name:    "usagelog_model",
@@ -2235,17 +2289,17 @@ var (
 			{
 				Name:    "usagelog_user_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[52], UsageLogsColumns[48]},
+				Columns: []*schema.Column{UsageLogsColumns[53], UsageLogsColumns[49]},
 			},
 			{
 				Name:    "usagelog_api_key_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[49], UsageLogsColumns[48]},
+				Columns: []*schema.Column{UsageLogsColumns[50], UsageLogsColumns[49]},
 			},
 			{
 				Name:    "usagelog_group_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[51], UsageLogsColumns[48]},
+				Columns: []*schema.Column{UsageLogsColumns[52], UsageLogsColumns[49]},
 			},
 		},
 	}
@@ -2659,6 +2713,7 @@ var (
 		ChannelMonitorHistoriesTable,
 		ChannelMonitorRequestTemplatesTable,
 		ChatAttachmentsTable,
+		ChatAttachmentParsesTable,
 		ChatAttachmentUploadsTable,
 		ChatCredentialsTable,
 		ChatGenerationRunsTable,
@@ -2757,6 +2812,11 @@ func init() {
 	ChatAttachmentsTable.ForeignKeys[0].RefTable = UsersTable
 	ChatAttachmentsTable.Annotation = &entsql.Annotation{
 		Table: "chat_attachments",
+	}
+	ChatAttachmentParsesTable.ForeignKeys[0].RefTable = ChatAttachmentsTable
+	ChatAttachmentParsesTable.ForeignKeys[1].RefTable = UsersTable
+	ChatAttachmentParsesTable.Annotation = &entsql.Annotation{
+		Table: "chat_attachment_parses",
 	}
 	ChatAttachmentUploadsTable.ForeignKeys[0].RefTable = ChatAttachmentsTable
 	ChatAttachmentUploadsTable.ForeignKeys[1].RefTable = UsersTable

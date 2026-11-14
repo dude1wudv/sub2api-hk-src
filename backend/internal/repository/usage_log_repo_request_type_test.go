@@ -113,6 +113,7 @@ func TestUsageLogRepositoryCreateSyncRequestTypeAndLegacyFields(t *testing.T) {
 			false,            // input_tokens_estimated
 			false,            // cache_read_tokens_estimated
 			"",               // usage_estimation_reason
+			nil,              // chat_auxiliary_usage
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(99), createdAt))
 
@@ -218,6 +219,7 @@ func TestUsageLogRepositoryCreate_PersistsServiceTier(t *testing.T) {
 			false,            // input_tokens_estimated
 			false,            // cache_read_tokens_estimated
 			"",               // usage_estimation_reason
+			nil,              // chat_auxiliary_usage
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(100), createdAt))
 
@@ -991,6 +993,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			false,            // input_tokens_estimated
 			false,            // cache_read_tokens_estimated
 			"",               // usage_estimation_reason
+			sql.NullString{}, // chat_auxiliary_usage
 		}})
 		require.NoError(t, err)
 		require.Equal(t, 2, log.ImageCount)
@@ -1081,6 +1084,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			false,            // input_tokens_estimated
 			false,            // cache_read_tokens_estimated
 			"",               // usage_estimation_reason
+			sql.NullString{}, // chat_auxiliary_usage
 		}})
 		require.NoError(t, err)
 		require.NotNil(t, log.ServiceTier)
@@ -1154,6 +1158,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			false,            // input_tokens_estimated
 			false,            // cache_read_tokens_estimated
 			"",               // usage_estimation_reason
+			sql.NullString{}, // chat_auxiliary_usage
 		}})
 		require.NoError(t, err)
 		require.NotNil(t, log.ServiceTier)
@@ -1228,6 +1233,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			false,            // input_tokens_estimated
 			false,            // cache_read_tokens_estimated
 			"",               // usage_estimation_reason
+			sql.NullString{}, // chat_auxiliary_usage
 		}})
 		require.NoError(t, err)
 		require.NotNil(t, log.ServiceTier)

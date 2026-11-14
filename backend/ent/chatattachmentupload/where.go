@@ -91,6 +91,16 @@ func CleanupAttempts(v int) predicate.ChatAttachmentUpload {
 	return predicate.ChatAttachmentUpload(sql.FieldEQ(FieldCleanupAttempts, v))
 }
 
+// LeaseToken applies equality check predicate on the "lease_token" field. It's identical to LeaseTokenEQ.
+func LeaseToken(v uuid.UUID) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldEQ(FieldLeaseToken, v))
+}
+
+// LeaseExpiresAt applies equality check predicate on the "lease_expires_at" field. It's identical to LeaseExpiresAtEQ.
+func LeaseExpiresAt(v time.Time) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldEQ(FieldLeaseExpiresAt, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.ChatAttachmentUpload {
 	return predicate.ChatAttachmentUpload(sql.FieldEQ(FieldCreatedAt, v))
@@ -374,6 +384,106 @@ func CleanupAttemptsLT(v int) predicate.ChatAttachmentUpload {
 // CleanupAttemptsLTE applies the LTE predicate on the "cleanup_attempts" field.
 func CleanupAttemptsLTE(v int) predicate.ChatAttachmentUpload {
 	return predicate.ChatAttachmentUpload(sql.FieldLTE(FieldCleanupAttempts, v))
+}
+
+// LeaseTokenEQ applies the EQ predicate on the "lease_token" field.
+func LeaseTokenEQ(v uuid.UUID) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldEQ(FieldLeaseToken, v))
+}
+
+// LeaseTokenNEQ applies the NEQ predicate on the "lease_token" field.
+func LeaseTokenNEQ(v uuid.UUID) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldNEQ(FieldLeaseToken, v))
+}
+
+// LeaseTokenIn applies the In predicate on the "lease_token" field.
+func LeaseTokenIn(vs ...uuid.UUID) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldIn(FieldLeaseToken, vs...))
+}
+
+// LeaseTokenNotIn applies the NotIn predicate on the "lease_token" field.
+func LeaseTokenNotIn(vs ...uuid.UUID) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldNotIn(FieldLeaseToken, vs...))
+}
+
+// LeaseTokenGT applies the GT predicate on the "lease_token" field.
+func LeaseTokenGT(v uuid.UUID) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldGT(FieldLeaseToken, v))
+}
+
+// LeaseTokenGTE applies the GTE predicate on the "lease_token" field.
+func LeaseTokenGTE(v uuid.UUID) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldGTE(FieldLeaseToken, v))
+}
+
+// LeaseTokenLT applies the LT predicate on the "lease_token" field.
+func LeaseTokenLT(v uuid.UUID) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldLT(FieldLeaseToken, v))
+}
+
+// LeaseTokenLTE applies the LTE predicate on the "lease_token" field.
+func LeaseTokenLTE(v uuid.UUID) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldLTE(FieldLeaseToken, v))
+}
+
+// LeaseTokenIsNil applies the IsNil predicate on the "lease_token" field.
+func LeaseTokenIsNil() predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldIsNull(FieldLeaseToken))
+}
+
+// LeaseTokenNotNil applies the NotNil predicate on the "lease_token" field.
+func LeaseTokenNotNil() predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldNotNull(FieldLeaseToken))
+}
+
+// LeaseExpiresAtEQ applies the EQ predicate on the "lease_expires_at" field.
+func LeaseExpiresAtEQ(v time.Time) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldEQ(FieldLeaseExpiresAt, v))
+}
+
+// LeaseExpiresAtNEQ applies the NEQ predicate on the "lease_expires_at" field.
+func LeaseExpiresAtNEQ(v time.Time) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldNEQ(FieldLeaseExpiresAt, v))
+}
+
+// LeaseExpiresAtIn applies the In predicate on the "lease_expires_at" field.
+func LeaseExpiresAtIn(vs ...time.Time) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldIn(FieldLeaseExpiresAt, vs...))
+}
+
+// LeaseExpiresAtNotIn applies the NotIn predicate on the "lease_expires_at" field.
+func LeaseExpiresAtNotIn(vs ...time.Time) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldNotIn(FieldLeaseExpiresAt, vs...))
+}
+
+// LeaseExpiresAtGT applies the GT predicate on the "lease_expires_at" field.
+func LeaseExpiresAtGT(v time.Time) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldGT(FieldLeaseExpiresAt, v))
+}
+
+// LeaseExpiresAtGTE applies the GTE predicate on the "lease_expires_at" field.
+func LeaseExpiresAtGTE(v time.Time) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldGTE(FieldLeaseExpiresAt, v))
+}
+
+// LeaseExpiresAtLT applies the LT predicate on the "lease_expires_at" field.
+func LeaseExpiresAtLT(v time.Time) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldLT(FieldLeaseExpiresAt, v))
+}
+
+// LeaseExpiresAtLTE applies the LTE predicate on the "lease_expires_at" field.
+func LeaseExpiresAtLTE(v time.Time) predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldLTE(FieldLeaseExpiresAt, v))
+}
+
+// LeaseExpiresAtIsNil applies the IsNil predicate on the "lease_expires_at" field.
+func LeaseExpiresAtIsNil() predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldIsNull(FieldLeaseExpiresAt))
+}
+
+// LeaseExpiresAtNotNil applies the NotNil predicate on the "lease_expires_at" field.
+func LeaseExpiresAtNotNil() predicate.ChatAttachmentUpload {
+	return predicate.ChatAttachmentUpload(sql.FieldNotNull(FieldLeaseExpiresAt))
 }
 
 // HasUser applies the HasEdge predicate on the "user" edge.

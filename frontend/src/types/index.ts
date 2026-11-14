@@ -1863,6 +1863,21 @@ export type UsageRequestType = 'unknown' | 'sync' | 'stream' | 'ws_v2' | 'cyber'
 export type ImageSizeSource = 'output' | 'input' | 'default' | 'legacy'
 export type ImageSizeBreakdown = Record<string, number>
 
+export interface ChatAuxiliaryUsage {
+  price_basis: string
+  provider: 'deepseek'
+  items: Array<{
+    kind: 'search' | 'image_search' | 'fetch' | 'asr' | 'tts' | 'ocr' | 'native_files'
+    quantity: number | null
+    unit: 'call' | 'page' | 'second' | 'character'
+    unit_price: string
+    price_quantity: number
+    charged_cost: string
+    metering_status: 'confirmed' | 'unreported' | 'incomplete'
+    quantity_source: 'provider_usage' | 'request_text' | 'provider_unreported'
+  }>
+}
+
 export interface UsageLog {
   id: number
   user_id: number
@@ -1917,6 +1932,7 @@ export interface UsageLog {
   image_output_size: string | null
   image_size_source: ImageSizeSource | null
   image_size_breakdown: ImageSizeBreakdown | null
+  chat_auxiliary_usage?: ChatAuxiliaryUsage | null
   image_input_tokens: number
   image_input_cost: number
   image_output_tokens: number

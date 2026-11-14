@@ -39,3 +39,15 @@ func TestGatewayRoutesDeepSeekToolsRejectUnsupportedGroup(t *testing.T) {
 		})
 	}
 }
+
+func TestChatAuxiliaryExternalRequestsAlwaysNotFound(t *testing.T) {
+	for _, kind := range []string{"search", "fetch", "asr", "tts", "ocr", "unknown"} {
+		router := newGatewayRoutesTestRouter()
+		req := httptest.NewRequest(http.MethodPost, "/internal/chat/auxiliary/"+kind, strings.NewReader(`{"provider_id":23,"scope":{"user_id":7}}`))
+		req.Header.Set("X-Chat-Auxiliary-Scope", "trusted")
+		req.Header.Set("Authorization", "Bearer synthetic")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusNotFound, w.Code)
+	}
+}

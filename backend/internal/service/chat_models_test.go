@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"errors"
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -138,7 +139,7 @@ func TestChatCapabilitiesMixedNativeFailClosed(t *testing.T) {
 	groups.groups[0].Platform = PlatformDeepseek
 	accounts.accounts[0].Platform = PlatformDeepseek
 	model := "deepseek-v4-flash"
-	native := Account{ID: 1, Platform: PlatformDeepseek, Type: AccountTypeAPIKey, Status: StatusActive, Schedulable: true, Credentials: map[string]any{"api_protocol": "anthropic"}}
+	native := Account{ID: 1, Platform: PlatformDeepseek, Type: AccountTypeAPIKey, Status: StatusActive, Schedulable: true, Credentials: map[string]any{"api_protocol": "anthropic", "api_key": "synthetic", "base_url": "https://api.deepseek.com/anthropic"}}
 	policy := ChatModelPolicy{Transport: "messages", DocumentInput: true, NativeDeepSeekExtensions: true, NativeFiles: true, NativeSearch: true, NativeReadURL: true}
 	caps, _, ok, err := s.modelCapabilities(context.Background(), &groups.groups[0], model, ModelMetadata{}, policy, []Account{native})
 	require.NoError(t, err)
@@ -150,15 +151,17 @@ func TestChatCapabilitiesMixedNativeFailClosed(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.False(t, caps.NativeFiles)
-	require.False(t, caps.DocumentInput)
+	require.True(t, caps.DocumentInput)
+	require.Equal(t, "text", caps.DocumentMode)
 	require.False(t, caps.Search)
-	require.NotEmpty(t, caps.Reasons["document_input"])
+	require.NotContains(t, caps.AcceptedDocumentExtensions, "pdf")
+	require.NotEmpty(t, caps.Reasons["native_files"])
 	policy.Transport = "responses"
 	_, _, _, err = s.modelCapabilities(context.Background(), &groups.groups[0], model, ModelMetadata{}, policy, []Account{native})
 	require.ErrorIs(t, err, ErrChatInvalid)
 }
 
-func TestChatSearchRequiresExactToolsAndSameSupportedGroup(t *testing.T) {
+func TestChatSearchRequiresExactToolsAndSharedAccount(t *testing.T) {
 	s, groups, _, accounts := chatModelFixture()
 	yes := true
 	metadata := ModelMetadata{MetadataMatch: "exact", ToolCall: &yes}
@@ -176,6 +179,12 @@ func TestChatSearchRequiresExactToolsAndSameSupportedGroup(t *testing.T) {
 	account.Extra = map[string]any{deepSeekToolsGroupIDsExtraKey: []int64{12}}
 	check(metadata, false)
 	account.Extra[deepSeekToolsGroupIDsExtraKey] = []int64{11}
+	check(metadata, false)
+	shared := newDeepSeekToolsAccount()
+	shared.Credentials["base_url"] = "https://api.deepseek.com"
+	shared.GroupIDs = []int64{99}
+	shared.Extra = nil
+	s.auxiliary = NewChatAuxiliaryService(&config.Config{Chat: config.ChatConfig{AuxiliaryAccountID: shared.ID}}, &deepSeekToolsAccountRepo{latest: shared})
 	check(metadata, true)
 	metadata.MetadataMatch = "family"
 	check(metadata, false)

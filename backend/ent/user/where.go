@@ -1906,6 +1906,29 @@ func HasChatAttachmentUploadsWith(preds ...predicate.ChatAttachmentUpload) predi
 	})
 }
 
+// HasChatAttachmentParses applies the HasEdge predicate on the "chat_attachment_parses" edge.
+func HasChatAttachmentParses() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ChatAttachmentParsesTable, ChatAttachmentParsesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasChatAttachmentParsesWith applies the HasEdge predicate on the "chat_attachment_parses" edge with a given conditions (other predicates).
+func HasChatAttachmentParsesWith(preds ...predicate.ChatAttachmentParse) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newChatAttachmentParsesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasChatImports applies the HasEdge predicate on the "chat_imports" edge.
 func HasChatImports() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

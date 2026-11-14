@@ -135,6 +135,12 @@ func (s *OpenAIGatewayService) forwardAnthropicViaNativeAnthropicEndpoint(
 
 	if resp.StatusCode >= 400 {
 		respBody, upstreamMsg := s.readOpenAIUpstreamError(resp)
+		if auxiliary := chatNativeAuxiliaryUsage(ctx, account, respBody); auxiliary != nil && chatNativeAuxiliaryTerminalUsage(respBody) {
+			// A terminal error with authoritative usage is already billable. Do
+			// not fail over and replay its opaque provider state on another key.
+			c.Data(resp.StatusCode, "application/json", respBody)
+			return &OpenAIForwardResult{RequestID: resp.Header.Get("x-request-id"), UpstreamHeaders: resp.Header, Usage: claudeUsageToOpenAIUsage(parseClaudeUsageFromResponseBody(respBody)), Model: originalModel, BillingModel: billingModel, UpstreamModel: upstreamModel, UpstreamEndpoint: "/v1/messages", Stream: clientStream, ReasoningEffort: reasoningEffort, Duration: time.Since(startTime), ChatAuxiliaryUsage: auxiliary}, errors.New("native DeepSeek terminal error with usage")
+		}
 		if foErr := s.failoverOpenAIUpstreamHTTPError(ctx, c, account, resp, respBody, upstreamMsg, upstreamModel); foErr != nil {
 			return nil, foErr
 		}
@@ -306,6 +312,7 @@ func (s *OpenAIGatewayService) handleNativeAnthropicBufferedResponse(
 		RequestID:        resp.Header.Get("x-request-id"),
 		UpstreamHeaders:  resp.Header,
 		Usage:            claudeUsageToOpenAIUsage(usage),
+		ChatAuxiliaryUsage: chatNativeAuxiliaryUsage(ctx, account, body),
 		Model:            originalModel,
 		BillingModel:     billingModel,
 		UpstreamModel:    upstreamModel,
@@ -363,6 +370,10 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 	}
 
 	usage := &ClaudeUsage{}
+	auxiliaryUsage := chatNativeAuxiliaryUsage(ctx, account, nil)
+	defer func() {
+		if result != nil { result.ChatAuxiliaryUsage = auxiliaryUsage }
+	}()
 	var outputUsage anthropicStreamOutputUsage
 	var firstTokenMs *int
 	clientDisconnected := false
@@ -497,6 +508,10 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 				trimmed := strings.TrimSpace(data)
 				outputUsage.Observe(trimmed)
 				observer.ObserveAnthropic([]byte(trimmed))
+				if auxiliaryUsage != nil && chatNativeAuxiliaryTerminalUsage([]byte(trimmed)) {
+					// Terminal usage is cumulative: replace, never add message_start.
+					auxiliaryUsage = chatNativeAuxiliaryUsage(ctx, account, []byte(trimmed))
+				}
 				if anthropicStreamEventIsTerminal("", trimmed) {
 					sawTerminalEvent = true
 				}

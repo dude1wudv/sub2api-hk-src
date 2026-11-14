@@ -162,6 +162,15 @@ func (c *billingCache) ReleaseInflightBalance(ctx context.Context, userID int64,
 // RenewInflightBalance 实现 service.InflightBalanceReservationRenewer。
 func (c *billingCache) RenewInflightBalance(ctx context.Context, userID int64, requestID string, ttl time.Duration) (bool, error) {
 	zkey, hkey := billingInflightKeys(userID)
+	return c.renewInflightKeys(ctx, zkey, hkey, requestID, ttl)
+}
+
+func (c *billingCache) RenewInflightScope(ctx context.Context, scope, requestID string, ttl time.Duration) (bool, error) {
+	zkey, hkey := billingInflightScopeKeys(scope)
+	return c.renewInflightKeys(ctx, zkey, hkey, requestID, ttl)
+}
+
+func (c *billingCache) renewInflightKeys(ctx context.Context, zkey, hkey, requestID string, ttl time.Duration) (bool, error) {
 	ttlMs := ttl.Milliseconds()
 	if ttlMs <= 0 {
 		ttlMs = 1
@@ -205,4 +214,5 @@ var (
 	_ service.InflightBalanceReservationCache   = (*billingCache)(nil)
 	_ service.InflightBalanceReservationRenewer = (*billingCache)(nil)
 	_ service.InflightScopeReservationCache     = (*billingCache)(nil)
+	_ service.InflightScopeReservationRenewer   = (*billingCache)(nil)
 )

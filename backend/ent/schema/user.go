@@ -149,6 +149,7 @@ func (User) Edges() []ent.Edge {
 		edge.To("chat_attachments", ChatAttachment.Type),
 		edge.To("chat_session_attachments", ChatSessionAttachment.Type),
 		edge.To("chat_attachment_uploads", ChatAttachmentUpload.Type),
+		edge.To("chat_attachment_parses", ChatAttachmentParse.Type),
 		edge.To("chat_imports", ChatImport.Type),
 		edge.To("chat_preferences", ChatPreference.Type),
 	}

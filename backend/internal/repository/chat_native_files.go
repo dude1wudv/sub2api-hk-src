@@ -12,7 +12,11 @@ import (
 )
 
 func chatRemoteFileRecord(row *dbent.ChatAttachmentUpload) *service.ChatRemoteFileRecord {
-	return &service.ChatRemoteFileRecord{ID: row.ID, UserID: row.UserID, AttachmentID: row.AttachmentID, AccountID: row.AccountID, RemoteID: row.RemoteFileID, Status: string(row.Status), UpdatedAt: row.UpdatedAt, CleanupAttempts: row.CleanupAttempts}
+	record := &service.ChatRemoteFileRecord{ID: row.ID, UserID: row.UserID, AttachmentID: row.AttachmentID, AccountID: row.AccountID, RemoteID: row.RemoteFileID, Status: string(row.Status), UpdatedAt: row.UpdatedAt, CleanupAttempts: row.CleanupAttempts}
+	if row.LeaseToken != nil {
+		record.LeaseToken = *row.LeaseToken
+	}
+	return record
 }
 
 // User-row locking serializes claims across processes; no database lock spans IO.
@@ -34,14 +38,14 @@ func (r *chatRepository) ClaimRemoteFile(ctx context.Context, userID int64, atta
 		now := time.Now().UTC().Truncate(time.Microsecond)
 		switch {
 		case dbent.IsNotFound(err):
-			row, err = c.ChatAttachmentUpload.Create().SetUserID(userID).SetAttachmentID(attachmentID).SetAccountID(accountID).SetUpdatedAt(now).Save(ctx)
+			row, err = c.ChatAttachmentUpload.Create().SetUserID(userID).SetAttachmentID(attachmentID).SetAccountID(accountID).SetUpdatedAt(now).SetLeaseToken(uuid.New()).SetLeaseExpiresAt(now.Add(time.Minute)).Save(ctx)
 			acquired = err == nil
 		case err != nil:
 			return err
 		case row.Status == chatattachmentupload.StatusInvalid:
-			row, err = c.ChatAttachmentUpload.UpdateOne(row).SetStatus(chatattachmentupload.StatusUploading).SetRemoteFileID("").SetUpdatedAt(now).Save(ctx)
+			row, err = c.ChatAttachmentUpload.UpdateOne(row).SetStatus(chatattachmentupload.StatusUploading).SetRemoteFileID("").SetUpdatedAt(now).SetLeaseToken(uuid.New()).SetLeaseExpiresAt(now.Add(time.Minute)).Save(ctx)
 			acquired = err == nil
-		case row.Status == chatattachmentupload.StatusUploading && row.UpdatedAt.Before(now.Add(-2*time.Minute)):
+		case row.Status == chatattachmentupload.StatusUploading && (row.LeaseExpiresAt == nil || !row.LeaseExpiresAt.After(now)):
 			// A crashed or timed-out upload has an unknown outcome. Never replay it.
 			row, err = c.ChatAttachmentUpload.UpdateOne(row).SetStatus(chatattachmentupload.StatusError).Save(ctx)
 		}
@@ -65,7 +69,7 @@ func (r *chatRepository) FinishRemoteFile(ctx context.Context, claim *service.Ch
 	if remoteID == "" {
 		status = chatattachmentupload.StatusError
 	}
-	count, err := clientFromContext(ctx, r.client).ChatAttachmentUpload.Update().Where(chatattachmentupload.IDEQ(claim.ID), chatattachmentupload.UserIDEQ(claim.UserID), chatattachmentupload.StatusEQ(chatattachmentupload.StatusUploading), chatattachmentupload.UpdatedAtEQ(claim.UpdatedAt)).SetRemoteFileID(remoteID).SetStatus(status).Save(ctx)
+	count, err := clientFromContext(ctx, r.client).ChatAttachmentUpload.Update().Where(chatattachmentupload.IDEQ(claim.ID), chatattachmentupload.UserIDEQ(claim.UserID), chatattachmentupload.StatusEQ(chatattachmentupload.StatusUploading), chatattachmentupload.LeaseTokenEQ(claim.LeaseToken), chatattachmentupload.LeaseExpiresAtGT(time.Now())).SetRemoteFileID(remoteID).SetStatus(status).ClearLeaseToken().ClearLeaseExpiresAt().Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -81,4 +85,19 @@ func (r *chatRepository) InvalidateRemoteFiles(ctx context.Context, userID, acco
 	}
 	_, err := clientFromContext(ctx, r.client).ChatAttachmentUpload.Update().Where(chatattachmentupload.UserIDEQ(userID), chatattachmentupload.AccountIDEQ(accountID), chatattachmentupload.AttachmentIDIn(attachmentIDs...), chatattachmentupload.StatusEQ(chatattachmentupload.StatusReady)).SetStatus(chatattachmentupload.StatusInvalid).Save(ctx)
 	return err
+}
+
+func (r *chatRepository) RenewRemoteFile(ctx context.Context, claim *service.ChatRemoteFileRecord) error {
+	if claim == nil || claim.LeaseToken == uuid.Nil {
+		return service.ErrChatLeaseLost
+	}
+	now := time.Now().UTC()
+	changed, err := clientFromContext(ctx, r.client).ChatAttachmentUpload.Update().Where(chatattachmentupload.IDEQ(claim.ID), chatattachmentupload.UserIDEQ(claim.UserID), chatattachmentupload.StatusEQ(chatattachmentupload.StatusUploading), chatattachmentupload.LeaseTokenEQ(claim.LeaseToken), chatattachmentupload.LeaseExpiresAtGT(now)).SetLeaseExpiresAt(now.Add(time.Minute)).Save(ctx)
+	if err != nil {
+		return err
+	}
+	if changed != 1 {
+		return service.ErrChatLeaseLost
+	}
+	return nil
 }

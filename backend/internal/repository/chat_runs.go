@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
@@ -120,7 +121,9 @@ func (r *chatRepository) RenewGeneration(ctx context.Context, run *service.ChatR
 }
 
 func (r *chatRepository) AddGenerationRequest(ctx context.Context, run *service.ChatRunRecord, requestID string) error {
-	if _, err := uuid.Parse(requestID); err != nil {
+	id := strings.TrimPrefix(requestID, "chat_auxiliary:")
+	parsed, err := uuid.Parse(id)
+	if err != nil || parsed == uuid.Nil || parsed.String() != id {
 		return service.ErrChatInvalid
 	}
 	changed, err := clientFromContext(ctx, r.client).ChatGenerationRun.Update().Where(chatgenerationrun.UserIDEQ(run.UserID), chatgenerationrun.IDEQ(run.ID), chatgenerationrun.OwnerInstanceIDEQ(run.InstanceID), chatgenerationrun.StatusEQ(chatgenerationrun.StatusRunning), chatgenerationrun.LeaseExpiresAtGT(time.Now())).AppendGatewayRequestIds([]string{requestID}).Save(ctx)

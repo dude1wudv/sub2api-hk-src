@@ -241,6 +241,7 @@ func isForcedUsageBillingRequestID(requestID string) bool {
 	id := strings.TrimSpace(requestID)
 	return strings.HasPrefix(id, "web_search:") ||
 		strings.HasPrefix(id, "deepseek_tools:") ||
+		strings.HasPrefix(id, "chat_auxiliary:") ||
 		strings.HasPrefix(id, "grok-video:") ||
 		strings.HasPrefix(id, "grok_audio:") ||
 		strings.HasPrefix(id, "qwen_audio:") ||
@@ -386,28 +387,36 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 		postUsageBilling(ctx, p, deps)
 		return true, nil
 	}
+	result, err := applyPreparedUsageBilling(ctx, cmd, p, deps, repo)
+	return result != nil && result.Applied, err
+}
+
+// The same normalized command is used for first apply and durable receipt replay.
+func applyPreparedUsageBilling(ctx context.Context, cmd *UsageBillingCommand, p *postUsageBillingParams, deps *billingDeps, repo UsageBillingRepository) (*UsageBillingApplyResult, error) {
 
 	billingCtx, cancel := detachedBillingContext(ctx)
 	defer cancel()
 
 	result, err := repo.Apply(billingCtx, cmd)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	if result == nil || !result.Applied {
 		deps.deferredService.ScheduleLastUsedUpdate(p.Account.ID)
-		return false, nil
+		return result, nil
 	}
 
 	if result.APIKeyQuotaExhausted {
 		if invalidator, ok := p.APIKeyService.(apiKeyAuthCacheInvalidator); ok && p.APIKey != nil && p.APIKey.Key != "" {
 			invalidator.InvalidateAuthCacheByKey(billingCtx, p.APIKey.Key)
+		} else if invalidator, ok := p.APIKeyService.(interface{ InvalidateAuthCacheByUserID(context.Context, int64) }); ok && p.User != nil {
+			invalidator.InvalidateAuthCacheByUserID(billingCtx, p.User.ID)
 		}
 	}
 
 	finalizePostUsageBilling(billingCtx, p, deps, result)
-	return true, nil
+	return result, nil
 }
 
 func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, deps *billingDeps, result *UsageBillingApplyResult) {

@@ -209,7 +209,7 @@ type AdminGroup struct {
 	ModelAllowlist              service.GroupModelAllowlist              `json:"model_allowlist"`
 	// 固定账号获取 Codex Model Manifest 配置（仅 openai 平台使用）。
 	CodexModelsManifestConfig domain.GroupCodexModelsManifestConfig `json:"codex_models_manifest_config"`
-	ChatModelPolicies map[string]domain.ChatModelPolicy `json:"chat_model_policies"`
+	ChatModelPolicies         map[string]domain.ChatModelPolicy     `json:"chat_model_policies"`
 
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes    []string       `json:"supported_model_scopes"`
@@ -668,17 +668,18 @@ type UsageLog struct {
 	FirstTokenMs       *int `json:"first_token_ms"`
 
 	// 图片生成字段
-	ImageCount         int            `json:"image_count"`
-	ImageSize          *string        `json:"image_size"`
-	ImageInputSize     *string        `json:"image_input_size"`
-	ImageOutputSize    *string        `json:"image_output_size"`
-	ImageInputTokens   int            `json:"image_input_tokens"`
-	ImageInputCost     float64        `json:"image_input_cost"`
-	ImageOutputTokens  int            `json:"image_output_tokens"`
-	ImageOutputCost    float64        `json:"image_output_cost"`
-	ImageSizeSource    *string        `json:"image_size_source"`
-	ImageSizeBreakdown map[string]int `json:"image_size_breakdown"`
-	MediaType          *string        `json:"media_type"`
+	ImageCount         int                         `json:"image_count"`
+	ImageSize          *string                     `json:"image_size"`
+	ImageInputSize     *string                     `json:"image_input_size"`
+	ImageOutputSize    *string                     `json:"image_output_size"`
+	ImageInputTokens   int                         `json:"image_input_tokens"`
+	ImageInputCost     float64                     `json:"image_input_cost"`
+	ImageOutputTokens  int                         `json:"image_output_tokens"`
+	ImageOutputCost    float64                     `json:"image_output_cost"`
+	ImageSizeSource    *string                     `json:"image_size_source"`
+	ImageSizeBreakdown map[string]int              `json:"image_size_breakdown"`
+	ChatAuxiliaryUsage *service.ChatAuxiliaryUsage `json:"chat_auxiliary_usage,omitempty"`
+	MediaType          *string                     `json:"media_type"`
 
 	// User-Agent
 	UserAgent *string `json:"user_agent"`

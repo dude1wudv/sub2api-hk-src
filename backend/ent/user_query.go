@@ -17,6 +17,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentparse"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
 	"github.com/Wei-Shaw/sub2api/ent/chatcredential"
 	"github.com/Wei-Shaw/sub2api/ent/chatgenerationrun"
@@ -70,6 +71,7 @@ type UserQuery struct {
 	withChatAttachments        *ChatAttachmentQuery
 	withChatSessionAttachments *ChatSessionAttachmentQuery
 	withChatAttachmentUploads  *ChatAttachmentUploadQuery
+	withChatAttachmentParses   *ChatAttachmentParseQuery
 	withChatImports            *ChatImportQuery
 	withChatPreferences        *ChatPreferenceQuery
 	withUserAllowedGroups      *UserAllowedGroupQuery
@@ -594,6 +596,28 @@ func (_q *UserQuery) QueryChatAttachmentUploads() *ChatAttachmentUploadQuery {
 	return query
 }
 
+// QueryChatAttachmentParses chains the current query on the "chat_attachment_parses" edge.
+func (_q *UserQuery) QueryChatAttachmentParses() *ChatAttachmentParseQuery {
+	query := (&ChatAttachmentParseClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(chatattachmentparse.Table, chatattachmentparse.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ChatAttachmentParsesTable, user.ChatAttachmentParsesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // QueryChatImports chains the current query on the "chat_imports" edge.
 func (_q *UserQuery) QueryChatImports() *ChatImportQuery {
 	query := (&ChatImportClient{config: _q.config}).Query()
@@ -874,6 +898,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withChatAttachments:        _q.withChatAttachments.Clone(),
 		withChatSessionAttachments: _q.withChatSessionAttachments.Clone(),
 		withChatAttachmentUploads:  _q.withChatAttachmentUploads.Clone(),
+		withChatAttachmentParses:   _q.withChatAttachmentParses.Clone(),
 		withChatImports:            _q.withChatImports.Clone(),
 		withChatPreferences:        _q.withChatPreferences.Clone(),
 		withUserAllowedGroups:      _q.withUserAllowedGroups.Clone(),
@@ -1125,6 +1150,17 @@ func (_q *UserQuery) WithChatAttachmentUploads(opts ...func(*ChatAttachmentUploa
 	return _q
 }
 
+// WithChatAttachmentParses tells the query-builder to eager-load the nodes that are connected to
+// the "chat_attachment_parses" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithChatAttachmentParses(opts ...func(*ChatAttachmentParseQuery)) *UserQuery {
+	query := (&ChatAttachmentParseClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChatAttachmentParses = query
+	return _q
+}
+
 // WithChatImports tells the query-builder to eager-load the nodes that are connected to
 // the "chat_imports" edge. The optional arguments are used to configure the query builder of the edge.
 func (_q *UserQuery) WithChatImports(opts ...func(*ChatImportQuery)) *UserQuery {
@@ -1236,7 +1272,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [25]bool{
+		loadedTypes = [26]bool{
 			_q.withAPIKeys != nil,
 			_q.withRedeemCodes != nil,
 			_q.withSubscriptions != nil,
@@ -1259,6 +1295,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withChatAttachments != nil,
 			_q.withChatSessionAttachments != nil,
 			_q.withChatAttachmentUploads != nil,
+			_q.withChatAttachmentParses != nil,
 			_q.withChatImports != nil,
 			_q.withChatPreferences != nil,
 			_q.withUserAllowedGroups != nil,
@@ -1449,6 +1486,15 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			func(n *User) { n.Edges.ChatAttachmentUploads = []*ChatAttachmentUpload{} },
 			func(n *User, e *ChatAttachmentUpload) {
 				n.Edges.ChatAttachmentUploads = append(n.Edges.ChatAttachmentUploads, e)
+			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChatAttachmentParses; query != nil {
+		if err := _q.loadChatAttachmentParses(ctx, query, nodes,
+			func(n *User) { n.Edges.ChatAttachmentParses = []*ChatAttachmentParse{} },
+			func(n *User, e *ChatAttachmentParse) {
+				n.Edges.ChatAttachmentParses = append(n.Edges.ChatAttachmentParses, e)
 			}); err != nil {
 			return nil, err
 		}
@@ -2162,6 +2208,36 @@ func (_q *UserQuery) loadChatAttachmentUploads(ctx context.Context, query *ChatA
 	}
 	query.Where(predicate.ChatAttachmentUpload(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.ChatAttachmentUploadsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadChatAttachmentParses(ctx context.Context, query *ChatAttachmentParseQuery, nodes []*User, init func(*User), assign func(*User, *ChatAttachmentParse)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatattachmentparse.FieldUserID)
+	}
+	query.Where(predicate.ChatAttachmentParse(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ChatAttachmentParsesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

@@ -29,7 +29,9 @@ func TestChatDefaultTransportsAndExplicitPolicy(t *testing.T) {
 	require.Len(t, out.Models, 1)
 	require.Equal(t, "gemini", out.Models[0].Capabilities.Transport)
 	require.False(t, out.Models[0].Capabilities.Search)
-	require.False(t, out.Models[0].Capabilities.DocumentInput)
+	require.True(t, out.Models[0].Capabilities.DocumentInput)
+	require.Equal(t, "text", out.Models[0].Capabilities.DocumentMode)
+	require.NotContains(t, out.Models[0].Capabilities.AcceptedDocumentExtensions, "pdf")
 	groups.groups[0].ChatModelPolicies = map[string]ChatModelPolicy{"gemini-2.5-flash": {Transport: "responses"}}
 	out, err = s.Catalog(context.Background(), 7, 11, "")
 	require.NoError(t, err)
@@ -113,7 +115,7 @@ func TestChatGeminiRefusalsAndUnexpectedTools(t *testing.T) {
 		require.ErrorIs(t, writer.finish(), ErrChatStream)
 	}
 	decoder := newChatStreamDecoder("gemini", 0, func(map[string]any) error { return nil })
-	require.ErrorIs(t, decoder.accept([]byte(`{"candidates":[{"content":{"parts":[{"functionCall":{"name":"chat_search","args":{"query":"x"}}}]}}]}`)), ErrChatCapability)
+	require.ErrorIs(t, decoder.accept([]byte(`{"candidates":[{"content":{"parts":[{"functionCall":{"name":"unknown_tool","args":{"query":"x"}}}]}}]}`)), ErrChatCapability)
 }
 
 func TestChatGeminiSignatureRoundTripAndRouteBinding(t *testing.T) {
@@ -146,4 +148,26 @@ func TestChatGeminiSignatureRoundTripAndRouteBinding(t *testing.T) {
 	repo.run.GroupID, repo.run.Options = 11, json.RawMessage(`{"transport":"responses"}`)
 	_, err = s.buildChatRequest(context.Background(), 7, snapshot, preset, model, ChatRunOptions{}, "send")
 	require.ErrorIs(t, err, ErrChatProviderContext)
+}
+
+func TestChatGeminiSharedToolRoundPreservesNativeParts(t *testing.T) {
+	decoder := newChatStreamDecoder("gemini", 0, func(map[string]any) error { return nil })
+	require.NoError(t, decoder.accept([]byte(`{"candidates":[{"content":{"parts":[{"text":"checking","thought":true,"thoughtSignature":"signed-thought"},{"functionCall":{"id":"call-1","name":"chat_search","args":{"query":"release"}},"thoughtSignature":"signed-call"},{"functionCall":{"name":"chat_fetch","args":{"url":"https://example.test"}}}]},"finishReason":"STOP"}]}`)))
+	calls := decoder.calls()
+	require.Len(t, calls, 2)
+	require.Equal(t, "tool_use", decoder.stopReason)
+	prepared := &chatPreparedRequest{caps: ChatCapabilities{Transport: "gemini"}, body: map[string]any{"contents": []any{map[string]any{"role": "user", "parts": []any{map[string]any{"text": "query"}}}}}}
+	appendChatToolRound(prepared, decoder, calls, []any{map[string]any{"results": []any{}}, map[string]any{"content": "body"}}, nil)
+	contents := prepared.body["contents"].([]any)
+	require.Equal(t, decoder.geminiParts, chatObject(contents[1])["parts"])
+	responses := chatObject(contents[2])["parts"].([]any)
+	require.Equal(t, "call-1", chatObject(chatObject(responses[0])["functionResponse"])["id"])
+	require.NotContains(t, chatObject(chatObject(responses[1])["functionResponse"]), "id")
+	definition := chatToolDefinition("gemini", "chat_search", "Search", "query")
+	require.Contains(t, definition, "functionDeclarations")
+	require.NotContains(t, definition, "type")
+	raw, err := json.Marshal(prepared.body)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"thoughtSignature":"signed-call"`)
+	require.NotContains(t, string(raw), `"tool_calls"`)
 }

@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachment"
+	"github.com/Wei-Shaw/sub2api/ent/chatattachmentparse"
 	"github.com/Wei-Shaw/sub2api/ent/chatattachmentupload"
 	"github.com/Wei-Shaw/sub2api/ent/chatsessionattachment"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
@@ -31,6 +32,7 @@ type ChatAttachmentQuery struct {
 	withUser        *UserQuery
 	withSessionRefs *ChatSessionAttachmentQuery
 	withUploads     *ChatAttachmentUploadQuery
+	withParses      *ChatAttachmentParseQuery
 	modifiers       []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -127,6 +129,28 @@ func (_q *ChatAttachmentQuery) QueryUploads() *ChatAttachmentUploadQuery {
 			sqlgraph.From(chatattachment.Table, chatattachment.FieldID, selector),
 			sqlgraph.To(chatattachmentupload.Table, chatattachmentupload.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, chatattachment.UploadsTable, chatattachment.UploadsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryParses chains the current query on the "parses" edge.
+func (_q *ChatAttachmentQuery) QueryParses() *ChatAttachmentParseQuery {
+	query := (&ChatAttachmentParseClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(chatattachment.Table, chatattachment.FieldID, selector),
+			sqlgraph.To(chatattachmentparse.Table, chatattachmentparse.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, chatattachment.ParsesTable, chatattachment.ParsesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -329,6 +353,7 @@ func (_q *ChatAttachmentQuery) Clone() *ChatAttachmentQuery {
 		withUser:        _q.withUser.Clone(),
 		withSessionRefs: _q.withSessionRefs.Clone(),
 		withUploads:     _q.withUploads.Clone(),
+		withParses:      _q.withParses.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -365,6 +390,17 @@ func (_q *ChatAttachmentQuery) WithUploads(opts ...func(*ChatAttachmentUploadQue
 		opt(query)
 	}
 	_q.withUploads = query
+	return _q
+}
+
+// WithParses tells the query-builder to eager-load the nodes that are connected to
+// the "parses" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ChatAttachmentQuery) WithParses(opts ...func(*ChatAttachmentParseQuery)) *ChatAttachmentQuery {
+	query := (&ChatAttachmentParseClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withParses = query
 	return _q
 }
 
@@ -446,10 +482,11 @@ func (_q *ChatAttachmentQuery) sqlAll(ctx context.Context, hooks ...queryHook) (
 	var (
 		nodes       = []*ChatAttachment{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withUser != nil,
 			_q.withSessionRefs != nil,
 			_q.withUploads != nil,
+			_q.withParses != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -492,6 +529,13 @@ func (_q *ChatAttachmentQuery) sqlAll(ctx context.Context, hooks ...queryHook) (
 		if err := _q.loadUploads(ctx, query, nodes,
 			func(n *ChatAttachment) { n.Edges.Uploads = []*ChatAttachmentUpload{} },
 			func(n *ChatAttachment, e *ChatAttachmentUpload) { n.Edges.Uploads = append(n.Edges.Uploads, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withParses; query != nil {
+		if err := _q.loadParses(ctx, query, nodes,
+			func(n *ChatAttachment) { n.Edges.Parses = []*ChatAttachmentParse{} },
+			func(n *ChatAttachment, e *ChatAttachmentParse) { n.Edges.Parses = append(n.Edges.Parses, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -572,6 +616,36 @@ func (_q *ChatAttachmentQuery) loadUploads(ctx context.Context, query *ChatAttac
 	}
 	query.Where(predicate.ChatAttachmentUpload(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(chatattachment.UploadsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.AttachmentID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "attachment_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ChatAttachmentQuery) loadParses(ctx context.Context, query *ChatAttachmentParseQuery, nodes []*ChatAttachment, init func(*ChatAttachment), assign func(*ChatAttachment, *ChatAttachmentParse)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*ChatAttachment)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(chatattachmentparse.FieldAttachmentID)
+	}
+	query.Where(predicate.ChatAttachmentParse(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(chatattachment.ParsesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

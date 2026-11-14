@@ -17,7 +17,7 @@ import (
 func TestChatHandlerRejectsUnauthenticated(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	h := &ChatHandler{}
-	for _, fn := range []gin.HandlerFunc{h.ListSessions, h.GetSession, h.SaveSession, h.RenameSession, h.GetPreferences, h.SavePreferences, h.Catalog, h.ListPresets, h.CreatePreset, h.UpdatePreset, h.OrderPresets, h.DeletePreset, h.ReconnectPreset, h.Generate, h.StopGeneration, h.DeleteSessions, h.UploadAttachment, h.DownloadAttachment, h.BeginImport, h.StageImportSession, h.CommitImport, h.AbortImport} {
+	for _, fn := range []gin.HandlerFunc{h.ListSessions, h.GetSession, h.SaveSession, h.RenameSession, h.GetPreferences, h.SavePreferences, h.Catalog, h.ListPresets, h.CreatePreset, h.UpdatePreset, h.OrderPresets, h.DeletePreset, h.ReconnectPreset, h.Generate, h.StopGeneration, h.DeleteSessions, h.UploadAttachment, h.DownloadAttachment, h.BeginImport, h.StageImportSession, h.CommitImport, h.AbortImport, h.SpeechRecognition, h.SpeechSynthesis} {
 		recorder := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(recorder)
 		c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/chat/sessions", nil)
@@ -59,4 +59,15 @@ func TestChatHandlerRevisionConflictResponse(t *testing.T) {
 	chatError(c, service.ErrChatRevisionConflict)
 	require.Equal(t, http.StatusConflict, recorder.Code)
 	require.Contains(t, recorder.Body.String(), "CHAT_REVISION_CONFLICT")
+}
+
+func TestChatSpeechBFFRejectsCredentialAndAccountFields(t *testing.T) {
+	for _, raw := range []string{`{"text":"hello","account_id":23}`, `{"text":"hello","api_key":"forged"}`, `{"text":"hello","model":"forged"}`} {
+		recorder := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(recorder)
+		c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/chat/speech/tts", strings.NewReader(raw))
+		c.Set(string(servermiddleware.ContextKeyUser), servermiddleware.AuthSubject{UserID: 7})
+		(&ChatHandler{}).SpeechSynthesis(c)
+		require.Equal(t, http.StatusBadRequest, recorder.Code)
+	}
 }

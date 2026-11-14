@@ -1,14 +1,21 @@
-import { randomUUID } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
+
+async function readPreviewMultipart(request) {
+  const chunks = []; let bytes = 0
+  for await (const chunk of request) { bytes += chunk.length; if (bytes > 34 * 1024 * 1024) throw new Error('PREVIEW_BODY_TOO_LARGE'); chunks.push(chunk) }
+  return new Request('http://127.0.0.1/', { method: 'POST', headers: { 'content-type': request.headers['content-type'] || '' }, body: Buffer.concat(chunks) }).formData()
+}
 
 // In-memory UI fixtures only. No upstream client, credential or database access.
 export function createChatPreview(fixtures, { ok, error, unavailable, readJson }) {
   const owners = new Map()
   const capability = { transport: 'chat_completions', image_input: false, document_input: false, native_deepseek_extensions: false, native_files: false, native_search: false, native_read_url: false, reasoning: true, tool_call: false, search: false, read_url: false, voice: false, reasons: { image_input: '合成文本模型不支持图片', document_input: '合成文本模型不支持文档', search: '合成模型未配置搜索' } }
   capability.reasoning_efforts = ['low', 'medium', 'high']
+  Object.assign(capability, { document_input: true, asr: true, tts: true, voice: true, ocr: false, document_mode: 'text', accepted_document_extensions: ['txt', 'md', 'csv', 'json'], search_source: 'unavailable', read_url_source: 'unavailable', auxiliary_prices: [{ kind: 'asr', unit: 'second', unit_price: '0.78', price_quantity: 3600 }, { kind: 'tts', unit: 'character', unit_price: '3', price_quantity: 10000 }] })
   const model = { id: 'preview-chat-model', pricing: { billing_mode: 'token', input_price: 0.000001, output_price: 0.000002 }, capabilities: capability, available: true, unavailable_reason: '' }
   const groupView = id => { const group = fixtures.groups.find(group => group.id === id); return group && { ...group, user_rate_multiplier: 1 } }
   return async (request, response, user, path, params) => {
-    if (!owners.has(user.id)) owners.set(user.id, { presets: [], sessions: new Map(), preferences: {}, revision: 0, runs: new Map() })
+    if (!owners.has(user.id)) owners.set(user.id, { presets: [], sessions: new Map(), preferences: {}, revision: 0, runs: new Map(), files: new Map() })
     const state = owners.get(user.id), method = request.method
     const fail = (status, code, message) => error(response, status, code, message)
     if (path === '/chat/catalog' && method === 'GET') {
@@ -50,6 +57,36 @@ export function createChatPreview(fixtures, { ok, error, unavailable, readJson }
     if (path === '/chat/sessions') {
       if (method === 'GET') return ok(response,{ items: [...state.sessions.values()].map(({session}) => ({ id:session.id,title:session.title,createdAt:session.createdAt,updatedAt:session.updatedAt })).sort((a,b) => b.updatedAt-a.updatedAt), next_cursor: '' })
       if (method === 'DELETE') { state.sessions.clear(); state.revision++; return ok(response,{}) }
+    }
+    if (path === '/chat/speech/asr' && method === 'POST') {
+      const body = await readPreviewMultipart(request)
+      if (!state.presets.some(preset => preset.id === body.get('preset_id')) || !body.get('file')?.size) return fail(400, 'CHAT_INVALID_REQUEST', 'Invalid synthetic ASR request')
+      response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+      return response.end(JSON.stringify({ request_id: `synthetic-asr:${randomUUID()}`, text: '合成语音转写，仅用于本地界面验收。', duration_ms: 1000 }))
+    }
+    if (path === '/chat/speech/tts' && method === 'POST') {
+      const body = await readJson(request)
+      if (!state.presets.some(preset => preset.id === body.preset_id) || !body.text) return fail(400, 'CHAT_INVALID_REQUEST', 'Invalid synthetic TTS request')
+      const pcm = Buffer.alloc(24000)
+      for (let index = 0; index < pcm.length / 2; index++) pcm.writeInt16LE(Math.round(Math.sin(index * 2 * Math.PI * 440 / 24000) * 1000), index * 2)
+      const request_id = `synthetic-tts:${randomUUID()}`
+      response.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store' })
+      response.write(`event: audio_start\ndata: ${JSON.stringify({ format: 'pcm', sample_rate: 24000, channels: 1, bits_per_sample: 16, request_id })}\n\n`)
+      response.write(`event: audio\ndata: ${JSON.stringify({ sequence: 0, data: pcm.toString('base64') })}\n\n`)
+      return response.end(`event: audio_complete\ndata: ${JSON.stringify({ bytes: pcm.length, chunks: 1, sha256: createHash('sha256').update(pcm).digest('hex'), request_id })}\n\n`)
+    }
+    if (path === '/chat/attachments' && method === 'POST') {
+      const body = await readPreviewMultipart(request), file = body.get('file')
+      if (!file?.size) return fail(400, 'CHAT_INVALID_REQUEST', 'Missing synthetic file')
+      const attachment = { id: randomUUID(), name: body.get('filename') || file.name, size: file.size, mimeType: file.type || 'text/plain', isImage: false }
+      state.files.set(attachment.id, { attachment, bytes: Buffer.from(await file.arrayBuffer()) })
+      return ok(response, attachment)
+    }
+    if (segments[1] === 'attachments' && segments[3] === 'content' && method === 'GET') {
+      const file = state.files.get(id)
+      if (!file) return fail(404, 'CHAT_NOT_FOUND', 'Synthetic attachment not found')
+      response.writeHead(200, { 'Content-Type': file.attachment.mimeType, 'Cache-Control': 'no-store' })
+      return response.end(file.bytes)
     }
     if (segments[1] !== 'sessions' || !id) return unavailable(response)
     const existing = state.sessions.get(id)

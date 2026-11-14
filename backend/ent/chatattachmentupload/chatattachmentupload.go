@@ -31,6 +31,10 @@ const (
 	FieldStatus = "status"
 	// FieldCleanupAttempts holds the string denoting the cleanup_attempts field in the database.
 	FieldCleanupAttempts = "cleanup_attempts"
+	// FieldLeaseToken holds the string denoting the lease_token field in the database.
+	FieldLeaseToken = "lease_token"
+	// FieldLeaseExpiresAt holds the string denoting the lease_expires_at field in the database.
+	FieldLeaseExpiresAt = "lease_expires_at"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeAttachment holds the string denoting the attachment edge name in mutations.
@@ -64,6 +68,8 @@ var Columns = []string{
 	FieldRemoteFileID,
 	FieldStatus,
 	FieldCleanupAttempts,
+	FieldLeaseToken,
+	FieldLeaseExpiresAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -168,6 +174,16 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 // ByCleanupAttempts orders the results by the cleanup_attempts field.
 func ByCleanupAttempts(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCleanupAttempts, opts...).ToFunc()
+}
+
+// ByLeaseToken orders the results by the lease_token field.
+func ByLeaseToken(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLeaseToken, opts...).ToFunc()
+}
+
+// ByLeaseExpiresAt orders the results by the lease_expires_at field.
+func ByLeaseExpiresAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLeaseExpiresAt, opts...).ToFunc()
 }
 
 // ByUserField orders the results by user field.

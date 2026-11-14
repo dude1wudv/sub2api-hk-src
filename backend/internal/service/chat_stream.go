@@ -15,7 +15,7 @@ import (
 
 var ErrChatStream = infraerrors.New(http.StatusBadGateway, "CHAT_STREAM_INTERRUPTED", "生成流异常或未完整结束，已保留可恢复内容")
 
-type chatToolCall struct{ ID, Name, Arguments string }
+type chatToolCall struct{ ID, Name, Arguments, ProviderID string }
 
 type chatStreamDecoder struct {
 	transport      string
@@ -27,6 +27,8 @@ type chatStreamDecoder struct {
 	responseTools  map[string]int
 	responseOutput []any
 	geminiUsage    map[string]any
+	geminiParts    []any
+	geminiBytes    int
 	lastKind       string
 	lastIndex      int
 	done           bool

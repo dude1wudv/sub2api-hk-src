@@ -110,6 +110,8 @@ const (
 	FieldImageSizeSource = "image_size_source"
 	// FieldImageSizeBreakdown holds the string denoting the image_size_breakdown field in the database.
 	FieldImageSizeBreakdown = "image_size_breakdown"
+	// FieldChatAuxiliaryUsage holds the string denoting the chat_auxiliary_usage field in the database.
+	FieldChatAuxiliaryUsage = "chat_auxiliary_usage"
 	// FieldVideoCount holds the string denoting the video_count field in the database.
 	FieldVideoCount = "video_count"
 	// FieldVideoResolution holds the string denoting the video_resolution field in the database.
@@ -220,6 +222,7 @@ var Columns = []string{
 	FieldImageOutputSize,
 	FieldImageSizeSource,
 	FieldImageSizeBreakdown,
+	FieldChatAuxiliaryUsage,
 	FieldVideoCount,
 	FieldVideoResolution,
 	FieldVideoDurationSeconds,

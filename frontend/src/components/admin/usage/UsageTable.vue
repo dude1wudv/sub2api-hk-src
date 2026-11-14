@@ -410,6 +410,7 @@
                     <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{{ t('usage.costDetails') }}</div>
                     <p v-for="estimate in usageEstimates(row)" :key="estimate.id" class="mb-2 text-xs leading-relaxed text-amber-700 dark:text-amber-300"><strong>{{ t(estimate.label) }}</strong> {{ t(estimate.hint) }}</p>
                     <p v-if="usageEstimationReasonKey(row)" class="mb-2 text-xs">{{ t('usage.estimationReason') }}：{{ t(usageEstimationReasonKey(row)!) }}</p>
+                    <ChatAuxiliaryUsageDetails :usage="row.chat_auxiliary_usage" />
                     <div v-if="row && row.input_cost > 0" class="flex items-center justify-between gap-4">
                       <span class="text-gray-500 dark:text-gray-400">{{ t('admin.usage.inputCost') }}</span>
                       <span class="font-medium text-gray-900 dark:text-white">${{ row.input_cost.toFixed(8) }}</span>
@@ -677,6 +678,7 @@ function accountBilled(row: { total_cost?: number | null; account_stats_cost?: n
 
 
 import DataTable from '@/components/common/DataTable.vue'
+import ChatAuxiliaryUsageDetails from '@/components/common/ChatAuxiliaryUsageDetails.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import IpGeoCell from '@/components/common/IpGeoCell.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'

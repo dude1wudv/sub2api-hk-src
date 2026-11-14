@@ -71,3 +71,57 @@ func TestLiveLeaseExpiresWithoutRefresh(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, refreshed)
 }
+
+func TestChatAuxiliaryRedisLeaseDoesNotExpireOrResurrect(t *testing.T) {
+	server := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	cache := NewConcurrencyCache(client, 15, 900).(*concurrencyCache)
+	ctx := t.Context()
+	now := time.Unix(1_800_000_000, 0)
+	server.SetTime(now)
+	ok, err := cache.AcquireUserSlot(ctx, 1, 1, "aux")
+	require.NoError(t, err)
+	require.True(t, ok)
+	ok, err = cache.AcquireAccountSlot(ctx, 2, 1, "aux")
+	require.NoError(t, err)
+	require.True(t, ok)
+	ok, err = cache.AcquireChatAuxiliaryKindSlot(ctx, 2, "tts", 50, "aux")
+	require.NoError(t, err)
+	require.True(t, ok)
+	for range 48 {
+		now = now.Add(20 * time.Second)
+		server.FastForward(20 * time.Second)
+		server.SetTime(now)
+		ok, err = cache.RefreshChatAuxiliarySlots(ctx, 1, 2, "tts", true, "aux")
+		require.NoError(t, err)
+		require.True(t, ok)
+	}
+	ok, err = cache.AcquireAccountSlot(ctx, 2, 1, "ordinary")
+	require.NoError(t, err)
+	require.False(t, ok)
+	require.NoError(t, cache.ReleaseAccountSlot(ctx, 2, "aux"))
+	ok, err = cache.RefreshChatAuxiliarySlots(ctx, 1, 2, "tts", true, "aux")
+	require.NoError(t, err)
+	require.False(t, ok)
+	require.Zero(t, client.ZCard(ctx, accountSlotKey(2)).Val())
+	require.Zero(t, client.ZCard(ctx, apiKeySlotKey(3)).Val())
+}
+
+func TestChatAuxiliaryRedisKindLimits(t *testing.T) {
+	for _, kind := range []string{"asr", "tts", "ocr"} {
+		server := miniredis.RunT(t)
+		client := redis.NewClient(&redis.Options{Addr: server.Addr()})
+		t.Cleanup(func() { _ = client.Close() })
+		cache := NewConcurrencyCache(client, 15, 900).(*concurrencyCache)
+		limit := 50
+		if kind == "ocr" {
+			limit = 15
+		}
+		for i := range limit + 1 {
+			ok, err := cache.AcquireChatAuxiliaryKindSlot(t.Context(), 2, kind, limit, string(rune('a'+i)))
+			require.NoError(t, err)
+			require.Equal(t, i < limit, ok)
+		}
+	}
+}

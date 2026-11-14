@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -81,8 +82,8 @@ func chatGeminiThinking(model, effort string, includeThoughts bool) map[string]a
 
 // The native stream has no [DONE] marker. Require a terminal candidate (or a
 // prompt refusal), then consume optional trailing usage before EOF completes it.
-// No Gemini tools are advertised: existing tool authorization is scoped to the
-// OpenAI/DeepSeek gateway. Unsolicited calls fail closed, never execute locally.
+// Preserve the original parts, including opaque thought signatures, throughout
+// a function-call round. Authorization is rechecked before every tool dispatch.
 func (d *chatStreamDecoder) gemini(event map[string]any) error {
 	if usage := chatObject(event["usageMetadata"]); usage != nil {
 		cached := max(0, chatInteger(usage["cachedContentTokenCount"]))
@@ -110,8 +111,47 @@ func (d *chatStreamDecoder) gemini(event map[string]any) error {
 		}
 		for _, value := range parts {
 			part := chatObject(value)
-			if part["functionCall"] != nil || part["inlineData"] != nil || part["fileData"] != nil {
+			if part["inlineData"] != nil || part["fileData"] != nil {
 				return ErrChatCapability
+			}
+			raw, err := json.Marshal(part)
+			if err != nil {
+				return ErrChatStream
+			}
+			d.geminiBytes += len(raw)
+			if d.geminiBytes > ChatMaxSessionBytes {
+				return ErrChatTooLarge
+			}
+			d.geminiParts = append(d.geminiParts, part)
+			if function := chatObject(part["functionCall"]); function != nil {
+				name := chatString(function["name"])
+				if name != "chat_search" && name != "chat_fetch" {
+					return ErrChatCapability
+				}
+				index := len(d.tools)
+				if index >= 8 {
+					return ErrChatToolLimit
+				}
+				args, ok := function["args"].(map[string]any)
+				if !ok {
+					return ErrChatStream
+				}
+				arguments, err := json.Marshal(args)
+				if err != nil || len(arguments) > ChatMaxPreferenceBytes {
+					return ErrChatTooLarge
+				}
+				providerID := chatString(function["id"])
+				id := providerID
+				if id == "" {
+					id = fmt.Sprintf("gemini-tool-%d", index)
+				}
+				for _, prior := range d.tools {
+					if prior.ID == id {
+						return ErrChatStream
+					}
+				}
+				d.tools[index] = &chatToolCall{ID: id, Name: name, Arguments: string(arguments), ProviderID: providerID}
+				continue
 			}
 			kind := "text"
 			if part["thought"] == true {
@@ -136,6 +176,9 @@ func (d *chatStreamDecoder) gemini(event map[string]any) error {
 			continue
 		case "STOP":
 			d.stopReason = "end_turn"
+			if len(d.tools) > 0 {
+				d.stopReason = "tool_use"
+			}
 		case "MAX_TOKENS":
 			d.stopReason = "max_tokens"
 		default:

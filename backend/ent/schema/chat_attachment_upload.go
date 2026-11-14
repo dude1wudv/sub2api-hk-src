@@ -29,6 +29,8 @@ func (ChatAttachmentUpload) Fields() []ent.Field {
 		field.String("remote_file_id").MaxLen(512).Default(""),
 		field.Enum("status").Values("uploading", "ready", "invalid", "deleting", "error").Default("uploading"),
 		field.Int("cleanup_attempts").NonNegative().Default(0),
+		field.UUID("lease_token", uuid.UUID{}).Optional().Nillable(),
+		field.Time("lease_expires_at").Optional().Nillable(),
 	}
 }
 

@@ -119,6 +119,8 @@ type UserEdges struct {
 	ChatSessionAttachments []*ChatSessionAttachment `json:"chat_session_attachments,omitempty"`
 	// ChatAttachmentUploads holds the value of the chat_attachment_uploads edge.
 	ChatAttachmentUploads []*ChatAttachmentUpload `json:"chat_attachment_uploads,omitempty"`
+	// ChatAttachmentParses holds the value of the chat_attachment_parses edge.
+	ChatAttachmentParses []*ChatAttachmentParse `json:"chat_attachment_parses,omitempty"`
 	// ChatImports holds the value of the chat_imports edge.
 	ChatImports []*ChatImport `json:"chat_imports,omitempty"`
 	// ChatPreferences holds the value of the chat_preferences edge.
@@ -127,7 +129,7 @@ type UserEdges struct {
 	UserAllowedGroups []*UserAllowedGroup `json:"user_allowed_groups,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [25]bool
+	loadedTypes [26]bool
 }
 
 // APIKeysOrErr returns the APIKeys value or an error if the edge
@@ -328,10 +330,19 @@ func (e UserEdges) ChatAttachmentUploadsOrErr() ([]*ChatAttachmentUpload, error)
 	return nil, &NotLoadedError{edge: "chat_attachment_uploads"}
 }
 
+// ChatAttachmentParsesOrErr returns the ChatAttachmentParses value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ChatAttachmentParsesOrErr() ([]*ChatAttachmentParse, error) {
+	if e.loadedTypes[22] {
+		return e.ChatAttachmentParses, nil
+	}
+	return nil, &NotLoadedError{edge: "chat_attachment_parses"}
+}
+
 // ChatImportsOrErr returns the ChatImports value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) ChatImportsOrErr() ([]*ChatImport, error) {
-	if e.loadedTypes[22] {
+	if e.loadedTypes[23] {
 		return e.ChatImports, nil
 	}
 	return nil, &NotLoadedError{edge: "chat_imports"}
@@ -340,7 +351,7 @@ func (e UserEdges) ChatImportsOrErr() ([]*ChatImport, error) {
 // ChatPreferencesOrErr returns the ChatPreferences value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) ChatPreferencesOrErr() ([]*ChatPreference, error) {
-	if e.loadedTypes[23] {
+	if e.loadedTypes[24] {
 		return e.ChatPreferences, nil
 	}
 	return nil, &NotLoadedError{edge: "chat_preferences"}
@@ -349,7 +360,7 @@ func (e UserEdges) ChatPreferencesOrErr() ([]*ChatPreference, error) {
 // UserAllowedGroupsOrErr returns the UserAllowedGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) UserAllowedGroupsOrErr() ([]*UserAllowedGroup, error) {
-	if e.loadedTypes[24] {
+	if e.loadedTypes[25] {
 		return e.UserAllowedGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "user_allowed_groups"}
@@ -668,6 +679,11 @@ func (_m *User) QueryChatSessionAttachments() *ChatSessionAttachmentQuery {
 // QueryChatAttachmentUploads queries the "chat_attachment_uploads" edge of the User entity.
 func (_m *User) QueryChatAttachmentUploads() *ChatAttachmentUploadQuery {
 	return NewUserClient(_m.config).QueryChatAttachmentUploads(_m)
+}
+
+// QueryChatAttachmentParses queries the "chat_attachment_parses" edge of the User entity.
+func (_m *User) QueryChatAttachmentParses() *ChatAttachmentParseQuery {
+	return NewUserClient(_m.config).QueryChatAttachmentParses(_m)
 }
 
 // QueryChatImports queries the "chat_imports" edge of the User entity.

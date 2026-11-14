@@ -58,7 +58,7 @@ describe('ChatView standalone Vue host', () => {
     const wrapper = render()
     const frame = wrapper.get('iframe')
     expect(frame.attributes('src')).toBe('/chat-app/')
-    expect(frame.attributes('allow')).toContain("microphone 'none'")
+    expect(frame.attributes('allow')).toBe("microphone 'self'; camera 'none'; geolocation 'none'")
     expect(frame.attributes('src')).not.toContain('token')
     expect(wrapper.get('main').classes()).toContain('chat-host')
     expect(wrapper.find('nav').exists()).toBe(false)

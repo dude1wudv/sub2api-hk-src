@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"time"
@@ -651,6 +652,12 @@ func (_c *UsageLogCreate) SetImageSizeBreakdown(v map[string]int) *UsageLogCreat
 	return _c
 }
 
+// SetChatAuxiliaryUsage sets the "chat_auxiliary_usage" field.
+func (_c *UsageLogCreate) SetChatAuxiliaryUsage(v jsontext.Value) *UsageLogCreate {
+	_c.mutation.SetChatAuxiliaryUsage(v)
+	return _c
+}
+
 // SetVideoCount sets the "video_count" field.
 func (_c *UsageLogCreate) SetVideoCount(v int) *UsageLogCreate {
 	_c.mutation.SetVideoCount(v)
@@ -1269,6 +1276,10 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ImageSizeBreakdown(); ok {
 		_spec.SetField(usagelog.FieldImageSizeBreakdown, field.TypeJSON, value)
 		_node.ImageSizeBreakdown = value
+	}
+	if value, ok := _c.mutation.ChatAuxiliaryUsage(); ok {
+		_spec.SetField(usagelog.FieldChatAuxiliaryUsage, field.TypeJSON, value)
+		_node.ChatAuxiliaryUsage = value
 	}
 	if value, ok := _c.mutation.VideoCount(); ok {
 		_spec.SetField(usagelog.FieldVideoCount, field.TypeInt, value)
@@ -2246,6 +2257,24 @@ func (u *UsageLogUpsert) UpdateImageSizeBreakdown() *UsageLogUpsert {
 // ClearImageSizeBreakdown clears the value of the "image_size_breakdown" field.
 func (u *UsageLogUpsert) ClearImageSizeBreakdown() *UsageLogUpsert {
 	u.SetNull(usagelog.FieldImageSizeBreakdown)
+	return u
+}
+
+// SetChatAuxiliaryUsage sets the "chat_auxiliary_usage" field.
+func (u *UsageLogUpsert) SetChatAuxiliaryUsage(v jsontext.Value) *UsageLogUpsert {
+	u.Set(usagelog.FieldChatAuxiliaryUsage, v)
+	return u
+}
+
+// UpdateChatAuxiliaryUsage sets the "chat_auxiliary_usage" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateChatAuxiliaryUsage() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldChatAuxiliaryUsage)
+	return u
+}
+
+// ClearChatAuxiliaryUsage clears the value of the "chat_auxiliary_usage" field.
+func (u *UsageLogUpsert) ClearChatAuxiliaryUsage() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldChatAuxiliaryUsage)
 	return u
 }
 
@@ -3322,6 +3351,27 @@ func (u *UsageLogUpsertOne) UpdateImageSizeBreakdown() *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) ClearImageSizeBreakdown() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearImageSizeBreakdown()
+	})
+}
+
+// SetChatAuxiliaryUsage sets the "chat_auxiliary_usage" field.
+func (u *UsageLogUpsertOne) SetChatAuxiliaryUsage(v jsontext.Value) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetChatAuxiliaryUsage(v)
+	})
+}
+
+// UpdateChatAuxiliaryUsage sets the "chat_auxiliary_usage" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateChatAuxiliaryUsage() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateChatAuxiliaryUsage()
+	})
+}
+
+// ClearChatAuxiliaryUsage clears the value of the "chat_auxiliary_usage" field.
+func (u *UsageLogUpsertOne) ClearChatAuxiliaryUsage() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearChatAuxiliaryUsage()
 	})
 }
 
@@ -4576,6 +4626,27 @@ func (u *UsageLogUpsertBulk) UpdateImageSizeBreakdown() *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) ClearImageSizeBreakdown() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearImageSizeBreakdown()
+	})
+}
+
+// SetChatAuxiliaryUsage sets the "chat_auxiliary_usage" field.
+func (u *UsageLogUpsertBulk) SetChatAuxiliaryUsage(v jsontext.Value) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetChatAuxiliaryUsage(v)
+	})
+}
+
+// UpdateChatAuxiliaryUsage sets the "chat_auxiliary_usage" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateChatAuxiliaryUsage() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateChatAuxiliaryUsage()
+	})
+}
+
+// ClearChatAuxiliaryUsage clears the value of the "chat_auxiliary_usage" field.
+func (u *UsageLogUpsertBulk) ClearChatAuxiliaryUsage() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearChatAuxiliaryUsage()
 	})
 }
 

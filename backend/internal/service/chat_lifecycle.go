@@ -41,6 +41,12 @@ func (s *ChatService) startLifecycle() {
 			if err != nil && ctx.Err() == nil {
 				logger.LegacyPrintf("service.chat", "chat lease recovery failed: %v", err)
 			}
+			receipts, finishReceipts := context.WithTimeout(ctx, 20*time.Second)
+			err = s.RecoverChatParseReceipts(receipts)
+			finishReceipts()
+			if err != nil && ctx.Err() == nil {
+				logger.LegacyPrintf("service.chat", "chat parse settlement recovery failed: %v", err)
+			}
 			cleanup, finishCleanup := context.WithTimeout(ctx, 20*time.Second)
 			err = s.SweepChat(cleanup)
 			finishCleanup()

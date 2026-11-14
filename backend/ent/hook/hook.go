@@ -189,6 +189,18 @@ func (f ChatAttachmentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatAttachmentMutation", m)
 }
 
+// The ChatAttachmentParseFunc type is an adapter to allow the use of ordinary
+// function as ChatAttachmentParse mutator.
+type ChatAttachmentParseFunc func(context.Context, *ent.ChatAttachmentParseMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChatAttachmentParseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChatAttachmentParseMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChatAttachmentParseMutation", m)
+}
+
 // The ChatAttachmentUploadFunc type is an adapter to allow the use of ordinary
 // function as ChatAttachmentUpload mutator.
 type ChatAttachmentUploadFunc func(context.Context, *ent.ChatAttachmentUploadMutation) (ent.Value, error)

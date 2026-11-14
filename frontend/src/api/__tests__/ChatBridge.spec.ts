@@ -52,7 +52,7 @@ function createHost() {
   hosts.push(bridge)
   bridge.mount()
   const ready = (overrides: MessageEventInit = {}) => window.dispatchEvent(new MessageEvent('message', {
-    source: frame.contentWindow, origin: window.location.origin, data: { type: 'sub2api:chat:ready', version: 1, nonce }, ...overrides,
+    source: frame.contentWindow, origin: window.location.origin, data: { type: 'sub2api:chat:ready', version: 2, nonce }, ...overrides,
   }))
   return { bridge, frame, port, channel, post, ready, navigate, logout, invalid }
 }
@@ -110,13 +110,13 @@ describe('Chat host MessageChannel', () => {
     const host = createHost()
     host.ready({ origin: 'https://evil.test' })
     host.ready({ source: window })
-    host.ready({ data: { type: 'sub2api:chat:ready', version: 2, nonce } })
-    host.ready({ data: { type: 'sub2api:chat:ready', version: 1, nonce: 'attacker' } })
+    host.ready({ data: { type: 'sub2api:chat:ready', version: 1, nonce } })
+    host.ready({ data: { type: 'sub2api:chat:ready', version: 2, nonce: 'attacker' } })
     host.ready({ ports: [{} as MessagePort] })
     expect(host.channel).not.toHaveBeenCalled()
     host.ready()
     expect(host.channel).toHaveBeenCalledTimes(1)
-    expect(host.post).toHaveBeenCalledWith({ type: 'sub2api:chat:connect', version: 1, nonce }, window.location.origin, expect.any(Array))
+    expect(host.post).toHaveBeenCalledWith({ type: 'sub2api:chat:connect', version: 2, nonce }, window.location.origin, expect.any(Array))
     host.bridge.frameLoaded() // ready can fire before the iframe load event
     expect(host.port.close).not.toHaveBeenCalled()
     host.ready()
@@ -137,7 +137,7 @@ describe('Chat host MessageChannel', () => {
     host.port.receive(envelope({ command: 'bootstrap' }))
     await flushPromises()
     expect(host.port.sent[0]).toMatchObject({ type: 'result', request_id: 'request-1', nonce, data: {
-      user: { id: 7 }, presets: [{ id: 'preset-1', group: { id: 11 }, capabilities: { voice: false } }],
+      user: { id: 7 }, presets: [{ id: 'preset-1', group: { id: 11 }, capabilities: { voice: true } }],
       preferences: { themePreference: 'dark', thinking: true, location: { region: 'CN' } }, history_revision: 4, locale: 'zh-CN',
     } })
     expect(JSON.stringify(host.port.sent)).not.toMatch(/must-not-cross|host-only-token|apiKey|upstream_key|api_key/)
@@ -221,7 +221,7 @@ describe('Chat host MessageChannel', () => {
     expect(host.port.close).not.toHaveBeenCalled()
     host.bridge.disconnect(); host.ready()
     expect(host.channel).toHaveBeenCalledTimes(1)
-    host.ready({ data: { type: 'sub2api:chat:ready', version: 1, nonce: nextNonce } })
+    host.ready({ data: { type: 'sub2api:chat:ready', version: 2, nonce: nextNonce } })
     expect(host.channel).toHaveBeenCalledTimes(2)
   })
 
@@ -229,7 +229,7 @@ describe('Chat host MessageChannel', () => {
     const host = createHost(); host.ready()
     localStorage.setItem('auth_user', JSON.stringify({ id: 8 }))
     window.dispatchEvent(new StorageEvent('storage', { key: 'auth_user' }))
-    host.ready({ data: { type: 'sub2api:chat:ready', version: 1, nonce: nextNonce } })
+    host.ready({ data: { type: 'sub2api:chat:ready', version: 2, nonce: nextNonce } })
     await flushPromises()
     expect(host.channel).toHaveBeenCalledTimes(1)
     expect(host.invalid).toHaveBeenCalledTimes(1)
@@ -279,5 +279,23 @@ describe('Chat host MessageChannel', () => {
     expect(host.navigate).toHaveBeenCalledWith('/chat-models')
     expect(host.port.sent).toContainEqual(expect.objectContaining({ type: 'error', error: { status: 409, code: 'CHAT_REVISION_CONFLICT', message: '此会话已在其他设备更新，请重新载入' } }))
     expect(JSON.stringify(host.port.sent)).not.toContain('Authorization')
+  })
+
+  it('forwards scoped ASR and TTS only to fixed BFF endpoints', async () => {
+    const host = createHost(); host.ready()
+    const scope = { preset_id: nonce }
+    transport.mockResolvedValueOnce(new Response(JSON.stringify({ text: 'synthetic transcript', duration_ms: 1000 })))
+    host.port.receive(envelope({ command: 'asr', ...scope, audio: new Blob(['synthetic wav']) }, 'asr'))
+    await flushPromises()
+    expect(transport.mock.calls[0][0]).toBe('/chat/speech/asr')
+    expect(transport.mock.calls[0][1].body.get('preset_id')).toBe(nonce)
+    expect(host.port.sent).toContainEqual(expect.objectContaining({ type: 'result', request_id: 'asr', data: expect.objectContaining({ text: 'synthetic transcript' }) }))
+    const bytes = new Uint8Array([1, 2])
+    stream.mockImplementationOnce(async (_path, _body, _signal, chunk) => { chunk(bytes) })
+    host.port.receive(envelope({ command: 'tts', ...scope, text: 'hello', voice_id: 'stella', filter_markdown: true }, 'tts'))
+    await flushPromises()
+    expect(stream).toHaveBeenCalledWith('/chat/speech/tts', expect.objectContaining({ ...scope, text: 'hello' }), expect.any(AbortSignal), expect.any(Function))
+    expect(host.port.sent.filter((message) => message.request_id === 'tts').map((message) => message.type)).toEqual(['chunk', 'end'])
+    for (const command of ['asr', 'tts']) expect(isChatBridgeRequest(envelope({ command, ...scope, audio: new Blob(['wav']), text: 'hello', voice_id: 'stella', filter_markdown: true, api_key: 'forged' }), nonce)).toBe(false)
   })
 })

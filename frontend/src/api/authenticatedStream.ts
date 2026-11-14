@@ -56,7 +56,7 @@ export async function authenticatedChatFetch(
 ): Promise<Response> {
   const method = init.method ?? 'GET'
   const allowed = method === 'GET' ? /^\/chat\/attachments\/[A-Za-z0-9_-]+\/content$/.test(path)
-    : method === 'POST' && /^\/chat\/(attachments|imports\/[A-Za-z0-9_-]+\/attachments|sessions\/[A-Za-z0-9_-]+\/generate)$/.test(path)
+    : method === 'POST' && /^\/chat\/(attachments|imports\/[A-Za-z0-9_-]+\/attachments|sessions\/[A-Za-z0-9_-]+\/generate|speech\/(asr|tts))$/.test(path)
   if (!allowed) throw new ChatTransportError('不允许的聊天路径', 'CHAT_BRIDGE_FORBIDDEN')
   const auth = useAuthStore()
   const userID = auth.user?.id

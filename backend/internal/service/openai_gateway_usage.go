@@ -48,6 +48,7 @@ type OpenAIRecordUsageInput struct {
 	// HTTP requests use the immutable admitted Account snapshot when nil.
 	SlowTTFTConfig *SlowTTFTConfig
 	ChannelUsageFields
+	prepareBilling func(*UsageLog, *postUsageBillingParams) error
 }
 
 // CyberPolicyUsageInput 是 cyber 拒绝、未走正常 RecordUsage 的请求记录用量的入参。
@@ -168,7 +169,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	// Native DeepSeek tools share the OpenAI account pool but do not represent a
 	// chat completion.  A successful tool call therefore must not clear the
 	// account's chat-specific 403 health counter.
-	if result.DeepSeekToolKind == "" && s.rateLimitService != nil && input.Account != nil && input.Account.Platform == PlatformOpenAI {
+	if !result.chatAuxiliaryOnly && result.DeepSeekToolKind == "" && s.rateLimitService != nil && input.Account != nil && input.Account.Platform == PlatformOpenAI {
 		s.rateLimitService.ResetOpenAI403Counter(ctx, input.Account.ID)
 	}
 
@@ -345,6 +346,15 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 			cost.ActualCost = standardCost.ActualCost
 		}
 	}
+	// Add mixed native tool charges only after all token repricing/fallbacks.
+	if result.ChatAuxiliaryUsage != nil && !result.chatAuxiliaryOnly {
+		auxiliaryCost, auxiliaryErr := result.ChatAuxiliaryUsage.cost()
+		if auxiliaryErr != nil {
+			return auxiliaryErr
+		}
+		cost.TotalCost += auxiliaryCost
+		cost.ActualCost += auxiliaryCost
+	}
 
 	// Determine billing type
 	isSubscriptionBilling := subscription != nil && apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
@@ -434,6 +444,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		ImageOutputSize:          optionalTrimmedStringPtr(result.ImageOutputSize),
 		ImageSizeSource:          optionalTrimmedStringPtr(result.ImageSizeSource),
 		ImageSizeBreakdown:       imageSizeBreakdown,
+		ChatAuxiliaryUsage:       result.ChatAuxiliaryUsage,
 		NativeCompactionV2:       input.NativeCompactionV2,
 	}
 	applyServiceTierUsageMetadata(usageLog, tierResolution)
@@ -455,7 +466,9 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		usageLog.ActualCost = cost.ActualCost
 		usageLog.LongContextBillingApplied = cost.LongContextBillingApplied
 	}
-	if result.DeepSeekToolKind != "" {
+	if result.chatAuxiliaryOnly {
+		usageLog.RateMultiplier = 1
+	} else if result.DeepSeekToolKind != "" {
 		usageLog.RateMultiplier = baseMultiplier
 	} else if isVideoUsage && (cost == nil || cost.BillingMode != string(BillingModeToken)) {
 		usageLog.RateMultiplier = videoMultiplier
@@ -516,7 +529,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	// model rules cannot turn an empty result into a charge (or reprice a
 	// successful call).  The dashboard still applies AccountRateMultiplier to
 	// this baseline in the existing way.
-	if result.DeepSeekToolKind != "" {
+	if result.chatAuxiliaryOnly || result.DeepSeekToolKind != "" {
 		statsCost := 0.0
 		if cost != nil {
 			statsCost = cost.TotalCost
@@ -551,7 +564,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		quotaPlatform = PlatformFromAPIKey(apiKey)
 	}
 
-	_, billingErr := applyUsageBilling(ctx, requestID, usageLog, &postUsageBillingParams{
+	post := &postUsageBillingParams{
 		Cost:                       cost,
 		User:                       user,
 		APIKey:                     apiKey,
@@ -563,7 +576,11 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		APIKeyService:              input.APIKeyService,
 		Platform:                   quotaPlatform,
 		SimpleModeKeyRateLimitOnly: simpleModeKeyRateLimitOnly,
-	}, s.billingDeps(), s.usageBillingRepo)
+	}
+	if input.prepareBilling != nil {
+		return input.prepareBilling(usageLog, post)
+	}
+	_, billingErr := applyUsageBilling(ctx, requestID, usageLog, post, s.billingDeps(), s.usageBillingRepo)
 
 	if billingErr != nil {
 		usageLog.ActualCost = 0
@@ -636,6 +653,16 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 	upstreamPlatforms ...string,
 ) (*CostBreakdown, error) {
 	billingModel := firstUsageBillingModel(billingModels)
+	if result != nil && result.chatAuxiliaryOnly {
+		if result.ChatAuxiliaryUsage == nil {
+			return nil, errors.New("missing chat auxiliary usage")
+		}
+		amount, err := result.ChatAuxiliaryUsage.cost()
+		if err != nil {
+			return nil, err
+		}
+		return &CostBreakdown{TotalCost: amount, ActualCost: amount, BillingMode: string(BillingModePerRequest)}, nil
+	}
 	if result != nil && result.DeepSeekToolKind != "" {
 		if result.DeepSeekToolKind != DeepSeekToolSearch && result.DeepSeekToolKind != DeepSeekToolFetch {
 			return nil, fmt.Errorf("unsupported native DeepSeek tool kind: %s", result.DeepSeekToolKind)

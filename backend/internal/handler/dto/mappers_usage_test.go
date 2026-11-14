@@ -421,3 +421,13 @@ func TestUsageLogFromServiceAdmin_SessionTransitionFields(t *testing.T) {
 	require.NotContains(t, userPayload, "previous_account_id")
 	require.NotContains(t, userPayload, "previous_account")
 }
+
+func TestChatAuxiliaryUsageDTO(t *testing.T) {
+	metadata := &service.ChatAuxiliaryUsage{PriceBasis: service.ChatAuxiliaryPriceBasis, Provider: "deepseek", Items: []service.ChatAuxiliaryUsageItem{{Kind: "native_files", Unit: "page", UnitPrice: "0", PriceQuantity: 1, ChargedCost: "0.00000000", MeteringStatus: "unreported", QuantitySource: "provider_unreported"}}}
+	got := UsageLogFromService(&service.UsageLog{ChatAuxiliaryUsage: metadata})
+	require.Equal(t, metadata, got.ChatAuxiliaryUsage)
+	raw, err := json.Marshal(got)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"quantity":null`)
+	require.Contains(t, string(raw), `"chat_auxiliary_usage"`)
+}

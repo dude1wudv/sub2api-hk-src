@@ -52,12 +52,14 @@ func TestUsageLogOutputTokensEstimatedMigrationAndRoundTrip(t *testing.T) {
 	require.False(t, historical.InputTokensEstimated)
 	require.False(t, historical.CacheReadTokensEstimated)
 	require.Empty(t, historical.UsageEstimationReason)
+	require.Nil(t, historical.ChatAuxiliaryUsage)
 
 	requestID := uuid.NewString()
 	estimated := &service.UsageLog{
 		UserID: user.ID, APIKeyID: apiKey.ID, AccountID: account.ID,
 		RequestID: requestID, Model: "claude-sonnet-4", OutputTokens: 17,
 		OutputTokensEstimated: true, InputTokensEstimated: true, CacheReadTokensEstimated: true, UsageEstimationReason: "client_cancelled", CreatedAt: time.Now().UTC(),
+		ChatAuxiliaryUsage: &service.ChatAuxiliaryUsage{PriceBasis: service.ChatAuxiliaryPriceBasis, Provider: "deepseek", Items: []service.ChatAuxiliaryUsageItem{{Kind: "native_files", Quantity: nil, Unit: "page", UnitPrice: "0", PriceQuantity: 1, ChargedCost: "0.00000000", MeteringStatus: "unreported", QuantitySource: "provider_unreported"}}},
 	}
 	inserted, err := repo.Create(ctx, estimated)
 	require.NoError(t, err)
@@ -69,6 +71,7 @@ func TestUsageLogOutputTokensEstimatedMigrationAndRoundTrip(t *testing.T) {
 	require.True(t, stored.InputTokensEstimated)
 	require.True(t, stored.CacheReadTokensEstimated)
 	require.Equal(t, "client_cancelled", stored.UsageEstimationReason)
+	require.Equal(t, estimated.ChatAuxiliaryUsage, stored.ChatAuxiliaryUsage)
 
 	duplicate := &service.UsageLog{
 		UserID: user.ID, APIKeyID: apiKey.ID, AccountID: account.ID,

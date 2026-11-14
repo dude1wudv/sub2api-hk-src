@@ -237,6 +237,15 @@ func (s *ChatService) Generate(ctx context.Context, userID int64, sessionID uuid
 			}
 		}
 	}()
+	if runErr == nil && len(prepared.documents) > 0 {
+		runErr = s.prepareChatDocuments(runCtx, run, clientIP, prepared.documents)
+		if runErr == nil {
+			prepared, runErr = s.buildChatRequest(runCtx, userID, snapshot, preset, model, options, req.Operation)
+			if runErr == nil && len(prepared.documents) > 0 {
+				runErr = ErrChatParseBusy
+			}
+		}
+	}
 	if runErr == nil {
 		runErr = s.executeChatRequest(runCtx, key, run, clientIP, prepared, state, emit)
 	}

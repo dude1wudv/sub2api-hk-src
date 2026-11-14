@@ -354,3 +354,26 @@ func TestReserveFixedCharge_ConcurrentChargesAdmitOnlyWhatAPIKeyQuotaCovers(t *t
 	require.Zero(t, remaining)
 	require.Equal(t, int64(0), inflightCount(t, cache, user.ID))
 }
+
+func TestChatAuxiliaryScopeReservationRenewal(t *testing.T) {
+	_, cache, _ := newInflightTestEnv(t, true, 60)
+	ctx := t.Context()
+	for _, scope := range []string{"apikey:9", "sub:3"} {
+		_, err := cache.ReserveInflightScope(ctx, scope, "active", 3, time.Minute)
+		require.NoError(t, err)
+		ok, err := cache.RenewInflightScope(ctx, scope, "active", 2*time.Minute)
+		require.NoError(t, err)
+		require.True(t, ok)
+		zkey, hkey := billingInflightScopeKeys(scope)
+		score, err := cache.rdb.ZScore(ctx, zkey, "active").Result()
+		require.NoError(t, err)
+		require.Greater(t, score, float64(time.Now().Add(time.Minute).UnixMilli()))
+		require.NoError(t, cache.rdb.ZAdd(ctx, zkey, redis.Z{Score: float64(time.Now().Add(-time.Second).UnixMilli()), Member: "active"}).Err())
+		ok, err = cache.RenewInflightScope(ctx, scope, "active", time.Minute)
+		require.NoError(t, err)
+		require.False(t, ok)
+		exists, err := cache.rdb.HExists(ctx, hkey, "active").Result()
+		require.NoError(t, err)
+		require.False(t, exists)
+	}
+}

@@ -36,6 +36,10 @@ type ChatAttachmentUpload struct {
 	Status chatattachmentupload.Status `json:"status,omitempty"`
 	// CleanupAttempts holds the value of the "cleanup_attempts" field.
 	CleanupAttempts int `json:"cleanup_attempts,omitempty"`
+	// LeaseToken holds the value of the "lease_token" field.
+	LeaseToken *uuid.UUID `json:"lease_token,omitempty"`
+	// LeaseExpiresAt holds the value of the "lease_expires_at" field.
+	LeaseExpiresAt *time.Time `json:"lease_expires_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChatAttachmentUploadQuery when eager-loading is set.
 	Edges        ChatAttachmentUploadEdges `json:"edges"`
@@ -80,11 +84,13 @@ func (*ChatAttachmentUpload) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case chatattachmentupload.FieldLeaseToken:
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case chatattachmentupload.FieldID, chatattachmentupload.FieldUserID, chatattachmentupload.FieldAccountID, chatattachmentupload.FieldCleanupAttempts:
 			values[i] = new(sql.NullInt64)
 		case chatattachmentupload.FieldRemoteFileID, chatattachmentupload.FieldStatus:
 			values[i] = new(sql.NullString)
-		case chatattachmentupload.FieldCreatedAt, chatattachmentupload.FieldUpdatedAt:
+		case chatattachmentupload.FieldCreatedAt, chatattachmentupload.FieldUpdatedAt, chatattachmentupload.FieldLeaseExpiresAt:
 			values[i] = new(sql.NullTime)
 		case chatattachmentupload.FieldAttachmentID:
 			values[i] = new(uuid.UUID)
@@ -157,6 +163,20 @@ func (_m *ChatAttachmentUpload) assignValues(columns []string, values []any) err
 			} else if value.Valid {
 				_m.CleanupAttempts = int(value.Int64)
 			}
+		case chatattachmentupload.FieldLeaseToken:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field lease_token", values[i])
+			} else if value.Valid {
+				_m.LeaseToken = new(uuid.UUID)
+				*_m.LeaseToken = *value.S.(*uuid.UUID)
+			}
+		case chatattachmentupload.FieldLeaseExpiresAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field lease_expires_at", values[i])
+			} else if value.Valid {
+				_m.LeaseExpiresAt = new(time.Time)
+				*_m.LeaseExpiresAt = value.Time
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -226,6 +246,16 @@ func (_m *ChatAttachmentUpload) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("cleanup_attempts=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CleanupAttempts))
+	builder.WriteString(", ")
+	if v := _m.LeaseToken; v != nil {
+		builder.WriteString("lease_token=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.LeaseExpiresAt; v != nil {
+		builder.WriteString("lease_expires_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }
