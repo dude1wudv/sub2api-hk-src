@@ -58,11 +58,12 @@ describe('ChatModelsView', () => {
     expect(wrapper.get('[data-preset-id=b]').text()).toContain('Group 12')
     expect(wrapper.get('[data-preset-id=b]').text()).toContain('分组权限已撤销')
     expect(wrapper.get('[data-view="saved"]').attributes('aria-pressed')).toBe('true')
-    expect(wrapper.get('[data-preset-id=a]').text()).not.toContain('重新连接')
+    expect(wrapper.get('[data-preset-id=a]').findAll('button').find(button => button.text() === '重新连接')!.attributes('disabled')).toBeUndefined()
     await wrapper.get('[data-view="catalog"]').trigger('click')
     expect(wrapper.get('.chat-browser').isVisible()).toBe(true)
     const makeDefault = wrapper.get('[data-preset-id=b]').findAll('button').find(button => button.text() === '设为默认')!
     expect(makeDefault.attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-preset-id=b]').findAll('button').find(button => button.text() === '重新连接')!.attributes('disabled')).toBeDefined()
     await wrapper.get('[data-group-id="11"]').trigger('click'); await flushPromises()
     const added = wrapper.findAll('button').find(button => button.text() === '已添加')!
     expect(added.attributes('disabled')).toBeDefined()
@@ -80,7 +81,7 @@ describe('ChatModelsView', () => {
   })
 
   it('reconnects only after an explicit user action', async () => {
-    chat.presets.mockResolvedValue([preset('a', 11, false)])
+    chat.presets.mockResolvedValue([preset('a', 11)])
     const wrapper = render(); await flushPromises()
     expect(chat.reconnectPreset).not.toHaveBeenCalled()
     await wrapper.get('[data-preset-id=a]').findAll('button').find(button => button.text() === '重新连接')!.trigger('click'); await flushPromises()

@@ -168,7 +168,7 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(searchTimer); request?.abo
                 <div class="chat-binding-actions">
                   <button class="portal-button secondary" :disabled="saving || !preset.available || preset.is_default" @click="mutate(() => chatAPI.updatePreset(preset.id, { is_default: true }))">{{ text('设为默认', 'Set default') }}</button>
                   <button class="portal-button secondary" :disabled="saving" @click="editBinding(preset)">{{ text('修改绑定', 'Change binding') }}</button>
-                  <button v-if="!preset.available" class="portal-button secondary" :disabled="saving" @click="mutate(() => chatAPI.reconnectPreset(preset.id))" :title="text('仅重建失效的聊天凭据，仍受普通密钥创建规则限制', 'Replace only an invalid chat credential, subject to normal key creation limits')">{{ text('重新连接', 'Reconnect') }}</button>
+                  <button class="portal-button secondary" :disabled="saving || !preset.available" @click="mutate(() => chatAPI.reconnectPreset(preset.id))" :title="text('仅重建失效的聊天凭据，仍受普通密钥创建规则限制', 'Replace only an invalid chat credential, subject to normal key creation limits')">{{ text('重新连接', 'Reconnect') }}</button>
                 </div>
                 <div class="chat-order-actions">
                   <button class="portal-button secondary chat-icon-button" :disabled="saving || index === 0" :aria-label="text('上移', 'Move up') + ' ' + preset.model" @click="move(index, -1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 6-6 6 6M12 6v12" /></svg></button>
