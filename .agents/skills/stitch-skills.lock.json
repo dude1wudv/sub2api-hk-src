@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/google-labs-code/stitch-skills",
+  "commit": "0337446dadde6f8c94210444e2aa9d546126480f",
+  "license": "Apache-2.0",
+  "skills": {
+    "stitch-extract-design-md": "plugins/stitch-design/skills/extract-design-md",
+    "enhance-prompt": "plugins/stitch-utilities/skills/enhance-prompt"
+  },
+  "local_adaptations": [
+    "Normalize the extraction skill name for shared OMP and Codex discovery.",
+    "Enable implicit invocation with narrow frontend-only descriptions and Codex policy metadata.",
+    "Preserve the existing framework, components, pnpm workflow, business data and user edits.",
+    "Reuse the target package's authoritative design document; create documents only on request.",
+    "Continue implementation after clarifying a UI request instead of stopping at a rewritten prompt.",
+    "Keep local workflows independent of Stitch MCP, uploads and autonomous generation loops.",
+    "Remove host-specific allowed-tools declarations; retain complete upstream references and examples."
+  ]
+}
