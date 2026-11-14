@@ -15,11 +15,12 @@ func chatTestFrames(events ...string) string {
 	return "data: " + strings.Join(events, "\r\n\r\ndata: ") + "\r\n\r\n"
 }
 
-func TestChatStreamThreeProtocolsSplitUTF8AndTerminal(t *testing.T) {
+func TestChatStreamProtocolsSplitUTF8AndTerminal(t *testing.T) {
 	fixtures := map[string]string{
 		"messages":         chatTestFrames(`{"type":"message_start","message":{"id":"r"}}`, `{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}`, `{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"思考"}}`, `{"type":"content_block_stop","index":0}`, `{"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}`, `{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"你好🌍"}}`, `{"type":"content_block_stop","index":1}`, `{"type":"message_delta","delta":{"stop_reason":"end_turn"}}`, `{"type":"message_stop"}`),
 		"chat_completions": chatTestFrames(`{"choices":[{"delta":{"reasoning_content":"思考"}}]}`, `{"choices":[{"delta":{"content":"你好🌍"}}]}`, `{"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":3,"prompt_tokens_details":{"cached_tokens":4}}}`, `[DONE]`),
 		"responses":        chatTestFrames(`{"type":"response.reasoning_summary_text.delta","item_id":"a","delta":"思考"}`, `{"type":"response.output_text.delta","item_id":"b","content_index":0,"delta":"你好🌍"}`, `{"type":"response.output_text.annotation.added","item_id":"b","content_index":0,"annotation":{"type":"url_citation","url":"https://example.com","title":"引用"}}`, `{"type":"response.completed","response":{"status":"completed","usage":{"input_tokens":12,"output_tokens":3}}}`),
+		"gemini":           chatTestFrames(`{"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"思考","thought":true,"thoughtSignature":"opaque"}]}}]}`, `{"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"你好🌍"}]},"finishReason":"STOP"}]}`, `{"usageMetadata":{"promptTokenCount":12,"candidatesTokenCount":3,"cachedContentTokenCount":4,"thoughtsTokenCount":2}}`),
 	}
 	for transport, fixture := range fixtures {
 		t.Run(transport, func(t *testing.T) {
@@ -50,7 +51,7 @@ func TestChatStreamThreeProtocolsSplitUTF8AndTerminal(t *testing.T) {
 }
 
 func TestChatStreamRejectsMissingTerminatorAndErrors(t *testing.T) {
-	for _, transport := range []string{"messages", "chat_completions", "responses"} {
+	for _, transport := range []string{"messages", "chat_completions", "responses", "gemini"} {
 		decoder := newChatStreamDecoder(transport, 0, func(map[string]any) error { return nil })
 		writer := newChatGatewayWriter(context.Background(), decoder)
 		require.ErrorIs(t, writer.finish(), ErrChatStream)

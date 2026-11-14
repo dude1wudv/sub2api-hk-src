@@ -24,7 +24,7 @@ export function parseChatModelPolicies(text: string): ChatModelPolicies {
       throw new Error('Unknown policy field')
     }
     const transport = policy.transport
-    if (transport !== 'chat_completions' && transport !== 'messages' && transport !== 'responses') {
+    if (transport !== 'chat_completions' && transport !== 'messages' && transport !== 'responses' && transport !== 'gemini') {
       throw new Error('Invalid transport')
     }
     for (const flag of flags) {

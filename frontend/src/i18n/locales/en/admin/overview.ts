@@ -987,7 +987,7 @@ export default {
       },
       chatPolicies: {
         title: 'Web chat model capabilities',
-        hint: 'JSON keyed by exact public model names (no wildcards). Empty configuration uses text Chat Completions. Capabilities are intersected with the selected group, eligible accounts and protocol adapter; this does not grant access or bypass billing.',
+        hint: 'JSON keyed by exact public model names (no wildcards). Defaults: Claude uses Messages, Gemini uses native v1beta, all others use Responses. Explicit policies take precedence; transport accepts messages, gemini, responses or chat_completions. Capabilities intersect group, account and adapter eligibility, without granting access or bypassing billing.',
         example: 'Show configuration example',
         invalid: 'Invalid policy. Use an exact model name, a supported transport and boolean capabilities. Native DeepSeek features require messages; document input requires native_files.',
       },

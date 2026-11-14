@@ -51,14 +51,15 @@ describe('ChatView standalone Vue host', () => {
   })
   afterEach(() => wrappers.splice(0).forEach((wrapper) => wrapper.unmount()))
 
-  it('uses only the fixed iframe, full-height layout, explicit return and model-management links', async () => {
+  it('uses only the fixed full-height iframe and leaves navigation to in-app settings', async () => {
     const wrapper = render()
     const frame = wrapper.get('iframe')
     expect(frame.attributes('src')).toBe('/chat-app/')
     expect(frame.attributes('allow')).toContain("microphone 'none'")
     expect(frame.attributes('src')).not.toContain('token')
     expect(wrapper.get('main').classes()).toContain('chat-host')
-    expect(wrapper.findAllComponents(RouterLinkStub).map((link) => link.props('to'))).toEqual(['/dashboard', '/chat-models'])
+    expect(wrapper.find('nav').exists()).toBe(false)
+    expect(wrapper.findAllComponents(RouterLinkStub)).toHaveLength(0)
     expect(ctx.mount).toHaveBeenCalledTimes(1)
     expect(ctx.options!.userID()).toBe(7)
     await frame.trigger('load')

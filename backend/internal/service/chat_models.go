@@ -139,7 +139,7 @@ func (s *ChatModelService) catalogForGroup(ctx context.Context, userID int64, gr
 		if !s.isChatModel(model.ID) {
 			continue
 		}
-		policy := ChatModelPolicy{Transport: "chat_completions"}
+		policy := ChatModelPolicy{Transport: defaultChatTransport(model.ID)}
 		if configured, ok := group.ChatModelPolicies[model.ID]; ok {
 			policy = configured
 		}

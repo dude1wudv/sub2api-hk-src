@@ -26,7 +26,7 @@ func ValidateChatModelPolicies(policies map[string]ChatModelPolicy) error {
 			return fmt.Errorf("chat model policy requires an exact public model name")
 		}
 		switch p.Transport {
-		case "chat_completions", "messages", "responses":
+		case "chat_completions", "messages", "responses", "gemini":
 		default:
 			return fmt.Errorf("invalid chat transport for %q", model)
 		}

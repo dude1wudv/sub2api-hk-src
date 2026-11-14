@@ -26,6 +26,7 @@ type chatStreamDecoder struct {
 	tools          map[int]*chatToolCall
 	responseTools  map[string]int
 	responseOutput []any
+	geminiUsage    map[string]any
 	lastKind       string
 	lastIndex      int
 	done           bool
@@ -153,6 +154,8 @@ func (d *chatStreamDecoder) accept(raw []byte) error {
 		return d.completions(event)
 	case "responses":
 		return d.responses(event)
+	case "gemini":
+		return d.gemini(event)
 	default:
 		return ErrChatCapability
 	}
@@ -438,6 +441,12 @@ func (w *chatGatewayWriter) finish() error {
 	defer w.mu.Unlock()
 	if w.err != nil {
 		return w.err
+	}
+	if w.decoder.transport == "gemini" && w.decoder.finished && !w.decoder.done {
+		if err := w.decoder.end(w.decoder.geminiUsage); err != nil {
+			return err
+		}
+		w.decoder.done = true
 	}
 	if !w.decoder.done {
 		return ErrChatStream

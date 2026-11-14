@@ -76,7 +76,7 @@
               :is="item.action ? 'button' : item.href ? 'a' : RouterLink"
               v-for="item in section.items"
               :key="item.path"
-              v-bind="item.action ? { type: 'button' } : item.href ? { href: item.href } : { to: { path: item.path, query: item.query } }"
+              v-bind="item.action ? { type: 'button' } : item.href ? { href: item.href, target: item.newTab ? '_blank' : undefined, rel: item.newTab ? 'noopener noreferrer' : undefined } : { to: { path: item.path, query: item.query } }"
               class="user-nav-item"
               :class="{ 'user-nav-active': isActive(item) }"
               :aria-current="isActive(item) ? 'page' : undefined"
@@ -293,7 +293,7 @@ const { openAIBase } = usePatrickApiBase()
 const commands = computed<WorkspaceCommand[]>(() => {
   const entries: WorkspaceCommand[] = navigationItems.value.map(item => ({
     id: item.path, label: item.label, section: zh.value ? '页面' : 'Pages', keywords: item.path,
-    ...(item.action ? { run: () => activateNavigation(item) } : item.href ? { href: item.href } : { to: { path: item.path, query: item.query } }),
+    ...(item.action ? { run: () => activateNavigation(item) } : item.newTab ? { run: () => { window.open(item.href || item.path, '_blank', 'noopener,noreferrer') } } : item.href ? { href: item.href } : { to: { path: item.path, query: item.query } }),
   }))
   if (navigationItems.value.some(item => item.path === '/keys')) entries.unshift({ id: 'create-key', label: zh.value ? '创建 API 密钥' : 'Create API key', section: zh.value ? '快捷操作' : 'Quick actions', keywords: 'new api key', to: '/keys?create=1' })
   entries.unshift({ id: 'copy-endpoint', label: zh.value ? '复制接口地址' : 'Copy API base URL', section: zh.value ? '快捷操作' : 'Quick actions', keywords: 'api base url endpoint', run: async () => { if (!await copyToClipboard(openAIBase.value)) throw new Error('Copy failed') } })

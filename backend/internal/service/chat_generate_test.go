@@ -136,7 +136,9 @@ func chatGenerationFixture(t *testing.T) (*ChatService, *chatGenerationRepoFake,
 	raw, err := json.Marshal(map[string]any{"id": id.String(), "title": "", "rootMessageId": "question", "messages": []any{map[string]any{"id": "question", "role": "user", "content": "你好", "parentId": nil, "selectedChildId": "reply"}, map[string]any{"id": "reply", "role": "assistant", "status": "pending", "blocks": []any{}, "prefix": true, "parentId": "question"}}})
 	require.NoError(t, err)
 	repo := &chatGenerationRepoFake{record: ChatSessionRecord{ID: id, UserID: 7, Snapshot: raw}}
-	models, _, _, _ := chatModelFixture()
+	models, groups, _, _ := chatModelFixture()
+	// Lease/persistence cases deliberately cover the still-supported explicit adapter.
+	groups.groups[0].ChatModelPolicies = map[string]ChatModelPolicy{"shared-model": {Transport: "chat_completions"}}
 	models.repo = &chatGenerationPresets{preset: preset}
 	credentials := &ChatCredentialService{repo: &chatCredentialRepoStub{}, keys: &chatCredentialKeysStub{groups: []Group{{ID: 11}}}}
 	storage, err := NewChatStorage(t.TempDir())

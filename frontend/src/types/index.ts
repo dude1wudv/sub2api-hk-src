@@ -579,7 +579,7 @@ export interface GroupLocaleText {
 export type GroupI18n = Record<string, GroupLocaleText>
 
 export interface ChatModelPolicy {
-  transport: 'chat_completions' | 'messages' | 'responses'
+  transport: 'chat_completions' | 'messages' | 'responses' | 'gemini'
   image_input: boolean
   document_input: boolean
   native_deepseek_extensions: boolean

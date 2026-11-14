@@ -36,7 +36,7 @@ const error = ref('')
 let published: ChatModelPolicies | undefined
 const example = JSON.stringify({
   'public-model-name': {
-    transport: 'chat_completions', image_input: false, document_input: false,
+    transport: 'responses', image_input: false, document_input: false,
     native_deepseek_extensions: false, native_files: false, native_search: false, native_read_url: false,
   },
 }, null, 2)

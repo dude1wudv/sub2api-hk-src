@@ -2,7 +2,7 @@ import { apiClient } from './client'
 import type { UserSupportedModelPricing } from './channels'
 
 export interface ChatCapabilities {
-  transport: 'chat_completions' | 'messages' | 'responses'
+  transport: 'chat_completions' | 'messages' | 'responses' | 'gemini'
   image_input: boolean
   document_input: boolean
   native_deepseek_extensions: boolean

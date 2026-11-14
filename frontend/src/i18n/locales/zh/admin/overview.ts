@@ -984,7 +984,7 @@ export default {
       },
       chatPolicies: {
         title: '站内聊天模型能力',
-        hint: '以精确公开模型名为键的 JSON（不支持通配符）。空配置使用通用文本 Chat Completions。最终能力取所选分组、可调度账号及协议适配器的交集，不授予权限或绕过计费。',
+        hint: '以精确公开模型名为键的 JSON（不支持通配符）。默认 Claude 使用 Messages，Gemini 使用原生 v1beta，其余使用 Responses；显式策略优先，可选 transport：messages、gemini、responses、chat_completions。最终能力取分组、账号和适配器的交集，不授予权限或绕过计费。',
         example: '查看配置示例',
         invalid: '策略无效：请使用精确模型名、受支持的 transport 和布尔能力值。DeepSeek 原生能力要求 messages，文档输入要求 native_files。',
       },

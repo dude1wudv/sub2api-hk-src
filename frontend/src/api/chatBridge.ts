@@ -92,7 +92,7 @@ function presetView(value: unknown): ChatPresetView {
   const cap = value.capabilities
   if (typeof group.id !== 'number' || typeof group.name !== 'string' || typeof group.platform !== 'string'
     || typeof group.subscription_type !== 'string' || typeof group.rate_multiplier !== 'number' || typeof group.user_rate_multiplier !== 'number'
-    || !['chat_completions', 'messages', 'responses'].includes(String(cap.transport))) throw new ChatTransportError('聊天模型能力无效', 'CHAT_BRIDGE_PROTOCOL')
+    || !['chat_completions', 'messages', 'responses', 'gemini'].includes(String(cap.transport))) throw new ChatTransportError('聊天模型能力无效', 'CHAT_BRIDGE_PROTOCOL')
   const reasons: Record<string, string> = {}
   if (record(cap.reasons)) for (const [key, reason] of Object.entries(cap.reasons)) if (typeof reason === 'string') reasons[key] = reason
   // Each property is projected explicitly; account/key fields never enter the frame.
@@ -101,7 +101,7 @@ function presetView(value: unknown): ChatPresetView {
     sort_order: value.sort_order, is_default: value.is_default, available: value.available, unavailable_reason: value.unavailable_reason,
     group: { id: group.id, name: group.name, platform: group.platform, subscription_type: group.subscription_type, rate_multiplier: group.rate_multiplier, user_rate_multiplier: group.user_rate_multiplier },
     capabilities: {
-      transport: cap.transport === 'messages' ? 'messages' : cap.transport === 'responses' ? 'responses' : 'chat_completions',
+      transport: cap.transport === 'gemini' ? 'gemini' : cap.transport === 'messages' ? 'messages' : cap.transport === 'responses' ? 'responses' : 'chat_completions',
       image_input: cap.image_input === true, document_input: cap.document_input === true,
       native_deepseek_extensions: cap.native_deepseek_extensions === true, native_files: cap.native_files === true,
       native_search: cap.native_search === true, native_read_url: cap.native_read_url === true,

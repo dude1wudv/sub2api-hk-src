@@ -15,6 +15,11 @@ const presets = ref<ChatPresetView[]>([])
 const catalog = ref<ChatCatalog | null>(null)
 const selectedGroup = ref<number | null>(null)
 const search = ref('')
+const view = ref<'saved' | 'catalog'>('saved')
+const groupPickerOpen = ref(true)
+const groupSearch = ref('')
+const filteredGroups = computed(() => groups.value.filter(group => `${group.name} ${group.platform} ${group.id}`.toLocaleLowerCase().includes(groupSearch.value.trim().toLocaleLowerCase())))
+const activeGroup = computed(() => groups.value.find(group => group.id === selectedGroup.value))
 const loading = ref(false)
 const catalogLoading = ref(false)
 const saving = ref(false)
@@ -40,7 +45,10 @@ async function load() {
   error.value = ''
   try {
     const [available] = await Promise.all([getAvailable(), loadPresets()])
-    if (!disposed) groups.value = available
+    if (!disposed) {
+      groups.value = available
+      if (!presets.value.length) view.value = 'catalog'
+    }
   } catch (cause) { if (!disposed) error.value = message(cause) }
   finally { if (!disposed) loading.value = false }
 }
@@ -59,6 +67,10 @@ async function loadCatalog() {
     if (!current.signal.aborted && !disposed) catalog.value = result
   } catch (cause) { if (!current.signal.aborted && !disposed) catalogError.value = message(cause) }
   finally { if (!current.signal.aborted && !disposed) catalogLoading.value = false }
+}
+function chooseGroup(id: number) {
+  selectedGroup.value = id
+  groupPickerOpen.value = false
 }
 watch(selectedGroup, () => { clearTimeout(searchTimer); void loadCatalog() })
 watch(search, () => {
@@ -89,6 +101,8 @@ async function add(model: ChatCatalogModel) {
 }
 function editBinding(preset: ChatPresetView) {
   editingId.value = preset.id
+  view.value = 'catalog'
+  groupPickerOpen.value = true
   search.value = ''
   selectedGroup.value = groups.value.some(group => group.id === preset.group_id) ? preset.group_id : null
   void loadCatalog()
@@ -118,84 +132,191 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(searchTimer); request?.abo
 <template>
   <div class="portal-page chat-models-page">
     <PortalPageHeader :title="text('聊天模型', 'Chat models')">
-      <RouterLink to="/chat" class="portal-button">{{ text('进入聊天', 'Open chat') }} →</RouterLink>
+      <RouterLink to="/chat" target="_blank" rel="noopener noreferrer" class="portal-button">{{ text('打开聊天', 'Open chat') }} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5" /></svg></RouterLink>
     </PortalPageHeader>
-    <p class="chat-description">{{ text('先明确选择分组和模型。聊天页只显示你的常用项，不会自动跨组切换；删除或修改配置不会改写历史回答。', 'Choose a group and model explicitly. Chat shows only your saved models and never switches groups automatically. Changes do not rewrite historical replies.') }}</p>
-    <p v-if="error" role="alert">{{ error }} <button class="portal-button" @click="load">{{ text('重试', 'Retry') }}</button></p>
+    <p class="chat-description">{{ text('保存常用模型，在聊天中随时切换。每个模型固定使用你选择的分组。', 'Save models to switch between them in chat. Each model uses the group you choose.') }}</p>
+    <nav class="portal-tabs chat-view-switch" :aria-label="text('模型配置视图', 'Model settings views')">
+      <button type="button" data-view="saved" :class="{ active: view === 'saved' }" :aria-pressed="view === 'saved'" @click="view = 'saved'">{{ text('常用模型', 'Saved models') }}<span v-if="presets.length">{{ presets.length }}</span></button>
+      <button type="button" data-view="catalog" :class="{ active: view === 'catalog' }" :aria-pressed="view === 'catalog'" @click="view = 'catalog'">{{ text('添加模型', 'Add models') }}</button>
+    </nav>
+    <p v-if="error" class="portal-error" role="alert">{{ error }} <button class="portal-button secondary" @click="load">{{ text('重试', 'Retry') }}</button></p>
     <p v-if="loading" role="status">{{ text('正在加载…', 'Loading…') }}</p>
-    <div class="chat-models-grid">
-      <section aria-labelledby="saved-models-title" class="chat-model-panel">
-        <h2 id="saved-models-title">{{ text('我的常用模型', 'My saved models') }} <span>{{ presets.length }}</span></h2>
-        <p v-if="!loading && !presets.length" class="chat-description">{{ text('还没有常用模型。请在目录中选择分组并添加模型。', 'No saved models. Select a group in the catalog and add a model.') }}</p>
-        <ol class="chat-model-list">
-          <li v-for="(preset, index) in presets" :key="preset.id" :data-preset-id="preset.id">
-            <div class="chat-model-title"><strong>{{ preset.display_name || preset.model }}</strong><span v-if="preset.is_default" class="chat-badge">{{ text('默认', 'Default') }}</span></div>
-            <p class="chat-model-code">{{ preset.model }}</p>
-            <p>{{ preset.group.name || text('不可访问的分组', 'Unavailable group') }} · #{{ preset.group_id }}</p>
-            <p v-if="!preset.available" class="chat-unavailable" role="status">{{ preset.unavailable_reason }}</p>
-            <form class="chat-rename" @submit.prevent="mutate(() => chatAPI.updatePreset(preset.id, { display_name: names[preset.id] }))">
-              <label :for="`name-${preset.id}`">{{ text('显示名', 'Display name') }}</label>
-              <input :id="`name-${preset.id}`" v-model="names[preset.id]" class="portal-input" maxlength="200" :disabled="saving" :placeholder="preset.model" />
-              <button class="portal-button" :disabled="saving || names[preset.id] === preset.display_name">{{ text('保存', 'Save') }}</button>
-            </form>
-            <div class="chat-model-actions">
-              <button class="portal-button" :disabled="saving || !preset.available || preset.is_default" @click="mutate(() => chatAPI.updatePreset(preset.id, { is_default: true }))">{{ text('设为默认', 'Set default') }}</button>
-              <button class="portal-button" :disabled="saving" @click="editBinding(preset)">{{ text('修改绑定', 'Change binding') }}</button>
-              <button class="portal-button" :disabled="saving || !preset.available" @click="mutate(() => chatAPI.reconnectPreset(preset.id))" :title="text('仅重建失效的聊天凭据，仍受普通密钥创建规则限制', 'Replace only an invalid chat credential, subject to normal key creation limits')">{{ text('重新连接', 'Reconnect') }}</button>
-              <button class="portal-button" :disabled="saving || index === 0" :aria-label="text('上移', 'Move up') + ' ' + preset.model" @click="move(index, -1)">↑</button>
-              <button class="portal-button" :disabled="saving || index === presets.length - 1" :aria-label="text('下移', 'Move down') + ' ' + preset.model" @click="move(index, 1)">↓</button>
-              <button class="portal-button" :disabled="saving" @click="mutate(() => chatAPI.deletePreset(preset.id))">{{ text('移除', 'Remove') }}</button>
+
+    <section v-show="view === 'saved'" class="chat-saved" :aria-label="text('我的常用模型', 'My saved models')">
+      <div v-if="!loading && !presets.length" class="chat-empty">
+        <p>{{ text('还没有常用模型', 'No saved models yet') }}</p>
+        <button class="portal-button secondary" @click="view = 'catalog'">{{ text('添加模型', 'Add models') }}</button>
+      </div>
+      <ol class="chat-model-list">
+        <li v-for="(preset, index) in presets" :key="preset.id" :data-preset-id="preset.id" class="chat-saved-row">
+          <details class="chat-preset-settings">
+            <summary>
+              <span class="chat-model-identity">
+                <span class="chat-model-title"><strong>{{ preset.display_name || preset.model }}</strong><span v-if="preset.is_default" class="chat-default">{{ text('默认', 'Default') }}</span></span>
+                <span v-if="preset.display_name && preset.display_name !== preset.model" class="chat-saved-code">{{ preset.model }}</span>
+                <span class="chat-saved-group">{{ preset.group.name || text('不可访问的分组', 'Unavailable group') }} <span>#{{ preset.group_id }}</span></span>
+                <span v-if="!preset.available" class="chat-unavailable" role="status">{{ preset.unavailable_reason }}</span>
+              </span>
+              <span class="chat-manage-label">{{ text('管理', 'Manage') }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg></span>
+            </summary>
+            <div class="chat-preset-editor">
+              <form class="chat-rename" @submit.prevent="mutate(() => chatAPI.updatePreset(preset.id, { display_name: names[preset.id] }))">
+                <label class="portal-field" :for="`name-${preset.id}`">{{ text('显示名', 'Display name') }}<input :id="`name-${preset.id}`" v-model="names[preset.id]" maxlength="200" :disabled="saving" :placeholder="preset.model" /></label>
+                <button class="portal-button" :disabled="saving || names[preset.id] === preset.display_name">{{ text('保存', 'Save') }}</button>
+              </form>
+              <div class="chat-model-actions">
+                <div class="chat-binding-actions">
+                  <button class="portal-button secondary" :disabled="saving || !preset.available || preset.is_default" @click="mutate(() => chatAPI.updatePreset(preset.id, { is_default: true }))">{{ text('设为默认', 'Set default') }}</button>
+                  <button class="portal-button secondary" :disabled="saving" @click="editBinding(preset)">{{ text('修改绑定', 'Change binding') }}</button>
+                  <button v-if="!preset.available" class="portal-button secondary" :disabled="saving" @click="mutate(() => chatAPI.reconnectPreset(preset.id))" :title="text('仅重建失效的聊天凭据，仍受普通密钥创建规则限制', 'Replace only an invalid chat credential, subject to normal key creation limits')">{{ text('重新连接', 'Reconnect') }}</button>
+                </div>
+                <div class="chat-order-actions">
+                  <button class="portal-button secondary chat-icon-button" :disabled="saving || index === 0" :aria-label="text('上移', 'Move up') + ' ' + preset.model" @click="move(index, -1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 6-6 6 6M12 6v12" /></svg></button>
+                  <button class="portal-button secondary chat-icon-button" :disabled="saving || index === presets.length - 1" :aria-label="text('下移', 'Move down') + ' ' + preset.model" @click="move(index, 1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 6 6 6-6M12 6v12" /></svg></button>
+                  <button class="portal-button danger" :disabled="saving" @click="mutate(() => chatAPI.deletePreset(preset.id))">{{ text('移除', 'Remove') }}</button>
+                </div>
+              </div>
             </div>
-          </li>
-        </ol>
-      </section>
-      <section aria-labelledby="model-catalog-title" class="chat-model-panel">
-        <h2 id="model-catalog-title">{{ text('选择分组与模型', 'Choose group and model') }}</h2>
-        <p v-if="editing" role="status">{{ text('正在修改：', 'Changing: ') }}{{ editing.display_name || editing.model }} <button class="portal-button" @click="editingId = null">{{ text('取消', 'Cancel') }}</button></p>
-        <label for="chat-group">{{ text('分组 / 渠道', 'Group / channel') }}</label>
-        <select id="chat-group" v-model="selectedGroup" class="portal-input" :disabled="loading || saving">
-          <option :value="null" disabled>{{ text('请选择分组', 'Select a group') }}</option>
-          <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }} · #{{ group.id }} · {{ group.subscription_type === 'subscription' ? text('套餐', 'Subscription') : text('余额', 'Balance') }}</option>
-        </select>
-        <label for="chat-model-search">{{ text('搜索模型', 'Search models') }}</label>
-        <input id="chat-model-search" v-model="search" type="search" class="portal-input" :disabled="!selectedGroup" maxlength="256" />
-        <p v-if="catalog" class="chat-description">{{ text('分组倍率', 'Group rate') }} ×{{ catalog.group.rate_multiplier }} · {{ text('你的倍率', 'Your rate') }} ×{{ catalog.group.user_rate_multiplier }} · {{ catalog.group.subscription_type === 'subscription' ? text('套餐计费', 'Subscription billing') : text('余额计费', 'Balance billing') }}</p>
-        <p class="chat-description">{{ text('价格显示标准时段最低档，已应用你的倍率。阶梯、时段、缓存及工具费用以实际用量账单为准。目录表示配置兼容性，不是实时健康保证。', 'Prices show the lowest standard-period tier with your rate applied. Context tiers, time periods, cache and tools follow actual usage billing. Catalog compatibility is not a live health guarantee.') }}</p>
-        <p v-if="catalogLoading" role="status">{{ text('加载目录…', 'Loading catalog…') }}</p>
-        <p v-if="catalogError" role="alert">{{ catalogError }} <button class="portal-button" @click="loadCatalog">{{ text('重试', 'Retry') }}</button></p>
-        <p v-if="catalog && !catalog.models.length">{{ text('没有符合条件的聊天模型。可调整搜索或选择其他分组。', 'No compatible chat models. Change the search or select another group.') }}</p>
-        <ul class="chat-model-list">
-          <li v-for="model in catalog?.models || []" :key="model.id">
-            <strong class="chat-model-code">{{ model.id }}</strong>
-            <p>{{ price(model) }}</p>
-            <p class="chat-description">{{ model.capabilities.image_input ? text('图片 · ', 'Images · ') : '' }}{{ model.capabilities.document_input ? text('文档 · ', 'Documents · ') : '' }}{{ model.capabilities.search ? text('搜索 · ', 'Search · ') : '' }}{{ text('文字聊天', 'Text chat') }}</p>
-            <button class="portal-button" :disabled="saving || !model.available || (!editingId && alreadyAdded(model.id))" @click="add(model)">{{ editingId ? text('绑定此模型', 'Use this binding') : alreadyAdded(model.id) ? text('已添加', 'Added') : text('添加常用', 'Add model') }}</button>
-          </li>
-        </ul>
-      </section>
-    </div>
+          </details>
+        </li>
+      </ol>
+      <p v-if="presets.length" class="chat-footnote">{{ text('修改或移除配置，不影响历史回答。', 'Changing or removing a model does not affect past replies.') }}</p>
+    </section>
+
+    <section v-show="view === 'catalog'" class="chat-browser" :aria-label="text('添加模型', 'Add models')">
+      <aside class="chat-groups" aria-labelledby="chat-groups-title">
+        <header class="chat-section-head"><h2 id="chat-groups-title">{{ text('分组', 'Groups') }}</h2><span>{{ groups.length }}</span></header>
+        <button type="button" class="chat-mobile-group" :aria-expanded="groupPickerOpen" aria-controls="chat-group-options" @click="groupPickerOpen = !groupPickerOpen"><span>{{ activeGroup?.name || text('选择分组', 'Choose a group') }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg></button>
+        <div id="chat-group-options" class="chat-group-options" :class="{ 'is-collapsed': !groupPickerOpen }">
+          <label class="chat-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg><input v-model="groupSearch" type="search" :aria-label="text('搜索分组', 'Search groups')" :placeholder="text('搜索名称或 ID', 'Search name or ID')" maxlength="256" /></label>
+          <div class="chat-group-list" :aria-label="text('可选分组', 'Available groups')">
+            <button v-for="group in filteredGroups" :key="group.id" type="button" :data-group-id="group.id" :aria-pressed="selectedGroup === group.id" :disabled="loading || saving" :title="group.name" @click="chooseGroup(group.id)">
+              <span class="chat-group-name">{{ group.name }}</span><span class="chat-group-meta">#{{ group.id }} · {{ group.platform }}<svg v-if="selectedGroup === group.id" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></span>
+            </button>
+            <p v-if="!loading && !filteredGroups.length" class="chat-empty">{{ text('没有匹配的分组', 'No matching groups') }}</p>
+          </div>
+        </div>
+      </aside>
+      <div class="chat-catalog" aria-labelledby="model-catalog-title">
+        <header class="chat-section-head"><h2 id="model-catalog-title">{{ activeGroup?.name || text('模型目录', 'Model catalog') }}</h2><span v-if="activeGroup">#{{ activeGroup.id }}</span></header>
+        <div v-if="editing" class="chat-editing" role="status"><span>{{ text('修改绑定：', 'Rebind: ') }}<strong>{{ editing.display_name || editing.model }}</strong></span><button class="portal-button secondary" @click="editingId = null">{{ text('取消', 'Cancel') }}</button></div>
+        <label class="chat-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg><input id="chat-model-search" v-model="search" type="search" :aria-label="text('搜索模型', 'Search models')" :placeholder="text('搜索此分组的模型', 'Search models in this group')" :disabled="!selectedGroup" maxlength="256" /></label>
+        <div v-if="catalog" class="chat-catalog-meta"><span>{{ text('你的倍率', 'Your rate') }} ×{{ catalog.group.user_rate_multiplier }}</span><span>{{ catalog.group.subscription_type === 'subscription' ? text('套餐计费', 'Subscription billing') : text('余额计费', 'Balance billing') }} · {{ catalog.models.length }} {{ text('个模型', 'models') }}</span></div>
+        <div class="chat-catalog-body" :aria-busy="catalogLoading">
+          <p v-if="!selectedGroup" class="chat-empty">{{ text('选择分组，查看模型和价格。', 'Choose a group to see its models and prices.') }}</p>
+          <p v-if="catalogLoading" class="chat-empty" role="status">{{ text('加载目录…', 'Loading catalog…') }}</p>
+          <p v-if="catalogError" class="chat-empty" role="alert">{{ catalogError }} <button class="portal-button secondary" @click="loadCatalog">{{ text('重试', 'Retry') }}</button></p>
+          <p v-if="catalog && !catalog.models.length" class="chat-empty">{{ text('没有符合条件的聊天模型。可调整搜索或选择其他分组。', 'No compatible chat models. Change the search or select another group.') }}</p>
+          <ul class="chat-model-list">
+            <li v-for="model in catalog?.models || []" :key="model.id" class="chat-catalog-row">
+              <div class="chat-model-info">
+                <strong class="chat-model-name">{{ model.id }}</strong>
+                <p class="chat-price">{{ price(model) }}</p>
+                <div class="chat-model-tags"><span>{{ model.capabilities.transport === 'messages' ? 'Messages' : model.capabilities.transport === 'gemini' ? 'Gemini v1beta' : model.capabilities.transport === 'responses' ? 'Responses' : 'Chat Completions' }}</span><span v-if="model.capabilities.image_input">{{ text('图片', 'Images') }}</span><span v-if="model.capabilities.document_input">{{ text('文档', 'Files') }}</span><span v-if="model.capabilities.reasoning">{{ text('思考', 'Reasoning') }}</span><span v-if="model.capabilities.search">{{ text('搜索', 'Search') }}</span></div>
+                <p v-if="!model.available" class="chat-unavailable">{{ model.unavailable_reason }}</p>
+              </div>
+              <button class="portal-button secondary chat-add" :disabled="saving || !model.available || (!editingId && alreadyAdded(model.id))" @click="add(model)">{{ editingId ? text('绑定', 'Bind') : alreadyAdded(model.id) ? text('已添加', 'Added') : text('添加常用', 'Add model') }}</button>
+            </li>
+          </ul>
+        </div>
+        <details class="chat-pricing-note"><summary>{{ text('价格与可用性', 'Pricing and availability') }}</summary><p>{{ text('价格为标准时段最低档，已应用你的倍率。阶梯、时段、缓存及工具费用以实际账单为准。目录表示配置兼容性，不是实时健康保证。', 'Lowest standard-period prices with your rate applied. Tiers, time periods, cache and tools follow actual billing. Compatibility is not a live health guarantee.') }}</p></details>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.chat-models-page { min-width: 0; }
-.chat-description { color: rgb(var(--muted)); font-size: 13px; line-height: 1.7; }
-.chat-models-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 24px; }
-.chat-model-panel { min-width: 0; border: 1px solid rgb(var(--line)); border-radius: 12px; padding: 20px; }
-.chat-model-panel h2 { font-size: 18px; margin: 0 0 20px; }
-.chat-model-panel h2 span { font-size: 13px; color: rgb(var(--muted)); }
-.chat-model-panel > label { display: block; font-size: 13px; margin: 16px 0 6px; }
-.chat-model-panel > .portal-input { width: 100%; min-width: 0; }
-.chat-model-list { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 16px; }
-.chat-model-list > li { min-width: 0; border-top: 1px solid rgb(var(--line)); padding-top: 16px; overflow-wrap: anywhere; }
-.chat-model-list p { margin: 6px 0; font-size: 13px; }
-.chat-model-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.chat-model-code { font-family: var(--font-mono, monospace); overflow-wrap: anywhere; }
-.chat-badge { border: 1px solid rgb(var(--line)); border-radius: 6px; padding: 2px 6px; font-size: 11px; }
-.chat-rename { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin: 12px 0; }
-.chat-rename label { grid-column: 1 / -1; font-size: 12px; }
-.chat-rename input { min-width: 0; width: 100%; }
-.chat-model-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.chat-unavailable { color: rgb(var(--danger, 185 28 28)); }
-@media (max-width: 767px) { .chat-models-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; } .chat-model-panel { padding: 16px; } .portal-button { min-height: 40px; } }
+.chat-models-page { min-width: 0; font-family: var(--font-sans); }
+.chat-models-page svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.chat-description { margin: 8px 0 24px; color: rgb(var(--ink-2)); font-size: 14px; line-height: 1.6; }
+.chat-view-switch button { display: flex; align-items: center; gap: 8px; font-family: inherit; font-size: 14px; }
+.chat-view-switch span { color: rgb(var(--ink-3)); font-variant-numeric: tabular-nums; }
+.chat-saved, .chat-browser { border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); background: rgb(var(--surface)); }
+.chat-model-list { list-style: none; margin: 0; padding: 0; }
+.chat-saved-row + .chat-saved-row { border-top: 1px solid rgb(var(--line)); }
+.chat-preset-settings > summary { display: flex; align-items: center; gap: 24px; padding: 18px 24px; cursor: pointer; list-style: none; }
+.chat-preset-settings > summary::-webkit-details-marker { display: none; }
+.chat-preset-settings > summary:hover { background: rgb(var(--table-hover)); }
+.chat-model-identity { flex: 1; min-width: 0; display: grid; gap: 4px; overflow-wrap: anywhere; }
+.chat-model-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
+.chat-model-title strong, .chat-model-name { font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.chat-default { font-size: 13px; color: rgb(var(--text-primary)); }
+.chat-saved-group, .chat-saved-code { font-size: 14px; color: rgb(var(--ink-2)); }
+.chat-saved-group > span { margin-left: 6px; color: rgb(var(--ink-3)); }
+.chat-manage-label { display: flex; align-items: center; gap: 6px; flex: none; color: rgb(var(--ink-2)); font-size: 14px; }
+.chat-preset-settings[open] .chat-manage-label svg { transform: rotate(180deg); }
+.chat-preset-editor { padding: 0 24px 20px; }
+.chat-rename { display: grid; grid-template-columns: minmax(0, 440px) auto; justify-content: start; align-items: end; gap: 12px; padding: 8px 0 20px; }
+.chat-rename .portal-field { font-size: 14px; }
+.chat-rename input { min-width: 0; font-family: inherit; }
+.chat-model-actions, .chat-binding-actions, .chat-order-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chat-model-actions { justify-content: space-between; gap: 16px; }
+.chat-models-page .portal-button { font-size: 14px; box-shadow: none; }
+.chat-icon-button { width: 40px; padding-inline: 0; }
+.chat-footnote { margin: 0; padding: 14px 24px; border-top: 1px solid rgb(var(--line)); color: rgb(var(--ink-3)); font-size: 13px; }
+.chat-browser { display: grid; grid-template-columns: 260px minmax(0, 1fr); align-items: start; }
+.chat-groups { min-width: 0; padding: 20px 12px; }
+.chat-catalog { min-width: 0; min-height: 440px; padding: 20px 24px; border-left: 1px solid rgb(var(--line)); }
+.chat-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.chat-section-head h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.chat-section-head > span { flex: none; font-size: 13px; color: rgb(var(--ink-3)); }
+.chat-groups .chat-section-head { padding-inline: 8px; }
+.chat-search { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-control); color: rgb(var(--ink-3)); }
+.chat-search:focus-within { border-color: rgb(var(--focus-ring)); box-shadow: 0 0 0 3px rgb(var(--focus-ring) / .14); }
+.chat-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: rgb(var(--ink)); font: inherit; font-size: 14px; }
+.chat-group-list { max-height: min(620px, 65dvh); margin-top: 12px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.chat-group-list button { display: grid; gap: 4px; width: 100%; margin: 2px 0; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: rgb(var(--ink)); font: inherit; text-align: left; cursor: pointer; }
+.chat-group-list button:hover { background: rgb(var(--surface-2)); }
+.chat-group-list button[aria-pressed=true] { background: rgb(var(--selection-bg)); }
+.chat-group-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 14px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.chat-group-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: rgb(var(--ink-3)); }
+.chat-group-meta svg { color: rgb(var(--text-primary)); }
+.chat-mobile-group { display: none; }
+.chat-catalog-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 14px 0; color: rgb(var(--ink-2)); font-size: 13px; }
+.chat-catalog-row { display: flex; align-items: center; gap: 20px; padding: 18px 0; border-top: 1px solid rgb(var(--line)); }
+.chat-model-info { flex: 1; min-width: 0; }
+.chat-price { margin: 5px 0 0; color: rgb(var(--ink-2)); font-size: 14px; font-variant-numeric: tabular-nums; line-height: 1.6; }
+.chat-model-tags { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; color: rgb(var(--ink-3)); font-size: 13px; }
+.chat-add { flex: none; }
+.chat-pricing-note { padding-top: 16px; border-top: 1px solid rgb(var(--line)); color: rgb(var(--ink-3)); font-size: 13px; }
+.chat-pricing-note summary { cursor: pointer; width: fit-content; }
+.chat-pricing-note p { margin: 8px 0 0; line-height: 1.7; }
+.chat-unavailable { display: block; margin: 6px 0 0; color: rgb(var(--text-err)); font-size: 14px; }
+.chat-empty { margin: 0; padding: 40px 20px; color: rgb(var(--ink-2)); font-size: 14px; line-height: 1.7; text-align: center; }
+.chat-empty p { margin: 0 0 16px; }
+.chat-editing { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 16px; font-size: 14px; overflow-wrap: anywhere; }
+@media (max-width: 1023px) {
+  .chat-browser { grid-template-columns: 220px minmax(0, 1fr); }
+  .chat-catalog { padding: 20px; }
+}
+@media (max-width: 767px) {
+  .chat-description { margin-bottom: 20px; }
+  .chat-view-switch { width: 100%; }
+  .chat-view-switch button { flex: 1; justify-content: center; min-height: 44px; }
+  .chat-browser { grid-template-columns: minmax(0, 1fr); }
+  .chat-groups { padding: 16px; border-bottom: 1px solid rgb(var(--line)); }
+  .chat-groups .chat-section-head { display: none; }
+  .chat-mobile-group { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-control); background: rgb(var(--surface)); color: rgb(var(--ink)); font: inherit; text-align: left; }
+  .chat-mobile-group > span { min-width: 0; overflow-wrap: anywhere; }
+  .chat-group-options { margin-top: 12px; }
+  .chat-group-options.is-collapsed { display: none; }
+  .chat-group-list { max-height: 280px; }
+  .chat-catalog { min-height: 0; padding: 16px; border-left: 0; }
+  .chat-catalog-row { flex-wrap: wrap; gap: 12px; padding: 16px 0; }
+  .chat-model-info { flex-basis: 100%; }
+  .chat-add { margin-left: auto; }
+  .chat-preset-settings > summary { gap: 12px; padding: 16px; }
+  .chat-manage-label { gap: 2px; }
+  .chat-preset-editor { padding: 0 16px 16px; }
+  .chat-rename { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .chat-binding-actions { width: 100%; }
+  .chat-footnote { padding: 14px 16px; }
+  .chat-models-page .portal-button { min-height: 44px; }
+  .chat-icon-button { width: 44px; }
+  .chat-search input { font-size: 16px; }
+}
+@media (pointer: coarse) {
+  .chat-models-page .portal-button, .chat-pricing-note summary { min-height: 44px; }
+  .chat-icon-button { width: 44px; }
+}
 </style>

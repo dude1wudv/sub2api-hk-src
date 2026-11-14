@@ -192,6 +192,8 @@ func (s *ChatService) chatUserContent(ctx context.Context, userID int64, message
 			parts = append(parts, map[string]any{"type": "image", "source": map[string]any{"type": "base64", "media_type": file.MIME, "data": encoded}})
 		case "responses":
 			parts = append(parts, map[string]any{"type": "input_image", "image_url": url})
+		case "gemini":
+			parts = append(parts, map[string]any{"inlineData": map[string]any{"mimeType": file.MIME, "data": encoded}})
 		default:
 			parts = append(parts, map[string]any{"type": "image_url", "image_url": map[string]any{"url": url}})
 		}
@@ -204,7 +206,11 @@ func (s *ChatService) chatUserContent(ctx context.Context, userID int64, message
 		if transport == "responses" {
 			kind = "input_text"
 		}
-		parts = append(parts, map[string]any{"type": kind, "text": message.Content})
+		part := map[string]any{"text": message.Content}
+		if transport != "gemini" {
+			part["type"] = kind
+		}
+		parts = append(parts, part)
 	}
 	return parts, nil
 }
@@ -231,8 +237,14 @@ func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapsh
 			}
 			if chatHasProviderState(value) {
 				previous, err := s.repo.LastGeneration(ctx, userID, snapshot.ID, message.ID)
-				if err != nil || previous.GroupID != preset.GroupID || previous.Model != preset.Model || !caps.NativeDeepSeekExtensions {
+				if err != nil || previous == nil || previous.GroupID != preset.GroupID || previous.Model != preset.Model || (!caps.NativeDeepSeekExtensions && caps.Transport != "gemini") {
 					return nil, ErrChatProviderContext
+				}
+				if caps.Transport == "gemini" {
+					var recorded ChatRunOptions
+					if json.Unmarshal(previous.Options, &recorded) != nil || recorded.Transport != "gemini" {
+						return nil, ErrChatProviderContext
+					}
 				}
 			}
 		}
@@ -252,7 +264,9 @@ func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapsh
 			continue
 		}
 		var content any = chatAssistantText(assistant)
-		if caps.NativeDeepSeekExtensions {
+		if caps.Transport == "gemini" {
+			content = chatGeminiAssistantParts(assistant)
+		} else if caps.NativeDeepSeekExtensions {
 			blocks := chatAssistantBlocks(assistant, false, false)
 			if len(blocks) == 0 {
 				continue
@@ -285,7 +299,11 @@ func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapsh
 			if strings.TrimSpace(prefix) == "" {
 				return nil, ErrChatInvalid
 			}
-			wire = append(wire, map[string]any{"role": "assistant", "content": prefix}, map[string]any{"role": "user", "content": "Continue the preceding assistant response without repeating its existing text."})
+			var content any = prefix
+			if caps.Transport == "gemini" {
+				content = chatGeminiAssistantParts(target)
+			}
+			wire = append(wire, map[string]any{"role": "assistant", "content": content}, map[string]any{"role": "user", "content": "Continue the preceding assistant response without repeating its existing text."})
 		}
 	}
 	switch caps.Transport {
@@ -302,6 +320,17 @@ func (s *ChatService) buildChatRequest(ctx context.Context, userID int64, snapsh
 		prepared.path = "/v1/messages"
 		prepared.body["messages"] = wire
 		prepared.body["max_tokens"] = 8192
+	case "gemini":
+		if !IsSafeGeminiModelPathSegment(preset.Model) {
+			return nil, ErrChatInvalid
+		}
+		prepared.path = chatGeminiPrefix + preset.Model + chatGeminiSuffix
+		prepared.body = map[string]any{"contents": chatGeminiContents(wire), "generationConfig": map[string]any{"maxOutputTokens": 8192}}
+		if caps.Reasoning {
+			if thinking := chatGeminiThinking(preset.Model, options.Thinking); len(thinking) > 0 {
+				prepared.body["generationConfig"].(map[string]any)["thinkingConfig"] = thinking
+			}
+		}
 	default:
 		return nil, ErrChatCapability
 	}

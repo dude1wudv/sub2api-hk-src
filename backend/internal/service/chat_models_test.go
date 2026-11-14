@@ -87,6 +87,7 @@ func TestChatCatalogFiltersAndScopesCandidates(t *testing.T) {
 	require.Len(t, out.Models, 1)
 	require.Equal(t, "shared-model", out.Models[0].ID)
 	require.Equal(t, []string{PlatformOpenAI}, accounts.platforms)
+	require.Equal(t, "responses", out.Models[0].Capabilities.Transport)
 	require.False(t, out.Models[0].Capabilities.Voice)
 	require.False(t, out.Models[0].Capabilities.Search)
 	require.NotEmpty(t, out.Models[0].Capabilities.Reasons["search"])

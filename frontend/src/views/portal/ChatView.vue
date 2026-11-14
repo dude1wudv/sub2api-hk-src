@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { ChatHostBridge } from '@/api/chatBridge'
@@ -49,12 +49,6 @@ onBeforeUnmount(() => { stopActions(); bridge.destroy() })
 <template>
   <!-- No app shell or fixed overlay: App.vue's toast/announcement/compliance layers remain mounted. -->
   <main class="chat-host" :aria-label="zh ? '站内聊天' : 'Web chat'">
-    <nav class="chat-host__navigation" :aria-label="zh ? '聊天导航' : 'Chat navigation'">
-      <RouterLink to="/dashboard" class="chat-host__link" data-testid="chat-back">
-        <span aria-hidden="true">←</span> {{ zh ? '返回用户中心' : 'Back to dashboard' }}
-      </RouterLink>
-      <RouterLink to="/chat-models" class="chat-host__link">{{ zh ? '聊天模型' : 'Chat models' }}</RouterLink>
-    </nav>
     <iframe
       v-if="sessionUserID && !signingOut"
       :key="sessionUserID"
@@ -81,20 +75,5 @@ onBeforeUnmount(() => { stopActions(); bridge.destroy() })
   height: 100dvh;
   overflow: hidden;
 }
-.chat-host__navigation {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 2.75rem;
-  padding: env(safe-area-inset-top, 0px) max(0.75rem, env(safe-area-inset-right, 0px)) 0 max(0.75rem, env(safe-area-inset-left, 0px));
-  border-bottom: 1px solid rgb(128 128 128 / 20%);
-}
-.chat-host__link {
-  padding: 0.5rem 0;
-  font-size: 0.875rem;
-}
-.chat-host__link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .chat-host__frame { width: 100%; flex: 1 1 0; min-height: 0; border: 0; }
 </style>

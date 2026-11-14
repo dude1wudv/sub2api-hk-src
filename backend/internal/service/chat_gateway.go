@@ -40,7 +40,9 @@ func (s *ChatService) dispatchGateway(ctx context.Context, w http.ResponseWriter
 		method = http.MethodGet
 	case "/v1/chat/completions", "/v1/messages", "/v1/responses", "/v1/tools/search", "/v1/tools/fetch":
 	default:
-		return "", ErrChatInvalid
+		if !isChatGeminiPath(path) {
+			return "", ErrChatInvalid
+		}
 	}
 	if !chatCredentialValid(key, userID, groupID) {
 		return "", ErrChatCredentialUnavailable

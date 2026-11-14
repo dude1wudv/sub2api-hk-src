@@ -27,6 +27,11 @@ func (s *ChatModelService) modelCapabilities(ctx context.Context, group *Group, 
 		platform, routingModel = decision.TargetPlatform, decision.UpstreamModel
 		ctx = WithCompositeRouteDecision(ctx, decision)
 	}
+	// The native v1beta ingress admits Gemini groups, plus composite routes to
+	// Antigravity. Do not advertise a protocol the actual gateway will reject.
+	if policy.Transport == "gemini" && (!IsSafeGeminiModelPathSegment(model) || (platform != PlatformGemini && !(group.Platform == PlatformComposite && platform == PlatformAntigravity))) {
+		return caps, platform, false, nil
+	}
 	compatible := 0
 	allNative := true
 	allImages := policy.ImageInput || (metadata.MetadataMatch == "exact" && slices.Contains(metadata.InputModalities, "image"))
