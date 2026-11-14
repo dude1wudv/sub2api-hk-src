@@ -84,7 +84,8 @@ def migration_allowlist(before, candidate):
         require(prefix is not None, 'Unsupported migration filename: ' + name)
         prefixes_before.append(int(prefix.group(1)))
     maximum = max(prefixes_before, default=0)
-    require(bool(added), 'Candidate must contain appended chat migrations')
+    require(bool(added) or any(re.fullmatch(r'\d+_user_chat\.sql', name) for name in before),
+            'Initial chat release must contain an appended chat migration')
     require(all(re.fullmatch(r'\d+_user_chat\.sql', name) for name in added), 'Only append-only user_chat migrations may be introduced')
     prefixes = sorted(int(name.split('_')[0]) for name in added)
     require(prefixes == list(range(maximum + 1, maximum + 1 + len(added))), 'Chat migrations must use consecutive new prefixes')

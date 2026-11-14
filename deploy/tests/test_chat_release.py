@@ -26,6 +26,17 @@ class ChatReleaseTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             release.verify_migrations(old, {**candidate, '002_previous.sql': 'changed'}, allowed)
 
+    def test_chat_update_without_new_migrations_preserves_exact_schema(self):
+        before = {'001_initial.sql': 'a', '002_user_chat.sql': 'b'}
+        allowed = release.migration_allowlist(before, dict(before))
+        self.assertEqual(allowed, {})
+        self.assertEqual(release.verify_migrations(before, before, allowed), {})
+        for candidate in ({'001_initial.sql': 'a'}, {**before, '002_user_chat.sql': 'changed'}):
+            with self.assertRaises(RuntimeError):
+                release.migration_allowlist(before, candidate)
+        with self.assertRaises(RuntimeError):
+            release.verify_migrations(before, {**before, '003_unexpected.sql': 'c'}, allowed)
+
     def test_chat_retry_reuses_preapplied_chat_checksums_without_db_rollback(self):
         source_old = {'001_initial.sql': 'a'}
         previous_failed = {**source_old, '002_user_chat.sql': 'b'}
