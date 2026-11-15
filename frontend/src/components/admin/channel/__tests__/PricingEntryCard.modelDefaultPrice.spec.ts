@@ -48,6 +48,13 @@ const emittedEntries = (wrapper: ReturnType<typeof shallowMount>) =>
   (wrapper.emitted('update') ?? []).map(e => e[0] as PricingFormEntry)
 
 describe('PricingEntryCard default price auto-fill', () => {
+  it('labels an independent rate-only card as inheriting channel pricing', () => {
+    const entry = { ...createEntry(['deepseek-flash']), rate_independent: true }
+    const wrapper = shallowMount(PricingEntryCard, { props: { entry } })
+    expect(wrapper.text()).toContain('admin.groups.modelPricing.inheritsChannelPricing')
+    expect(wrapper.text()).toContain('admin.groups.modelPricing.rateIndependent')
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     getModelDefaultPricing.mockResolvedValue({ found: true, input_price: 3e-6, output_price: 15e-6 })

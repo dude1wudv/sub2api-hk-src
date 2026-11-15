@@ -245,6 +245,12 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 // token 模型取计费阶梯表（单价与档位均由真实计费函数得出），
 // 图片/按次模型（或阶梯表不可用时）沿用渠道定价与分组图片档位价。
 func (s *ModelPlazaService) fillDisplayPricing(ctx context.Context, m *PlazaModel, g *Group) {
+	defer func() {
+		if entry := matchGroupModelPricingConfig(g, m.Name); entry != nil && m.Pricing != nil {
+			m.Pricing.RateIndependent = entry.RateIndependent
+			m.Pricing.MeteredUnit = entry.MeteredUnit
+		}
+	}()
 	if groupPricing := matchGroupModelPricing(g, m.Name); groupPricing != nil {
 		m.Pricing = groupPricing
 		// 分组模型级固定价就是实收价，不能再被分组图片兜底档位覆盖。

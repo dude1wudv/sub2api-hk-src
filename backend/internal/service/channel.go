@@ -88,6 +88,10 @@ type AccountStatsPricingRule struct {
 
 // ChannelModelPricing 渠道模型定价条目
 type ChannelModelPricing struct {
+	// Group JSON price cards may opt out of customer/group multipliers.
+	// An otherwise empty independent card inherits the channel's prices.
+	RateIndependent            bool                `json:"rate_independent,omitempty"`
+	MeteredUnit                string              `json:"metered_unit,omitempty"`
 	ID                         int64               `json:"id,omitempty"`
 	ChannelID                  int64               `json:"channel_id,omitempty"`
 	Platform                   string              `json:"platform"` // 所属平台（anthropic/openai/gemini/...）

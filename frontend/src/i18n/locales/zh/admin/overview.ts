@@ -942,6 +942,9 @@ export default {
         pricePlaceholder: '可选'
       },
       modelPricing: {
+        rateIndependent: '1×，不乘分组或用户倍率',
+        inheritsChannelPricing: '继承渠道价格与时段规则',
+        units: { call: '每次', page: '每页', hour: '每小时（按秒计）', '10k_characters': '每万计费字符' },
         title: '分组逐模型定价',
         description: '匹配模型后覆盖渠道和内置价格。长上下文阶梯沿用官方/预设价卡，无需再手填区间。音频可用按次层级配置 realtime、tts、stt。',
         longContext: '启用长上下文阶梯定价',

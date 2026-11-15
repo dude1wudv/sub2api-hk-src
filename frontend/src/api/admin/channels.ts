@@ -40,6 +40,8 @@ export interface ChannelTimePricing {
 }
 
 export interface ChannelModelPricing {
+  rate_independent?: boolean
+  metered_unit?: string
   id?: number
   platform: string
   models: string[]

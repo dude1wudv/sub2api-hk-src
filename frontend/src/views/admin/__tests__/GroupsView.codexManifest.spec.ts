@@ -354,6 +354,7 @@ describe("GroupsView Codex manifest and OpenAI tier forms", () => {
     listGroups.mockResolvedValue({ items: [{ ...sourceGroup,
       force_openai_ultrafast: true, free_openai_ultrafast: true,
       model_pricing: [{ platform: 'openai', models: ['gpt-5.5'], billing_mode: 'token',
+        rate_independent: true,
         input_price: 3e-6, output_price: 15e-6, cache_write_price: null, cache_read_price: null,
         fast_multiplier: 3, ultrafast_multiplier: 9, flex_multiplier: 0.5,
         image_input_price: null, image_output_price: null, per_request_price: null,
@@ -383,7 +384,7 @@ describe("GroupsView Codex manifest and OpenAI tier forms", () => {
     await flushPromises();
     expect(updateGroup).toHaveBeenCalledWith(42, expect.objectContaining({
       force_openai_ultrafast: true, free_openai_ultrafast: false, free_openai_fast: false,
-      model_pricing: [expect.objectContaining({ input_price: 3e-6, fast_multiplier: 3, ultrafast_multiplier: 10, flex_multiplier: 0.5 })],
+      model_pricing: [expect.objectContaining({ input_price: 3e-6, fast_multiplier: 3, ultrafast_multiplier: 10, flex_multiplier: 0.5, rate_independent: true })],
     }));
     wrapper.unmount();
   });

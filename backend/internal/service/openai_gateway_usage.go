@@ -475,7 +475,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	} else if result.ImageCount > 0 && (cost == nil || cost.BillingMode != string(BillingModeToken)) {
 		usageLog.RateMultiplier = imageMultiplier
 	} else {
-		usageLog.RateMultiplier = multiplier
+		usageLog.RateMultiplier = groupModelRateMultiplier(apiKey.Group, firstUsageBillingModel(billingModels), multiplier)
 	}
 	usageLog.AccountRateMultiplier = &accountRateMultiplier
 	usageLog.BillingType = billingType
@@ -653,6 +653,7 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 	upstreamPlatforms ...string,
 ) (*CostBreakdown, error) {
 	billingModel := firstUsageBillingModel(billingModels)
+	multiplier = groupModelRateMultiplier(apiKey.Group, billingModel, multiplier)
 	if result != nil && result.chatAuxiliaryOnly {
 		if result.ChatAuxiliaryUsage == nil {
 			return nil, errors.New("missing chat auxiliary usage")

@@ -148,6 +148,21 @@ func (r *ModelPricingResolver) resolveConfiguredPricing(config *ChannelModelPric
 }
 
 func matchGroupModelPricing(group *Group, model string) *ChannelModelPricing {
+	entry := matchGroupModelPricingConfig(group, model)
+	if entry != nil && entry.RateIndependent && pricingNeedsFallback(entry) {
+		return nil // Rate-only override; keep the channel's prices and schedule.
+	}
+	return entry
+}
+
+func groupModelRateMultiplier(group *Group, model string, rate float64) float64 {
+	if entry := matchGroupModelPricingConfig(group, model); entry != nil && entry.RateIndependent {
+		return 1
+	}
+	return rate
+}
+
+func matchGroupModelPricingConfig(group *Group, model string) *ChannelModelPricing {
 	if group == nil {
 		return nil
 	}

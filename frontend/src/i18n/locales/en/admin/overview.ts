@@ -945,6 +945,9 @@ export default {
         pricePlaceholder: 'optional'
       },
       modelPricing: {
+        rateIndependent: '1x, no group or user multiplier',
+        inheritsChannelPricing: 'Inherits channel prices and time schedules',
+        units: { call: 'per call', page: 'per page', hour: 'per hour (billed per second)', '10k_characters': 'per 10k billable characters' },
         title: 'Per-model group pricing',
         description: 'Overrides channel and built-in prices for matching models. Long-context tiers come from official presets — do not enter custom intervals. Use per-request tiers such as realtime, tts, and stt for audio.',
         longContext: 'Enable long-context tier pricing',

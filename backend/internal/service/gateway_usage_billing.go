@@ -831,6 +831,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 
 	multiplier, imageMultiplier, pricingAt := s.recordUsageMultipliers(ctx, apiKey, user, input.PricingAt)
 	billingModel := s.recordUsageBillingModel(ctx, apiKey, result, input.ChannelUsageFields)
+	multiplier = groupModelRateMultiplier(apiKey.Group, billingModel, multiplier)
 	cacheStorageCost := s.cacheStorageCost(result, billingModel)
 
 	// 确定 RequestedModel（渠道映射前的原始模型）

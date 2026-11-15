@@ -1206,6 +1206,12 @@ func normalizeGroupModelPricing(platform string, pricing []ChannelModelPricing) 
 	out := make([]ChannelModelPricing, len(pricing))
 	for i := range pricing {
 		out[i] = pricing[i].Clone()
+		if unit := out[i].MeteredUnit; unit != "" {
+			if out[i].BillingMode != BillingModePerRequest ||
+				(unit != "call" && unit != "page" && unit != "hour" && unit != "10k_characters") {
+				return nil, infraerrors.BadRequest("INVALID_METERED_UNIT", "unsupported native metering unit")
+			}
+		}
 		out[i].ID = 0
 		out[i].ChannelID = 0
 		if out[i].TimePricing != nil && len(out[i].TimePricing.Periods) > 0 {

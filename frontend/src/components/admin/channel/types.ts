@@ -22,6 +22,8 @@ export interface IntervalFormEntry {
 }
 
 export interface PricingFormEntry {
+  rate_independent?: boolean
+  metered_unit?: string
   models: string[]
   billing_mode: BillingMode
   input_price: number | string | null

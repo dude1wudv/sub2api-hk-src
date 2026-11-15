@@ -44,6 +44,8 @@ export interface UserPricingInterval {
 }
 
 export interface UserSupportedModelPricing {
+  rate_independent?: boolean
+  metered_unit?: string
   billing_mode: BillingMode
   input_price: number | null
   output_price: number | null

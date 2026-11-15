@@ -74,6 +74,8 @@ type userAvailableGroup struct {
 
 // userSupportedModelPricing 用户可见的定价字段白名单。
 type userSupportedModelPricing struct {
+	RateIndependent            bool                     `json:"rate_independent,omitempty"`
+	MeteredUnit                string                   `json:"metered_unit,omitempty"`
 	BillingMode                string                   `json:"billing_mode"`
 	InputPrice                 *float64                 `json:"input_price"`
 	OutputPrice                *float64                 `json:"output_price"`
@@ -356,6 +358,8 @@ func toUserPricing(p *service.ChannelModelPricing) *userSupportedModelPricing {
 		billingMode = string(service.BillingModeToken)
 	}
 	return &userSupportedModelPricing{
+		RateIndependent:            p.RateIndependent,
+		MeteredUnit:                p.MeteredUnit,
 		BillingMode:                billingMode,
 		InputPrice:                 p.InputPrice,
 		OutputPrice:                p.OutputPrice,

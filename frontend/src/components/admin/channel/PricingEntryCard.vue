@@ -51,6 +51,16 @@
         {{ t('admin.channels.form.pricingEntry') }}
       </div>
 
+      <span v-if="entry.rate_independent" class="text-xs text-gray-500">
+        {{ t('admin.groups.modelPricing.rateIndependent') }}
+      </span>
+      <span v-if="inheritsChannelPricing" class="text-xs text-gray-500">
+        {{ t('admin.groups.modelPricing.inheritsChannelPricing') }}
+      </span>
+      <span v-if="entry.metered_unit" class="text-xs text-gray-500">
+        {{ t(`admin.groups.modelPricing.units.${entry.metered_unit}`) }}
+      </span>
+
       <!-- Remove button (always visible, stop propagation) -->
       <button
         type="button"
@@ -350,6 +360,16 @@ const emit = defineEmits<{
 
 // Collapse state: entries with existing models default to collapsed
 const collapsed = ref(props.entry.models.length > 0)
+
+const inheritsChannelPricing = computed(() => {
+  const entry = props.entry
+  return entry.rate_independent && entry.billing_mode === 'token' &&
+    !entry.intervals.length &&
+    [entry.input_price, entry.output_price, entry.cache_write_price,
+      entry.cache_write_1h_price, entry.cache_write_12h_price, entry.cache_read_price,
+      entry.image_input_price, entry.image_output_price, entry.per_request_price]
+      .every(value => value == null)
+})
 
 const billingModeOptions = computed(() => [
   { value: 'token', label: t('admin.channels.billingMode.token') },

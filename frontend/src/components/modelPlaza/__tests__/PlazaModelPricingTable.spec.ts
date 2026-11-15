@@ -64,6 +64,26 @@ function modelIdCell(row: any): string {
 }
 
 describe('PlazaModelPricingTable', () => {
+  it('keeps independent token and native prices at 1x with correct metering units', () => {
+    const text = tokenModel({ name: 'deepseek-flash', platform: 'deepseek' })
+    text.pricing!.rate_independent = true
+    const audio = tokenModel({ name: 'deepseek-asr', platform: 'deepseek', official_pricing: null })
+    audio.pricing = { ...audio.pricing!, billing_mode: 'per_request', rate_independent: true,
+      metered_unit: 'hour', per_request_price: .78, intervals: [] }
+    const wrapper = mountTable([text, audio], .3, .1)
+    try {
+      const rows = wrapper.findAll('tbody tr')
+      const audioRow = rows.find(row => modelIdCell(row) === 'deepseek-asr')!
+      const textRow = rows.find(row => modelIdCell(row) === 'deepseek-flash')!
+      expect(audioRow.text()).toContain('$0.78')
+      expect(audioRow.text()).toMatch(/hour|小时/)
+      expect(audioRow.findAll('td').at(-1)!.text()).toBe('1x')
+      expect(textRow.findAll('td')[1].text()).toContain('$3.00')
+      expect(textRow.findAll('td').at(-1)!.text()).toBe('1x')
+    } finally {
+      wrapper.unmount()
+    }
+  })
   it.each([false, true])('shows independent 12h prices without a 1h label (intervals=%s)', (intervals) => {
     const model = tokenModel({ name: 'gpt-6-luna', platform: 'openai' })
     model.pricing!.cache_write_price = null

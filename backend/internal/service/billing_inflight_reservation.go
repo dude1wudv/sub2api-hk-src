@@ -550,6 +550,9 @@ func validCost(v float64) bool { return v > 0 && !math.IsNaN(v) && !math.IsInf(v
 
 // estimateOne 估算单个候选计费模型（未乘倍率的 token 部分与按次部分分开返回，便于套用不同倍率）。
 func (d inflightEstimateDeps) estimateOne(ctx context.Context, apiKey *APIKey, model string, req InflightEstimateRequest, textRate, imageRate float64) float64 {
+	if apiKey != nil {
+		textRate = groupModelRateMultiplier(apiKey.Group, model, textRate)
+	}
 	cfg := inflightReservationCfg(d.cfg)
 	units := req.Units
 	if units <= 0 {
@@ -673,6 +676,7 @@ func (d inflightEstimateDeps) estimateBase(ctx context.Context, apiKey *APIKey, 
 		return 0, true
 	}
 	textRate, imageRate := d.rates(ctx, apiKey)
+	textRate = groupModelRateMultiplier(apiKey.Group, req.Model, textRate)
 	if textRate <= 0 && imageRate <= 0 {
 		// 免费分组：不计费，也无需预留。
 		return 0, true

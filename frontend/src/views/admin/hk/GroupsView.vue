@@ -4477,6 +4477,8 @@ const groupPricingFromAPI = (
   pricing: ChannelModelPricing[] | undefined,
 ): PricingFormEntry[] =>
   (pricing || []).map((entry) => ({
+    rate_independent: entry.rate_independent,
+    metered_unit: entry.metered_unit,
     models: entry.models || [],
     billing_mode: entry.billing_mode || "token",
     input_price: perTokenToMTok(entry.input_price),
@@ -4506,6 +4508,8 @@ const groupPricingToAPI = (
     .filter((entry) => entry.models.length > 0)
     .map((entry) => ({
       platform,
+      rate_independent: entry.rate_independent,
+      metered_unit: entry.metered_unit,
       models: entry.models,
       billing_mode: entry.billing_mode,
       input_price: mTokToPerToken(entry.input_price),
