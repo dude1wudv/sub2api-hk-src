@@ -27,6 +27,12 @@ func TestExternalQualityImportMappingAndValidation(t *testing.T) {
 		{"wrong mapping", func(i *ExternalQualityImport) { i.RemoteGroupID = 170 }},
 		{"deepseek", func(i *ExternalQualityImport) { i.GroupID = 179 }},
 		{"wrong event group", func(i *ExternalQualityImport) { i.Payload.Data[0].GroupID = 170 }},
+		{"retired plus mapping", func(i *ExternalQualityImport) {
+			i.GroupID, i.RemoteGroupID, i.Payload.Data[0].GroupID = 237, 170, 170
+		}},
+		{"new source on wrong local group", func(i *ExternalQualityImport) {
+			i.RemoteGroupID, i.Payload.Data[0].GroupID = 142, 142
+		}},
 		{"unsupported source", func(i *ExternalQualityImport) { i.Source = "other" }},
 		{"fabricated verdict", func(i *ExternalQualityImport) { i.Payload.Data[0].Status = "success" }},
 		{"wrong model", func(i *ExternalQualityImport) { i.Payload.Data[0].Model = "deepseek-v4.1-flash" }},
@@ -44,7 +50,7 @@ func TestExternalQualityImportMappingAndValidation(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
-	for _, pair := range [][2]int64{{72, 62}, {237, 170}} {
+	for _, pair := range [][2]int64{{72, 62}, {237, 142}} {
 		input := externalQualityFixture(now)
 		input.GroupID = pair[0]
 		input.RemoteGroupID = pair[1]

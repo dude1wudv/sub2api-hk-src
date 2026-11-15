@@ -111,7 +111,7 @@ class SyncTests(unittest.TestCase):
             62: [{'id': 'pro', 'group_id': 62, 'status': 'completed', 'model': 'gpt-6-astra',
                   'started_at': '2026-11-09T00:00:00+08:00', 'finished_at': '2026-11-09T00:01:00+08:00',
                   'html': '<p>private artwork</p>'}],
-            170: [{'id': 'plus', 'group_id': 170, 'status': 'completed', 'model': 'gpt-6.1-sol',
+            142: [{'id': 'enterprise', 'group_id': 142, 'status': 'completed', 'model': 'gpt-6.1-sol',
                    'started_at': '2026-11-09T00:00:00+08:00', 'finished_at': '2026-11-09T00:01:00+08:00',
                    'html': '<p>private artwork</p>'}],
         }
@@ -125,8 +125,8 @@ class SyncTests(unittest.TestCase):
                 return {'access_token': 'new-access'}
             if '/quality/history/62?' in url:
                 return events[62]
-            if '/quality/history/170?' in url:
-                return events[170]
+            if '/quality/history/142?' in url:
+                return events[142]
             return {'imported': 1}
 
         with mock.patch.object(sync, 'access_token', side_effect=['old-access', 'new-access']) as token, \
@@ -137,7 +137,8 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(token.call_args_list, [mock.call(), mock.call(force=True)])
         self.assertEqual([(item[1]['group_id'], item[1]['remote_group_id'])
                           for item in calls if item[1] and item[1].get('source') == 'mdkj'],
-                         [(72, 62), (237, 170)])
+                         [(72, 62), (237, 142)])
+        self.assertFalse(any('/quality/history/170?' in item[0] for item in calls))
         imports = [item for item in calls if item[0].startswith('http://127.0.0.1')]
         self.assertEqual(len(imports), 2)
         self.assertTrue(all(item[2]['x-api-key'] == 'legacy-admin-secret' for item in imports))
