@@ -22,6 +22,23 @@ func TestDeepSeekSuiteDurableOwnerAndDeletion(t *testing.T) {
 	group := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "suite-" + uuid.NewString()})
 	// Minimal records use the real FK schema and actual repository, not mocks.
 	var keyID, accountID int64
+	t.Cleanup(func() {
+		// Receipts deliberately retain foreign keys in production. Remove this
+		// test's owned rows in dependency order so later suites remain isolated.
+		for _, statement := range []struct {
+			sql string
+			id  int64
+		}{
+			{"DELETE FROM deepseek_suite_operations WHERE user_id=$1", user.ID},
+			{"DELETE FROM api_keys WHERE id=$1", keyID},
+			{"DELETE FROM accounts WHERE id=$1", accountID},
+			{"DELETE FROM groups WHERE id=$1", group.ID},
+			{"DELETE FROM users WHERE id=$1", user.ID},
+		} {
+			_, err := integrationDB.ExecContext(ctx, statement.sql, statement.id)
+			require.NoError(t, err)
+		}
+	})
 	require.NoError(t, integrationDB.QueryRowContext(ctx, `INSERT INTO api_keys(user_id,key,name,group_id) VALUES($1,$2,'suite',$3) RETURNING id`, user.ID, uuid.NewString(), group.ID).Scan(&keyID))
 	require.NoError(t, integrationDB.QueryRowContext(ctx, `INSERT INTO accounts(name,platform,type,credentials) VALUES('suite','openai','apikey','{}') RETURNING id`).Scan(&accountID))
 	repo := &usageLogRepository{sql: integrationDB, db: integrationDB}
@@ -89,6 +106,17 @@ func TestDeepSeekSuiteEnrollmentAndRollback(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 	defer func() { _, _ = conn.ExecContext(ctx, "ROLLBACK") }()
+	t.Cleanup(func() {
+		// The release SQL commits intentionally; a deferred ROLLBACK alone
+		// cannot clean these fixtures or the release-only backup table.
+		_, cleanupErr := integrationDB.ExecContext(ctx, `
+			DELETE FROM scheduler_outbox WHERE account_id IN (882,1043,1181,1112,1182) OR group_id IN (81,179,223);
+			DELETE FROM account_groups WHERE account_id IN (882,1043,1181,1112,1182);
+			DELETE FROM accounts WHERE id IN (882,1043,1181,1112,1182);
+			DELETE FROM groups WHERE id IN (81,179,223);
+			DROP TABLE IF EXISTS hk_deepseek_suite_20261115_backup;`)
+		require.NoError(t, cleanupErr)
+	})
 	_, err = conn.ExecContext(ctx, `
 		INSERT INTO groups(id,name,platform,model_allowlist) VALUES
 		(81,'suite81','openai','{"enabled":true,"models":["deepseek-flash"]}'),

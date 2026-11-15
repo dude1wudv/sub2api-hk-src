@@ -23,11 +23,17 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 344
+	candidateMigrationCount         = 350
 	mcpOAuthMigration               = "249_mcp_oauth.sql"
 )
 
 var currentOnlineFollowupMigrations = []string{
+	"343_user_chat.sql",
+	"344_chat_auxiliary.sql",
+	"345_group_usage_rollup_retention_guard.sql",
+	"346_widen_proxy_password.sql",
+	"347_deepseek_suite.sql",
+	"348_external_quality_enterprise_source.sql",
 	"342_user_chat.sql",
 	"341_add_usage_log_input_estimation.sql",
 	"339_group_rate_history.sql",
@@ -38,6 +44,12 @@ var currentOnlineFollowupMigrations = []string{
 }
 
 var postHKBaselineMigrations = []string{
+	"343_user_chat.sql",
+	"344_chat_auxiliary.sql",
+	"345_group_usage_rollup_retention_guard.sql",
+	"346_widen_proxy_password.sql",
+	"347_deepseek_suite.sql",
+	"348_external_quality_enterprise_source.sql",
 	"342_user_chat.sql",
 	"341_add_usage_log_input_estimation.sql",
 	"339_group_rate_history.sql",
@@ -65,6 +77,12 @@ var currentReleaseMigrations = []string{
 }
 
 var candidateOnlyMigrations = []string{
+	"343_user_chat.sql",
+	"344_chat_auxiliary.sql",
+	"345_group_usage_rollup_retention_guard.sql",
+	"346_widen_proxy_password.sql",
+	"347_deepseek_suite.sql",
+	"348_external_quality_enterprise_source.sql",
 	"342_user_chat.sql",
 	"341_add_usage_log_input_estimation.sql",
 	"339_group_rate_history.sql",
@@ -275,8 +293,15 @@ func TestUpstreamMergeValidation_CurrentOnlineHistoryAndFreshSchemaConverge(t *t
 func TestUpstreamMergeValidation_FeatureBaselineHistoryAndFreshSchemaConverge(t *testing.T) {
 	ctx := context.Background()
 	history := fstest.MapFS{}
+	followups := []string{
+		"339_group_rate_history.sql", "340_api_key_anthropic_cache_ttl_mode.sql",
+		"341_add_usage_log_input_estimation.sql", "342_user_chat.sql", "343_user_chat.sql",
+		"344_chat_auxiliary.sql", "345_group_usage_rollup_retention_guard.sql",
+		"346_widen_proxy_password.sql", "347_deepseek_suite.sql",
+		"348_external_quality_enterprise_source.sql",
+	}
 	for _, name := range migrationFiles(t, migrations.FS) {
-		if name == "339_group_rate_history.sql" || name == "340_api_key_anthropic_cache_ttl_mode.sql" || name == "341_add_usage_log_input_estimation.sql" || name == "342_user_chat.sql" {
+		if slices.Contains(followups, name) {
 			continue
 		}
 		content, err := migrations.FS.ReadFile(name)
