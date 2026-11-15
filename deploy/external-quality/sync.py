@@ -12,7 +12,7 @@ import urllib.request
 
 ROOT = Path('/opt/sub2api-external-quality')
 ORIGIN = 'https://mdkj.lol'
-BINDINGS = ((72, 62), (237, 170))
+BINDINGS = ((72, 62), (237, 142))
 MODELS = {'gpt-6-astra', 'gpt-6.1-sol'}
 MAX_BYTES = 8 << 20
 

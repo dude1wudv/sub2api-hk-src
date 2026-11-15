@@ -117,7 +117,7 @@ func (s *ChannelMonitorV2Service) ImportExternalQuality(ctx context.Context, inp
 
 func normalizeExternalQualityImport(input ExternalQualityImport, userID int64, now time.Time) ([]ExternalQualityRecord, error) {
 	if userID <= 0 || input.Source != "mdkj" || !ExternalQualityGroupEnabled(input.GroupID) ||
-		(input.GroupID == 72 && input.RemoteGroupID != 62) || (input.GroupID == 237 && input.RemoteGroupID != 170) {
+		(input.GroupID == 72 && input.RemoteGroupID != 62) || (input.GroupID == 237 && input.RemoteGroupID != 142) {
 		return nil, externalQualityInvalid("Unsupported source or group mapping")
 	}
 	if input.Payload.Code == nil || *input.Payload.Code != 0 || len(input.Payload.Data) == 0 || len(input.Payload.Data) > 40 {
