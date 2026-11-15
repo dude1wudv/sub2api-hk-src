@@ -509,6 +509,33 @@ func TestOverrideFilesNeverReceiveImmutableCacheHeaders(t *testing.T) {
 	})
 }
 
+func TestDeepSeekSuiteAliasesPreserveAPIResponses(t *testing.T) {
+	server, err := NewFrontendServer(&mockSettingsProvider{
+		settings: map[string]string{"test": "value"},
+	})
+	require.NoError(t, err)
+	for _, route := range []struct{ method, path string }{
+		{http.MethodPost, "/anthropic/v1/messages"},
+		{http.MethodPost, "/anthropic/v1/messages/count_tokens"},
+		{http.MethodPost, "/anthropic/v1/files"},
+		{http.MethodPost, "/files"},
+		{http.MethodGet, "/files/file-ds-test"},
+		{http.MethodDelete, "/files/file-ds-test"},
+	} {
+		t.Run(route.method+route.path, func(t *testing.T) {
+			router := gin.New()
+			router.Use(server.Middleware())
+			router.Handle(route.method, route.path, func(c *gin.Context) {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+			})
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest(route.method, route.path, nil))
+			require.Equal(t, http.StatusUnauthorized, w.Code)
+			require.JSONEq(t, `{"error":"authentication required"}`, w.Body.String())
+		})
+	}
+}
+
 func TestFrontendServer_Middleware(t *testing.T) {
 	t.Run("skips_api_routes", func(t *testing.T) {
 		provider := &mockSettingsProvider{
@@ -522,6 +549,11 @@ func TestFrontendServer_Middleware(t *testing.T) {
 			"/api/v1/users",
 			"/models",
 			"/v1/models",
+			"/anthropic/v1/messages",
+			"/anthropic/v1/messages/count_tokens",
+			"/anthropic/v1/files",
+			"/files",
+			"/files/file-ds-test",
 			"/v1beta/chat",
 			"/backend-api/codex/responses",
 			"/backend-api/codex/responses/compact",

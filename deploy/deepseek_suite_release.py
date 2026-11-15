@@ -33,6 +33,13 @@ def validate_ci(evidence, sha):
                        'Successful fixed-SHA ' + name + ' evidence required')
 
 
+def validate_suite_migrations(migrations):
+    # A follow-up application fix may start from the already migrated suite.
+    shared.require(all(name in SUITE_MIGRATIONS and checksum == SUITE_MIGRATIONS[name]
+                       for name, checksum in migrations.items()),
+                   'Suite release may only append the approved migration bytes')
+
+
 class SuiteRelease(shared.Release):
     def ci(self):
         evidence = self.evidence('ci.json')
@@ -55,8 +62,7 @@ class SuiteRelease(shared.Release):
         wrapper = Path(__file__)
         shared.require(shared.file_digest(wrapper) == shared.file_digest(self.src / 'deploy' / wrapper.name),
                        'Suite entrypoint differs from the fixed source commit')
-        shared.require(self.manifest['migration_allowlist'] == SUITE_MIGRATIONS,
-                       'Combined release must contain exactly the four approved migrations')
+        validate_suite_migrations(self.manifest['migration_allowlist'])
         self.manifest['suite_script_sha256'] = shared.file_digest(wrapper)
         self.persist()
 

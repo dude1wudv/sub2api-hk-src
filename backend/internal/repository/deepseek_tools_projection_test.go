@@ -22,3 +22,29 @@ func TestDeepSeekToolsProjectionPreservesScopedAdmission(t *testing.T) {
 		require.NotContains(t, projected.Extra, "unrelated_private_field")
 	}
 }
+
+func TestDeepSeekSuiteProjectionPreservesCapabilitiesAndFallback(t *testing.T) {
+	allowed, other := int64(223), int64(81)
+	account := service.Account{
+		ID: 1112, Platform: service.PlatformOpenAI, Type: service.AccountTypeAPIKey,
+		GroupIDs: []int64{223, 81},
+		Extra: map[string]any{
+			"deepseek_tools_group_ids":              []int64{223},
+			service.DeepSeekSuiteCapabilitiesKey:    []string{"ocr", "asr", "tts", "tts_ws", "files", "chat", "responses", "messages"},
+			service.DeepSeekSuiteFallbackAccountKey: int64(1182),
+			"unrelated_private_field":               "drop",
+		},
+	}
+	_, metadata, err := marshalSchedulerCacheAccount(account)
+	require.NoError(t, err)
+	var projected service.Account
+	require.NoError(t, json.Unmarshal(metadata, &projected))
+	for _, kind := range []string{"search", "fetch", "ocr", "asr", "tts", "tts_ws", "files", "chat", "responses", "messages"} {
+		require.True(t, projected.DeepSeekSuiteAllowed(&allowed, kind), kind)
+		require.False(t, projected.DeepSeekSuiteAllowed(&other, kind), kind)
+	}
+	require.False(t, projected.DeepSeekSuiteAllowed(&allowed, "unknown"))
+	require.Equal(t, int64(1182), projected.DeepSeekSuiteFallbackAccountID(0))
+	require.Zero(t, projected.DeepSeekSuiteFallbackAccountID(1112), "existing files must stay on their owning account")
+	require.NotContains(t, projected.Extra, "unrelated_private_field")
+}

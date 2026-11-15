@@ -76,9 +76,9 @@ jobs:
         with:
           go-version-file: backend/go.mod
           cache-dependency-key: ${{ hashFiles('backend/go.sum') }}
-      - name: Embedded chat resource routing tests
+      - name: Embedded chat resources and API bypass routing tests
         working-directory: backend
-        run: go test -tags=embed ./internal/web -run '^TestChat' -count=1
+        run: go test -tags=embed ./internal/web -run '^TestChat|^TestDeepSeekSuiteAliases|^TestFrontendServer_Middleware|^TestServeEmbedded' -count=1
 
   golangci-lint:
     runs-on: ubuntu-latest

@@ -1275,6 +1275,8 @@ func filterSchedulerExtra(extra map[string]any) map[string]any {
 		service.SlowTTFTConfigKey,
 		// Native tools admission runs on this projection before hydration.
 		"deepseek_tools_group_ids",
+		service.DeepSeekSuiteCapabilitiesKey,
+		service.DeepSeekSuiteFallbackAccountKey,
 		// Anthropic shared-window and Fable-only threshold checks run on this
 		// projection. UpdateExtra refreshes both payloads without a bucket rebuild.
 		"session_window_utilization",

@@ -12,6 +12,14 @@ spec.loader.exec_module(release)
 
 
 class SuiteReleaseTests(unittest.TestCase):
+    def test_followup_allows_existing_suite_schema_without_new_migrations(self):
+        release.validate_suite_migrations({})
+        release.validate_suite_migrations(release.SUITE_MIGRATIONS)
+        for invalid in ({'349_unapproved.sql': 'new'},
+                        {'348_external_quality_enterprise_source.sql': 'changed'}):
+            with self.assertRaises(RuntimeError):
+                release.validate_suite_migrations(invalid)
+
     def test_combined_migrations_are_exact_and_append_only(self):
         old = {'344_chat_auxiliary.sql': 'old'}
         additions = {
