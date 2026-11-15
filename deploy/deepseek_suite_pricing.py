@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 
@@ -30,6 +31,15 @@ TOKEN_MODELS = (
     "deepseek-v4-pro",
 )
 
+
+def save_journal(path, value):
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as handle:
+        json.dump(value, handle)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(handle.name, path)
+
+
 def token_models(platform):
     return tuple(m for m in TOKEN_MODELS if platform == "deepseek" or not m.startswith("deepseek/"))
 
@@ -41,6 +51,31 @@ def semantic(value):
     if isinstance(value, list):
         return [semantic(v) for v in value]
     return value
+
+
+def normalized_prices(value):
+    """Compare API defaults without hiding an explicitly configured zero price."""
+    if isinstance(value, dict):
+        result = {}
+        for key, item in semantic(value).items():
+            if key == "sort_order":
+                continue  # Array order already preserves price/tier precedence.
+            item = normalized_prices(item)
+            if item is None or item is False or item == "" or item == [] or item == {}:
+                continue
+            result[key] = sorted(item) if key == "models" else item
+        return result
+    if isinstance(value, list):
+        return [normalized_prices(item) for item in value]
+    return value
+
+
+def rollback_state(current, before, expected):
+    if normalized_prices(current) == normalized_prices(before):
+        return "already-restored"
+    if normalized_prices(current) == normalized_prices(expected):
+        return "restore"
+    raise RuntimeError("pricing changed since enrollment; do not overwrite")
 
 
 def price_for(prices, platform, model):
@@ -143,18 +178,25 @@ def main():
 
     if rollback:
         before = json.loads((out / "before.json").read_text())
-        applied = json.loads((out / "applied.json").read_text())
+        plan = json.loads((out / "plan.json").read_text())
+        journal = out / "attempted.json"
+        if not journal.exists():
+            journal = out / "applied.json"
+        attempted = json.loads(journal.read_text()) if journal.exists() else []
         assert not (out / "rollback.json").exists()
         restored = []
-        for item in reversed(applied):
+        for item in reversed(attempted):
             kind, ident = item["kind"], str(item["id"])
-            after = json.loads((out / f"{kind}-{ident}.after.json").read_text())
+            after_file = out / f"{kind}-{ident}.after.json"
+            expected_prices = (json.loads(after_file.read_text()) if after_file.exists()
+                               else plan[kind][ident])["model_pricing"]
             current = call(kind, ident)
-            assert semantic(current["model_pricing"]) == semantic(after["model_pricing"]), \
-                "pricing changed since enrollment; do not overwrite"
-            call(kind, ident, {"model_pricing": before[kind][ident]["model_pricing"]})
+            state = rollback_state(current["model_pricing"], before[kind][ident]["model_pricing"],
+                                   expected_prices)
+            if state == "restore":
+                call(kind, ident, {"model_pricing": before[kind][ident]["model_pricing"]})
             actual = call(kind, ident)
-            assert semantic(actual["model_pricing"]) == semantic(before[kind][ident]["model_pricing"])
+            assert normalized_prices(actual["model_pricing"]) == normalized_prices(before[kind][ident]["model_pricing"])
             restored.append(item)
             (out / "rollback-progress.json").write_text(json.dumps(restored))
         (out / "rollback.json").write_text(json.dumps({"restored": restored}))
@@ -175,16 +217,18 @@ def main():
         assert original["platform"] == platform and original["status"] == "active"
         candidates["groups"][str(gid)] = group_candidate(original, candidates["channels"][str(cid)])
     (out / "plan.json").write_text(json.dumps(candidates, indent=2))
-    applied = []
+    applied, attempted = [], []
     for kind in ("channels", "groups"):
         for ident, payload in candidates[kind].items():
             current = call(kind, ident)
             assert current == before[kind][ident], "configuration changed concurrently; do not overwrite"
+            attempted.append({"kind": kind, "id": int(ident)})
+            save_journal(out / "attempted.json", attempted)
             call(kind, ident, payload)
             applied.append({"kind": kind, "id": int(ident)})
             (out / "applied.json").write_text(json.dumps(applied))
             actual = call(kind, ident)
-            (out / f"{kind}-{ident}.after.json").write_text(json.dumps(actual, indent=2))
+            save_journal(out / f"{kind}-{ident}.after.json", actual)
             # API normalizes omitted nullable/default fields. Compare the owned
             # semantic price fields, and keep full before/after private for audit.
             for proposed in payload["model_pricing"]:

@@ -1,7 +1,7 @@
 import copy
 import unittest
 
-from deepseek_suite_pricing import NATIVE, channel_candidate, group_candidate, price_for, token_models
+from deepseek_suite_pricing import NATIVE, channel_candidate, group_candidate, price_for, rollback_state, token_models
 
 
 class SuitePricingTests(unittest.TestCase):
@@ -51,6 +51,26 @@ class SuitePricingTests(unittest.TestCase):
                                          "billing_mode": "per_request", "per_request_price": 99})
         with self.assertRaisesRegex(RuntimeError, "native price differs"):
             channel_candidate(channel, ["openai"])
+
+    def test_rollback_after_lost_put_response_uses_candidate_with_api_defaults(self):
+        candidate = [{"platform": "deepseek", "models": ["deepseek-flash"],
+                      "billing_mode": "token", "rate_independent": True, "intervals": []}]
+        actual = [{**candidate[0], "id": 33, "input_price": None, "output_price": None,
+                   "time_pricing": None, "sort_order": 0, "metered_unit": ""}]
+        self.assertEqual(rollback_state(actual, [], candidate), "restore")
+
+    def test_rollback_can_resume_after_prior_items_were_restored(self):
+        before = self.channel()["model_pricing"]
+        candidate = channel_candidate(self.channel(), ["openai"])["model_pricing"]
+        self.assertEqual(rollback_state(before, before, candidate), "already-restored")
+
+    def test_rollback_refuses_new_explicit_zero_price_and_other_drift(self):
+        candidate = [{"platform": "deepseek", "models": ["deepseek-flash"],
+                      "billing_mode": "token", "rate_independent": True}]
+        for price in (0, 99):
+            current = [{**candidate[0], "input_price": price}]
+            with self.assertRaisesRegex(RuntimeError, "changed"):
+                rollback_state(current, [], candidate)
 
 
 if __name__ == "__main__":
