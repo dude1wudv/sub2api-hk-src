@@ -3,13 +3,15 @@ package service
 import (
 	"net/url"
 	"strings"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/urljoin"
 )
 
 // buildAnthropicMessagesURL appends the Messages endpoint to an already validated
 // base URL. Cloudflare's account REST endpoint rejects the beta query parameter;
 // all other upstreams, including Cloudflare's native gateway, keep it.
 func buildAnthropicMessagesURL(baseURL string) string {
-	targetURL := strings.TrimRight(baseURL, "/") + "/v1/messages"
+	targetURL := urljoin.APIPath(baseURL, "/v1/messages")
 	parsed, err := url.Parse(targetURL)
 	if err == nil && strings.EqualFold(parsed.Scheme, "https") && parsed.User == nil &&
 		parsed.RawQuery == "" && !parsed.ForceQuery && parsed.Fragment == "" && parsed.RawPath == "" {
@@ -22,5 +24,9 @@ func buildAnthropicMessagesURL(baseURL string) string {
 			return targetURL
 		}
 	}
-	return targetURL + "?beta=true"
+	return urljoin.WithQueryParam(targetURL, "beta", "true")
+}
+
+func buildAnthropicCountTokensURL(base string) string {
+	return urljoin.WithQueryParam(urljoin.APIPath(base, "/v1/messages/count_tokens"), "beta", "true")
 }

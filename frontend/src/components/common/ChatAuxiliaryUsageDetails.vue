@@ -7,7 +7,7 @@ defineProps<{ usage?: ChatAuxiliaryUsage | null }>()
 const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const copy = (cn: string, en: string) => zh.value ? cn : en
-const label = (kind: string) => ({ search: copy('文字搜索', 'Text search'), image_search: copy('图片搜索', 'Image search'), fetch: copy('读取链接', 'Read URL'), asr: copy('语音识别', 'Speech recognition'), tts: copy('语音合成', 'Speech synthesis'), ocr: 'OCR', native_files: copy('原生文档解析', 'Native document parsing') }[kind] || kind)
+const label = (kind: string) => ({ search: copy('文字搜索', 'Text search'), image_search: copy('图片搜索', 'Image search'), fetch: copy('读取链接', 'Read URL'), asr: copy('语音识别', 'Speech recognition'), tts: copy('语音合成', 'Speech synthesis'), ocr: 'OCR', document_parse: copy('文档解析', 'Document parsing'), native_files: copy('原生文档解析', 'Native document parsing') }[kind] || kind)
 const unit = (value: string) => ({ call: copy('次', 'call'), page: copy('页', 'page'), second: copy('秒', 'second'), character: copy('字符', 'character') }[value] || value)
 </script>
 

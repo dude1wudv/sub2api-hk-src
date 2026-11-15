@@ -43,6 +43,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		return
 	}
 
+	c.Header("Cache-Control", "public, max-age=30")
 	response.Success(c, dto.PublicSettings{
 		HeliosWorkbenchBootstrapURL:         settings.HeliosWorkbenchBootstrapURL,
 		PasswordPolicy:                      settings.PasswordPolicy,

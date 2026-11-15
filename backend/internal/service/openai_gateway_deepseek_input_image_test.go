@@ -95,10 +95,10 @@ func TestNormalizeDeepSeekResponsesRequestBodyAliasesInputImageURL(t *testing.T)
 	t.Run("lifted_tool_output_image_keeps_image_url_only", func(t *testing.T) {
 		body := []byte(`{"model":"deepseek-flash","input":[{"type":"function_call","call_id":"call_image","name":"view_image","arguments":"{}"},{"type":"function_call_output","call_id":"call_image","output":[{"type":"input_image","image_url":"` + deepSeekInputImageDataURI + `"}]}]}`)
 		got := normalizeDeepSeekResponsesRequestBody(mapped, body)
-		require.Equal(t, gjson.String, gjson.GetBytes(got, "input.1.output").Type)
-		require.Equal(t, "input_image", gjson.GetBytes(got, "input.2.content.1.type").String())
-		require.Equal(t, deepSeekInputImageDataURI, gjson.GetBytes(got, "input.2.content.1.image_url").String())
-		require.False(t, gjson.GetBytes(got, "input.2.content.1.url").Exists())
+		require.Equal(t, gjson.String, gjson.GetBytes(got, "input.2.output").Type)
+		require.Equal(t, "input_image", gjson.GetBytes(got, "input.3.content.1.type").String())
+		require.Equal(t, deepSeekInputImageDataURI, gjson.GetBytes(got, "input.3.content.1.image_url").String())
+		require.False(t, gjson.GetBytes(got, "input.3.content.1.url").Exists())
 	})
 
 	t.Run("dual_field_input_drops_duplicate_url", func(t *testing.T) {

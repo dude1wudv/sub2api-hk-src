@@ -112,7 +112,7 @@ func CORS(cfg config.CORSConfig) gin.HandlerFunc {
 			}
 			c.Writer.Header().Set("Access-Control-Allow-Headers", allowHeadersValue)
 			c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
-			c.Writer.Header().Set("Access-Control-Expose-Headers", "ETag, Server-Timing, WWW-Authenticate")
+			c.Writer.Header().Set("Access-Control-Expose-Headers", "ETag, Server-Timing, WWW-Authenticate, X-DeepSeek-Operation-ID, X-DeepSeek-Metering-Status, X-Request-Id, Msh-Usage-Cache-Write-Tokens-5m, Msh-Usage-Cache-Write-Tokens-1h, Msh-Context-Cache-Token-Saved")
 			c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 		}
 		// 处理预检请求

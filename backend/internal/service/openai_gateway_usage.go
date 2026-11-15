@@ -169,7 +169,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	// Native DeepSeek tools share the OpenAI account pool but do not represent a
 	// chat completion.  A successful tool call therefore must not clear the
 	// account's chat-specific 403 health counter.
-	if !result.chatAuxiliaryOnly && result.DeepSeekToolKind == "" && s.rateLimitService != nil && input.Account != nil && input.Account.Platform == PlatformOpenAI {
+	if input.prepareBilling == nil && !result.chatAuxiliaryOnly && result.DeepSeekToolKind == "" && s.rateLimitService != nil && input.Account != nil && input.Account.Platform == PlatformOpenAI {
 		s.rateLimitService.ResetOpenAI403Counter(ctx, input.Account.ID)
 	}
 
@@ -469,7 +469,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	if result.chatAuxiliaryOnly {
 		usageLog.RateMultiplier = 1
 	} else if result.DeepSeekToolKind != "" {
-		usageLog.RateMultiplier = baseMultiplier
+		usageLog.RateMultiplier = 1
 	} else if isVideoUsage && (cost == nil || cost.BillingMode != string(BillingModeToken)) {
 		usageLog.RateMultiplier = videoMultiplier
 	} else if result.ImageCount > 0 && (cost == nil || cost.BillingMode != string(BillingModeToken)) {
@@ -670,7 +670,8 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 		if result.BillableToolCalls < 0 || result.BillableToolCalls > 1 {
 			return nil, fmt.Errorf("invalid native DeepSeek tool call count: %d", result.BillableToolCalls)
 		}
-		cost := s.billingService.CalculateWebSearchCost(result.BillableToolCalls, webSearchPricePerCallFromAPIKey(apiKey), webSearchMultiplier)
+		price := 0.005
+		cost := s.billingService.CalculateWebSearchCost(result.BillableToolCalls, &price, 1)
 		cost.BillingMode = string(BillingModePerRequest)
 		return cost, nil
 	}

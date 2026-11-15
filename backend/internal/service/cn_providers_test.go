@@ -894,12 +894,15 @@ func TestNormalizeDeepSeekResponsesRequestBody(t *testing.T) {
 	mediaBody := []byte(`{"model":"deepseek-v4.1-flash","store":true,"input":[{"type":"function_call","call_id":"call_image","name":"view_image","arguments":"{}"},{"type":"function_call_output","call_id":"call_image","output":[{"type":"input_image","image_url":"data:image/png;base64,AQID"}]}]}`)
 	mediaNormalized := normalizeDeepSeekResponsesRequestBody(deepseekResponses, mediaBody)
 	require.False(t, gjson.GetBytes(mediaNormalized, "store").Bool())
-	require.Equal(t, gjson.String, gjson.GetBytes(mediaNormalized, "input.1.output").Type)
-	require.NotContains(t, gjson.GetBytes(mediaNormalized, "input.1.output").String(), "data:image/png")
-	require.Equal(t, "message", gjson.GetBytes(mediaNormalized, "input.2.type").String())
-	require.Equal(t, "user", gjson.GetBytes(mediaNormalized, "input.2.role").String())
-	require.Equal(t, "input_image", gjson.GetBytes(mediaNormalized, "input.2.content.1.type").String())
-	require.Equal(t, "data:image/png;base64,AQID", gjson.GetBytes(mediaNormalized, "input.2.content.1.image_url").String())
+	require.Equal(t, gjson.String, gjson.GetBytes(mediaNormalized, "input.2.output").Type)
+	require.NotContains(t, gjson.GetBytes(mediaNormalized, "input.2.output").String(), "data:image/png")
+	require.Equal(t, "message", gjson.GetBytes(mediaNormalized, "input.3.type").String())
+	require.Equal(t, "user", gjson.GetBytes(mediaNormalized, "input.3.role").String())
+	require.Equal(t, "input_image", gjson.GetBytes(mediaNormalized, "input.3.content.1.type").String())
+	require.Equal(t, "data:image/png;base64,AQID", gjson.GetBytes(mediaNormalized, "input.3.content.1.image_url").String())
+
+	require.Equal(t, "reasoning", gjson.GetBytes(mediaNormalized, "input.0.type").String())
+	require.Equal(t, "function_call", gjson.GetBytes(mediaNormalized, "input.1.type").String())
 
 	// 非 responses 协议（deepseek CC 账号）原样返回
 	deepseekCC := &Account{Platform: PlatformDeepseek, Type: AccountTypeAPIKey}

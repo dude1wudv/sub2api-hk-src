@@ -24,7 +24,7 @@ func TestCalculateOpenAIRecordUsageCostDeepSeekTool(t *testing.T) {
 			calls int
 			want  float64
 		}{
-			{name: "billable success", calls: 1, want: 0.013},
+			{name: "billable success", calls: 1, want: 0.005},
 			{name: "successful empty result", calls: 0, want: 0},
 		} {
 			t.Run(string(kind)+"/"+tt.name, func(t *testing.T) {
@@ -34,13 +34,13 @@ func TestCalculateOpenAIRecordUsageCostDeepSeekTool(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, string(BillingModePerRequest), cost.BillingMode)
 				require.InDelta(t, tt.want, cost.TotalCost, 1e-12)
-				require.InDelta(t, tt.want*0.4, cost.ActualCost, 1e-12, "tool pricing uses base user/group multiplier, not peak-aware token rate")
+				require.InDelta(t, tt.want, cost.ActualCost, 1e-12, "official list price is independent of group/user multipliers")
 			})
 		}
 	}
 }
 
-func TestCalculateOpenAIRecordUsageCostDeepSeekToolExplicitFreeAndInvalidCallCounts(t *testing.T) {
+func TestCalculateOpenAIRecordUsageCostDeepSeekToolIgnoresGroupOverridesAndRejectsInvalidCounts(t *testing.T) {
 	groupID := int64(223)
 	free := 0.0
 	apiKey := &APIKey{ID: 1, GroupID: &groupID, Group: &Group{ID: groupID, Platform: PlatformOpenAI, WebSearchPricePerCall: &free}}
@@ -52,8 +52,8 @@ func TestCalculateOpenAIRecordUsageCostDeepSeekToolExplicitFreeAndInvalidCallCou
 			apiKey, []string{"nonexistent-model"}, 1, 1, 1, 1, UsageTokens{InputTokens: 1000}, "", boolPtr(false), false, time.Time{})
 		require.NoError(t, err)
 		require.Equal(t, string(BillingModePerRequest), cost.BillingMode)
-		require.Zero(t, cost.TotalCost)
-		require.Zero(t, cost.ActualCost)
+		require.Equal(t, float64(calls)*.005, cost.TotalCost)
+		require.Equal(t, float64(calls)*.005, cost.ActualCost)
 	}
 
 	for _, calls := range []int{-1, 2} {
@@ -64,7 +64,7 @@ func TestCalculateOpenAIRecordUsageCostDeepSeekToolExplicitFreeAndInvalidCallCou
 	}
 }
 
-func TestEstimateInflightDeepSeekToolUsesOneCallAndBaseRate(t *testing.T) {
+func TestEstimateInflightDeepSeekToolUsesFixedOfficialListPrice(t *testing.T) {
 	groupID := int64(223)
 	price := 0.013
 	userRate := 0.25
@@ -82,12 +82,12 @@ func TestEstimateInflightDeepSeekToolUsesOneCallAndBaseRate(t *testing.T) {
 
 	got, priced := svc.EstimateInflightReservation(context.Background(), apiKey, InflightEstimateRequest{Kind: InflightEstimateDeepSeekTool})
 	require.True(t, priced)
-	require.InDelta(t, 0.013*0.25, got, 1e-12)
+	require.InDelta(t, .005, got, 1e-12)
 
 	apiKey.Group.WebSearchPricePerCall = &[]float64{0}[0]
 	got, priced = svc.EstimateInflightReservation(context.Background(), apiKey, InflightEstimateRequest{Kind: InflightEstimateDeepSeekTool})
 	require.True(t, priced)
-	require.Zero(t, got)
+	require.Equal(t, .005, got)
 }
 
 type deepSeekToolsBillingRateRepo struct {
@@ -118,7 +118,7 @@ func TestRecordUsageDeepSeekToolSkipsChatHealthResetAndModelStatsPricing(t *test
 		calls int
 		want  float64
 	}{
-		{name: "billable success", calls: 1, want: toolPrice},
+		{name: "billable success", calls: 1, want: .005},
 		{name: "successful empty result", calls: 0, want: 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

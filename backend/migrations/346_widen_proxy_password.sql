@@ -1,0 +1,1 @@
+ALTER TABLE proxies ALTER COLUMN password TYPE VARCHAR(255);

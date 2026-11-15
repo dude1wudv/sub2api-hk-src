@@ -196,9 +196,15 @@ func RegisterGatewayRoutes(
 	qwenAudio.Use(clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), middleware.UsageInflight, requireGroupOpenAI)
 	{
 		qwenAudio.POST("/transcriptions", func(c *gin.Context) {
+			if h.OpenAIGateway.TryDeepSeekAudio(c, "asr") {
+				return
+			}
 			h.OpenAIGateway.QwenAudioTranscriptions(c)
 		})
 		qwenAudio.POST("/speech", func(c *gin.Context) {
+			if h.OpenAIGateway.TryDeepSeekAudio(c, "tts") {
+				return
+			}
 			h.OpenAIGateway.QwenAudioSpeech(c)
 		})
 	}
@@ -206,9 +212,32 @@ func RegisterGatewayRoutes(
 	// Native DeepSeek tools are model-free JSON endpoints with fixed-group keys.
 	// Keep their error envelope and policy separate from model/composite routing.
 	deepseekTools := r.Group("/v1/tools")
-	deepseekTools.Use(textBodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), middleware.UsageInflight, requireGroupOpenAI)
-	deepseekTools.POST("/search", h.OpenAIGateway.DeepSeekSearch)
-	deepseekTools.POST("/fetch", h.OpenAIGateway.DeepSeekFetch)
+	deepseekTools.Use(middleware.RequestBodyLimit(service.DeepSeekSuiteMaxUploadBytes), middleware.DeepSeekTTSWebSocketAuth, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), middleware.UsageInflight, requireGroupOpenAI)
+	deepseekTools.POST("/search", h.OpenAIGateway.DeepSeekSuiteTool)
+	deepseekTools.POST("/fetch", h.OpenAIGateway.DeepSeekSuiteTool)
+	deepseekTools.POST("/ocr", h.OpenAIGateway.DeepSeekSuiteTool)
+	deepseekTools.POST("/asr", h.OpenAIGateway.DeepSeekSuiteTool)
+	deepseekTools.POST("/tts", h.OpenAIGateway.DeepSeekSuiteTool)
+	deepseekTools.GET("/tts", h.OpenAIGateway.DeepSeekTTSWebSocket)
+	for _, prefix := range []string{"/files", "/v1/files", "/anthropic/v1/files"} {
+		files := r.Group(prefix)
+		files.Use(middleware.RequestBodyLimit(service.DeepSeekSuiteMaxUploadBytes), clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), middleware.UsageInflight, requireGroupOpenAI)
+		files.POST("", h.OpenAIGateway.DeepSeekFiles)
+		files.GET("", h.OpenAIGateway.DeepSeekFiles)
+		files.GET("/:file_id", h.OpenAIGateway.DeepSeekFiles)
+		files.DELETE("/:file_id", h.OpenAIGateway.DeepSeekFiles)
+	}
+
+	anthropicSuite := r.Group("/anthropic/v1")
+	anthropicSuite.Use(bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), middleware.UsageInflight, groupModelAllowlist, compositeTarget, requireGroupAnthropic)
+	anthropicSuite.POST("/messages", func(c *gin.Context) {
+		if isOpenAIResponsesCompatibleGatewayPlatform(c) {
+			h.OpenAIGateway.Messages(c)
+			return
+		}
+		h.Gateway.Messages(c)
+	})
+	anthropicSuite.POST("/messages/count_tokens", countTokensHandler)
 
 	// API网关（Claude API兼容）
 	gateway := r.Group("/v1")

@@ -221,8 +221,8 @@ func TestDeepSeekToolsSpine(t *testing.T) {
 	require.NotEqual(t, logs[0].RequestID, logs[1].RequestID, "reused downstream request IDs must not merge calls")
 	for i, label := range []string{"deepseek-search", "deepseek-fetch"} {
 		require.Equal(t, label, logs[i].Model)
-		require.InDelta(t, 0.013, logs[i].TotalCost, 1e-12)
-		require.InDelta(t, 0.013*0.4, logs[i].ActualCost, 1e-12)
+		require.InDelta(t, .005, logs[i].TotalCost, 1e-12)
+		require.InDelta(t, .005, logs[i].ActualCost, 1e-12)
 		require.Equal(t, logs[i].RequestID, commands[i].RequestID)
 	}
 	require.Equal(t, []string{"Bearer " + secret, "Bearer " + secret}, upstreamAuth)

@@ -140,7 +140,8 @@ func normalizeDeepSeekResponsesRequestBody(account *Account, body []byte) []byte
 	}
 	applyStateless := account.UsesNativeCNResponses()
 	applyImages := shouldAliasDeepSeekResponsesInputImages(account)
-	if !applyStateless && !applyImages {
+	repairReasoning := strings.HasPrefix(strings.ToLower(resolveMappedUpstreamModel(account, body, "")), "deepseek")
+	if !applyStateless && !applyImages && !repairReasoning {
 		return body
 	}
 
@@ -166,6 +167,18 @@ func normalizeDeepSeekResponsesRequestBody(account *Account, body []byte) []byte
 	}
 
 	changed := false
+	if repairReasoning {
+		if repaired, did := apicompat.RepairDeepSeekReasoning(input); did {
+			input = repaired
+			requestBody["input"] = repaired
+			changed = true
+		}
+		// DeepSeek rejects JSON-schema response_format on the compatibility path.
+		if format, ok := requestBody["response_format"].(map[string]any); ok && format["type"] == "json_schema" {
+			delete(requestBody, "response_format")
+			changed = true
+		}
+	}
 	if liftedInput, lifted := apicompat.LiftResponsesToolOutputMedia(input); lifted {
 		requestBody["input"] = liftedInput
 		input = liftedInput

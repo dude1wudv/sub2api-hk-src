@@ -51,7 +51,7 @@ func chatAuxiliaryPrice(kind string) (unit, price string, quantity int64, ok boo
 	switch kind {
 	case "search", "image_search", "fetch":
 		return "call", "0.005", 1, true
-	case "ocr":
+	case "ocr", "document_parse":
 		return "page", "0.0015", 1, true
 	case "asr":
 		return "second", "0.78", 3600, true

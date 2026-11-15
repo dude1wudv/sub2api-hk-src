@@ -1867,7 +1867,7 @@ export interface ChatAuxiliaryUsage {
   price_basis: string
   provider: 'deepseek'
   items: Array<{
-    kind: 'search' | 'image_search' | 'fetch' | 'asr' | 'tts' | 'ocr' | 'native_files'
+    kind: 'search' | 'image_search' | 'fetch' | 'asr' | 'tts' | 'ocr' | 'document_parse' | 'native_files'
     quantity: number | null
     unit: 'call' | 'page' | 'second' | 'character'
     unit_price: string
@@ -2069,6 +2069,8 @@ export interface DashboardStats {
   today_new_users: number // 今日新增用户数
   active_users: number // 今日有请求的用户数
   hourly_active_users: number // 当前小时活跃用户数（UTC）
+  users_with_balance: number // 有余额的用户数
+  users_with_balance_total: number // 有余额用户的余额合计
   stats_updated_at: string // 统计更新时间（UTC RFC3339）
   stats_stale: boolean // 统计是否过期
 

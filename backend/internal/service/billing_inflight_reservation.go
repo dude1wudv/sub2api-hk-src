@@ -664,7 +664,8 @@ func (d inflightEstimateDeps) estimateBase(ctx context.Context, apiKey *APIKey, 
 		if d.billing == nil {
 			return 0, false
 		}
-		cost := d.billing.CalculateWebSearchCost(1, webSearchPricePerCallFromAPIKey(apiKey), d.baseRate(ctx, apiKey))
+		price := 0.005
+		cost := d.billing.CalculateWebSearchCost(1, &price, 1)
 		return cost.ActualCost, !math.IsNaN(cost.ActualCost) && !math.IsInf(cost.ActualCost, 0) && cost.ActualCost >= 0
 	}
 	if req.Model == "" || (req.Kind == InflightEstimateAudio && req.AudioUnits <= 0) {

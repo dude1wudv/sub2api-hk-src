@@ -12,6 +12,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/urljoin"
 	"github.com/gin-gonic/gin"
 )
 
@@ -68,7 +69,7 @@ func (s *AccountTestService) testCNProviderAdaptiveAnthropicConnection(c *gin.Co
 	if err != nil {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid adaptive Anthropic base URL: %s", err.Error()))
 	}
-	apiURL := strings.TrimRight(baseURL, "/") + "/v1/messages"
+	apiURL := urljoin.APIPath(baseURL, "/v1/messages")
 
 	payload, err := createTestPayload(testModelID)
 	if err != nil {

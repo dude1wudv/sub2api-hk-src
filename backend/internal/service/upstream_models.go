@@ -18,6 +18,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/antigravity"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/urljoin"
 )
 
 const (
@@ -1460,14 +1461,7 @@ func upstreamModelsProxyURL(account *Account) string {
 }
 
 func buildV1ModelsURL(base string) string {
-	normalized := strings.TrimRight(strings.TrimSpace(base), "/")
-	if strings.HasSuffix(normalized, "/v1/models") {
-		return normalized
-	}
-	if strings.HasSuffix(normalized, "/v1") {
-		return normalized + "/models"
-	}
-	return normalized + "/v1/models"
+	return urljoin.APIPath(base, "/v1/models")
 }
 
 func buildOpenAIModelsURL(base string) string {
@@ -1495,14 +1489,7 @@ func buildVertexPublisherModelsURL(location, pageToken string) (string, error) {
 }
 
 func buildGeminiModelsURL(base string) string {
-	normalized := strings.TrimRight(strings.TrimSpace(base), "/")
-	if strings.HasSuffix(normalized, "/v1beta/models") {
-		return normalized
-	}
-	if strings.HasSuffix(normalized, "/v1beta") {
-		return normalized + "/models"
-	}
-	return normalized + "/v1beta/models"
+	return urljoin.APIPath(base, "/v1beta/models")
 }
 
 type upstreamModelEntry struct {

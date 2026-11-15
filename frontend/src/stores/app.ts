@@ -35,6 +35,7 @@ export const useAppStore = defineStore('app', () => {
   const docUrl = ref<string>('')
   const cachedPublicSettings = ref<PublicSettings | null>(null)
   let publicSettingsRequest: Promise<PublicSettings | null> | null = null
+  let publicSettingsRetryAfter = 0
 
   // Version cache state
   const versionLoaded = ref<boolean>(false)
@@ -315,6 +316,8 @@ export const useAppStore = defineStore('app', () => {
       return publicSettingsRequest
     }
 
+    if (!force && Date.now() < publicSettingsRetryAfter) return Promise.resolve(cachedPublicSettings.value)
+
     // Check for injected config from server (eliminates flash)
     if (!publicSettingsLoaded.value && !force && window.__APP_CONFIG__) {
       applySettings(window.__APP_CONFIG__)
@@ -391,6 +394,7 @@ export const useAppStore = defineStore('app', () => {
     try {
       apiRequest = fetchPublicSettingsAPI()
     } catch (error) {
+      publicSettingsRetryAfter = Date.now() + 30_000
       publicSettingsError.value = error
       console.error('Failed to fetch public settings:', error)
       publicSettingsLoading.value = false
@@ -399,10 +403,12 @@ export const useAppStore = defineStore('app', () => {
 
     const request = apiRequest
       .then((data) => {
+        publicSettingsRetryAfter = 0
         applySettings(data)
         return data
       })
       .catch((error) => {
+        publicSettingsRetryAfter = Date.now() + 30_000
         publicSettingsError.value = error
         console.error('Failed to fetch public settings:', error)
         return null
@@ -422,6 +428,7 @@ export const useAppStore = defineStore('app', () => {
    * Clear public settings cache
    */
   function clearPublicSettingsCache(): void {
+    publicSettingsRetryAfter = 0
     publicSettingsError.value = null
     publicSettingsLoaded.value = false
     cachedPublicSettings.value = null

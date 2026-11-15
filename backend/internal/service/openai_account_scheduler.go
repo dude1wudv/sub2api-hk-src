@@ -1818,6 +1818,9 @@ func (s *defaultOpenAIAccountScheduler) isAccountRequestCompatibleReason(ctx con
 		s.service.isUpstreamModelRestrictedByChannel(ctx, *req.GroupID, account, req.RequestedModel, req.RequireCompact) {
 		return false, "channel_upstream_restricted"
 	}
+	if !deepSeekSuiteAccountAllowed(ctx, account) {
+		return false, "deepseek_suite_not_allowed"
+	}
 	if req.RequiredCapability == OpenAIEndpointCapabilityDeepSeekTools && !account.DeepSeekToolsAllowedForGroup(req.GroupID) {
 		return false, "deepseek_tools_group_not_allowed"
 	}
@@ -2542,7 +2545,7 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 		ExcludedIDs:             excludedIDs,
 	})
 	if requiredCapability == OpenAIEndpointCapabilityDeepSeekTools && selection != nil &&
-		!accountSupportsOpenAICapabilities(selection.Account, requiredCapability, requiredImageCapability) {
+		(!accountSupportsOpenAICapabilities(selection.Account, requiredCapability, requiredImageCapability) || !deepSeekSuiteAccountAllowed(ctx, selection.Account)) {
 		if selection.ReleaseFunc != nil {
 			selection.ReleaseFunc()
 		}

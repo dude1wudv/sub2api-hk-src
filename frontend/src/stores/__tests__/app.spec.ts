@@ -396,6 +396,24 @@ describe('useAppStore', () => {
       consoleError.mockRestore()
     })
 
+    it('failed public settings use a 30-second cooldown and force can retry', async () => {
+      const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      vi.mocked(getPublicSettings).mockRejectedValueOnce(new Error('offline'))
+      const store = useAppStore()
+      await expect(store.fetchPublicSettings()).resolves.toBeNull()
+      await expect(store.fetchPublicSettings()).resolves.toBeNull()
+      expect(getPublicSettings).toHaveBeenCalledTimes(1)
+      vi.mocked(getPublicSettings).mockResolvedValue(createPublicSettings())
+      clock.mockReturnValue(1_031_000)
+      await store.fetchPublicSettings()
+      expect(getPublicSettings).toHaveBeenCalledTimes(2)
+      await store.fetchPublicSettings(true)
+      expect(getPublicSettings).toHaveBeenCalledTimes(3)
+      clock.mockRestore()
+      consoleError.mockRestore()
+    })
+
     it('从 window.__APP_CONFIG__ 初始化', () => {
       const windowAny = window as any
       windowAny.__APP_CONFIG__ = {

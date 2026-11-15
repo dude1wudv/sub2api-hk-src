@@ -29,7 +29,7 @@ type ChatBillingReceipt struct {
 }
 
 func (s *OpenAIGatewayService) PrepareChatAuxiliaryBilling(ctx context.Context, input *OpenAIRecordUsageInput) (json.RawMessage, error) {
-	if input == nil || input.Result == nil || !input.Result.chatAuxiliaryOnly || input.Result.ChatAuxiliaryUsage == nil || s.usageBillingRepo == nil || s.usageLogRepo == nil || (s.cfg != nil && s.cfg.RunMode == config.RunModeSimple) {
+	if input == nil || input.Result == nil || (!input.Result.chatAuxiliaryOnly && !strings.HasPrefix(input.Result.RequestID, "deepseek_suite:")) || (input.Result.chatAuxiliaryOnly && input.Result.ChatAuxiliaryUsage == nil) || s.usageBillingRepo == nil || s.usageLogRepo == nil || (s.cfg != nil && s.cfg.RunMode == config.RunModeSimple) {
 		return nil, ErrChatAuxiliaryUnavailable
 	}
 	copyInput := *input
@@ -72,7 +72,7 @@ func decodeChatBillingReceipt(raw json.RawMessage) (*ChatBillingReceipt, error) 
 		return nil, ErrChatInvalid
 	}
 	cmd := r.Command
-	if !strings.HasPrefix(cmd.RequestID, "chat_auxiliary:") || len(cmd.RequestFingerprint) != 64 || cmd.UserID != r.User.ID || cmd.UserID != r.Log.UserID || cmd.APIKeyID != r.Log.APIKeyID || cmd.AccountID != r.Log.AccountID || cmd.RequestID != r.Log.RequestID {
+	if (!strings.HasPrefix(cmd.RequestID, "chat_auxiliary:") && !strings.HasPrefix(cmd.RequestID, "deepseek_suite:")) || len(cmd.RequestFingerprint) != 64 || cmd.UserID != r.User.ID || cmd.UserID != r.Log.UserID || cmd.APIKeyID != r.Log.APIKeyID || cmd.AccountID != r.Log.AccountID || cmd.RequestID != r.Log.RequestID {
 		return nil, ErrChatInvalid
 	}
 	return &r, nil

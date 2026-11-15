@@ -459,6 +459,10 @@ var ErrNoAvailableCompactAccounts = errors.New("no available accounts support /r
 
 // OpenAIGatewayService handles OpenAI API gateway operations
 type OpenAIGatewayService struct {
+	deepSeekSuiteOnce   sync.Once
+	deepSeekSuiteCancel context.CancelFunc
+	deepSeekSuiteDone   chan struct{}
+
 	accountRepo           AccountRepository
 	usageLogRepo          UsageLogRepository
 	usageBillingRepo      UsageBillingRepository
@@ -730,6 +734,10 @@ func (s *OpenAIGatewayService) billingDeps() *billingDeps {
 func (s *OpenAIGatewayService) CloseOpenAIWSPool() {
 	if s == nil {
 		return
+	}
+	if s.deepSeekSuiteCancel != nil {
+		s.deepSeekSuiteCancel()
+		<-s.deepSeekSuiteDone
 	}
 	s.openaiCompatSessionResponses.Close()
 	s.openaiCompatAnthropicDigestSessions.Close()

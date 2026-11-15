@@ -322,6 +322,7 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 	requestID := resp.Header.Get("x-request-id")
 	writeStreamHeaders := s.newStreamHeaderWriter(c, resp.Header)
 	scanner := s.newUpstreamSSEScanner(resp.Body)
+	streamCacheFiveMinute, streamCacheOneHour, streamCacheBucketsOK := ParseMSHCacheWriteBuckets(resp.Header)
 
 	var usage OpenAIUsage
 	var firstTokenMs *int
@@ -385,6 +386,9 @@ func (s *OpenAIGatewayService) streamRawChatCompletions(
 		}
 		line = applyOllamaCloudRawChatCompletionsSSELine(account, line)
 		line = stripEmptyChatToolCallIdentityFromSSELine(line)
+		if streamCacheBucketsOK {
+			line = InjectChatCompletionCacheCreationIntoSSELine(line, streamCacheFiveMinute, streamCacheOneHour)
+		}
 
 		line = s.replaceModelInSSELine(line, upstreamModel, originalModel)
 		writeLine(line)
@@ -558,6 +562,7 @@ func (s *OpenAIGatewayService) bufferRawChatCompletions(
 		return nil, newGrokMissingUsageFailoverError(c, account, upstreamRequestID)
 	}
 	respBody = applyOllamaCloudRawChatCompletionsResponse(account, respBody)
+	respBody = InjectChatCompletionCacheCreation(respBody, resp.Header)
 	respBody = s.replaceModelInResponseBody(respBody, upstreamModel, originalModel)
 
 	if s.responseHeaderFilter != nil {

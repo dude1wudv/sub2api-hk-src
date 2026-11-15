@@ -299,10 +299,11 @@ func invalidateGroupUsageRollupsAt(ctx context.Context, tx *sql.Tx, affectedAt t
 	timezoneName := service.GroupUsageTimezoneName()
 	_, err := tx.ExecContext(ctx, `
 		UPDATE usage_group_rollup_state
-		SET closed_before = LEAST(
-			closed_before,
-			($1::timestamptz AT TIME ZONE $2::text)::date
-		),
+		SET closed_before = CASE
+            WHEN ($1::timestamptz AT TIME ZONE $2::text)::date < (retained_from AT TIME ZONE $2::text)::date
+            THEN closed_before
+            ELSE LEAST(closed_before, ($1::timestamptz AT TIME ZONE $2::text)::date)
+        END,
 			updated_at = NOW()
 		WHERE id = 1
 	`, affectedAt.UTC(), timezoneName)

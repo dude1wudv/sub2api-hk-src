@@ -3,8 +3,9 @@
 package service
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/urljoin"
 )
 
 func TestBuildAnthropicMessagesURL(t *testing.T) {
@@ -37,13 +38,13 @@ func TestBuildAnthropicMessagesURL(t *testing.T) {
 		{"encoded separator", "https://api.cloudflare.com/client/v4/accounts/one%2Ftwo/ai", false},
 		{"query", "https://api.cloudflare.com" + path + "?custom=true", false},
 		{"empty query", "https://api.cloudflare.com" + path + "?", false},
-		{"fragment", "https://api.cloudflare.com" + path + "#fragment", false},
+		{"fragment", "https://api.cloudflare.com" + path + "#fragment", true},
 		{"malformed URL", "https://%invalid", false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			want := strings.TrimRight(tt.baseURL, "/") + "/v1/messages"
+			want := urljoin.APIPath(tt.baseURL, "/v1/messages")
 			if !tt.omitBeta {
-				want += "?beta=true"
+				want = urljoin.WithQueryParam(want, "beta", "true")
 			}
 			if got := buildAnthropicMessagesURL(tt.baseURL); got != want {
 				t.Errorf("buildAnthropicMessagesURL(%q) = %q, want %q", tt.baseURL, got, want)

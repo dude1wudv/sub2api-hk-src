@@ -14,7 +14,7 @@
           <div class="key-group-list">
             <button v-for="group in filteredGroups" :key="group.id" type="button" class="key-group-card" :class="{ selected: isSelected(group.id) }" :aria-pressed="isSelected(group.id)" :disabled="form.smart && (form.routing.includes(group.id) || form.routing.length >= 10)" :data-group-id="group.id" @click="selectGroup(group.id)">
               <span class="key-radio" aria-hidden="true">{{ isSelected(group.id) ? '✓' : '+' }}</span>
-              <span class="key-group-copy"><strong>{{ group.name }} <span v-if="group.is_new" class="key-new">NEW</span></strong><span v-if="group.description" class="key-description">{{ group.description }}</span><small v-if="group.subscription_type === 'subscription'">{{ text('订阅分组', 'Subscription group') }}</small></span>
+              <span class="key-group-copy"><strong><span class="group-health-dot" :data-health="groupHealth[group.id] ?? 'unknown'" :title="text(healthLabels[groupHealth[group.id] ?? 'unknown'][0], healthLabels[groupHealth[group.id] ?? 'unknown'][1])" :aria-label="text(healthLabels[groupHealth[group.id] ?? 'unknown'][0], healthLabels[groupHealth[group.id] ?? 'unknown'][1])" role="img" />{{ group.name }} <span v-if="group.is_new" class="key-new">NEW</span></strong><span v-if="group.description" class="key-description">{{ group.description }}</span><small v-if="group.subscription_type === 'subscription'">{{ text('订阅分组', 'Subscription group') }}</small></span>
               <span class="key-group-rate"><span>{{ text('分组倍率', 'Group rate') }} <b>{{ rate(group) }}×</b></span><small v-if="hasUserRate(group)">{{ text('专属倍率', 'Your rate') }}</small><small v-if="group.peak_rate_enabled">{{ peakText(group) }}</small></span>
             </button>
             <p v-if="!filteredGroups.length" class="key-empty">{{ text('没有匹配的可用分组', 'No matching groups') }}</p>
@@ -61,8 +61,9 @@
   </PortalDialog>
 </template>
 <script setup lang="ts">
+import { useGroupHealth } from '@/composables/useGroupHealth'
 import { userFacingError } from '@/utils/userFacingError'
-import { computed, reactive, ref, useId, watch } from 'vue'
+import { computed, reactive, ref, toRef, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PortalDialog from './PortalDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -73,6 +74,8 @@ import { isSmartRoutingGroup } from '@/utils/smartRouting'
 import { getKeyGroupProvider, type KeyGroupProvider } from '@/utils/keyGroupProviders'
 import type { ApiKey, Group } from '@/types'
 const props = withDefaults(defineProps<{ open: boolean; editing: ApiKey | null; groups: Group[]; selectedGroup?: number; groupRates?: Record<number, number> }>(), { groupRates: () => ({}) })
+const groupHealth = useGroupHealth(toRef(props, 'open'))
+const healthLabels = { healthy: ['正常', 'Healthy'], warning: ['降级', 'Degraded'], critical: ['异常', 'Critical'], unknown: ['暂无近期数据', 'No recent data'] } as const
 const emit = defineEmits<{ close: []; saved: [key: ApiKey] }>()
 const formId = useId()
 const { locale } = useI18n()
@@ -155,6 +158,10 @@ async function submit() {
 }
 </script>
 <style scoped>
+.group-health-dot { display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; background:rgb(var(--ink-3)); }
+.group-health-dot[data-health="healthy"] { background:rgb(var(--text-ok)); }
+.group-health-dot[data-health="warning"] { background:rgb(var(--text-warn)); }
+.group-health-dot[data-health="critical"] { background:rgb(var(--text-err)); }
 @media (min-width: 1024px), (min-width: 768px) and (min-height: 501px), (min-width: 768px) and (pointer: fine) { :global(dialog.portal-dialog.wide:has(.key-editor)) { width: min(1120px, calc(var(--visual-width, 100vw) - 48px)); max-width:1120px; padding:0; } }
 :global(dialog.portal-dialog:has(.key-editor) > .portal-dialog-header) { margin:0; padding:22px 28px; border-bottom:1px solid rgb(var(--line)); }
 .key-editor { color:rgb(var(--ink)); background:rgb(var(--surface-elevated)); }

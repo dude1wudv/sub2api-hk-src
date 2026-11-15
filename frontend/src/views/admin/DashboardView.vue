@@ -110,6 +110,12 @@
           </div>
         </div>
 
+        <div data-metric="user-balance" class="card p-4">
+          <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ zh ? '用户余额' : 'User balance' }}</p>
+          <p class="metric-value tabular-nums">${{ formatCost(stats.users_with_balance_total) }}</p>
+          <p class="text-xs text-gray-500 dark:text-dark-300">{{ stats.users_with_balance ?? 0 }} {{ zh ? '个用户有余额（包含赠送余额）' : 'users hold a balance (including credits)' }}</p>
+        </div>
+
         <!-- Row 2: Token Stats -->
         <div class="dashboard-section-heading"><h2>{{ zh ? '消耗与性能' : 'Consumption & performance' }}</h2></div>
         <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">

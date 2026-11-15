@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/urljoin"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -176,7 +177,7 @@ func nativeAnthropicMessagesURL(account *Account, validatedBaseURL string) strin
 	if account.routesByModel() {
 		return buildOpenAIEndpointURL(validatedBaseURL, "/v1/messages")
 	}
-	return strings.TrimRight(validatedBaseURL, "/") + "/v1/messages"
+	return urljoin.APIPath(validatedBaseURL, "/v1/messages")
 }
 
 func resolveMappedUpstreamModel(account *Account, body []byte, defaultMappedModel string) string {
@@ -309,17 +310,17 @@ func (s *OpenAIGatewayService) handleNativeAnthropicBufferedResponse(
 	c.Data(resp.StatusCode, contentType, body)
 
 	return &OpenAIForwardResult{
-		RequestID:        resp.Header.Get("x-request-id"),
-		UpstreamHeaders:  resp.Header,
-		Usage:            claudeUsageToOpenAIUsage(usage),
+		RequestID:          resp.Header.Get("x-request-id"),
+		UpstreamHeaders:    resp.Header,
+		Usage:              claudeUsageToOpenAIUsage(usage),
 		ChatAuxiliaryUsage: chatNativeAuxiliaryUsage(ctx, account, body),
-		Model:            originalModel,
-		BillingModel:     billingModel,
-		UpstreamModel:    upstreamModel,
-		UpstreamEndpoint: "/v1/messages",
-		Stream:           false,
-		ReasoningEffort:  reasoningEffort,
-		Duration:         time.Since(startTime),
+		Model:              originalModel,
+		BillingModel:       billingModel,
+		UpstreamModel:      upstreamModel,
+		UpstreamEndpoint:   "/v1/messages",
+		Stream:             false,
+		ReasoningEffort:    reasoningEffort,
+		Duration:           time.Since(startTime),
 	}, nil
 }
 
@@ -372,7 +373,9 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 	usage := &ClaudeUsage{}
 	auxiliaryUsage := chatNativeAuxiliaryUsage(ctx, account, nil)
 	defer func() {
-		if result != nil { result.ChatAuxiliaryUsage = auxiliaryUsage }
+		if result != nil {
+			result.ChatAuxiliaryUsage = auxiliaryUsage
+		}
 	}()
 	var outputUsage anthropicStreamOutputUsage
 	var firstTokenMs *int

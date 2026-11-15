@@ -466,6 +466,9 @@ func openAICompatibleAccountEligibilityFailureReasonBeforeProfit(ctx context.Con
 	if requestedModel != "" && !supportsOpenAIRequestModel(account, requestedModel, requireCompact) {
 		return "model_not_supported"
 	}
+	if !deepSeekSuiteAccountAllowed(ctx, account) {
+		return "deepseek_suite_not_allowed"
+	}
 	if requiredCapability == OpenAIEndpointCapabilityDeepSeekTools && !account.DeepSeekToolsAllowedForGroup(deepSeekToolsSchedulingGroup(ctx)) {
 		return "deepseek_tools_group_not_allowed"
 	}

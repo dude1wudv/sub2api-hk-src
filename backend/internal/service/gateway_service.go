@@ -1482,7 +1482,9 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 	// If no account has model_mapping, return nil (use default)
 	if !hasAnyMapping && platform == PlatformOpenAI {
 		models := filterRetiredOpenAIModelIDs(accounts, openai.DefaultModelIDs())
-		if len(models) != len(openai.DefaultModels) {
+		withoutSuite := len(models)
+		models = appendDeepSeekSuiteAudioModels(accounts, groupID, models)
+		if len(models) != len(openai.DefaultModels) || len(models) != withoutSuite {
 			return models
 		}
 	}
@@ -1499,6 +1501,7 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 	for model := range modelSet {
 		models = append(models, model)
 	}
+	models = appendDeepSeekSuiteAudioModels(accounts, groupID, models)
 	sort.Strings(models)
 
 	if platform == PlatformOpenAI {

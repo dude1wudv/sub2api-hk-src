@@ -32,6 +32,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai_compat"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/urljoin"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"github.com/Wei-Shaw/sub2api/internal/util/urlvalidator"
 	"github.com/gin-gonic/gin"
@@ -558,7 +559,7 @@ func (s *AccountTestService) testDeepSeekAccountConnection(c *gin.Context, accou
 		if validationErr != nil {
 			return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", validationErr.Error()))
 		}
-		apiURL = strings.TrimRight(baseURL, "/") + "/v1/messages"
+		apiURL = urljoin.APIPath(baseURL, "/v1/messages")
 		payload, payloadErr := createTestPayload(testModelID)
 		if payloadErr != nil {
 			return s.sendErrorAndEnd(c, "Failed to create test payload")
