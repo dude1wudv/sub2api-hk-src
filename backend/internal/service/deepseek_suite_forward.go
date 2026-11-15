@@ -226,8 +226,7 @@ func (s *OpenAIGatewayService) ForwardDeepSeekSuite(ctx context.Context, c *gin.
 		if in.Conversation {
 			observeDeepSeekConversation(payload, in.Kind, result, &ClaudeUsage{})
 		}
-		if response.StatusCode < 500 && !gjson.GetBytes(payload, "usage").IsObject() &&
-			!gjson.GetBytes(payload, "response.usage").IsObject() && gjson.GetBytes(payload, "page_count").Int() <= 0 {
+		if err == nil && response.StatusCode < 500 && !deepSeekSuiteHasMeterOrResource(payload) {
 			op.Status = "failed"
 		}
 		if err == nil && deepSeekSuiteRetryableRejection(response.StatusCode, payload) {

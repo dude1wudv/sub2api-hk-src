@@ -29,13 +29,17 @@ func deepSeekSuiteRetryableRejection(status int, body []byte) bool {
 	default:
 		return false
 	}
-	for _, field := range []string{"usage", "response.usage", "page_count", "duration",
+	return !deepSeekSuiteHasMeterOrResource(body)
+}
+
+func deepSeekSuiteHasMeterOrResource(body []byte) bool {
+	for _, field := range []string{"usage", "response.usage", "page_count", "pages_count", "duration", "duration_ms",
 		"num_chars", "id", "file_id", "server_tool_calls"} {
 		if gjson.GetBytes(body, field).Exists() {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 // The handler sends this ID through the ordinary scheduler and revalidates

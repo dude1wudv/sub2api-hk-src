@@ -21,9 +21,28 @@ func TestDeepSeekSuiteRetryOnlyUnmeteredRejections(t *testing.T) {
 	}
 	for _, raw := range []string{
 		`{"usage":{}}`, `{"response":{"usage":{"input_tokens":1}}}`,
-		`{"page_count":1}`, `{"duration":3}`, `{"id":"file-owned"}`, `{"num_chars":2}`,
+		`{"page_count":1}`, `{"pages_count":1}`, `{"duration":3}`, `{"duration_ms":1000}`,
+		`{"id":"file-owned"}`, `{"num_chars":2}`,
 	} {
 		require.False(t, deepSeekSuiteRetryableRejection(404, []byte(raw)))
+	}
+}
+
+func TestDeepSeekSuiteMeteredErrorRemainsPending(t *testing.T) {
+	for _, body := range []string{`{"error":"partial","duration_ms":1000}`, `{"error":"partial","pages_count":1}`} {
+		account := suiteTestAccount()
+		upstream := &deepSeekToolsUpstream{response: &http.Response{StatusCode: 400,
+			Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body))}}
+		svc := &OpenAIGatewayService{cfg: &config.Config{},
+			accountRepo: &deepSeekToolsAccountRepo{latest: account}, httpUpstream: upstream}
+		c, recorder := newDeepSeekToolsContext(nil)
+		op := &DeepSeekSuiteOperation{ID: "metered-rejection", Status: "started"}
+		result, _, err := svc.ForwardDeepSeekSuite(t.Context(), c, suiteTestKey(), account,
+			&DeepSeekSuiteInput{Kind: "search", Body: []byte(`{"query":"test"}`)}, op)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.NotEqual(t, "failed", op.Status, "metered errors must not discard durable reconciliation")
+		require.Equal(t, http.StatusBadRequest, recorder.Code)
 	}
 }
 
