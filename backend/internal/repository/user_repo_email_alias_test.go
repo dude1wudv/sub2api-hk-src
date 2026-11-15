@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/stretchr/testify/require"
@@ -120,7 +121,9 @@ func TestUserRepositoryCountUsersByEmailDomain(t *testing.T) {
 		Status:       service.StatusActive,
 	}
 	require.NoError(t, repo.Create(ctx, deleted))
-	require.NoError(t, repo.Delete(ctx, deleted.ID))
+	// This count fixture needs a soft-deleted row, not PostgreSQL's row-locking
+	// deletion transaction, which SQLite does not implement.
+	require.NoError(t, repo.client.User.UpdateOneID(deleted.ID).SetDeletedAt(time.Now()).Exec(ctx))
 
 	count, err := repo.CountUsersByEmailDomain(ctx, "custom.example")
 	require.NoError(t, err)

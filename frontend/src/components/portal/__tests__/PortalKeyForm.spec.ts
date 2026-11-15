@@ -4,6 +4,7 @@ import PortalKeyForm from '../PortalKeyForm.vue'
 
 const { update, create } = vi.hoisted(() => ({ update: vi.fn(), create: vi.fn() }))
 vi.mock('@/api/keys', () => ({ keysAPI: { update, create } }))
+vi.mock('@/api/channelMonitorV2', () => ({ getMatrix: vi.fn().mockResolvedValue({ items: [], coverage: { data_through: '', bucket_seconds: 60 } }) }))
 vi.mock('@/stores/onboarding', () => ({
   useOnboardingStore: () => ({ isCurrentStep: () => false, nextStep: vi.fn() }),
 }))

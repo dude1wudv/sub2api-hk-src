@@ -37,7 +37,7 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	defer func() { finishIncomplete(&forwardResult, &forwardErr) }()
 	if native, _ := ctx.Value(chatNativeContextKey{}).(*chatNativeRequest); native != nil && (native.extensions || len(native.files) > 0) {
 		model := upstreamRoutingModel(account, body, defaultMappedModel)
-		if account.Type != AccountTypeAPIKey || s.resolveUpstreamProtocolFor(ctx, account, APIProtocolAnthropic, model) != APIProtocolAnthropic || !(account.IsDeepseek() || strings.HasPrefix(strings.ToLower(model), "deepseek-")) {
+		if account.Type != AccountTypeAPIKey || s.resolveUpstreamProtocolFor(ctx, account, APIProtocolAnthropic, model) != APIProtocolAnthropic || (!account.IsDeepseek() && !strings.HasPrefix(strings.ToLower(model), "deepseek-")) {
 			return nil, ErrChatCapability
 		}
 	}

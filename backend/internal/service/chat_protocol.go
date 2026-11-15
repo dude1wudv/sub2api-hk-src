@@ -499,7 +499,7 @@ func (s *ChatService) executeChatTool(ctx context.Context, key *APIKey, run *Cha
 		return nil, ErrChatInvalid
 	}
 	kind, name := "", ""
-	input := map[string]any{}
+	var input map[string]any
 	switch call.Name {
 	case "chat_search":
 		if !options.Search || !caps.Search || caps.NativeSearch {
@@ -596,10 +596,10 @@ func appendChatToolRound(prepared *chatPreparedRequest, decoder *chatStreamDecod
 	for _, item := range blocks {
 		block := chatObject(item)
 		if block["type"] == "text" {
-			text.WriteString(chatString(block["text"]))
+			_, _ = text.WriteString(chatString(block["text"]))
 		}
 		if block["type"] == "thinking" {
-			thinking.WriteString(chatString(block["thinking"]))
+			_, _ = thinking.WriteString(chatString(block["thinking"]))
 		}
 	}
 	switch prepared.caps.Transport {

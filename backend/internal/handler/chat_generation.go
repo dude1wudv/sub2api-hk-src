@@ -83,12 +83,18 @@ func (h *ChatHandler) UploadAttachment(c *gin.Context) {
 	if !ok {
 		return
 	}
- var importID *uuid.UUID
- if c.Param("id") != "" {
-  id, ok := chatID(c); if !ok { return }
-  if _, err := h.service.GetImport(c.Request.Context(), owner, id); err != nil { chatError(c, err); return }
-  importID = &id
- }
+	var importID *uuid.UUID
+	if c.Param("id") != "" {
+		id, ok := chatID(c)
+		if !ok {
+			return
+		}
+		if _, err := h.service.GetImport(c.Request.Context(), owner, id); err != nil {
+			chatError(c, err)
+			return
+		}
+		importID = &id
+	}
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, service.ChatMaxFileBytes+(1<<20))
 	if err := c.Request.ParseMultipartForm(1 << 20); err != nil {
 		var large *http.MaxBytesError
@@ -99,7 +105,7 @@ func (h *ChatHandler) UploadAttachment(c *gin.Context) {
 		}
 		return
 	}
-	defer c.Request.MultipartForm.RemoveAll()
+	defer func() { _ = c.Request.MultipartForm.RemoveAll() }()
 	if len(c.Request.MultipartForm.File) != 1 || len(c.Request.MultipartForm.File["file"]) != 1 {
 		chatError(c, service.ErrChatInvalid)
 		return
@@ -115,8 +121,8 @@ func (h *ChatHandler) UploadAttachment(c *gin.Context) {
 		chatError(c, err)
 		return
 	}
-	defer source.Close()
- record, err := h.service.UploadAttachment(c.Request.Context(), owner, params["filename"], c.Request.FormValue("purpose"), source, header.Size, importID)
+	defer func() { _ = source.Close() }()
+	record, err := h.service.UploadAttachment(c.Request.Context(), owner, params["filename"], c.Request.FormValue("purpose"), source, header.Size, importID)
 	if err != nil {
 		chatError(c, err)
 		return
@@ -138,7 +144,7 @@ func (h *ChatHandler) DownloadAttachment(c *gin.Context) {
 		chatError(c, err)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	stat, err := file.Stat()
 	if err != nil {
 		chatError(c, err)

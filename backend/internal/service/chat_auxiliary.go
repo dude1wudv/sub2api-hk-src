@@ -147,7 +147,10 @@ func (s *OpenAIGatewayService) ForwardChatAuxiliaryJSON(ctx context.Context, c *
 	if _, err := s.validateUpstreamBaseURL("https://api.deepseek.com"); err != nil {
 		return nil, ErrChatAuxiliaryUnavailable
 	}
-	scope := ctx.Value(chatAuxiliaryContextKey{}).(*chatAuxiliaryScope)
+	scope, ok := ctx.Value(chatAuxiliaryContextKey{}).(*chatAuxiliaryScope)
+	if !ok || scope == nil {
+		return nil, ErrChatAuxiliaryUnavailable
+	}
 	result, err := s.forwardDeepSeekToolJSON(ctx, c, current, DeepSeekToolKind(kind), body, "https://api.deepseek.com/v1/tools/"+kind, "chat_auxiliary:"+scope.operationID.String())
 	if result != nil {
 		quantity := int64(result.BillableToolCalls)

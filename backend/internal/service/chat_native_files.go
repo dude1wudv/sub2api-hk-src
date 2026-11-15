@@ -41,7 +41,8 @@ func chatValidRemoteID(id string) bool {
 		return false
 	}
 	for _, c := range id {
-		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == '-') {
+		allowed := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == '-'
+		if !allowed {
 			return false
 		}
 	}
@@ -234,7 +235,7 @@ func (s *OpenAIGatewayService) uploadChatNativeFile(ctx context.Context, native 
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	target, err := s.chatNativeFilesURL(account)
 	if err != nil {
 		return "", err
@@ -259,7 +260,7 @@ func (s *OpenAIGatewayService) uploadChatNativeFile(ctx context.Context, native 
 	if err != nil {
 		return "", ErrChatRemoteFile
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return "", ErrChatRemoteFile
 	}
@@ -317,7 +318,7 @@ func (s *OpenAIGatewayService) deleteChatNativeFile(ctx context.Context, account
 	if err != nil {
 		return ErrChatRemoteFile
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode == http.StatusNotFound || response.StatusCode >= 200 && response.StatusCode < 300 {
 		return nil
 	}

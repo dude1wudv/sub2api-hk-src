@@ -620,7 +620,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		VideoPrice720P:                  videoPrice720P,
 		VideoPrice1080P:                 videoPrice1080P,
 		VideoModelPrices:                NormalizeVideoModelPrices(input.VideoModelPrices),
-		ChatModelPolicies:              CloneChatModelPolicies(input.ChatModelPolicies),
+		ChatModelPolicies:               CloneChatModelPolicies(input.ChatModelPolicies),
 		WebSearchPricePerCall:           webSearchPricePerCall,
 		SearchPricePer1k:                searchPricePer1k,
 		AudioRealtimePricePerMin:        audioRealtimePricePerMin,

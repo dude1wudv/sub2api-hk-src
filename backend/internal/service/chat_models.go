@@ -122,9 +122,10 @@ func (s *ChatModelService) catalogForGroup(ctx context.Context, userID int64, gr
 		return nil, err
 	}
 	platforms := []string{group.Platform}
-	if group.Platform == PlatformComposite {
+	switch group.Platform {
+	case PlatformComposite:
 		platforms = domain.CompositePrecedencePlatformIDs()
-	} else if group.Platform == PlatformAnthropic || group.Platform == PlatformGemini {
+	case PlatformAnthropic, PlatformGemini:
 		platforms = append(platforms, PlatformAntigravity)
 	}
 	candidates, err := s.accounts.ListModelAvailabilityCandidates(ctx, &group.ID, platforms, false)

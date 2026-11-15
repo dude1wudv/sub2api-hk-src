@@ -23,6 +23,7 @@ const app = vi.hoisted(() => ({
 vi.mock('@/api/keys', () => ({ keysAPI: { list: api.list } }))
 vi.mock('@/api/usage', () => ({ usageAPI: { getDashboardApiKeysUsage: usage.batch } }))
 vi.mock('@/api/groups', () => ({ userGroupsAPI: { getAvailable: api.groups, getUserGroupRates: api.rates } }))
+vi.mock('@/api/channelMonitorV2', () => ({ getMatrix: vi.fn().mockResolvedValue({ items: [], coverage: { data_through: '', bucket_seconds: 60 } }) }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => app }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ isSimpleMode: false }) }))
 vi.mock('@/composables/useClipboard', () => ({ useClipboard: () => ({ copyToClipboard: vi.fn() }) }))

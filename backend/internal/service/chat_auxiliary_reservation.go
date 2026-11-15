@@ -30,7 +30,7 @@ func (s *BillingCacheService) ReserveChatAuxiliary(ctx context.Context, user *Us
 		defer cancel(context.Canceled)
 		interval := res.ttl / 3
 		if interval < 10*time.Millisecond {
-			interval = 10*time.Millisecond
+			interval = 10 * time.Millisecond
 		}
 		timer := time.NewTicker(interval)
 		defer timer.Stop()

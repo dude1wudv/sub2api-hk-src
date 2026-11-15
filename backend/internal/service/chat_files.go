@@ -245,7 +245,7 @@ func chatValidateFile(source io.ReadSeeker, size int64, ext string) (string, err
 		if err != nil {
 			return "", ErrChatInvalid
 		}
-		defer gzipReader.Close()
+		defer func() { _ = gzipReader.Close() }()
 		reader = gzipReader
 	}
 	raw, err := io.ReadAll(io.LimitReader(reader, ChatMaxUserDataBytes+1))

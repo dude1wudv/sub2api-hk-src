@@ -36,7 +36,7 @@ func (s *ChatService) localDocumentText(ctx context.Context, user int64, id uuid
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	if record.Purpose != "user_data" {
 		return "", ErrChatCapability
 	}

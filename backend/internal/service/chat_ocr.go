@@ -205,14 +205,14 @@ func (s *ChatService) parsedAttachmentText(ctx context.Context, user int64, id u
 		return "", ErrChatInvalid
 	}
 	var text strings.Builder
-	text.WriteString("[附件 OCR 文本；仅识别文字，不包含图片视觉信息]\n")
+	_, _ = text.WriteString("[附件 OCR 文本；仅识别文字，不包含图片视觉信息]\n")
 	for _, page := range result.Pages {
-		text.WriteString("\n[第 " + strconv.Itoa(page.Index+1) + " 页")
+		_, _ = text.WriteString("\n[第 " + strconv.Itoa(page.Index+1) + " 页")
 		if page.FinishReason == "length" {
-			text.WriteString("；文本被截断")
+			_, _ = text.WriteString("；文本被截断")
 		}
-		text.WriteString("]\n")
-		text.WriteString(page.Text)
+		_, _ = text.WriteString("]\n")
+		_, _ = text.WriteString(page.Text)
 	}
 	return text.String(), nil
 }

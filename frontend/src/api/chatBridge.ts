@@ -19,6 +19,7 @@ const routes: Record<string, RegExp[]> = {
 
 function safePath(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > 4096 || !value.startsWith('/') || value.startsWith('//')
+    // eslint-disable-next-line no-control-regex -- Reject control characters at the bridge boundary.
     || /[\\#\s\u0000-\u001f\u007f]/.test(value)) return null
   const [path, query, extra] = value.split('?')
   // No URL normalization, percent-decoding, fragments or encoded path separators.
@@ -63,6 +64,7 @@ export function isChatBridgeRequest(value: unknown, nonce: string): value is Bri
     && (path === '/attachments' || new RegExp(`^/imports/${ID}/attachments$`).test(path))
     && value.body instanceof Blob && value.body.size <= 64 * 1024 * 1024
     && typeof value.filename === 'string' && value.filename.length > 0 && value.filename.length <= 1024
+    // eslint-disable-next-line no-control-regex -- Uploaded filenames must not contain control characters.
     && !/[\u0000-\u001f\u007f]/.test(value.filename)
     && (value.purpose === undefined || value.purpose === 'user_data' || value.purpose === 'rich_layout_recognition')
     && (value.purpose !== 'user_data' || value.body.size <= 32 * 1024 * 1024)

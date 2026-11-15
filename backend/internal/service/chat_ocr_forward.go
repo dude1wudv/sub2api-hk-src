@@ -57,7 +57,7 @@ func (s *OpenAIGatewayService) ForwardChatOCR(ctx context.Context, key *APIKey, 
 		knownFailure = true
 		return nil, nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	body, contentType, length, err := chatAttachmentMultipart(record, file, "text_recognition")
 	if err != nil {
 		knownFailure = true
@@ -83,7 +83,7 @@ func (s *OpenAIGatewayService) ForwardChatOCR(ctx context.Context, key *APIKey, 
 	if response == nil || response.Body == nil {
 		return nil, nil, ErrChatStream
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		knownFailure = true
 		return nil, nil, ErrChatStream

@@ -76,7 +76,8 @@ func TestChatAuxiliaryRedisLeaseDoesNotExpireOrResurrect(t *testing.T) {
 	server := miniredis.RunT(t)
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
-	cache := NewConcurrencyCache(client, 15, 900).(*concurrencyCache)
+	cache, ok := NewConcurrencyCache(client, 15, 900).(*concurrencyCache)
+	require.True(t, ok)
 	ctx := t.Context()
 	now := time.Unix(1_800_000_000, 0)
 	server.SetTime(now)
@@ -113,7 +114,8 @@ func TestChatAuxiliaryRedisKindLimits(t *testing.T) {
 		server := miniredis.RunT(t)
 		client := redis.NewClient(&redis.Options{Addr: server.Addr()})
 		t.Cleanup(func() { _ = client.Close() })
-		cache := NewConcurrencyCache(client, 15, 900).(*concurrencyCache)
+		cache, ok := NewConcurrencyCache(client, 15, 900).(*concurrencyCache)
+		require.True(t, ok)
 		limit := 50
 		if kind == "ocr" {
 			limit = 15

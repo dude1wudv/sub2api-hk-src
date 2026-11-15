@@ -61,7 +61,8 @@ func (s *OpenAIGatewayService) chatSpeechAccount(ctx context.Context, key *APIKe
 
 func chatSpeechResult(ctx context.Context, kind string, started time.Time, quantity *int64, status string) *OpenAIForwardResult {
 	usage, _ := chatAuxiliaryUsage(kind, quantity, status)
-	scope := ctx.Value(chatAuxiliaryContextKey{}).(*chatAuxiliaryScope)
+	// The scope has already been checked by chatSpeechAccount before forwarding.
+	scope, _ := ctx.Value(chatAuxiliaryContextKey{}).(*chatAuxiliaryScope)
 	return &OpenAIForwardResult{RequestID: "chat_auxiliary:" + scope.operationID.String(), Model: "deepseek-" + kind, UpstreamEndpoint: "/v1/tools/" + kind, Duration: time.Since(started), chatAuxiliaryOnly: true, ChatAuxiliaryUsage: usage}
 }
 
@@ -85,7 +86,7 @@ func (s *OpenAIGatewayService) ForwardChatASR(ctx context.Context, key *APIKey, 
 	if response == nil || response.Body == nil {
 		return nil, nil, ErrChatStream
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		return nil, nil, ErrChatStream
 	}
@@ -153,7 +154,7 @@ func (s *OpenAIGatewayService) ForwardChatTTS(ctx context.Context, c *gin.Contex
 	if err != nil {
 		return nil, err
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 	result = chatSpeechResult(ctx, "tts", started, &quantity, "incomplete")
 	result.Stream = true
 	defer func() {

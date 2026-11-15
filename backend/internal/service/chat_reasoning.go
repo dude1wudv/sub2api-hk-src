@@ -72,7 +72,11 @@ func applyChatReasoning(prepared *chatPreparedRequest, model string) {
 		prepared.body["max_tokens"] = budget + 8192
 	case "gemini":
 		if thinking := chatGeminiThinking(model, effort, prepared.options.Thinking); len(thinking) > 0 {
-			generation := prepared.body["generationConfig"].(map[string]any)
+			generation, ok := prepared.body["generationConfig"].(map[string]any)
+			if !ok || generation == nil {
+				generation = make(map[string]any)
+				prepared.body["generationConfig"] = generation
+			}
 			generation["thinkingConfig"] = thinking
 			if budget, ok := thinking["thinkingBudget"].(int); ok {
 				generation["maxOutputTokens"] = budget + 8192

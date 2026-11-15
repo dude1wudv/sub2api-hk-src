@@ -39,8 +39,9 @@ func TestPrepareUsageLogInsertServiceTierObservation(t *testing.T) {
 		}
 	}
 	absent := prepareUsageLogInsert(&service.UsageLog{})
-	require.Equal(t, []any{sql.NullString{}, sql.NullString{}, sql.NullBool{}}, absent.args[len(absent.args)-7:len(absent.args)-4])
-	require.Equal(t, false, absent.args[len(absent.args)-4], "output_tokens_estimated defaults to false")
+	index := usageLogInsertArgIndex(t, "requested_service_tier")
+	require.Equal(t, []any{sql.NullString{}, sql.NullString{}, sql.NullBool{}}, absent.args[index:index+3])
+	require.Equal(t, false, absent.args[usageLogInsertArgIndex(t, "output_tokens_estimated")], "output_tokens_estimated defaults to false")
 }
 
 func usageTierObservationBool(value bool) *bool { return &value }
