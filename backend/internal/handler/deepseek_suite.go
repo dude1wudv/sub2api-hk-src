@@ -202,16 +202,6 @@ func (h *OpenAIGatewayHandler) handleDeepSeekSuite(c *gin.Context, kind string, 
 	if input.Conversation {
 		requestedModel = model
 	}
-	selection, _, err := h.gatewayService.SelectAccountWithSchedulerForCapability(ctx, key.GroupID, "", "", requestedModel, nil,
-		service.OpenAIUpstreamTransportHTTPSSE, service.OpenAIEndpointCapabilityDeepSeekTools, false, false, false, key.Group.Platform)
-	if err != nil || selection == nil || selection.Account == nil {
-		h.errorResponse(c, 503, "api_error", "No enabled DeepSeek account supports this operation and group")
-		return
-	}
-	if selection.ReleaseFunc != nil {
-		selection.ReleaseFunc()
-	}
-	account := selection.Account
 	keyRelease, err := h.concurrencyHelper.AcquireAPIKeySlot(ctx, key.ID, key.ConcurrencyLimit)
 	if err != nil {
 		h.handleConcurrencyError(c, err, "API key", false)
@@ -226,84 +216,117 @@ func (h *OpenAIGatewayHandler) handleDeepSeekSuite(c *gin.Context, kind string, 
 	} else if input.Conversation {
 		slotKind = "search"
 	}
-	lease, err := h.concurrencyHelper.concurrencyService.AcquireChatAuxiliarySlots(ctx, subject.UserID, subject.Concurrency, account.ID, account.Concurrency, slotKind, 0)
-	if err != nil {
-		h.errorResponse(c, 429, "rate_limit_error", "DeepSeek concurrency limit reached")
-		return
-	}
-	defer lease.Release()
-	ctx = lease.Context()
-	c.Request = c.Request.WithContext(ctx)
-	if _, _, err := h.concurrencyHelper.concurrencyService.RevalidateAPIKeyQueueTurn(ctx); err != nil {
-		h.errorResponse(c, 403, "permission_error", "API key permissions changed")
-		return
-	}
-	freshKey, valid := deepSeekSuiteKey(c)
-	if !valid || freshKey.ID != key.ID || *freshKey.GroupID != *key.GroupID {
-		h.errorResponse(c, 403, "permission_error", "API key group changed")
-		return
-	}
-	key = freshKey
-	if (input.Conversation || audioCompat) && key.Group.ModelAllowlistEnabled() && !key.Group.ModelAllowlist.Allows(model) {
-		h.errorResponse(c, 404, "not_found_error", "Model is not allowed for this group")
-		return
-	}
-	account, err = h.gatewayService.DeepSeekSuiteAccount(ctx, key, account, kind)
-	if err != nil {
-		h.errorResponse(c, 503, "api_error", "DeepSeek capability or group permission changed")
-		return
-	}
-	setOpsSelectedAccount(c, account.ID, account.Platform, account.Name)
-	op, err := h.gatewayService.NewDeepSeekOperation(ctx, key, account, kind)
-	if err != nil {
-		h.errorResponse(c, 503, "api_error", "Durable DeepSeek operation storage is unavailable")
-		return
-	}
-	record := &service.OpenAIRecordUsageInput{APIKey: key, User: key.User, Account: account, Subscription: subscription,
-		InboundEndpoint: c.Request.URL.Path, UserAgent: c.GetHeader("User-Agent"), IPAddress: ip.GetClientIP(c),
-		SessionID: service.ExtractClientSessionID(c), RequestPayloadHash: service.HashUsageRequestPayload(input.Body),
-		APIKeyService: h.apiKeyService, QuotaPlatform: service.QuotaPlatform(ctx, key), PricingAt: started}
-	if err := h.gatewayService.SeedDeepSeekSuiteBilling(ctx, op, input, record); err != nil {
-		h.errorResponse(c, 503, "api_error", "DeepSeek billing could not be prepared")
-		return
-	}
-	c.Header("X-DeepSeek-Operation-ID", op.ID)
-	var payload []byte
-	if kind == "tts_ws" {
-		streamStarted = true
-		record.Result, err = h.gatewayService.ForwardDeepSeekTTSWebSocket(ctx, c, key, account, op, audit)
-	} else {
-		record.Result, payload, err = h.gatewayService.ForwardDeepSeekSuite(ctx, c, key, account, input, op)
-	}
-	forwardErr := err
-	persist, stopPersist := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
-	defer stopPersist()
-	if record.Result == nil || op.Status == "failed" {
-		if op.Status != "failed" {
-			op.Status = "unknown"
+	// One explicit fallback only; every attempt keeps its own durable receipt.
+	for attempt := 0; attempt < 2; attempt++ {
+		selection, _, err := h.gatewayService.SelectAccountWithSchedulerForCapability(ctx, key.GroupID, "", "", requestedModel, nil,
+			service.OpenAIUpstreamTransportHTTPSSE, service.OpenAIEndpointCapabilityDeepSeekTools, false, false, false, key.Group.Platform)
+		if err != nil || selection == nil || selection.Account == nil {
+			h.errorResponse(c, 503, "api_error", "No enabled DeepSeek account supports this operation and group")
+			return
 		}
-		repo, _ := h.gatewayService.DeepSeekSuiteRepository()
-		err = repo.SaveDeepSeekOperation(persist, op)
-	} else {
-		record.UpstreamEndpoint = record.Result.UpstreamEndpoint
-		err = h.gatewayService.CommitDeepSeekSuite(persist, op, record)
-	}
-	if err != nil {
-		reqLog.Error("deepseek_suite.persistence_pending", zap.String("operation_id", op.ID), zap.Error(err))
-	}
-	if err != nil || forwardErr != nil {
-		if !c.Writer.Written() {
-			h.errorResponse(c, 502, "upstream_error", "DeepSeek operation did not complete; its durable record will be reconciled")
+		if selection.ReleaseFunc != nil {
+			selection.ReleaseFunc()
 		}
-		return
-	}
-	if !c.Writer.Written() && payload != nil {
-		c.Header("X-DeepSeek-Metering-Status", op.Status)
-		if audioCompat && input.ResponseFormat == "text" {
-			c.Data(200, "text/plain; charset=utf-8", []byte(gjson.GetBytes(payload, "text").String()))
+		account := selection.Account
+		lease, err := h.concurrencyHelper.concurrencyService.AcquireChatAuxiliarySlots(ctx, subject.UserID, subject.Concurrency, account.ID, account.Concurrency, slotKind, 0)
+		if err != nil {
+			h.errorResponse(c, 429, "rate_limit_error", "DeepSeek concurrency limit reached")
+			return
+		}
+		defer lease.Release()
+		attemptCtx := lease.Context()
+		c.Request = c.Request.WithContext(attemptCtx)
+		if _, _, err := h.concurrencyHelper.concurrencyService.RevalidateAPIKeyQueueTurn(attemptCtx); err != nil {
+			h.errorResponse(c, 403, "permission_error", "API key permissions changed")
+			return
+		}
+		freshKey, valid := deepSeekSuiteKey(c)
+		if !valid || freshKey.ID != key.ID || *freshKey.GroupID != *key.GroupID {
+			h.errorResponse(c, 403, "permission_error", "API key group changed")
+			return
+		}
+		key = freshKey
+		if (input.Conversation || audioCompat) && key.Group.ModelAllowlistEnabled() && !key.Group.ModelAllowlist.Allows(model) {
+			h.errorResponse(c, 404, "not_found_error", "Model is not allowed for this group")
+			return
+		}
+		account, err = h.gatewayService.DeepSeekSuiteAccount(attemptCtx, key, account, kind)
+		if err != nil {
+			h.errorResponse(c, 503, "api_error", "DeepSeek capability or group permission changed")
+			return
+		}
+		setOpsSelectedAccount(c, account.ID, account.Platform, account.Name)
+		op, err := h.gatewayService.NewDeepSeekOperation(attemptCtx, key, account, kind)
+		if err != nil {
+			h.errorResponse(c, 503, "api_error", "Durable DeepSeek operation storage is unavailable")
+			return
+		}
+		record := &service.OpenAIRecordUsageInput{APIKey: key, User: key.User, Account: account, Subscription: subscription,
+			InboundEndpoint: c.Request.URL.Path, UserAgent: c.GetHeader("User-Agent"), IPAddress: ip.GetClientIP(c),
+			SessionID: service.ExtractClientSessionID(c), RequestPayloadHash: service.HashUsageRequestPayload(input.Body),
+			APIKeyService: h.apiKeyService, QuotaPlatform: service.QuotaPlatform(attemptCtx, key), PricingAt: started}
+		if err := h.gatewayService.SeedDeepSeekSuiteBilling(attemptCtx, op, input, record); err != nil {
+			h.errorResponse(c, 503, "api_error", "DeepSeek billing could not be prepared")
+			return
+		}
+		c.Header("X-DeepSeek-Operation-ID", op.ID)
+		var payload []byte
+		if kind == "tts_ws" {
+			streamStarted = true
+			record.Result, err = h.gatewayService.ForwardDeepSeekTTSWebSocket(attemptCtx, c, key, account, op, audit)
 		} else {
-			c.Data(200, "application/json", payload)
+			attemptInput := *input
+			attemptInput.Body = bytes.Clone(input.Body)
+			record.Result, payload, err = h.gatewayService.ForwardDeepSeekSuite(attemptCtx, c, key, account, &attemptInput, op)
 		}
+		forwardErr := err
+		persist, stopPersist := context.WithTimeout(context.WithoutCancel(attemptCtx), 30*time.Second)
+		defer stopPersist()
+		if record.Result == nil || op.Status == "failed" {
+			if op.Status != "failed" {
+				op.Status = "unknown"
+			}
+			repo, _ := h.gatewayService.DeepSeekSuiteRepository()
+			err = repo.SaveDeepSeekOperation(persist, op)
+		} else {
+			record.UpstreamEndpoint = record.Result.UpstreamEndpoint
+			err = h.gatewayService.CommitDeepSeekSuite(persist, op, record)
+		}
+		if err != nil {
+			reqLog.Error("deepseek_suite.persistence_pending", zap.String("operation_id", op.ID), zap.Error(err))
+		}
+		var rejection *service.DeepSeekSuiteRejectedError
+		if err == nil && errors.As(forwardErr, &rejection) && op.Status == "failed" && !c.Writer.Written() {
+			if fallbackID := account.DeepSeekSuiteFallbackAccountID(boundAccount); attempt == 0 && fallbackID > 0 {
+				lease.Release()
+				stopPersist()
+				reqLog.Info("deepseek_suite.failover", zap.Int64("account_id", account.ID), zap.Int64("fallback_account_id", fallbackID), zap.Int("status", rejection.StatusCode))
+				ctx = service.WithDeepSeekSuiteScope(ctx, kind, *key.GroupID, fallbackID)
+				c.Request = c.Request.WithContext(ctx)
+				continue
+			}
+			if len(rejection.Body) > 0 {
+				c.Data(rejection.StatusCode, "application/json", rejection.Body)
+			} else {
+				h.errorResponse(c, rejection.StatusCode, "upstream_error", "DeepSeek upstream rejected the operation")
+			}
+			return
+		}
+		if err != nil || forwardErr != nil {
+			if !c.Writer.Written() {
+				h.errorResponse(c, 502, "upstream_error", "DeepSeek operation did not complete; its durable record will be reconciled")
+			}
+			return
+		}
+		if !c.Writer.Written() && payload != nil {
+			c.Header("X-DeepSeek-Metering-Status", op.Status)
+			if audioCompat && input.ResponseFormat == "text" {
+				c.Data(200, "text/plain; charset=utf-8", []byte(gjson.GetBytes(payload, "text").String()))
+			} else {
+				c.Data(200, "application/json", payload)
+			}
+		}
+		return
 	}
 }
 

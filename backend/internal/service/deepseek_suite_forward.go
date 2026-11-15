@@ -221,7 +221,6 @@ func (s *OpenAIGatewayService) ForwardDeepSeekSuite(ctx context.Context, c *gin.
 		result.UpstreamModel = result.BillingModel
 	}
 	defer func() { result.Duration = time.Since(started) }()
-	writeOpenAIPassthroughResponseHeaders(c.Writer.Header(), response.Header, s.responseHeaderFilter)
 	if response.StatusCode >= 400 {
 		payload, err = readChatBounded(response.Body, 2<<20)
 		if in.Conversation {
@@ -231,9 +230,15 @@ func (s *OpenAIGatewayService) ForwardDeepSeekSuite(ctx context.Context, c *gin.
 			!gjson.GetBytes(payload, "response.usage").IsObject() && gjson.GetBytes(payload, "page_count").Int() <= 0 {
 			op.Status = "failed"
 		}
+		if err == nil && deepSeekSuiteRetryableRejection(response.StatusCode, payload) {
+			op.Status = "failed"
+			return result, nil, &DeepSeekSuiteRejectedError{StatusCode: response.StatusCode, Body: payload}
+		}
+		writeOpenAIPassthroughResponseHeaders(c.Writer.Header(), response.Header, s.responseHeaderFilter)
 		c.Data(response.StatusCode, "application/json", payload)
 		return result, nil, err
 	}
+	writeOpenAIPassthroughResponseHeaders(c.Writer.Header(), response.Header, s.responseHeaderFilter)
 	if in.Conversation && strings.Contains(response.Header.Get("Content-Type"), "text/event-stream") {
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")

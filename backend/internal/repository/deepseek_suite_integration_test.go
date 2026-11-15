@@ -95,6 +95,7 @@ func TestDeepSeekSuiteEnrollmentAndRollback(t *testing.T) {
 		(179,'suite179','deepseek','{"enabled":true,"models":["deepseek-flash"]}'),
 		(223,'suite223','openai','{"enabled":false}');
 		INSERT INTO accounts(id,name,platform,type,credentials,extra) VALUES
+		(882,'synthetic official auxiliary','openai','apikey','{"base_url":"https://api.deepseek.com"}','{"keep":true}'),
 		(1043,'synthetic全家桶','deepseek','apikey','{"base_url":"https://kedaya.ai/v1"}','{"keep":true}'),
 		(1181,'synthetic全家桶','deepseek','apikey','{"base_url":"https://vip.mdkj.lol/v1"}','{"keep":true}'),
 		(1112,'synthetic全家桶','openai','apikey','{"base_url":"https://kedaya.ai/v1"}','{"keep":true}'),
@@ -105,11 +106,19 @@ func TestDeepSeekSuiteEnrollmentAndRollback(t *testing.T) {
 	require.NoError(t, err)
 	_, err = conn.ExecContext(ctx, string(enroll))
 	require.NoError(t, err)
+	_, err = conn.ExecContext(ctx, string(enroll))
+	require.NoError(t, err, "enrollment is idempotent")
 	var extra string
 	require.NoError(t, conn.QueryRowContext(ctx, `SELECT extra::text FROM accounts WHERE id=1043`).Scan(&extra))
 	require.True(t, strings.Contains(extra, `"deepseek_suite_capabilities"`))
 	require.True(t, strings.Contains(extra, `"keep": true`))
+	require.Contains(t, extra, `"deepseek_suite_fallback_account_id": 1181`)
 	var count int
+	require.NoError(t, conn.QueryRowContext(ctx, `SELECT COUNT(*) FROM account_groups WHERE account_id=882 AND group_id IN (81,223)`).Scan(&count))
+	require.Equal(t, 2, count)
+	var name string
+	require.NoError(t, conn.QueryRowContext(ctx, `SELECT name FROM accounts WHERE id=882`).Scan(&name))
+	require.Equal(t, "synthetic official auxiliary 全家桶", name)
 	require.NoError(t, conn.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_outbox WHERE event_type='account_changed' AND account_id IN (1043,1181,1112,1182)`).Scan(&count))
 	require.GreaterOrEqual(t, count, 4)
 	rollback, err := os.ReadFile("../../../deploy/deepseek-suite-rollback-20261115.sql")
@@ -118,6 +127,10 @@ func TestDeepSeekSuiteEnrollmentAndRollback(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, conn.QueryRowContext(ctx, `SELECT extra::text FROM accounts WHERE id=1043`).Scan(&extra))
 	require.JSONEq(t, `{"keep":true}`, extra)
+	require.NoError(t, conn.QueryRowContext(ctx, `SELECT COUNT(*) FROM account_groups WHERE account_id=882`).Scan(&count))
+	require.Zero(t, count)
+	require.NoError(t, conn.QueryRowContext(ctx, `SELECT name FROM accounts WHERE id=882`).Scan(&name))
+	require.Equal(t, "synthetic official auxiliary", name)
 	var allowlist string
 	require.NoError(t, conn.QueryRowContext(ctx, `SELECT model_allowlist::text FROM groups WHERE id=81`).Scan(&allowlist))
 	require.JSONEq(t, `{"enabled":true,"models":["deepseek-flash"]}`, allowlist)

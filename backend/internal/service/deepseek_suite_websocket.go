@@ -75,7 +75,9 @@ func (s *OpenAIGatewayService) ForwardDeepSeekTTSWebSocket(ctx context.Context, 
 	// gateway bearer nor the client's credential-bearing subprotocol is copied.
 	upstream, err := dial(ctx, u.String(), http.Header{"Authorization": {"Bearer " + account.GetCredential("api_key")}}, resolveAccountProxyURL(account))
 	if err != nil {
-		return nil, err
+		// No client connection or text has been forwarded, so another provider
+		// can be tried without replaying speech or charging it twice.
+		return nil, &DeepSeekSuiteRejectedError{StatusCode: http.StatusBadGateway}
 	}
 	defer func() { _ = upstream.CloseNow() }()
 	client, err := coderws.Accept(c.Writer, c.Request, &coderws.AcceptOptions{

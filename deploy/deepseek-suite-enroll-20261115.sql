@@ -12,6 +12,16 @@ BEGIN
         OR (id IN (1181,1182) AND credentials->>'base_url' ~ '^https://vip[.]mdkj[.]lol(/|$)'))) <> 4 THEN
     RAISE EXCEPTION 'Enrollment identity/platform/label/provider preflight failed; inspect current configuration';
   END IF;
+  -- The user separately authorized the existing official auxiliary account.
+  -- Its shared chat configuration and credentials remain unchanged.
+  IF NOT EXISTS (SELECT 1 FROM accounts WHERE id=882 AND deleted_at IS NULL
+      AND type='apikey' AND platform='openai'
+      AND credentials->>'base_url'='https://api.deepseek.com'
+      AND (extra IS NULL OR jsonb_typeof(extra)='object')) OR EXISTS (
+        SELECT 1 FROM account_groups WHERE account_id=882 AND group_id NOT IN (81,223)
+      ) THEN
+    RAISE EXCEPTION 'Official auxiliary account identity or group membership changed';
+  END IF;
   IF EXISTS (
     SELECT 1 FROM (VALUES(1043,179),(1181,179),(1112,81),(1112,223),(1182,81),(1182,223)) AS required(account_id,group_id)
     WHERE NOT EXISTS (SELECT 1 FROM account_groups a WHERE a.account_id=required.account_id AND a.group_id=required.group_id)
@@ -37,8 +47,16 @@ SELECT 'account',id,jsonb_build_object(
   'has_scope',COALESCE(extra,'{}'::jsonb) ? 'deepseek_tools_group_ids',
   'scope',extra->'deepseek_tools_group_ids',
   'has_capabilities',COALESCE(extra,'{}'::jsonb) ? 'deepseek_suite_capabilities',
-  'capabilities',extra->'deepseek_suite_capabilities')
-FROM accounts WHERE id IN (1043,1181,1112,1182)
+  'capabilities',extra->'deepseek_suite_capabilities',
+  'has_fallback',COALESCE(extra,'{}'::jsonb) ? 'deepseek_suite_fallback_account_id',
+  'fallback',extra->'deepseek_suite_fallback_account_id',
+  'name',name)
+FROM accounts WHERE id IN (882,1043,1181,1112,1182)
+ON CONFLICT DO NOTHING;
+INSERT INTO hk_deepseek_suite_20261115_backup(entity,entity_id,original)
+SELECT 'official_membership',group_id,jsonb_build_object('existed',
+  EXISTS(SELECT 1 FROM account_groups a WHERE a.account_id=882 AND a.group_id=target.group_id))
+FROM (VALUES(81),(223)) AS target(group_id)
 ON CONFLICT DO NOTHING;
 INSERT INTO hk_deepseek_suite_20261115_backup(entity,entity_id,original)
 SELECT 'group',id,jsonb_build_object('model_allowlist',model_allowlist)
@@ -49,7 +67,13 @@ UPDATE accounts SET extra=COALESCE(extra,'{}'::jsonb)||jsonb_build_object(
   'deepseek_tools_group_ids',CASE WHEN id IN (1043,1181) THEN '[179]'::jsonb ELSE '[81,223]'::jsonb END,
   'deepseek_suite_capabilities','["search","fetch","ocr","asr","tts","tts_ws","files","chat","responses","messages"]'::jsonb),
   updated_at=NOW()
-WHERE id IN (1043,1181,1112,1182);
+WHERE id IN (882,1043,1181,1112,1182);
+
+UPDATE accounts SET extra=extra||jsonb_build_object('deepseek_suite_fallback_account_id',
+  CASE WHEN id=1043 THEN 1181 ELSE 1182 END),updated_at=NOW()
+WHERE id IN (1043,1112);
+UPDATE accounts SET name=name||' 全家桶',updated_at=NOW() WHERE id=882 AND name NOT LIKE '%全家桶%';
+INSERT INTO account_groups(account_id,group_id) VALUES(882,81),(882,223) ON CONFLICT DO NOTHING;
 
 -- Preserve the allowlist's enabled state and existing models. Native tools and
 -- Files are model-free; only OpenAI audio needs two discoverable model aliases.
@@ -63,7 +87,7 @@ WHERE id IN (81,179,223);
 INSERT INTO scheduler_outbox(event_type,account_id,payload)
 SELECT 'account_changed',id,jsonb_build_object('group_ids',
   COALESCE((SELECT jsonb_agg(group_id) FROM account_groups WHERE account_id=a.id),'[]'::jsonb))
-FROM accounts a WHERE id IN (1043,1181,1112,1182);
+FROM accounts a WHERE id IN (882,1043,1181,1112,1182);
 INSERT INTO scheduler_outbox(event_type,group_id)
 SELECT 'group_changed',id FROM groups WHERE id IN (81,179,223);
 SELECT enqueue_auth_cache_invalidation(key) FROM api_keys WHERE group_id IN (81,179,223) AND deleted_at IS NULL;
