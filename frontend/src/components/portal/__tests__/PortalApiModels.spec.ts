@@ -213,6 +213,51 @@ describe('PortalApiModels pricing display', () => {
     wrapper.unmount()
   })
 
+  it.each([
+    ['call', 0.005, '/ call'],
+    ['page', 0.0015, '/ page'],
+    ['hour', 0.78, '/ hour (billed per second)'],
+    ['10k_characters', 3, '/ 10k billable characters'],
+  ] as const)('keeps independent %s tools at their original price and labels their meter', async (unit, price, label) => {
+    const model = { ...group.models[0], name: `deepseek-${unit}`, pricing: {
+      ...group.models[0].pricing, billing_mode: 'per_request', per_request_price: price,
+      rate_independent: true, metered_unit: unit,
+    } }
+    const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, rate_multiplier: 0.3, user_rate_multiplier: 0.1, models: [model] }], selectedGroupId: 1 } })
+    const row = wrapper.get('.portal-api-model-row')
+    expect(row.text()).toContain(label)
+    expect(row.text()).toContain('Independent rate ×1')
+    expect(row.find('.portal-model-price-adjusted').exists()).toBe(false)
+    await row.get('.portal-api-model-name').trigger('click')
+    const summary = wrapper.get('.portal-api-price-summary')
+    expect(summary.text()).toContain('Effective multiplier×1 (independent rate)')
+    expect(summary.text()).not.toContain('User-specific rate')
+    expect(summary.text()).not.toContain('Replaces the default group multiplier')
+    expect(wrapper.get('.portal-api-detail-table').text()).toContain(label)
+    expect(wrapper.get('.portal-api-detail-table').find('.portal-model-price-adjusted').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('keeps mobile independent tool prices and metering consistent with their details', async () => {
+    const matchMedia = window.matchMedia
+    vi.spyOn(window, 'matchMedia').mockImplementation(query => ({ ...matchMedia(query), matches: query === MOBILE_CONTENT_QUERY }))
+    const model = { ...group.models[0], name: 'deepseek-tts', pricing: {
+      ...group.models[0].pricing, billing_mode: 'per_request', per_request_price: 3,
+      rate_independent: true, metered_unit: '10k_characters',
+    } }
+    const wrapper = mount(PortalApiModels, { props: { groups: [{ ...group, rate_multiplier: 0.3, user_rate_multiplier: 0.1, models: [model] }], selectedGroupId: 1 } })
+    const card = wrapper.get('.portal-model-card')
+    expect(card.text()).toContain('$3.00 / 10k billable characters')
+    expect(card.text()).toContain('Independent rate ×1')
+    expect(card.find('.portal-model-price-adjusted').exists()).toBe(false)
+    await card.get('.portal-api-model-name').trigger('click')
+    const detail = wrapper.get('.portal-api-price-detail')
+    expect(detail.text()).toContain('Price / 10k billable characters')
+    expect(detail.text()).not.toContain('Replaces the default group multiplier')
+    expect(detail.find('.portal-model-price-adjusted').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('shows scroll controls only when the connection list overflows and updates at each edge', async () => {
     const wrapper = mount(PortalApiModels, { props: { groups: [group], selectedGroupId: 1 } })
     const nav = wrapper.get('.portal-api-group-nav')

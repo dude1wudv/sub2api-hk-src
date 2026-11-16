@@ -60,7 +60,7 @@
               <dl v-else-if="model.pricing.billing_mode === 'token'" class="portal-price-fields">
                 <div v-for="field in summaryTokenFields" :key="field"><dt>{{ fieldLabel(field) }}</dt><dd><PortalModelPrice v-bind="rangePrice(model, field)" /><template v-if="field === 'cache_write_price'"><template v-for="duration in cacheDurations" :key="duration.field"><PortalModelPrice v-if="hasCacheDuration(model, duration.field)" v-bind="rangePrice(model, duration.field)" :caption="duration.label" /></template></template></dd></div>
               </dl>
-              <dl v-else class="portal-price-fields"><div><dt>{{ billingLabel(model) }}<span v-if="independentMediaRate(model)"> · {{ text('独立倍率', 'Independent rate') }} ×{{ effectiveRate(model) }}</span></dt><dd><PortalModelPrice v-bind="rangePrice(model, 'per_request_price')" :unit="unitLabel(model)" /></dd></div></dl>
+              <dl v-else class="portal-price-fields"><div><dt>{{ billingLabel(model) }}<span v-if="independentRate(model)"> · {{ text('独立倍率', 'Independent rate') }} ×{{ effectiveRate(model) }}</span></dt><dd><PortalModelPrice v-bind="rangePrice(model, 'per_request_price')" :unit="unitLabel(model)" /></dd></div></dl>
             </article>
           </section>
           <p v-if="!visiblePlatforms.length" class="portal-api-model-empty">{{ emptyMessage }}</p>
@@ -87,7 +87,7 @@
                     </template>
                   </td>
                 </template>
-                <td v-else colspan="4"><span class="portal-api-media-label">{{ billingLabel(model) }}<span v-if="independentMediaRate(model)"> · {{ text('独立倍率', 'Independent rate') }} ×{{ effectiveRate(model) }}</span></span><PortalModelPrice v-bind="rangePrice(model, 'per_request_price')" :unit="unitLabel(model)" /></td>
+                <td v-else colspan="4"><span class="portal-api-media-label">{{ billingLabel(model) }}<span v-if="independentRate(model)"> · {{ text('独立倍率', 'Independent rate') }} ×{{ effectiveRate(model) }}</span></span><PortalModelPrice v-bind="rangePrice(model, 'per_request_price')" :unit="unitLabel(model)" /></td>
               </tr>
             </tbody>
             <tbody v-if="!visiblePlatforms.length"><tr><td colspan="5" class="portal-api-model-empty"><Icon name="search" size="lg" /><p>{{ emptyMessage }}</p></td></tr></tbody>
@@ -111,8 +111,8 @@
           <dl class="portal-api-price-summary">
             <div><dt>{{ text('接入分组', 'Group') }}</dt><dd>{{ selectedGroup.name }}</dd></div>
             <div><dt>{{ text('计费方式', 'Billing mode') }}</dt><dd>{{ billingLabel(detailModel) }}</dd></div>
-            <div><dt>{{ text('生效倍率', 'Effective multiplier') }}</dt><dd>{{ effectiveRate(detailModel) == null ? '—' : '×' + effectiveRate(detailModel) }} <span v-if="independentMediaRate(detailModel)">{{ text('（独立媒体倍率）', '(independent media rate)') }}</span></dd></div>
-            <div v-if="selectedGroup.user_rate_multiplier != null && !independentMediaRate(detailModel)"><dt>{{ text('用户专属倍率', 'User-specific rate') }}</dt><dd>{{ text('已使用专属倍率替代分组默认倍率', 'Replaces the default group multiplier') }} ×{{ selectedGroup.rate_multiplier }}</dd></div>
+            <div><dt>{{ text('生效倍率', 'Effective multiplier') }}</dt><dd>{{ effectiveRate(detailModel) == null ? '—' : '×' + effectiveRate(detailModel) }} <span v-if="independentRate(detailModel)">{{ text('（独立倍率）', '(independent rate)') }}</span></dd></div>
+            <div v-if="selectedGroup.user_rate_multiplier != null && !independentRate(detailModel)"><dt>{{ text('用户专属倍率', 'User-specific rate') }}</dt><dd>{{ text('已使用专属倍率替代分组默认倍率', 'Replaces the default group multiplier') }} ×{{ selectedGroup.rate_multiplier }}</dd></div>
           </dl>
           <p>{{ text('主价为未乘倍率的原价，标记价已应用当前生效倍率，均按标准时段展示；图片、视频仅展示原价。— 表示未提供单价，0 表示免费。', 'Main prices are base prices before multipliers; badges apply the effective rate for the standard period. Images and videos show base prices only. — means unpriced; 0 means free.') }}</p>
           <p v-if="detailModel.pricing.billing_mode === 'token'">{{ text('单位：USD / 1M tokens。缓存写入按 5 分钟、1 小时及 12 小时分别列出；未配置价格显示 —。', 'Unit: USD / 1M tokens. Cache writes are listed for 5m, 1h and 12h; unconfigured prices show —.') }}</p>
@@ -275,13 +275,15 @@ function scrollConnections(direction: number) {
 useResizeObserver(groupNav, updateGroupScroll)
 watch([groupNav, visibleConnections], updateGroupScroll, { flush: 'post' })
 
-function independentMediaRate(model: PlazaModel) {
-  return (model.pricing?.billing_mode === 'image' && selectedGroup.value?.image_rate_independent === true)
+function independentRate(model: PlazaModel) {
+  return model.pricing?.rate_independent === true
+    || (model.pricing?.billing_mode === 'image' && selectedGroup.value?.image_rate_independent === true)
     || (model.pricing?.billing_mode === 'video' && selectedGroup.value?.video_rate_independent === true)
 }
 function effectiveRate(model: PlazaModel): number | null {
   const group = selectedGroup.value
   if (!group) return null
+  if (model.pricing?.rate_independent) return 1
   const rate = model.pricing?.billing_mode === 'image' && group.image_rate_independent
     ? group.image_rate_multiplier ?? 1
     : model.pricing?.billing_mode === 'video' && group.video_rate_independent
@@ -323,6 +325,13 @@ function hasCacheDuration(model: PlazaModel, field: 'cache_write_1h_price' | 'ca
   return pricingTiers(model).some(tier => tier[field] != null)
 }
 function billingLabel(model: PlazaModel) {
+  const meteredLabels: Record<string, string> = {
+    call: text('按次', 'Per call'),
+    page: text('按页', 'Per page'),
+    hour: text('按小时（按秒计）', 'Per hour (billed per second)'),
+    '10k_characters': text('按万计费字符', 'Per 10k billable characters'),
+  }
+  if (model.pricing?.metered_unit && meteredLabels[model.pricing.metered_unit]) return meteredLabels[model.pricing.metered_unit]
   const mode = model.pricing?.billing_mode
   if (mode === 'token') return text('按 Token', 'Per token')
   if (mode === 'image') return text('按图片', 'Per image')
@@ -330,6 +339,13 @@ function billingLabel(model: PlazaModel) {
   return text('按请求', 'Per request')
 }
 function unitLabel(model: PlazaModel) {
+  const meteredLabels: Record<string, string> = {
+    call: text('/ 次', '/ call'),
+    page: text('/ 页', '/ page'),
+    hour: text('/ 小时（按秒计）', '/ hour (billed per second)'),
+    '10k_characters': text('/ 万计费字符', '/ 10k billable characters'),
+  }
+  if (model.pricing?.metered_unit && meteredLabels[model.pricing.metered_unit]) return meteredLabels[model.pricing.metered_unit]
   return model.pricing?.billing_mode === 'image' ? text('/ 张', '/ image') : text('/ 次', '/ request')
 }
 function tierLabel(tier: UserPricingInterval) {

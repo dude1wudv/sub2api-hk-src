@@ -152,3 +152,55 @@ func TestDeepSeekSuiteEveryNativeMeterIgnoresGroupRate(t *testing.T) {
 		}
 	}
 }
+
+func TestDeepSeekTextDiscountInheritsChannelAcrossAliases(t *testing.T) {
+	aliases := []string{"deepseek-flash", "deepseek-pro", "deepseek-v4.1-flash-1017",
+		"deepseek-v4-pro-0813", "deepseek/deepseek-v4.1-flash-fast", "deepseek-v9-pro-2099"}
+	group := &Group{ID: 179, Platform: PlatformDeepseek, RateMultiplier: .3,
+		ModelPricing: []ChannelModelPricing{{Models: []string{"deepseek-search"}, RateIndependent: true,
+			BillingMode: BillingModePerRequest, PerRequestPrice: testPtrFloat64(.005)}}}
+	channel := Channel{ID: 27, Status: StatusActive, RestrictModels: true, GroupIDs: []int64{179},
+		ModelPricing: []ChannelModelPricing{{Platform: PlatformDeepseek, Models: aliases,
+			InputPrice: testPtrFloat64(2e-6), OutputPrice: testPtrFloat64(8e-6), CacheReadPrice: testPtrFloat64(4e-8),
+			TimePricing: &ChannelTimePricing{Timezone: "UTC", Periods: []ChannelTimePricingPeriod{
+				{StartTime: "01:00:00", EndTime: "04:00:00", Multiplier: 2},
+			}}}}}
+	cs := newTestChannelService(makeStandardRepo(channel, map[int64]string{179: PlatformDeepseek}))
+	bs := newTestBillingService()
+	resolver := NewModelPricingResolver(cs, bs)
+	for _, model := range aliases {
+		for _, rate := range []float64{0, .03, .3, .4, 1} {
+			for _, hour := range []int{2, 12} {
+				cost, err := bs.CalculateCostUnified(CostInput{
+					Ctx: t.Context(), Model: model, Group: group, GroupID: &group.ID,
+					Tokens:         UsageTokens{InputTokens: 1000, OutputTokens: 200, CacheReadTokens: 100},
+					RateMultiplier: rate, Resolver: resolver, PricingAt: time.Date(2026, 11, 16, hour, 0, 0, 0, time.UTC),
+				})
+				require.NoError(t, err, model)
+				base := .003604
+				if hour == 2 {
+					base *= 2
+				}
+				require.InDelta(t, base, cost.TotalCost, 1e-12, model)
+				require.InDelta(t, base*rate, cost.ActualCost, 1e-12, model)
+				require.Equal(t, rate, groupModelRateMultiplier(group, model, rate))
+			}
+		}
+	}
+	require.Equal(t, 1.0, groupModelRateMultiplier(group, "deepseek-search", .3))
+	estimate := newInflightEstimateGateway(t, cs)
+	key := &APIKey{User: &User{ID: 7}, GroupID: &group.ID, Group: group}
+	for _, model := range aliases {
+		group.RateMultiplier = 1
+		full, priced := estimate.EstimateInflightReservation(t.Context(), key, InflightEstimateRequest{
+			Model: model, BodyBytes: 4000, MaxTokens: 200,
+		})
+		require.True(t, priced)
+		group.RateMultiplier = .3
+		discounted, priced := estimate.EstimateInflightReservation(t.Context(), key, InflightEstimateRequest{
+			Model: model, BodyBytes: 4000, MaxTokens: 200,
+		})
+		require.True(t, priced)
+		require.InDelta(t, full*.3, discounted, 1e-12, model)
+	}
+}

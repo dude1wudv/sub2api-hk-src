@@ -33,13 +33,44 @@ class SuitePricingTests(unittest.TestCase):
         result = group_candidate(group, channel)["model_pricing"]
         self.assertEqual(result[0], group["model_pricing"][0])
         flash = price_for(result, "deepseek", "deepseek-flash")
-        self.assertTrue(flash["rate_independent"])
-        self.assertNotIn("input_price", flash)
+        self.assertIsNone(flash, "text prices and schedules must come from the channel")
         for model, (unit, amount) in NATIVE.items():
             price = price_for(result, "deepseek", model)
             self.assertEqual(price["metered_unit"], unit)
             self.assertEqual(price["per_request_price"], amount)
             self.assertTrue(price["rate_independent"])
+
+    def test_remove_previous_rate_only_text_cards_including_channel_aliases(self):
+        channel = self.channel()
+        aliases = ["deepseek-pro", "deepseek-v4-pro-0813", "deepseek-v4.1-flash-2099"]
+        channel["model_pricing"][0]["models"].extend(aliases)
+        channel = channel_candidate(channel, ["openai"])
+        group = {"platform": "openai", "model_pricing": [
+            {"platform": "openai", "models": ["deepseek-flash", *aliases],
+             "billing_mode": "token", "rate_independent": True,
+             "input_price": None, "output_price": None, "intervals": []}
+        ]}
+        before = copy.deepcopy(group)
+        result = group_candidate(group, channel)["model_pricing"]
+        self.assertEqual(group, before)
+        for model in ("deepseek-flash", *aliases):
+            self.assertIsNone(price_for(result, "openai", model))
+        self.assertEqual(len(result), len(NATIVE))
+        self.assertEqual(group_candidate({**group, "model_pricing": result}, channel)["model_pricing"],
+                         result, "repeated enrollment must not restore independent text rates")
+
+    def test_preserve_explicit_text_prices_including_zero_and_unrelated_cards(self):
+        channel = channel_candidate(self.channel(), ["openai"])
+        for amount in (0, 3e-6):
+            entry = {"platform": "openai", "models": ["deepseek-flash"],
+                     "billing_mode": "token", "rate_independent": True, "input_price": amount}
+            group = {"platform": "openai", "model_pricing": [
+                entry, {"platform": "openai", "models": ["other-model"], "rate_independent": True}
+            ]}
+            result = group_candidate(group, channel)["model_pricing"]
+            expected = {k: v for k, v in entry.items() if k != "rate_independent"}
+            self.assertEqual(result[0], expected)
+            self.assertEqual(result[1], group["model_pricing"][1])
 
     def test_no_guessed_token_price(self):
         with self.assertRaisesRegex(RuntimeError, "missing canonical"):

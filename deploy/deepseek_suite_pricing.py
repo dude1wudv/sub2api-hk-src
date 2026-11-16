@@ -1,7 +1,7 @@
-"""HK-only, additive suite pricing enrollment. Private snapshots stay on HK.
+"""HK-only suite pricing enrollment. Private snapshots stay on HK.
 
 Usage: python3 deepseek_suite_pricing.py RELEASE_DIR EXPECTED_SHA [rollback]
-Run after the application supports group rate_independent price cards.
+Native tools use independent list prices; text tokens retain group/user rates.
 Only groups 81/179/223 and their existing channels 1/27 are touched.
 """
 import copy
@@ -119,20 +119,33 @@ def group_candidate(original, channel):
     for p in channel["model_pricing"]:
         if p.get("platform") == platform and p.get("billing_mode") in ("token", "", None):
             tokens.update(m for m in p["models"] if m.lower().startswith(("deepseek-", "deepseek/")))
-    remaining = set(tokens)
+    restored = []
     for entry in prices:
         owned = set(entry["models"]) & (tokens | NATIVE.keys())
         if not owned:
+            restored.append(entry)
             continue
         if owned != set(entry["models"]):
             raise RuntimeError("mixed owned/unowned group price card; split explicitly before enrollment")
-        entry["rate_independent"] = True
-        remaining.difference_update(owned)
-    if remaining:
-        # Empty price values intentionally inherit the current channel rates,
-        # including its own time schedule and future operator price changes.
-        prices.append({"platform": platform, "models": sorted(remaining),
-                       "billing_mode": "token", "rate_independent": True, "intervals": []})
+        if owned & tokens and owned & NATIVE.keys():
+            raise RuntimeError("mixed text/native group price card; split explicitly before enrollment")
+        if owned <= tokens:
+            if entry.get("billing_mode") not in ("token", "", None):
+                raise RuntimeError("text model has non-token group pricing")
+            entry.pop("rate_independent", None)
+            # The old enrollment created empty, rate-only text cards. Remove
+            # those cards entirely: merely setting the flag false would shadow
+            # the channel's prices and schedule with global fallback prices.
+            metadata = {"id", "channel_id", "created_at", "updated_at", "sort_order",
+                        "platform", "models", "billing_mode"}
+            if not any(value is not None and value is not False and value != ""
+                       and value != [] and value != {}
+                       for key, value in entry.items() if key not in metadata):
+                continue
+        else:
+            entry["rate_independent"] = True
+        restored.append(entry)
+    prices = restored
     for model, (unit, amount) in NATIVE.items():
         entry = price_for(prices, platform, model)
         if entry is None:
@@ -246,14 +259,19 @@ def main():
     result = {"sha": expected, "finished_at": dt.datetime.now(dt.timezone.utc).isoformat(),
               "groups": {}, "native_prices": NATIVE, "applied": applied,
               "token_prices": "inherited from existing channel cards",
-              "customer_multiplier": 1}
+              "native_customer_multiplier": 1,
+              "token_customer_multiplier": "existing group/user rate"}
     for gid, (cid, platform) in SCOPES.items():
         channel = call("channels", cid)
         group = call("groups", gid)
         models = sorted(set(token_models(platform)) | set(NATIVE))
         for model in models:
             assert price_for(channel["model_pricing"], platform, model) is not None
-            assert price_for(group["model_pricing"], platform, model)["rate_independent"] is True
+            price = price_for(group["model_pricing"], platform, model)
+            if model in NATIVE:
+                assert price["rate_independent"] is True
+            else:
+                assert price is None or not price.get("rate_independent", False)
         result["groups"][str(gid)] = {"platform": platform, "channel_id": cid,
                                      "checked_models": models, "missing_pricing": [],
                                      "group_rate_unchanged": group["rate_multiplier"]}
