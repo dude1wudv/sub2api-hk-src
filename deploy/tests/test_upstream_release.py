@@ -91,10 +91,14 @@ class UpstreamReleaseTests(unittest.TestCase):
                        check=True, capture_output=True)
         try:
             for _ in range(60):
-                if subprocess.run(['docker', 'exec', name, 'pg_isready', '-U', 'postgres'],
+                # The entrypoint's temporary initialization server only listens
+                # on a Unix socket and shuts down before the final TCP server.
+                if subprocess.run(['docker', 'exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'],
                                   capture_output=True).returncode == 0:
                     break
                 time.sleep(.5)
+            else:
+                self.fail('PostgreSQL TCP server did not become ready')
             def query(text):
                 return subprocess.check_output(sql + ['-c', text], text=True).strip()
             query('CREATE TABLE bills(id BIGSERIAL PRIMARY KEY, amount NUMERIC NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now())')
