@@ -25,7 +25,7 @@ import urllib.parse
 COMPOSE = Path('/opt/sub2api/docker-compose.yml')
 RELEASES = Path('/opt/sub2api-deploy')
 REMOTE = 'ssh://git@gh-sub2api-hk-src/dude1wudv/sub2api-hk-src.git'
-DOMAINS = ('patrickapi.microedulab.com', 'sub.sunmmyapi.xyz', 'cf.sunmmyapi.xyz')
+DOMAINS = ('patrickapi.microedulab.com', 'sub.sunmmyapi.xyz')
 MODEL = 'deepseek-v4.1-flash'
 CHECKS = ('stream_saved', 'second_browser_cloud_history', 'edit_regenerate_branches',
           'stop_partial_no_duplicate_billing', 'manual_group_and_compact_picker',
