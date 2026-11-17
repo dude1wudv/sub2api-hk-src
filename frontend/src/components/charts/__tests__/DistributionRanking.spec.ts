@@ -72,12 +72,37 @@ describe('shared distribution ranking', () => {
       expect(region.attributes('aria-label')).toBe(name === 'endpoints' ? 'usage.endpointDistribution' : `admin.dashboard.${name === 'models' ? 'model' : 'group'}Distribution`)
       expect(region.find('table').exists()).toBe(true)
       expect(region.find('.chart-stub').exists()).toBe(false)
-      expect(region.findAll('thead th')).toHaveLength(name === 'endpoints' ? 5 : 6)
+      expect(region.findAll('thead th')).toHaveLength(6)
       await region.get('tbody tr').trigger('click')
       await flushPromises()
       expect(region.getComponent(UserBreakdownSubTable).text()).toContain(email)
-      expect(region.getComponent(UserBreakdownSubTable).findAll('td')).toHaveLength(name === 'endpoints' ? 5 : 6)
+      expect(region.getComponent(UserBreakdownSubTable).findAll('td')).toHaveLength(6)
       expect(wrapper.findAll('[role="region"]')).toHaveLength(1)
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
+  it.each([true, false])('keeps endpoint headers, cells, layout and breakdown aligned when showAccountCost=%s', async (showAccountCost) => {
+    const columns = showAccountCost ? 6 : 5
+    const wrapper = mount(EndpointDistributionChart, {
+      props: {
+        endpointStats: values.map((value, index) => ({ ...value, endpoint: `/v1/endpoint-${index}` })),
+        showAccountCost,
+        metric: 'actual_cost',
+      },
+      global: { stubs: { UserBreakdownSubTable: true } },
+    })
+    try {
+      expect(wrapper.getComponent(DistributionChartLayout).props('columns')).toBe(columns)
+      expect(wrapper.findAll('thead th')).toHaveLength(columns)
+      expect(wrapper.get('tbody tr').findAll('td')).toHaveLength(columns)
+      await wrapper.get('tbody tr').trigger('click')
+      await flushPromises()
+      expect(wrapper.get('td[colspan]').attributes('colspan')).toBe(String(columns))
+      expect(wrapper.getComponent(UserBreakdownSubTable).props()).toMatchObject({
+        showAccountCost, metric: 'actual_cost',
+      })
     } finally {
       wrapper.unmount()
     }

@@ -49,16 +49,16 @@ func TestGetByKeyForAuthCarriesGroupForceOpenAIUltrafast(t *testing.T) {
 	ctx := context.Background()
 	suffix := time.Now().UnixNano()
 	group := mustCreateGroup(t, integrationEntClient, &service.Group{
-		Name: fmt.Sprintf("fast-proj-group-%d", suffix), Platform: service.PlatformOpenAI,
+		Name: fmt.Sprintf("ultrafast-proj-group-%d", suffix), Platform: service.PlatformOpenAI,
 		RateMultiplier: 1, ForceOpenAIUltrafast: true, FreeOpenAIUltrafast: true,
 	})
 	user := mustCreateUser(t, integrationEntClient, &service.User{
-		Email: fmt.Sprintf("fast-proj-%d@example.com", suffix), Concurrency: 5,
+		Email: fmt.Sprintf("ultrafast-proj-%d@example.com", suffix), Concurrency: 5,
 	})
 	groupID := group.ID
-	keyValue := fmt.Sprintf("sk-fast-proj-%d", suffix)
+	keyValue := fmt.Sprintf("sk-ultrafast-proj-%d", suffix)
 	apiKeyRepo := NewAPIKeyRepository(integrationEntClient, integrationDB)
-	key := &service.APIKey{UserID: user.ID, GroupID: &groupID, Key: keyValue, Name: "fast-proj", Status: service.StatusActive}
+	key := &service.APIKey{UserID: user.ID, GroupID: &groupID, Key: keyValue, Name: "ultrafast-proj", Status: service.StatusActive}
 	require.NoError(t, apiKeyRepo.Create(ctx, key))
 	t.Cleanup(func() {
 		_, err := integrationDB.ExecContext(ctx, "DELETE FROM auth_cache_invalidation_outbox WHERE cache_key = encode(sha256(convert_to($1, 'UTF8')), 'hex')", keyValue)
@@ -76,4 +76,5 @@ func TestGetByKeyForAuthCarriesGroupForceOpenAIUltrafast(t *testing.T) {
 	require.NotNil(t, got.Group)
 	require.True(t, got.Group.ForceOpenAIUltrafast)
 	require.True(t, got.Group.FreeOpenAIUltrafast)
+	require.False(t, got.Group.ForceOpenAIFast)
 }

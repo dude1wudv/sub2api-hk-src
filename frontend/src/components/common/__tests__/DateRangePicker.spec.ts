@@ -111,7 +111,7 @@ describe('DateRangePicker', () => {
     popup.querySelector<HTMLButtonElement>('.date-picker-preset')!.click()
     await nextTick()
     expect(trigger.attributes('aria-expanded')).toBe('true')
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    popup.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
     expect(trigger.attributes('aria-expanded')).toBe('false')
     expect(document.activeElement).toBe(trigger.element)

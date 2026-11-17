@@ -2,7 +2,7 @@
 
 Fast 使用 `service_tier: "priority"`（客户端 `fast` 别名会被归一化）；Ultra Fast 使用 `service_tier: "ultrafast"`。两者适用于 OpenAI HTTP 请求及 WebSocket 每个 `response.create`。
 
-OpenAI / Composite 分组可分别配置强制 Fast、强制 Ultra Fast。分组强制优先于全局 Fast/Flex 档位策略；同时开启时 Ultra Fast 优先。非档位的安全校验和模型准入仍生效。保存后新 HTTP 请求生效；已有 WebSocket 连接须重连以获取最新分组快照。
+OpenAI / Composite 分组可分别配置强制 Fast、强制 Ultra Fast。分组强制优先于全局 Fast/Flex 档位策略；Ultra Fast 仅对归一化后的 GPT-6 Astra、GPT-6.1 Sol 生效；同时开启时，这些模型优先使用 Ultra Fast，其他模型使用 Fast。仅开启强制 Ultra Fast 时，其他模型沿用客户端和全局策略。非档位的安全校验和模型准入仍生效。保存后新 HTTP 请求生效；已有 WebSocket 连接须重连以获取最新分组快照。
 
 OpenAI Fast 默认按同一请求 Standard Token 价格的 2.5 倍计算，Ultra Fast 默认 8 倍。分组和渠道定价支持各自独立的 `fast_multiplier`、`ultrafast_multiplier`；未配置时使用默认值，显式配置必须为正数。命中的分组模型价卡整体优先于渠道，该卡档位倍率留空时回默认值，不继承渠道倍率；倍率不重复叠加。非 OpenAI 模型沿用原有 Fast 价格规则。
 

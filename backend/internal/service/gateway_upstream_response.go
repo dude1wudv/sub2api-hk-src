@@ -383,14 +383,12 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 	// Print a compact upstream request fingerprint when we hit the Claude Code OAuth
 	// credential scope error. This avoids requiring env-var tweaks in a fixed deploy.
 	if isClaudeCodeCredentialScopeError(upstreamMsg) && c != nil {
-		if v, ok := c.Get(claudeMimicDebugInfoKey); ok {
-			if line, ok := v.(string); ok && strings.TrimSpace(line) != "" {
-				logger.LegacyPrintf("service.gateway", "[ClaudeMimicDebugOnError] status=%d request_id=%s %s",
-					resp.StatusCode,
-					resp.Header.Get("x-request-id"),
-					line,
-				)
-			}
+		if line := claudeMimicDebugLineFromContext(c); strings.TrimSpace(line) != "" {
+			logger.LegacyPrintf("service.gateway", "[ClaudeMimicDebugOnError] status=%d request_id=%s %s",
+				resp.StatusCode,
+				resp.Header.Get("x-request-id"),
+				line,
+			)
 		}
 	}
 
@@ -456,7 +454,7 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 		if IsUpstreamErrorProtectionEnabled(c) {
 			WriteProtectedUpstreamError(c, resp.StatusCode)
 		} else {
-			c.JSON(status, gin.H{"type": "error", "error": gin.H{"type": errType, "message": errMsg}})
+			writeGatewayErrorResponse(c, status, errType, errMsg)
 		}
 
 		summary := upstreamMsg
@@ -477,6 +475,16 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 	case 400:
 		if IsUpstreamErrorProtectionEnabled(c) {
 			WriteProtectedUpstreamError(c, resp.StatusCode)
+		} else if gatewaySSEStarted(c) {
+			errType := strings.TrimSpace(gjson.GetBytes(body, "error.type").String())
+			if errType == "" {
+				errType = "invalid_request_error"
+			}
+			message := upstreamMsg
+			if message == "" {
+				message = "Upstream rejected the request"
+			}
+			writeGatewayErrorResponse(c, http.StatusBadRequest, errType, message)
 		} else {
 			c.Data(http.StatusBadRequest, "application/json", body)
 		}
@@ -505,6 +513,13 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 		errType = "overloaded_error"
 		errMsg = "Upstream service overloaded, please retry later"
 	case 500, 502, 503, 504:
+		// Bedrock 内容过滤是请求级的确定性结果，按请求错误返回，客户端不应原样重试。
+		if account.IsBedrock() && isBedrockContentFilterError(resp.StatusCode, body) && upstreamMsg != "" {
+			statusCode = http.StatusBadRequest
+			errType = "invalid_request_error"
+			errMsg = upstreamMsg
+			break
+		}
 		statusCode = http.StatusBadGateway
 		errType = "upstream_error"
 		errMsg = "Upstream service temporarily unavailable"
@@ -515,13 +530,7 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 	}
 
 	// 返回自定义错误响应
-	c.JSON(statusCode, gin.H{
-		"type": "error",
-		"error": gin.H{
-			"type":    errType,
-			"message": errMsg,
-		},
-	})
+	writeGatewayErrorResponse(c, statusCode, errType, errMsg)
 
 	if upstreamMsg == "" {
 		return nil, fmt.Errorf("upstream error: %d", resp.StatusCode)
@@ -574,14 +583,12 @@ func (s *GatewayService) handleRetryExhaustedError(ctx context.Context, resp *ht
 	upstreamMsg = sanitizeUpstreamErrorMessage(upstreamMsg)
 
 	if isClaudeCodeCredentialScopeError(upstreamMsg) && c != nil {
-		if v, ok := c.Get(claudeMimicDebugInfoKey); ok {
-			if line, ok := v.(string); ok && strings.TrimSpace(line) != "" {
-				logger.LegacyPrintf("service.gateway", "[ClaudeMimicDebugOnError] status=%d request_id=%s %s",
-					resp.StatusCode,
-					resp.Header.Get("x-request-id"),
-					line,
-				)
-			}
+		if line := claudeMimicDebugLineFromContext(c); strings.TrimSpace(line) != "" {
+			logger.LegacyPrintf("service.gateway", "[ClaudeMimicDebugOnError] status=%d request_id=%s %s",
+				resp.StatusCode,
+				resp.Header.Get("x-request-id"),
+				line,
+			)
 		}
 	}
 
@@ -629,7 +636,7 @@ func (s *GatewayService) handleRetryExhaustedError(ctx context.Context, resp *ht
 		if IsUpstreamErrorProtectionEnabled(c) {
 			WriteProtectedUpstreamError(c, resp.StatusCode)
 		} else {
-			c.JSON(status, gin.H{"type": "error", "error": gin.H{"type": errType, "message": errMsg}})
+			writeGatewayErrorResponse(c, status, errType, errMsg)
 		}
 
 		summary := upstreamMsg
@@ -643,18 +650,35 @@ func (s *GatewayService) handleRetryExhaustedError(ctx context.Context, resp *ht
 	}
 
 	// 返回统一的重试耗尽错误响应
-	c.JSON(http.StatusBadGateway, gin.H{
-		"type": "error",
-		"error": gin.H{
-			"type":    "upstream_error",
-			"message": "Upstream request failed after retries",
-		},
-	})
+	writeGatewayErrorResponse(c, http.StatusBadGateway, "upstream_error", "Upstream request failed after retries")
 
 	if upstreamMsg == "" {
 		return nil, fmt.Errorf("upstream error: %d (retries exhausted)", resp.StatusCode)
 	}
 	return nil, fmt.Errorf("upstream error: %d (retries exhausted) message=%s", resp.StatusCode, upstreamMsg)
+}
+
+func gatewaySSEStarted(c *gin.Context) bool {
+	return c != nil && c.Writer != nil && c.Writer.Written() && strings.HasPrefix(strings.ToLower(c.Writer.Header().Get("Content-Type")), "text/event-stream")
+}
+
+// A concurrency or user-message queue may have already flushed a keepalive.
+// In that case the HTTP status is fixed, and a JSON body would be lost by SSE clients.
+func writeGatewayErrorResponse(c *gin.Context, status int, errType, message string) {
+	payload := gin.H{
+		"type": "error",
+		"error": gin.H{
+			"type":    errType,
+			"message": message,
+		},
+	}
+	if gatewaySSEStarted(c) {
+		MarkOpsStreamError(c, errType, message, status)
+		c.SSEvent("error", payload)
+		c.Writer.Flush()
+		return
+	}
+	c.JSON(status, payload)
 }
 
 // streamingResult 流式响应结果
@@ -855,6 +879,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	}
 
 	needModelReplace := originalModel != mappedModel
+	clientModel := compositeClientModel(ctx, "")
 	clientDisconnected := false // 客户端断开标志，断开后继续读取上游以获取完整usage
 	sawTerminalEvent := false
 	defer func() {
@@ -887,8 +912,8 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 				eventName = strings.TrimSpace(strings.TrimPrefix(trimmed, "event:"))
 				continue
 			}
-			if dataLine == "" && sseDataRe.MatchString(trimmed) {
-				dataLine = sseDataRe.ReplaceAllString(trimmed, "")
+			if dataLine == "" && strings.HasPrefix(trimmed, "data:") {
+				dataLine = strings.TrimLeft(strings.TrimPrefix(trimmed, "data:"), " \t\n\f\r")
 			}
 		}
 
@@ -914,8 +939,10 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			return []string{block}, dataLine, nil, nil
 		}
 
+		dataLineBytes := []byte(dataLine)
+
 		var event map[string]any
-		if err := json.Unmarshal([]byte(dataLine), &event); err != nil {
+		if err := json.Unmarshal(dataLineBytes, &event); err != nil {
 			// JSON 解析失败，直接透传原始数据
 			block := ""
 			if eventName != "" {
@@ -1009,6 +1036,14 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 				}
 			}
 		}
+		if clientModel != "" && eventType == "message_start" {
+			if msg, ok := event["message"].(map[string]any); ok {
+				if _, ok := msg["model"].(string); ok {
+					msg["model"] = clientModel
+					eventChanged = true
+				}
+			}
+		}
 
 		usagePatch := s.extractSSEUsagePatch(event)
 		if anthropicStreamEventIsTerminal(eventName, dataLine) {
@@ -1050,8 +1085,8 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			data := ""
 			for _, line := range pendingEventLines {
 				trimmed := strings.TrimSpace(line)
-				if sseDataRe.MatchString(trimmed) {
-					data = sseDataRe.ReplaceAllString(trimmed, "")
+				if strings.HasPrefix(trimmed, "data:") {
+					data = strings.TrimLeft(strings.TrimPrefix(trimmed, "data:"), " \t\n\f\r")
 					break
 				}
 			}
@@ -1070,8 +1105,8 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 		}
 		for _, block := range outputBlocks {
 			if !clientDisconnected {
-				restored := reverseToolNamesIfPresent(c, []byte(block))
-				if _, werr := fmt.Fprint(w, string(restored)); werr != nil {
+				restored := reverseToolNamesIfPresentString(c, block)
+				if _, werr := io.WriteString(w, restored); werr != nil {
 					clientDisconnected = true
 					_ = resp.Body.Close()
 					logger.LegacyPrintf("service.gateway", "Client disconnected during streaming, closing upstream and keeping received usage")
@@ -1504,6 +1539,7 @@ func (s *GatewayService) handleNonStreamingResponse(ctx context.Context, resp *h
 	if originalModel != mappedModel {
 		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 	}
+	body = restoreCompositeClientModel(ctx, body)
 
 	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 

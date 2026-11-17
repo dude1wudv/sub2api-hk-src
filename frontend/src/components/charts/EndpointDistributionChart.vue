@@ -72,7 +72,7 @@
       <LoadingSpinner />
     </div>
     <DistributionChartLayout v-else-if="displayEndpointStats.length > 0 && chartData"
-      :table-label="title || t('usage.endpointDistribution')" :columns="5"
+      :table-label="title || t('usage.endpointDistribution')" :columns="showAccountCost ? 6 : 5"
     >
       <template #chart>
         <Doughnut :data="chartData" :options="doughnutOptions" />
@@ -84,6 +84,7 @@
               <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.requests') }}</th>
               <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.tokens') }}</th>
               <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.actual') }}</th>
+              <th v-if="showAccountCost" class="pb-2 text-right font-medium">{{ t('admin.dashboard.accountCost') }}</th>
               <th class="pb-2 text-right font-medium">{{ t('admin.dashboard.standard') }}</th>
             </tr>
           </thead>
@@ -111,17 +112,20 @@
                 <td class="py-1.5 text-right font-mono font-medium tabular-nums text-primary-700 dark:text-primary-300">
                   ${{ formatCost(item.actual_cost) }}
                 </td>
+                <td v-if="showAccountCost" class="py-1.5 text-right font-mono tabular-nums text-amber-600 dark:text-amber-400">
+                  ${{ formatCost(item.account_cost ?? 0) }}
+                </td>
                 <td class="py-1.5 text-right font-mono tabular-nums text-gray-400 dark:text-dark-400">
                   ${{ formatCost(item.cost) }}
                 </td>
               </tr>
               <tr v-if="expandedKey === item.endpoint">
-                <td colspan="5" class="p-0">
+                <td :colspan="showAccountCost ? 6 : 5" class="p-0">
                   <UserBreakdownSubTable
                     :items="breakdownItems"
                     :loading="breakdownLoading"
                     :metric="metric"
-                    :show-account-cost="false"
+                    :show-account-cost="showAccountCost"
                   />
                 </td>
               </tr>
@@ -168,6 +172,7 @@ const props = withDefaults(
     showMetricToggle?: boolean
     showSourceToggle?: boolean
     enableBreakdown?: boolean
+    showAccountCost?: boolean
     startDate?: string
     endDate?: string
     filters?: Record<string, any>
@@ -181,7 +186,8 @@ const props = withDefaults(
     source: 'inbound',
     showMetricToggle: false,
     showSourceToggle: false,
-    enableBreakdown: true
+    enableBreakdown: true,
+    showAccountCost: true
   }
 )
 

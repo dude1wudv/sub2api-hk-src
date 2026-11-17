@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -11,11 +12,27 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 type openAICompactFallbackSignal struct {
 	payload []byte
 	message string
+}
+
+type openAICompactClientTier struct {
+	raw         string
+	unavailable bool
+}
+
+func snapshotOpenAICompactClientTier(body []byte) openAICompactClientTier {
+	raw := parseRawJSONView(body).Get("service_tier").Raw
+	// Official tiers are short scalars. Do not retain the ingress buffer or
+	// duplicate an arbitrary client JSON object just to enable an optional retry.
+	if len(raw) > 128 {
+		return openAICompactClientTier{unavailable: true}
+	}
+	return openAICompactClientTier{raw: strings.Clone(raw)}
 }
 
 func (e *openAICompactFallbackSignal) Error() string {
@@ -240,19 +257,21 @@ func (s *OpenAIGatewayService) appendOpenAICompactFallbackRetryOps(
 
 // prepareOpenAICompactFallbackRetry returns a body for one safe, same-account
 // retry. Callers invoke it only before any downstream response has been
-// written; it changes the model and deliberately leaves path, trigger, and
-// native-v2 context state untouched.
+// written; it changes the model and reevaluates its tier policy from the
+// original client tier, leaving path, trigger and native-v2 state untouched.
 func (s *OpenAIGatewayService) prepareOpenAICompactFallbackRetry(
+	ctx context.Context,
 	c *gin.Context,
 	account *Account,
 	requestedModel string,
 	currentBody []byte,
+	clientServiceTier openAICompactClientTier,
 	statusCode int,
 	upstreamMsg string,
 	upstreamBody []byte,
 	alreadyRetried bool,
 ) ([]byte, string, bool) {
-	if alreadyRetried || !isExplicitOpenAICompactRequest(c, currentBody) ||
+	if alreadyRetried || clientServiceTier.unavailable || !isExplicitOpenAICompactRequest(c, currentBody) ||
 		!isOpenAICompactModelFailure(statusCode, upstreamMsg, upstreamBody) {
 		return currentBody, "", false
 	}
@@ -265,14 +284,33 @@ func (s *OpenAIGatewayService) prepareOpenAICompactFallbackRetry(
 	if strings.EqualFold(strings.TrimSpace(gjson.GetBytes(retryBody, "model").String()), currentModel) {
 		return currentBody, "", false
 	}
+	// A forced Ultra tier from the first model must not leak to an unsupported
+	// fallback. Restore the client's original JSON value (including absence),
+	// then apply the same trusted-group and global policy as an initial send.
+	var err error
+	if clientServiceTier.raw == "" {
+		retryBody, err = sjson.DeleteBytes(retryBody, "service_tier")
+	} else {
+		retryBody, err = sjson.SetRawBytes(retryBody, "service_tier", []byte(clientServiceTier.raw))
+	}
+	if err != nil {
+		return currentBody, "", false
+	}
+	retryBody, err = s.applyOpenAIFastPolicyToBody(ctx, account, fallbackModel, retryBody)
+	if err != nil {
+		// Keep the original rejection rather than sending a policy-blocked retry.
+		return currentBody, "", false
+	}
 	return retryBody, fallbackModel, true
 }
 
 func (s *OpenAIGatewayService) applyOpenAIPassthroughCompactFallbackFromSignal(
+	ctx context.Context,
 	c *gin.Context,
 	account *Account,
 	requestedModel string,
 	body []byte,
+	clientServiceTier openAICompactClientTier,
 	err error,
 	alreadyRetried bool,
 	resp *http.Response,
@@ -282,7 +320,7 @@ func (s *OpenAIGatewayService) applyOpenAIPassthroughCompactFallbackFromSignal(
 		return body, "", false
 	}
 	retryBody, fallbackModel, retry := s.prepareOpenAICompactFallbackRetry(
-		c, account, requestedModel, body, http.StatusBadRequest, signal.message, signal.payload, alreadyRetried,
+		ctx, c, account, requestedModel, body, clientServiceTier, http.StatusBadRequest, signal.message, signal.payload, alreadyRetried,
 	)
 	if !retry {
 		return body, "", false

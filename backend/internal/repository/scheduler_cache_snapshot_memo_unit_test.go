@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
@@ -977,4 +978,61 @@ func TestSchedulerCacheSnapshotMemoCoalescesBackgroundGlobalRevisionWrites(t *te
 
 func ptrAccount(account service.Account) *service.Account {
 	return &account
+}
+
+func TestSchedulerCacheSnapshotMemoVersionChangeWaitsForReload(t *testing.T) {
+	ctx := context.Background()
+	cache, _, _ := newSchedulerCacheMemoUnit(t, defaultSchedulerSnapshotWriteChunkSize)
+	clock := &memoTestClock{now: time.Date(2026, 10, 20, 8, 0, 0, 0, time.UTC)}
+	cache.now = clock.Now
+	bucket := memoTestBucket(128)
+	account := memoTestAccount(153, "old")
+	memoPublish(t, cache, bucket, account)
+	require.Equal(t, "old", memoRead(t, cache, bucket)[0].Name)
+
+	// A revision change is visible synchronously even when the cached entry has expired.
+	clock.Advance(schedulerSnapshotCacheMaxAge)
+	account.Name = "new"
+	require.NoError(t, cache.SetAccount(ctx, &account))
+	require.Equal(t, "new", memoRead(t, cache, bucket)[0].Name)
+}
+
+func TestSchedulerCacheSnapshotMemoReloadRedecodesMastersAfterRuntimeMappingChange(t *testing.T) {
+	ctx := context.Background()
+	cache, _, _ := newSchedulerCacheMemoUnit(t, defaultSchedulerSnapshotWriteChunkSize)
+	bucket := memoTestBucket(134)
+	changed := memoTestAccount(167, "b")
+	memoPublish(t, cache, bucket, memoTestAccount(166, "a"), changed)
+	memoRead(t, cache, bucket)
+	before := cache.lookupSnapshotEntry(bucket.String())
+	require.True(t, before.accounts[0].SharedSnapshotCurrent())
+
+	xai.SetRuntimeModelMappingOptions(xai.RuntimeModelMappingOptions())
+	require.False(t, before.accounts[0].SharedSnapshotCurrent())
+	changed.Name = "b2"
+	require.NoError(t, cache.SetAccount(ctx, &changed))
+	memoRead(t, cache, bucket)
+	after := cache.lookupSnapshotEntry(bucket.String())
+	require.NotSame(t, before.accounts[0], after.accounts[0], "a master prepared under an older runtime mapping version is decoded again")
+	require.True(t, after.accounts[0].SharedSnapshotCurrent())
+}
+
+func TestSchedulerCacheSnapshotMemoExternalLastUsedWriteIsImmediatelyVisible(t *testing.T) {
+	ctx := context.Background()
+	cache, _, recorder := newSchedulerCacheMemoUnit(t, defaultSchedulerSnapshotWriteChunkSize)
+	clock := &memoTestClock{now: time.Date(2026, 10, 20, 8, 0, 0, 0, time.UTC)}
+	cache.now = clock.Now
+	bucket := memoTestBucket(132)
+	memoPublish(t, cache, bucket, memoTestAccount(160, "a"))
+	require.Nil(t, memoRead(t, cache, bucket)[0].LastUsedAt)
+
+	// Another instance's write must be visible without advancing the clock or
+	// calling UpdateLastUsed on this cache instance.
+	usedAt := clock.Now().Add(-time.Minute)
+	require.NoError(t, cache.rdb.Set(ctx, schedulerLastUsedKey("160"), strconv.FormatInt(usedAt.UnixMilli(), 10), 0).Err())
+	recorder.reset()
+	got := memoRead(t, cache, bucket)
+	require.Equal(t, usedAt, *got[0].LastUsedAt)
+	require.Equal(t, 1, recorder.countPrefix("mget "+schedulerAccountLastUsedPrefix))
+	require.Zero(t, recorder.countPrefix("zrange "))
 }

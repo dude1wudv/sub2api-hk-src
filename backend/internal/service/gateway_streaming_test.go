@@ -532,3 +532,34 @@ func TestHandleStreamingResponse_SSEErrorEvent_NonJSONDataLine(t *testing.T) {
 	})
 	require.Equal(t, "", ExtractUpstreamErrorMessage([]byte(sseErr.RawData)))
 }
+
+// 计量解析后仍须原样转发 content_block_delta，不能改变 key 顺序/空格/转义；
+// message_stop 在没有 keepalive 的情况下也要能被识别为终态。
+func TestHandleStreamingResponse_MeteredDeltaBytesRemainVerbatim(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	svc := newMinimalGatewayService()
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+
+	pr, pw := io.Pipe()
+	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: pr}
+
+	delta := `{"delta":{"text":"你好","type":"text_delta"},"type":"content_block_delta","index":0,"extra":"a  b"}`
+	go func() {
+		defer func() { _ = pw.Close() }()
+		_, _ = pw.Write([]byte("event: content_block_delta\ndata: " + delta + "\n\n"))
+		_, _ = pw.Write([]byte("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
+	}()
+
+	result, err := svc.handleStreamingResponse(context.Background(), resp, c, &Account{ID: 1}, time.Now(), "model", "model", false)
+	_ = pr.Close()
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	body := rec.Body.String()
+	require.Contains(t, body, "event: content_block_delta\ndata: "+delta+"\n\n",
+		"网关必须逐字节转发不需要改写的 delta")
+	require.Contains(t, body, "event: message_stop")
+}

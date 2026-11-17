@@ -106,7 +106,7 @@ describe('mobile switch targets', () => {
     // jsdom does not evaluate media queries, so apply the real mobile declarations.
     const rules: string[] = []
     postcss.parse(stylesheet).walkAtRules('media', rule => {
-      if (rule.params === '(max-width: 767px)') {
+      if (rule.params.split(',').some(query => query.trim() === '(max-width: 767px)')) {
         rules.push(...(rule.nodes || []).map(node => node.toString()))
       }
     })

@@ -34,7 +34,7 @@ func TestPrepareOpenAICompactFallbackRetryRequiresExplicitCompact(t *testing.T) 
 	errorBody := []byte(`{"error":{"code":"context_length_exceeded","message":"maximum context length exceeded"}}`)
 
 	retryBody, fallbackModel, retry := svc.prepareOpenAICompactFallbackRetry(
-		c, nil, "gpt-5.5", body, http.StatusBadRequest, "maximum context length exceeded", errorBody, false,
+		context.Background(), c, nil, "gpt-5.5", body, openAICompactClientTier{}, http.StatusBadRequest, "maximum context length exceeded", errorBody, false,
 	)
 
 	require.False(t, retry)
@@ -52,7 +52,7 @@ func TestPrepareOpenAICompactFallbackRetryPreservesNativeTriggerAndContext(t *te
 	pathBefore := openAIResponsesRequestPathSuffix(c)
 
 	retryBody, fallbackModel, retry := svc.prepareOpenAICompactFallbackRetry(
-		c, nil, "gpt-5.5", body, http.StatusBadRequest, "context window exceeded", errorBody, false,
+		context.Background(), c, nil, "gpt-5.5", body, openAICompactClientTier{}, http.StatusBadRequest, "context window exceeded", errorBody, false,
 	)
 
 	require.True(t, retry)
@@ -111,14 +111,14 @@ func TestPrepareOpenAICompactFallbackRetryLegacyPathAndSingleAttemptGuard(t *tes
 	errorBody := []byte(`{"response":{"status":"failed","error":null}}`)
 
 	retryBody, fallbackModel, retry := svc.prepareOpenAICompactFallbackRetry(
-		c, nil, "gpt-5.5", body, http.StatusBadRequest, "", errorBody, false,
+		context.Background(), c, nil, "gpt-5.5", body, openAICompactClientTier{}, http.StatusBadRequest, "", errorBody, false,
 	)
 	require.True(t, retry)
 	require.Equal(t, "gpt-5.4", fallbackModel)
 	require.Equal(t, "/compact", openAIResponsesRequestPathSuffix(c))
 
 	secondBody, secondModel, secondRetry := svc.prepareOpenAICompactFallbackRetry(
-		c, nil, "gpt-5.5", retryBody, http.StatusBadRequest, "", errorBody, true,
+		context.Background(), c, nil, "gpt-5.5", retryBody, openAICompactClientTier{}, http.StatusBadRequest, "", errorBody, true,
 	)
 	require.False(t, secondRetry)
 	require.Empty(t, secondModel)
@@ -133,7 +133,7 @@ func TestPrepareOpenAICompactFallbackRetryDoesNotHideSpecificBusinessFailure(t *
 	errorBody := []byte(`{"response":{"status":"failed","error":{"type":"permission_error","message":"workspace denied"}}}`)
 
 	retryBody, fallbackModel, retry := svc.prepareOpenAICompactFallbackRetry(
-		c, nil, "gpt-5.5", body, http.StatusBadRequest, "workspace denied", errorBody, false,
+		context.Background(), c, nil, "gpt-5.5", body, openAICompactClientTier{}, http.StatusBadRequest, "workspace denied", errorBody, false,
 	)
 
 	require.False(t, retry)
@@ -172,7 +172,7 @@ func TestPrepareOpenAICompactFallbackRetrySkipsSameModel(t *testing.T) {
 	errorBody := []byte(`{"error":{"code":"model_not_found","message":"model not found"}}`)
 
 	_, _, retry := svc.prepareOpenAICompactFallbackRetry(
-		c, nil, "gpt-5.5", body, http.StatusNotFound, "model not found", errorBody, false,
+		context.Background(), c, nil, "gpt-5.5", body, openAICompactClientTier{}, http.StatusNotFound, "model not found", errorBody, false,
 	)
 	require.False(t, retry)
 }

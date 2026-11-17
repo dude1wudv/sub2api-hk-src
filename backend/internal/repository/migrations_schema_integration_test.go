@@ -4,13 +4,140 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"net/url"
+	"os"
+	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/migrations"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 )
+
+// Use independent empty databases: several historical migrations intentionally
+// target public, so a search_path-only schema would not exercise a real replay.
+func TestMigrationsRunner_HKUpgradeAndFreshReplayConverge(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+	data, err := os.ReadFile("../../migrations/testdata/hk_head_6e78ddd9_sha256.json")
+	require.NoError(t, err)
+	var history struct {
+		Head       string `json:"head"`
+		Migrations map[string]struct {
+			SHA256   string `json:"sha256"`
+			Checksum string `json:"checksum"`
+		} `json:"migrations"`
+	}
+	require.NoError(t, json.Unmarshal(data, &history))
+	require.Equal(t, "6e78ddd9c4254ba6b4cc7ab00ace4b66020c4a1f", history.Head)
+	require.Len(t, history.Migrations, 350)
+	baseline := fstest.MapFS{}
+	for name, expected := range history.Migrations {
+		content, err := migrations.FS.ReadFile(name)
+		require.NoError(t, err)
+		require.Equal(t, expected.SHA256, fmt.Sprintf("%x", sha256.Sum256(content)), name)
+		require.Equal(t, expected.Checksum, fmt.Sprintf("%x", sha256.Sum256([]byte(strings.TrimSpace(string(content))))), name)
+		baseline[name] = &fstest.MapFile{Data: content, Mode: 0444}
+	}
+	allNames, err := fs.Glob(migrations.FS, "*.sql")
+	require.NoError(t, err)
+	require.Len(t, allNames, 353, "HK 350 + two upstream 251 migrations + reconciliation 349")
+	var freshDefinitions []string
+	for _, path := range []string{"fresh", "hk_upgrade"} {
+		t.Run(path, func(t *testing.T) {
+			db := newMigrationReplayDatabase(t, ctx)
+			if path == "hk_upgrade" {
+				require.NoError(t, applyMigrationsFS(ctx, db, baseline))
+				_, err := db.ExecContext(ctx, `
+					UPDATE schema_migrations SET applied_at = TIMESTAMPTZ '2001-01-01 00:00:00+00';
+					UPDATE usage_group_rollup_state
+					SET retained_from = TIMESTAMPTZ '2020-02-03 12:00:00+08',
+						closed_before = DATE '2020-03-01'
+					WHERE id = 1;
+				`)
+				require.NoError(t, err)
+			}
+			require.NoError(t, ApplyMigrations(ctx, db))
+			require.NoError(t, ApplyMigrations(ctx, db), "reapplying the final set must be safe")
+			var applied, sameNumber int
+			require.NoError(t, db.QueryRowContext(ctx, "SELECT COUNT(*) FROM schema_migrations").Scan(&applied))
+			require.Equal(t, len(allNames), applied)
+			require.NoError(t, db.QueryRowContext(ctx,
+				"SELECT COUNT(*) FROM schema_migrations WHERE filename LIKE '251_%'").Scan(&sameNumber))
+			require.Equal(t, 2, sameNumber, "runner identifies migrations by complete filename")
+			for _, name := range allNames {
+				content, err := migrations.FS.ReadFile(name)
+				require.NoError(t, err)
+				var checksum string
+				require.NoError(t, db.QueryRowContext(ctx, "SELECT checksum FROM schema_migrations WHERE filename = $1", name).Scan(&checksum))
+				require.Equal(t, fmt.Sprintf("%x", sha256.Sum256([]byte(strings.TrimSpace(string(content))))), checksum, name)
+			}
+			if path == "hk_upgrade" {
+				var preserved int
+				require.NoError(t, db.QueryRowContext(ctx,
+					"SELECT COUNT(*) FROM schema_migrations WHERE applied_at = TIMESTAMPTZ '2001-01-01 00:00:00+00'").Scan(&preserved))
+				require.Equal(t, 350, preserved, "old HK migrations must be skipped without rewriting metadata")
+				var expired, retained time.Time
+				require.NoError(t, db.QueryRowContext(ctx,
+					"SELECT expired_before, retained_from FROM usage_group_rollup_state WHERE id = 1").Scan(&expired, &retained))
+				require.True(t, expired.Equal(time.Date(2020, 2, 2, 16, 0, 0, 0, time.UTC)))
+				require.True(t, retained.Equal(time.Date(2020, 2, 3, 4, 0, 0, 0, time.UTC)), "retain the HK inclusive day, not a first-record cutoff")
+			}
+			rows, err := db.QueryContext(ctx, `
+				SELECT pg_get_functiondef(p.oid)
+				FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
+				WHERE ns.nspname = 'public' AND p.proname IN (
+					'apply_group_usage_rollup_invalidation', 'invalidate_group_usage_rollups_at',
+					'invalidate_group_usage_rollup_state', 'invalidate_group_usage_rollup_state_after_insert')
+				ORDER BY p.proname
+			`)
+			require.NoError(t, err)
+			var definitions []string
+			for rows.Next() {
+				var definition string
+				require.NoError(t, rows.Scan(&definition))
+				definitions = append(definitions, definition)
+			}
+			require.NoError(t, rows.Err())
+			require.NoError(t, rows.Close())
+			require.Len(t, definitions, 4)
+			if path == "fresh" {
+				freshDefinitions = definitions
+			} else {
+				require.Equal(t, freshDefinitions, definitions, "migration order must converge to identical functions")
+			}
+		})
+	}
+}
+
+func newMigrationReplayDatabase(t *testing.T, ctx context.Context) *sql.DB {
+	t.Helper()
+	name := fmt.Sprintf("hk_migration_replay_%d", time.Now().UnixNano())
+	_, err := integrationDB.ExecContext(ctx, "CREATE DATABASE "+pq.QuoteIdentifier(name))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, err := integrationDB.ExecContext(cleanupCtx, "DROP DATABASE "+pq.QuoteIdentifier(name))
+		require.NoError(t, err)
+	})
+	dsn, err := url.Parse(integrationDSN)
+	require.NoError(t, err)
+	dsn.Path = "/" + name
+	db, err := sql.Open("postgres", dsn.String())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	require.NoError(t, db.PingContext(ctx))
+	return db
+}
 
 func TestMigrationsRunner_ConcurrentInstancesSerializeOnSessionLock(t *testing.T) {
 	const instances = 2
@@ -37,10 +164,10 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 	// Re-apply migrations to verify idempotency (no errors, no duplicate rows).
 	require.NoError(t, ApplyMigrations(context.Background(), integrationDB))
 
-	// schema_migrations should have at least the current migration set.
+	// The merged release contains HK 350 + upstream 251 x 2 + reconciliation 349.
 	var applied int
 	require.NoError(t, tx.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM schema_migrations").Scan(&applied))
-	require.GreaterOrEqual(t, applied, 7, "expected schema_migrations to contain applied migrations")
+	require.Equal(t, 353, applied, "expected the complete merged migration set")
 
 	// users: columns required by repository queries
 	requireColumn(t, tx, "users", "username", "character varying", 100, false)
@@ -58,7 +185,12 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 	// groups: OpenAI Live 与 Fast 强制策略都默认关闭，管理员显式开启后才生效。
 	requireColumn(t, tx, "groups", "allow_live", "boolean", 0, false)
 	requireColumn(t, tx, "groups", "force_openai_fast", "boolean", 0, false)
+	requireColumn(t, tx, "groups", "force_openai_ultrafast", "boolean", 0, false)
 	requireColumn(t, tx, "groups", "free_openai_fast", "boolean", 0, false)
+	requireColumn(t, tx, "groups", "free_openai_ultrafast", "boolean", 0, false)
+	requireColumn(t, tx, "usage_group_rollup_state", "expired_before", "timestamp with time zone", 0, false)
+	requireColumn(t, tx, "usage_group_rollup_state", "building_until", "date", 0, true)
+	requireColumn(t, tx, "usage_group_rollup_state", "build_dirty_from", "date", 0, true)
 
 	// api_keys: key length should be 128
 	requireColumn(t, tx, "api_keys", "key", "character varying", 128, false)

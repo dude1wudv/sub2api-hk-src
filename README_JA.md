@@ -4,7 +4,7 @@
 
 # Sub2API
 
-[![Go](https://img.shields.io/badge/Go-1.27.2-00ADD8.svg)](https://golang.org/)
+[![Go](https://img.shields.io/badge/Go-1.27.4-00ADD8.svg)](https://golang.org/)
 [![Vue](https://img.shields.io/badge/Vue-3.4+-4FC08D.svg)](https://vuejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791.svg)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7+-DC382D.svg)](https://redis.io/)
@@ -20,7 +20,7 @@
 
 ## HK 版
 
-このリポジトリは [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api) を基にした **HK 本番版** です。上流の帰属を残し、継続して同期します。今回の HK ソースリリースは **v0.2.19-hk.2** です。上流 v0.2.19 とセキュリティ依存関係の更新を含み、本番の再デプロイを意味しません。
+このリポジトリは [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api) を基にした **HK 本番版** です。上流の帰属を残し、継続して同期します。今回の HK ソースリリースは **v0.2.22-hk.1** です。上流 v0.2.22 とセキュリティ依存関係の更新を含み、本番の再デプロイを意味しません。
 
 - ユーザー画面は portal / ink です。API キー、利用量、アカウント、カード引き換え、残高によるサブスクリプションは既存のバックエンド API を使います。セルフサービスのオンライン決済は停止しました。決済コールバックは既存注文を処理し、管理画面の注文と手動 Alipay 確認は残します。
 - 上流の同期は `hk/sync-upstream.ps1` から始めます。保持しない上流ファイルは `hk/upstream-removed.json` に記録します。
@@ -185,6 +185,11 @@
 <tr>
 <td width="180"><a href="https://massivetokens.com/signup?ref=SUB2API"><img src="assets/partners/logos/massivetokens.jpg" alt="Massive Tokens" width="150"></a></td>
 <td><a href="https://massivetokens.com/signup?ref=SUB2API">Massive Tokens</a> は、企業や大量に利用する開発者向けに、Claude API を token 単位の卸売価格で提供しています。標準の Anthropic Messages API を提供しているため、Claude Code、Sub2API、LiteLLM、One API とコードを変更せずに連携できます。招待コード SUB2API で登録すると、すべての呼び出しが 5% オフになります。登録後は Telegram グループ @massivetokens (<a href="https://t.me/massivetokens">https://t.me/massivetokens</a>) に参加し、管理者に $10 分のクレジットをリクエストしてください。</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://www.dataeyes.vip/?promoter_code=9dkfv2r3"><img src="assets/partners/logos/DataEyesAI.png" alt="DataEyesAI" width="150"></a></td>
+<td><a href="https://www.dataeyes.vip/?promoter_code=9dkfv2r3">DataEyesAI</a> は、開発者と企業向けのワンストップ AI API プラットフォームです。統一 API を通じて OpenAI、Claude、Gemini などの主要モデルを利用でき、AI コーディングからテキスト・画像・音声・動画の生成まで幅広く対応しています。Claude Code や Codex などの主要な AI コーディングツールに対応し、従量課金、リアルタイムの利用状況・コスト監視、24時間365日のテクニカルサポートを提供。モデル連携をより手軽にし、開発コストを管理しやすくします。<a href="https://www.dataeyes.vip/?promoter_code=9dkfv2r3">こちらのリンク</a>から新規登録すると、利用クレジットを受け取れます。コード開発からマルチモーダル制作まで、AI 活用をここから始めましょう！</td>
 </tr>
 
 </table>

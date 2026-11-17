@@ -4,7 +4,7 @@
 
 # Sub2API
 
-[![Go](https://img.shields.io/badge/Go-1.27.2-00ADD8.svg)](https://golang.org/)
+[![Go](https://img.shields.io/badge/Go-1.27.4-00ADD8.svg)](https://golang.org/)
 [![Vue](https://img.shields.io/badge/Vue-3.4+-4FC08D.svg)](https://vuejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791.svg)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7+-DC382D.svg)](https://redis.io/)
@@ -20,7 +20,7 @@
 
 ## 香港生产发行版
 
-本仓库是基于 [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api) 的 **HK 生产发行版 fork**，保留上游归属并持续同步上游；源码基线包含上游 **v0.2.19** 和近期安全依赖修复，本次源码发行版本为 **[v0.2.19-hk.2](hk/reports/2026-11-01-d851a3847.md)**。源码发行不代表已部署到生产。
+本仓库是基于 [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api) 的 **HK 生产发行版 fork**，保留上游归属并持续同步上游；源码基线包含上游 **v0.2.22** 和近期安全依赖修复，本次源码发行版本为 **[v0.2.22-hk.1](hk/reports/2026-11-16-v0.2.22-hk.1.md)**。源码发行不代表已部署到生产。
 
 - **用户端：** portal / ink 工作区。密钥、用量、账户、卡密兑换和余额订阅沿用原有后端接口。自助在线支付已停用；支付回调页仍处理存量订单，管理端订单和手动支付宝确认保留。
 - **香港定制增量：** 生产部署安全边界、HeliosGen 与供应商适配，以及计费、会话和运维增强。上游合并入口是 `hk/sync-upstream.ps1`，不再保留的上游文件登记在 `hk/upstream-removed.json`。
@@ -192,6 +192,11 @@
 <tr>
 <td width="180"><a href="https://massivetokens.com/signup?ref=SUB2API"><img src="assets/partners/logos/massivetokens.jpg" alt="Massive Tokens" width="150"></a></td>
 <td><a href="https://massivetokens.com/signup?ref=SUB2API">Massive Tokens</a> 以批发价向企业和大用量开发者提供 Claude API。提供标准的 Anthropic Messages API，Claude Code、Sub2API、LiteLLM、One API 无需改代码即可接入。使用邀请码 SUB2API 注册，每次调用立减 5%；注册后加入 Telegram 群 @massivetokens (<a href="https://t.me/massivetokens">https://t.me/massivetokens</a>)，向管理员申请 $10 额度。</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://www.dataeyes.vip/?promoter_code=9dkfv2r3"><img src="assets/partners/logos/DataEyesAI.png" alt="DataEyesAI" width="150"></a></td>
+<td><a href="https://www.dataeyes.vip/?promoter_code=9dkfv2r3">DataEyesAI</a> 是面向开发者与企业的一站式 AI API 服务平台，通过统一接口接入 OpenAI、Claude、Gemini 等主流模型，覆盖 AI 编程及文本、图像、音频、视频生成。支持 Claude Code、Codex 等主流 AI 编程工具，提供按量付费、实时用量与成本监控，以及 7×24 小时技术支持，让模型接入更便捷、开发成本更可控。新用户通过<a href="https://www.dataeyes.vip/?promoter_code=9dkfv2r3">此链接</a>注册，可领取使用额度，从代码开发到多模态创作，一站开启 AI 应用之旅！</td>
 </tr>
 
 </table>

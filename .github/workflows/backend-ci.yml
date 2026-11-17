@@ -40,7 +40,7 @@ jobs:
         working-directory: backend
         env:
           CGO_ENABLED: '1'
-        run: go test -race -tags=unit ./internal/server/middleware ./internal/repository ./internal/service -run 'TestUsageInflight|TestTrackUsageInflight|TestBalanceRejection|TestModelMetadataCatalog|TestIncomplete|TestOpenAIIncomplete|TestOpenAIWSIncomplete|TestHTTPUpstreamForwardSettlesPartialUsageAfterClientDisconnect' -count=1
+        run: go test -race -tags=unit ./internal/server/middleware ./internal/repository ./internal/service -run 'TestUsageInflight|TestTrackUsageInflight|TestBalanceRejection|TestModelMetadataCatalog|TestIncomplete|TestOpenAIIncomplete|TestOpenAIWSIncomplete|TestHTTPUpstreamForwardSettlesPartialUsageAfterClientDisconnect|TestPricingStartup|TestSchedulerSnapshotRecoversTransient|TestSchedulerSnapshotFiltersTimeBlocked|TestSchedulerFallback|TestGroupForcedOpenAI|TestForcedTier|TestOpenAICompactFallbackReevaluates|TestPrepareOpenAICompactFallbackReapplies' -count=1
       - name: Integration tests
         working-directory: backend
         run: make test-integration
@@ -111,3 +111,5 @@ jobs:
       - run: python -m unittest discover -s .github/release-tools -p 'test_release_matrix.py'
       - run: bash -n .github/release-tools/release-images.sh
       - run: python -m unittest discover -s deploy/tests -p 'test_*release.py'
+        env:
+          SUB2API_RELEASE_PG_REGRESSION: '1'

@@ -4,7 +4,7 @@
 
 # Sub2API
 
-[![Go](https://img.shields.io/badge/Go-1.27.2-00ADD8.svg)](https://golang.org/)
+[![Go](https://img.shields.io/badge/Go-1.27.4-00ADD8.svg)](https://golang.org/)
 [![Vue](https://img.shields.io/badge/Vue-3.4+-4FC08D.svg)](https://vuejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791.svg)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7+-DC382D.svg)](https://redis.io/)
@@ -20,7 +20,7 @@ English | [中文](README_CN.md) | [日本語](README_JA.md)
 
 ## HK Edition
 
-This repository is the **HK production edition**, a fork based on [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api), with upstream attribution and ongoing synchronization. The source baseline includes upstream **v0.2.19** and recent security dependency fixes; this source release is **[v0.2.19-hk.2](hk/reports/2026-11-01-d851a3847.md)**. A source release does not imply a production deployment.
+This repository is the **HK production edition**, a fork based on [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api), with upstream attribution and ongoing synchronization. The source baseline includes upstream **v0.2.22** and recent security dependency fixes; this source release is **[v0.2.22-hk.1](hk/reports/2026-11-16-v0.2.22-hk.1.md)**. A source release does not imply a production deployment.
 
 - **User workspace:** portal / ink. API keys, usage, account, card redemption, and balance-funded subscriptions keep the existing backend APIs. Self-serve online payment is retired; payment callback pages still handle existing orders, and the admin order console plus manual Alipay confirmation remain.
 - **HK-focused changes:** Production deployment safety boundaries; HeliosGen and vendor adapters; billing, session, and operations enhancements. Upstream sync starts at `hk/sync-upstream.ps1`. Paths this fork no longer keeps are listed in `hk/upstream-removed.json`.
@@ -190,6 +190,11 @@ Please read the following carefully before using this project:
 <tr>
 <td width="180"><a href="https://massivetokens.com/signup?ref=SUB2API"><img src="assets/partners/logos/massivetokens.jpg" alt="Massive Tokens" width="150"></a></td>
 <td><a href="https://massivetokens.com/signup?ref=SUB2API">Massive Tokens</a> supplies Claude API access at wholesale per-token prices to businesses and high-volume developers. It serves the standard Anthropic Messages API, so it works with Claude Code, Sub2API, LiteLLM and One API without code changes. Sign up with code SUB2API for 5% off every call, then join our Telegram group @massivetokens (<a href="https://t.me/massivetokens">https://t.me/massivetokens</a>) and ask an admin for $10 in credits.</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://www.dataeyes.vip/?promoter_code=9dkfv2r3"><img src="assets/partners/logos/DataEyesAI.png" alt="DataEyesAI" width="150"></a></td>
+<td><a href="https://www.dataeyes.vip/?promoter_code=9dkfv2r3">DataEyesAI</a> is an all-in-one AI API platform for developers and businesses, offering unified access to leading models including OpenAI, Claude, and Gemini for AI coding and text, image, audio, and video generation. It supports popular AI coding tools such as Claude Code and Codex, with pay-as-you-go pricing, real-time usage and cost monitoring, and 24/7 technical support to simplify model integration and keep development costs under control. New users can sign up through <a href="https://www.dataeyes.vip/?promoter_code=9dkfv2r3">this link</a> to claim usage credits. From coding to multimodal creation, start your AI journey in one place!</td>
 </tr>
 
 </table>

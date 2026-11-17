@@ -21,6 +21,17 @@ describe("groupsOpenAIFast", () => {
     expect(normalizeGroupOpenAIFast("openai", false)).toBe(false);
   });
 
+  it("provides localized Ultra Fast switch labels naming the supported models", () => {
+    for (const locale of [zh, en]) {
+      expect(locale.groups.openaiUltraFast).toMatchObject({
+        force: expect.stringContaining("ultrafast"),
+        hint: expect.stringContaining("service_tier=ultrafast"),
+      });
+      expect(locale.groups.openaiUltraFast.hint).toContain("GPT-6 Astra");
+      expect(locale.groups.openaiUltraFast.hint).toContain("GPT-6.1 Sol");
+    }
+  });
+
   it("provides localized switch labels", () => {
     expect(zh.groups.openaiFast).toMatchObject({
       title: expect.any(String),

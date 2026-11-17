@@ -62,8 +62,15 @@ func WriteProtectedUpstreamError(c *gin.Context, upstreamStatus int) {
 		requestID = strings.TrimSpace(c.GetHeader("X-Client-Request-ID"))
 	}
 	if c != nil {
-		c.Header("Content-Type", "application/json; charset=utf-8")
+		MarkResponseCommitted(c)
 		c.Header("X-Client-Request-ID", requestID)
+		if gatewaySSEStarted(c) {
+			MarkOpsStreamError(c, typ, msg, status)
+			c.SSEvent("error", gin.H{"type": "error", "error": gin.H{"type": typ, "message": msg, "request_id": requestID}})
+			c.Writer.Flush()
+			return
+		}
+		c.Header("Content-Type", "application/json; charset=utf-8")
 		c.JSON(status, gin.H{"error": gin.H{"type": typ, "message": msg, "request_id": requestID}})
 	}
 }

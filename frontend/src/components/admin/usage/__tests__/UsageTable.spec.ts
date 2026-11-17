@@ -1328,7 +1328,7 @@ describe('admin UsageTable session markers and account switch warnings', () => {
     await nextTick()
     expect(tooltip?.style.display).not.toBe('none')
 
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await warning.trigger('keydown', { key: 'Escape' })
     await nextTick()
     expect(tooltip?.style.display).toBe('none')
 

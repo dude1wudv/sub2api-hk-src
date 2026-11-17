@@ -106,14 +106,16 @@ def verify_migrations(before, after, allowed):
     return added
 
 
-def verify_history(before, after, days, at):
-    require(not (after.keys() - before.keys()), 'Unexpected historical billing row')
+def verify_history(before, after, days, at, *, allow_newly_visible=False):
+    newly_visible = after.keys() - before.keys()
+    require(allow_newly_visible or not newly_visible, 'Unexpected historical billing row')
     require(all(before[key] == after[key] for key in before.keys() & after.keys()), 'Historical billing row changed')
     removed = before.keys() - after.keys()
     boundary = at - dt.timedelta(days=days)
     require(not removed or (days > 0 and all(timestamp(before[key]['created_at']) < boundary for key in removed)),
             'Unexpired historical billing row disappeared')
-    return {'unchanged_retained_rows': len(after), 'expired_rows_removed': len(removed),
+    return {'unchanged_retained_rows': len(before.keys() & after.keys()), 'expired_rows_removed': len(removed),
+            'newly_visible_rows': len(newly_visible),
             'retention_days': days, 'expiration_cutoff': boundary.isoformat()}
 
 
@@ -172,6 +174,11 @@ def verify_other_containers(before, after):
 
 
 class Release:
+    # Existing entrypoints retain their strict evidence contract. Upstream
+    # releases explicitly allow sequence IDs allocated before the snapshot but
+    # committed later, while protecting every row actually observed before it.
+    allow_newly_visible_billing_rows = False
+
     def __init__(self, sha, expected):
         self.sha, self.expected = sha, expected
         self.base = RELEASES / ('chat-' + sha)
@@ -485,7 +492,8 @@ class Release:
         self.save('migrations.after.json', migrations)
         history = self.history(self.manifest['billing_cutoff_id'], 'history.after.json')
         result = verify_history(json.loads((self.audit / 'history.before.json').read_text()), history,
-                                self.manifest['retention_days'], now())
+                                self.manifest['retention_days'], now(),
+                                allow_newly_visible=self.allow_newly_visible_billing_rows)
         self.save('history.acceptance.json', result)
         self.save('containers.after.json', after)
         version = self.run(['docker', 'exec', 'sub2api', '/app/sub2api', '-version'])

@@ -100,12 +100,11 @@ func ApplyOpenAIGroupServiceTierBillingResolution(account *Account, group *Group
 	}
 	resolution := ResolveOpenAIServiceTierBilling(account, optionalStringValue(result.ServiceTier), result.UpstreamResponseServiceTier)
 	if account != nil && account.IsOpenAI() && IsGroupContextValid(group) && groupSupportsOpenAIFast(group.Platform) {
-		forced := ""
-		if group.ForceOpenAIUltrafast {
-			forced = OpenAIFastTierUltrafast
-		} else if group.ForceOpenAIFast {
-			forced = OpenAIFastTierPriority
+		model := result.UpstreamModel
+		if model == "" {
+			model = result.Model
 		}
+		forced := openAIForcedTierForGroup(group, model)
 		if forced != "" && resolution.Requested == forced {
 			resolution.Billing = resolution.Requested
 		}

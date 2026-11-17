@@ -866,6 +866,7 @@ func ProvideAPIKeyService(
 
 // ProviderSet is the Wire provider set for all services
 var ProviderSet = wire.NewSet(
+	ProvideUsageBillingRepository,
 	// Core services
 	ProvideAuthService,
 	ProvideGatewayModelCatalogService,
@@ -1112,4 +1113,10 @@ func ProvideClaudeResetCreditService(accounts AccountRepository, tokens *ClaudeT
 	s := NewClaudeResetCreditService(accounts, tokens, proxies, settings)
 	s.ConfigureRedemption(idem, locks)
 	return s
+}
+
+// ProvideUsageBillingRepository keeps settlement synchronous and direct. The
+// optional lane combiner is deliberately not part of the production graph.
+func ProvideUsageBillingRepository(repo UsageBillingBatchRepository) UsageBillingRepository {
+	return repo
 }

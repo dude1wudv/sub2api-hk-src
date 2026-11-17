@@ -45,6 +45,7 @@ func (s *OpenAIGatewayService) forwardResponsesViaNativeAnthropic(
 	defer capture.finishOpenAI(&out, &retErr)
 
 	startTime := time.Now()
+	SetActualOpenAIUpstreamEndpoint(c, "/v1/messages")
 
 	// 1. Lower Codex client-side tools to function tools understood by Anthropic.
 	adaptedBody, clientToolMapping, err := adaptResponsesClientToolsForAnthropic(body)

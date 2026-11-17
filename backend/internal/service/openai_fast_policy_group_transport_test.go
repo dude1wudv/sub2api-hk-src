@@ -48,7 +48,7 @@ func TestGroupForcedOpenAIServiceTierTrustBoundary(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.WithValue(context.Background(), ctxkey.Group, tc.group)
-			require.Equal(t, tc.want, openAIGroupForcedServiceTier(ctx, tc.account))
+			require.Equal(t, tc.want, openAIGroupForcedServiceTier(ctx, tc.account, "gpt-6-astra"))
 		})
 	}
 }
@@ -74,10 +74,10 @@ func TestGroupForcedOpenAIServiceTierHTTPUpstream(t *testing.T) {
 						Extra:       map[string]any{"openai_passthrough": route == "passthrough", "openai_oauth_responses_websockets_v2_mode": OpenAIWSIngressModeOff},
 						Status:      StatusActive, Schedulable: true, RateMultiplier: f64p(1),
 					}
-					body := []byte(`{"model":"gpt-5.6-sol","input":"hi","stream":false,"service_tier":"default"}`)
+					body := []byte(`{"model":"gpt-6.1-sol","input":"hi","stream":false,"service_tier":"default"}`)
 					path := "/v1/responses"
 					if route == "chat" || route == "raw_chat" {
-						body = []byte(`{"model":"gpt-5.6-sol","messages":[{"role":"user","content":"hi"}],"stream":false}`)
+						body = []byte(`{"model":"gpt-6.1-sol","messages":[{"role":"user","content":"hi"}],"stream":false}`)
 						path = "/v1/chat/completions"
 					}
 					if route == "raw_chat" {
@@ -91,7 +91,7 @@ func TestGroupForcedOpenAIServiceTierHTTPUpstream(t *testing.T) {
 					c.Request.Header.Set("User-Agent", "codex_cli_rs/0.144.1")
 					var err error
 					if route == "chat" || route == "raw_chat" {
-						_, err = svc.ForwardAsChatCompletions(ctx, c, account, body, "", "gpt-5.6-sol")
+						_, err = svc.ForwardAsChatCompletions(ctx, c, account, body, "", "gpt-6.1-sol")
 					} else {
 						_, err = svc.Forward(ctx, c, account, body)
 					}
@@ -99,7 +99,7 @@ func TestGroupForcedOpenAIServiceTierHTTPUpstream(t *testing.T) {
 					require.NotNil(t, upstream.lastBody, "the global policy must not block a forced group tier")
 					require.Equal(t, tier, gjson.GetBytes(upstream.lastBody, "service_tier").String())
 					if account.Type == AccountTypeOAuth {
-						require.Equal(t, "model=gpt-5.6-sol;tier="+tier, upstream.lastReq.Header.Get(openAICodexRoutingHintHeader))
+						require.Equal(t, "model=gpt-6.1-sol;tier="+tier, upstream.lastReq.Header.Get(openAICodexRoutingHintHeader))
 					}
 				})
 			}
@@ -113,7 +113,7 @@ func TestGroupForcedOpenAIServiceTierHTTPToWSUpstream(t *testing.T) {
 		t.Run(tier, func(t *testing.T) {
 			cfg := newOpenAIWSV2TestConfig()
 			cfg.Gateway.OpenAIWS.MinIdlePerAccount = 0
-			conn := &openAIWSCaptureConn{events: [][]byte{[]byte(`{"type":"response.completed","response":{"id":"resp_forced","model":"gpt-5.6-sol","status":"completed","service_tier":"default","usage":{"input_tokens":1,"output_tokens":1}}}`)}}
+			conn := &openAIWSCaptureConn{events: [][]byte{[]byte(`{"type":"response.completed","response":{"id":"resp_forced","model":"gpt-6.1-sol","status":"completed","service_tier":"default","usage":{"input_tokens":1,"output_tokens":1}}}`)}}
 			dialer := &openAIWSCaptureDialer{conn: conn}
 			pool := newOpenAIWSConnPool(cfg)
 			defer pool.Close()
@@ -129,11 +129,11 @@ func TestGroupForcedOpenAIServiceTierHTTPToWSUpstream(t *testing.T) {
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil).WithContext(ctx)
 			c.Request.Header.Set("User-Agent", "codex_cli_rs/0.144.1")
-			result, err := svc.Forward(ctx, c, account, []byte(`{"model":"gpt-5.6-sol","stream":false,"input":"hi"}`))
+			result, err := svc.Forward(ctx, c, account, []byte(`{"model":"gpt-6.1-sol","stream":false,"input":"hi"}`))
 			require.NoError(t, err)
 			require.True(t, result.OpenAIWSMode)
 			require.Equal(t, tier, conn.lastWrite["service_tier"])
-			require.Equal(t, "model=gpt-5.6-sol;tier="+tier, dialer.lastHeaders.Get(openAICodexRoutingHintHeader))
+			require.Equal(t, "model=gpt-6.1-sol;tier="+tier, dialer.lastHeaders.Get(openAICodexRoutingHintHeader))
 			require.NotNil(t, result.ServiceTier)
 			require.Equal(t, tier, *result.ServiceTier)
 			require.Equal(t, "default", result.UpstreamResponseServiceTier, "upstream downgrade remains distinct from the forced request")
@@ -185,12 +185,16 @@ func TestGroupForcedOpenAIServiceTierWSEveryTurn(t *testing.T) {
 				for turn := 1; turn <= 2; turn++ {
 					if turn == 2 {
 						writeCtx, cancelWrite := context.WithTimeout(ctx, 3*time.Second)
-						err := client.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","service_tier":"default"}`))
+						err := client.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-6.1-sol","service_tier":"default"}`))
 						cancelWrite()
 						require.NoError(t, err)
 					}
 					frame := requirePassthroughUpstreamWrite(t, upstream, 3*time.Second)
-					require.Equal(t, tier, gjson.GetBytes(frame, "service_tier").String(), "turn %d must carry the group tier", turn)
+					want := tier
+					if turn == 1 && tier == OpenAIFastTierUltrafast {
+						want = OpenAIFastTierPriority
+					}
+					require.Equal(t, want, gjson.GetBytes(frame, "service_tier").String(), "turn %d must gate the actual model", turn)
 					upstream.Send(fmt.Sprintf(`{"type":"response.completed","response":{"id":"resp_forced_%d","model":"gpt-5.1","usage":{"input_tokens":1,"output_tokens":1}}}`, turn))
 					event, err := readPassthroughLifecycleFrame(t, client, 3*time.Second)
 					require.NoError(t, err)

@@ -44,6 +44,7 @@ func (s *OpenAIGatewayService) forwardAnthropicViaNativeAnthropicEndpoint(
 	defer capture.finishOpenAI(&out, &retErr)
 
 	startTime := time.Now()
+	SetActualOpenAIUpstreamEndpoint(c, "/v1/messages")
 
 	originalModel := strings.TrimSpace(gjson.GetBytes(body, "model").String())
 	if originalModel == "" {
@@ -118,6 +119,9 @@ func (s *OpenAIGatewayService) forwardAnthropicViaNativeAnthropicEndpoint(
 			return s.doOpenAIUpstream(request, proxyURL, account)
 		})
 		if err != nil {
+			if resp != nil && resp.Body != nil {
+				_ = resp.Body.Close()
+			}
 			return nil, s.handleOpenAIUpstreamTransportError(ctx, c, account, err, true)
 		}
 		if attempt == 0 && native != nil && len(native.files) > 0 && (resp.StatusCode == 400 || resp.StatusCode == 404 || resp.StatusCode == 410) {
@@ -139,8 +143,35 @@ func (s *OpenAIGatewayService) forwardAnthropicViaNativeAnthropicEndpoint(
 		if auxiliary := chatNativeAuxiliaryUsage(ctx, account, respBody); auxiliary != nil && chatNativeAuxiliaryTerminalUsage(respBody) {
 			// A terminal error with authoritative usage is already billable. Do
 			// not fail over and replay its opaque provider state on another key.
-			c.Data(resp.StatusCode, "application/json", respBody)
-			return &OpenAIForwardResult{RequestID: resp.Header.Get("x-request-id"), UpstreamHeaders: resp.Header, Usage: claudeUsageToOpenAIUsage(parseClaudeUsageFromResponseBody(respBody)), Model: originalModel, BillingModel: billingModel, UpstreamModel: upstreamModel, UpstreamEndpoint: "/v1/messages", Stream: clientStream, ReasoningEffort: reasoningEffort, Duration: time.Since(startTime), ChatAuxiliaryUsage: auxiliary}, errors.New("native DeepSeek terminal error with usage")
+			observer := upstreamResponseModelObserverFromContext(c)
+			if observer == nil {
+				observer = beginUpstreamResponseModelObservation(c)
+			}
+			observer.ObserveAnthropic(respBody)
+			MarkResponseCommitted(c)
+			if IsUpstreamErrorProtectionEnabled(c) {
+				WriteProtectedUpstreamError(c, resp.StatusCode)
+			} else if gatewaySSEStarted(c) {
+				writeAnthropicError(c, resp.StatusCode, "api_error", upstreamMsg)
+			} else {
+				c.Data(resp.StatusCode, "application/json", respBody)
+			}
+			return &OpenAIForwardResult{
+				RequestID:                     resp.Header.Get("x-request-id"),
+				UpstreamHeaders:               resp.Header,
+				Usage:                         claudeUsageToOpenAIUsage(parseClaudeUsageFromResponseBody(respBody)),
+				Model:                         originalModel,
+				BillingModel:                  billingModel,
+				UpstreamModel:                 upstreamModel,
+				UpstreamResponseModel:         observedUpstreamResponseModel(c),
+				UpstreamResponseModelConflict: observedUpstreamResponseModelConflict(c),
+				UpstreamResponseServiceTier:   observedUpstreamResponseServiceTier(c),
+				UpstreamEndpoint:              "/v1/messages",
+				Stream:                        clientStream,
+				ReasoningEffort:               reasoningEffort,
+				Duration:                      time.Since(startTime),
+				ChatAuxiliaryUsage:            auxiliary,
+			}, errors.New("native DeepSeek terminal error with usage")
 		}
 		if foErr := s.failoverOpenAIUpstreamHTTPError(ctx, c, account, resp, respBody, upstreamMsg, upstreamModel); foErr != nil {
 			return nil, foErr
@@ -310,17 +341,20 @@ func (s *OpenAIGatewayService) handleNativeAnthropicBufferedResponse(
 	c.Data(resp.StatusCode, contentType, body)
 
 	return &OpenAIForwardResult{
-		RequestID:          resp.Header.Get("x-request-id"),
-		UpstreamHeaders:    resp.Header,
-		Usage:              claudeUsageToOpenAIUsage(usage),
-		ChatAuxiliaryUsage: chatNativeAuxiliaryUsage(ctx, account, body),
-		Model:              originalModel,
-		BillingModel:       billingModel,
-		UpstreamModel:      upstreamModel,
-		UpstreamEndpoint:   "/v1/messages",
-		Stream:             false,
-		ReasoningEffort:    reasoningEffort,
-		Duration:           time.Since(startTime),
+		RequestID:                     resp.Header.Get("x-request-id"),
+		UpstreamHeaders:               resp.Header,
+		Usage:                         claudeUsageToOpenAIUsage(usage),
+		ChatAuxiliaryUsage:            chatNativeAuxiliaryUsage(ctx, account, body),
+		Model:                         originalModel,
+		BillingModel:                  billingModel,
+		UpstreamModel:                 upstreamModel,
+		UpstreamResponseModel:         observedUpstreamResponseModel(c),
+		UpstreamResponseModelConflict: observedUpstreamResponseModelConflict(c),
+		UpstreamResponseServiceTier:   observedUpstreamResponseServiceTier(c),
+		UpstreamEndpoint:              "/v1/messages",
+		Stream:                        false,
+		ReasoningEffort:               reasoningEffort,
+		Duration:                      time.Since(startTime),
 	}, nil
 }
 
@@ -534,7 +568,7 @@ func (s *OpenAIGatewayService) handleNativeAnthropicStreamingResponse(
 			}
 
 			if !clientDisconnected {
-				restored := string(reverseToolNamesIfPresent(c, []byte(line)))
+				restored := reverseToolNamesIfPresentString(c, line)
 				if _, err := io.WriteString(w, restored); err != nil {
 					clientDisconnected = true
 					_ = resp.Body.Close()
@@ -613,18 +647,21 @@ func (s *OpenAIGatewayService) nativeAnthropicStreamResult(
 		usage = &ClaudeUsage{}
 	}
 	return &OpenAIForwardResult{
-		RequestID:        resp.Header.Get("x-request-id"),
-		UpstreamHeaders:  resp.Header,
-		Usage:            claudeUsageToOpenAIUsage(usage),
-		Model:            originalModel,
-		BillingModel:     billingModel,
-		UpstreamModel:    upstreamModel,
-		UpstreamEndpoint: "/v1/messages",
-		Stream:           true,
-		ReasoningEffort:  reasoningEffort,
-		Duration:         time.Since(startTime),
-		FirstTokenMs:     firstTokenMs,
-		ClientDisconnect: clientDisconnect,
+		RequestID:                     resp.Header.Get("x-request-id"),
+		UpstreamHeaders:               resp.Header,
+		Usage:                         claudeUsageToOpenAIUsage(usage),
+		Model:                         originalModel,
+		BillingModel:                  billingModel,
+		UpstreamModel:                 upstreamModel,
+		UpstreamResponseModel:         observedUpstreamResponseModel(c),
+		UpstreamResponseModelConflict: observedUpstreamResponseModelConflict(c),
+		UpstreamResponseServiceTier:   observedUpstreamResponseServiceTier(c),
+		UpstreamEndpoint:              "/v1/messages",
+		Stream:                        true,
+		ReasoningEffort:               reasoningEffort,
+		Duration:                      time.Since(startTime),
+		FirstTokenMs:                  firstTokenMs,
+		ClientDisconnect:              clientDisconnect,
 	}
 }
 

@@ -70,7 +70,7 @@ describe('AccountStatusIndicator', () => {
       expect(details.style.display).not.toBe('none')
       expect(details.textContent).toContain(errorMessage)
       expect(trigger.attributes('aria-expanded')).toBe('true')
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      details.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
       await flushPromises()
       expect(details.style.display).toBe('none')
       expect(document.activeElement).toBe(trigger.element)

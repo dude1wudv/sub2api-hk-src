@@ -24,11 +24,11 @@ func TestForwardAsAnthropic_RawChatGroupForcedTier(t *testing.T) {
 	for _, tier := range []string{OpenAIFastTierPriority, OpenAIFastTierUltrafast} {
 		for _, stream := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/stream=%t", tier, stream), func(t *testing.T) {
-				body := []byte(fmt.Sprintf(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":%t}`, stream))
-				response := `{"id":"chat_forced","object":"chat.completion","model":"gpt-5.4","service_tier":"default","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":3,"total_tokens":10}}`
+				body := []byte(fmt.Sprintf(`{"model":"gpt-6.1-sol","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":%t}`, stream))
+				response := `{"id":"chat_forced","object":"chat.completion","model":"gpt-6.1-sol","service_tier":"default","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":3,"total_tokens":10}}`
 				contentType := "application/json"
 				if stream {
-					response = "data: " + `{"id":"chat_forced","object":"chat.completion.chunk","model":"gpt-5.4","service_tier":"default","choices":[{"index":0,"delta":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":3,"total_tokens":10}}` + "\n\ndata: [DONE]\n\n"
+					response = "data: " + `{"id":"chat_forced","object":"chat.completion.chunk","model":"gpt-6.1-sol","service_tier":"default","choices":[{"index":0,"delta":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":3,"total_tokens":10}}` + "\n\ndata: [DONE]\n\n"
 					contentType = "text/event-stream"
 				}
 				upstream := &httpUpstreamRecorder{resp: &http.Response{
@@ -71,7 +71,7 @@ func TestForwardAsAnthropic_RawChatGroupForcedTierLeavesOtherPlatformsUntouched(
 	ctx := context.WithValue(context.Background(), ctxkey.Group, forcedOpenAITierTestGroup(OpenAIFastTierUltrafast))
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil).WithContext(ctx)
-	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}]}`)
+	body := []byte(`{"model":"gpt-6.1-sol","max_tokens":32,"messages":[{"role":"user","content":"hello"}]}`)
 	_, err := svc.forwardAnthropicViaRawChatCompletions(ctx, c, account, body, "")
 	require.Error(t, err)
 	require.NotNil(t, upstream.lastBody)
@@ -84,18 +84,18 @@ func TestOpenAIResponsesCompat_PartialStreamPreservesForcedTierAndEffort(t *test
 		for _, tier := range []string{OpenAIFastTierPriority, OpenAIFastTierUltrafast} {
 			for _, failure := range []string{"read_error", "response_failed"} {
 				t.Run(ingress+"/"+tier+"/"+failure, func(t *testing.T) {
-					body := []byte(`{"model":"gpt-5.4","messages":[{"role":"user","content":"hello"}],"reasoning_effort":"high","stream":true}`)
+					body := []byte(`{"model":"gpt-6.1-sol","messages":[{"role":"user","content":"hello"}],"reasoning_effort":"high","stream":true}`)
 					path := "/v1/chat/completions"
 					if ingress == "messages" {
-						body = []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"output_config":{"effort":"high"},"stream":true}`)
+						body = []byte(`{"model":"gpt-6.1-sol","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"output_config":{"effort":"high"},"stream":true}`)
 						path = "/v1/messages"
 					}
 					// Compatible upstreams can send progressive usage before failing.
-					payload := "data: " + `{"type":"response.created","response":{"id":"resp_partial","model":"gpt-5.4","status":"in_progress","service_tier":"default","usage":{"input_tokens":7,"output_tokens":3}}}` + "\n\n" +
+					payload := "data: " + `{"type":"response.created","response":{"id":"resp_partial","model":"gpt-6.1-sol","status":"in_progress","service_tier":"default","usage":{"input_tokens":7,"output_tokens":3}}}` + "\n\n" +
 						"data: " + `{"type":"response.output_text.delta","output_index":0,"content_index":0,"delta":"partial"}` + "\n\n"
 					var responseBody io.ReadCloser = &errTailReader{data: []byte(payload), err: errors.New("simulated upstream read failure")}
 					if failure == "response_failed" {
-						payload += "data: " + `{"type":"response.failed","response":{"id":"resp_partial","model":"gpt-5.4","status":"failed","service_tier":"default","usage":{"input_tokens":7,"output_tokens":3},"error":{"type":"server_error","code":"server_error","message":"upstream interrupted"}}}` + "\n\n"
+						payload += "data: " + `{"type":"response.failed","response":{"id":"resp_partial","model":"gpt-6.1-sol","status":"failed","service_tier":"default","usage":{"input_tokens":7,"output_tokens":3},"error":{"type":"server_error","code":"server_error","message":"upstream interrupted"}}}` + "\n\n"
 						responseBody = io.NopCloser(strings.NewReader(payload))
 					}
 					upstream := &httpUpstreamRecorder{resp: &http.Response{
