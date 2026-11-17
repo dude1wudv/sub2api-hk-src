@@ -61,7 +61,7 @@ describe('PortalUsageAnalytics', () => {
     expect(getDashboardModels).toHaveBeenCalledWith(expect.objectContaining({ model_source: 'requested', timezone: expect.any(String) }))
     expect(getDashboardSnapshotV2).toHaveBeenCalledWith(expect.objectContaining({ include_trend: true, include_group_stats: true, include_model_stats: false }))
     expect(wrapper.get('[data-testid="analytics-requests"]').text()).toBe('42')
-    expect(wrapper.text()).toContain('All requests in the selected dates, independent of the record filters below. Time zone:')
+    expect(wrapper.text()).toContain('Statistics use the applied record filters. Time zone:')
     expect(wrapper.get('[data-distribution="models"] .model-icon').exists()).toBe(true)
     expect(wrapper.text()).toContain('/v1/responses')
     const line = wrapper.findComponent({ name: 'Line' })
@@ -214,6 +214,33 @@ describe('PortalUsageAnalytics', () => {
     resolveOld(summary(999))
     await flushPromises()
     expect(wrapper.get('[data-testid="analytics-requests"]').text()).toBe('42')
+    wrapper.unmount()
+  })
+
+  it('rejects stale aggregate results after a newer key filter finishes', async () => {
+    let resolveOldStats!: (value: ReturnType<typeof summary>) => void
+    let resolveOldModels!: (value: { models: Array<typeof model> }) => void
+    let resolveOldSnapshot!: (value: { groups: []; trend: Array<typeof point> }) => void
+    getStats.mockImplementationOnce(() => new Promise(resolve => { resolveOldStats = resolve }))
+    getDashboardModels.mockImplementationOnce(() => new Promise(resolve => { resolveOldModels = resolve }))
+    getDashboardSnapshotV2.mockImplementationOnce(() => new Promise(resolve => { resolveOldSnapshot = resolve }))
+    const wrapper = mount(PortalUsageAnalytics, { props: { filters: { api_key_id: 7 } } })
+    await flushPromises()
+    getStats.mockResolvedValueOnce(summary(5))
+    getDashboardModels.mockResolvedValueOnce({ models: [{ ...model, model: 'key-8-model' }] })
+    getDashboardSnapshotV2.mockResolvedValueOnce({ groups: [], trend: [{ ...point, requests: 5 }] })
+    await wrapper.setProps({ filters: { api_key_id: 8 } })
+    await flushPromises()
+    expect(getStats).toHaveBeenLastCalledWith(expect.objectContaining({ api_key_id: 8 }))
+    expect(wrapper.get('[data-testid="analytics-requests"]').text()).toBe('5')
+
+    resolveOldStats(summary(999))
+    resolveOldModels({ models: [{ ...model, model: 'stale-key-7-model' }] })
+    resolveOldSnapshot({ groups: [], trend: [{ ...point, requests: 999 }] })
+    await flushPromises()
+    expect(wrapper.get('[data-testid="analytics-requests"]').text()).toBe('5')
+    expect(wrapper.get('[data-distribution="models"]').text()).toContain('key-8-model')
+    expect(wrapper.text()).not.toContain('stale-key-7-model')
     wrapper.unmount()
   })
 

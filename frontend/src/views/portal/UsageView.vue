@@ -108,6 +108,7 @@ function usageParams(): UsageQueryParams {
     billing_mode: filter.billingMode || undefined,
   }
 }
+const analyticsFilters = computed(() => usageParams())
 function errorParams(): UserErrorListParams {
   const filter = applied.value
   return { start_date: filter.start, end_date: filter.end, timezone, api_key_id: filter.key ? Number(filter.key) : undefined, model: filter.model.trim() || undefined, category: filter.category || undefined, status_code: filter.status ? Number(filter.status) : undefined }
@@ -195,8 +196,12 @@ function applyFilters() {
   void router.push({ path: '/usage', query: usageFiltersQuery(applied.value) })
 }
 function resetFilters() { Object.assign(draft, defaultFilters()); applyFilters() }
+function changeAnalysisRange(value: { start: string; end: string }) {
+  Object.assign(draft, applied.value, value)
+  applyFilters()
+}
 async function drilldown(value: UsageDrilldown) {
-  const query = usageDrilldownQuery(value)
+  const query = { ...usageFiltersQuery(applied.value), ...usageDrilldownQuery(value) }
   const restored = parseUsageRoute(query as LocationQuery, defaultFilters())
   const alreadyUsage = activeTab.value === 'usage'
   Object.assign(draft, restored)
@@ -347,7 +352,7 @@ onBeforeUnmount(() => {
     <PortalPageHeader :title="copy('使用记录', 'Usage records')">
       <div class="usage-balance"><Icon name="creditCard" size="sm" /><span>{{ copy('余额', 'Balance') }}</span><strong>{{ auth.user ? formatUsageMoney(auth.user.balance, 2) : '—' }}</strong><RouterLink v-if="!auth.isSimpleMode" to="/purchase">{{ copy('充值', 'Recharge') }} ↗</RouterLink></div>
     </PortalPageHeader>
-    <PortalUsageAnalytics @drilldown="drilldown" />
+    <PortalUsageAnalytics :filters="analyticsFilters" @range-change="changeAnalysisRange" @drilldown="drilldown" />
 
     <section id="usage-records" class="usage-records" aria-labelledby="usage-records-title">
       <div class="usage-section-heading"><div><h2 id="usage-records-title">{{ copy('请求明细', 'Request details') }}</h2><p class="usage-record-description">{{ copy('查看每次请求的 Token、费用与响应表现。', 'Inspect tokens, cost and response performance for each request.') }}</p></div></div>
@@ -356,7 +361,7 @@ onBeforeUnmount(() => {
         <div class="usage-filter-grid"><label class="portal-field">{{ copy('开始日期', 'Start date') }}<input v-model="draft.start" type="date" :max="draft.end || dates.end" required /></label><label class="portal-field">{{ copy('结束日期', 'End date') }}<input v-model="draft.end" type="date" :min="draft.start" :max="dates.end" required /></label><label class="portal-field">API Key<select v-model="draft.key"><option value="">{{ copy('全部 Key', 'All keys') }}</option><option v-for="key in keys" :key="key.id" :value="String(key.id)">{{ key.name }}</option></select></label><label class="portal-field">{{ copy('模型', 'Model') }}<input v-model="draft.model" list="portal-usage-models" :placeholder="copy('全部模型', 'All models')" /><datalist id="portal-usage-models"><option v-for="model in modelNames" :key="model" :value="model" /></datalist></label>
           <template v-if="activeTab === 'usage'"><label class="portal-field">{{ copy('分组', 'Group') }}<select v-model="draft.group"><option value="">{{ copy('全部分组', 'All groups') }}</option><option v-for="group in groups" :key="group.id" :value="String(group.id)">{{ group.name }}</option></select></label><label class="portal-field">{{ copy('请求类型', 'Request type') }}<select v-model="draft.requestType"><option value="">{{ copy('全部类型', 'All types') }}</option><option value="sync">{{ copy('同步', 'Sync') }}</option><option value="stream">{{ copy('流式', 'Stream') }}</option><option value="ws_v2">WS</option><option value="live">Live</option><option value="cyber">Cyber</option></select></label><label v-if="subscriptionEnabled" class="portal-field">{{ copy('扣费方式', 'Billing source') }}<select v-model="draft.billingType"><option value="">{{ copy('全部方式', 'All sources') }}</option><option value="0">{{ copy('余额', 'Balance') }}</option><option value="1">{{ copy('订阅', 'Subscription') }}</option></select></label><label class="portal-field">{{ copy('计费模式', 'Billing mode') }}<select v-model="draft.billingMode"><option value="">{{ copy('全部模式', 'All modes') }}</option><option value="token">Token</option><option value="per_request">{{ copy('按次', 'Per request') }}</option><option value="image">{{ copy('图片', 'Image') }}</option><option value="video">{{ copy('视频', 'Video') }}</option></select></label><label class="portal-field">{{ copy('原生压缩', 'Native compaction') }}<select v-model="draft.compaction"><option value="">{{ copy('全部请求', 'All requests') }}</option><option value="true">{{ copy('仅原生压缩', 'Compaction only') }}</option><option value="false">{{ copy('非原生压缩', 'No compaction') }}</option></select></label></template>
           <template v-else><label class="portal-field">{{ copy('错误分类', 'Error category') }}<select v-model="draft.category"><option value="">{{ copy('全部分类', 'All categories') }}</option><option v-for="(label, key) in categoryOptions" :key="key" :value="key">{{ label }}</option></select></label><label class="portal-field">{{ copy('状态码', 'Status code') }}<select v-model="draft.status"><option value="">{{ copy('全部状态', 'All status codes') }}</option><option v-for="code in COMMON_ERROR_STATUS_CODES" :key="code" :value="String(code)">{{ code }}</option></select></label></template>
-        </div><p v-if="optionsError" class="usage-options-note">{{ optionsError }} <button type="button" @click="loadOptions">{{ copy('重试', 'Retry') }}</button></p><p v-if="filterError" class="portal-error" role="alert">{{ filterError }}</p><div class="usage-filter-actions"><span>{{ copy('筛选仅应用于明细', 'Filters apply to details only') }} · {{ timezoneLabel(timezone) }}</span><button class="portal-button secondary" type="button" @click="resetFilters">{{ copy('重置', 'Reset') }}</button><button class="portal-button" type="submit">{{ copy('应用筛选', 'Apply filters') }}</button></div>
+        </div><p v-if="optionsError" class="usage-options-note">{{ optionsError }} <button type="button" @click="loadOptions">{{ copy('重试', 'Retry') }}</button></p><p v-if="filterError" class="portal-error" role="alert">{{ filterError }}</p><div class="usage-filter-actions"><span>{{ activeTab === 'usage' ? copy('筛选同时应用于上方统计和明细', 'Filters apply to statistics and details') : copy('错误分类和状态码仅应用于错误明细', 'Error category and status apply to error details only') }} · {{ timezoneLabel(timezone) }}</span><button class="portal-button secondary" type="button" @click="resetFilters">{{ copy('重置', 'Reset') }}</button><button class="portal-button" type="submit">{{ copy('应用筛选', 'Apply filters') }}</button></div>
       </form>
       <div class="usage-toolbar">
         <button class="portal-button secondary" :disabled="rowsLoading" :aria-label="copy('刷新明细', 'Refresh details')" @click="loadRows"><Icon name="refresh" size="sm" /></button>

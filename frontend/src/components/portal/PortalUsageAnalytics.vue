@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler, type ChartOptions } from 'chart.js'
 import { Doughnut, Line } from 'vue-chartjs'
 import { usageAPI } from '@/api'
+import type { TrendParams } from '@/api/usage'
 import type { UsageStatsResponse, ModelStat, GroupStat, TrendDataPoint } from '@/types'
 import Icon from '@/components/icons/Icon.vue'
 import ModelIcon from '@/components/common/ModelIcon.vue'
@@ -15,7 +16,8 @@ import { formatUsageMoney } from '@/utils/portalUsage'
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 const { locale, t } = useI18n()
-const emit = defineEmits<{ drilldown: [value: UsageDrilldown] }>()
+const props = defineProps<{ filters?: TrendParams }>()
+const emit = defineEmits<{ drilldown: [value: UsageDrilldown]; rangeChange: [value: { start: string; end: string }] }>()
 const tx = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const dateText = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 const now = new Date()
@@ -54,13 +56,18 @@ async function load() {
     return
   }
   rangeError.value = ''
+  if (props.filters?.start_date && props.filters.end_date
+      && (start.value !== props.filters.start_date || end.value !== props.filters.end_date)) {
+    emit('rangeChange', { start: start.value, end: end.value })
+    return
+  }
   applied.value = { start: start.value, end: end.value }
   const sequence = ++requestSequence
   loading.value = true
   errors.value = { stats: false, models: false, snapshot: false }
   stats.value = null
   models.value = []; groups.value = []; trend.value = []
-  const params = { start_date: start.value, end_date: end.value, timezone }
+  const params = { ...props.filters, start_date: start.value, end_date: end.value, timezone }
   const results = await Promise.allSettled([
     usageAPI.getStats(params),
     usageAPI.getDashboardModels({ ...params, model_source: 'requested' }),
@@ -150,7 +157,15 @@ const lineOptions = computed<ChartOptions<'line'>>(() => ({
     percentage: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { color: colors.value[3], callback: value => `${value}%`, font: { size: 13 } } },
   },
 }))
-onMounted(() => { void load() })
+watch(() => props.filters, filters => {
+  if (filters?.start_date && filters.end_date
+      && (start.value !== filters.start_date || end.value !== filters.end_date)) {
+    start.value = filters.start_date
+    end.value = filters.end_date
+    preset.value = 'custom'
+  }
+  void load()
+}, { deep: true, immediate: true })
 onBeforeUnmount(() => { requestSequence++ })
 </script>
 
@@ -171,7 +186,7 @@ onBeforeUnmount(() => { requestSequence++ })
       <button class="analytics-refresh" type="button" :aria-label="tx('刷新用量分析', 'Refresh usage analytics')" :disabled="loading" @click="load"><Icon name="refresh" size="sm" /></button>
     </form>
     <p v-if="rangeError" role="alert" class="analytics-error">{{ rangeError }}</p>
-    <p class="analytics-timezone">{{ tx('统计所选日期内的全部请求，独立于下方明细筛选。时区：', 'All requests in the selected dates, independent of the record filters below. Time zone: ') }}{{ timezone }}</p>
+    <p class="analytics-timezone">{{ tx('统计使用下方已应用的明细筛选条件。时区：', 'Statistics use the applied record filters. Time zone: ') }}{{ timezone }}</p>
     <div class="analytics-grid">
       <article v-for="section in sections" :key="section.id" class="analytics-panel" :data-distribution="section.id">
         <header><h3><Icon :name="section.icon" size="sm" />{{ section.title }}</h3><div class="analytics-segment" :aria-label="section.title"><button type="button" :aria-pressed="metrics[section.id] === 'tokens'" @click="metrics[section.id] = 'tokens'">Token</button><button type="button" :aria-pressed="metrics[section.id] === 'actual_cost'" @click="metrics[section.id] = 'actual_cost'">{{ tx('实际消费', 'Actual cost') }}</button></div></header>

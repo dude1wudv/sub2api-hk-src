@@ -5,11 +5,12 @@ import UsageView from '../UsageView.vue'
 import PortalUsageAnalytics from '@/components/portal/PortalUsageAnalytics.vue'
 import { usageMonthWindow } from '@/utils/portalUsage'
 
-const { query, listMyErrorRequests, getStats, getDashboardTrend, getDashboardSnapshotV2, listKeys, getAvailable } = vi.hoisted(() => ({
+const { query, listMyErrorRequests, getStats, getDashboardTrend, getDashboardModels, getDashboardSnapshotV2, listKeys, getAvailable } = vi.hoisted(() => ({
   query: vi.fn(),
   listMyErrorRequests: vi.fn(),
   getStats: vi.fn(),
   getDashboardTrend: vi.fn(),
+  getDashboardModels: vi.fn(),
   getDashboardSnapshotV2: vi.fn(),
   listKeys: vi.fn(),
   getAvailable: vi.fn(),
@@ -17,7 +18,7 @@ const { query, listMyErrorRequests, getStats, getDashboardTrend, getDashboardSna
 const storeSettings = vi.hoisted(() => ({ allow_user_view_error_requests: false, subscription_enabled: true }))
 
 vi.mock('@/api', () => ({
-  usageAPI: { query, listMyErrorRequests, getStats, getDashboardTrend, getDashboardSnapshotV2, getById: vi.fn(), getMyErrorDetail: vi.fn() },
+  usageAPI: { query, listMyErrorRequests, getStats, getDashboardTrend, getDashboardModels, getDashboardSnapshotV2, getById: vi.fn(), getMyErrorDetail: vi.fn() },
   keysAPI: { list: listKeys },
   userGroupsAPI: { getAvailable },
 }))
@@ -29,7 +30,12 @@ vi.mock('vue-i18n', async () => {
   return { ...actual, useI18n: () => ({ locale: ref('en-US'), t: (key: string) => key }) }
 })
 
-function mountUsage() {
+vi.mock('vue-chartjs', () => ({
+  Doughnut: { template: '<div />' },
+  Line: { template: '<div />' },
+}))
+
+function mountUsage(analytics = false) {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/usage', component: UsageView }] })
   void router.push('/usage')
   return mount(UsageView, {
@@ -38,7 +44,8 @@ function mountUsage() {
       stubs: {
         RouterLink: true,
         PortalUsageChart: true,
-        PortalUsageAnalytics: true,
+        PortalUsageAnalytics: !analytics,
+        InflightRequests: true,
         PortalUsageDetail: true,
         PortalDialog: true,
         PortalUsageTable: { props: ['rows'], template: '<div data-testid="usage-table">{{ rows.map(row => row.id).join(",") }}</div>' },
@@ -52,10 +59,12 @@ describe('portal UsageView access and request races', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     storeSettings.allow_user_view_error_requests = false
+    storeSettings.subscription_enabled = true
     query.mockResolvedValue({ items: [{ id: 1 }], total: 1, pages: 1, page_size: 10 })
     listMyErrorRequests.mockResolvedValue({ items: [{ id: 77 }], total: 1, pages: 1, page_size: 10 })
     getStats.mockResolvedValue({ total_actual_cost: 0, total_requests: 0 })
     getDashboardTrend.mockResolvedValue({ trend: [] })
+    getDashboardModels.mockResolvedValue({ models: [] })
     getDashboardSnapshotV2.mockResolvedValue({ models: [], groups: [] })
     listKeys.mockResolvedValue({ items: [], pages: 0 })
     getAvailable.mockResolvedValue([])
@@ -90,6 +99,86 @@ describe('portal UsageView access and request races', () => {
     expect(wrapper.get('#usage-filters').exists()).toBe(true)
     expect(wrapper.get('[aria-controls="usage-filters"]').attributes('aria-expanded')).toBe('true')
     expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ start_date: dates.currentStart, end_date: dates.end }), expect.anything())
+    wrapper.unmount()
+  })
+
+  it('applies all record filters to every analytics API only after submission and clears them on reset', async () => {
+    listKeys.mockResolvedValue({ items: [{ id: 7, name: 'QQ' }], pages: 1 })
+    getAvailable.mockResolvedValue([{ id: 3, name: 'Test group' }])
+    const wrapper = mountUsage(true)
+    await flushPromises()
+    const panel = wrapper.get('#usage-filters')
+    const selects = panel.findAll('select')
+    const inputs = panel.findAll('input')
+    const callsBefore = getDashboardModels.mock.calls.length
+    await inputs[0].setValue('2026-09-01')
+    await inputs[1].setValue('2026-09-03')
+    await selects[0].setValue('7')
+    await inputs[2].setValue('test-model')
+    await selects[1].setValue('3')
+    await selects[2].setValue('sync')
+    await selects[3].setValue('0')
+    await selects[4].setValue('token')
+    await selects[5].setValue('false')
+    expect(getDashboardModels).toHaveBeenCalledTimes(callsBefore)
+
+    await panel.trigger('submit')
+    await flushPromises()
+    const filters = {
+      start_date: '2026-09-01', end_date: '2026-09-03', api_key_id: 7, model: 'test-model',
+      group_id: 3, request_type: 'sync', stream: false, billing_type: 0,
+      billing_mode: 'token', native_compaction_v2: false, timezone: expect.any(String),
+    }
+    expect(query).toHaveBeenLastCalledWith(expect.objectContaining(filters), expect.anything())
+    expect(getStats).toHaveBeenLastCalledWith(expect.objectContaining(filters))
+    expect(getDashboardModels).toHaveBeenLastCalledWith(expect.objectContaining(filters))
+    expect(getDashboardSnapshotV2).toHaveBeenLastCalledWith(expect.objectContaining({ ...filters, include_trend: true }))
+    expect(wrapper.get('.analytics-range').text()).toBe('2026-09-01 — 2026-09-03')
+    expect(getDashboardModels).toHaveBeenCalledTimes(callsBefore + 1)
+
+    await panel.findAll('button').find(button => button.text() === 'Reset')!.trigger('click')
+    await flushPromises()
+    const cleared = { api_key_id: undefined, model: undefined, group_id: undefined, request_type: undefined, stream: undefined, billing_type: undefined, billing_mode: undefined, native_compaction_v2: undefined }
+    expect(getStats).toHaveBeenLastCalledWith(expect.objectContaining(cleared))
+    expect(getDashboardModels).toHaveBeenLastCalledWith(expect.objectContaining(cleared))
+    expect(getDashboardSnapshotV2).toHaveBeenLastCalledWith(expect.objectContaining(cleared))
+    wrapper.unmount()
+  })
+
+  it('restores analytics filters from links and browser history and retains them when changing the analysis period', async () => {
+    const wrapper = mountUsage(true)
+    await flushPromises()
+    const router = wrapper.vm.$router
+    await router.push('/usage?start_date=2026-09-04&end_date=2026-09-04&api_key_id=7&group_id=3&model=gpt-5')
+    await flushPromises()
+    expect(getStats).toHaveBeenLastCalledWith(expect.objectContaining({ api_key_id: 7, group_id: 3, model: 'gpt-5', start_date: '2026-09-04' }))
+    await router.push('/usage?start_date=2026-09-07&end_date=2026-09-07&api_key_id=8')
+    await flushPromises()
+    expect(getDashboardModels).toHaveBeenLastCalledWith(expect.objectContaining({ api_key_id: 8, group_id: undefined, model: undefined, start_date: '2026-09-07' }))
+    router.back()
+    await flushPromises()
+    expect(getDashboardModels).toHaveBeenLastCalledWith(expect.objectContaining({ api_key_id: 7, group_id: 3, model: 'gpt-5', start_date: '2026-09-04' }))
+
+    await wrapper.get('[data-testid="analytics-start"]').setValue('2026-09-01')
+    await wrapper.get('.analytics-controls').trigger('submit')
+    await flushPromises()
+    expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ api_key_id: 7, group_id: 3, model: 'gpt-5', start_date: '2026-09-01', end_date: '2026-09-04' }), expect.anything())
+    expect(getStats).toHaveBeenLastCalledWith(expect.objectContaining({ api_key_id: 7, group_id: 3, model: 'gpt-5', start_date: '2026-09-01', end_date: '2026-09-04' }))
+    expect(wrapper.get('#usage-filters input[type="date"]').element).toHaveProperty('value', '2026-09-01')
+    expect(router.currentRoute.value.query.api_key_id).toBe('7')
+    wrapper.unmount()
+  })
+
+  it('preserves the selected key and other filters when drilling down into filtered charts', async () => {
+    const wrapper = mountUsage(true)
+    await flushPromises()
+    await wrapper.vm.$router.push('/usage?start_date=2026-09-01&end_date=2026-09-04&api_key_id=7&group_id=3&request_type=stream')
+    await flushPromises()
+    wrapper.getComponent(PortalUsageAnalytics).vm.$emit('drilldown', { start: '2026-09-02', end: '2026-09-02', model: 'gpt-5' })
+    await flushPromises()
+    const filters = { start_date: '2026-09-02', end_date: '2026-09-02', api_key_id: 7, group_id: 3, request_type: 'stream', model: 'gpt-5' }
+    expect(query).toHaveBeenLastCalledWith(expect.objectContaining(filters), expect.anything())
+    expect(getDashboardModels).toHaveBeenLastCalledWith(expect.objectContaining(filters))
     wrapper.unmount()
   })
   it('restores same-route drilldown conditions and clears unrelated filters on back navigation', async () => {
