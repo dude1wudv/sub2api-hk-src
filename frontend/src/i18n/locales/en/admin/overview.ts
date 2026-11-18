@@ -1123,7 +1123,7 @@ export default {
       openaiUltraFast: {
         title: 'OpenAI Ultra Fast mode',
         force: 'Force Ultra Fast (ultrafast)',
-        hint: 'Forces service_tier=ultrafast on OpenAI HTTP requests and every WebSocket turn only for supported models (GPT-6 Astra, GPT-6.1 Sol), taking precedence over Force Fast and the global Fast/Flex policy. Other models use priority when Force Fast is also enabled, otherwise they follow the client; unknown relay aliases are not assumed to support Ultra Fast. The default charge is 8× the Standard price and can be overridden in group or channel pricing. Upstream accounts must have Ultra Fast access. New requests update immediately after saving; existing WebSocket sessions must reconnect.',
+        hint: 'Forces service_tier=ultrafast on OpenAI HTTP requests and every WebSocket turn when the model and upstream account support it. Pro 200 includes Ultra Fast for GPT-6.2 Sol. Pro 500 includes it for GPT-6.2 Sol and GPT-6.2 Astra. Availability for GPT-6 Astra and GPT-6.1 Sol depends on the upstream account. Ultra Fast takes precedence over Force Fast and the global Fast/Flex policy. When unavailable, requests use priority if Force Fast is enabled and follow the client otherwise. HK charges 8× the Standard price by default. Group or channel pricing can override the multiplier. New requests update immediately after saving. Existing WebSocket sessions must reconnect.',
         free: 'Free Ultra Fast',
         freeHint: 'Ultra Fast requests in this group still use the ultrafast tier, but customers are charged the equivalent Standard price. This switch is independent of Free Fast.'
       },

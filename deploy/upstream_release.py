@@ -1,9 +1,7 @@
 """Fixed-SHA upstream synchronization release for the existing HK application.
 
 Preserves live configuration, historical billing, shared containers and volumes.
-Only the three reviewed migration byte sequences may be added, including the two
-upstream 251 filenames that sort before the existing HK migrations. Health and
-embedded-resource checks do not claim real paid-call or browser acceptance.
+The release pins the v0.2.23 migration bytes and validates health and embedded resources.
 """
 import argparse
 import json
@@ -16,11 +14,9 @@ import time
 import chat_release as shared
 
 
-UPSTREAM_TAG_COMMIT = 'b0fa9f3e6eeab1968a53e1289b69daa4bb40ca2b'
+UPSTREAM_TAG_COMMIT = '5af9afb588c4b014b3df9db7d4073af1f8ae01b6'
 UPSTREAM_MIGRATIONS = {
-    '251_group_force_openai_ultrafast.sql': 'd78e605d4fc2038c57f620dff398022823a850ea8994b129b50774ac49e20af1',
-    '251_group_usage_rollup_nonblocking_build.sql': '5b6e9b57f9b354a96c6870185c034db8adc7def944efcddf654e39cd97770718',
-    '349_group_usage_rollup_retention_nonblocking.sql': '1241aac3633b14a9ecdf58878b5e8c704f428e0ac0941d0a78d7ceb1c54a42f2',
+    '252_channel_pricing_ultrafast_multiplier.sql': '458752b3523254ee60ab4a821261ab64df9216a6f208c1960e7b816f8c7cfd1d',
 }
 
 
@@ -48,6 +44,18 @@ def validate_ci(evidence, sha):
 
 class UpstreamRelease(shared.Release):
     allow_newly_visible_billing_rows = True
+
+    def billing_configuration(self):
+        tables = ('groups', 'channels', 'channel_groups', 'channel_model_pricing',
+                  'channel_pricing_intervals', 'user_group_rate_multipliers')
+        return {
+            table: self.sql(
+                "SELECT count(*) || ':' || encode(sha256(convert_to("
+                "coalesce(jsonb_agg(v ORDER BY v::text COLLATE \"C\"), '[]')::text, 'UTF8')), 'hex') "
+                "FROM (SELECT to_jsonb(t) - 'created_at' - 'updated_at' AS v FROM " + table + " t) rows"
+            )
+            for table in tables
+        }
 
     def ci(self):
         evidence = self.evidence('ci.json')
@@ -99,6 +107,8 @@ class UpstreamRelease(shared.Release):
                        'Candidate image tag changed')
         self.run(['caddy', 'validate', '--config', '/etc/caddy/Caddyfile'])
         self.backup(before)
+        billing_before = self.billing_configuration()
+        self.save('billing-configuration.before.json', billing_before)
         old = json.loads((self.audit / 'migrations.before.json').read_text())
         baseline = self.source_migrations(self.expected)
         allowed = self.manifest['migration_allowlist']
@@ -118,8 +128,11 @@ class UpstreamRelease(shared.Release):
             self.persist()
             shared.atomic_write(shared.COMPOSE, updated)
             self.compose('config', '--quiet')
-            self.compose('up', '-d', '--no-deps', 'sub2api')
+            self.compose('up', '-d', '--no-deps', '--no-build', '--pull', 'never', 'sub2api')
             self.guard_after()
+            billing_after = self.billing_configuration()
+            self.save('billing-configuration.after.json', billing_after)
+            shared.require(billing_after == billing_before, 'Production billing configuration changed')
             self.health_and_assets()
             self.manifest.update(phase='deployed-upstream-verified',
                                  application_verified_at=shared.now().isoformat())

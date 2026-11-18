@@ -306,7 +306,19 @@ func (f *incompleteForwardCapture) finishOpenAI(result **OpenAIForwardResult, er
 	disconnected := false
 	if *result != nil {
 		u := (*result).Usage
-		usage = &ClaudeUsage{InputTokens: max(0, u.InputTokens-u.CacheReadInputTokens-u.CacheCreationInputTokens), OutputTokens: u.OutputTokens, CacheReadInputTokens: u.CacheReadInputTokens, CacheCreationInputTokens: u.CacheCreationInputTokens, OutputTokensEstimated: u.OutputTokensEstimated, InputTokensEstimated: u.InputTokensEstimated, CacheReadTokensEstimated: u.CacheReadTokensEstimated, UsageEstimationReason: u.UsageEstimationReason}
+		usage = &ClaudeUsage{
+			InputTokens:                     max(0, u.InputTokens-u.CacheReadInputTokens-u.CacheCreationInputTokens),
+			OutputTokens:                    u.OutputTokens,
+			CacheReadInputTokens:            u.CacheReadInputTokens,
+			CacheCreationInputTokens:        u.CacheCreationInputTokens,
+			CacheCreation5mTokens:           u.CacheCreation5mTokens,
+			CacheCreation1hTokens:           u.CacheCreation1hTokens,
+			cacheCreationInputTokensPresent: u.cacheCreationInputTokensPresent,
+			OutputTokensEstimated:           u.OutputTokensEstimated,
+			InputTokensEstimated:            u.InputTokensEstimated,
+			CacheReadTokensEstimated:        u.CacheReadTokensEstimated,
+			UsageEstimationReason:           u.UsageEstimationReason,
+		}
 		disconnected = (*result).ClientDisconnect
 		(*result).ClientDisconnect = f.clientDisconnected(disconnected)
 	}
@@ -318,6 +330,9 @@ func (f *incompleteForwardCapture) finishOpenAI(result **OpenAIForwardResult, er
 		dst.OutputTokens = u.OutputTokens
 		dst.CacheReadInputTokens = u.CacheReadInputTokens
 		dst.CacheCreationInputTokens = u.CacheCreationInputTokens
+		dst.CacheCreation5mTokens = u.CacheCreation5mTokens
+		dst.CacheCreation1hTokens = u.CacheCreation1hTokens
+		dst.cacheCreationInputTokensPresent = u.cacheCreationInputTokensPresent
 		dst.InputTokensEstimated = u.InputTokensEstimated
 		dst.CacheReadTokensEstimated = u.CacheReadTokensEstimated
 		dst.OutputTokensEstimated = u.OutputTokensEstimated
@@ -428,7 +443,15 @@ func (p *incompleteProtocolProgress) mergeActualInput(existing *ClaudeUsage) {
 		existing.CacheReadTokensEstimated = false
 	}
 	if p.cacheCreationReported {
-		existing.CacheCreationInputTokens = p.usage.CacheCreationInputTokens
+		// Preserve a parser's raw zero when it already captured the same TTL
+		// detail. Billing resolves that aggregate from the buckets.
+		sameDetails := existing.CacheCreation5mTokens == p.usage.CacheCreation5mTokens &&
+			existing.CacheCreation1hTokens == p.usage.CacheCreation1hTokens
+		if !p.usage.cacheCreationInputTokensFromDetails || !sameDetails || existing.CacheCreationInputTokens > 0 {
+			existing.CacheCreationInputTokens = p.usage.CacheCreationInputTokens
+			existing.cacheCreationInputTokensFromDetails = p.usage.cacheCreationInputTokensFromDetails
+		}
+		existing.cacheCreationInputTokensPresent = p.usage.cacheCreationInputTokensPresent
 		existing.CacheCreation5mTokens = p.usage.CacheCreation5mTokens
 		existing.CacheCreation1hTokens = p.usage.CacheCreation1hTokens
 	}
@@ -493,29 +516,23 @@ func (p *incompleteProtocolProgress) observe(data []byte) {
 				p.usage.InputTokens = v
 			}
 		}
-		if v, ok := streamOutputUsageTokenCount(u.Get("cache_read_input_tokens")); ok {
-			p.cacheReported = true
-			p.cacheReadReported = true
-			p.usage.CacheReadInputTokens = v
-		}
-		if v, ok := streamOutputUsageTokenCount(u.Get("cache_creation_input_tokens")); ok {
-			p.cacheReported = true
-			p.cacheCreationReported = true
-			p.usage.CacheCreationInputTokens = v
-			p.usage.CacheCreation5mTokens = int(u.Get("cache_creation.ephemeral_5m_input_tokens").Int())
-			p.usage.CacheCreation1hTokens = int(u.Get("cache_creation.ephemeral_1h_input_tokens").Int())
-		}
-		// Reuse the same provider normalization as the ordinary parsers; raw
-		// input_tokens can be a total when OpenAI/DeepSeek aliases are present.
-		for _, path := range []string{"cached_tokens", "prompt_tokens_details.cached_tokens", "prompt_cache_hit_tokens"} {
+		for _, path := range []string{"cache_read_input_tokens", "cached_tokens", "prompt_tokens_details.cached_tokens", "prompt_cache_hit_tokens"} {
 			if v, ok := streamOutputUsageTokenCount(u.Get(path)); ok {
-				if !u.Get("cache_read_input_tokens").Exists() {
+				if typ == "message" {
 					p.usage.CacheReadInputTokens = v
 				}
-				p.cacheReported, p.cacheReadReported = true, true
+				p.cacheReadReported = true
 				break
 			}
 		}
+		for _, path := range []string{"cache_creation_input_tokens", "cache_creation.ephemeral_5m_input_tokens", "cache_creation.ephemeral_1h_input_tokens"} {
+			if _, ok := streamOutputUsageTokenCount(u.Get(path)); ok {
+				p.cacheCreationReported = true
+				break
+			}
+		}
+		p.cacheReported = p.cacheReadReported || p.cacheCreationReported
+		// Merge partial cache snapshots before deriving the uncached input.
 		if normalizeAnthropicCompatiblePromptUsage(u, &p.usage) {
 			p.inputReported = true
 		}

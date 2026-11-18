@@ -326,6 +326,27 @@ func TestIncompleteCaptureAnthropicInputZeroAndCompatibleCachePlaceholder(t *tes
 	}
 }
 
+func TestIncompleteCaptureAnthropicMergesPartialTTLUsage(t *testing.T) {
+	p := &incompleteProtocolProgress{}
+	p.observe([]byte(`{"type":"message_start","message":{"usage":{"prompt_tokens":100,"cache_read_input_tokens":7,"cache_creation_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":20}}}}`))
+	p.observe([]byte(`{"type":"message_delta","usage":{"input_tokens":0,"cache_read_input_tokens":0,"cache_creation_input_tokens":0,"cache_creation":{"ephemeral_1h_input_tokens":30}}}`))
+	var got ClaudeUsage
+	p.mergeActualInput(&got)
+	require.Equal(t, 43, got.InputTokens)
+	require.Equal(t, 7, got.CacheReadInputTokens)
+	require.Equal(t, 50, got.CacheCreationInputTokens)
+	require.Equal(t, 20, got.CacheCreation5mTokens)
+	require.Equal(t, 30, got.CacheCreation1hTokens)
+
+	p.observe([]byte(`{"type":"message_delta","usage":{"cache_creation_input_tokens":60}}`))
+	p.observe([]byte(`{"type":"message_delta","usage":{"cache_creation_input_tokens":0,"output_tokens":2}}`))
+	p.mergeActualInput(&got)
+	require.Equal(t, 33, got.InputTokens)
+	require.Equal(t, 60, got.CacheCreationInputTokens)
+	require.Equal(t, 20, got.CacheCreation5mTokens)
+	require.Equal(t, 30, got.CacheCreation1hTokens)
+}
+
 func TestIncompleteCaptureAnthropicErrorBeforeOutputDoesNotEstimate(t *testing.T) {
 	f := newIncompleteForwardCapture(context.Background(), nil, nil)
 	p := &incompleteProtocolProgress{}

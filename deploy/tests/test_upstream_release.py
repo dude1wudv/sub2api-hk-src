@@ -25,7 +25,7 @@ class UpstreamReleaseTests(unittest.TestCase):
         }
         before = {name: value for name, value in candidate.items()
                   if name not in release.UPSTREAM_MIGRATIONS}
-        self.assertEqual(len(before), 350)
+        self.assertEqual(len(before), 353)
         self.assertEqual(
             release.upstream_migration_allowlist(before, candidate),
             release.UPSTREAM_MIGRATIONS,
@@ -35,7 +35,7 @@ class UpstreamReleaseTests(unittest.TestCase):
             {**candidate, old: 'changed'},
             {name: value for name, value in candidate.items() if name != old},
             {**candidate, '350_unreviewed.sql': 'extra'},
-            {**candidate, '349_group_usage_rollup_retention_nonblocking.sql': 'changed'},
+            {**candidate, '252_channel_pricing_ultrafast_multiplier.sql': 'changed'},
             before,
         ):
             with self.assertRaises(RuntimeError):

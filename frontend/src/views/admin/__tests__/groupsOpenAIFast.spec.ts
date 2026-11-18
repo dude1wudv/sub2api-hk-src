@@ -29,6 +29,10 @@ describe("groupsOpenAIFast", () => {
       });
       expect(locale.groups.openaiUltraFast.hint).toContain("GPT-6 Astra");
       expect(locale.groups.openaiUltraFast.hint).toContain("GPT-6.1 Sol");
+      expect(locale.groups.openaiUltraFast.hint).toContain("GPT-6.2 Sol");
+      expect(locale.groups.openaiUltraFast.hint).toContain("GPT-6.2 Astra");
+      expect(locale.groups.openaiUltraFast.hint).toContain("Pro 200");
+      expect(locale.groups.openaiUltraFast.hint).toContain("Pro 500");
     }
   });
 
@@ -54,9 +58,10 @@ describe("groupsOpenAIFast", () => {
         hint: expect.stringContaining('service_tier=ultrafast'),
         freeHint: expect.stringContaining('Standard'),
       });
-      expect(locale.groups.openaiUltraFast.hint).toContain('8');
       expect(locale.groups.openaiUltraFast.hint).toContain('WebSocket');
     }
+    expect(zh.groups.openaiUltraFast.hint).toContain('HK 默认按 Standard 价格的 8 倍计费');
+    expect(en.groups.openaiUltraFast.hint).toContain('HK charges 8× the Standard price by default');
     expect(zh.groups.openaiFast.hint).toContain('优先于全局');
     expect(en.groups.openaiFast.hint).toContain('precedence over the global');
   });

@@ -23,7 +23,7 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 353
+	candidateMigrationCount         = 354
 	mcpOAuthMigration               = "249_mcp_oauth.sql"
 )
 
@@ -31,6 +31,7 @@ var currentOnlineFollowupMigrations = []string{
 	"251_group_force_openai_ultrafast.sql",
 	"251_group_usage_rollup_nonblocking_build.sql",
 	"349_group_usage_rollup_retention_nonblocking.sql",
+	"252_channel_pricing_ultrafast_multiplier.sql",
 	"343_user_chat.sql",
 	"344_chat_auxiliary.sql",
 	"345_group_usage_rollup_retention_guard.sql",
@@ -50,6 +51,7 @@ var postHKBaselineMigrations = []string{
 	"251_group_force_openai_ultrafast.sql",
 	"251_group_usage_rollup_nonblocking_build.sql",
 	"349_group_usage_rollup_retention_nonblocking.sql",
+	"252_channel_pricing_ultrafast_multiplier.sql",
 	"343_user_chat.sql",
 	"344_chat_auxiliary.sql",
 	"345_group_usage_rollup_retention_guard.sql",
@@ -86,6 +88,7 @@ var candidateOnlyMigrations = []string{
 	"251_group_force_openai_ultrafast.sql",
 	"251_group_usage_rollup_nonblocking_build.sql",
 	"349_group_usage_rollup_retention_nonblocking.sql",
+	"252_channel_pricing_ultrafast_multiplier.sql",
 	"343_user_chat.sql",
 	"344_chat_auxiliary.sql",
 	"345_group_usage_rollup_retention_guard.sql",
@@ -306,6 +309,7 @@ func TestUpstreamMergeValidation_FeatureBaselineHistoryAndFreshSchemaConverge(t 
 		"251_group_force_openai_ultrafast.sql",
 		"251_group_usage_rollup_nonblocking_build.sql",
 		"349_group_usage_rollup_retention_nonblocking.sql",
+		"252_channel_pricing_ultrafast_multiplier.sql",
 		"339_group_rate_history.sql", "340_api_key_anthropic_cache_ttl_mode.sql",
 		"341_add_usage_log_input_estimation.sql", "342_user_chat.sql", "343_user_chat.sql",
 		"344_chat_auxiliary.sql", "345_group_usage_rollup_retention_guard.sql",

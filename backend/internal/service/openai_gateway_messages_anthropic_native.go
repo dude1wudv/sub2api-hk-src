@@ -673,14 +673,18 @@ func claudeUsageToOpenAIUsage(u *ClaudeUsage) OpenAIUsage {
 	if u == nil {
 		return OpenAIUsage{}
 	}
+	tokens := u.billingUsageTokens()
 	return OpenAIUsage{
-		InputTokens:              u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens,
-		OutputTokens:             u.OutputTokens,
-		OutputTokensEstimated:    u.OutputTokensEstimated,
-		InputTokensEstimated:     u.InputTokensEstimated,
-		CacheReadTokensEstimated: u.CacheReadTokensEstimated,
-		UsageEstimationReason:    u.UsageEstimationReason,
-		CacheCreationInputTokens: u.CacheCreationInputTokens,
-		CacheReadInputTokens:     u.CacheReadInputTokens,
+		OutputTokensEstimated:           u.OutputTokensEstimated,
+		InputTokensEstimated:            u.InputTokensEstimated,
+		CacheReadTokensEstimated:        u.CacheReadTokensEstimated,
+		UsageEstimationReason:           u.UsageEstimationReason,
+		InputTokens:                     u.InputTokens + tokens.CacheCreationTokens + u.CacheReadInputTokens,
+		OutputTokens:                    u.OutputTokens,
+		CacheCreationInputTokens:        tokens.CacheCreationTokens,
+		CacheCreation5mTokens:           u.CacheCreation5mTokens,
+		CacheCreation1hTokens:           u.CacheCreation1hTokens,
+		CacheReadInputTokens:            u.CacheReadInputTokens,
+		cacheCreationInputTokensPresent: u.cacheCreationInputTokensPresent,
 	}
 }

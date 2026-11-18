@@ -1121,7 +1121,7 @@ export default {
       openaiUltraFast: {
         title: 'OpenAI Ultra Fast 模式',
         force: '强制使用 Ultra Fast（ultrafast）',
-        hint: '开启后，仅对支持 Ultra Fast 的模型（GPT-6 Astra、GPT-6.1 Sol）的 OpenAI HTTP 请求和 WebSocket 每轮请求强制使用 service_tier=ultrafast，优先于强制 Fast 和全局 Fast/Flex 策略。其他模型在同时开启强制 Fast 时使用 priority，否则跟随客户端；未知中转别名不视为支持。默认按 Standard 价格的 8 倍计费，可在分组或渠道定价中覆盖，需要上游账号具备 Ultra Fast 权限。保存后新请求立即生效，已建立的 WebSocket 会话需重连。',
+        hint: '模型和上游账号均支持时，此分组的 OpenAI HTTP 请求和 WebSocket 每轮请求强制使用 service_tier=ultrafast。Pro 200 支持 GPT-6.2 Sol 的 Ultra Fast，Pro 500 支持 GPT-6.2 Sol 和 GPT-6.2 Astra。GPT-6 Astra 和 GPT-6.1 Sol 能否使用 Ultra Fast 取决于上游账号。Ultra Fast 优先于强制 Fast 和全局 Fast/Flex 策略。Ultra Fast 不可用时，若已开启强制 Fast，则使用 priority，否则跟随客户端。HK 默认按 Standard 价格的 8 倍计费，分组或渠道定价可覆盖该倍率。保存后新请求立即生效，已建立的 WebSocket 会话需重连。',
         free: '免费 Ultra Fast',
         freeHint: '该分组的 Ultra Fast 请求仍使用 ultrafast 档位，但客户实际费用按同一请求的 Standard 价格计算；与免费 Fast 开关互相独立。'
       },

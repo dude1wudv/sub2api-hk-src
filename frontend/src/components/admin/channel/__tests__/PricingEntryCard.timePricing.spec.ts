@@ -87,7 +87,7 @@ describe('PricingEntryCard request multipliers', () => {
     expect(hidden.find('[data-testid="ultrafast-multiplier"]').exists()).toBe(false)
 
     const shown = shallowMount(PricingEntryCard, {
-      props: { entry: createEntry(), enableTierMultipliers: true },
+      props: { entry: createEntry(), platform: 'openai', enableTierMultipliers: true },
     })
     expect(shown.text()).toContain('admin.channels.form.fastMultiplier')
     expect(shown.text()).toContain('admin.channels.form.ultrafastMultiplier')

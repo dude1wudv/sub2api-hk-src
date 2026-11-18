@@ -104,7 +104,7 @@ func ApplyOpenAIGroupServiceTierBillingResolution(account *Account, group *Group
 		if model == "" {
 			model = result.Model
 		}
-		forced := openAIForcedTierForGroup(group, model)
+		forced := openAIForcedTierForAccountGroup(group, account, model)
 		if forced != "" && resolution.Requested == forced {
 			resolution.Billing = resolution.Requested
 		}

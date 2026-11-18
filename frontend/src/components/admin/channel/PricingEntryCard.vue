@@ -166,7 +166,7 @@
                 data-testid="fast-multiplier" :aria-label="t('admin.channels.form.fastMultiplier')"
                 type="number" step="any" min="0.000001" class="input mt-0.5 text-sm" :placeholder="t(platform === 'openai' || platform === 'composite' ? 'admin.channels.form.fastMultiplierDefault' : 'admin.channels.form.multiplierPlaceholder')" />
             </div>
-            <div>
+            <div v-if="platform === 'openai' || platform === 'composite'">
               <label class="text-xs text-gray-400">{{ t('admin.channels.form.ultrafastMultiplier') }}</label>
               <input :value="entry.ultrafast_multiplier" @input="emitField('ultrafast_multiplier', ($event.target as HTMLInputElement).value)"
                 data-testid="ultrafast-multiplier" :aria-label="t('admin.channels.form.ultrafastMultiplier')"
