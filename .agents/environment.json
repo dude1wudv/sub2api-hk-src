@@ -1,0 +1,3 @@
+{
+  "install": "sed -i '/case \\$- in/,/esac/d' \"$HOME/.bashrc\" 2>/dev/null || true; grep -qxF 'export PATH=\"$HOME/.local/bin:$PATH\"' \"$HOME/.bashrc\" || echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> \"$HOME/.bashrc\"; export PATH=\"$HOME/.local/bin:$PATH\"; mkdir -p \"$HOME/.local\" && ([ -x \"$HOME/.local/bin/pnpm\" ] && \"$HOME/.local/bin/pnpm\" -v | grep -q '^9\\.' || NPM_CONFIG_PREFIX=\"$HOME/.local\" npm install -g pnpm@9.15.9) && pnpm --dir frontend install --frozen-lockfile"
+}
