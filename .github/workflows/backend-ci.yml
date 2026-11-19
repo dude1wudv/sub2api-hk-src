@@ -2,7 +2,13 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -21,6 +27,7 @@ jobs:
           make secret-scan
 
   test:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -46,6 +53,7 @@ jobs:
         run: make test-integration
 
   frontend:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -81,6 +89,7 @@ jobs:
         run: go test -tags=embed ./internal/web -run '^TestChat|^TestDeepSeekSuiteAliases|^TestFrontendServer_Middleware|^TestServeEmbedded' -count=1
 
   golangci-lint:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -99,6 +108,7 @@ jobs:
           working-directory: backend
 
   release-helpers:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
