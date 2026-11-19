@@ -1,10 +1,14 @@
 name: Security Scan
 
 on:
-  push:
   pull_request:
+    branches: [main]
   schedule:
     - cron: '0 3 * * 1'
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
