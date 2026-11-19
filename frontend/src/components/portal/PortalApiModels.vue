@@ -370,94 +370,829 @@ function chooseExampleModel() {
 </script>
 
 <style scoped>
-.portal-api-models { display:grid; grid-template-columns:230px minmax(0,1fr); border:1px solid rgb(var(--line)); border-radius:16px; background:rgb(var(--surface)); min-width:0; overflow:clip; }
-.portal-api-sidebar { padding:22px 12px; border-right:1px solid rgb(var(--ink-3) / .38); background:rgb(var(--surface-2) / .55); min-width:0; }
-.portal-api-sidebar-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 10px; margin-bottom:16px; }
-.portal-api-sidebar-heading h2 { font-size:14px; font-weight:650; margin:0; }
-.portal-api-sidebar-heading > span { font-size:12px; color:rgb(var(--ink-3)); font-variant-numeric:tabular-nums; }
-.portal-api-model-search { display:flex; align-items:center; gap:8px; min-width:0; width:240px; min-height:40px; padding:0 12px; border:1px solid rgb(var(--line)); border-radius:9px; background:rgb(var(--surface)); color:rgb(var(--ink-3)); }
-.portal-api-model-search input { min-width:0; width:100%; border:0; outline:none; background:transparent; color:rgb(var(--ink)); font:inherit; font-size:13px; }
-.portal-api-model-search:focus-within { border-color:rgb(var(--focus-ring)); box-shadow:0 0 0 3px rgb(var(--focus-ring) / .14); }
-.portal-api-group-search { width:100%; margin-bottom:12px; }
-.portal-api-group-nav { display:flex; flex-direction:column; gap:5px; max-height:clamp(240px,calc(100dvh - 360px),850px); overflow-y:auto; overscroll-behavior-y:contain; scrollbar-gutter:stable; scrollbar-width:auto; scrollbar-color:rgb(var(--ink-3) / .7) rgb(var(--surface-2)); padding-right:5px; }
-.portal-api-group-nav::-webkit-scrollbar { width:10px; }
-.portal-api-group-nav::-webkit-scrollbar-track { background:rgb(var(--surface-2)); border-radius:8px; }
-.portal-api-group-nav::-webkit-scrollbar-thumb { background:rgb(var(--ink-3) / .7); border:2px solid rgb(var(--surface-2)); border-radius:8px; }
-.portal-api-group-nav button { position:relative; display:flex; flex-direction:column; flex-shrink:0; gap:7px; width:100%; padding:12px; border:1px solid transparent; border-bottom-color:rgb(var(--ink-3) / .25); border-radius:9px; background:transparent; text-align:left; color:rgb(var(--ink-2)); cursor:pointer; }
-.portal-api-group-scroll-hint { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:12px 2px 0; margin-top:8px; border-top:1px solid rgb(var(--ink-3) / .3); color:rgb(var(--ink-2)); font-size:11px; }
-.portal-api-group-scroll-hint > div { display:flex; gap:4px; }
-.portal-api-group-scroll-hint button { display:grid; place-items:center; width:28px; height:28px; border:1px solid rgb(var(--ink-3) / .35); border-radius:6px; background:rgb(var(--surface)); color:rgb(var(--ink)); cursor:pointer; }
-.portal-api-group-scroll-hint button:disabled { opacity:.35; cursor:default; }
-.portal-api-group-scroll-hint button:not(:disabled):hover { background:rgb(var(--table-hover)); }
-.portal-api-group-nav button:hover { background:rgb(var(--table-hover)); }
-.portal-api-group-nav button[aria-pressed='true'] { background:rgb(var(--brand-moss) / .1); border-color:rgb(var(--brand-moss) / .25); color:rgb(var(--ink)); }
-.portal-api-connection-name { font-size:13px; line-height:1.5; font-weight:550; overflow-wrap:anywhere; }
-.portal-api-connection-meta { display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:rgb(var(--ink-3)); font-variant-numeric:tabular-nums; }
-.portal-api-group-nav small,.portal-api-sidebar-empty { font-size:12px; color:rgb(var(--ink-3)); }
-.portal-api-mobile-groups { display:none; }
-.portal-api-catalogue { padding:28px; min-width:0; }
-.portal-api-catalogue-header { display:flex; justify-content:space-between; align-items:center; gap:20px; margin-bottom:14px; }
-.portal-api-catalogue-header h2 { margin:5px 0 0; font-size:21px; font-weight:650; line-height:1.45; overflow-wrap:anywhere; }
-.portal-api-eyebrow { margin:0; color:rgb(var(--ink-3)); font-size:10px; font-weight:600; letter-spacing:.08em; }
-.portal-api-group-description { margin:0 0 12px; font-size:13px; color:rgb(var(--ink-3)); line-height:1.7; white-space:pre-line; overflow-wrap:anywhere; }
-.portal-api-group-facts { display:flex; flex-wrap:wrap; gap:8px 18px; padding-bottom:20px; border-bottom:1px solid rgb(var(--line)); font-size:12px; color:rgb(var(--ink-3)); }
-.portal-model-platforms { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:22px 0; }
-.portal-model-platforms > button { display:inline-flex; align-items:center; gap:7px; min-height:38px; padding:7px 11px; border:1px solid rgb(var(--line)); border-radius:9px; background:rgb(var(--surface)); color:rgb(var(--ink-2)); font-size:13px; cursor:pointer; }
-.portal-model-platforms > button[aria-pressed='true'] { border-color:rgb(var(--ink)); color:rgb(var(--ink)); background:rgb(var(--surface-2)); font-weight:600; }
-.portal-model-platforms button > span { font-size:11px; color:rgb(var(--ink-3)); font-variant-numeric:tabular-nums; }
-.portal-api-table-heading { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; color:rgb(var(--ink-3)); font-size:11.5px; padding:0 0 12px; }
-.portal-api-price-key { display:inline-block; margin-left:8px; padding:3px 6px; border:1px solid rgb(var(--brand-moss) / .2); border-radius:5px; background:rgb(var(--brand-moss) / .08); color:rgb(var(--brand-moss)); }
-.portal-api-media-label { display:block; margin-bottom:7px; font-size:11px; color:rgb(var(--ink-3)); }
-.portal-api-image-token-prices { display:flex; flex-wrap:wrap; gap:16px 24px; }
-.portal-api-image-token-prices > div { display:flex; align-items:baseline; gap:12px; }
-.portal-api-model-table-wrap { overflow-x:auto; }
-.portal-api-model-table { width:100%; border-collapse:separate; border-spacing:0; text-align:left; font-size:13px; }
-.portal-api-model-table thead th { padding:13px 12px; color:rgb(var(--ink-3)); border-bottom:1px solid rgb(var(--line)); font-size:12px; font-weight:500; white-space:nowrap; text-align:right; }
-.portal-api-model-table thead th:first-child { text-align:left; }
-.portal-api-model-table td { min-width:90px; padding:17px 12px; border-bottom:1px solid rgb(var(--line)); font-variant-numeric:tabular-nums; vertical-align:middle; text-align:right; }
-.portal-api-model-table td:first-child { width:42%; min-width:220px; text-align:left; }
-.portal-api-vendor-row th { padding:10px 12px; background:rgb(var(--surface-2) / .7); font-size:13px; font-weight:600; text-align:left; border-block:8px solid rgb(var(--surface)); }
-.portal-api-vendor-row small { margin-left:10px; color:rgb(var(--ink-3)); font-size:11px; font-weight:400; }
-.portal-api-model-row:hover td { background:rgb(var(--table-hover)); }
-.portal-api-model-name { display:inline-flex; align-items:center; gap:10px; min-height:30px; padding:0; border:0; background:none; color:rgb(var(--ink)); font-size:13px; font-weight:550; text-align:left; overflow-wrap:anywhere; cursor:pointer; }
-.portal-api-model-name > :last-child { color:rgb(var(--ink-3)); opacity:.6; }
-.portal-api-model-name :deep(svg) { flex-shrink:0; }
-.portal-api-models :deep(.model-icon path[fill='#000000']),.portal-api-models :deep(.model-icon path[fill='#16191E']) { fill:rgb(var(--ink)); }
-.portal-api-model-name:hover { color:rgb(var(--brand-moss)); }
-.portal-api-model-capabilities { display:flex; flex-wrap:wrap; gap:10px; margin:4px 0 0 30px; font-size:11px; color:rgb(var(--ink-3)); }
-.portal-api-model-badges { display:flex; flex-wrap:wrap; gap:5px; margin:6px 0 0 30px; }
-.portal-api-model-badges span { padding:1px 6px; border-radius:4px; background:rgb(var(--surface-2)); font-size:10.5px; color:rgb(var(--ink-2)); }
-.portal-api-price-missing { color:rgb(var(--ink-3)); }
-.portal-api-model-table .portal-api-model-empty { height:180px; text-align:center; color:rgb(var(--ink-3)); }
-.portal-api-model-empty > svg { margin:0 auto 12px; }
-.portal-api-model-state { margin:22px 0; padding:48px 20px; border:1px dashed rgb(var(--line)); border-radius:12px; color:rgb(var(--ink-3)); text-align:center; font-size:13px; }
-.portal-api-pricing-note { margin:16px 0 0; font-size:11.5px; line-height:1.7; color:rgb(var(--ink-3)); }
-.portal-api-catalogue-notes { margin-top:18px; font-size:13px; color:rgb(var(--ink-2)); }
-.portal-api-catalogue-notes summary { cursor:pointer; }
-.portal-api-price-description { margin:12px 0 0; color:rgb(var(--ink-3)); font-size:13px; line-height:1.7; overflow-wrap:anywhere; }
-.portal-api-model-create { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:20px; }
-.portal-api-model-create > span { max-width:420px; font-size:13px; color:rgb(var(--ink-3)); }
-.portal-api-models :is(button,select,summary):focus-visible { outline:2px solid rgb(var(--focus-ring)); outline-offset:3px; }
-.portal-api-price-detail { font-size:13.5px; line-height:1.7; }
-.portal-api-price-summary { display:grid; gap:8px; margin:0 0 20px; padding:14px 16px; border:1px solid rgb(var(--line)); border-radius:10px; background:rgb(var(--surface-2) / .5); }
-.portal-api-price-summary > div { display:flex; flex-wrap:wrap; gap:8px 18px; }
-.portal-api-price-summary dt { min-width:105px; color:rgb(var(--ink-3)); }
-.portal-api-price-summary dd { margin:0; font-weight:550; }
-.portal-api-detail-table-wrap { overflow:auto; margin-top:12px; border:1px solid rgb(var(--line)); border-radius:10px; }
-.portal-api-detail-table { width:100%; border-collapse:collapse; font-size:13px; text-align:left; font-variant-numeric:tabular-nums; }
-.portal-api-detail-table th { background:rgb(var(--surface-2)); font-weight:600; color:rgb(var(--ink-2)); }
-.portal-api-detail-table :is(th,td) { padding:10px 12px; border-bottom:1px solid rgb(var(--line)); white-space:nowrap; }
-.portal-api-detail-table tr:last-child td { border-bottom:0; }
-.portal-api-pricing-rule { margin-top:20px; padding-top:16px; border-top:1px solid rgb(var(--line)); }
-.portal-api-pricing-rule h3 { margin:0 0 8px; font-size:14px; font-weight:600; }
-.portal-api-pricing-rule p { margin:6px 0; }
-.portal-api-pricing-rule ul { margin:8px 0; padding-left:20px; list-style:disc; }
-@media(max-width:1100px) { .portal-api-models { grid-template-columns:205px minmax(0,1fr); } .portal-api-catalogue { padding:22px 18px; } .portal-api-catalogue-header { flex-wrap:wrap; } .portal-api-model-search { width:100%; } }
-@media (max-width:767px), (max-width:1023px) and (max-height:500px) and (pointer:coarse) { .portal-api-models { grid-template-columns:minmax(0,1fr); } .portal-api-sidebar { border-right:0; border-bottom:1px solid rgb(var(--line)); padding:16px; } .portal-api-sidebar-heading { padding:0; margin-bottom:10px; } .portal-api-group-nav,.portal-api-group-search,.portal-api-group-scroll-hint { display:none; } .portal-api-mobile-groups { display:block; width:100%; } .portal-api-catalogue { padding:20px 16px; } .portal-api-catalogue-header h2 { font-size:19px; } .portal-model-platforms { flex-wrap:nowrap; overflow-x:auto; padding-bottom:6px; } .portal-model-platforms > button { flex-shrink:0; } .portal-api-model-name { min-width:0; width:100%; } .portal-api-model-name span { min-width:0; } .portal-api-models :is(button, select, summary), .portal-api-price-detail summary { min-height:44px; } }
-.portal-model-cards { display:grid; min-width:0; gap:14px; }
-.portal-model-card { min-width:0; padding:16px; border:1px solid rgb(var(--line)); border-radius:10px; margin-top:12px; overflow-wrap:anywhere; }
-.portal-model-card h3 { margin:0 0 12px; font-size:14px; }
-.portal-price-fields { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; margin:14px 0 0; }
-.portal-price-fields dt { font-size:12px; color:rgb(var(--ink-3)); }
-.portal-price-fields dd { min-width:0; margin:4px 0 0; overflow-wrap:anywhere; }
+.portal-api-models {
+  display: grid;
+  grid-template-columns: 268px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  min-width: 0;
+}
+
+.portal-api-sidebar {
+  position: sticky;
+  top: 84px;
+  padding: 18px 14px;
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-card);
+  background: rgb(var(--surface));
+  box-shadow: var(--shadow-panel);
+  min-width: 0;
+}
+
+.portal-api-sidebar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 6px;
+  margin-bottom: 12px;
+}
+
+.portal-api-sidebar-heading h2 {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: rgb(var(--ink));
+  margin: 0;
+}
+
+.portal-api-sidebar-heading > span {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--line));
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgb(var(--ink-2));
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-api-model-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 260px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-control);
+  background: rgb(var(--surface));
+  color: rgb(var(--ink-3));
+  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+}
+
+.portal-api-model-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: rgb(var(--ink));
+  font: inherit;
+  font-size: 13px;
+}
+
+.portal-api-model-search:focus-within {
+  border-color: rgb(var(--focus-ring));
+  box-shadow: 0 0 0 3px rgb(var(--focus-ring) / 0.14);
+}
+
+.portal-api-group-search {
+  width: 100%;
+  margin-bottom: 12px;
+  background: rgb(var(--surface-2) / 0.5);
+}
+
+.portal-api-group-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: clamp(260px, calc(100dvh - 300px), 760px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--line-strong)) transparent;
+  padding-right: 4px;
+}
+
+.portal-api-group-nav button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  color: rgb(var(--ink-2));
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, color var(--motion-fast) ease;
+}
+
+.portal-api-group-nav button:hover {
+  background: rgb(var(--surface-2) / 0.75);
+  color: rgb(var(--ink));
+}
+
+.portal-api-group-nav button[aria-pressed='true'] {
+  background: rgb(var(--brand-moss) / 0.1);
+  border-color: rgb(var(--brand-moss) / 0.32);
+  color: rgb(var(--ink));
+}
+
+.portal-api-connection-name {
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.portal-api-connection-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: rgb(var(--ink-3));
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-api-connection-meta > span:last-child {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-2));
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.portal-api-group-nav button[aria-pressed='true'] .portal-api-connection-meta > span:last-child {
+  background: rgb(var(--brand-moss) / 0.16);
+  color: rgb(var(--brand-moss));
+}
+
+.portal-api-group-scroll-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 10px 4px 0;
+  margin-top: 8px;
+  border-top: 1px solid rgb(var(--line));
+  color: rgb(var(--ink-3));
+  font-size: 11.5px;
+}
+
+.portal-api-group-scroll-hint > div {
+  display: flex;
+  gap: 4px;
+}
+
+.portal-api-group-scroll-hint button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 7px;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  cursor: pointer;
+}
+
+.portal-api-group-scroll-hint button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.portal-api-group-scroll-hint button:not(:disabled):hover {
+  background: rgb(var(--surface-2));
+}
+
+.portal-api-group-nav small,
+.portal-api-sidebar-empty {
+  font-size: 12px;
+  color: rgb(var(--ink-3));
+}
+
+.portal-api-mobile-groups {
+  display: none;
+}
+
+.portal-api-catalogue {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.portal-api-group-hero {
+  padding: 22px 24px;
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-card);
+  background: rgb(var(--surface));
+  box-shadow: var(--shadow-panel);
+}
+
+.portal-api-catalogue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.portal-api-header-copy {
+  min-width: 0;
+}
+
+.portal-api-catalogue-header h2 {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  color: rgb(var(--ink));
+  overflow-wrap: anywhere;
+}
+
+.portal-api-eyebrow {
+  margin: 0;
+  color: rgb(var(--ink-3));
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.portal-api-group-description {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: rgb(var(--ink-2));
+  line-height: 1.65;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.portal-api-group-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgb(var(--line));
+}
+
+.portal-fact-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface-2) / 0.65);
+  font-size: 12px;
+  color: rgb(var(--ink-2));
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-fact-pill strong {
+  color: rgb(var(--ink));
+  font-family: var(--font-mono);
+  font-weight: 650;
+}
+
+.portal-fact-pill.is-rate {
+  border-color: rgb(var(--brand-moss) / 0.3);
+  background: rgb(var(--brand-moss) / 0.1);
+  color: rgb(var(--brand-moss));
+}
+
+.portal-fact-pill.is-rate strong {
+  color: rgb(var(--brand-moss));
+}
+
+.portal-fact-pill.is-accent {
+  border-color: rgb(99 102 241 / 0.3);
+  background: rgb(99 102 241 / 0.1);
+  color: rgb(79 70 229);
+}
+
+.portal-api-catalog-surface {
+  padding: 20px 24px 24px;
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-card);
+  background: rgb(var(--surface));
+  box-shadow: var(--shadow-panel);
+  min-width: 0;
+}
+
+.portal-model-platforms {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+.portal-model-platforms > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 9px;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink-2));
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, color var(--motion-fast) ease;
+}
+
+.portal-model-platforms > button:hover {
+  border-color: rgb(var(--line-strong));
+  color: rgb(var(--ink));
+  background: rgb(var(--surface-2) / 0.6);
+}
+
+.portal-model-platforms > button[aria-pressed='true'] {
+  border-color: rgb(var(--brand-moss));
+  color: rgb(var(--brand-moss));
+  background: rgb(var(--brand-moss) / 0.08);
+  font-weight: 600;
+}
+
+.portal-model-platforms button > span {
+  font-size: 11.5px;
+  color: rgb(var(--ink-3));
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-model-platforms > button[aria-pressed='true'] > span {
+  color: rgb(var(--brand-moss));
+}
+
+.portal-api-table-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: rgb(var(--surface-2) / 0.55);
+  border: 1px solid rgb(var(--line));
+  color: rgb(var(--ink-3));
+  font-size: 12px;
+}
+
+.portal-api-legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.portal-api-price-key {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  color: rgb(var(--brand-moss));
+}
+
+.portal-api-unit-hint {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.portal-api-media-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  color: rgb(var(--ink-3));
+}
+
+.portal-api-image-token-prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+}
+
+.portal-api-image-token-prices > div {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.portal-api-model-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgb(var(--line));
+  border-radius: 12px;
+}
+
+.portal-api-model-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.portal-api-model-table thead th {
+  padding: 11px 14px;
+  background: rgb(var(--surface-2) / 0.7);
+  color: rgb(var(--ink-2));
+  border-bottom: 1px solid rgb(var(--line));
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.portal-api-model-table thead th:first-child {
+  text-align: left;
+}
+
+.portal-api-model-table td {
+  min-width: 108px;
+  padding: 14px 14px;
+  border-bottom: 1px solid rgb(var(--line));
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+  text-align: right;
+}
+
+.portal-api-model-table td:first-child {
+  width: 40%;
+  min-width: 240px;
+  text-align: left;
+}
+
+.portal-api-model-table tbody:last-child tr:last-child td {
+  border-bottom: 0;
+}
+
+.portal-api-vendor-row th {
+  padding: 9px 14px;
+  background: rgb(var(--surface-2) / 0.45);
+  border-bottom: 1px solid rgb(var(--line));
+  font-size: 12.5px;
+  font-weight: 650;
+  color: rgb(var(--ink));
+  text-align: left;
+}
+
+.portal-api-vendor-row small {
+  margin-left: 8px;
+  color: rgb(var(--ink-3));
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.portal-api-model-row {
+  transition: background-color var(--motion-fast) ease;
+}
+
+.portal-api-model-row:hover td {
+  background: rgb(var(--table-hover));
+}
+
+.portal-api-model-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgb(var(--ink));
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.portal-api-model-name > :last-child {
+  color: rgb(var(--ink-3));
+  opacity: 0.6;
+}
+
+.portal-api-model-name :deep(svg) {
+  flex-shrink: 0;
+}
+
+.portal-api-models :deep(.model-icon path[fill='#000000']),
+.portal-api-models :deep(.model-icon path[fill='#16191E']) {
+  fill: rgb(var(--ink));
+}
+
+.portal-api-model-name:hover {
+  color: rgb(var(--brand-moss));
+}
+
+.portal-api-model-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 4px 0 0 29px;
+  font-size: 11.5px;
+  color: rgb(var(--ink-3));
+}
+
+.portal-api-model-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 6px 0 0 29px;
+}
+
+.portal-api-model-badges span {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface-2) / 0.8);
+  font-size: 10.5px;
+  font-weight: 550;
+  color: rgb(var(--ink-2));
+}
+
+.portal-api-price-missing {
+  color: rgb(var(--ink-3));
+}
+
+.portal-api-model-table .portal-api-model-empty {
+  height: 180px;
+  text-align: center;
+  color: rgb(var(--ink-3));
+}
+
+.portal-api-model-empty > svg {
+  margin: 0 auto 12px;
+}
+
+.portal-api-model-state {
+  margin: 12px 0;
+  padding: 48px 20px;
+  border: 1px dashed rgb(var(--line));
+  border-radius: 12px;
+  color: rgb(var(--ink-3));
+  text-align: center;
+  font-size: 13px;
+}
+
+.portal-api-pricing-note {
+  margin: 16px 0 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: rgb(var(--ink-3));
+}
+
+.portal-api-catalogue-notes {
+  margin-top: 16px;
+  font-size: 13px;
+  color: rgb(var(--ink-2));
+}
+
+.portal-api-catalogue-notes summary {
+  cursor: pointer;
+}
+
+.portal-api-price-description {
+  margin: 12px 0 0;
+  color: rgb(var(--ink-3));
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.portal-api-model-create {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgb(var(--line));
+}
+
+.portal-api-model-create > span {
+  max-width: 420px;
+  font-size: 13px;
+  color: rgb(var(--ink-3));
+}
+
+.portal-api-models :is(button, select, summary):focus-visible {
+  outline: 2px solid rgb(var(--focus-ring));
+  outline-offset: 2px;
+}
+
+.portal-api-price-detail {
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.portal-api-price-summary {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 10px;
+  background: rgb(var(--surface-2) / 0.5);
+}
+
+.portal-api-price-summary > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+
+.portal-api-price-summary dt {
+  min-width: 105px;
+  color: rgb(var(--ink-3));
+}
+
+.portal-api-price-summary dd {
+  margin: 0;
+  font-weight: 550;
+}
+
+.portal-api-detail-table-wrap {
+  overflow: auto;
+  margin-top: 12px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 10px;
+}
+
+.portal-api-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-api-detail-table th {
+  background: rgb(var(--surface-2));
+  font-weight: 600;
+  color: rgb(var(--ink-2));
+}
+
+.portal-api-detail-table :is(th, td) {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgb(var(--line));
+  white-space: nowrap;
+}
+
+.portal-api-detail-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.portal-api-pricing-rule {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgb(var(--line));
+}
+
+.portal-api-pricing-rule h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.portal-api-pricing-rule p {
+  margin: 6px 0;
+}
+
+.portal-api-pricing-rule ul {
+  margin: 8px 0;
+  padding-left: 20px;
+  list-style: disc;
+}
+
+@media (max-width: 1100px) {
+  .portal-api-models {
+    grid-template-columns: 225px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .portal-api-group-hero,
+  .portal-api-catalog-surface {
+    padding: 18px 18px;
+  }
+
+  .portal-api-catalogue-header {
+    flex-wrap: wrap;
+  }
+
+  .portal-api-model-search {
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) and (pointer: coarse) {
+  .portal-api-models {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .portal-api-sidebar {
+    position: static;
+    padding: 16px;
+  }
+
+  .portal-api-sidebar-heading {
+    padding: 0;
+    margin-bottom: 10px;
+  }
+
+  .portal-api-group-nav,
+  .portal-api-group-search,
+  .portal-api-group-scroll-hint {
+    display: none;
+  }
+
+  .portal-api-mobile-groups {
+    display: block;
+    width: 100%;
+  }
+
+  .portal-api-group-hero,
+  .portal-api-catalog-surface {
+    padding: 18px 16px;
+  }
+
+  .portal-api-catalogue-header h2 {
+    font-size: 18.5px;
+  }
+
+  .portal-model-platforms {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+
+  .portal-model-platforms > button {
+    flex-shrink: 0;
+  }
+
+  .portal-api-model-name {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .portal-api-model-name span {
+    min-width: 0;
+  }
+
+  .portal-api-models :is(button, select, summary),
+  .portal-api-price-detail summary {
+    min-height: 44px;
+  }
+}
+
+.portal-model-cards {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+
+.portal-vendor-card-group h3 {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: rgb(var(--ink-2));
+}
+
+.portal-model-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 12px;
+  background: rgb(var(--surface-2) / 0.35);
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+
+.portal-model-card h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.portal-price-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgb(var(--line));
+}
+
+.portal-price-fields dt {
+  font-size: 11.5px;
+  color: rgb(var(--ink-3));
+}
+
+.portal-price-fields dd {
+  min-width: 0;
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
 </style>

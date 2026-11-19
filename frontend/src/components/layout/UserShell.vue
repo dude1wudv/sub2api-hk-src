@@ -417,6 +417,7 @@ const pageTitle = computed(() => {
   if (route.path === '/dashboard') return zh.value ? '工作台' : 'Overview'
   if (route.path === '/keys') return zh.value ? 'API 密钥' : 'API keys'
   if (route.path === '/playground') return zh.value ? 'API 调试台' : 'API Playground'
+  if (route.path === '/chat-models') return zh.value ? '聊天模型' : 'Chat models'
   if (route.path === '/usage' || route.path === '/traffic') return zh.value ? '用量与流量' : 'Usage & traffic'
   if (route.name === 'CustomPage') {
     const item = appStore.cachedPublicSettings?.custom_menu_items?.find(menu => menu.id === route.params.id)

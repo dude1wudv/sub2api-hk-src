@@ -26,7 +26,6 @@ import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import Icon from '@/components/icons/Icon.vue'
 import InflightRequests from '@/components/usage/InflightRequests.vue'
 import TrafficPanel from '@/components/usage/TrafficPanel.vue'
-import { MdChipSet, MdFilterChip, MdTabs } from '@/components/md'
 import { formatDateLocalInput } from '@/utils/format'
 import { parseUsageRoute, usageFiltersQuery, usageDrilldownQuery, validUsageDate, type UsageDrilldown } from './usageRoute'
 
@@ -389,9 +388,18 @@ watch(() => route.query.tab, (tab) => {
       <div class="usage-balance"><Icon name="creditCard" size="sm" /><span>{{ copy('余额', 'Balance') }}</span><strong>{{ auth.user ? formatUsageMoney(auth.user.balance, 2) : '—' }}</strong><RouterLink v-if="!auth.isSimpleMode" to="/purchase">{{ copy('充值', 'Recharge') }} ↗</RouterLink></div>
     </PortalPageHeader>
 
-    <div class="usage-hub-tabs">
-      <MdTabs v-model="sectionTab" :items="sectionTabs" variant="primary" />
-    </div>
+    <nav class="portal-tabs usage-hub-tabs" :aria-label="copy('用量与流量视图', 'Usage and traffic views')">
+      <button
+        v-for="tab in sectionTabs"
+        :key="tab.id"
+        type="button"
+        :aria-pressed="sectionTab === tab.id"
+        :class="{ active: sectionTab === tab.id }"
+        @click="sectionTab = tab.id"
+      >
+        {{ tab.label }}
+      </button>
+    </nav>
 
     <div v-if="sectionTab === 'traffic'" class="usage-traffic-panel">
       <TrafficPanel :admin="false" />
@@ -402,11 +410,11 @@ watch(() => route.query.tab, (tab) => {
 
     <section id="usage-records" class="usage-records" aria-labelledby="usage-records-title">
       <div class="usage-section-heading"><div><h2 id="usage-records-title">{{ copy('请求明细', 'Request details') }}</h2><p class="usage-record-description">{{ copy('查看每次请求的 Token、费用与响应表现。', 'Inspect tokens, cost and response performance for each request.') }}</p></div>
-        <MdChipSet :aria-label="copy('快捷时间范围', 'Quick date range')">
-          <MdFilterChip :label="copy('今日', 'Today')" :model-value="quickDatePreset === 'today'" @update:model-value="applyQuickRange('today')" />
-          <MdFilterChip :label="copy('近 7 天', '7 days')" :model-value="quickDatePreset === '7d'" @update:model-value="applyQuickRange('7d')" />
-          <MdFilterChip :label="copy('本月', 'This month')" :model-value="quickDatePreset === 'month'" @update:model-value="applyQuickRange('month')" />
-        </MdChipSet>
+        <div class="usage-quick-ranges" role="group" :aria-label="copy('快捷时间范围', 'Quick date range')">
+          <button type="button" class="usage-range-pill" :class="{ active: quickDatePreset === 'today' }" :aria-pressed="quickDatePreset === 'today'" @click="applyQuickRange('today')">{{ copy('今日', 'Today') }}</button>
+          <button type="button" class="usage-range-pill" :class="{ active: quickDatePreset === '7d' }" :aria-pressed="quickDatePreset === '7d'" @click="applyQuickRange('7d')">{{ copy('近 7 天', '7 days') }}</button>
+          <button type="button" class="usage-range-pill" :class="{ active: quickDatePreset === 'month' }" :aria-pressed="quickDatePreset === 'month'" @click="applyQuickRange('month')">{{ copy('本月', 'This month') }}</button>
+        </div>
       </div>
       <div v-if="errorsEnabled" class="usage-record-tabs" role="tablist" :aria-label="copy('明细类别', 'Record type')"><button role="tab" :aria-selected="activeTab === 'usage'" :class="{ active: activeTab === 'usage' }" @click="activeTab = 'usage'">{{ copy('用量记录', 'Usage logs') }}</button><button role="tab" :aria-selected="activeTab === 'errors'" :class="{ active: activeTab === 'errors' }" @click="activeTab = 'errors'">{{ copy('错误请求', 'Error requests') }}</button></div>
       <form v-if="showFilters" id="usage-filters" class="usage-filter-panel" @submit.prevent="applyFilters">
@@ -468,9 +476,13 @@ watch(() => route.query.tab, (tab) => {
 .usage-record-count { flex-shrink:0; font-variant-numeric:tabular-nums; font-weight:500; color:rgb(var(--ink-2)); }
 .usage-records :deep(.inflight) { margin:18px 0; }
 .usage-monthly { margin-top: 28px; }
-.usage-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; }
+.usage-section-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
 .usage-section-heading h2 { font-size: 16px; font-weight: 600; margin: 0; }
 .usage-section-heading > button { font-size: 13px; color: rgb(var(--ink-3)); }
+.usage-quick-ranges { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.usage-range-pill { padding: 6px 12px; border: 1px solid rgb(var(--line)); border-radius: 8px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); font: inherit; font-size: 12.5px; font-weight: 550; cursor: pointer; transition: border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, color var(--motion-fast) ease; }
+.usage-range-pill:hover { border-color: rgb(var(--line-strong)); color: rgb(var(--ink)); background: rgb(var(--surface-2) / .6); }
+.usage-range-pill.active { border-color: rgb(var(--brand-moss)); background: rgb(var(--brand-moss) / .1); color: rgb(var(--brand-moss)); font-weight: 650; }
 .usage-chart-loading { height: 265px; display: grid; place-items: center; color: rgb(var(--ink-3)); }
 .usage-toolbar { display: flex; justify-content:flex-end; gap: 8px; flex-wrap: wrap; margin:16px 0; }
 .usage-toolbar .portal-button { min-height: 38px; font-size: 13px; padding: 7px 13px; }
