@@ -1,272 +1,381 @@
 <template>
   <div class="portal-page playground-page">
-    <MdPageHeader
-      :eyebrow="zh ? '开发者调试' : 'Developer Sandbox'"
+    <PortalPageHeader
       :title="zh ? 'API 调试台' : 'API Playground'"
       :description="zh ? '直接选用你的 API 密钥向网关发送测试请求，实时观测首字延迟、吞吐速率、原始 JSON 与当前生效倍率。' : 'Send live gateway requests with your API key to inspect TTFT, throughput, raw JSON payloads, and effective billing multipliers.'"
     >
-      <template #badge>
-        <MdBadge v-if="billingInfo" :tone="peakActive ? 'warn' : 'primary'" dot>
-          {{ zh ? '生效倍率' : 'Effective' }} {{ formatMultiplier(billingInfo.effective_rate_multiplier) }}
-          <template v-if="peakActive"> · {{ zh ? '高峰期' : 'Peak' }}</template>
-        </MdBadge>
-      </template>
-      <template #actions>
-        <MdButton variant="outlined" size="sm" @click="router.push('/keys')">
-          {{ zh ? '管理密钥' : 'Manage keys' }}
-        </MdButton>
-        <MdButton variant="tonal" size="sm" @click="copyActiveSnippet">
-          {{ zh ? '复制代码' : 'Copy snippet' }}
-        </MdButton>
-      </template>
-    </MdPageHeader>
+      <span v-if="billingInfo" class="pg-rate-pill" :class="{ 'is-peak': peakActive }">
+        <span class="pg-rate-dot" aria-hidden="true" />
+        {{ zh ? '生效倍率' : 'Effective' }}
+        <strong>{{ formatMultiplier(billingInfo.effective_rate_multiplier) }}</strong>
+        <template v-if="peakActive"> · {{ zh ? '高峰期' : 'Peak' }}</template>
+      </span>
+      <button type="button" class="portal-button secondary" @click="router.push('/keys')">
+        <Icon name="key" size="sm" aria-hidden="true" />
+        {{ zh ? '管理密钥' : 'Manage keys' }}
+      </button>
+      <button type="button" class="portal-button" @click="copyActiveSnippet">
+        <Icon name="copy" size="sm" aria-hidden="true" />
+        {{ zh ? '复制代码' : 'Copy snippet' }}
+      </button>
+    </PortalPageHeader>
 
     <div class="playground-grid">
       <!-- Left: Request configuration -->
-      <MdCard variant="outlined" padding="md" class="playground-config">
-        <template #header>
+      <section class="portal-panel pg-config-panel" :aria-label="zh ? '请求配置' : 'Request parameters'">
+        <header class="pg-panel-header">
           <div>
-            <h2 class="md-card-title">{{ zh ? '请求配置' : 'Request Parameters' }}</h2>
-            <p class="md-card-subtitle">{{ zh ? '密钥仅保存在当前内存会话中，不会写入本地存储。' : 'API keys stay in memory for this session only and are never saved to localStorage.' }}</p>
+            <h2>{{ zh ? '请求配置' : 'Request Parameters' }}</h2>
+            <p>{{ zh ? '密钥仅保存在当前内存会话中，不会写入本地存储。' : 'API keys stay in memory for this session only and are never saved to localStorage.' }}</p>
           </div>
-        </template>
+        </header>
 
         <div class="pg-stack">
-          <MdSelect
-            v-if="keyOptions.length > 0"
-            v-model="selectedKeyId"
-            :label="zh ? '选择 API 密钥' : 'Select API key'"
-            :options="keyOptions"
-          />
-
-          <MdTextField
-            v-if="selectedKeyId === '__custom__' || keyOptions.length === 0"
-            v-model="customKey"
-            type="password"
-            mono
-            :label="zh ? '临时测试 API Key' : 'Custom API Key'"
-            :placeholder="zh ? '粘贴 sk-... 密钥（仅本次调试有效）' : 'Paste sk-... key (memory only)'"
-          />
-
-          <div class="pg-row-2">
-            <MdSelect
-              v-model="protocol"
-              :label="zh ? '网关协议' : 'Protocol'"
-              :options="protocolOptions"
+          <div v-if="keyOptions.length > 0" class="portal-field">
+            <span class="pg-field-label">{{ zh ? 'API 密钥' : 'API Key' }}</span>
+            <Select
+              v-model="selectedKeyId"
+              :options="keyOptions"
+              :searchable="keyOptions.length > 5"
+              :placeholder="zh ? '选择 API 密钥' : 'Select API key'"
+              :aria-label="zh ? '选择 API 密钥' : 'Select API key'"
             />
-            <MdTextField
+          </div>
+
+          <label v-if="selectedKeyId === '__custom__' || keyOptions.length === 0" class="portal-field">
+            <span>{{ zh ? '临时测试 API Key' : 'Custom API Key' }}</span>
+            <input
+              v-model="customKey"
+              type="password"
+              class="pg-mono-input"
+              autocomplete="off"
+              :placeholder="zh ? '粘贴 sk-... 密钥（仅本次调试有效）' : 'Paste sk-... key (memory only)'"
+            />
+          </label>
+
+          <div class="portal-field">
+            <span class="pg-field-label">{{ zh ? '网关协议' : 'Protocol' }}</span>
+            <div class="pg-segmented" role="radiogroup" :aria-label="zh ? '网关协议' : 'Protocol'">
+              <button
+                type="button"
+                role="radio"
+                :aria-checked="protocol === 'openai'"
+                :class="{ active: protocol === 'openai' }"
+                @click="protocol = 'openai'"
+              >
+                <strong>OpenAI</strong>
+                <code>/v1/chat/completions</code>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                :aria-checked="protocol === 'anthropic'"
+                :class="{ active: protocol === 'anthropic' }"
+                @click="protocol = 'anthropic'"
+              >
+                <strong>Anthropic</strong>
+                <code>/v1/messages</code>
+              </button>
+            </div>
+          </div>
+
+          <label class="portal-field">
+            <span>{{ zh ? '模型名称' : 'Model ID' }}</span>
+            <input
               v-model="model"
-              mono
-              :label="zh ? '模型名称' : 'Model ID'"
+              type="text"
+              class="pg-mono-input"
               placeholder="gpt-4o / claude-sonnet-4-5"
             />
-          </div>
+          </label>
 
           <div v-if="quickModels.length" class="pg-quick-section">
-            <span class="pg-micro-label">{{ zh ? '常用/推荐模型' : 'Quick models' }}</span>
-            <MdChipSet>
-              <MdFilterChip
+            <span class="pg-micro-label">{{ zh ? '常用 / 推荐模型' : 'Quick models' }}</span>
+            <div class="pg-chip-group" role="group" :aria-label="zh ? '常用模型' : 'Quick models'">
+              <button
                 v-for="item in quickModels"
                 :key="item"
-                :label="item"
-                :model-value="model === item"
-                @update:model-value="model = item"
-              />
-            </MdChipSet>
+                type="button"
+                class="pg-chip"
+                :class="{ active: model === item }"
+                :aria-pressed="model === item"
+                @click="model = item"
+              >
+                <ModelIcon :model="item" size="14px" />
+                <span>{{ item }}</span>
+              </button>
+            </div>
           </div>
 
-          <MdTextField
-            v-model="systemPrompt"
-            type="textarea"
-            :rows="2"
-            :label="zh ? 'System Prompt（可选）' : 'System prompt (optional)'"
-            :placeholder="zh ? '设定角色、语气或输出格式要求…' : 'Define role, style, or output format…'"
-          />
+          <label class="portal-field">
+            <span>{{ zh ? 'System Prompt（可选）' : 'System prompt (optional)' }}</span>
+            <textarea
+              v-model="systemPrompt"
+              rows="2"
+              :placeholder="zh ? '设定角色、语气或输出格式要求…' : 'Define role, style, or output format…'"
+            />
+          </label>
 
           <div class="pg-quick-section">
             <span class="pg-micro-label">{{ zh ? '快捷测试场景' : 'Prompt presets' }}</span>
-            <MdChipSet>
-              <MdFilterChip
+            <div class="pg-chip-group" role="group" :aria-label="zh ? '快捷测试场景' : 'Prompt presets'">
+              <button
                 v-for="preset in promptPresets"
                 :key="preset.id"
-                :label="preset.label"
-                :model-value="activePresetId === preset.id"
-                @update:model-value="applyPreset(preset)"
+                type="button"
+                class="pg-chip"
+                :class="{ active: activePresetId === preset.id }"
+                :aria-pressed="activePresetId === preset.id"
+                @click="applyPreset(preset)"
+              >
+                <Icon v-if="activePresetId === preset.id" name="check" size="xs" aria-hidden="true" />
+                <span>{{ preset.label }}</span>
+              </button>
+            </div>
+          </div>
+
+          <label class="portal-field">
+            <span class="pg-label-row">
+              <span>User Prompt</span>
+              <small>{{ zh ? 'Ctrl / ⌘ + Enter 发送' : 'Ctrl / ⌘ + Enter to send' }}</small>
+            </span>
+            <textarea
+              v-model="userPrompt"
+              rows="4"
+              :placeholder="zh ? '输入你想测试的问题或指令…' : 'Enter a prompt to test…'"
+              @keydown.ctrl.enter.prevent="runRequest"
+              @keydown.meta.enter.prevent="runRequest"
+            />
+          </label>
+
+          <div class="pg-params-box">
+            <div class="pg-slider-field">
+              <div class="pg-slider-head">
+                <label for="pg-temp">{{ zh ? '随机度 (Temperature)' : 'Temperature' }}</label>
+                <output for="pg-temp">{{ temperature.toFixed(1) }}</output>
+              </div>
+              <input
+                id="pg-temp"
+                v-model.number="temperature"
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                class="pg-range"
               />
-            </MdChipSet>
+            </div>
+
+            <div class="pg-slider-field">
+              <div class="pg-slider-head">
+                <label for="pg-max-tokens">{{ zh ? '最大输出 (Max Tokens)' : 'Max tokens' }}</label>
+                <output for="pg-max-tokens">{{ maxTokens }}</output>
+              </div>
+              <input
+                id="pg-max-tokens"
+                v-model.number="maxTokens"
+                type="range"
+                min="64"
+                max="4096"
+                step="64"
+                class="pg-range"
+              />
+            </div>
           </div>
 
-          <MdTextField
-            v-model="userPrompt"
-            type="textarea"
-            :rows="4"
-            :label="zh ? 'User Prompt' : 'User prompt'"
-            :placeholder="zh ? '输入你想测试的问题或指令…' : 'Enter a prompt to test…'"
-          />
-
-          <div class="pg-sliders">
-            <MdSlider
-              v-model="temperature"
-              :min="0"
-              :max="2"
-              :step="0.1"
-              :label="zh ? '随机度 (Temperature)' : 'Temperature'"
-            />
-            <MdSlider
-              v-model="maxTokens"
-              :min="64"
-              :max="4096"
-              :step="64"
-              :label="zh ? '最大输出 (Max Tokens)' : 'Max tokens'"
-            />
-          </div>
-
-          <div class="pg-switch-row">
-            <MdSwitch
-              v-model="stream"
-              :label="zh ? '启用 SSE 流式输出' : 'Stream SSE response'"
-              :description="zh ? '开启后可精准测量首字延迟 (TTFT)' : 'Enables accurate Time-To-First-Token measurement'"
-            />
+          <div class="pg-switch-card">
+            <div class="pg-switch-copy">
+              <strong>{{ zh ? '启用 SSE 流式输出' : 'Stream SSE response' }}</strong>
+              <small>{{ zh ? '开启后可精准测量首字延迟 (TTFT)' : 'Enables accurate Time-To-First-Token measurement' }}</small>
+            </div>
+            <Toggle v-model="stream" :aria-label="zh ? '启用 SSE 流式输出' : 'Stream SSE response'" />
           </div>
 
           <div class="pg-actions">
-            <MdButton
+            <button
               v-if="!running"
-              variant="filled"
+              type="button"
+              class="portal-button pg-run-btn"
               :disabled="!canRun"
               @click="runRequest"
             >
-              <template #icon><Icon name="play" size="sm" /></template>
+              <Icon name="play" size="sm" aria-hidden="true" />
               {{ zh ? '发送测试请求' : 'Send request' }}
-            </MdButton>
-            <MdButton
+            </button>
+            <button
               v-else
-              variant="tonal"
-              tone="danger"
+              type="button"
+              class="portal-button danger pg-run-btn"
               @click="stopRequest"
             >
-              <template #icon><Icon name="x" size="sm" /></template>
+              <Icon name="x" size="sm" aria-hidden="true" />
               {{ zh ? '中止生成' : 'Stop' }}
-            </MdButton>
-            <MdButton variant="text" :disabled="running" @click="clearOutput">
+            </button>
+            <button
+              type="button"
+              class="portal-button secondary"
+              :disabled="running"
+              @click="clearOutput"
+            >
               {{ zh ? '清空输出' : 'Clear' }}
-            </MdButton>
+            </button>
           </div>
         </div>
-      </MdCard>
+      </section>
 
       <!-- Right: Live telemetry & output inspector -->
-      <MdCard variant="elevated" padding="md" class="playground-output">
-        <template #header>
-          <div class="pg-output-head">
-            <div>
-              <h2 class="md-card-title">{{ zh ? '响应与观测面板' : 'Response & Telemetry' }}</h2>
-              <p class="md-card-subtitle">
-                <code>{{ protocol === 'anthropic' ? 'POST /v1/messages' : 'POST /v1/chat/completions' }}</code>
-              </p>
-            </div>
-            <div class="pg-metrics-strip">
-              <div class="pg-metric">
-                <span>TTFT</span>
-                <strong>{{ ttftMs !== null ? `${ttftMs} ms` : '—' }}</strong>
-              </div>
-              <div class="pg-metric">
-                <span>{{ zh ? '总耗时' : 'Total' }}</span>
-                <strong>{{ totalMs !== null ? `${totalMs} ms` : '—' }}</strong>
-              </div>
-              <div class="pg-metric">
-                <span>Tokens</span>
-                <strong>{{ usage.totalTokens > 0 ? `${usage.inputTokens} / ${usage.outputTokens}` : '—' }}</strong>
-              </div>
-              <div class="pg-metric">
-                <span>{{ zh ? '速率' : 'Speed' }}</span>
-                <strong>{{ tokensPerSecond !== null ? `${tokensPerSecond} tok/s` : '—' }}</strong>
-              </div>
-            </div>
+      <section class="portal-panel pg-output-panel" :aria-label="zh ? '响应与观测面板' : 'Response and telemetry'">
+        <header class="pg-panel-header pg-output-head">
+          <div class="pg-output-title-group">
+            <h2>{{ zh ? '响应与观测面板' : 'Response & Telemetry' }}</h2>
+            <span class="pg-endpoint-badge">
+              <span class="pg-method">POST</span>
+              <code>{{ protocol === 'anthropic' ? '/v1/messages' : '/v1/chat/completions' }}</code>
+            </span>
           </div>
-        </template>
-
-        <MdProgress v-if="running" variant="linear" indeterminate class="pg-progress" />
-
-        <div v-if="billingInfo" class="pg-billing-banner">
-          <span>
-            {{ zh ? '分组倍率' : 'Group' }}: <strong>{{ formatMultiplier(billingInfo.group_rate_multiplier) }}</strong>
-            <template v-if="billingInfo.user_rate_multiplier != null">
-              · {{ zh ? '个人覆盖' : 'Personal' }}: <strong>{{ formatMultiplier(billingInfo.user_rate_multiplier) }}</strong>
-            </template>
-            <template v-if="billingInfo.peak_rate_enabled && billingInfo.peak_start && billingInfo.peak_end">
-              · {{ zh ? '高峰时段' : 'Peak window' }}: <strong>{{ billingInfo.peak_start }}–{{ billingInfo.peak_end }}</strong>
-            </template>
+          <span v-if="running" class="pg-live-status" role="status">
+            <span class="pg-live-dot" aria-hidden="true" />
+            {{ zh ? '流式接收中…' : 'Streaming…' }}
           </span>
-          <MdBadge :tone="peakActive ? 'warn' : 'success'">
-            {{ zh ? '当前生效' : 'Active' }} {{ formatMultiplier(billingInfo.effective_rate_multiplier) }}
-          </MdBadge>
+        </header>
+
+        <div v-if="running" class="pg-progress-track" aria-hidden="true">
+          <div class="pg-progress-bar" />
         </div>
 
-        <MdTabs v-model="outputTab" :items="outputTabs" variant="secondary" />
+        <div class="pg-kpi-grid">
+          <div class="pg-kpi">
+            <span>{{ zh ? '首字延迟 (TTFT)' : 'TTFT' }}</span>
+            <strong>{{ ttftMs !== null ? `${ttftMs} ms` : '—' }}</strong>
+          </div>
+          <div class="pg-kpi">
+            <span>{{ zh ? '总耗时' : 'Total time' }}</span>
+            <strong>{{ totalMs !== null ? `${totalMs} ms` : '—' }}</strong>
+          </div>
+          <div class="pg-kpi">
+            <span>{{ zh ? 'Token 消耗 (入/出)' : 'Tokens (in/out)' }}</span>
+            <strong>{{ usage.totalTokens > 0 ? `${usage.inputTokens} / ${usage.outputTokens}` : '—' }}</strong>
+          </div>
+          <div class="pg-kpi">
+            <span>{{ zh ? '生成速率' : 'Throughput' }}</span>
+            <strong>{{ tokensPerSecond !== null ? `${tokensPerSecond} tok/s` : '—' }}</strong>
+          </div>
+        </div>
+
+        <div v-if="billingInfo" class="pg-billing-banner">
+          <div class="pg-billing-details">
+            <span>{{ zh ? '分组倍率' : 'Group' }} <strong>{{ formatMultiplier(billingInfo.group_rate_multiplier) }}</strong></span>
+            <span v-if="billingInfo.user_rate_multiplier != null" class="pg-billing-sep">·</span>
+            <span v-if="billingInfo.user_rate_multiplier != null">{{ zh ? '个人覆盖' : 'Personal' }} <strong>{{ formatMultiplier(billingInfo.user_rate_multiplier) }}</strong></span>
+            <template v-if="billingInfo.peak_rate_enabled && billingInfo.peak_start && billingInfo.peak_end">
+              <span class="pg-billing-sep">·</span>
+              <span>{{ zh ? '高峰时段' : 'Peak window' }} <strong>{{ billingInfo.peak_start }}–{{ billingInfo.peak_end }}</strong></span>
+            </template>
+          </div>
+          <span class="pg-billing-tag" :class="{ 'is-peak': peakActive }">
+            {{ zh ? '当前生效' : 'Active' }} {{ formatMultiplier(billingInfo.effective_rate_multiplier) }}
+          </span>
+        </div>
+
+        <div class="portal-tabs pg-tabs" role="tablist" :aria-label="zh ? '响应视图' : 'Output views'">
+          <button
+            v-for="tab in outputTabs"
+            :key="tab.id"
+            type="button"
+            role="tab"
+            :aria-selected="outputTab === tab.id"
+            :class="{ active: outputTab === tab.id }"
+            @click="outputTab = tab.id"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
 
         <div v-if="errorMessage" class="pg-error-box" role="alert">
-          <strong>{{ zh ? '请求失败' : 'Request failed' }}</strong>
-          <p>{{ errorMessage }}</p>
+          <Icon name="exclamationCircle" size="sm" aria-hidden="true" />
+          <div>
+            <strong>{{ zh ? '请求失败' : 'Request failed' }}</strong>
+            <p>{{ errorMessage }}</p>
+          </div>
         </div>
 
         <!-- Tab 1: Rendered text output -->
-        <div v-if="outputTab === 'response'" class="pg-panel">
+        <div v-if="outputTab === 'response'" class="pg-tab-panel">
           <div v-if="outputText" class="pg-response-body">
             <pre class="pg-response-pre">{{ outputText }}</pre>
             <div class="pg-panel-foot">
-              <MdButton variant="text" size="sm" @click="copyText(outputText)">
+              <button type="button" class="portal-button secondary pg-sm-btn" @click="copyText(outputText)">
+                <Icon name="copy" size="xs" aria-hidden="true" />
                 {{ zh ? '复制回复文本' : 'Copy output' }}
-              </MdButton>
+              </button>
             </div>
           </div>
-          <MdEmptyState
-            v-else
-            compact
-            :title="running ? (zh ? '正在等待首字返回…' : 'Waiting for first token…') : (zh ? '尚未发起请求' : 'No response yet')"
-            :description="zh ? '在左侧选择 API Key 与模型，点击「发送测试请求」即可实时查看流式回复与延迟指标。' : 'Select an API key and model on the left, then click Send request to inspect live output and latency.'"
-          />
+          <div v-else class="pg-empty-state">
+            <div class="pg-empty-icon" aria-hidden="true">
+              <Icon name="terminal" size="lg" />
+            </div>
+            <h3>{{ running ? (zh ? '正在等待首字返回…' : 'Waiting for first token…') : (zh ? '尚未发起请求' : 'No response yet') }}</h3>
+            <p>{{ zh ? '在左侧选择 API Key 与模型，点击「发送测试请求」即可实时查看流式回复与延迟指标。' : 'Select an API key and model on the left, then click Send request to inspect live output and latency.' }}</p>
+          </div>
         </div>
 
         <!-- Tab 2: Raw JSON -->
-        <div v-else-if="outputTab === 'json'" class="pg-panel pg-json-grid">
+        <div v-else-if="outputTab === 'json'" class="pg-tab-panel pg-json-grid">
           <div class="pg-code-block">
             <div class="pg-code-head">
               <span>Request Body</span>
-              <MdButton variant="text" size="sm" @click="copyText(formattedRequestJson)">
+              <button type="button" class="portal-inline-button" @click="copyText(formattedRequestJson)">
                 {{ zh ? '复制' : 'Copy' }}
-              </MdButton>
+              </button>
             </div>
             <pre>{{ formattedRequestJson }}</pre>
           </div>
           <div class="pg-code-block">
             <div class="pg-code-head">
               <span>{{ zh ? '响应原始负载' : 'Raw Response Payload' }}</span>
-              <MdButton v-if="formattedResponseJson" variant="text" size="sm" @click="copyText(formattedResponseJson)">
+              <button v-if="formattedResponseJson" type="button" class="portal-inline-button" @click="copyText(formattedResponseJson)">
                 {{ zh ? '复制' : 'Copy' }}
-              </MdButton>
+              </button>
             </div>
             <pre>{{ formattedResponseJson || (zh ? '// 发送请求后在此展示原始响应 JSON' : '// Send a request to inspect raw JSON') }}</pre>
           </div>
         </div>
 
         <!-- Tab 3: Code snippets -->
-        <div v-else class="pg-panel">
+        <div v-else class="pg-tab-panel">
           <div class="pg-snippet-bar">
-            <MdChipSet>
-              <MdFilterChip label="cURL" :model-value="snippetLang === 'curl'" @update:model-value="snippetLang = 'curl'" />
-              <MdFilterChip label="Python" :model-value="snippetLang === 'python'" @update:model-value="snippetLang = 'python'" />
-              <MdFilterChip label="Node.js" :model-value="snippetLang === 'node'" @update:model-value="snippetLang = 'node'" />
-            </MdChipSet>
-            <MdButton variant="tonal" size="sm" @click="copyActiveSnippet">
+            <div class="pg-chip-group" role="group" :aria-label="zh ? '代码语言' : 'Snippet language'">
+              <button
+                type="button"
+                class="pg-chip"
+                :class="{ active: snippetLang === 'curl' }"
+                :aria-pressed="snippetLang === 'curl'"
+                @click="snippetLang = 'curl'"
+              >cURL</button>
+              <button
+                type="button"
+                class="pg-chip"
+                :class="{ active: snippetLang === 'python' }"
+                :aria-pressed="snippetLang === 'python'"
+                @click="snippetLang = 'python'"
+              >Python</button>
+              <button
+                type="button"
+                class="pg-chip"
+                :class="{ active: snippetLang === 'node' }"
+                :aria-pressed="snippetLang === 'node'"
+                @click="snippetLang = 'node'"
+              >Node.js</button>
+            </div>
+            <button type="button" class="portal-button secondary pg-sm-btn" @click="copyActiveSnippet">
+              <Icon name="copy" size="xs" aria-hidden="true" />
               {{ zh ? '复制代码' : 'Copy code' }}
-            </MdButton>
+            </button>
           </div>
           <div class="pg-code-block">
             <pre>{{ activeSnippet }}</pre>
           </div>
         </div>
-      </MdCard>
+      </section>
     </div>
   </div>
 </template>
@@ -275,22 +384,10 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import {
-  MdBadge,
-  MdButton,
-  MdCard,
-  MdChipSet,
-  MdEmptyState,
-  MdFilterChip,
-  MdPageHeader,
-  MdProgress,
-  MdSelect,
-  MdSlider,
-  MdSwitch,
-  MdTabs,
-  MdTextField,
-  type MdSelectOption
-} from '@/components/md'
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import Select, { type SelectOption } from '@/components/common/Select.vue'
+import Toggle from '@/components/common/Toggle.vue'
+import ModelIcon from '@/components/common/ModelIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { keysAPI } from '@/api/keys'
 import { getModelPlaza } from '@/api/modelPlaza'
@@ -344,18 +441,12 @@ const billingInfo = ref<KeyBillingInfo | null>(null)
 let abortController: AbortController | null = null
 let billingController: AbortController | null = null
 
-const protocolOptions = computed<MdSelectOption[]>(() => [
-  { value: 'openai', label: 'OpenAI (/v1/chat/completions)' },
-  { value: 'anthropic', label: 'Anthropic (/v1/messages)' }
-])
-
-const keyOptions = computed<MdSelectOption[]>(() => {
-  const list: MdSelectOption[] = apiKeys.value
+const keyOptions = computed<SelectOption[]>(() => {
+  const list: SelectOption[] = apiKeys.value
     .filter((k) => k.status === 'active' && Boolean(k.key))
     .map((k) => ({
       value: String(k.id),
-      label: `${k.name} (${k.group?.name || 'Default'})`,
-      supportingText: `${k.key.slice(0, 8)}...${k.key.slice(-4)}`
+      label: `${k.name} · ${k.group?.name || 'Default'}`
     }))
   list.push({
     value: '__custom__',
@@ -618,53 +709,299 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .playground-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  min-width: 0;
+}
+
+.pg-rate-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--brand-moss) / 0.28);
+  background: rgb(var(--brand-moss) / 0.1);
+  color: rgb(var(--brand-moss));
+  font-size: 12.5px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pg-rate-pill.is-peak {
+  border-color: rgb(var(--text-warn) / 0.35);
+  background: rgb(var(--status-warn-bg) / 0.7);
+  color: rgb(var(--text-warn));
+}
+
+.pg-rate-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .playground-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
+}
+
+.pg-config-panel,
+.pg-output-panel {
+  min-width: 0;
+  padding: 22px 24px;
+}
+
+.pg-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid rgb(var(--line));
+}
+
+.pg-panel-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: rgb(var(--ink));
+}
+
+.pg-panel-header p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: rgb(var(--ink-3));
+  line-height: 1.5;
 }
 
 .pg-stack {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  min-width: 0;
 }
 
-.pg-row-2 {
+.pg-field-label {
+  font-size: 13px;
+  font-weight: 550;
+  color: rgb(var(--ink-2));
+}
+
+.pg-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pg-label-row small {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: rgb(var(--ink-3));
+}
+
+.pg-mono-input {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.pg-segmented {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 10px;
+  background: rgb(var(--surface-2));
+}
+
+.pg-segmented button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 11px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: rgb(var(--ink-2));
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+}
+
+.pg-segmented button strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pg-segmented button code {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgb(var(--ink-3));
+}
+
+.pg-segmented button:hover:not(.active) {
+  color: rgb(var(--ink));
+  background: rgb(var(--surface) / 0.55);
+}
+
+.pg-segmented button.active {
+  background: rgb(var(--surface));
+  border-color: rgb(var(--brand-moss) / 0.35);
+  color: rgb(var(--ink));
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
+}
+
+.pg-segmented button.active code {
+  color: rgb(var(--brand-moss));
 }
 
 .pg-quick-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .pg-micro-label {
-  font-size: 0.75rem;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--md-sys-color-on-surface-variant);
+  color: rgb(var(--ink-3));
 }
 
-.pg-sliders {
+.pg-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 8px;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink-2));
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, color var(--motion-fast) ease;
+}
+
+.pg-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-chip:hover {
+  border-color: rgb(var(--line-strong));
+  color: rgb(var(--ink));
+  background: rgb(var(--surface-2) / 0.6);
+}
+
+.pg-chip.active {
+  border-color: rgb(var(--brand-moss));
+  background: rgb(var(--brand-moss) / 0.1);
+  color: rgb(var(--brand-moss));
+  font-weight: 600;
+}
+
+.pg-params-box {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--md-sys-color-surface-container-low);
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 10px;
+  background: rgb(var(--surface-2) / 0.45);
 }
 
-.pg-switch-row {
-  padding: 8px 4px;
+.pg-slider-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pg-slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.pg-slider-head label {
+  font-size: 12px;
+  font-weight: 550;
+  color: rgb(var(--ink-2));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-slider-head output {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgb(var(--ink));
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-range {
+  width: 100%;
+  accent-color: rgb(var(--brand-moss));
+  cursor: pointer;
+}
+
+.pg-switch-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 10px;
+  background: rgb(var(--surface-2) / 0.35);
+}
+
+.pg-switch-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pg-switch-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(var(--ink));
+}
+
+.pg-switch-copy small {
+  font-size: 12px;
+  color: rgb(var(--ink-3));
 }
 
 .pg-actions {
@@ -672,47 +1009,127 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+  padding-top: 4px;
+}
+
+.pg-run-btn {
+  flex: 1 1 160px;
 }
 
 .pg-output-head {
+  align-items: center;
+}
+
+.pg-output-title-group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
+  gap: 10px;
+  min-width: 0;
 }
 
-.pg-metrics-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.pg-endpoint-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px 3px 4px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 7px;
+  background: rgb(var(--surface-2) / 0.7);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgb(var(--ink-2));
 }
 
-.pg-metric {
+.pg-method {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgb(var(--brand-moss) / 0.14);
+  color: rgb(var(--brand-moss));
+  font-weight: 700;
+  font-size: 10.5px;
+}
+
+.pg-live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgb(var(--brand-moss) / 0.12);
+  color: rgb(var(--brand-moss));
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pg-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pg-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes pg-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.pg-progress-track {
+  position: relative;
+  height: 3px;
+  margin: -10px 0 16px;
+  border-radius: 999px;
+  background: rgb(var(--brand-moss) / 0.16);
+  overflow: hidden;
+}
+
+.pg-progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  border-radius: 999px;
+  background: rgb(var(--brand-moss));
+  animation: pg-slide 1.3s ease-in-out infinite;
+}
+
+@keyframes pg-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
+
+.pg-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.pg-kpi {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 6px 12px;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgb(var(--line));
   border-radius: 10px;
-  background: var(--md-sys-color-surface-container-low);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  min-width: 78px;
+  background: rgb(var(--surface-2) / 0.45);
+  min-width: 0;
 }
 
-.pg-metric span {
-  font-size: 0.7rem;
-  color: var(--md-sys-color-on-surface-variant);
+.pg-kpi span {
+  font-size: 11.5px;
+  color: rgb(var(--ink-3));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.pg-metric strong {
-  font-size: 0.85rem;
+.pg-kpi strong {
   font-family: var(--font-mono);
-  color: var(--md-sys-color-on-surface);
-}
-
-.pg-progress {
-  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 650;
+  color: rgb(var(--ink));
+  font-variant-numeric: tabular-nums;
 }
 
 .pg-billing-banner {
@@ -720,31 +1137,72 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 8px 12px;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  padding: 9px 14px;
+  border: 1px solid rgb(var(--line));
   border-radius: 10px;
-  background: var(--md-sys-color-surface-container-low);
-  font-size: 0.8125rem;
-  color: var(--md-sys-color-on-surface-variant);
+  background: rgb(var(--surface-2) / 0.4);
+  font-size: 12.5px;
+  color: rgb(var(--ink-2));
+}
+
+.pg-billing-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.pg-billing-details strong {
+  color: rgb(var(--ink));
+  font-family: var(--font-mono);
+}
+
+.pg-billing-sep {
+  color: rgb(var(--ink-3));
+}
+
+.pg-billing-tag {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgb(var(--brand-moss) / 0.12);
+  color: rgb(var(--brand-moss));
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.pg-billing-tag.is-peak {
+  background: rgb(var(--status-warn-bg) / 0.8);
+  color: rgb(var(--text-warn));
+}
+
+.pg-tabs {
+  margin-bottom: 16px;
 }
 
 .pg-error-box {
-  margin-top: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
   padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--md-sys-color-error-container);
-  color: var(--md-sys-color-on-error-container);
-  font-size: 0.875rem;
+  border: 1px solid rgb(var(--text-err) / 0.3);
+  border-radius: 10px;
+  background: rgb(var(--status-err-bg) / 0.6);
+  color: rgb(var(--text-err));
+  font-size: 13px;
 }
 
 .pg-error-box p {
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   word-break: break-word;
+  color: rgb(var(--ink));
 }
 
-.pg-panel {
-  margin-top: 14px;
+.pg-tab-panel {
+  min-width: 0;
 }
 
 .pg-response-body {
@@ -755,19 +1213,19 @@ onBeforeUnmount(() => {
 
 .pg-response-pre {
   margin: 0;
-  padding: 16px;
-  min-height: 220px;
-  max-height: 520px;
+  padding: 18px;
+  min-height: 260px;
+  max-height: 540px;
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
   border-radius: 12px;
-  background: var(--md-sys-color-surface-container-low);
-  border: 1px solid var(--md-sys-color-outline-variant);
+  background: rgb(var(--surface-2) / 0.45);
+  border: 1px solid rgb(var(--line));
   font-family: var(--font-sans);
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgb(var(--ink));
 }
 
 .pg-panel-foot {
@@ -775,9 +1233,55 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
 }
 
+.pg-sm-btn {
+  min-height: 34px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+}
+
+.pg-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 260px;
+  padding: 36px 24px;
+  border: 1px dashed rgb(var(--line-strong) / 0.75);
+  border-radius: 12px;
+  background: rgb(var(--surface-2) / 0.3);
+}
+
+.pg-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  color: rgb(var(--ink-3));
+}
+
+.pg-empty-state h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgb(var(--ink));
+}
+
+.pg-empty-state p {
+  margin: 6px 0 0;
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgb(var(--ink-3));
+}
+
 .pg-json-grid {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .pg-snippet-bar {
@@ -785,14 +1289,14 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .pg-code-block {
   border-radius: 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface-2) / 0.5);
   overflow: hidden;
 }
 
@@ -800,33 +1304,45 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--md-sys-color-outline-variant);
-  font-size: 0.75rem;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgb(var(--line));
+  background: rgb(var(--surface-2) / 0.75);
+  font-size: 12px;
   font-weight: 600;
-  color: var(--md-sys-color-on-surface-variant);
+  color: rgb(var(--ink-2));
 }
 
 .pg-code-block pre {
   margin: 0;
-  padding: 12px 14px;
-  max-height: 360px;
+  padding: 14px 16px;
+  max-height: 380px;
   overflow: auto;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
-  line-height: 1.55;
-  color: var(--md-sys-color-on-surface);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: rgb(var(--ink));
 }
 
-@media (max-width: 1024px) {
+.playground-page button:focus-visible,
+.playground-page input:focus-visible,
+.playground-page textarea:focus-visible {
+  outline: 2px solid rgb(var(--focus-ring));
+  outline-offset: 2px;
+}
+
+@media (max-width: 1080px) {
   .playground-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-@media (max-width: 640px) {
-  .pg-row-2,
-  .pg-sliders {
+@media (max-width: 680px) {
+  .pg-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pg-params-box,
+  .pg-segmented {
     grid-template-columns: minmax(0, 1fr);
   }
 }

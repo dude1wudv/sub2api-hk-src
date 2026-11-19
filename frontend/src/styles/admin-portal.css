@@ -37,8 +37,8 @@
   width: var(--admin-nav-width);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--md-sys-color-outline-variant, rgb(var(--line)));
-  background: var(--md-sys-color-surface-container-low, rgb(var(--surface-sidebar)));
+  border-right: 1px solid rgb(var(--line));
+  background: rgb(var(--surface-sidebar));
   transition: width var(--motion-overlay) var(--motion-ease);
 }
 .admin-brand {
@@ -51,15 +51,16 @@
   text-decoration: none;
   flex-shrink: 0;
   height: 64px;
-  border-bottom: 1px solid var(--md-sys-color-outline-variant, rgb(var(--line) / .75));
+  border-bottom: 1px solid rgb(var(--line) / .75);
 }
 .admin-brand small {
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 650;
   padding: 2px 9px;
   border-radius: 999px;
-  background: var(--md-sys-color-primary-container, rgb(var(--surface-2)));
-  color: var(--md-sys-color-on-primary-container, rgb(var(--ink-2)));
+  background: rgb(var(--brand-moss) / .12);
+  border: 1px solid rgb(var(--brand-moss) / .24);
+  color: rgb(var(--brand-moss));
   white-space: nowrap;
 }
 .admin-menu-search {

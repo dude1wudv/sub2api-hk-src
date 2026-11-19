@@ -1,74 +1,75 @@
 <template>
-  <MdCard variant="outlined" padding="md" class="cost-calc-card">
-    <template #header>
+  <section class="portal-panel cost-calc-card" :aria-label="zh ? '模型费用估算器' : 'Model Cost Estimator'">
+    <header class="calc-header">
       <div>
-        <h2 class="md-card-title">{{ zh ? '模型费用估算器' : 'Model Cost Estimator' }}</h2>
-        <p class="md-card-subtitle">
-          {{ zh ? '结合分组倍率、缓存命中率与预估吞吐，实时计算单次/日/月开销。' : 'Estimate per-request, daily, and monthly spend with group multipliers and prompt cache hit ratio.' }}
-        </p>
+        <h2>{{ zh ? '模型费用估算器' : 'Model Cost Estimator' }}</h2>
+        <p>{{ zh ? '结合分组倍率、缓存命中率与预估吞吐，实时计算单次/日/月开销。' : 'Estimate per-request, daily, and monthly spend with group multipliers and prompt cache hit ratio.' }}</p>
       </div>
-    </template>
-    <template #actions>
-      <MdButton v-if="selectedModelId" variant="tonal" size="sm" @click="tryInPlayground">
-        <template #icon><Icon name="play" size="xs" /></template>
+      <button v-if="selectedModelId" type="button" class="portal-button secondary" @click="tryInPlayground">
+        <Icon name="play" size="sm" aria-hidden="true" />
         {{ zh ? '去调试台实测' : 'Try in Playground' }}
-      </MdButton>
-    </template>
+      </button>
+    </header>
 
-    <MdEmptyState
-      v-if="pricedItems.length === 0"
-      compact
-      :title="zh ? '当前暂无可用 Token 单价数据' : 'No token pricing available'"
-      :description="zh ? '请先在「模型与定价」标签页确认当前分组已公开 Token 计费价格。' : 'Check the catalog tab once token pricing is published for your groups.'"
-    />
+    <div v-if="pricedItems.length === 0" class="calc-empty">
+      <h3>{{ zh ? '当前暂无可用 Token 单价数据' : 'No token pricing available' }}</h3>
+      <p>{{ zh ? '请先在「模型与定价」标签页确认当前分组已公开 Token 计费价格。' : 'Check the catalog tab once token pricing is published for your groups.' }}</p>
+    </div>
 
     <div v-else class="calc-layout">
       <div class="calc-controls">
-        <MdSelect
-          v-model="selectedKey"
-          :label="zh ? '选择分组与模型' : 'Select group & model'"
-          :options="modelOptions"
-        />
+        <div class="portal-field">
+          <span class="calc-field-label">{{ zh ? '选择分组与模型' : 'Select group & model' }}</span>
+          <Select
+            v-model="selectedKey"
+            :options="modelOptions"
+            searchable
+            :placeholder="zh ? '搜索或选择分组与模型' : 'Search or select group & model'"
+            :aria-label="zh ? '选择分组与模型' : 'Select group & model'"
+          />
+        </div>
 
-        <MdSlider
-          v-model="inputTokens"
-          :min="200"
-          :max="128000"
-          :step="200"
-          :label="zh ? '平均输入 Tokens / 次' : 'Avg input tokens / req'"
-        />
+        <div class="calc-slider-group">
+          <div class="calc-slider-item">
+            <div class="calc-slider-head">
+              <label for="calc-in">{{ zh ? '平均输入 Tokens / 次' : 'Avg input tokens / req' }}</label>
+              <output for="calc-in">{{ inputTokens.toLocaleString() }}</output>
+            </div>
+            <input id="calc-in" v-model.number="inputTokens" type="range" min="200" max="128000" step="200" class="calc-range" />
+          </div>
 
-        <MdSlider
-          v-model="outputTokens"
-          :min="100"
-          :max="16000"
-          :step="100"
-          :label="zh ? '平均输出 Tokens / 次' : 'Avg output tokens / req'"
-        />
+          <div class="calc-slider-item">
+            <div class="calc-slider-head">
+              <label for="calc-out">{{ zh ? '平均输出 Tokens / 次' : 'Avg output tokens / req' }}</label>
+              <output for="calc-out">{{ outputTokens.toLocaleString() }}</output>
+            </div>
+            <input id="calc-out" v-model.number="outputTokens" type="range" min="100" max="16000" step="100" class="calc-range" />
+          </div>
 
-        <MdSlider
-          v-model="cacheHitPct"
-          :min="0"
-          :max="95"
-          :step="5"
-          unit="%"
-          :label="zh ? 'Prompt 缓存命中率' : 'Prompt cache hit rate'"
-        />
+          <div class="calc-slider-item">
+            <div class="calc-slider-head">
+              <label for="calc-cache">{{ zh ? 'Prompt 缓存命中率' : 'Prompt cache hit rate' }}</label>
+              <output for="calc-cache">{{ cacheHitPct }}%</output>
+            </div>
+            <input id="calc-cache" v-model.number="cacheHitPct" type="range" min="0" max="95" step="5" class="calc-range" />
+          </div>
 
-        <MdSlider
-          v-model="dailyRequests"
-          :min="10"
-          :max="5000"
-          :step="10"
-          :label="zh ? '预计日均请求数' : 'Estimated requests / day'"
-        />
+          <div class="calc-slider-item">
+            <div class="calc-slider-head">
+              <label for="calc-daily">{{ zh ? '预计日均请求数' : 'Estimated requests / day' }}</label>
+              <output for="calc-daily">{{ dailyRequests.toLocaleString() }}</output>
+            </div>
+            <input id="calc-daily" v-model.number="dailyRequests" type="range" min="10" max="5000" step="10" class="calc-range" />
+          </div>
+        </div>
 
-        <MdSwitch
-          v-if="selectedEntry && selectedEntry.peakRateEnabled"
-          v-model="applyPeak"
-          :label="zh ? `按高峰期倍率 (${selectedEntry.peakMultiplier}x) 估算` : `Simulate peak multiplier (${selectedEntry.peakMultiplier}x)`"
-          :description="selectedEntry.peakWindow ? `${zh ? '高峰时段' : 'Peak window'}: ${selectedEntry.peakWindow}` : undefined"
-        />
+        <div v-if="selectedEntry && selectedEntry.peakRateEnabled" class="calc-switch-card">
+          <div class="calc-switch-copy">
+            <strong>{{ zh ? `按高峰期倍率 (${selectedEntry.peakMultiplier}x) 估算` : `Simulate peak multiplier (${selectedEntry.peakMultiplier}x)` }}</strong>
+            <small v-if="selectedEntry.peakWindow">{{ zh ? '高峰时段' : 'Peak window' }}: {{ selectedEntry.peakWindow }}</small>
+          </div>
+          <Toggle v-model="applyPeak" :aria-label="zh ? '按高峰期倍率估算' : 'Simulate peak multiplier'" />
+        </div>
       </div>
 
       <div v-if="selectedEntry" class="calc-results">
@@ -81,7 +82,7 @@
           <div class="calc-kpi">
             <span>{{ zh ? '单次请求费用' : 'Per request' }}</span>
             <strong>${{ perRequestCost.toFixed(5) }}</strong>
-            <small>{{ zh ? `生效倍率 ${effectiveMultiplier}x` : `Effective ${effectiveMultiplier}x` }}</small>
+            <small>{{ zh ? `生效倍率 ${effectiveMultiplier}×` : `Effective ${effectiveMultiplier}×` }}</small>
           </div>
           <div class="calc-kpi">
             <span>{{ zh ? '缓存预计月省' : 'Monthly cache savings' }}</span>
@@ -107,20 +108,21 @@
             </div>
             <div>
               <dt>{{ zh ? '分组基础倍率' : 'Group multiplier' }}</dt>
-              <dd>{{ selectedEntry.groupMultiplier }}x</dd>
+              <dd>{{ selectedEntry.groupMultiplier }}×</dd>
             </div>
           </dl>
         </div>
       </div>
     </div>
-  </MdCard>
+  </section>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { MdButton, MdCard, MdEmptyState, MdSelect, MdSlider, MdSwitch, type MdSelectOption } from '@/components/md'
+import Select, { type SelectOption } from '@/components/common/Select.vue'
+import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
 import type { ModelPlazaGroup } from '@/api/modelPlaza'
 
@@ -164,7 +166,6 @@ const pricedItems = computed<PricedEntry[]>(() => {
       const inputRaw = Number(p.input_price ?? p.input_cost_per_token ?? 0)
       const outputRaw = Number(p.output_price ?? p.output_cost_per_token ?? 0)
       if (inputRaw <= 0 && outputRaw <= 0) continue
-      // Normalize per-token (< 0.01) to per-1M tokens
       const toPerM = (v: number) => (v > 0 && v < 0.01 ? v * 1_000_000 : v)
       const inputPerM = toPerM(inputRaw)
       const outputPerM = toPerM(outputRaw)
@@ -198,11 +199,10 @@ watch(
   { immediate: true }
 )
 
-const modelOptions = computed<MdSelectOption[]>(() =>
+const modelOptions = computed<SelectOption[]>(() =>
   pricedItems.value.map((item) => ({
     value: item.key,
-    label: `${item.modelName} · ${item.groupName}`,
-    supportingText: `$${item.inputPerM.toFixed(2)} / $${item.outputPerM.toFixed(2)} per 1M (${item.groupMultiplier}x)`
+    label: `${item.modelName} · ${item.groupName} (×${item.groupMultiplier})`
   }))
 )
 
@@ -244,94 +244,230 @@ function tryInPlayground() {
 </script>
 
 <style scoped>
+.calc-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgb(var(--line));
+}
+
+.calc-header h2 {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 650;
+  color: rgb(var(--ink));
+}
+
+.calc-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: rgb(var(--ink-3));
+}
+
+.calc-empty {
+  padding: 40px 20px;
+  text-align: center;
+  border: 1px dashed rgb(var(--line));
+  border-radius: 12px;
+  background: rgb(var(--surface-2) / 0.3);
+}
+
+.calc-empty h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgb(var(--ink));
+}
+
+.calc-empty p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: rgb(var(--ink-3));
+}
+
 .calc-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: minmax(300px, 430px) minmax(0, 1fr);
+  gap: 22px;
   align-items: start;
 }
 
 .calc-controls {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.calc-field-label {
+  font-size: 13px;
+  font-weight: 550;
+  color: rgb(var(--ink-2));
+}
+
+.calc-slider-group {
+  display: flex;
+  flex-direction: column;
   gap: 14px;
+  padding: 16px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 12px;
+  background: rgb(var(--surface-2) / 0.45);
+}
+
+.calc-slider-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.calc-slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.calc-slider-head label {
+  font-size: 12.5px;
+  font-weight: 550;
+  color: rgb(var(--ink-2));
+}
+
+.calc-slider-head output {
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgb(var(--ink));
+  font-variant-numeric: tabular-nums;
+}
+
+.calc-range {
+  width: 100%;
+  accent-color: rgb(var(--brand-moss));
+  cursor: pointer;
+}
+
+.calc-switch-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 10px;
+  background: rgb(var(--surface-2) / 0.35);
+}
+
+.calc-switch-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.calc-switch-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(var(--ink));
+}
+
+.calc-switch-copy small {
+  font-size: 12px;
+  color: rgb(var(--ink-3));
 }
 
 .calc-results {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .calc-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
   gap: 12px;
 }
 
 .calc-kpi {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 16px;
-  border-radius: 14px;
-  background: var(--md-sys-color-surface-container-low);
-  border: 1px solid var(--md-sys-color-outline-variant);
+  gap: 5px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: rgb(var(--surface-2) / 0.5);
+  border: 1px solid rgb(var(--line));
 }
 
 .calc-kpi--primary {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  border-color: color-mix(in srgb, var(--md-sys-color-primary) 25%, transparent);
+  background: rgb(var(--brand-moss) / 0.1);
+  border-color: rgb(var(--brand-moss) / 0.32);
+}
+
+.calc-kpi--primary strong {
+  color: rgb(var(--brand-moss));
 }
 
 .calc-kpi span {
-  font-size: 0.78rem;
-  opacity: 0.85;
+  font-size: 12px;
+  color: rgb(var(--ink-2));
 }
 
 .calc-kpi strong {
-  font-size: 1.5rem;
+  font-size: 24px;
   font-weight: 700;
+  line-height: 1.25;
   font-family: var(--font-mono);
+  color: rgb(var(--ink));
+  font-variant-numeric: tabular-nums;
 }
 
 .calc-kpi small {
-  font-size: 0.75rem;
-  opacity: 0.8;
+  font-size: 12px;
+  color: rgb(var(--ink-3));
 }
 
 .calc-breakdown {
-  padding: 16px;
-  border-radius: 14px;
-  background: var(--md-sys-color-surface-container-low);
-  border: 1px solid var(--md-sys-color-outline-variant);
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: rgb(var(--surface-2) / 0.4);
+  border: 1px solid rgb(var(--line));
 }
 
 .calc-breakdown h3 {
   margin: 0 0 12px;
-  font-size: 0.85rem;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--md-sys-color-on-surface-variant);
+  color: rgb(var(--ink-2));
 }
 
 .calc-breakdown dl {
   margin: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .calc-breakdown dt {
-  font-size: 0.75rem;
-  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+  color: rgb(var(--ink-3));
 }
 
 .calc-breakdown dd {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-family: var(--font-mono);
-  font-weight: 600;
-  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  font-weight: 650;
+  color: rgb(var(--ink));
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 960px) {

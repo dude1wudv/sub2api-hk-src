@@ -1,28 +1,23 @@
 <template>
   <div class="portal-page developer-dashboard">
-    <MdPageHeader
-      :eyebrow="zh ? '开发者工作台' : 'Developer Workspace'"
+    <PortalPageHeader
       :title="zh ? '工作台概览' : 'Workspace Overview'"
       :description="zh ? '实时掌握账户余额续航、平台配额水位、主力模型分布与调用趋势。' : 'Monitor balance runway, platform quota watermarks, model mix, and live usage trends.'"
     >
-      <template #badge>
-        <MdBadge tone="neutral">{{ new Date().toLocaleDateString(locale, { month: 'short', day: 'numeric', weekday: 'short' }) }}</MdBadge>
-      </template>
-      <template #actions>
-        <MdButton variant="outlined" size="sm" :loading="loading" @click="refreshAll">
-          <template #icon><Icon name="refresh" size="xs" /></template>
-          {{ t('common.refresh') }}
-        </MdButton>
-        <MdButton variant="tonal" size="sm" @click="router.push('/playground')">
-          <template #icon><Icon name="play" size="xs" /></template>
-          {{ zh ? 'API 调试台' : 'Playground' }}
-        </MdButton>
-        <MdButton variant="filled" size="sm" @click="router.push('/keys?create=1')">
-          <template #icon><Icon name="plus" size="xs" /></template>
-          {{ zh ? '创建密钥' : 'Create key' }}
-        </MdButton>
-      </template>
-    </MdPageHeader>
+      <span class="workspace-today">{{ new Date().toLocaleDateString(locale, { month: 'short', day: 'numeric', weekday: 'short' }) }}</span>
+      <button type="button" class="portal-button secondary" :disabled="loading" @click="refreshAll">
+        <Icon name="refresh" size="sm" aria-hidden="true" />
+        {{ t('common.refresh') }}
+      </button>
+      <button type="button" class="portal-button secondary" @click="router.push('/playground')">
+        <Icon name="play" size="sm" aria-hidden="true" />
+        {{ zh ? 'API 调试台' : 'Playground' }}
+      </button>
+      <button type="button" class="portal-button" @click="router.push('/keys?create=1')">
+        <Icon name="plus" size="sm" aria-hidden="true" />
+        {{ zh ? '创建密钥' : 'Create key' }}
+      </button>
+    </PortalPageHeader>
 
     <!-- Quick Connect Bar -->
     <div v-if="openAIBase" class="dashboard-quick-connect">
@@ -31,14 +26,14 @@
         <code>{{ openAIBase }}</code>
       </div>
       <div class="dashboard-qc-actions">
-        <MdButton variant="text" size="sm" @click="copyBaseUrl">
-          <template #icon><Icon name="copy" size="xs" /></template>
+        <button type="button" class="portal-inline-button dashboard-qc-btn" @click="copyBaseUrl">
+          <Icon name="copy" size="xs" aria-hidden="true" />
           {{ zh ? '复制地址' : 'Copy URL' }}
-        </MdButton>
-        <MdButton variant="text" size="sm" @click="router.push('/keys?quickstart=1')">
-          <template #icon><Icon name="bolt" size="xs" /></template>
+        </button>
+        <button type="button" class="portal-inline-button dashboard-qc-btn" @click="router.push('/keys?quickstart=1')">
+          <Icon name="bolt" size="xs" aria-hidden="true" />
           {{ zh ? '一键接入配置' : 'Quickstart' }}
-        </MdButton>
+        </button>
       </div>
     </div>
 
@@ -73,7 +68,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { MdBadge, MdButton, MdPageHeader } from '@/components/md'
+import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { usageDrilldownQuery, type UsageDrilldown } from '@/views/portal/usageRoute'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
@@ -187,35 +182,37 @@ onBeforeUnmount(() => { disposed = true; chartRequest++ })
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 18px;
-  padding: 10px 14px;
-  border-radius: var(--md-sys-shape-corner-large);
-  background: var(--md-sys-color-surface-container-low);
-  border: 1px solid var(--md-sys-color-outline-variant);
+  gap: 10px 16px;
+  margin-bottom: 20px;
+  padding: 11px 16px;
+  border-radius: var(--radius-card);
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  box-shadow: var(--shadow-panel);
 }
 
 .dashboard-qc-endpoint {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 
 .dashboard-qc-label {
-  padding: 2px 8px;
+  padding: 2px 9px;
   border-radius: 9999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
+  font-size: 11.5px;
+  font-weight: 650;
+  background: rgb(var(--brand-moss) / 0.12);
+  color: rgb(var(--brand-moss));
+  border: 1px solid rgb(var(--brand-moss) / 0.25);
 }
 
 .dashboard-qc-endpoint code {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  color: var(--md-sys-color-on-surface);
+  font-size: 13px;
+  color: rgb(var(--ink));
   word-break: break-all;
 }
 
@@ -223,6 +220,14 @@ onBeforeUnmount(() => { disposed = true; chartRequest++ })
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 12px;
+}
+
+.dashboard-qc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 550;
 }
 </style>

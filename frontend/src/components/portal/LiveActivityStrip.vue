@@ -1,18 +1,25 @@
 <template>
-  <RouterLink
-    v-if="activeTotal > 0"
-    to="/usage"
-    class="live-activity-strip"
-    :aria-label="zh ? `${activeTotal} 个进行中请求` : `${activeTotal} active requests`"
-  >
-    <span class="live-activity-pulse" aria-hidden="true" />
-    <span class="live-activity-text">
-      <strong>{{ activeTotal }}</strong>
-      {{ zh ? '个进行中请求' : activeTotal === 1 ? 'active request' : 'active requests' }}
-      <template v-if="topModel"> · <code>{{ topModel }}</code></template>
-    </span>
-    <span class="live-activity-link">{{ zh ? '查看实时详情 →' : 'Inspect →' }}</span>
-  </RouterLink>
+  <div v-if="activeTotal > 0" class="live-activity-wrap">
+    <RouterLink
+      to="/usage"
+      class="live-activity-strip"
+      :aria-label="zh ? `${activeTotal} 个进行中请求` : `${activeTotal} active requests`"
+    >
+      <span class="live-activity-pulse" aria-hidden="true" />
+      <span class="live-activity-text">
+        <strong>{{ activeTotal }}</strong>
+        {{ zh ? '个进行中请求' : activeTotal === 1 ? 'active request' : 'active requests' }}
+        <template v-if="topModel">
+          <span class="live-activity-sep" aria-hidden="true">·</span>
+          <code>{{ topModel }}</code>
+        </template>
+      </span>
+      <span class="live-activity-link">
+        {{ zh ? '查看实时详情' : 'Inspect' }}
+        <span aria-hidden="true">→</span>
+      </span>
+    </RouterLink>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -78,50 +85,127 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.live-activity-strip {
+.live-activity-wrap {
+  width: calc(100% - 56px);
+  max-width: 1360px;
+  margin: 16px auto -12px;
   display: flex;
+  align-items: center;
+}
+
+.live-activity-strip {
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-  padding: 9px 14px;
-  border-radius: 12px;
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  font-size: 0.8125rem;
+  gap: 10px 12px;
+  max-width: 100%;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgb(var(--brand-moss) / 0.1);
+  color: rgb(var(--ink));
+  font-size: 13px;
+  line-height: 1.4;
   text-decoration: none;
-  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 26%, transparent);
-  transition: filter var(--motion-fast, 150ms);
+  border: 1px solid rgb(var(--brand-moss) / 0.28);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  transition: background-color var(--motion-fast, 150ms) ease, border-color var(--motion-fast, 150ms) ease;
 }
 
 .live-activity-strip:hover {
-  filter: brightness(0.98);
+  background: rgb(var(--brand-moss) / 0.15);
+  border-color: rgb(var(--brand-moss) / 0.42);
+}
+
+.live-activity-strip:focus-visible {
+  outline: 2px solid rgb(var(--focus-ring));
+  outline-offset: 2px;
 }
 
 .live-activity-pulse {
   width: 8px;
   height: 8px;
   border-radius: 9999px;
-  background: var(--md-sys-color-primary);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-sys-color-primary) 25%, transparent);
+  background: rgb(var(--brand-moss));
+  box-shadow: 0 0 0 3px rgb(var(--brand-moss) / 0.22);
   flex-shrink: 0;
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgb(var(--brand-moss) / 0.26);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgb(var(--brand-moss) / 0.08);
+  }
 }
 
 .live-activity-text {
-  flex: 1 1 auto;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
   min-width: 0;
+  color: rgb(var(--ink-2));
+}
+
+.live-activity-text strong {
+  color: rgb(var(--ink));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-activity-sep {
+  color: rgb(var(--ink-3));
 }
 
 .live-activity-text code {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
-  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 1px 7px;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 10%, transparent);
+  color: rgb(var(--ink));
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .live-activity-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 8px;
+  border-left: 1px solid rgb(var(--brand-moss) / 0.24);
+  color: rgb(var(--brand-moss));
   font-weight: 600;
   white-space: nowrap;
+}
+
+@media (max-width: 1023px) {
+  .live-activity-wrap {
+    width: calc(100% - 40px);
+  }
+}
+
+@media (max-width: 767px) {
+  .live-activity-wrap {
+    width: calc(100% - 32px);
+    margin: 12px auto -8px;
+  }
+
+  .live-activity-strip {
+    width: 100%;
+    border-radius: 12px;
+    justify-content: space-between;
+  }
+
+  .live-activity-link {
+    border-left: 0;
+    padding-left: 0;
+  }
 }
 </style>
