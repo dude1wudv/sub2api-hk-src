@@ -80,7 +80,13 @@ func TestChatSnapshotRejectsBrokenTrees(t *testing.T) {
 }
 
 func TestChatPreferencesStrictWhitelist(t *testing.T) {
-	for _, bad := range []map[string]any{{"apiKey": "never-store"}, {"apiOrigin": "https://attacker.invalid"}, {"location": map[string]string{"region": "CN", "apiKey": "bad"}}, {"themePreference": "unknown"}} {
+	for _, bad := range []map[string]any{
+		{"apiKey": "never-store"},
+		{"apiOrigin": "https://attacker.invalid"},
+		{"location": map[string]string{"region": "CN", "apiKey": "bad"}},
+		{"themePreference": "unknown"},
+		{"reasoningEffort": "max"},
+	} {
 		raw, _ := json.Marshal(bad)
 		_, err := ValidateChatPreferences(raw)
 		require.ErrorIs(t, err, ErrChatInvalid)
@@ -89,7 +95,7 @@ func TestChatPreferencesStrictWhitelist(t *testing.T) {
 		_, err := ValidateChatPreferences(json.RawMessage(raw))
 		require.ErrorIs(t, err, ErrChatInvalid)
 	}
-	raw, _ := json.Marshal(map[string]any{"locale": "zh-CN", "themePreference": "dark", "search": true, "thinking": false})
+	raw, _ := json.Marshal(map[string]any{"locale": "zh-CN", "themePreference": "dark", "search": true, "thinking": false, "reasoningEffort": "medium"})
 	validated, err := ValidateChatPreferences(raw)
 	require.NoError(t, err)
 	require.JSONEq(t, string(raw), string(validated))

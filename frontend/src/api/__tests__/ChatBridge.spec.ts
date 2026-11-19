@@ -94,7 +94,7 @@ describe('Chat host MessageChannel', () => {
     localStorage.setItem('auth_token', `header.${btoa(JSON.stringify({ user_id: 7 }))}.host-only-token`)
     localStorage.setItem('auth_user', JSON.stringify({ id: 7 }))
     vi.stubGlobal('indexedDB', { deleteDatabase })
-    get.mockImplementation(async (path: string) => ({ data: path === '/chat/presets' ? [preset] : { preferences: { themePreference: 'dark', thinking: true, apiKey: 'must-not-cross', location: { region: 'CN', apiKey: 'must-not-cross' } }, history_revision: 4 } }))
+    get.mockImplementation(async (path: string) => ({ data: path === '/chat/presets' ? [preset] : { preferences: { themePreference: 'dark', thinking: true, reasoningEffort: 'high', apiKey: 'must-not-cross', location: { region: 'CN', apiKey: 'must-not-cross' } }, history_revision: 4 } }))
     request.mockResolvedValue({ data: { items: [], next_cursor: '' } })
     requireResponse.mockImplementation(async (response: Response) => response)
   })
@@ -138,7 +138,7 @@ describe('Chat host MessageChannel', () => {
     await flushPromises()
     expect(host.port.sent[0]).toMatchObject({ type: 'result', request_id: 'request-1', nonce, data: {
       user: { id: 7 }, presets: [{ id: 'preset-1', group: { id: 11 }, capabilities: { voice: true } }],
-      preferences: { themePreference: 'dark', thinking: true, location: { region: 'CN' } }, history_revision: 4, locale: 'zh-CN',
+      preferences: { themePreference: 'dark', thinking: true, reasoningEffort: 'high', location: { region: 'CN' } }, history_revision: 4, locale: 'zh-CN',
     } })
     expect(JSON.stringify(host.port.sent)).not.toMatch(/must-not-cross|host-only-token|apiKey|upstream_key|api_key/)
     expect(get.mock.calls.every(([, config]) => config.signal instanceof AbortSignal)).toBe(true)
