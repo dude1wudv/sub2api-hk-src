@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -94,6 +95,12 @@ func (s *ChatService) Generate(ctx context.Context, userID int64, sessionID uuid
 		return ErrChatInvalid
 	}
 	options := ChatRunOptions{Thinking: target.Thinking, Search: target.Search, Location: prefs.Location, Locale: prefs.Locale, Transport: model.Capabilities.Transport}
+	if req.Operation != "continue" && model.Capabilities.Reasoning && target.ReasoningEffort != "" && target.ReasoningEffort != "auto" {
+		if slices.Contains(chatReasoningEfforts(preset.Model, model.Capabilities), target.ReasoningEffort) {
+			options.ReasoningEffort = target.ReasoningEffort
+			options.Thinking = target.ReasoningEffort != "none"
+		}
+	}
 	if req.Operation == "continue" {
 		previous, err := s.repo.LastGeneration(ctx, userID, sessionID, target.ID)
 		if err != nil {
@@ -136,6 +143,11 @@ func (s *ChatService) Generate(ctx context.Context, userID int64, sessionID uuid
 	}
 	message["model"], message["groupId"], message["presetId"] = preset.Model, preset.GroupID, preset.ID.String()
 	message["thinking"], message["search"], message["chatOptions"] = options.Thinking, options.Search, options
+	if options.ReasoningEffort != "" {
+		message["reasoningEffort"] = options.ReasoningEffort
+	} else {
+		delete(message, "reasoningEffort")
+	}
 	if options.LatestReminder != "" {
 		message["latestReminder"] = options.LatestReminder
 	}

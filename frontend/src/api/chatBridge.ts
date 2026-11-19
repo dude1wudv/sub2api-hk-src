@@ -81,6 +81,9 @@ export function chatPreferences(value: unknown): Record<string, unknown> {
   if (value.locale === 'zh-CN' || value.locale === 'en-US') output.locale = value.locale
   if (value.themePreference === 'light' || value.themePreference === 'dark' || value.themePreference === 'system') output.themePreference = value.themePreference
   if (value.ttsVoice === 'stella' || value.ttsVoice === 'tide') output.ttsVoice = value.ttsVoice
+  if (value.reasoningEffort === 'auto' || value.reasoningEffort === 'none' || value.reasoningEffort === 'low' || value.reasoningEffort === 'medium' || value.reasoningEffort === 'high') {
+    output.reasoningEffort = value.reasoningEffort
+  }
   for (const key of ['thinking', 'search', 'siderCollapsed']) if (typeof value[key] === 'boolean') output[key] = value[key]
   if (record(value.location) && typeof value.location.region === 'string' && value.location.region.length <= 64) {
     const location: Record<string, string> = { region: value.location.region }

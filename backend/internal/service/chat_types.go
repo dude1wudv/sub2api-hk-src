@@ -56,6 +56,7 @@ type ChatMessage struct {
 	GroupID         int64               `json:"groupId,omitempty"`
 	PresetID        string              `json:"presetId,omitempty"`
 	Thinking        bool                `json:"thinking,omitempty"`
+	ReasoningEffort string              `json:"reasoningEffort,omitempty"`
 	Search          bool                `json:"search,omitempty"`
 	Status          string              `json:"status"`
 	Prefix          bool                `json:"prefix"`
@@ -207,6 +208,7 @@ type ChatPreferences struct {
 	Location        *ChatLocation `json:"location,omitempty"`
 	TTSVoice        string        `json:"ttsVoice,omitempty"`
 	Thinking        *bool         `json:"thinking,omitempty"`
+	ReasoningEffort string        `json:"reasoningEffort,omitempty"`
 	Search          *bool         `json:"search,omitempty"`
 	SiderCollapsed  *bool         `json:"siderCollapsed,omitempty"`
 }
@@ -241,6 +243,9 @@ func ValidateChatPreferences(raw json.RawMessage) (json.RawMessage, error) {
 		return nil, ErrChatInvalid
 	}
 	if p.TTSVoice != "" && p.TTSVoice != "stella" && p.TTSVoice != "tide" {
+		return nil, ErrChatInvalid
+	}
+	if p.ReasoningEffort != "" && p.ReasoningEffort != "auto" && p.ReasoningEffort != "none" && p.ReasoningEffort != "low" && p.ReasoningEffort != "medium" && p.ReasoningEffort != "high" {
 		return nil, ErrChatInvalid
 	}
 	if p.Location != nil && (len(p.Location.Region) > 64 || len(p.Location.Province) > 128 || len(p.Location.City) > 128) {
