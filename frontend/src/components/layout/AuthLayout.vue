@@ -10,12 +10,7 @@
           <router-link to="/key-usage" class="pa-nav-link">{{ zh ? '查额' : 'Usage' }}</router-link>
           <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="pa-nav-link">{{ zh ? '文档' : 'Docs' }}</a>
           <ColorModeToggle />
-          <label class="pa-language">
-            <span class="sr-only">{{ zh ? '语言' : 'Language' }}</span>
-            <select :value="locale" :disabled="switchingLanguage" @change="changeLanguage">
-              <option v-for="language in availableLocales" :key="language.code" :value="language.code">{{ language.code === 'zh' ? 'CN' : 'EN' }}</option>
-            </select>
-          </label>
+          <LocaleSwitcher />
         </nav>
       </div>
     </header>
@@ -69,13 +64,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
-import { availableLocales, setLocale } from '@/i18n'
 import { sanitizeUrl } from '@/utils/url'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
 import ColorModeToggle from '@/components/common/ColorModeToggle.vue'
+import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import InkSurface from '@/components/common/InkSurface.vue'
 import MotionPreferenceToggle from '@/components/common/MotionPreferenceToggle.vue'
 import '@/styles/patrick-auth.css'
@@ -85,16 +80,6 @@ const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || '', { allowRelative: true }))
 const currentYear = new Date().getFullYear()
-const switchingLanguage = ref(false)
-
-async function changeLanguage(event: Event) {
-  const code = (event.target as HTMLSelectElement).value
-  if (switchingLanguage.value || code === locale.value) return
-  switchingLanguage.value = true
-  try { await setLocale(code) }
-  catch { appStore.showError(zh.value ? '语言切换失败，请重试。' : 'Could not change the language. Please retry.') }
-  finally { switchingLanguage.value = false }
-}
 
 onMounted(() => { void appStore.fetchPublicSettings().catch(() => undefined) })
 </script>

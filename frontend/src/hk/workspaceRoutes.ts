@@ -6,6 +6,7 @@ import { resetWorkspaceWarmup, scheduleWorkspaceWarmup } from '@/composables/use
 const workspacePaths = new Set([
   '/dashboard',
   '/keys',
+  '/playground',
   '/chat-models',
   '/batch-image',
   '/usage',
@@ -77,6 +78,17 @@ const extraRoutes: RouteRecordRaw[] = [
     component: { render: () => null },
     beforeEnter: () => useAuthStore().isAdmin ? '/admin/dashboard' : '/dashboard',
     meta: { requiresAuth: true, title: 'Workspace' },
+  },
+  {
+    path: '/playground',
+    name: 'ApiPlayground',
+    component: () => import('@/views/portal/PlaygroundView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      appLayout: true,
+      title: 'API Playground',
+    },
   },
   {
     path: '/image2',

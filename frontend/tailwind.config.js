@@ -14,8 +14,9 @@ const varPalette = (name) => ({
   950: `rgb(var(--color-${name}-950) / <alpha-value>)`
 })
 
-// Foregrounds adapt to the mode independently of solid button and badge fills.
+// Foregrounds adapt to the mode for mid-tones (400-600) while preserving full 50-950 shade hierarchy.
 const textPalette = (name) => ({
+  ...varPalette(name),
   400: `rgb(var(--text-${name}) / <alpha-value>)`,
   500: `rgb(var(--text-${name}) / <alpha-value>)`,
   600: `rgb(var(--text-${name}) / <alpha-value>)`

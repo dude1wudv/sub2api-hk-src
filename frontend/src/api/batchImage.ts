@@ -233,6 +233,14 @@ export async function deleteBatchImageJobRecord(apiKey: string, batchId: string)
   if (!response.ok) throw await parseBatchImageError(response)
 }
 
+export async function deleteBatchImageJobOutputs(apiKey: string, batchId: string): Promise<void> {
+  const response = await fetch(buildGatewayUrl(`/v1/images/batches/${encodeURIComponent(batchId)}/outputs`), {
+    method: 'DELETE',
+    headers: authHeaders(apiKey),
+  })
+  if (!response.ok) throw await parseBatchImageError(response)
+}
+
 export function saveBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

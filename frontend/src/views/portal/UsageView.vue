@@ -25,6 +25,9 @@ import PortalDialog from '@/components/portal/PortalDialog.vue'
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import Icon from '@/components/icons/Icon.vue'
 import InflightRequests from '@/components/usage/InflightRequests.vue'
+import TrafficPanel from '@/components/usage/TrafficPanel.vue'
+import { MdChipSet, MdFilterChip, MdTabs } from '@/components/md'
+import { formatDateLocalInput } from '@/utils/format'
 import { parseUsageRoute, usageFiltersQuery, usageDrilldownQuery, validUsageDate, type UsageDrilldown } from './usageRoute'
 
 const { locale } = useI18n()
@@ -36,6 +39,11 @@ const route = useRoute()
 const router = useRouter()
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 const dates = usageMonthWindow()
+const sectionTab = ref<string>(route.query.tab === 'traffic' ? 'traffic' : 'usage')
+const sectionTabs = computed(() => [
+  { id: 'usage', label: copy('Token 用量与明细', 'Token usage & logs') },
+  { id: 'traffic', label: copy('网络流量监控', 'Network traffic') },
+])
 const monthStats = ref<UsageStatsResponse | null>(null)
 const months = ref<PortalUsageMonth[]>([])
 const overviewLoading = ref(true)
@@ -345,17 +353,61 @@ onBeforeUnmount(() => {
   errorDetailSequence += 1
   exportSequence += 1
 })
+const quickDatePreset = computed(() => {
+  const today = formatDateLocalInput(new Date())
+  const sevenDaysAgo = formatDateLocalInput(new Date(Date.now() - 6 * 86400000))
+  if (applied.value.start === today && applied.value.end === today) return 'today'
+  if (applied.value.start === sevenDaysAgo && applied.value.end === today) return '7d'
+  if (applied.value.start === dates.currentStart && applied.value.end === dates.end) return 'month'
+  return ''
+})
+
+function applyQuickRange(preset: 'today' | '7d' | 'month') {
+  const today = formatDateLocalInput(new Date())
+  if (preset === 'today') {
+    draft.start = today
+    draft.end = today
+  } else if (preset === '7d') {
+    draft.start = formatDateLocalInput(new Date(Date.now() - 6 * 86400000))
+    draft.end = today
+  } else {
+    draft.start = dates.currentStart
+    draft.end = dates.end
+  }
+  applyFilters()
+}
+
+watch(() => route.query.tab, (tab) => {
+  if (tab === 'traffic') sectionTab.value = 'traffic'
+  else if (tab === 'usage') sectionTab.value = 'usage'
+})
 </script>
 
 <template>
   <div class="portal-page usage-page">
-    <PortalPageHeader :title="copy('使用记录', 'Usage records')">
+    <PortalPageHeader :title="copy('用量与流量中心', 'Usage & traffic')">
       <div class="usage-balance"><Icon name="creditCard" size="sm" /><span>{{ copy('余额', 'Balance') }}</span><strong>{{ auth.user ? formatUsageMoney(auth.user.balance, 2) : '—' }}</strong><RouterLink v-if="!auth.isSimpleMode" to="/purchase">{{ copy('充值', 'Recharge') }} ↗</RouterLink></div>
     </PortalPageHeader>
+
+    <div class="usage-hub-tabs">
+      <MdTabs v-model="sectionTab" :items="sectionTabs" variant="primary" />
+    </div>
+
+    <div v-if="sectionTab === 'traffic'" class="usage-traffic-panel">
+      <TrafficPanel :admin="false" />
+    </div>
+
+    <template v-else>
     <PortalUsageAnalytics :filters="analyticsFilters" @range-change="changeAnalysisRange" @drilldown="drilldown" />
 
     <section id="usage-records" class="usage-records" aria-labelledby="usage-records-title">
-      <div class="usage-section-heading"><div><h2 id="usage-records-title">{{ copy('请求明细', 'Request details') }}</h2><p class="usage-record-description">{{ copy('查看每次请求的 Token、费用与响应表现。', 'Inspect tokens, cost and response performance for each request.') }}</p></div></div>
+      <div class="usage-section-heading"><div><h2 id="usage-records-title">{{ copy('请求明细', 'Request details') }}</h2><p class="usage-record-description">{{ copy('查看每次请求的 Token、费用与响应表现。', 'Inspect tokens, cost and response performance for each request.') }}</p></div>
+        <MdChipSet :aria-label="copy('快捷时间范围', 'Quick date range')">
+          <MdFilterChip :label="copy('今日', 'Today')" :model-value="quickDatePreset === 'today'" @update:model-value="applyQuickRange('today')" />
+          <MdFilterChip :label="copy('近 7 天', '7 days')" :model-value="quickDatePreset === '7d'" @update:model-value="applyQuickRange('7d')" />
+          <MdFilterChip :label="copy('本月', 'This month')" :model-value="quickDatePreset === 'month'" @update:model-value="applyQuickRange('month')" />
+        </MdChipSet>
+      </div>
       <div v-if="errorsEnabled" class="usage-record-tabs" role="tablist" :aria-label="copy('明细类别', 'Record type')"><button role="tab" :aria-selected="activeTab === 'usage'" :class="{ active: activeTab === 'usage' }" @click="activeTab = 'usage'">{{ copy('用量记录', 'Usage logs') }}</button><button role="tab" :aria-selected="activeTab === 'errors'" :class="{ active: activeTab === 'errors' }" @click="activeTab = 'errors'">{{ copy('错误请求', 'Error requests') }}</button></div>
       <form v-if="showFilters" id="usage-filters" class="usage-filter-panel" @submit.prevent="applyFilters">
         <div class="usage-filter-grid"><label class="portal-field">{{ copy('开始日期', 'Start date') }}<input v-model="draft.start" type="date" :max="draft.end || dates.end" required /></label><label class="portal-field">{{ copy('结束日期', 'End date') }}<input v-model="draft.end" type="date" :min="draft.start" :max="dates.end" required /></label><label class="portal-field">API Key<select v-model="draft.key"><option value="">{{ copy('全部 Key', 'All keys') }}</option><option v-for="key in keys" :key="key.id" :value="String(key.id)">{{ key.name }}</option></select></label><label class="portal-field">{{ copy('模型', 'Model') }}<input v-model="draft.model" list="portal-usage-models" :placeholder="copy('全部模型', 'All models')" /><datalist id="portal-usage-models"><option v-for="model in modelNames" :key="model" :value="model" /></datalist></label>
@@ -380,6 +432,7 @@ onBeforeUnmount(() => {
       <p v-if="monthError" class="portal-error" role="alert">{{ monthError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></p>
       <section class="usage-monthly" aria-labelledby="usage-monthly-title"><div class="usage-section-heading"><h2 id="usage-monthly-title">{{ copy('每月用量', 'Monthly usage') }}</h2><button class="portal-inline-button" :disabled="overviewLoading" @click="loadOverview">{{ overviewLoading ? copy('加载中…', 'Loading…') : copy('刷新', 'Refresh') }}</button></div><div v-if="overviewLoading" class="usage-chart-loading" role="status">{{ copy('正在加载每月用量…', 'Loading monthly usage…') }}</div><div v-else-if="trendError" class="portal-error" role="alert">{{ trendError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></div><PortalUsageChart v-else :months="months" /></section>
     </details>
+    </template>
     <PortalDialog :open="showColumns" :title="copy('显示列', 'Visible columns')" @close="showColumns = false"><div class="usage-column-list"><label v-for="column in columnsAvailable" :key="column.key"><input type="checkbox" :checked="columnKeys.includes(column.key)" :disabled="'fixed' in column && column.fixed" @change="toggleColumn(column.key)" />{{ usageColumnLabel(column.key, !zh) }}</label></div></PortalDialog>
     <PortalUsageDetail :open="detailOpen" :row="detailRow" :loading="detailLoading" :error="detailError" @close="closeDetail" />
     <PortalDialog :open="errorDetailOpen && errorsEnabled" :title="copy('错误请求详情', 'Error request details')" wide @close="closeErrorDetail"><p v-if="errorDetailLoading" class="portal-muted" role="status">{{ copy('正在加载详情…', 'Loading details…') }}</p><p v-if="errorDetailError" class="portal-error" role="alert">{{ errorDetailError }}</p><template v-if="errorDetail"><dl class="usage-error-metadata"><dt>{{ copy('时间', 'Time') }}</dt><dd>{{ new Date(errorDetail.created_at).toLocaleString(locale, { hour12: false }) }}</dd><dt>{{ copy('模型', 'Model') }}</dt><dd>{{ errorDetail.model }}</dd><dt>{{ copy('类型', 'Type') }}</dt><dd>{{ usageErrorRequestLabel(errorDetail, !zh) }}</dd><dt>{{ copy('状态码', 'Status code') }}</dt><dd>{{ errorDetail.status_code }}</dd><dt v-if="errorDetail.upstream_status_code">{{ copy('上游状态码', 'Upstream status code') }}</dt><dd v-if="errorDetail.upstream_status_code">{{ errorDetail.upstream_status_code }}</dd><dt>{{ copy('分类', 'Category') }}</dt><dd>{{ categoryOptions[errorDetail.category] || errorDetail.category }}</dd><dt>API Key</dt><dd>{{ errorDetail.key_name }}<span v-if="errorDetail.key_deleted">{{ copy('（已删除）', ' (deleted)') }}</span></dd><dt>{{ copy('分组', 'Group') }}</dt><dd>{{ errorDetail.group_name || '—' }}</dd><dt>{{ copy('端点', 'Endpoint') }}</dt><dd>{{ errorDetail.inbound_endpoint || '—' }}</dd><dt>IP</dt><dd>{{ errorDetail.client_ip || '—' }}</dd><dt>{{ copy('平台', 'Platform') }}</dt><dd>{{ errorDetail.platform }}</dd><dt>{{ copy('消息', 'Message') }}</dt><dd>{{ errorDetail.message }}</dd><dt>User-Agent</dt><dd>{{ errorDetail.user_agent || '—' }}</dd></dl><h3 class="usage-error-body-title">{{ copy('错误响应', 'Error response') }}</h3><pre class="usage-error-body">{{ errorDetail.error_body || copy('未记录响应内容', 'No response body recorded') }}</pre></template></PortalDialog>
@@ -387,6 +440,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.usage-hub-tabs { margin: 0 0 18px; }
+.usage-traffic-panel { margin-top: 8px; }
 .usage-filter-summary { display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-width:0; }
 .usage-filter-summary .portal-tag { overflow-wrap:anywhere; }
 .usage-records { scroll-margin-top:24px; min-width:0; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); padding:24px; box-shadow:var(--shadow-panel); margin-top:28px; }

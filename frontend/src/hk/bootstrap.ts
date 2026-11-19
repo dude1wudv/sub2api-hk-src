@@ -1,6 +1,7 @@
 import { initColorMode } from '@/composables/useColorMode'
 import { initMotionPreferences } from '@/composables/useMotionPreferences'
 import '@/styles/design-system.css'
+import '@/styles/m3-tokens.css'
 import '@/styles/patrick.css'
 import '@/styles/portal.css'
 

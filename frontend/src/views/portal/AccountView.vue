@@ -1,6 +1,6 @@
 <template>
   <div class="portal-page">
-  <main class="portal-account" data-testid="portal-account">
+  <div class="portal-account" data-testid="portal-account">
     <PortalPageHeader :title="copy('账户设置', 'Account settings')" />
     <p v-if="notice" class="portal-account-success" role="status">{{ notice }}</p>
     <p v-if="loadError" class="portal-account-error" role="alert">
@@ -14,18 +14,22 @@
     <p v-if="loading && !user" class="portal-account-note" role="status">{{ copy('正在读取账户…', 'Loading account…') }}</p>
 
     <div v-if="user" class="portal-account-layout">
-      <aside class="portal-account-guide"><span class="portal-account-guide-avatar" aria-hidden="true">{{ initial }}</span><strong>{{ user.username?.trim() || copy('未设置昵称', 'Display name not set') }}</strong><span>{{ displayEmail }}</span><nav :aria-label="copy('账户设置分区', 'Account settings sections')"><a href="#account-identity">{{ copy('资料与登录', 'Profile & sign-in') }} <span aria-hidden="true">↗</span></a><a href="#account-security">{{ copy('账户安全', 'Account security') }} <span aria-hidden="true">↗</span></a><a href="#account-appearance">{{ copy('动效偏好', 'Motion preferences') }} <span aria-hidden="true">↗</span></a><a v-if="settings?.balance_low_notify_enabled" href="#account-notifications">{{ copy('余额通知', 'Balance notifications') }} <span aria-hidden="true">↗</span></a></nav></aside>
+      <aside class="portal-account-guide"><img v-if="safeAvatarUrl" :src="safeAvatarUrl" :alt="user.username || 'Avatar'" class="portal-account-guide-avatar object-cover" /><span v-else class="portal-account-guide-avatar" aria-hidden="true">{{ initial }}</span><strong>{{ user.username?.trim() || copy('未设置昵称', 'Display name not set') }}</strong><span>{{ displayEmail }}</span><nav :aria-label="copy('账户设置分区', 'Account settings sections')"><a href="#account-identity">{{ copy('资料与登录', 'Profile & sign-in') }} <span aria-hidden="true">↗</span></a><a href="#account-security">{{ copy('账户安全', 'Account security') }} <span aria-hidden="true">↗</span></a><a href="#account-appearance">{{ copy('动效偏好', 'Motion preferences') }} <span aria-hidden="true">↗</span></a><a v-if="settings?.balance_low_notify_enabled" href="#account-notifications">{{ copy('余额通知', 'Balance notifications') }} <span aria-hidden="true">↗</span></a></nav></aside>
       <div class="portal-account-panel">
       <section id="account-identity" class="portal-account-section" :aria-label="copy('账户信息', 'Account information')"><h2>{{ copy('资料与登录', 'Profile & sign-in') }}</h2><p v-if="bindingError" class="portal-account-error" role="alert">{{ bindingError }}</p>
         <div class="portal-account-row">
           <div class="portal-account-row__identity">
-            <span class="portal-account-avatar" aria-hidden="true">{{ initial }}</span>
+            <img v-if="safeAvatarUrl" :src="safeAvatarUrl" :alt="user.username || 'Avatar'" class="portal-account-avatar object-cover" />
+            <span v-else class="portal-account-avatar" aria-hidden="true">{{ initial }}</span>
             <div class="portal-account-row__text">
               <strong>{{ user.username?.trim() || copy('未设置昵称', 'Display name not set') }}</strong>
-              <small>{{ copy('账户昵称', 'Display name') }}</small>
+              <small>{{ copy('账户昵称与头像', 'Display name & avatar') }}</small>
             </div>
           </div>
-          <button type="button" class="portal-account-action" @click="openEditor('name')">{{ copy('更改', 'Edit') }}</button>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="portal-account-action" @click="openEditor('name')">{{ copy('更改昵称', 'Edit name') }}</button>
+            <button type="button" class="portal-account-action" @click="openEditor('avatar')">{{ copy('设置头像', 'Avatar') }}</button>
+          </div>
         </div>
         <div class="portal-account-row">
           <div class="portal-account-row__identity">
@@ -63,6 +67,13 @@
           <button type="button" class="portal-account-action" @click="openEditor('password')">{{ copy('更改', 'Change') }}</button>
         </div>
         <PortalAccountSecurity :passkey-enabled="settings?.passkey_enabled === true" />
+        <div class="portal-account-row">
+          <div class="portal-account-row__text">
+            <strong>{{ copy('登录设备与会话', 'Active device sessions') }}</strong>
+            <small>{{ copy('立即注销所有浏览器与设备的登录态，当前设备也需要重新登录。', 'Sign out every active session across all devices immediately.') }}</small>
+          </div>
+          <button type="button" class="portal-account-action" data-testid="revoke-all-sessions" :disabled="busy" @click="openEditor('revokeAll')">{{ copy('退出全部设备', 'Sign out all devices') }}</button>
+        </div>
       </section>
 
       <section id="account-notifications" v-if="settings?.balance_low_notify_enabled" class="portal-account-section" :aria-label="copy('通知', 'Notifications')">
@@ -79,6 +90,11 @@
         <label v-if="editor === 'name'">
           {{ copy('账户昵称', 'Display name') }}
           <input v-model="name" class="portal-account-input" autocomplete="nickname" required autofocus />
+        </label>
+
+        <label v-else-if="editor === 'avatar'">
+          {{ copy('头像图片链接（HTTPS URL，留空恢复首字母头像）', 'Avatar image URL (HTTPS, leave blank to reset)') }}
+          <input v-model="avatarInput" class="portal-account-input" type="url" placeholder="https://example.com/avatar.png" autofocus />
         </label>
 
         <template v-else-if="editor === 'email'">
@@ -107,15 +123,17 @@
           <label>{{ copy('确认新密码', 'Confirm new password') }}<input v-model="confirmPassword" class="portal-account-input" type="password" autocomplete="new-password" :minlength="passwordPolicy.min_length" required /></label>
         </template>
 
+        <p v-else-if="editor === 'revokeAll'">{{ copy('确认立即退出全部设备的登录会话？所有浏览器与客户端需重新验证登录。', 'Sign out all active sessions across every device? You will need to sign in again.') }}</p>
+
         <p v-else-if="editor === 'unbind'">{{ copy(`确认解除与 ${selectedProvider?.label} 的关联？解除后无法再使用这一身份登录。`, `Disconnect ${selectedProvider?.label}? You will no longer be able to use this identity to sign in.`) }}</p>
 
         <div class="portal-account-form__actions">
           <button type="button" class="portal-account-action" :disabled="busy" @click="closeEditor">{{ copy('取消', 'Cancel') }}</button>
-          <button type="submit" class="portal-account-action portal-account-action--primary" :disabled="busy || actionRetryAfter > 0">{{ busy ? copy('处理中…', 'Processing…') : editor === 'unbind' ? copy('确认解绑', 'Disconnect') : editor === 'email' ? copy('确认', 'Confirm') : copy('保存', 'Save') }}</button>
+          <button type="submit" class="portal-account-action portal-account-action--primary" :disabled="busy || actionRetryAfter > 0">{{ busy ? copy('处理中…', 'Processing…') : editor === 'unbind' ? copy('确认解绑', 'Disconnect') : editor === 'revokeAll' ? copy('确认退出全部设备', 'Sign out all') : editor === 'email' ? copy('确认', 'Confirm') : copy('保存', 'Save') }}</button>
         </div>
       </form>
     </PortalAccountDialog>
-  </main>
+  </div>
   </div>
 </template>
 
@@ -127,8 +145,9 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { userAPI } from '@/api'
-import { hasExplicitWeChatOAuthCapabilities, resolveWeChatOAuthStartStrict, type WeChatOAuthPublicSettings } from '@/api/auth'
+import { hasExplicitWeChatOAuthCapabilities, resolveWeChatOAuthStartStrict, revokeAllSessions, type WeChatOAuthPublicSettings } from '@/api/auth'
 import { startOAuthBinding, type BindableOAuthProvider } from '@/api/user'
+import { sanitizeUrl } from '@/utils/url'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { userFacingError } from '@/utils/userFacingError'
@@ -154,16 +173,18 @@ const { remaining: profileRetryAfter, start: startProfileRetry } = useRetryCoold
 const { remaining: settingsRetryAfter, start: startSettingsRetry } = useRetryCooldown()
 const { remaining: actionRetryAfter, start: startActionRetry } = useRetryCooldown()
 const initial = computed(() => (user.value?.username || user.value?.email || '?').slice(0, 1).toUpperCase())
+const safeAvatarUrl = computed(() => sanitizeUrl((user.value as { avatar_url?: string } | null)?.avatar_url || ''))
 const loading = ref(false)
 const loadError = ref('')
 const settingsLoading = ref(false)
 const settingsError = ref('')
 const bindingError = ref('')
-const editor = ref<'name' | 'email' | 'password' | 'unbind' | null>(null)
+const editor = ref<'name' | 'avatar' | 'email' | 'password' | 'unbind' | 'revokeAll' | null>(null)
 const busy = ref(false)
 const error = ref('')
 const notice = ref('')
 const name = ref('')
+const avatarInput = ref('')
 const email = ref('')
 const emailCode = ref('')
 const password = ref('')
@@ -214,7 +235,21 @@ const providers = computed(() => {
   }).filter(item => item.enabled || item.bound)
 })
 const selectedProvider = computed(() => providers.value.find(item => item.provider === targetProvider.value))
-const editorTitle = computed(() => editor.value === 'name' ? copy('更改昵称', 'Edit display name') : editor.value === 'email' ? emailBound.value ? copy('更改邮箱', 'Change email') : copy('绑定邮箱', 'Connect email') : editor.value === 'password' ? copy('更改密码', 'Change password') : copy('解除绑定', 'Disconnect account'))
+const editorTitle = computed(() =>
+  editor.value === 'name'
+    ? copy('更改昵称', 'Edit display name')
+    : editor.value === 'avatar'
+      ? copy('设置头像', 'Update avatar')
+      : editor.value === 'email'
+        ? emailBound.value
+          ? copy('更改邮箱', 'Change email')
+          : copy('绑定邮箱', 'Connect email')
+        : editor.value === 'password'
+          ? copy('更改密码', 'Change password')
+          : editor.value === 'revokeAll'
+            ? copy('退出全部设备', 'Sign out all devices')
+            : copy('解除绑定', 'Disconnect account')
+)
 
 function resetSecrets() {
   emailCode.value = ''
@@ -222,8 +257,9 @@ function resetSecrets() {
   newPassword.value = ''
   confirmPassword.value = ''
 }
-function openEditor(value: 'name' | 'email' | 'password') {
+function openEditor(value: 'name' | 'avatar' | 'email' | 'password' | 'revokeAll') {
   name.value = user.value?.username || ''
+  avatarInput.value = (user.value as { avatar_url?: string } | null)?.avatar_url || ''
   email.value = emailBound.value ? '' : displayEmail.value
   resetSecrets()
   error.value = ''
@@ -299,6 +335,13 @@ async function submit() {
   if (busy.value || actionRetryAfter.value > 0) return
   error.value = ''
   if (editor.value === 'name' && !name.value.trim()) { error.value = copy('请输入昵称。', 'Enter a display name.'); return }
+  if (editor.value === 'avatar') {
+    const trimmedUrl = avatarInput.value.trim()
+    if (trimmedUrl && !sanitizeUrl(trimmedUrl)) {
+      error.value = copy('请输入有效的 HTTP/HTTPS 头像链接。', 'Enter a valid HTTP/HTTPS image URL.')
+      return
+    }
+  }
   if (editor.value === 'email' && (!validEmail.value || !/^\d{6}$/.test(emailCode.value) || !password.value)) { error.value = copy('请填写有效邮箱、6 位验证码和密码。', 'Enter a valid email, 6-digit verification code, and password.'); return }
   if (editor.value === 'email' && !emailBound.value) { error.value = newPasswordError(password.value, locale.value, passwordPolicy.value); if (error.value) return }
   if (editor.value === 'password') {
@@ -311,9 +354,16 @@ async function submit() {
   busy.value = true
   try {
     if (editor.value === 'name') auth.user = await userAPI.updateProfile({ username: name.value.trim() })
+    else if (editor.value === 'avatar') auth.user = await userAPI.updateProfile({ avatar_url: avatarInput.value.trim() } as Record<string, string>)
     else if (editor.value === 'email') auth.user = await userAPI.bindEmailIdentity({ email: email.value.trim(), verify_code: emailCode.value, password: password.value })
     else if (editor.value === 'password') await userAPI.changePassword(password.value, newPassword.value)
     else if (editor.value === 'unbind' && targetProvider.value) auth.user = await userAPI.unbindAuthIdentity(targetProvider.value)
+    else if (editor.value === 'revokeAll') {
+      await revokeAllSessions()
+      try { await auth.logout?.() } catch { /* local session cleanup */ }
+      window.location.assign('/login')
+      return
+    }
     notice.value = copy('账户设置已更新。', 'Account settings updated.')
     editor.value = null
     resetSecrets()

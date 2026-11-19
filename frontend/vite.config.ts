@@ -85,7 +85,13 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      vue(),
+      vue({
+        template: {
+          compilerOptions: {
+            isCustomElement: (tag) => tag.startsWith('md-')
+          }
+        }
+      }),
       checker({
         vueTsc: true
       }),
@@ -118,6 +124,17 @@ export default defineConfig(({ mode }) => {
               id.includes('/@vue/')
             ) {
               return 'vendor-vue'
+            }
+
+            // Material Web Components & Lit 运行时（独立分包避免污染公共缓存）
+            if (
+              id.includes('/@material/web/') ||
+              id.includes('/@lit/') ||
+              id.includes('/lit/') ||
+              id.includes('/lit-html/') ||
+              id.includes('/lit-element/')
+            ) {
+              return 'vendor-md'
             }
 
             // UI 工具库（较大，单独分离）

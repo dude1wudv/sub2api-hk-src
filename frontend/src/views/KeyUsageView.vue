@@ -156,8 +156,8 @@
 
         <!-- Result Content -->
         <div v-else-if="resultData" class="space-y-6">
-          <!-- Status Badge -->
-          <div v-if="statusInfo" class="fade-up flex items-center justify-center mb-2">
+          <!-- Status Badge & Live Billing Multiplier -->
+          <div v-if="statusInfo" class="fade-up flex flex-wrap items-center justify-center gap-2.5 mb-2">
             <div class="inline-flex items-center gap-2.5 rounded-full border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-5 py-2 shadow-[var(--shadow-panel)]">
               <span
                 class="w-2.5 h-2.5 rounded-full pulse-dot"
@@ -166,6 +166,26 @@
               <span class="text-sm font-semibold text-[rgb(var(--ink))]">{{ statusInfo.label }}</span>
               <span class="text-xs text-[rgb(var(--line-strong))]">|</span>
               <span class="font-mono text-xs font-medium text-[rgb(var(--ink-2))]">{{ statusInfo.statusText }}</span>
+            </div>
+            <button
+              v-if="!keyBillingInfo"
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-4 py-2 text-xs font-medium text-[var(--md-sys-color-on-surface)] transition-colors hover:border-[var(--md-sys-color-primary)]"
+              :disabled="keyBillingLoading"
+              @click="loadKeyBilling"
+            >
+              <Icon name="bolt" size="xs" />
+              {{ keyBillingLoading ? (zh ? '查询倍率中…' : 'Checking rate…') : (zh ? '查看实时倍率与高峰时段' : 'Check live rate & peak') }}
+            </button>
+            <div
+              v-else
+              class="inline-flex flex-wrap items-center gap-2 rounded-full bg-[var(--md-sys-color-primary-container)] px-4 py-2 text-xs font-medium text-[var(--md-sys-color-on-primary-container)]"
+            >
+              <span>{{ zh ? '生效倍率' : 'Effective' }} <strong class="font-mono">{{ formatMultiplier(keyBillingInfo.effective_rate_multiplier) }}</strong></span>
+              <span>· {{ zh ? '分组' : 'Group' }} {{ formatMultiplier(keyBillingInfo.group_rate_multiplier) }}</span>
+              <span v-if="keyBillingInfo.peak_rate_enabled && keyBillingInfo.peak_start && keyBillingInfo.peak_end">
+                · {{ isPeakRateActive(keyBillingInfo) ? (zh ? '高峰生效中' : 'Peak active') : (zh ? '高峰' : 'Peak') }} {{ keyBillingInfo.peak_start }}–{{ keyBillingInfo.peak_end }}
+              </span>
             </div>
           </div>
 
@@ -451,6 +471,7 @@ import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { buildGatewayUrl } from '@/api/client'
+import { formatMultiplier, getKeyBillingInfo, isPeakRateActive, type KeyBillingInfo } from '@/api/keyBilling'
 import { formatDateLocalInput } from '@/utils/format'
 import { sanitizeUrl } from '@/utils/url'
 import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
@@ -463,6 +484,24 @@ const appStore = useAppStore()
 const palette = useChartPalette()
 const chartTheme = useChartTheme()
 const subscriptionFeatureEnabled = computed(() => resolveFeatureFlag(appStore.cachedPublicSettings, FeatureFlags.subscription))
+const keyBillingInfo = ref<KeyBillingInfo | null>(null)
+const keyBillingLoading = ref(false)
+
+async function loadKeyBilling() {
+  const key = apiKey.value.trim()
+  if (!key || keyBillingLoading.value) return
+  keyBillingLoading.value = true
+  try {
+    const res = await getKeyBillingInfo(key)
+    if (res.data) {
+      keyBillingInfo.value = res.data
+    } else {
+      appStore.showInfo(res.error || (zh.value ? '当前模式暂不支持倍率查询' : 'Billing info unavailable'))
+    }
+  } finally {
+    keyBillingLoading.value = false
+  }
+}
 
 // ==================== Public Documentation ====================
 
@@ -920,6 +959,7 @@ async function queryKey() {
   showResults.value = true
   showLoading.value = true
   resultData.value = null
+  keyBillingInfo.value = null
 
   try {
     const data = await fetchUsage(key)
