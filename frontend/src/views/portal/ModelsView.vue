@@ -1,27 +1,49 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getModelPlaza, type ModelPlazaResponse } from '@/api/modelPlaza'
 import { useAuthStore, useAppStore } from '@/stores'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 import { matchesCatalogModel } from '@/utils/modelCatalog'
+import { useColorMode } from '@/composables/useColorMode'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
 import PortalApiModels from '@/components/portal/PortalApiModels.vue'
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import ModelCostCalculator from '@/components/portal/ModelCostCalculator.vue'
+import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
+import Icon from '@/components/icons/Icon.vue'
+import { MdTabs } from '@/components/md'
+
+const AvailableChannelsView = defineAsyncComponent(() => import('@/views/user/AvailableChannelsView.vue'))
 
 const route = useRoute()
 const auth = useAuthStore()
 const app = useAppStore()
 const { locale } = useI18n()
+const { isDark, toggleMode } = useColorMode()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const embedded = computed(() => route.query.embedded === '1' && auth.isAuthenticated)
 const enabled = computed(() => resolveFeatureFlag(app.cachedPublicSettings, FeatureFlags.modelPlaza))
+const channelsEnabled = computed(() => auth.isAuthenticated && resolveFeatureFlag(app.cachedPublicSettings, FeatureFlags.availableChannels))
 const data = ref<ModelPlazaResponse | null>(null)
 const loading = ref(false)
 const error = ref('')
 const groupId = ref<number | null>(null)
 const search = ref(typeof route.query.model === 'string' ? route.query.model : '')
+const activeTab = ref(route.query.tab === 'calculator' ? 'calculator' : route.query.tab === 'channels' && channelsEnabled.value ? 'channels' : 'catalog')
+
+const tabs = computed(() => {
+  const list = [
+    { id: 'catalog', label: text('模型与定价', 'Models & pricing') },
+    { id: 'calculator', label: text('费用估算器', 'Cost estimator') },
+  ]
+  if (channelsEnabled.value) {
+    list.push({ id: 'channels', label: text('可用渠道与倍率', 'Available channels') })
+  }
+  return list
+})
+
 let request: AbortController | undefined
 async function load() {
   request?.abort()
@@ -51,17 +73,55 @@ onBeforeUnmount(() => request?.abort())
 
 <template>
   <div class="patrick-surface portal-models" :class="{ 'portal-models-public': !embedded }">
-    <header v-if="!embedded" class="portal-models-header"><RouterLink to="/home" aria-label="patrickapi"><PatrickBrand /></RouterLink><RouterLink to="/keys" class="portal-button">{{ text('API 密钥', 'API keys') }} →</RouterLink></header>
+    <header v-if="!embedded" class="portal-models-header">
+      <RouterLink to="/home" aria-label="patrickapi"><PatrickBrand /></RouterLink>
+      <div class="portal-models-public-actions">
+        <button
+          type="button"
+          class="color-mode-toggle"
+          :aria-label="isDark ? text('切换至浅色', 'Switch to light mode') : text('切换至深色', 'Switch to dark mode')"
+          @click="toggleMode"
+        >
+          <Icon :name="isDark ? 'sun' : 'moon'" size="sm" aria-hidden="true" />
+        </button>
+        <LocaleSwitcher />
+        <RouterLink to="/keys" class="portal-button">{{ text('API 密钥', 'API keys') }} →</RouterLink>
+      </div>
+    </header>
     <div class="portal-page">
-      <PortalPageHeader :title="text('模型与价格', 'Models & pricing')"><RouterLink v-if="auth.isAuthenticated" to="/keys?create=1" class="portal-button">{{ text('创建密钥', 'Create a key') }} ↗</RouterLink></PortalPageHeader>
-      <PortalApiModels v-model:selected-group-id="groupId" v-model:search="search" :groups="data?.groups || []" :description="data?.description || ''" :pricing-enabled="enabled" :loading="loading" :error="error" :server-utc-offset="app.cachedPublicSettings?.server_utc_offset" @retry="load" />
+      <PortalPageHeader :title="text('模型与价格', 'Models & pricing')">
+        <RouterLink v-if="auth.isAuthenticated" to="/playground" class="portal-button secondary">{{ text('在线调试', 'Playground') }}</RouterLink>
+        <RouterLink v-if="auth.isAuthenticated" to="/keys?create=1" class="portal-button">{{ text('创建密钥', 'Create a key') }} ↗</RouterLink>
+      </PortalPageHeader>
+      <div class="portal-models-tabs">
+        <MdTabs v-model="activeTab" :items="tabs" variant="primary" />
+      </div>
+      <PortalApiModels
+        v-if="activeTab === 'catalog'"
+        v-model:selected-group-id="groupId"
+        v-model:search="search"
+        :groups="data?.groups || []"
+        :description="data?.description || ''"
+        :pricing-enabled="enabled"
+        :loading="loading"
+        :error="error"
+        :server-utc-offset="app.cachedPublicSettings?.server_utc_offset"
+        @retry="load"
+      />
+      <ModelCostCalculator
+        v-else-if="activeTab === 'calculator'"
+        :groups="data?.groups || []"
+      />
+      <AvailableChannelsView v-else-if="activeTab === 'channels' && channelsEnabled" />
     </div>
   </div>
 </template>
 
 <style scoped>
 .portal-models-public { min-height: 100dvh; background: rgb(var(--canvas)); }
-.portal-models-header { width: min(1160px, calc(100% - 48px)); margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px 0; border-bottom: 1px solid rgb(var(--line)); }
+.portal-models-header { width: min(1160px, calc(100% - 48px)); margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 0; border-bottom: 1px solid rgb(var(--line)); }
+.portal-models-public-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.portal-models-tabs { margin: 0 0 18px; }
 .portal-models-public .portal-page { max-width: 1160px; }
 @media (max-width: 767px) { .portal-models-header { width: calc(100% - 32px); padding-block: 16px; } }
 </style>

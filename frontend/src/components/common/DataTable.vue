@@ -130,7 +130,7 @@
     }"
   >
     <table class="w-full min-w-max divide-y divide-gray-200 dark:divide-dark-700">
-      <thead class="table-header bg-[#FBF9F5] dark:bg-[#25221D]">
+      <thead class="table-header bg-[var(--md-sys-color-surface-container-low)]">
         <tr>
           <th
             v-if="selectable"
@@ -196,7 +196,7 @@
           </th>
         </tr>
       </thead>
-      <tbody class="table-body divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-[#1C1A17]">
+      <tbody class="table-body divide-y divide-gray-200 bg-[var(--md-sys-color-surface-container-lowest)] dark:divide-dark-700 dark:bg-[var(--md-sys-color-surface-container-low)]">
         <!-- Loading skeleton -->
         <tr v-if="loading" v-for="i in 5" :key="i">
           <td v-if="selectable" class="w-11 min-w-11 px-3 py-4">

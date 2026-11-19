@@ -59,6 +59,8 @@ vi.mock('@/components/brand/PatrickBrand.vue', () => ({ default: { props: ['comp
 vi.mock('@/components/common/LocaleSwitcher.vue', () => ({ default: { template: '<button aria-label="language">中文</button>' } }))
 vi.mock('@/components/common/AnnouncementBell.vue', () => ({ default: { template: '<button aria-label="announcements">公告</button>' } }))
 vi.mock('@/components/common/SubscriptionProgressMini.vue', () => ({ default: { template: '<span data-testid="subscriptions" />' } }))
+vi.mock('@/api/keys', () => ({ keysAPI: { list: vi.fn().mockResolvedValue({ items: [] }) } }))
+vi.mock('@/api/inflight', () => ({ getInflight: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, page_size: 3, runtime_known: true }) }))
 
 const wrappers: VueWrapper[] = []
 
@@ -66,7 +68,7 @@ async function mountShell() {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
-      ...['/home', '/dashboard', '/keys', '/usage', '/profile', '/login', '/purchase', '/model-plaza', '/admin/dashboard'].map(path => ({
+      ...['/home', '/dashboard', '/keys', '/usage', '/playground', '/profile', '/login', '/purchase', '/model-plaza', '/admin/dashboard'].map(path => ({
         path,
         component: { template: '<div />' },
         meta: { title: 'Workspace' },
@@ -129,8 +131,10 @@ describe('personal workspace navigation', () => {
   it('shows every personal feature and only sorted user custom menus without disclosure', async () => {
     const { wrapper, router } = await mountShell()
     expect(navPaths(wrapper)).toEqual([
-      '/dashboard', '/keys', '/usage', '/traffic', '/purchase', '/subscriptions', '/profile', '/chat', '/chat-models', '/model-plaza', '/monitor',
-      '/image2', '/helios', '/batch-image', '/affiliate',
+      '/dashboard', '/keys', '/usage', '/playground',
+      '/model-plaza', '/monitor',
+      '/purchase', '/subscriptions', '/affiliate', '/profile',
+      '/chat', '/chat-models', '/image2', '/helios', '/batch-image',
       '/custom/first', '/custom/later',
     ])
     expect(wrapper.get('[data-nav-path="/image2"]').attributes('href')).toBe('/image2/')
@@ -139,7 +143,7 @@ describe('personal workspace navigation', () => {
     expect(wrapper.find('[aria-label="切换语言"]').exists()).toBe(true)
     expect(wrapper.find('[aria-label="announcements"]').exists()).toBe(true)
     expect(wrapper.find('.user-more-toggle').exists()).toBe(false)
-    expect(wrapper.findAll('.user-nav-heading').map(heading => heading.text())).toEqual(['服务', '工具', '账单与权益', '资源'])
+    expect(wrapper.findAll('.user-nav-heading').map(heading => heading.text())).toEqual(['模型与观测', '账单与账户', 'AI 应用与工具', '资源'])
     expect(wrapper.get('.user-doc-link').isVisible()).toBe(true)
 
     await wrapper.get('[data-nav-path="/model-plaza"]').trigger('click')
@@ -212,7 +216,7 @@ describe('personal workspace navigation', () => {
   it('keeps simple-mode limits without hiding the remaining personal entries', async () => {
     authStore.isSimpleMode = true
     const { wrapper } = await mountShell()
-    expect(navPaths(wrapper)).toEqual(['/dashboard', '/keys', '/profile', '/chat', '/chat-models', '/model-plaza', '/monitor', '/custom/first', '/custom/later'])
+    expect(navPaths(wrapper)).toEqual(['/dashboard', '/keys', '/playground', '/model-plaza', '/monitor', '/profile', '/chat', '/chat-models', '/custom/first', '/custom/later'])
     expect(wrapper.find('.user-balance-pill').exists()).toBe(false)
     expect(navPaths(wrapper)).not.toContain('/purchase')
     expect(navPaths(wrapper)).not.toContain('/redeem')

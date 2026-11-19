@@ -13,12 +13,16 @@
         <button type="button" class="portal-button" data-tour="keys-create-btn" :disabled="creationDisabled" aria-describedby="key-creation-state" @click="openCreate()"><Icon name="plus" size="sm" aria-hidden="true" />{{ text('创建密钥', 'Create key') }}</button>
       </div>
     </header>
-    <div class="portal-api-access-strip">
+    <div id="api-quick-start" class="portal-api-access-strip">
       <div class="portal-api-access-copy">
-        <strong>{{ text('API 接入', 'API access') }}</strong>
-        <p>{{ text('统一支持 OpenAI 与 Anthropic 原生协议，按密钥绑定分组与限额策略。', 'Unified OpenAI and native Anthropic protocols with per-key routing groups and spend caps.') }}</p>
+        <strong>{{ text('一站式 API 接入中心', 'API Quickstart Hub') }}</strong>
+        <p>{{ text('统一支持 OpenAI 与 Anthropic 原生协议，可按密钥自动生成客户端配置并在线自检连通性与实时倍率。', 'Unified OpenAI & Anthropic protocols with one-click client configs, live key ping, and effective rate check.') }}</p>
       </div>
-      <button type="button" class="portal-button secondary" @click="docsOpen = true"><Icon name="book" size="sm" />{{ text('接入指南', 'Connection guide') }}<Icon name="arrowRight" size="sm" /></button>
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" class="portal-button" @click="quickstartOpen = true"><Icon name="bolt" size="sm" />{{ text('一键接入配置', 'Quickstart hub') }}</button>
+        <RouterLink to="/playground" class="portal-button secondary"><Icon name="play" size="sm" />{{ text('在线调试', 'Playground') }}</RouterLink>
+        <button type="button" class="portal-button secondary" @click="docsOpen = true"><Icon name="book" size="sm" />{{ text('接入指南', 'Connection guide') }}</button>
+      </div>
       <svg viewBox="0 0 180 76" class="portal-api-ink-route" aria-hidden="true"><path d="M4 58H54L78 22H132L152 44H176" /><circle cx="78" cy="22" r="4.5"/><circle cx="152" cy="44" r="3.5"/></svg>
     </div>
     <p id="key-creation-state" v-if="groupsLoading" class="portal-api-inline-state" role="status">{{ text('正在读取可绑定分组…', 'Loading groups available for your keys…') }}</p>
@@ -134,6 +138,13 @@
       <p v-if="deleteError" class="portal-error" role="alert">{{ deleteError }}</p>
       <template #footer><div class="portal-dialog-actions"><button type="button" class="portal-button secondary" :disabled="deleting" @click="closeDelete">{{ text('取消', 'Cancel') }}</button><button type="button" class="portal-button" :disabled="deleting" @click="deleteKey">{{ deleting ? text('删除中…', 'Deleting…') : text('确认删除', 'Delete key') }}</button></div></template>
     </PortalDialog>
+    <PortalQuickstartDrawer
+      :open="quickstartOpen"
+      :keys="keys"
+      :base-url="apiRoot || apiBaseUrl"
+      :initial-key-id="lastCreated?.id || null"
+      @close="quickstartOpen = false"
+    />
     <PortalDialog :open="docsOpen" :title="text('API 接入指南', 'API quick start')" @close="docsOpen = false">
       <ol class="portal-api-guide">
         <li>{{ text('点击创建 API Key，在弹窗中选择分组并查看分组倍率。完整模型和价格可在模型与价格页面查看。', 'Create an API key to choose a group and review its multiplier. Open Models & pricing for the full catalog.') }}</li>
@@ -157,6 +168,7 @@ import PortalApiExamples from '@/components/portal/PortalApiExamples.vue'
 import PortalApiBulkForm from '@/components/portal/PortalApiBulkForm.vue'
 import PortalDialog from '@/components/portal/PortalDialog.vue'
 import PortalKeyForm from '@/components/portal/PortalKeyForm.vue'
+import PortalQuickstartDrawer from '@/components/portal/PortalQuickstartDrawer.vue'
 import { keysAPI } from '@/api/keys'
 import { useApiKeyQueue } from '@/composables/useApiKeyQueue'
 import { usageAPI, type BatchApiKeyUsageStats } from '@/api/usage'
@@ -245,6 +257,10 @@ const deleteTarget = ref<ApiKey | null>(null)
 const deleteError = ref('')
 const deleting = ref(false)
 const docsOpen = ref(false)
+const quickstartOpen = ref(route.query.quickstart === '1')
+watch(() => route.query.quickstart, (val) => {
+  if (val === '1') quickstartOpen.value = true
+})
 let consumingCreate = false
 
 let disposed = false

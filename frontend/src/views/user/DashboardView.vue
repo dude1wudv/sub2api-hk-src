@@ -1,16 +1,60 @@
 <template>
   <div class="portal-page developer-dashboard">
-    <PortalPageHeader :title="zh ? '概览' : 'Overview'" :description="zh ? '实时掌握账户余额、各平台配额水位与模型调用趋势。' : 'Monitor account balance, platform quota watermarks, and model usage in real time.'">
-      <span class="workspace-today">{{ new Date().toLocaleDateString(locale, { month: 'long', day: 'numeric', weekday: 'short' }) }}</span>
-      <RouterLink to="/keys?create=1" class="portal-button"><Icon name="plus" size="sm" />{{ zh ? '创建密钥' : 'Create key' }}</RouterLink>
-      <button class="portal-button secondary" :disabled="loading" @click="refreshAll"><Icon name="refresh" size="sm" :class="{ 'animate-spin': loading }" />{{ t('common.refresh') }}</button>
-    </PortalPageHeader>
+    <MdPageHeader
+      :eyebrow="zh ? '开发者工作台' : 'Developer Workspace'"
+      :title="zh ? '工作台概览' : 'Workspace Overview'"
+      :description="zh ? '实时掌握账户余额续航、平台配额水位、主力模型分布与调用趋势。' : 'Monitor balance runway, platform quota watermarks, model mix, and live usage trends.'"
+    >
+      <template #badge>
+        <MdBadge tone="neutral">{{ new Date().toLocaleDateString(locale, { month: 'short', day: 'numeric', weekday: 'short' }) }}</MdBadge>
+      </template>
+      <template #actions>
+        <MdButton variant="outlined" size="sm" :loading="loading" @click="refreshAll">
+          <template #icon><Icon name="refresh" size="xs" /></template>
+          {{ t('common.refresh') }}
+        </MdButton>
+        <MdButton variant="tonal" size="sm" @click="router.push('/playground')">
+          <template #icon><Icon name="play" size="xs" /></template>
+          {{ zh ? 'API 调试台' : 'Playground' }}
+        </MdButton>
+        <MdButton variant="filled" size="sm" @click="router.push('/keys?create=1')">
+          <template #icon><Icon name="plus" size="xs" /></template>
+          {{ zh ? '创建密钥' : 'Create key' }}
+        </MdButton>
+      </template>
+    </MdPageHeader>
+
+    <!-- Quick Connect Bar -->
+    <div v-if="openAIBase" class="dashboard-quick-connect">
+      <div class="dashboard-qc-endpoint">
+        <span class="dashboard-qc-label">Base URL</span>
+        <code>{{ openAIBase }}</code>
+      </div>
+      <div class="dashboard-qc-actions">
+        <MdButton variant="text" size="sm" @click="copyBaseUrl">
+          <template #icon><Icon name="copy" size="xs" /></template>
+          {{ zh ? '复制地址' : 'Copy URL' }}
+        </MdButton>
+        <MdButton variant="text" size="sm" @click="router.push('/keys?quickstart=1')">
+          <template #icon><Icon name="bolt" size="xs" /></template>
+          {{ zh ? '一键接入配置' : 'Quickstart' }}
+        </MdButton>
+      </div>
+    </div>
+
     <div v-if="error" role="alert" class="portal-error workspace-error"><p>{{ error }}</p><button class="portal-button secondary" :disabled="loading" @click="refreshAll">{{ zh ? '重试' : 'Retry' }}</button></div>
     <div v-if="loading && !stats" class="portal-panel flex items-center justify-center py-12" role="status"><LoadingSpinner /></div>
     <template v-if="stats">
       <UserOnboardingChecklist v-if="stats.total_requests === 0" :key-count="stats.total_api_keys" />
       <template v-else>
       <UserDashboardStats :stats="stats" :balance="user?.balance || 0" :is-simple="authStore.isSimpleMode" :platform-quotas="platformQuotas" />
+      <UsageInsightsCard
+        :balance="user?.balance || 0"
+        :stats="stats"
+        :trend="trendData"
+        :models="modelStats"
+        :is-simple="authStore.isSimpleMode"
+      />
       <section class="workspace-activity">
         <header class="workspace-section-title"><div><h2>{{ zh ? '用量统计' : 'Usage statistics' }}</h2></div><RouterLink to="/usage" class="portal-inline-button">{{ zh ? '用量明细' : 'Usage details' }} <Icon name="arrowRight" size="sm" /></RouterLink></header>
         <p v-if="chartError" class="portal-error" role="alert">{{ chartError }} <button @click="loadCharts">{{ zh ? '重试' : 'Retry' }}</button></p>
@@ -29,17 +73,21 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import { MdBadge, MdButton, MdPageHeader } from '@/components/md'
 import { usageDrilldownQuery, type UsageDrilldown } from '@/views/portal/usageRoute'
 import { useAuthStore } from '@/stores/auth'
+import { useAppStore } from '@/stores/app'
 import { usageAPI, type UserDashboardStats as UserStatsType } from '@/api/usage'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import UserOnboardingChecklist from '@/components/user/dashboard/UserOnboardingChecklist.vue'
 import UserDashboardStats from '@/components/user/dashboard/UserDashboardStats.vue'
+import UsageInsightsCard from '@/components/user/dashboard/UsageInsightsCard.vue'
 import UserDashboardCharts from '@/components/user/dashboard/UserDashboardCharts.vue'
 import UserDashboardRecentUsage from '@/components/user/dashboard/UserDashboardRecentUsage.vue'
 import UserDashboardQuickActions from '@/components/user/dashboard/UserDashboardQuickActions.vue'
+import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
+import { useClipboard } from '@/composables/useClipboard'
 import type { UsageLog, TrendDataPoint, ModelStat, PlatformQuotaItem } from '@/types'
 import { getMyPlatformQuotas } from '@/api/user'
 import { formatDateLocalInput } from '@/utils/format'
@@ -47,7 +95,15 @@ import { formatDateLocalInput } from '@/utils/format'
 const { t, locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
 const authStore = useAuthStore()
+const appStore = useAppStore()
 const router = useRouter()
+const { openAIBase } = usePatrickApiBase()
+const { copyToClipboard } = useClipboard()
+async function copyBaseUrl() {
+  if (openAIBase.value && (await copyToClipboard(openAIBase.value))) {
+    appStore.showSuccess(zh.value ? '已复制 API Base URL' : 'API Base URL copied')
+  }
+}
 const user = computed(() => authStore.user)
 const stats = ref<UserStatsType | null>(null)
 const loading = ref(false)
@@ -124,3 +180,49 @@ function refreshAll() {
 onMounted(refreshAll)
 onBeforeUnmount(() => { disposed = true; chartRequest++ })
 </script>
+
+<style scoped>
+.dashboard-quick-connect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.dashboard-qc-endpoint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dashboard-qc-label {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.dashboard-qc-endpoint code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--md-sys-color-on-surface);
+  word-break: break-all;
+}
+
+.dashboard-qc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+</style>

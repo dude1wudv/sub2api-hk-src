@@ -302,6 +302,16 @@
             <button
               v-if="canDeleteRecord(job)"
               type="button"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-amber-700 transition-colors hover:bg-amber-50 disabled:opacity-60 dark:text-amber-300 dark:hover:bg-amber-900/20"
+              :disabled="deletingBatchId === job.id"
+              @click="clearJobOutputs(job)"
+            >
+              <Icon :name="deletingBatchId === job.id ? 'refresh' : 'trash'" size="sm" :class="deletingBatchId === job.id ? 'animate-spin' : ''" />
+              {{ locale.startsWith('zh') ? '仅清理产物文件（保留记录）' : 'Clear outputs only (keep record)' }}
+            </button>
+            <button
+              v-if="canDeleteRecord(job)"
+              type="button"
               class="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-900/20"
               :disabled="deletingBatchId === job.id"
               @click="deleteJob(job)"
@@ -845,6 +855,7 @@ import { keysAPI } from '@/api'
 import {
   cancelBatchImageJob,
   deleteBatchImageJobRecord,
+  deleteBatchImageJobOutputs,
   downloadBatchImageZip,
   getBatchImageItemContent,
   getBatchImageJob,
@@ -1985,6 +1996,26 @@ async function downloadSelectedJobs() {
     bulkDownloading.value = false
     downloading.value = false
     downloadingBatchId.value = ''
+  }
+}
+
+async function clearJobOutputs(job: BatchImageJobRow) {
+  if (!canDeleteRecord(job) || deletingBatchId.value) return
+  closeMoreMenu()
+  const key = apiKeyForJob(job)
+  if (!key) return
+  const msg = locale.value.startsWith('zh')
+    ? '仅删除该任务生成的图片产物以释放空间，任务记录本身将被保留，确认继续？'
+    : 'Delete generated output files for this job while keeping the job history record?'
+  if (!window.confirm(msg)) return
+  deletingBatchId.value = job.id
+  try {
+    await deleteBatchImageJobOutputs(key.key, job.id)
+    appStore.showSuccess(locale.value.startsWith('zh') ? '已清理任务产物文件' : 'Job output files cleared')
+  } catch (error: any) {
+    appStore.showError(batchImageErrorMessage(error, locale.value.startsWith('zh') ? '清理产物失败' : 'Failed to clear outputs'))
+  } finally {
+    deletingBatchId.value = ''
   }
 }
 

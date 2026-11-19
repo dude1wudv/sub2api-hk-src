@@ -43,15 +43,27 @@
               </span>
             </div>
           </div>
-          <button
-            class="btn btn-secondary btn-icon observatory-refresh-btn flex h-9 w-9 items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-            type="button"
-            :title="t('common.refresh')"
-            :disabled="loading"
-            @click="reload(false)"
-          >
-            <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              v-for="qg in qualityGroups"
+              :key="qg.id"
+              class="btn btn-secondary btn-sm inline-flex items-center gap-1.5"
+              type="button"
+              @click="qualityTarget = qg"
+            >
+              <Icon name="sparkles" size="xs" />
+              {{ locale.startsWith('zh') ? `质量评测 · ${qg.name}` : `Quality · ${qg.name}` }}
+            </button>
+            <button
+              class="btn btn-secondary btn-icon observatory-refresh-btn flex h-9 w-9 items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              type="button"
+              :title="t('common.refresh')"
+              :disabled="loading"
+              @click="reload(false)"
+            >
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
+            </button>
+          </div>
         </header>
 
         <!-- First-upgrade silent backfill: show until 30d product window is covered -->
@@ -501,6 +513,12 @@
         </div>
       </section>
     </div>
+    <ModelQualityResults
+      v-if="qualityTarget"
+      :group-id="qualityTarget.id"
+      :group-name="qualityTarget.name"
+      @close="qualityTarget = null"
+    />
   </div>
 </template>
 
@@ -514,6 +532,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Icon from '@/components/icons/Icon.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Select from '@/components/common/Select.vue'
+import ModelQualityResults from '@/components/usage/ModelQualityResults.vue'
 import FilterMultiSelect from '@/features/channel-monitor-v2/FilterMultiSelect.vue'
 import MetricCell from '@/features/channel-monitor-v2/MetricCell.vue'
 import MonitorRankBadge from '@/features/channel-monitor-v2/MonitorRankBadge.vue'
@@ -614,6 +633,12 @@ const loading = ref(false)
 const tabLoading = ref(false)
 const refreshing = ref(false)
 const expandedErrors = ref(new Set<string>())
+const qualityTarget = ref<{ id: number; name: string } | null>(null)
+const qualityGroups = computed(() =>
+  (dimensions.value.groups || [])
+    .filter((item) => [72, 237].includes(Number(item.id)))
+    .map((item) => ({ id: Number(item.id), name: item.name || `#${item.id}` }))
+)
 let controller: AbortController | null = null
 let sequence = 0
 let autoRefreshTimer: number | null = null

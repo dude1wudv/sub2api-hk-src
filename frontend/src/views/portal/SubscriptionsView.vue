@@ -3,6 +3,7 @@ import { useMediaQuery } from '@vueuse/core'
 import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import { MdProgress } from '@/components/md'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -181,7 +182,8 @@ onMounted(async () => {
           <div class="current-content">
             <div v-for="row in quotaRows(subscription)" :key="row.key" class="subscription-quota">
               <p><span>{{ row.label }}</span><span>{{ usd(row.used || 0) }} / {{ usd(row.limit || 0) }}</span></p>
-              <progress :value="row.used || 0" :max="row.limit || 1" :aria-label="row.label"></progress><small>{{ resetLabel(subscription, row) }}</small>
+              <MdProgress variant="linear" :value="row.used || 0" :max="row.limit || 1" :aria-label="row.label" />
+              <small>{{ resetLabel(subscription, row) }}</small>
             </div>
             <p v-if="!quotaRows(subscription).length" class="portal-muted">{{ copy('此订阅未设置周期额度上限。', 'This subscription has no periodic quota limit.') }}</p>
             <button v-if="availablePlans.some(plan => plan.group_id === subscription.group_id && !unavailable(plan)) && !historyError" class="portal-button secondary" @click="renew(subscription)">{{ copy('续订计划', 'Renew plan') }}</button>

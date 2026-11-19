@@ -194,7 +194,7 @@
           :aria-label="zh ? '打开导航' : 'Open navigation'"
           @click="toggleNavigation"
         ><Icon name="menu" size="md" aria-hidden="true" /></button>
-        <div class="user-topbar-location"><span>{{ zh ? '工作台' : 'Workspace' }}</span><span aria-hidden="true">/</span><h1 id="user-page-title">{{ pageTitle }}</h1></div>
+        <div class="user-topbar-location"><span>{{ zh ? '工作台' : 'Workspace' }}</span><span aria-hidden="true">/</span><strong id="user-page-title">{{ pageTitle }}</strong></div>
 
         <div class="user-topbar-actions">
           <WorkspaceCommandPalette :items="commands" />
@@ -222,7 +222,14 @@
               aria-controls="user-account-popover"
               @click="toggleAccount"
             >
-              <span class="user-account-avatar" aria-hidden="true">{{ accountInitials }}</span>
+              <img
+                v-if="avatarUrl && !avatarFailed"
+                :src="avatarUrl"
+                :alt="displayName"
+                class="user-account-avatar user-account-avatar-img"
+                @error="avatarFailed = true"
+              />
+              <span v-else class="user-account-avatar" aria-hidden="true">{{ accountInitials }}</span>
               <span class="user-account-name">{{ displayName }}</span>
               <Icon name="chevronDown" size="xs" aria-hidden="true" />
             </button>
@@ -232,9 +239,8 @@
               <div v-if="frozenBalance > 0 && !authStore.isSimpleMode" class="user-account-balance">
                 <span>{{ zh ? '冻结金额' : 'Frozen balance' }}</span><span>{{ formatMoney(frozenBalance) }}</span>
               </div>
-              <RouterLink to="/profile" class="user-account-action" @click="accountOpen = false"><Icon name="user" size="md" aria-hidden="true" />{{ zh ? '个人资料' : 'Profile' }}</RouterLink>
+              <RouterLink to="/profile" class="user-account-action" @click="accountOpen = false"><Icon name="user" size="md" aria-hidden="true" />{{ zh ? '账户与安全' : 'Account & security' }}</RouterLink>
               <button v-if="!authStore.isAdmin && !authStore.isSimpleMode" type="button" class="user-account-action" @click="replayUserGuide"><Icon name="questionCircle" size="md" aria-hidden="true" />{{ zh ? 'API 接入引导' : 'API quick start' }}</button>
-              <p v-if="appStore.contactInfo" class="user-contact-info">{{ appStore.contactInfo.replace(/群管理员/g, zh ? '客服' : 'Support') }}</p>
               <button type="button" class="user-account-action user-signout" :disabled="loggingOut" @click="logout"><Icon name="arrowRight" size="md" aria-hidden="true" />{{ zh ? '退出登录' : 'Sign out' }}</button>
             </div>
           </div>
@@ -243,8 +249,41 @@
       </header>
 
       <main id="user-workspace-content" ref="contentRef" class="user-workspace-content" aria-labelledby="user-page-title" tabindex="-1">
+        <LiveActivityStrip v-if="user && !authStore.isSimpleMode" />
         <slot />
       </main>
+
+      <nav
+        v-if="!desktop && !railViewport && user"
+        class="user-bottom-nav"
+        :aria-label="zh ? '底部快捷导航' : 'Mobile quick navigation'"
+      >
+        <RouterLink
+          v-for="item in mobileBottomItems"
+          :key="item.path"
+          :to="{ path: item.path, query: item.query }"
+          class="user-bottom-nav-item"
+          :class="{ 'is-active': isActive(item) }"
+          :aria-current="isActive(item) ? 'page' : undefined"
+        >
+          <span class="user-bottom-nav-pill" aria-hidden="true">
+            <Icon :name="item.icon" size="sm" />
+          </span>
+          <span class="user-bottom-nav-label">{{ item.label }}</span>
+        </RouterLink>
+        <button
+          type="button"
+          class="user-bottom-nav-item"
+          :class="{ 'is-active': mobileOpen }"
+          :aria-label="zh ? '更多菜单' : 'More navigation'"
+          @click="toggleNavigation"
+        >
+          <span class="user-bottom-nav-pill" aria-hidden="true">
+            <Icon name="menu" size="sm" />
+          </span>
+          <span class="user-bottom-nav-label">{{ zh ? '更多' : 'More' }}</span>
+        </button>
+      </nav>
     </div>
   </div>
 </template>
@@ -260,6 +299,9 @@ import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import ActiveIndicator from '@/components/common/ActiveIndicator.vue'
 import WorkspaceCommandPalette from '@/components/common/WorkspaceCommandPalette.vue'
 import MotionPreferenceToggle from '@/components/common/MotionPreferenceToggle.vue'
+import LiveActivityStrip from '@/components/portal/LiveActivityStrip.vue'
+import { keysAPI } from '@/api/keys'
+import type { ApiKey } from '@/types'
 import { useClipboard } from '@/composables/useClipboard'
 import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
 import type { WorkspaceCommand } from '@/utils/workspaceCommands'
@@ -290,18 +332,51 @@ const navigationRef = ref<HTMLElement | null>(null)
 const activeNavigationPath = computed(() => navigationItems.value.find(isActive)?.path ?? null)
 const { copyToClipboard } = useClipboard()
 const { openAIBase } = usePatrickApiBase()
+const { isDark, toggleMode } = useColorMode()
+const reducedMotion = useReducedMotion()
+const quickKeys = ref<ApiKey[]>([])
+
+const mobileBottomItems = computed(() => primaryItems.value.slice(0, 4))
+
 const commands = computed<WorkspaceCommand[]>(() => {
   const entries: WorkspaceCommand[] = navigationItems.value.map(item => ({
     id: item.path, label: item.label, section: zh.value ? '页面' : 'Pages', keywords: item.path,
     ...(item.action ? { run: () => activateNavigation(item) } : item.newTab ? { run: () => { window.open(item.href || item.path, '_blank', 'noopener,noreferrer') } } : item.href ? { href: item.href } : { to: { path: item.path, query: item.query } }),
   }))
+  entries.unshift({
+    id: 'toggle-color-mode',
+    label: isDark.value ? (zh.value ? '切换至浅色外观' : 'Switch to light theme') : (zh.value ? '切换至深色外观' : 'Switch to dark theme'),
+    section: zh.value ? '快捷操作' : 'Quick actions',
+    keywords: 'theme dark light mode color appearance',
+    run: () => { toggleMode() }
+  })
+  if (navigationItems.value.some(item => item.path === '/playground')) {
+    entries.unshift({
+      id: 'open-playground',
+      label: zh.value ? '打开 API 调试台试跑模型' : 'Test a model in API Playground',
+      section: zh.value ? '快捷操作' : 'Quick actions',
+      keywords: 'playground debug test model prompt curl',
+      to: '/playground'
+    })
+  }
   if (navigationItems.value.some(item => item.path === '/keys')) entries.unshift({ id: 'create-key', label: zh.value ? '创建 API 密钥' : 'Create API key', section: zh.value ? '快捷操作' : 'Quick actions', keywords: 'new api key', to: '/keys?create=1' })
   entries.unshift({ id: 'copy-endpoint', label: zh.value ? '复制接口地址' : 'Copy API base URL', section: zh.value ? '快捷操作' : 'Quick actions', keywords: 'api base url endpoint', run: async () => { if (!await copyToClipboard(openAIBase.value)) throw new Error('Copy failed') } })
+  for (const key of quickKeys.value.slice(0, 12)) {
+    if (key.status !== 'active' || !key.key) continue
+    entries.push({
+      id: `copy-key-${key.id}`,
+      label: zh.value ? `复制密钥：${key.name}` : `Copy key: ${key.name}`,
+      section: zh.value ? '我的 API 密钥' : 'My API keys',
+      keywords: `key token copy ${key.name} ${key.group?.name || ''}`,
+      run: async () => {
+        if (!await copyToClipboard(key.key)) throw new Error('Copy failed')
+        appStore.showSuccess?.(zh.value ? `已复制密钥 ${key.name}` : `Copied key ${key.name}`)
+      }
+    })
+  }
   if (docUrl.value) entries.push({ id: 'documentation', label: zh.value ? '开发者文档' : 'Documentation', section: zh.value ? '资源' : 'Resources', href: docUrl.value })
   return entries
 })
-const { isDark, toggleMode } = useColorMode()
-const reducedMotion = useReducedMotion()
 
 // These controls are local to the user shell; administrator preferences are not written.
 const desktop = useMediaQuery('(min-width: 1200px)')
@@ -316,6 +391,7 @@ const accountOpen = ref(false)
 const localeOpen = ref(false)
 const localeSwitching = ref(false)
 const loggingOut = ref(false)
+const avatarFailed = ref(false)
 const sidebarRef = ref<HTMLElement | null>(null)
 const drawerCloseRef = ref<HTMLButtonElement | null>(null)
 const navToggleRef = ref<HTMLButtonElement | null>(null)
@@ -328,6 +404,8 @@ const localeToggleRef = ref<HTMLButtonElement | null>(null)
 const localeMenuRef = ref<HTMLElement | null>(null)
 
 const user = computed(() => authStore.user)
+const avatarUrl = computed(() => sanitizeUrl((user.value as { avatar_url?: string } | null)?.avatar_url || ''))
+watch(avatarUrl, () => { avatarFailed.value = false })
 const displayName = computed(() => user.value?.username || user.value?.email?.split('@')[0] || (zh.value ? '我的账户' : 'My account'))
 const accountInitials = computed(() => displayName.value.slice(0, 2).toUpperCase())
 const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
@@ -336,8 +414,10 @@ const availableBalance = computed(() => Number(user.value?.balance || 0))
 const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
 const currentLocaleCode = computed(() => zh.value ? 'zh' : 'en')
 const pageTitle = computed(() => {
-  if (route.path === '/dashboard') return zh.value ? '概览' : 'Overview'
+  if (route.path === '/dashboard') return zh.value ? '工作台' : 'Overview'
   if (route.path === '/keys') return zh.value ? 'API 密钥' : 'API keys'
+  if (route.path === '/playground') return zh.value ? 'API 调试台' : 'API Playground'
+  if (route.path === '/usage' || route.path === '/traffic') return zh.value ? '用量与流量' : 'Usage & traffic'
   if (route.name === 'CustomPage') {
     const item = appStore.cachedPublicSettings?.custom_menu_items?.find(menu => menu.id === route.params.id)
     if (item?.label) return item.label
@@ -546,10 +626,27 @@ watch([desktop, railViewport], ([isDesktop, hasRail]) => {
     void nextTick(focusNavigationToggle)
   }
 })
-watch(() => authStore.user?.id, () => { void refreshBatchImageAccess(true) })
+async function loadQuickKeys() {
+  if (!authStore.isAuthenticated) {
+    quickKeys.value = []
+    return
+  }
+  try {
+    const res = await keysAPI.list(1, 20)
+    quickKeys.value = Array.isArray(res?.items) ? res.items : []
+  } catch {
+    // Non-critical enhancement for command palette
+  }
+}
+
+watch(() => authStore.user?.id, () => {
+  void refreshBatchImageAccess(true)
+  void loadQuickKeys()
+})
 
 onMounted(() => {
   void refreshBatchImageAccess()
+  void loadQuickKeys()
   if (!authStore.isAdmin) onboardingStore.setReplayCallback(() => { void replayUserGuide() })
   document.addEventListener('pointerdown', handlePointerDown)
   window.addEventListener('keydown', handleWindowKeydown)

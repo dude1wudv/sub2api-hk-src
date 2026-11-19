@@ -1,4 +1,10 @@
 <template>
+  <div class="portal-page mcp-page">
+    <MdPageHeader
+      :eyebrow="t('mcp.title')"
+      :title="t('mcp.title')"
+      :description="t('mcp.connectionDescription')"
+    />
     <div class="mx-auto max-w-5xl space-y-6">
       <section class="card p-5 sm:p-6" aria-labelledby="mcp-connection-title" :aria-busy="connectionLoading">
         <div class="flex items-start gap-3">
@@ -74,6 +80,7 @@
         </div>
       </template>
     </BaseDialog>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -81,6 +88,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { mcpAPI, type MCPGrant } from '@/api/mcp'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import { MdPageHeader } from '@/components/md'
 import { Icon } from '@/components/icons'
 import { useClipboard } from '@/composables/useClipboard'
 import { useAppStore } from '@/stores/app'
