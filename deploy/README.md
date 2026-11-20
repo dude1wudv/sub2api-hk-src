@@ -67,7 +67,7 @@ After an application-only update, verify all of the following before handoff:
 docker inspect sub2api --format '{{.Config.Image}} {{.State.Status}} {{.State.Health.Status}} {{.HostConfig.Memory}}'
 docker exec sub2api printenv GOMEMLIMIT
 curl -fsS http://127.0.0.1:8080/health
-curl -fsS --resolve sub.sunmmyapi.xyz:443:127.0.0.1 https://sub.sunmmyapi.xyz/health
+curl -fsS --resolve patrickapi.microedulab.com:443:127.0.0.1 https://patrickapi.microedulab.com/health
 docker exec sub2api-postgres psql -U sub2api -d sub2api -Atc \
   "SELECT filename FROM schema_migrations WHERE filename IN ('224_user_platform_quotas_add_cn_providers.sql','225_backfill_codex_fingerprint_seed.sql','225_channel_model_time_pricing.sql','226_channel_monitor_quota_mode.sql') ORDER BY filename"
 ```

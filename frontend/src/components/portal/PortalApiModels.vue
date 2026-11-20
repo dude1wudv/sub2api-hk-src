@@ -53,7 +53,10 @@
           <section v-for="platform in visiblePlatforms" :key="platform.id">
             <h3>{{ vendorLabel(platform) }} · {{ platform.models.length }} {{ text('个模型', 'models') }}</h3>
             <article v-for="model in platform.models" :key="model.platform + ':' + model.name" class="portal-model-card">
-              <button type="button" class="portal-api-model-name" @click="detailModel = model"><ModelIcon :model="model.name" size="20px" /><span>{{ model.name }}</span><Icon name="chevronRight" size="xs" aria-hidden="true" /></button>
+              <div class="portal-api-model-title">
+                <button type="button" class="portal-api-model-name" @click="detailModel = model"><ModelIcon :model="model.name" size="20px" /><span>{{ model.name }}</span><Icon name="chevronRight" size="xs" aria-hidden="true" /></button>
+                <button type="button" class="portal-api-model-copy" :title="text('复制模型 ID', 'Copy model ID')" :aria-label="text('复制模型 ID', 'Copy model ID') + ': ' + model.name" @click.stop="copyToClipboard(model.name)"><Icon name="copy" size="xs" aria-hidden="true" /></button>
+              </div>
               <span class="portal-api-model-capabilities"><span>{{ text('接入', 'Platform') }}: {{ platformLabel(model.platform) }}</span><span v-if="model.context_window">{{ compactTokens(model.context_window) }} {{ text('上下文', 'context') }}</span><span v-if="model.reasoning">{{ text('推理', 'Reasoning') }}</span><span v-if="model.tool_call">{{ text('工具调用', 'Tools') }}</span></span>
               <span v-if="modelBadges(model).length" class="portal-api-model-badges"><span v-for="badge in modelBadges(model)" :key="badge">{{ badge }}</span></span>
               <p v-if="!model.pricing" class="portal-api-price-missing">{{ text('尚未提供实际单价', 'Actual pricing is not provided') }}</p>
@@ -72,7 +75,10 @@
               <tr class="portal-api-vendor-row"><th colspan="5" scope="rowgroup"><span>{{ vendorLabel(platform) }}</span><small>{{ platform.models.length }} {{ text('个模型', 'models') }}</small></th></tr>
               <tr v-for="model in platform.models" :key="model.platform + ':' + model.name" class="portal-api-model-row">
                 <td>
-                  <button type="button" class="portal-api-model-name" @click="detailModel = model"><ModelIcon :model="model.name" size="20px" /><span>{{ model.name }}</span><Icon name="chevronRight" size="xs" aria-hidden="true" /></button>
+                  <div class="portal-api-model-title">
+                    <button type="button" class="portal-api-model-name" @click="detailModel = model"><ModelIcon :model="model.name" size="20px" /><span>{{ model.name }}</span><Icon name="chevronRight" size="xs" aria-hidden="true" /></button>
+                    <button type="button" class="portal-api-model-copy" :title="text('复制模型 ID', 'Copy model ID')" :aria-label="text('复制模型 ID', 'Copy model ID') + ': ' + model.name" @click.stop="copyToClipboard(model.name)"><Icon name="copy" size="xs" aria-hidden="true" /></button>
+                  </div>
                   <span class="portal-api-model-capabilities"><span>{{ text('接入', 'Platform') }}: {{ platformLabel(model.platform) }}</span><span v-if="model.context_window">{{ compactTokens(model.context_window) }} {{ text('上下文', 'context') }}</span><span v-if="model.reasoning">{{ text('推理', 'Reasoning') }}</span><span v-if="model.tool_call">{{ text('工具调用', 'Tools') }}</span></span>
                   <span v-if="modelBadges(model).length" class="portal-api-model-badges"><span v-for="badge in modelBadges(model)" :key="badge">{{ badge }}</span></span>
                 </td>
@@ -176,8 +182,24 @@ import DOMPurify from 'dompurify'
 import Icon from '@/components/icons/Icon.vue'
 import ModelIcon from '@/components/common/ModelIcon.vue'
 import ModelCapabilities from '@/components/modelPlaza/ModelCapabilities.vue'
+import { getActivePinia } from 'pinia'
+import { useClipboard } from '@/composables/useClipboard'
 import { matchesCatalogModel, modelVendor } from '@/utils/modelCatalog'
 import { platformLabel } from '@/utils/platformColors'
+const copiedModel = ref<string | null>(null)
+let copiedTimer: ReturnType<typeof setTimeout> | undefined
+async function copyToClipboard(modelId: string) {
+  if (getActivePinia()) {
+    await useClipboard().copyToClipboard(modelId)
+    return
+  }
+  await navigator.clipboard?.writeText(modelId).catch(() => {})
+  copiedModel.value = modelId
+  clearTimeout(copiedTimer)
+  copiedTimer = setTimeout(() => {
+    if (copiedModel.value === modelId) copiedModel.value = null
+  }, 1500)
+}
 import PortalDialog from './PortalDialog.vue'
 import PortalModelPrice from './PortalModelPrice.vue'
 import type { ModelPlazaGroup, PlazaModel } from '@/api/modelPlaza'
@@ -882,6 +904,33 @@ function chooseExampleModel() {
 .portal-api-models :deep(.model-icon path[fill='#000000']),
 .portal-api-models :deep(.model-icon path[fill='#16191E']) {
   fill: rgb(var(--ink));
+}
+
+.portal-api-model-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.portal-api-model-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgb(var(--ink-3));
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.portal-api-model-copy:hover {
+  background: rgb(var(--ink) / 0.06);
+  color: rgb(var(--brand-moss));
 }
 
 .portal-api-model-name:hover {

@@ -57,7 +57,7 @@ func (h *OpenAIGatewayHandler) handleDeepSeekTool(c *gin.Context, kind service.D
 	body, err := pkghttputil.ReadRequestBodyWithPrealloc(c.Request)
 	if err != nil {
 		if maxErr, ok := extractMaxBytesError(err); ok {
-			writeDeepSeekToolValidationError(c, http.StatusRequestEntityTooLarge, buildBodyTooLargeMessage(maxErr.Limit))
+			writeDeepSeekToolValidationError(c, http.StatusRequestEntityTooLarge, pkghttputil.BodyTooLargeMessage(maxErr.Limit))
 		} else {
 			writeDeepSeekToolValidationError(c, http.StatusBadRequest, "Failed to read request body")
 		}
