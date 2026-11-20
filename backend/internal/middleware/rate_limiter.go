@@ -28,6 +28,8 @@ type RateLimitOptions struct {
 	FailureMode RateLimitFailureMode
 	// IPv6PrefixBits 按网段（如 64）合并 IPv6 客户端计数，避免轮换同一分配内的地址绕过限流；0 表示按单个地址计数。
 	IPv6PrefixBits int
+	// Global 忽略客户端 IP，按 key 做全站计数，用于跨 IP 轮换的突发兜底。
+	Global bool
 }
 
 var rateLimitScript = redis.NewScript(`
@@ -155,7 +157,11 @@ func (r *RateLimiter) LimitWithOptions(key string, limit int, window time.Durati
 	}
 
 	return func(c *gin.Context) {
-		result, err := r.Allow(c.Request.Context(), key+":"+rateLimitClientKey(clientIPForRateLimit(c), opts.IPv6PrefixBits), limit, window)
+		bucket := key
+		if !opts.Global {
+			bucket = key + ":" + rateLimitClientKey(clientIPForRateLimit(c), opts.IPv6PrefixBits)
+		}
+		result, err := r.Allow(c.Request.Context(), bucket, limit, window)
 		if err != nil {
 			log.Printf("[RateLimit] redis error: key=%s mode=%s err=%v", r.prefix+key, failureModeLabel(failureMode), err)
 			if failureMode == RateLimitFailClose {
