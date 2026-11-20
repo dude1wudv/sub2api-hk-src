@@ -896,7 +896,8 @@ func (s *OpenAIGatewayService) readOpenAICompatBufferedTerminal(
 	requestID string,
 ) (*apicompat.ResponsesResponse, OpenAIUsage, *apicompat.BufferedResponseAccumulator, openAICompatPriorModelAudit, error) {
 	acc := apicompat.NewBufferedResponseAccumulator()
-	outputSlots := &openAICompatOutputSlots{}
+	acc.XAIServerSideSearch = account != nil && account.IsGrok()
+	outputSlots := &openAICompatOutputSlots{xaiServerSideSearch: acc.XAIServerSideSearch}
 	var usage OpenAIUsage
 	if resp == nil || resp.Body == nil {
 		return nil, usage, acc, openAICompatPriorModelAudit{}, errors.New("upstream response body is nil")
@@ -1089,6 +1090,7 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 
 	state := apicompat.NewResponsesEventToAnthropicState()
 	state.Model = compositeClientModel(c.Request.Context(), originalModel)
+	state.XAIServerSideSearch = account != nil && account.IsGrok()
 	var usage OpenAIUsage
 	responseID := ""
 	var firstTokenMs *int

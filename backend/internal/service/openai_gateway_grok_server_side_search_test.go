@@ -100,7 +100,7 @@ func forwardGrokCustomToolCallStream(t *testing.T, path string, streaming bool, 
 	return grokSearchForwardOutcome{body: rec.Body.String(), searchCount: result.SearchCount}
 }
 
-func TestGrokServerSideSearchRespectsProtocolOwner(t *testing.T) {
+func TestGrokServerSideSearchCustomToolCallIsNotAClientToolCall(t *testing.T) {
 	// A Grok API-key account sends /v1/chat/completions to xAI as Chat Completions, not
 	// through Responses, so only /v1/messages applies to it.
 	accounts := map[string]*Account{
@@ -123,21 +123,6 @@ func TestGrokServerSideSearchRespectsProtocolOwner(t *testing.T) {
 						got := forwardGrokCustomToolCallStream(t, path, streaming, account, sse)
 
 						require.Equal(t, 1, got.searchCount)
-						if streaming || terminalOutput == `[]` {
-							// Keep the active legacy mapping until the RelayKit owner
-							// implements server-side tool semantics for Messages and
-							// the shared buffered reconstruction.
-							require.Contains(t, got.body, "x_keyword_search", got.body)
-							require.Contains(t, got.body, "found it", got.body)
-							if path == "/v1/messages" {
-								require.Contains(t, got.body, "tool_use", got.body)
-								require.Contains(t, got.body, `"stop_reason":"tool_use"`, got.body)
-							} else {
-								require.Contains(t, got.body, "tool_calls", got.body)
-								require.Contains(t, got.body, `"finish_reason":"tool_calls"`, got.body)
-							}
-							return
-						}
 						require.NotContains(t, got.body, "tool_use", got.body)
 						require.NotContains(t, got.body, "tool_calls", got.body)
 						require.NotContains(t, got.body, "x_keyword_search", got.body)
@@ -163,8 +148,8 @@ func TestGrokServerSideSearchCountsEveryPrefixAndKeepsClientTools(t *testing.T) 
 				got := forwardGrokCustomToolCallStream(t, path, streaming, account, grokCustomToolCallStream(items, `[]`))
 
 				require.Equal(t, 2, got.searchCount, "xs_ and as_ are searches, call_ is not")
-				require.Contains(t, got.body, "x_keyword_search", "preserve the legacy mapping pending RelayKit")
-				require.Contains(t, got.body, "attachment_search", "preserve the legacy mapping pending RelayKit")
+				require.NotContains(t, got.body, "x_keyword_search", got.body)
+				require.NotContains(t, got.body, "attachment_search", got.body)
 				require.Contains(t, got.body, "exec", "the client-declared custom tool is still a tool call")
 				if path == "/v1/messages" {
 					require.Contains(t, got.body, "tool_use", got.body)
@@ -188,7 +173,7 @@ func TestServerSideSearchRuleAppliesOnlyToGrokAccounts(t *testing.T) {
 		sse := grokCustomToolCallStream([]string{grokXSearchItemJSON, grokASearchItemJSON}, `[]`)
 		got := forwardGrokCustomToolCallStream(t, "/v1/messages", true, healthyGrokOAuthGatewayTestAccount(4242, "access-token"), sse)
 		require.Equal(t, 2, got.searchCount)
-		require.Contains(t, got.body, "tool_use", "Grok counting alone cannot change the legacy Messages mapping")
+		require.NotContains(t, got.body, "tool_use", got.body)
 	})
 	for accountName, account := range openAIAccounts {
 		for _, path := range []string{"/v1/messages", "/v1/chat/completions"} {
