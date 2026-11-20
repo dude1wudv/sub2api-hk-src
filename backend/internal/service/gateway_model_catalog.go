@@ -87,6 +87,18 @@ func (s *GatewayModelCatalogService) ListForGroup(ctx context.Context, group *Gr
 		return GatewayModelsForIDs(platform, available), nil
 	}
 	available = s.gateway.GetAvailableModels(ctx, groupID, platform)
+	if platform == PlatformAnthropic {
+		source := available
+		if group != nil && group.ModelAllowlistEnabled() {
+			source = GatewayModelListingSource(platform, available, DefaultGatewayModelIDs(platform))
+		} else if len(source) == 0 {
+			source = DefaultGatewayModelIDs(platform)
+		}
+		expanded := s.gateway.ExpandAnthropicLongContextModels(ctx, group, source)
+		if len(available) > 0 || len(expanded) > len(source) || (group != nil && group.ModelAllowlistEnabled()) {
+			available = expanded
+		}
+	}
 	if group != nil && group.ModelAllowlistEnabled() {
 		source := GatewayModelListingSource(platform, available, DefaultGatewayModelIDs(platform))
 		return GatewayModelsForIDs(platform, group.ModelAllowlist.FilterForListing(source)), nil

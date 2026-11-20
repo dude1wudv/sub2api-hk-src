@@ -233,6 +233,7 @@ func groupCodexModelMetadata(
 	missingMetadata := false
 	hasKnownReasoning := false
 	hasUnknownReasoning := false
+	audioInput := true
 	for i := range accounts {
 		account := &accounts[i]
 		if !codexAccountServesPlatformModel(account, platform, modelID) {
@@ -257,6 +258,7 @@ func groupCodexModelMetadata(
 			publicAlias = true
 		}
 		metadata, ok := account.GetUpstreamModelMetadata(lookupModel)
+		audioInput = audioInput && accountCodexModelSupportsAudioInput(account, lookupModel, metadata.InputModalities)
 		if !ok {
 			if explicitTargetsConflict && !datedAliasTargetsCompatible {
 				return codexModelMetadataOverride{
@@ -292,6 +294,7 @@ func groupCodexModelMetadata(
 		metadata.DisplayName = modelID
 		metadata.Description = configuredCodexCustomDescription
 	}
+	metadata.audioInput = audioInput
 	return metadata, true
 }
 
@@ -339,6 +342,21 @@ func codexDeepSeekDatedModelFamily(modelID string) (string, bool) {
 		return modelID, false
 	}
 	return modelID[:separator], true
+}
+
+func accountCodexModelSupportsAudioInput(account *Account, modelID string, modalities []string) bool {
+	if account == nil || !account.IsOpenAI() {
+		return false
+	}
+	if resolveUpstreamProtocol(account, APIProtocolResponses, modelID, nil) != APIProtocolResponses {
+		return false
+	}
+	if len(modalities) > 0 {
+		return stringSliceContains(modalities, "audio")
+	}
+	// The bundled Codex subscription manifest declares audio for Sol. The
+	// public API model with the same slug has different input capabilities.
+	return account.IsOpenAIOAuthLike() && openai.GPT62ModelID(modelID) == "gpt-6.2-sol"
 }
 
 func codexExplicitModelTargetsConflict(accounts []Account, modelID string) bool {
