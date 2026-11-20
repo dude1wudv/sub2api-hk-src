@@ -105,6 +105,44 @@ func TestRateLimiterDifferentIPsIndependent(t *testing.T) {
 	require.Equal(t, http.StatusTooManyRequests, rec3.Code, "第一个 IP 的第二次请求应被限流")
 }
 
+func TestRateLimiterGlobalOptionSharesBucketAcrossIPs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	callCounts := make(map[string]int64)
+	originalRun := rateLimitRun
+	rateLimitRun = func(ctx context.Context, client *redis.Client, key string, windowMillis int64) (int64, bool, error) {
+		callCounts[key]++
+		return callCounts[key], false, nil
+	}
+	t.Cleanup(func() {
+		rateLimitRun = originalRun
+	})
+
+	limiter := NewRateLimiter(redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"}))
+	router := gin.New()
+	router.Use(limiter.LimitWithOptions("auth-global", 2, time.Minute, RateLimitOptions{Global: true}))
+	router.GET("/test", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	for i, addr := range []string{"10.0.0.1:1111", "10.0.0.2:2222"} {
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		req.RemoteAddr = addr
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code, "第 %d 个 IP 的请求应通过", i+1)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.RemoteAddr = "10.0.0.3:3333"
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusTooManyRequests, rec.Code, "全局桶应跨 IP 累计并限流")
+
+	require.Len(t, callCounts, 1)
+	require.Equal(t, int64(3), callCounts["rate_limit:auth-global"])
+}
+
 func TestRateLimiterAllow(t *testing.T) {
 	originalRun := rateLimitRun
 	var gotKey string
