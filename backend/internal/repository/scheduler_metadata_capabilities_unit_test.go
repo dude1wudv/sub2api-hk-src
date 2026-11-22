@@ -62,12 +62,12 @@ func TestSchedulerMetadataKeepsHKDeepSeekSuiteRouting(t *testing.T) {
 			"openai_capabilities": []string{"chat", "responses"},
 		},
 		Extra: map[string]any{
-			"deepseek_tools_group_ids":              []int64{81, 223},
-			service.DeepSeekSuiteCapabilitiesKey:    []string{"chat", "responses", "files", "ocr"},
-			service.DeepSeekSuiteFallbackAccountKey: int64(1182),
-			"openai_passthrough":                    true,
-			"openai_passthrough_model_filter":       true,
-			"unlisted_extra":                        "drop-me",
+			"deepseek_tools_group_ids":           []int64{81, 223},
+			service.DeepSeekSuiteCapabilitiesKey: []string{"chat", "responses", "files", "ocr"},
+			"deepseek_suite_fallback_account_id": int64(1182),
+			"openai_passthrough":                 true,
+			"openai_passthrough_model_filter":    true,
+			"unlisted_extra":                     "drop-me",
 		},
 	}
 
@@ -79,9 +79,7 @@ func TestSchedulerMetadataKeepsHKDeepSeekSuiteRouting(t *testing.T) {
 	require.Equal(t, []any{"chat", "responses"}, restored.Credentials["openai_capabilities"])
 	require.Equal(t, []any{float64(81), float64(223)}, restored.Extra["deepseek_tools_group_ids"])
 	require.Equal(t, []any{"chat", "responses", "files", "ocr"}, restored.Extra[service.DeepSeekSuiteCapabilitiesKey])
-	require.Equal(t, float64(1182), restored.Extra[service.DeepSeekSuiteFallbackAccountKey])
+	require.NotContains(t, restored.Extra, "deepseek_suite_fallback_account_id")
 	require.Equal(t, true, restored.Extra["openai_passthrough_model_filter"])
-	require.Equal(t, int64(1182), restored.DeepSeekSuiteFallbackAccountID(0))
-	require.Zero(t, restored.DeepSeekSuiteFallbackAccountID(account.ID), "account-bound resources must still prevent failover")
 	require.NotContains(t, restored.Extra, "unlisted_extra")
 }

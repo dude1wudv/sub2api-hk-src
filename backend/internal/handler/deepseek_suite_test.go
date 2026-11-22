@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -20,12 +21,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type suiteFailoverAccounts struct {
+type suiteTestAccounts struct {
 	service.AccountRepository
 	accounts []service.Account
 }
 
-func (r suiteFailoverAccounts) GetByID(_ context.Context, id int64) (*service.Account, error) {
+func (r suiteTestAccounts) GetByID(_ context.Context, id int64) (*service.Account, error) {
 	for _, account := range r.accounts {
 		if account.ID == id {
 			return &account, nil
@@ -34,55 +35,54 @@ func (r suiteFailoverAccounts) GetByID(_ context.Context, id int64) (*service.Ac
 	return nil, service.ErrNoAvailableAccounts
 }
 
-func (r suiteFailoverAccounts) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]service.Account, error) {
+func (r suiteTestAccounts) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]service.Account, error) {
 	return r.accounts, nil
 }
 
-type suiteFailoverUsage struct {
+type suiteTestUsage struct {
 	deepSeekToolsSpineUsageRepo
 	service.DeepSeekSuiteRepository
 	operations map[string]service.DeepSeekSuiteOperation
 }
 
-func (r *suiteFailoverUsage) CreateDeepSeekOperation(_ context.Context, op *service.DeepSeekSuiteOperation) error {
+func (r *suiteTestUsage) CreateDeepSeekOperation(_ context.Context, op *service.DeepSeekSuiteOperation) error {
 	r.operations[op.ID] = *op
 	return nil
 }
 
-func (r *suiteFailoverUsage) SaveDeepSeekOperation(ctx context.Context, op *service.DeepSeekSuiteOperation) error {
+func (r *suiteTestUsage) SaveDeepSeekOperation(ctx context.Context, op *service.DeepSeekSuiteOperation) error {
 	return r.CreateDeepSeekOperation(ctx, op)
 }
 
-func (r *suiteFailoverUsage) ListDeepSeekPending(context.Context) ([]*service.DeepSeekSuiteOperation, error) {
+func (r *suiteTestUsage) ListDeepSeekPending(context.Context) ([]*service.DeepSeekSuiteOperation, error) {
 	return nil, nil
 }
 
-func TestDeepSeekSuiteHandlerFallbackPersistsAttemptsAndBillsOnce(t *testing.T) {
+func TestDeepSeekSuiteHandlerUsesOneAccountPerOperation(t *testing.T) {
 	for _, tc := range []struct {
-		name           string
-		firstStatus    int
-		targetAllowed  bool
-		expectedStatus int
-		attempts       int
+		name       string
+		status     int
+		body       string
+		wantStatus string
+		wantBills  int
 	}{
-		{"unsupported falls back", 404, true, 200, 2},
-		{"ambiguous failure stays pending", 502, true, 502, 1},
-		{"fallback cannot bypass group scope", 404, false, 503, 1},
+		{"success", http.StatusOK, `{"results":[{"title":"test","url":"https://example.com","snippet":"test"}]}`, "settled", 1},
+		{"unsupported", http.StatusNotFound, `{"error":"upstream unavailable"}`, "failed", 0},
+		{"not implemented", http.StatusNotImplemented, `{"error":"upstream unavailable"}`, "failed", 0},
+		{"ambiguous failure", http.StatusBadGateway, `{"error":"upstream unavailable"}`, "awaiting_meter", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			gin.SetMode(gin.TestMode)
-			var upstreamAccounts []string
+			var upstreamCalls atomic.Int32
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				auth := r.Header.Get("Authorization")
-				upstreamAccounts = append(upstreamAccounts, auth)
-				w.Header().Set("Content-Type", "application/json")
-				if auth == "Bearer synthetic-kedaya" {
-					w.WriteHeader(tc.firstStatus)
-					_, _ = io.WriteString(w, `{"error":"upstream unavailable"}`)
+				upstreamCalls.Add(1)
+				if r.Header.Get("Authorization") != "Bearer synthetic-kedaya" {
+					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
-				require.Equal(t, "Bearer synthetic-mdkj", auth)
-				_, _ = io.WriteString(w, `{"results":[{"title":"test","url":"https://example.com","snippet":"test"}]}`)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				_, _ = io.WriteString(w, tc.body)
 			}))
 			defer server.Close()
 			groupID := int64(223)
@@ -95,15 +95,12 @@ func TestDeepSeekSuiteHandlerFallbackPersistsAttemptsAndBillsOnce(t *testing.T) 
 				GroupIDs: []int64{groupID}, Groups: []*service.Group{group},
 				Credentials: map[string]any{"base_url": "https://kedaya.ai", "api_key": "synthetic-kedaya"},
 				Extra: map[string]any{"deepseek_tools_group_ids": []any{float64(groupID)},
-					service.DeepSeekSuiteFallbackAccountKey: float64(1182)}}
+					"deepseek_suite_fallback_account_id": float64(1182)}}
 			target := account
 			target.ID, target.Priority = 1182, 2
 			target.Credentials = map[string]any{"base_url": "https://vip.mdkj.lol", "api_key": "synthetic-mdkj"}
 			target.Extra = map[string]any{"deepseek_tools_group_ids": []any{float64(groupID)}}
-			if !tc.targetAllowed {
-				target.Extra = map[string]any{"deepseek_tools_group_ids": []any{float64(81)}}
-			}
-			usage := &suiteFailoverUsage{operations: map[string]service.DeepSeekSuiteOperation{}}
+			usage := &suiteTestUsage{operations: map[string]service.DeepSeekSuiteOperation{}}
 			bills := &deepSeekToolsSpineBillingRepo{}
 			cfg := &config.Config{RunMode: config.RunModeStandard}
 			users := deepSeekToolsSpineUserRepo{user: user}
@@ -112,7 +109,7 @@ func TestDeepSeekSuiteHandlerFallbackPersistsAttemptsAndBillsOnce(t *testing.T) 
 			rdb := redis.NewClient(&redis.Options{Addr: miniredis.RunT(t).Addr()})
 			t.Cleanup(func() { _ = rdb.Close() })
 			concurrency := service.NewConcurrencyService(repository.NewConcurrencyCache(rdb, 5, 30))
-			gateway := service.NewOpenAIGatewayService(suiteFailoverAccounts{accounts: []service.Account{account, target}},
+			gateway := service.NewOpenAIGatewayService(suiteTestAccounts{accounts: []service.Account{account, target}},
 				usage, bills, users, nil, nil, nil, cfg, nil, nil, service.NewBillingService(cfg, nil), nil,
 				admission, &deepSeekToolsSpineUpstream{server: server}, &service.DeferredService{}, nil, nil, nil, nil, nil, nil, nil)
 			t.Cleanup(gateway.CloseOpenAIWSPool)
@@ -125,22 +122,16 @@ func TestDeepSeekSuiteHandlerFallbackPersistsAttemptsAndBillsOnce(t *testing.T) 
 			c.Set(string(middleware2.ContextKeyAPIKey), key)
 			c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: user.ID, Concurrency: 2})
 			h.handleDeepSeekSuite(c, "search", false)
-			require.Equal(t, tc.expectedStatus, recorder.Code, recorder.Body.String())
-			require.Len(t, upstreamAccounts, tc.attempts)
-			require.Len(t, usage.operations, tc.attempts)
-			if tc.attempts == 2 {
-				require.Len(t, bills.snapshot(), 1)
-				for _, op := range usage.operations {
-					if op.AccountID == 1112 {
-						require.Equal(t, "failed", op.Status)
-					} else {
-						require.Equal(t, "settled", op.Status)
-						require.Equal(t, op.ID, recorder.Header().Get("X-DeepSeek-Operation-ID"))
-					}
-				}
-			} else {
-				require.Empty(t, bills.snapshot())
-			}
+			require.Equal(t, tc.status, recorder.Code, recorder.Body.String())
+			require.JSONEq(t, tc.body, recorder.Body.String())
+			require.Equal(t, int32(1), upstreamCalls.Load())
+			require.Len(t, bills.snapshot(), tc.wantBills)
+			require.Len(t, usage.operations, 1)
+			operationID := recorder.Header().Get("X-DeepSeek-Operation-ID")
+			require.Contains(t, usage.operations, operationID)
+			op := usage.operations[operationID]
+			require.Equal(t, account.ID, op.AccountID)
+			require.Equal(t, tc.wantStatus, op.Status)
 		})
 	}
 }

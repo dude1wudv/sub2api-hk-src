@@ -293,3 +293,34 @@ func TestDeepSeekSuiteAudioCompletionAndMeter(t *testing.T) {
 		})
 	}
 }
+
+func TestDeepSeekSuiteMeteredErrorRemainsPending(t *testing.T) {
+	for _, body := range []string{`{"error":"partial","duration_ms":1000}`, `{"error":"partial","pages_count":1}`} {
+		account := suiteTestAccount()
+		upstream := &deepSeekToolsUpstream{response: &http.Response{StatusCode: 400,
+			Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body))}}
+		svc := &OpenAIGatewayService{cfg: &config.Config{},
+			accountRepo: &deepSeekToolsAccountRepo{latest: account}, httpUpstream: upstream}
+		c, recorder := newDeepSeekToolsContext(nil)
+		op := &DeepSeekSuiteOperation{ID: "metered-rejection", Status: "started"}
+		result, _, err := svc.ForwardDeepSeekSuite(t.Context(), c, suiteTestKey(), account,
+			&DeepSeekSuiteInput{Kind: "search", Body: []byte(`{"query":"test"}`)}, op)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.NotEqual(t, "failed", op.Status, "metered errors must not discard durable reconciliation")
+		require.Equal(t, http.StatusBadRequest, recorder.Code)
+	}
+}
+
+func TestDeepSeekSuiteOfficialUpgradePreservesAuxiliaryEligibility(t *testing.T) {
+	account := suiteTestAccount()
+	account.ID = 882
+	account.Credentials["base_url"] = "https://api.deepseek.com"
+	account.Extra[deepSeekToolsGroupIDsExtraKey] = []any{float64(81), float64(223)}
+	require.True(t, chatAuxiliaryAccountValid(account))
+	for _, group := range []int64{81, 223} {
+		require.True(t, account.DeepSeekSuiteAllowed(&group, "files"))
+		require.True(t, account.DeepSeekSuiteAllowed(&group, "tts_ws"))
+	}
+	require.False(t, account.DeepSeekSuiteAllowed(i64p(246), "files"))
+}
