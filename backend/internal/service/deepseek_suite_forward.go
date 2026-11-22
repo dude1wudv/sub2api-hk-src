@@ -226,12 +226,8 @@ func (s *OpenAIGatewayService) ForwardDeepSeekSuite(ctx context.Context, c *gin.
 		if in.Conversation {
 			observeDeepSeekConversation(payload, in.Kind, result, &ClaudeUsage{})
 		}
-		if err == nil && response.StatusCode < 500 && !deepSeekSuiteHasMeterOrResource(payload) {
+		if err == nil && (response.StatusCode < 500 || response.StatusCode == http.StatusNotImplemented) && !deepSeekSuiteHasMeterOrResource(payload) {
 			op.Status = "failed"
-		}
-		if err == nil && deepSeekSuiteRetryableRejection(response.StatusCode, payload) {
-			op.Status = "failed"
-			return result, nil, &DeepSeekSuiteRejectedError{StatusCode: response.StatusCode, Body: payload}
 		}
 		writeOpenAIPassthroughResponseHeaders(c.Writer.Header(), response.Header, s.responseHeaderFilter)
 		c.Data(response.StatusCode, "application/json", payload)
@@ -356,4 +352,14 @@ func (s *OpenAIGatewayService) ForwardDeepSeekSuite(ctx context.Context, c *gin.
 	}
 	result.ChatAuxiliaryUsage, _ = chatAuxiliaryUsage(meter, quantity, status)
 	return result, payload, nil
+}
+
+func deepSeekSuiteHasMeterOrResource(body []byte) bool {
+	for _, field := range []string{"usage", "response.usage", "page_count", "pages_count", "duration", "duration_ms",
+		"num_chars", "id", "file_id", "server_tool_calls"} {
+		if gjson.GetBytes(body, field).Exists() {
+			return true
+		}
+	}
+	return false
 }
