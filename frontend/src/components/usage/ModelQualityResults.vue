@@ -107,7 +107,7 @@ onBeforeUnmount(() => { alive = false; clearInterval(timer); reportController?.a
           <div v-if="selected" class="quality-toolbar">
             <button type="button" class="quality-control" :aria-pressed="fit" :disabled="!safeDocument" @click="fit = !fit">{{ text('适应宽度', 'Fit to width') }}{{ fit ? ' ✓' : '' }}</button>
             <button v-if="safeDocument" type="button" class="quality-control" @click="stopPreview">{{ text('停止预览', 'Stop preview') }}</button>
-            <button v-if="safeDocument || (!preview && rawArtwork && !showSource)" type="button" class="quality-control" @click="restartPreview">{{ motionPaused ? text('播放动画', 'Play animation') : preview ? text('重新播放', 'Replay') : text('播放产物', 'Play output') }}</button>
+            <button v-if="safeDocument || (!preview && !showSource && (rawArtwork || selected.has_artwork || selected.response_text))" type="button" class="quality-control" @click="restartPreview">{{ motionPaused ? text('播放动画', 'Play animation') : preview ? text('重新播放', 'Replay') : text('播放产物', 'Play output') }}</button>
             <button v-if="rawArtwork" type="button" class="quality-control" :aria-pressed="showSource" @click="showSource = !showSource; preview = true">{{ showSource ? text('返回预览', 'Back to preview') : text('查看源码', 'View source') }}</button>
             <span class="quality-duration">{{ duration(selected) }}</span>
           </div>
