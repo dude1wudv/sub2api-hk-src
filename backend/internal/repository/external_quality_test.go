@@ -74,10 +74,12 @@ func TestExternalQualityListReturnsOnlyPublicMetadataWithPerModelBound(t *testin
 	defer func() { _ = db.Close() }()
 	repo := &channelMonitorV2Repository{db: db}
 	now := time.Now().UTC()
-	mock.ExpectQuery(`(?s)SELECT id,model_id,response_model,status,started_at,finished_at,duration_ms,has_artwork,imported_at.*PARTITION BY model_id.*WHERE group_id=\$1.*WHERE rank <= 10.*LIMIT 20`).WithArgs(int64(72)).WillReturnRows(sqlmock.NewRows([]string{"id", "model_id", "response_model", "status", "started_at", "finished_at", "duration_ms", "has_artwork", "imported_at"}).AddRow(12, "gpt-6-astra", "gpt-6-astra", "completed", now, now, 100, true, now))
+	mock.ExpectQuery(`(?s)SELECT id,model_id,response_model,status,started_at,finished_at,duration_ms,has_artwork,imported_at.*PARTITION BY model_id.*WHERE group_id=\$1.*WHERE rank <= 10.*LIMIT 40`).WithArgs(int64(72)).WillReturnRows(sqlmock.NewRows([]string{"id", "model_id", "response_model", "status", "started_at", "finished_at", "duration_ms", "has_artwork", "imported_at"}).AddRow(12, "gpt-6.2-astra", "gpt-6.2-astra", "completed", now, now, 100, true, now))
 	events, err := repo.ListExternalQuality(context.Background(), 72)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
+	require.Equal(t, "gpt-6.2-astra", events[0].ModelID)
+	require.Equal(t, "gpt-6.2-astra", events[0].ResponseModel)
 	require.Nil(t, events[0].Score)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

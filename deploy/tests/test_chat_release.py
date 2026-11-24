@@ -48,6 +48,13 @@ class ChatReleaseTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 release.migration_allowlist(before, {**before, name: value})
 
+    def test_gpt62_migration_is_allowed_for_webhook_release(self):
+        migration = '350_external_quality_gpt62_models.sql'
+        source = Path(__file__).resolve().parents[2] / 'backend/migrations' / migration
+        before = {'349_group_usage_rollup_retention_nonblocking.sql': 'previous'}
+        added = {migration: release.migration_checksum(source.read_bytes())}
+        self.assertEqual(release.migration_allowlist(before, {**before, **added}), added)
+
     def test_chat_retry_reuses_preapplied_chat_checksums_without_db_rollback(self):
         source_old = {'001_initial.sql': 'a'}
         previous_failed = {**source_old, '002_user_chat.sql': 'b'}

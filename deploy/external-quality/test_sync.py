@@ -83,8 +83,9 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(request.get_header('Authorization'), 'Bearer secret')
 
     def test_completed_events_allowlists_models_status_group_and_limit(self):
+        models = {'gpt-6-astra', 'gpt-6.1-sol', 'gpt-6.2-astra', 'gpt-6.2-sol'}
         rows = []
-        for model in sync.MODELS:
+        for model in models:
             for index in range(12):
                 rows.append({'id': f'{model}-{index}', 'group_id': 62, 'status': 'completed',
                              'model': model, 'started_at': f'2026-11-09T00:{index:02}:00+08:00',
@@ -94,26 +95,27 @@ class SyncTests(unittest.TestCase):
              'started_at': '2026-11-09T00:59:00+08:00'},
             {'id': 'wrong-status', 'group_id': 62, 'status': 'failed', 'model': 'gpt-6-astra',
              'started_at': '2026-11-09T00:59:00+08:00'},
-            {'id': 'unknown-model', 'group_id': 62, 'status': 'completed', 'model': 'gpt-5',
+            {'id': 'unknown-model', 'group_id': 62, 'status': 'completed', 'model': 'gpt-6.2-sol-preview',
              'started_at': '2026-11-09T00:59:00+08:00'},
         ]
         selected = sync.completed_events(rows, 62)
-        self.assertEqual(len(selected), 20)
-        self.assertEqual({event['model'] for event in selected}, sync.MODELS)
-        for model in sync.MODELS:
+        self.assertEqual(sync.MODELS, models)
+        self.assertEqual(len(selected), 40)
+        for model in models:
             group = [event for event in selected if event['model'] == model]
-            self.assertEqual(len(group), 10)
-            self.assertEqual(group[0]['id'], f'{model}-11')
+            self.assertEqual([event['id'] for event in group],
+                             [f'{model}-{index}' for index in range(11, 1, -1)])
 
     def test_sync_refreshes_after_401_and_imports_only_fixed_group_bindings(self):
         sync.ROOT = Path('/server-only')
         events = {
-            62: [{'id': 'pro', 'group_id': 62, 'status': 'completed', 'model': 'gpt-6-astra',
-                  'started_at': '2026-11-09T00:00:00+08:00', 'finished_at': '2026-11-09T00:01:00+08:00',
-                  'html': '<p>private artwork</p>'}],
-            142: [{'id': 'enterprise', 'group_id': 142, 'status': 'completed', 'model': 'gpt-6.1-sol',
-                   'started_at': '2026-11-09T00:00:00+08:00', 'finished_at': '2026-11-09T00:01:00+08:00',
-                   'html': '<p>private artwork</p>'}],
+            remote_id: [
+                {'id': f'{remote_id}-{model}', 'group_id': remote_id, 'status': 'completed',
+                 'model': model, 'response_model': model, 'started_at': '2026-11-09T00:00:00+08:00',
+                 'finished_at': '2026-11-09T00:01:00+08:00', 'html': '<p>artwork</p>'}
+                for model in ('gpt-6.2-astra', 'gpt-6.2-sol')
+            ]
+            for remote_id in (62, 142)
         }
         calls = []
 
@@ -127,7 +129,7 @@ class SyncTests(unittest.TestCase):
                 return events[62]
             if '/quality/history/142?' in url:
                 return events[142]
-            return {'imported': 1}
+            return {'imported': len(body['payload']['data'])}
 
         with mock.patch.object(sync, 'access_token', side_effect=['old-access', 'new-access']) as token, \
                 mock.patch.object(sync, 'admin_key', return_value='legacy-admin-secret'), \
@@ -142,7 +144,9 @@ class SyncTests(unittest.TestCase):
         imports = [item for item in calls if item[0].startswith('http://127.0.0.1')]
         self.assertEqual(len(imports), 2)
         self.assertTrue(all(item[2]['x-api-key'] == 'legacy-admin-secret' for item in imports))
-        self.assertEqual([item['group_id'] for item in result], [72, 237])
+        for _, payload, _ in imports:
+            self.assertEqual(payload['payload']['data'], events[payload['remote_group_id']])
+        self.assertEqual([(item['group_id'], item['imported']) for item in result], [(72, 2), (237, 2)])
 
     def test_failure_log_and_status_do_not_include_tokens_or_artwork(self):
         with tempfile.TemporaryDirectory() as directory:

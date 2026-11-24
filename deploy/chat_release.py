@@ -32,6 +32,7 @@ CHECKS = ('stream_saved', 'second_browser_cloud_history', 'edit_regenerate_branc
           'capability_boundaries', 'login_and_iframe_security')
 APPROVED_AUXILIARY_MIGRATIONS = {
     '344_chat_auxiliary.sql': '9c05163ca0ff988bf29c021773f29e1215e778bb544785988597aa47c2113ffd',
+    '350_external_quality_gpt62_models.sql': '8db623f7bff869489817faa77be39790ba7aa4a2f8071519ba2588e2b1eb0003',
 }
 
 

@@ -29,4 +29,15 @@ describe('qualityArtifactPlayableDocument', () => {
     expect(html.indexOf('Content-Security-Policy')).toBeLessThan(html.indexOf('requestAnimationFrame'))
     script.remove()
   })
+
+  it('preserves document attributes and converts body load into a window listener', () => {
+    const html = qualityArtifactPlayableDocument(
+      '<html lang="zh" class="ride"><head><style>.ride .ready{color:red}</style></head><body class="ready" onload="startRide()"><main>art</main></body></html>',
+    )!
+    expect(html).toContain('<html lang="zh" class="ride">')
+    expect(html).toContain('<body class="ready"')
+    expect(html).toContain('window?.addEventListener("load"')
+    expect(html).not.toContain('onload=')
+    expect(html.indexOf('Content-Security-Policy')).toBeLessThan(html.indexOf('<style>'))
+  })
 })

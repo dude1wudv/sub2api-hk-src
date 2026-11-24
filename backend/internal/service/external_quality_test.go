@@ -36,6 +36,7 @@ func TestExternalQualityImportMappingAndValidation(t *testing.T) {
 		{"unsupported source", func(i *ExternalQualityImport) { i.Source = "other" }},
 		{"fabricated verdict", func(i *ExternalQualityImport) { i.Payload.Data[0].Status = "success" }},
 		{"wrong model", func(i *ExternalQualityImport) { i.Payload.Data[0].Model = "deepseek-v4.1-flash" }},
+		{"model alias", func(i *ExternalQualityImport) { i.Payload.Data[0].Model = "gpt-6.2-sol-preview" }},
 		{"invalid uuid", func(i *ExternalQualityImport) { i.Payload.Data[0].ID = "not-an-event" }},
 		{"future", func(i *ExternalQualityImport) { i.Payload.Data[0].FinishedAt = now.Add(6 * time.Minute) }},
 		{"backwards", func(i *ExternalQualityImport) { i.Payload.Data[0].FinishedAt = now.Add(-time.Hour) }},
@@ -51,15 +52,23 @@ func TestExternalQualityImportMappingAndValidation(t *testing.T) {
 		})
 	}
 	for _, pair := range [][2]int64{{72, 62}, {237, 142}} {
-		input := externalQualityFixture(now)
-		input.GroupID = pair[0]
-		input.RemoteGroupID = pair[1]
-		input.Payload.Data[0].GroupID = pair[1]
-		records, err := normalizeExternalQualityImport(input, 42, now)
-		require.NoError(t, err)
-		require.Len(t, records, 1)
-		require.Len(t, records[0].ContentSHA256, 64)
-		require.Equal(t, int64(42), records[0].ImportedBy)
+		for _, model := range []string{"gpt-6-astra", "gpt-6.1-sol", "gpt-6.2-astra", "gpt-6.2-sol"} {
+			input := externalQualityFixture(now)
+			input.GroupID, input.RemoteGroupID = pair[0], pair[1]
+			event := &input.Payload.Data[0]
+			event.GroupID, event.Model, event.ResponseModel = pair[1], model, model
+			records, err := normalizeExternalQualityImport(input, 42, now)
+			require.NoError(t, err, "%s on group %d", model, pair[0])
+			require.Len(t, records, 1)
+			record := records[0]
+			require.Equal(t, *event, record.Event)
+			require.Equal(t, event.ID, record.SourceEventID)
+			require.Equal(t, input.Source, record.Source)
+			require.Equal(t, input.GroupID, record.GroupID)
+			require.Equal(t, input.RemoteGroupID, record.RemoteGroupID)
+			require.Len(t, record.ContentSHA256, 64)
+			require.EqualValues(t, 42, record.ImportedBy)
+		}
 	}
 }
 
