@@ -10,18 +10,38 @@ const { locale } = useI18n()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const report = ref<ExternalQualityReport | null>(null)
 const loading = ref(false), failed = ref(false), artworkLoading = ref(false), artworkFailed = ref(false)
-const selectedModel = ref('gpt-6-astra'), selectedId = ref<string | number | null>(null), rawArtwork = ref('')
+const preferredModel = ref<string | null>(null), selectedId = ref<string | number | null>(null), rawArtwork = ref('')
 const preview = ref(true), showSource = ref(false), fit = ref(true)
+const playback = ref(0)
 let reportController: AbortController | undefined, artworkController: AbortController | undefined
 let timer: ReturnType<typeof setInterval> | undefined
 let alive = true
-const availableModels = computed(() => [...new Set(['gpt-6-astra', 'gpt-6.1-sol', ...(report.value?.events || []).map(event => event.model_id)])])
-const events = computed(() => (report.value?.events || []).filter(event => event.model_id === selectedModel.value).slice(0, 10))
-const selected = computed(() => events.value.find(event => event.id === selectedId.value) || null)
+const models = ['gpt-6.2-astra', 'gpt-6.2-sol', 'gpt-6-astra', 'gpt-6.1-sol']
+const availableModels = computed(() => [...new Set([...models, ...(report.value?.events ?? []).map(event => event.model_id)])])
+const selectedModel = computed(() => preferredModel.value ?? report.value?.events[0]?.model_id ?? models[0])
+const events = computed(() => (report.value?.events ?? []).filter(event => event.model_id === selectedModel.value).slice(0, 10))
+const selected = computed(() => events.value.find(event => event.id === selectedId.value) ?? events.value[0] ?? null)
+const modelStale = computed(() => {
+  const latest = Math.max(...events.value.map(event => Date.parse(event.finished_at ?? event.created_at)))
+  return events.value.length > 0 && Date.now() - latest > 2 * 60 * 60 * 1000
+})
 const safeDocument = computed(() => preview.value && !showSource.value ? qualityArtifactPlayableDocument(rawArtwork.value) : null)
 const date = (value?: string | null) => value ? new Date(value).toLocaleString(locale.value) : '—'
 const duration = (event: ExternalQualityEvent) => event.duration_ms == null ? '—' : `${(event.duration_ms / 1000).toFixed(1)}s`
 const verdict = (event: ExternalQualityEvent) => event.status === 'completed' ? text('生成完成 · 待对比', 'Generated · awaiting review') : event.status === 'success' ? text('正常', 'Passed') : text('降智', 'Degraded')
+function selectModel(model: string) {
+  preferredModel.value = model
+  selectedId.value = null
+}
+function selectEvent(event: ExternalQualityEvent) {
+  preferredModel.value = event.model_id
+  selectedId.value = event.id === events.value[0]?.id ? null : event.id
+}
+function restartPreview() {
+  showSource.value = false
+  preview.value = true
+  playback.value++
+}
 function clearArtwork() { artworkController?.abort(); rawArtwork.value = ''; artworkLoading.value = false; artworkFailed.value = false }
 async function loadArtwork() {
   clearArtwork()
@@ -32,7 +52,7 @@ async function loadArtwork() {
   const controller = new AbortController(); artworkController = controller; artworkLoading.value = true
   try {
     const result = await getExternalQualityArtwork(props.groupId, event.id, controller.signal)
-    if (alive && !controller.signal.aborted && selectedId.value === event.id) rawArtwork.value = result.response_text
+    if (alive && !controller.signal.aborted && selected.value?.id === event.id) rawArtwork.value = result.response_text
   } catch { if (alive && !controller.signal.aborted) artworkFailed.value = true }
   finally { if (alive && !controller.signal.aborted) artworkLoading.value = false }
 }
@@ -44,38 +64,46 @@ async function refresh() {
     const result = await getExternalQuality(props.groupId, controller.signal)
     if (!alive || controller.signal.aborted) return
     report.value = result
-    if (!events.value.length && result.events.length) selectedModel.value = result.events[0].model_id
-    if (!events.value.some(event => event.id === selectedId.value)) selectedId.value = events.value[0]?.id ?? null
+    if (!events.value.some(event => event.id === selectedId.value)) selectedId.value = null
   } catch { if (alive && !controller.signal.aborted) failed.value = true }
   finally { if (alive && !controller.signal.aborted) loading.value = false }
 }
 function close() { alive = false; clearInterval(timer); reportController?.abort(); clearArtwork(); emit('close') }
-watch(selectedModel, () => { selectedId.value = events.value[0]?.id ?? null })
-watch(selectedId, () => { void loadArtwork() })
-watch([preview, showSource], () => { if (!preview.value && !showSource.value) clearArtwork(); else if (!rawArtwork.value) void loadArtwork() })
+watch(() => selected.value?.id, () => { void loadArtwork() })
+watch([preview, showSource], () => {
+  if ((preview.value || showSource.value) && !rawArtwork.value && !artworkLoading.value) void loadArtwork()
+})
 onMounted(() => { void refresh(); timer = setInterval(() => { void refresh() }, 60000) })
 onBeforeUnmount(() => { alive = false; clearInterval(timer); reportController?.abort(); clearArtwork() })
 </script>
 <template>
   <BaseDialog :show="true" :title="`${text('降智检测', 'Quality check')} · ${groupName}`" width="full" @close="close">
     <div class="quality-workspace">
-      <div class="quality-intro"><div><strong>{{ text('鹈鹕测试', 'Pelican test') }}</strong><p>{{ text('每个模型保留最近 10 次结果，仅供人工对比；生成完成不代表质量通过。', 'The latest 10 outputs per model, for manual comparison. Completion is not a quality verdict.') }}</p></div><button type="button" class="quality-control" :disabled="loading" @click="refresh">{{ loading ? text('刷新中…', 'Refreshing…') : text('刷新结果', 'Refresh results') }}</button></div>
+      <div class="quality-intro"><div><strong>{{ text('鹈鹕测试', 'Pelican test') }}</strong><p>{{ text('每个模型保留最近 10 次生成结果，供人工对比。', 'The latest 10 outputs per model, for manual comparison.') }}</p></div><button type="button" class="quality-control" :disabled="loading" @click="refresh">{{ loading ? text('刷新中…', 'Refreshing…') : text('刷新结果', 'Refresh results') }}</button></div>
       <p v-if="failed" class="quality-notice" role="status">{{ text('暂时无法更新，保留上次结果。', 'Refresh failed. Previous results are retained.') }}</p>
-      <p v-if="report?.status === 'stale'" class="quality-notice" role="status">{{ text('最近检测已超过 2 小时，等待新结果。', 'The last test is over 2 hours old. Awaiting new results.') }}</p>
+      <div class="quality-model-tabs" role="group" :aria-label="text('切换模型', 'Choose model')">
+        <button v-for="model in availableModels" :key="model" type="button" :aria-pressed="selectedModel === model" @click="selectModel(model)">{{ model }}</button>
+      </div>
       <div class="quality-layout">
         <aside class="quality-history" :aria-label="text('检测历史', 'Test history')">
-          <button v-for="event in events" :key="event.id" type="button" class="quality-history-item" :aria-pressed="selectedId === event.id" @click="selectedId = event.id"><strong>{{ date(event.created_at) }}</strong><span>{{ verdict(event) }}</span><small>{{ event.model_id }} · {{ duration(event) }}</small></button>
+          <button v-for="event in events" :key="event.id" type="button" class="quality-history-item" :aria-pressed="selected?.id === event.id" @click="selectEvent(event)"><strong>{{ date(event.created_at) }}</strong><span>{{ verdict(event) }}</span><small>{{ duration(event) }}</small></button>
           <p v-if="!events.length" class="quality-empty">{{ loading ? text('正在加载…', 'Loading…') : text('暂无测试结果', 'No test results yet') }}</p>
         </aside>
         <main class="quality-stage">
-          <p class="quality-dates">{{ text('开始：', 'Started: ') }}{{ date(selected?.created_at) }} · {{ text('结束：', 'Finished: ') }}{{ date(selected?.finished_at) }}</p>
-          <div class="quality-model-tabs" role="group" :aria-label="text('切换模型', 'Choose model')"><button v-for="model in availableModels" :key="model" type="button" :aria-pressed="selectedModel === model" @click="selectedModel = model">{{ model }}</button></div>
-          <div class="quality-toolbar"><button type="button" class="quality-control" :aria-pressed="fit" @click="fit = !fit">{{ text('适应宽度', 'Fit to width') }}{{ fit ? ' ✓' : '' }}</button><button type="button" class="quality-control" :aria-pressed="preview" @click="preview = !preview; showSource = false">{{ preview ? text('停止预览', 'Stop preview') : text('播放产物', 'Play output') }}</button><button type="button" class="quality-control" :aria-pressed="showSource" @click="showSource = !showSource">{{ showSource ? text('返回预览', 'Back to preview') : text('查看源码', 'View source') }}</button><span v-if="selected" class="quality-duration">{{ duration(selected) }}</span></div>
-          <div class="quality-preview" :class="{ 'quality-preview-natural': !fit }">
+          <p v-if="modelStale" class="quality-notice" role="status">{{ text('此模型超过 2 小时未收到新结果。', 'No new result for this model in the past 2 hours.') }}</p>
+          <p v-if="selected" class="quality-dates">{{ text('开始：', 'Started: ') }}{{ date(selected.created_at) }} · {{ text('结束：', 'Finished: ') }}{{ date(selected.finished_at) }}</p>
+          <div v-if="selected" class="quality-toolbar">
+            <button type="button" class="quality-control" :aria-pressed="fit" :disabled="!safeDocument" @click="fit = !fit">{{ text('适应宽度', 'Fit to width') }}{{ fit ? ' ✓' : '' }}</button>
+            <button v-if="safeDocument" type="button" class="quality-control" @click="preview = false">{{ text('停止预览', 'Stop preview') }}</button>
+            <button v-if="safeDocument || (!preview && rawArtwork && !showSource)" type="button" class="quality-control" @click="restartPreview">{{ preview ? text('重新播放', 'Replay') : text('播放产物', 'Play output') }}</button>
+            <button v-if="rawArtwork" type="button" class="quality-control" :aria-pressed="showSource" @click="showSource = !showSource; preview = true">{{ showSource ? text('返回预览', 'Back to preview') : text('查看源码', 'View source') }}</button>
+            <span class="quality-duration">{{ duration(selected) }}</span>
+          </div>
+          <div v-if="selected" class="quality-preview" :class="{ 'quality-preview-natural': !fit }">
             <p v-if="artworkLoading" class="quality-empty" role="status">{{ text('正在加载测试产物…', 'Loading test output…') }}</p>
             <button v-else-if="artworkFailed" type="button" class="quality-control quality-retry" @click="loadArtwork">{{ text('加载失败，点击重试', 'Failed to load. Retry') }}</button>
             <pre v-else-if="showSource && rawArtwork" class="quality-source">{{ rawArtwork }}</pre>
-            <iframe v-else-if="safeDocument" :key="selectedId ?? ''" class="quality-artifact" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="text('测试产物', 'Test output')" :srcdoc="safeDocument" />
+            <iframe v-else-if="safeDocument" :key="`${selected.id}-${playback}`" class="quality-artifact" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="text('测试产物', 'Test output')" :srcdoc="safeDocument" />
             <pre v-else-if="preview && rawArtwork" class="quality-source">{{ rawArtwork }}</pre>
             <p v-else class="quality-empty">{{ !preview && !showSource ? text('预览已停止', 'Preview stopped') : text('本条记录没有测试产物。', 'No test output is available for this record.') }}</p>
           </div>

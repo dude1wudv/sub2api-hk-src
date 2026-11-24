@@ -75,12 +75,12 @@ func (r *channelMonitorV2Repository) ListExternalQuality(ctx context.Context, gr
 		FROM (SELECT id,model_id,response_model,status,started_at,finished_at,duration_ms,(artwork <> '') AS has_artwork,imported_at,
 			row_number() OVER (PARTITION BY model_id ORDER BY started_at DESC,id DESC) AS rank
 			FROM external_quality_history WHERE group_id=$1) history
-		WHERE rank <= 10 ORDER BY started_at DESC,id DESC LIMIT 20`, groupID)
+		WHERE rank <= 10 ORDER BY started_at DESC,id DESC LIMIT 40`, groupID)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	events := make([]service.ExternalQualityEvent, 0, 20)
+	events := make([]service.ExternalQualityEvent, 0, 40)
 	for rows.Next() {
 		var event service.ExternalQualityEvent
 		if err := rows.Scan(&event.ID, &event.ModelID, &event.ResponseModel, &event.Status, &event.CreatedAt, &event.FinishedAt, &event.DurationMs, &event.HasArtwork, &event.ImportedAt); err != nil {

@@ -23,11 +23,12 @@ import (
 
 const (
 	productionHistoryMigrationCount = 286
-	candidateMigrationCount         = 354
+	candidateMigrationCount         = 355
 	mcpOAuthMigration               = "249_mcp_oauth.sql"
 )
 
 var currentOnlineFollowupMigrations = []string{
+	"350_external_quality_gpt62_models.sql",
 	"251_group_force_openai_ultrafast.sql",
 	"251_group_usage_rollup_nonblocking_build.sql",
 	"349_group_usage_rollup_retention_nonblocking.sql",
@@ -48,6 +49,7 @@ var currentOnlineFollowupMigrations = []string{
 }
 
 var postHKBaselineMigrations = []string{
+	"350_external_quality_gpt62_models.sql",
 	"251_group_force_openai_ultrafast.sql",
 	"251_group_usage_rollup_nonblocking_build.sql",
 	"349_group_usage_rollup_retention_nonblocking.sql",
@@ -85,6 +87,7 @@ var currentReleaseMigrations = []string{
 }
 
 var candidateOnlyMigrations = []string{
+	"350_external_quality_gpt62_models.sql",
 	"251_group_force_openai_ultrafast.sql",
 	"251_group_usage_rollup_nonblocking_build.sql",
 	"349_group_usage_rollup_retention_nonblocking.sql",
@@ -306,6 +309,7 @@ func TestUpstreamMergeValidation_FeatureBaselineHistoryAndFreshSchemaConverge(t 
 	ctx := context.Background()
 	history := fstest.MapFS{}
 	followups := []string{
+		"350_external_quality_gpt62_models.sql",
 		"251_group_force_openai_ultrafast.sql",
 		"251_group_usage_rollup_nonblocking_build.sql",
 		"349_group_usage_rollup_retention_nonblocking.sql",

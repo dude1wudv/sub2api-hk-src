@@ -132,8 +132,13 @@ func normalizeExternalQualityImport(input ExternalQualityImport, userID int64, n
 		}
 		seen[id.String()] = true
 		event.ID = id.String()
-		if event.GroupID != input.RemoteGroupID || event.Status != "completed" || (event.Model != "gpt-6-astra" && event.Model != "gpt-6.1-sol") {
-			return nil, externalQualityInvalid(fmt.Sprintf("Record %d has an unexpected group, model or status", i+1))
+		if event.GroupID != input.RemoteGroupID || event.Status != "completed" {
+			return nil, externalQualityInvalid(fmt.Sprintf("Record %d has an unexpected group or status", i+1))
+		}
+		switch event.Model {
+		case "gpt-6-astra", "gpt-6.1-sol", "gpt-6.2-astra", "gpt-6.2-sol":
+		default:
+			return nil, externalQualityInvalid(fmt.Sprintf("Record %d has an unexpected model", i+1))
 		}
 		if len(event.ResponseModel) > 128 || !utf8.ValidString(event.ResponseModel) || strings.ContainsAny(event.ResponseModel, "\x00\r\n") {
 			return nil, externalQualityInvalid("Invalid response model")

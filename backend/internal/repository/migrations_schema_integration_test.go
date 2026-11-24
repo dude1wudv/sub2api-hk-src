@@ -49,7 +49,7 @@ func TestMigrationsRunner_HKUpgradeAndFreshReplayConverge(t *testing.T) {
 	}
 	allNames, err := fs.Glob(migrations.FS, "*.sql")
 	require.NoError(t, err)
-	require.Len(t, allNames, 354)
+	require.Len(t, allNames, candidateMigrationCount)
 	var freshDefinitions []string
 	for _, path := range []string{"fresh", "hk_upgrade"} {
 		t.Run(path, func(t *testing.T) {
@@ -164,10 +164,9 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 	// Re-apply migrations to verify idempotency (no errors, no duplicate rows).
 	require.NoError(t, ApplyMigrations(context.Background(), integrationDB))
 
-	// The merged release contains HK 350 + upstream 251 x 2 + reconciliation 349.
 	var applied int
 	require.NoError(t, tx.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM schema_migrations").Scan(&applied))
-	require.Equal(t, 354, applied, "expected the complete merged migration set")
+	require.Equal(t, candidateMigrationCount, applied, "expected the complete merged migration set")
 
 	// users: columns required by repository queries
 	requireColumn(t, tx, "users", "username", "character varying", 100, false)
