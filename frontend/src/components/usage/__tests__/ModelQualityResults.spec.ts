@@ -5,7 +5,7 @@ import ModelQualityResults from '../ModelQualityResults.vue'
 const { getExternalQuality, getExternalQualityArtwork } = vi.hoisted(() => ({ getExternalQuality: vi.fn(), getExternalQualityArtwork: vi.fn() }))
 vi.mock('@/api/externalQuality', () => ({ getExternalQuality, getExternalQualityArtwork }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ locale: ref('en'), t: (key: string) => key }) }))
-afterEach(() => { vi.clearAllMocks(); vi.useRealTimers() })
+afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers() })
 const event = { id: 5, model_id: 'gpt-6-astra', status: 'completed', score: null, created_at: '2026-11-09T00:00:00Z', finished_at: '2026-11-09T00:02:00Z', duration_ms: 120000, has_artwork: true }
 const report = { group_id: 237, model: '', status: 'stale', last_success_at: event.finished_at, events: [event] }
 const mountView = () => mount(ModelQualityResults, { props: { groupId: 237, groupName: 'Plus group' }, global: { stubs: { BaseDialog: { name: 'BaseDialog', template: '<div><slot /></div>' } } } })
@@ -40,6 +40,30 @@ describe('ModelQualityResults dialog', () => {
     expect(wrapper.text()).not.toContain('Passed')
     expect(wrapper.text()).not.toContain('Candy')
     expect(getExternalQualityArtwork).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+  it('offers explicit animation playback for the selected output under reduced motion', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+    getExternalQuality.mockResolvedValue({ ...report, events: [event, { ...event, id: 6 }] })
+    getExternalQualityArtwork.mockResolvedValue({ response_text: '<svg><circle r="4" /></svg>' })
+    const wrapper = mountView()
+    await flushPromises()
+    const play = wrapper.findAll('button').find(button => button.text() === 'Play animation')!
+    const original = wrapper.get('iframe').element
+    expect(wrapper.text()).toContain('Reduce motion is enabled')
+    expect(wrapper.get('iframe').attributes('srcdoc')).not.toContain('window.matchMedia')
+    await play.trigger('click')
+    expect(wrapper.get('iframe').element).not.toBe(original)
+    expect(wrapper.get('iframe').attributes('srcdoc')).toContain('window.matchMedia')
+    expect(getExternalQualityArtwork).toHaveBeenCalledTimes(1)
+    await wrapper.findAll('.quality-history-item')[1].trigger('click')
+    await flushPromises()
+    expect(wrapper.get('iframe').attributes('srcdoc')).not.toContain('window.matchMedia')
+    expect(wrapper.text()).toContain('Play animation')
     wrapper.unmount()
   })
   it('switches exact model and aborts polling when closed', async () => {

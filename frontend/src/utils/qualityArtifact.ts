@@ -14,7 +14,7 @@ export function qualityArtifactDocument(value: string | undefined): string | nul
 }
 
 /** Active outputs run only inside an opaque-origin iframe with sandbox=allow-scripts. */
-export function qualityArtifactPlayableDocument(value: string | undefined): string | null {
+export function qualityArtifactPlayableDocument(value: string | undefined, playMotion = false): string | null {
   if (!value) return null
   const source = value.match(/```(?:html|svg)\s*\n([\s\S]*?)```/i)?.[1] ?? value
   if (!/<(?:svg|html|body|div|canvas|section|article|main)\b/i.test(source)) return null
@@ -57,5 +57,17 @@ export function qualityArtifactPlayableDocument(value: string | undefined): stri
   viewport.name = 'viewport'
   viewport.content = 'width=device-width, initial-scale=1'
   artifact.head.prepend(policy, viewport)
+  if (playMotion) {
+    const script = artifact.createElement('script')
+    if (nonce) script.setAttribute('nonce', nonce)
+    script.textContent = String.raw`(() => {
+      const matchMedia = window.matchMedia.bind(window)
+      window.matchMedia = query => matchMedia(String(query).replace(
+        /\(\s*prefers-reduced-motion(?:\s*:\s*(reduce|no-preference))?\s*\)/gi,
+        (_, preference) => preference?.toLowerCase() === 'no-preference' ? '(min-width: 0px)' : '(max-width: -1px)'
+      ))
+    })()`
+    viewport.after(script)
+  }
   return '<!doctype html>' + artifact.documentElement.outerHTML
 }

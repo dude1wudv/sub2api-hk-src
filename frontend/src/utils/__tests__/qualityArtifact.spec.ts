@@ -40,4 +40,12 @@ describe('qualityArtifactPlayableDocument', () => {
     expect(html).not.toContain('onload=')
     expect(html.indexOf('Content-Security-Policy')).toBeLessThan(html.indexOf('<style>'))
   })
+
+  it('enables script motion before artifact initialization only for explicit playback', () => {
+    const source = '<html><head><script>startRide()</script></head><body><main>art</main></body></html>'
+    expect(qualityArtifactPlayableDocument(source)).not.toContain('window.matchMedia')
+    const html = qualityArtifactPlayableDocument(source, true)!
+    expect(html.indexOf('Content-Security-Policy')).toBeLessThan(html.indexOf('window.matchMedia'))
+    expect(html.indexOf('window.matchMedia')).toBeLessThan(html.indexOf('startRide()'))
+  })
 })
