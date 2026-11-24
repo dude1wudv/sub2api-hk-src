@@ -1,13 +1,21 @@
 name: Setup Go with reusable cache
-description: Install Go and restore module/build caches with a dependency-change fallback.
+description: Install Go and restore module/build caches warmed on the base branch.
 
 inputs:
   go-version-file:
     description: Path to the go.mod file that declares the Go toolchain.
     required: true
   cache-dependency-key:
-    description: Hash of dependency metadata used for the exact cache key.
+    description: Hash of dependency metadata used for cache selection.
     required: true
+
+outputs:
+  cache-hit:
+    description: Whether the exact commit cache was restored.
+    value: ${{ steps.restore.outputs.cache-hit }}
+  cache-key:
+    description: Exact cache key for saving on the base branch.
+    value: ${{ steps.restore.outputs.cache-primary-key }}
 
 runs:
   using: composite
@@ -21,11 +29,15 @@ runs:
         cache: false
 
     - name: Restore Go modules and build cache
-      uses: actions/cache@v6
+      id: restore
+      uses: actions/cache/restore@v6
       with:
         path: |
           ~/go/pkg/mod
           ~/.cache/go-build
-        key: go-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-${{ inputs.cache-dependency-key }}
+        key: go-ci-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-${{ inputs.cache-dependency-key }}-${{ github.event.pull_request.base.sha || github.sha }}
         restore-keys: |
+          go-ci-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-${{ inputs.cache-dependency-key }}-
+          go-ci-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-
+          go-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-${{ inputs.cache-dependency-key }}
           go-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-
