@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useMediaQuery } from '@vueuse/core'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { getExternalQuality, getExternalQualityArtwork, type ExternalQualityEvent, type ExternalQualityReport } from '@/api/externalQuality'
 import { qualityArtifactPlayableDocument } from '@/utils/qualityArtifact'
@@ -13,6 +14,9 @@ const loading = ref(false), failed = ref(false), artworkLoading = ref(false), ar
 const preferredModel = ref<string | null>(null), selectedId = ref<string | number | null>(null), rawArtwork = ref('')
 const preview = ref(true), showSource = ref(false), fit = ref(true)
 const playback = ref(0)
+const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+const playMotion = ref(false)
+const motionPaused = computed(() => reducedMotion.value && !playMotion.value)
 let reportController: AbortController | undefined, artworkController: AbortController | undefined
 let timer: ReturnType<typeof setInterval> | undefined
 let alive = true
@@ -25,7 +29,7 @@ const modelStale = computed(() => {
   const latest = Math.max(...events.value.map(event => Date.parse(event.finished_at ?? event.created_at)))
   return events.value.length > 0 && Date.now() - latest > 2 * 60 * 60 * 1000
 })
-const safeDocument = computed(() => preview.value && !showSource.value ? qualityArtifactPlayableDocument(rawArtwork.value) : null)
+const safeDocument = computed(() => preview.value && !showSource.value ? qualityArtifactPlayableDocument(rawArtwork.value, playMotion.value) : null)
 const date = (value?: string | null) => value ? new Date(value).toLocaleString(locale.value) : '—'
 const duration = (event: ExternalQualityEvent) => event.duration_ms == null ? '—' : `${(event.duration_ms / 1000).toFixed(1)}s`
 const verdict = (event: ExternalQualityEvent) => event.status === 'completed' ? text('生成完成 · 待对比', 'Generated · awaiting review') : event.status === 'success' ? text('正常', 'Passed') : text('降智', 'Degraded')
@@ -38,9 +42,14 @@ function selectEvent(event: ExternalQualityEvent) {
   selectedId.value = event.id === events.value[0]?.id ? null : event.id
 }
 function restartPreview() {
+  playMotion.value = reducedMotion.value
   showSource.value = false
   preview.value = true
   playback.value++
+}
+function stopPreview() {
+  preview.value = false
+  playMotion.value = false
 }
 function clearArtwork() { artworkController?.abort(); rawArtwork.value = ''; artworkLoading.value = false; artworkFailed.value = false }
 async function loadArtwork() {
@@ -69,7 +78,10 @@ async function refresh() {
   finally { if (alive && !controller.signal.aborted) loading.value = false }
 }
 function close() { alive = false; clearInterval(timer); reportController?.abort(); clearArtwork(); emit('close') }
-watch(() => selected.value?.id, () => { void loadArtwork() })
+watch(() => selected.value?.id, () => {
+  playMotion.value = false
+  void loadArtwork()
+})
 watch([preview, showSource], () => {
   if ((preview.value || showSource.value) && !rawArtwork.value && !artworkLoading.value) void loadArtwork()
 })
@@ -94,11 +106,12 @@ onBeforeUnmount(() => { alive = false; clearInterval(timer); reportController?.a
           <p v-if="selected" class="quality-dates">{{ text('开始：', 'Started: ') }}{{ date(selected.created_at) }} · {{ text('结束：', 'Finished: ') }}{{ date(selected.finished_at) }}</p>
           <div v-if="selected" class="quality-toolbar">
             <button type="button" class="quality-control" :aria-pressed="fit" :disabled="!safeDocument" @click="fit = !fit">{{ text('适应宽度', 'Fit to width') }}{{ fit ? ' ✓' : '' }}</button>
-            <button v-if="safeDocument" type="button" class="quality-control" @click="preview = false">{{ text('停止预览', 'Stop preview') }}</button>
-            <button v-if="safeDocument || (!preview && rawArtwork && !showSource)" type="button" class="quality-control" @click="restartPreview">{{ preview ? text('重新播放', 'Replay') : text('播放产物', 'Play output') }}</button>
+            <button v-if="safeDocument" type="button" class="quality-control" @click="stopPreview">{{ text('停止预览', 'Stop preview') }}</button>
+            <button v-if="safeDocument || (!preview && !showSource && (rawArtwork || selected.has_artwork || selected.response_text))" type="button" class="quality-control" @click="restartPreview">{{ motionPaused ? text('播放动画', 'Play animation') : preview ? text('重新播放', 'Replay') : text('播放产物', 'Play output') }}</button>
             <button v-if="rawArtwork" type="button" class="quality-control" :aria-pressed="showSource" @click="showSource = !showSource; preview = true">{{ showSource ? text('返回预览', 'Back to preview') : text('查看源码', 'View source') }}</button>
             <span class="quality-duration">{{ duration(selected) }}</span>
           </div>
+          <p v-if="safeDocument && motionPaused" class="quality-notice">{{ text('系统启用了「减少动态效果」，部分作品会暂停。点击「播放动画」查看这条作品的动作。', 'Reduce motion is enabled. Some outputs start paused. Select Play animation to see this output in motion.') }}</p>
           <div v-if="selected" class="quality-preview" :class="{ 'quality-preview-natural': !fit }">
             <p v-if="artworkLoading" class="quality-empty" role="status">{{ text('正在加载测试产物…', 'Loading test output…') }}</p>
             <button v-else-if="artworkFailed" type="button" class="quality-control quality-retry" @click="loadArtwork">{{ text('加载失败，点击重试', 'Failed to load. Retry') }}</button>
