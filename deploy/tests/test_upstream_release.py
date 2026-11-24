@@ -25,7 +25,7 @@ class UpstreamReleaseTests(unittest.TestCase):
         }
         before = {name: value for name, value in candidate.items()
                   if name not in release.UPSTREAM_MIGRATIONS}
-        self.assertEqual(len(before), 353)
+        self.assertEqual(len(before), 354)
         self.assertEqual(
             release.upstream_migration_allowlist(before, candidate),
             release.UPSTREAM_MIGRATIONS,
