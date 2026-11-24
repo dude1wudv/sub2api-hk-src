@@ -41,11 +41,22 @@ describe('qualityArtifactPlayableDocument', () => {
     expect(html.indexOf('Content-Security-Policy')).toBeLessThan(html.indexOf('<style>'))
   })
 
-  it('enables script motion before artifact initialization only for explicit playback', () => {
-    const source = '<html><head><script>startRide()</script></head><body><main>art</main></body></html>'
-    expect(qualityArtifactPlayableDocument(source)).not.toContain('window.matchMedia')
-    const html = qualityArtifactPlayableDocument(source, true)!
+  it('enables full script and stylesheet motion before artifact initialization', () => {
+    const source = `<html><head>
+      <style media="screen and (prefers-reduced-motion: no-preference)">
+        /* @media (prefers-reduced-motion: reduce) {} */
+        .label::before { content: "@media (prefers-reduced-motion: reduce)"; }
+        @supports (display: grid) {
+          @media (prefers-reduced-motion: reduce), (width < 500px) { .ride { animation: none; } }
+        }
+      </style>
+      <script>startRide()</script></head><body><main>art</main></body></html>`
+    const html = qualityArtifactPlayableDocument(source)!
     expect(html.indexOf('Content-Security-Policy')).toBeLessThan(html.indexOf('window.matchMedia'))
     expect(html.indexOf('window.matchMedia')).toBeLessThan(html.indexOf('startRide()'))
+    expect(html).toContain('media="screen and (min-width: 0px)"')
+    expect(html).toContain('@media (max-width: -1px), (width < 500px)')
+    expect(html).toContain('/* @media (prefers-reduced-motion: reduce) {} */')
+    expect(html).toContain('content: "@media (prefers-reduced-motion: reduce)"')
   })
 })

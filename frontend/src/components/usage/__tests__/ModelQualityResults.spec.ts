@@ -42,7 +42,7 @@ describe('ModelQualityResults dialog', () => {
     expect(getExternalQualityArtwork).not.toHaveBeenCalled()
     wrapper.unmount()
   })
-  it('offers explicit animation playback for the selected output under reduced motion', async () => {
+  it('starts each preview at full motion even when the host prefers reduced motion', async () => {
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: query === '(prefers-reduced-motion: reduce)',
       addEventListener: vi.fn(),
@@ -52,23 +52,16 @@ describe('ModelQualityResults dialog', () => {
     getExternalQualityArtwork.mockResolvedValue({ response_text: '<svg><circle r="4" /></svg>' })
     const wrapper = mountView()
     await flushPromises()
-    const play = wrapper.findAll('button').find(button => button.text() === 'Play animation')!
-    const original = wrapper.get('iframe').element
-    expect(wrapper.text()).toContain('Reduce motion is enabled')
-    expect(wrapper.get('iframe').attributes('srcdoc')).not.toContain('window.matchMedia')
-    await play.trigger('click')
-    expect(wrapper.get('iframe').element).not.toBe(original)
     expect(wrapper.get('iframe').attributes('srcdoc')).toContain('window.matchMedia')
     expect(getExternalQualityArtwork).toHaveBeenCalledTimes(1)
     await wrapper.findAll('.quality-history-item')[1].trigger('click')
     await flushPromises()
-    expect(wrapper.get('iframe').attributes('srcdoc')).not.toContain('window.matchMedia')
-    expect(wrapper.text()).toContain('Play animation')
+    expect(wrapper.get('iframe').attributes('srcdoc')).toContain('window.matchMedia')
     await wrapper.findAll('button').find(button => button.text() === 'Stop preview')!.trigger('click')
     await wrapper.findAll('.quality-history-item')[0].trigger('click')
     expect(wrapper.find('iframe').exists()).toBe(false)
     expect(getExternalQualityArtwork).toHaveBeenCalledTimes(2)
-    await wrapper.findAll('button').find(button => button.text() === 'Play animation')!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Play output')!.trigger('click')
     await flushPromises()
     expect(getExternalQualityArtwork).toHaveBeenLastCalledWith(237, 5, expect.any(AbortSignal))
     expect(wrapper.get('iframe').attributes('srcdoc')).toContain('window.matchMedia')

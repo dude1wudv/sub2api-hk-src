@@ -1,5 +1,10 @@
 import DOMPurify from 'dompurify'
 
+const motionQuery = /\(\s*prefers-reduced-motion(?:\s*:\s*(reduce|no-preference))?\s*\)/gi
+const fullMotionCondition = (_match: string, preference?: string) =>
+  preference?.toLowerCase() === 'no-preference' ? '(min-width: 0px)' : '(max-width: -1px)'
+const styleMediaRule = /\/\*[\s\S]*?\*\/|"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|(@media\b[^{};]*(?=\{))/gi
+
 /** Render model-produced HTML/SVG in an isolated document without active content or network access. */
 export function qualityArtifactDocument(value: string | undefined): string | null {
   if (!value) return null
@@ -14,7 +19,7 @@ export function qualityArtifactDocument(value: string | undefined): string | nul
 }
 
 /** Active outputs run only inside an opaque-origin iframe with sandbox=allow-scripts. */
-export function qualityArtifactPlayableDocument(value: string | undefined, playMotion = false): string | null {
+export function qualityArtifactPlayableDocument(value: string | undefined): string | null {
   if (!value) return null
   const source = value.match(/```(?:html|svg)\s*\n([\s\S]*?)```/i)?.[1] ?? value
   if (!/<(?:svg|html|body|div|canvas|section|article|main)\b/i.test(source)) return null
@@ -24,6 +29,13 @@ export function qualityArtifactPlayableDocument(value: string | undefined, playM
   artifact.close()
   if (artifact.body?.localName !== 'body' || !artifact.head) return null
   artifact.querySelectorAll('base,meta,iframe,frame,frameset,object,embed,form,link').forEach(node => node.remove())
+  artifact.querySelectorAll('style').forEach(style => {
+    const media = style.getAttribute('media')
+    if (media) style.setAttribute('media', media.replace(motionQuery, fullMotionCondition))
+    style.textContent = style.textContent?.replace(styleMediaRule, (match, mediaRule) =>
+      mediaRule ? match.replace(motionQuery, fullMotionCondition) : match,
+    ) ?? ''
+  })
   const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce || ''
   artifact.querySelectorAll('script').forEach(script => {
     if (script.hasAttribute('src') || script.hasAttribute('href') || script.hasAttribute('xlink:href')) script.remove()
@@ -57,17 +69,15 @@ export function qualityArtifactPlayableDocument(value: string | undefined, playM
   viewport.name = 'viewport'
   viewport.content = 'width=device-width, initial-scale=1'
   artifact.head.prepend(policy, viewport)
-  if (playMotion) {
-    const script = artifact.createElement('script')
-    if (nonce) script.setAttribute('nonce', nonce)
-    script.textContent = String.raw`(() => {
-      const matchMedia = window.matchMedia.bind(window)
-      window.matchMedia = query => matchMedia(String(query).replace(
-        /\(\s*prefers-reduced-motion(?:\s*:\s*(reduce|no-preference))?\s*\)/gi,
-        (_, preference) => preference?.toLowerCase() === 'no-preference' ? '(min-width: 0px)' : '(max-width: -1px)'
-      ))
-    })()`
-    viewport.after(script)
-  }
+  const motionScript = artifact.createElement('script')
+  if (nonce) motionScript.setAttribute('nonce', nonce)
+  motionScript.textContent = `(() => {
+    const matchMedia = window.matchMedia.bind(window)
+    window.matchMedia = query => matchMedia(String(query).replace(
+      ${motionQuery},
+      (_, preference) => preference?.toLowerCase() === 'no-preference' ? '(min-width: 0px)' : '(max-width: -1px)'
+    ))
+  })()`
+  viewport.after(motionScript)
   return '<!doctype html>' + artifact.documentElement.outerHTML
 }

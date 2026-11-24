@@ -14,6 +14,48 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend-only: ${{ steps.diff.outputs.frontend-only }}
+    steps:
+      - uses: actions/checkout@v6
+        id: checkout
+        continue-on-error: true
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Detect frontend-only changes
+        id: diff
+        if: steps.checkout.outcome == 'success'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]] &&
+             [[ "$(git rev-parse --verify HEAD^1)" != "$BASE_SHA" ||
+                "$(git rev-parse --verify HEAD^2)" != "$PR_HEAD_SHA" ]]; then
+            echo "::warning::PR merge parents did not match the event. Running full CI."
+            exit 0
+          fi
+
+          changed_paths="$RUNNER_TEMP/ci-changed-paths"
+          if ! git diff --no-ext-diff --no-renames --ignore-submodules=none --name-only -z "$BASE_SHA" HEAD -- > "$changed_paths"; then
+            echo "::warning::Could not read changed paths. Running full CI."
+            exit 0
+          fi
+          [[ -s "$changed_paths" ]] || exit 0
+
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              frontend/src/constants/platformCatalog.builtin.json) exit 0 ;;
+              frontend/*|chat-demo|image2-playground) ;;
+              *) exit 0 ;;
+            esac
+          done < "$changed_paths"
+          echo "frontend-only=true" >> "$GITHUB_OUTPUT"
+
   shell:
     runs-on: ubuntu-latest
     steps:
@@ -27,12 +69,44 @@ jobs:
           make secret-scan
 
   test:
-    if: github.event_name == 'pull_request'
+    needs: [changes, backend-suites]
+    if: ${{ always() && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - name: Check Docker Compose simple mode environment
         run: /bin/sh deploy/tests/docker-compose-simple-mode-env-test.sh
+      - name: Require the backend suites when applicable
+        env:
+          FRONTEND_ONLY: ${{ needs.changes.outputs.frontend-only }}
+          SUITES_RESULT: ${{ needs.backend-suites.result }}
+          UNIT_RESULT: ${{ needs.backend-suites.outputs.unit }}
+          RACE_RESULT: ${{ needs.backend-suites.outputs.race }}
+          INTEGRATION_RESULT: ${{ needs.backend-suites.outputs.integration }}
+        run: |
+          case "$FRONTEND_ONLY:$SUITES_RESULT:$UNIT_RESULT:$RACE_RESULT:$INTEGRATION_RESULT" in
+            *:success:passed:passed:passed|true:skipped:::) ;;
+            *)
+              echo "::error::Backend suites ($SUITES_RESULT): unit=${UNIT_RESULT:-missing}, race=${RACE_RESULT:-missing}, integration=${INTEGRATION_RESULT:-missing}"
+              exit 1
+              ;;
+          esac
+
+  backend-suites:
+    name: Backend ${{ matrix.suite }}
+    needs: changes
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.frontend-only != 'true' }}
+    runs-on: ubuntu-latest
+    outputs:
+      unit: ${{ steps.completed.outputs.unit }}
+      race: ${{ steps.completed.outputs.race }}
+      integration: ${{ steps.completed.outputs.integration }}
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [unit, race, integration]
+    steps:
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-go-cache
         with:
           go-version-file: backend/go.mod
@@ -41,16 +115,48 @@ jobs:
         run: |
           go version | grep -q 'go1.27.4'
       - name: Unit tests
+        if: matrix.suite == 'unit'
         working-directory: backend
         run: make test-unit
       - name: In-flight, incomplete usage, and notification race tests
+        if: matrix.suite == 'race'
         working-directory: backend
         env:
           CGO_ENABLED: '1'
         run: go test -race -tags=unit ./internal/server/middleware ./internal/repository ./internal/service -run 'TestUsageInflight|TestTrackUsageInflight|TestBalanceRejection|TestModelMetadataCatalog|TestIncomplete|TestOpenAIIncomplete|TestOpenAIWSIncomplete|TestHTTPUpstreamForwardSettlesPartialUsageAfterClientDisconnect|TestPricingStartup|TestSchedulerSnapshotRecoversTransient|TestSchedulerSnapshotFiltersTimeBlocked|TestSchedulerFallback|TestGroupForcedOpenAI|TestForcedTier|TestOpenAICompactFallbackReevaluates|TestPrepareOpenAICompactFallbackReapplies' -count=1
       - name: Integration tests
+        if: matrix.suite == 'integration'
         working-directory: backend
         run: make test-integration
+      - name: Record successful suite
+        id: completed
+        env:
+          SUITE: ${{ matrix.suite }}
+        run: echo "$SUITE=passed" >> "$GITHUB_OUTPUT"
+
+  warm-go-cache:
+    needs: changes
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.changes.outputs.frontend-only != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-go-cache
+        id: go-cache
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-key: ${{ hashFiles('backend/go.sum') }}
+      - name: Compile unit tests for the shared cache
+        if: steps.go-cache.outputs.cache-hit != 'true'
+        working-directory: backend
+        run: go test -tags=unit -exec /bin/true -count=1 ./...
+      - name: Save shared Go cache
+        if: steps.go-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ steps.go-cache.outputs.cache-key }}
 
   frontend:
     if: github.event_name == 'pull_request'
@@ -89,7 +195,8 @@ jobs:
         run: go test -tags=embed ./internal/web -run '^TestChat|^TestDeepSeekSuiteAliases|^TestFrontendServer_Middleware|^TestServeEmbedded' -count=1
 
   golangci-lint:
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.frontend-only != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
