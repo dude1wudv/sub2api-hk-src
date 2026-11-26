@@ -18,12 +18,17 @@
         <strong>{{ text('一站式 API 接入中心', 'API Quickstart Hub') }}</strong>
         <p>{{ text('统一支持 OpenAI 与 Anthropic 原生协议，可按密钥自动生成客户端配置并在线自检连通性与实时倍率。', 'Unified OpenAI & Anthropic protocols with one-click client configs, live key ping, and effective rate check.') }}</p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <button type="button" class="portal-button" @click="quickstartOpen = true"><Icon name="bolt" size="sm" />{{ text('一键接入配置', 'Quickstart hub') }}</button>
-        <RouterLink to="/playground" class="portal-button secondary"><Icon name="play" size="sm" />{{ text('在线调试', 'Playground') }}</RouterLink>
-        <button type="button" class="portal-button secondary" @click="docsOpen = true"><Icon name="book" size="sm" />{{ text('接入指南', 'Connection guide') }}</button>
+      <div class="portal-api-access-actions">
+        <MdButton variant="filled" size="sm" @click="quickstartOpen = true">
+          <template #icon><Icon name="bolt" size="sm" aria-hidden="true" /></template>
+          {{ text('一键接入配置', 'Quickstart hub') }}
+        </MdButton>
+        <RouterLink to="/playground" class="portal-button secondary portal-api-access-link"><Icon name="play" size="sm" aria-hidden="true" />{{ text('在线调试', 'Playground') }}</RouterLink>
+        <MdButton variant="outlined" size="sm" @click="docsOpen = true">
+          <template #icon><Icon name="book" size="sm" aria-hidden="true" /></template>
+          {{ text('接入指南', 'Connection guide') }}
+        </MdButton>
       </div>
-      <svg viewBox="0 0 180 76" class="portal-api-ink-route" aria-hidden="true"><path d="M4 58H54L78 22H132L152 44H176" /><circle cx="78" cy="22" r="4.5"/><circle cx="152" cy="44" r="3.5"/></svg>
     </div>
     <p id="key-creation-state" v-if="groupsLoading" class="portal-api-inline-state" role="status">{{ text('正在读取可绑定分组…', 'Loading groups available for your keys…') }}</p>
     <div id="key-creation-state" v-else-if="groupsError" class="portal-error portal-api-inline-state" role="alert">{{ groupsError }} <button type="button" class="portal-inline-button" :disabled="retryRemaining > 0" @click="loadGroups">{{ retryRemaining > 0 ? `${retryRemaining}s` : text('重试分组加载', 'Retry groups') }}</button></div>
@@ -39,8 +44,25 @@
 
       <form v-if="keysKnown && (keyTotal > 0 || hasKeyFilters)" class="portal-api-key-filters" @submit.prevent="applyKeyFilters">
         <label class="portal-api-key-search"><Icon name="search" size="sm" aria-hidden="true" /><input v-model="keySearch" type="search" :aria-label="text('搜索 API Key', 'Search API keys')" :placeholder="text('搜索名称或密钥', 'Search name or key')" /><button type="submit" class="portal-inline-button">{{ text('搜索', 'Search') }}</button></label>
-        <select v-model="keyStatusFilter" :aria-label="text('密钥状态', 'Key status')" @change="applyKeyFilters"><option value="">{{ text('全部状态', 'All statuses') }}</option><option value="active">{{ text('已启用', 'Active') }}</option><option value="inactive">{{ text('已停用', 'Inactive') }}</option><option value="expired">{{ text('已过期', 'Expired') }}</option><option value="quota_exhausted">{{ text('额度用尽', 'Quota exhausted') }}</option></select>
-        <input v-if="groups.length > 1" v-model="groupSearch" type="search" :placeholder="text('搜索分组', 'Search groups')" :aria-label="text('搜索可绑定分组', 'Search available groups')" /><select v-if="groups.length > 1" v-model="keyGroupFilter" :aria-label="text('密钥分组', 'Key group')" @change="applyKeyFilters"><option value="">{{ text('全部分组', 'All groups') }}</option><option value="0">{{ text('未绑定分组', 'No group') }}</option><option v-for="group in filteredGroups" :key="group.id" :value="String(group.id)">{{ group.name }}</option></select>
+        <div class="portal-api-filter-select">
+          <Select
+            v-model="keyStatusFilter"
+            :options="statusFilterOptions"
+            :searchable="false"
+            :aria-label="text('密钥状态', 'Key status')"
+            @change="applyKeyFilters"
+          />
+        </div>
+        <div v-if="groups.length > 1" class="portal-api-filter-select portal-api-filter-select--group">
+          <Select
+            v-model="keyGroupFilter"
+            :options="groupFilterOptions"
+            :searchable="groups.length > 4"
+            :search-placeholder="text('搜索分组', 'Search groups')"
+            :aria-label="text('密钥分组', 'Key group')"
+            @change="applyKeyFilters"
+          />
+        </div>
       </form>
       <div class="portal-api-endpoint">
         <span>{{ text('OpenAI 兼容 Base URL', 'OpenAI-compatible Base URL') }}</span>
@@ -94,13 +116,19 @@
       <nav v-if="keyTotal > 0 && !keysError" class="portal-api-pager" :aria-label="text('密钥分页', 'API key pages')">
         <div class="portal-api-pager-summary">
           <span>{{ text('显示 ', 'Showing ') }}{{ rangeStart }}{{ text(' 至 ', '–') }}{{ rangeEnd }}{{ text(' 共 ', ' of ') }}{{ keyTotal }}{{ text(' 条结果', ' results') }}</span>
-          <label>{{ text('每页', 'Per page') }}
-            <select v-model.number="keyPageSize" :disabled="keysLoading" :aria-label="text('每页密钥数量', 'Keys per page')" @change="changePageSize">
-              <option :value="10">10</option>
-              <option :value="20">20</option>
-              <option :value="50">50</option>
-            </select>
-          </label>
+          <div class="portal-api-pager-size">
+            <span>{{ text('每页', 'Per page') }}</span>
+            <div class="portal-api-pager-select">
+              <Select
+                v-model="keyPageSize"
+                :options="pageSizeOptions"
+                :searchable="false"
+                :disabled="keysLoading"
+                :aria-label="text('每页密钥数量', 'Keys per page')"
+                @change="changePageSize"
+              />
+            </div>
+          </div>
         </div>
         <div class="portal-api-pager-pages">
           <button type="button" :disabled="keysLoading || keyPage <= 1" :aria-label="text('上一页', 'Previous')" @click="goToPage(keyPage - 1)">‹</button>
@@ -162,6 +190,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
+import Select from '@/components/common/Select.vue'
+import { MdButton } from '@/components/md'
 import UseKeyModal from '@/components/keys/UseKeyModal.vue'
 import PortalApiKeyTable from '@/components/portal/PortalApiKeyTable.vue'
 import PortalApiExamples from '@/components/portal/PortalApiExamples.vue'
@@ -197,8 +227,23 @@ const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const plazaEnabled = computed(() => resolveFeatureFlag(appStore.cachedPublicSettings, FeatureFlags.modelPlaza))
 
 const groups = ref<Group[]>([])
-const groupSearch = ref('')
-const filteredGroups = computed(() => groups.value.filter(group => `${group.name} ${group.description || ''}`.toLowerCase().includes(groupSearch.value.trim().toLowerCase())))
+const statusFilterOptions = computed(() => [
+  { value: '', label: text('全部状态', 'All statuses') },
+  { value: 'active', label: text('已启用', 'Active') },
+  { value: 'inactive', label: text('已停用', 'Inactive') },
+  { value: 'expired', label: text('已过期', 'Expired') },
+  { value: 'quota_exhausted', label: text('额度用尽', 'Quota exhausted') },
+])
+const groupFilterOptions = computed(() => [
+  { value: '', label: text('全部分组', 'All groups') },
+  { value: '0', label: text('未绑定分组', 'No group') },
+  ...groups.value.map(group => ({ value: String(group.id), label: group.name, description: group.description || '' })),
+])
+const pageSizeOptions = [
+  { value: 10, label: '10' },
+  { value: 20, label: '20' },
+  { value: 50, label: '50' },
+]
 const { remaining: retryRemaining, start: startRetryCooldown } = useRetryCooldown()
 const groupsLoading = ref(true)
 const groupsError = ref('')
@@ -539,14 +584,12 @@ onBeforeUnmount(() => {
   padding: 28px 0 64px;
 }
 .portal-api-intro { margin:10px 0 0; font-size:14px; line-height:1.7; color:rgb(var(--ink-2)); }
-.portal-api-access-strip { display:flex; align-items:center; justify-content:space-between; gap:24px; position:relative; isolation:isolate; overflow:hidden; padding:20px 24px; margin-bottom:24px; border:1px solid rgb(var(--brand-moss) / .24); border-radius:var(--radius-card); background:linear-gradient(135deg, rgb(var(--brand-moss) / .08) 0%, rgb(var(--surface)) 68%); box-shadow:var(--shadow-panel); }
+.portal-api-access-strip { display:flex; align-items:center; justify-content:space-between; gap:24px; position:relative; padding:20px 24px; margin-bottom:24px; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); box-shadow:var(--shadow-panel); }
 .portal-api-access-copy { position:relative; z-index:1; display:grid; gap:4px; }
-.portal-api-access-strip strong { font-size:16px; font-weight:650; letter-spacing:-0.01em; color:rgb(var(--ink)); }
+.portal-api-access-strip strong { font-size:15.5px; font-weight:650; letter-spacing:-0.01em; color:rgb(var(--ink)); }
 .portal-api-access-copy p { margin:0; font-size:13.5px; color:rgb(var(--ink-2)); line-height:1.55; }
-.portal-api-access-strip .portal-button { z-index:1; flex-shrink:0; }
-.portal-api-ink-route { position:absolute; width:190px; height:80px; top:50%; transform:translateY(-50%); right:160px; z-index:0; color:rgb(var(--brand-moss)); opacity:.22; pointer-events:none; }
-.portal-api-ink-route path { fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-.portal-api-ink-route circle { fill:currentColor; }
+.portal-api-access-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; flex-shrink:0; }
+.portal-api-access-link { min-height:34px; padding:6px 14px; font-size:13px; border-radius:var(--radius-control); }
 .portal-api-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; }
 .portal-api-eyebrow { margin:0 0 6px; color:rgb(var(--ink-3)); font-size:13px; font-weight:650; letter-spacing:.08em; }
 .portal-api-title-row { display:flex; align-items:center; gap:10px; }
@@ -563,9 +606,9 @@ onBeforeUnmount(() => {
 .portal-api-inline-state { margin-top:18px; font-size:13.5px; }
 .portal-api-keys { scroll-margin-top:80px; }
 .portal-api-table-heading { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-.portal-api-bulk-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:0 0 18px; padding:14px 16px; border:1px solid rgb(var(--brand-moss) / .3); border-radius:12px; background:rgb(var(--surface)); box-shadow:var(--shadow-panel); font-size:13px; }
+.portal-api-bulk-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:0 0 18px; padding:14px 16px; border:1px solid rgb(var(--line-strong)); border-radius:12px; background:rgb(var(--surface)); box-shadow:var(--shadow-panel); font-size:13px; }
 .portal-api-bulk-toolbar label { display:inline-flex; align-items:center; gap:8px; font-weight:500; }
-.portal-api-bulk-toolbar input { width:15px; height:15px; accent-color:rgb(var(--brand-moss)); }
+.portal-api-bulk-toolbar input { width:15px; height:15px; accent-color:rgb(var(--ink)); }
 .portal-api-bulk-toolbar p { flex-basis:100%; margin:0; font-size:12.5px; color:rgb(var(--ink-3)); }
 .portal-api-bulk-toolbar .portal-button { min-height:32px; padding:5px 12px; }
 .portal-api-bulk-toolbar .portal-inline-button:disabled { opacity:.45; cursor:not-allowed; }
@@ -575,17 +618,14 @@ onBeforeUnmount(() => {
 .portal-api-key-search:hover { border-color:rgb(var(--line-strong)); }
 .portal-api-key-search:focus-within { border-color:rgb(var(--focus-ring)); box-shadow:0 0 0 3px rgb(var(--focus-ring) / .14); }
 .portal-api-key-search > button { flex-shrink:0; }
-.portal-api-key-filters select,
-.portal-api-key-filters > input { min-width:120px; max-width:230px; min-height:40px; padding:7px 12px; border:1px solid rgb(var(--line)); border-radius:var(--radius-control); background-color:rgb(var(--surface)); color:rgb(var(--ink)); font:inherit; font-size:13.5px; transition:border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease; }
-.portal-api-key-filters select { padding-right:28px; }
-.portal-api-key-filters > :is(select, input):hover { border-color:rgb(var(--line-strong)); }
-.portal-api-key-filters > :is(select, input):focus { border-color:rgb(var(--focus-ring)); box-shadow:0 0 0 3px rgb(var(--focus-ring) / .14); outline:none; }
+.portal-api-filter-select { min-width:152px; max-width:240px; }
+.portal-api-filter-select--group { min-width:190px; max-width:280px; }
 .portal-api-endpoint { display:inline-flex; max-width:100%; align-items:center; gap:8px; margin:0 0 16px; padding:6px 8px 6px 14px; border:1px solid rgb(var(--line)); border-radius:999px; background:rgb(var(--surface)); box-shadow:0 1px 2px rgb(15 23 42 / .03); color:rgb(var(--ink-2)); font-size:13px; }
 .portal-api-endpoint > span { flex:none; white-space:nowrap; }
-.portal-api-endpoint-tag { padding:2px 8px; border-radius:999px; background:rgb(var(--brand-moss) / .12); color:rgb(var(--brand-moss)); font-size:12px; font-weight:600; }
+.portal-api-endpoint-tag { padding:2px 8px; border-radius:999px; background:rgb(var(--surface-2)); border:1px solid rgb(var(--line)); color:rgb(var(--ink-2)); font-size:12px; font-weight:600; }
 .portal-api-endpoint code { min-width:0; overflow:hidden; color:rgb(var(--ink)); font-family:var(--font-mono); font-size:12.5px; text-overflow:ellipsis; white-space:nowrap; }
 .portal-api-endpoint button { display:inline-flex; flex:none; align-items:center; justify-content:center; width:28px; height:28px; margin-left:auto; padding:4px; border:0; border-radius:999px; color:rgb(var(--ink-2)); background:rgb(var(--surface-2)); cursor:pointer; transition:color var(--motion-fast) ease, background-color var(--motion-fast) ease; }
-.portal-api-endpoint button:hover:not(:disabled) { color:rgb(var(--brand-moss)); background:rgb(var(--brand-moss) / .12); }
+.portal-api-endpoint button:hover:not(:disabled) { color:rgb(var(--ink)); background:rgb(var(--line)); }
 .portal-api-endpoint button:disabled { opacity:.4; cursor:not-allowed; }
 .portal-api-key-state { padding:40px 24px; border:1px dashed rgb(var(--line-strong) / .7); border-radius:var(--radius-card); color:rgb(var(--ink-3)); background:rgb(var(--surface)); text-align:center; font-size:13.5px; box-shadow:var(--shadow-panel); }
 .portal-api-key-state p { margin:0 0 16px; }
@@ -594,19 +634,20 @@ onBeforeUnmount(() => {
 .portal-api-created-key > button:last-child { margin-left:auto; }
 .portal-api-pager { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:18px; color:rgb(var(--ink-2)); font-size:13px; }
 .portal-api-pager-summary { display:flex; align-items:center; flex-wrap:wrap; gap:12px; font-variant-numeric:tabular-nums; }
-.portal-api-pager-summary label { display:inline-flex; align-items:center; gap:8px; }
-.portal-api-pager select, .portal-api-pager-pages button { min-width:34px; min-height:34px; padding:0 9px; border:1px solid rgb(var(--line)); border-radius:8px; background:rgb(var(--surface)); color:rgb(var(--ink)); font-variant-numeric:tabular-nums; transition:border-color var(--motion-fast) ease, background-color var(--motion-fast) ease; }
-.portal-api-pager select:hover:not(:disabled), .portal-api-pager-pages button:hover:not(:disabled):not([aria-current='page']) { border-color:rgb(var(--line-strong)); background:rgb(var(--surface-2)); }
+.portal-api-pager-size { display:inline-flex; align-items:center; gap:8px; }
+.portal-api-pager-select { width:84px; }
+.portal-api-pager-pages button { min-width:34px; min-height:34px; padding:0 9px; border:1px solid rgb(var(--line)); border-radius:8px; background:rgb(var(--surface)); color:rgb(var(--ink)); font-variant-numeric:tabular-nums; transition:border-color var(--motion-fast) ease, background-color var(--motion-fast) ease; }
+.portal-api-pager-pages button:hover:not(:disabled):not([aria-current='page']) { border-color:rgb(var(--line-strong)); background:rgb(var(--surface-2)); }
 .portal-api-pager-pages { display:flex; align-items:center; gap:6px; }
 .portal-api-pager-pages button[aria-current='page'] { border-color:rgb(var(--action-bg)); background:rgb(var(--action-bg)); color:rgb(var(--action-text)); font-weight:600; }
 .portal-api-pager button:disabled { color:rgb(var(--ink-3)); opacity:.5; cursor:not-allowed; }
 .portal-api-pager-gap { padding:0 2px; }
 .portal-api-delete-name { margin:16px 0; padding:10px 12px; border-radius:8px; background:rgb(var(--surface-2)); font-weight:600; overflow-wrap:anywhere; }
 .portal-api-guide { display:grid; gap:14px; padding-left:22px; list-style:decimal; line-height:1.65; }
-.portal-api-guide a { color:rgb(var(--brand-moss)); text-decoration:underline; text-underline-offset:3px; }
+.portal-api-guide a { color:rgb(var(--ink)); font-weight:550; text-decoration:underline; text-underline-offset:3px; }
 .portal-api-ccs-choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:16px; }
 .portal-api-ccs-choices button { display:flex; min-height:120px; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:16px; border:1px solid rgb(var(--line)); border-radius:12px; background:rgb(var(--surface)); color:rgb(var(--ink)); font:inherit; cursor:pointer; transition:border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease; }
-.portal-api-ccs-choices button:hover { border-color:rgb(var(--brand-moss)); background:rgb(var(--brand-moss) / .06); box-shadow:var(--shadow-panel); }
+.portal-api-ccs-choices button:hover { border-color:rgb(var(--ink)); background:rgb(var(--surface-2)); box-shadow:var(--shadow-panel); }
 .portal-api-ccs-choices span { color:rgb(var(--ink-3)); font-size:13px; text-align:center; }
 @media(max-width:1199px) {
   .portal-api-page { width:calc(100% - 48px); }
@@ -615,7 +656,6 @@ onBeforeUnmount(() => {
   .portal-api-icon-button, .portal-api-endpoint button { width:44px; height:44px; }
   .portal-api-header-actions .portal-button { min-height:44px; white-space:normal; }
   .portal-api-access-strip { padding:18px; align-items:flex-start; flex-direction:column; gap:14px; }
-  .portal-api-ink-route { display:none; }
   .portal-api-page { width:calc(100% - 32px); padding:18px 0 48px; }
   .portal-api-title-row h1 { font-size:22px; }
   .portal-api-header { flex-direction:column; }
@@ -623,8 +663,7 @@ onBeforeUnmount(() => {
   .portal-api-key-filters { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .portal-api-key-search { min-width:0; max-width:none; width:100%; grid-column:1 / -1; }
   .portal-api-key-search input { font-size:16px; }
-  .portal-api-key-filters > :is(select, input) { width:100%; min-width:0; max-width:none; min-height:44px; font-size:16px; }
-  .portal-api-key-filters > select:last-child { grid-column:1 / -1; }
+  .portal-api-filter-select, .portal-api-filter-select--group { width:100%; min-width:0; max-width:none; }
   .portal-api-endpoint { display:grid; grid-template-columns:minmax(0,1fr) auto 44px; width:100%; gap:4px 8px; padding:10px 12px; border-radius:var(--radius-control); }
   .portal-api-endpoint > span:first-child { white-space:normal; }
   .portal-api-endpoint code { grid-column:1 / 3; grid-row:2; overflow:visible; white-space:normal; overflow-wrap:anywhere; }

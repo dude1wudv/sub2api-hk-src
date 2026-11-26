@@ -172,7 +172,7 @@ onBeforeUnmount(rememberScroll)
 </script>
 
 <style scoped>
-.admin-navigation { position:relative; isolation:isolate; --active-indicator-fill:rgb(var(--brand-moss) / .12); --active-indicator-radius:10px; --active-indicator-edge:rgb(var(--brand-moss) / .24); }
+.admin-navigation { position:relative; isolation:isolate; --active-indicator-fill:rgb(var(--surface-2)); --active-indicator-radius:10px; --active-indicator-edge:rgb(var(--line)); }
 .admin-navigation .admin-nav-item { position:relative; z-index:1; }
 .admin-navigation .admin-nav-item.active { background:transparent; color:rgb(var(--ink)); }
 .admin-account-menu :deep(.motion-preference-toggle) { width:100%; justify-content:flex-start; font-size:13.5px; border-radius:8px; }

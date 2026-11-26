@@ -62,6 +62,9 @@
               @click="selectGroup(group.id)"
             >
               <span class="key-radio" aria-hidden="true">{{ isSelected(group.id) ? '✓' : '+' }}</span>
+              <span class="key-group-platform-icon" aria-hidden="true">
+                <PlatformIcon :platform="group.platform" size="sm" />
+              </span>
               <span class="key-group-copy">
                 <strong class="key-group-title">
                   <span
@@ -108,7 +111,11 @@
             <div class="key-routing-heading"><h4>{{ text('候选分组顺序', 'Routing order') }}</h4><span>{{ form.routing.length }} / 10</span></div>
             <ol v-if="form.routing.length" class="routing-order">
               <li v-for="(id, index) in form.routing" :key="id" :class="{ unavailable: !routingGroups.some(group => group.id === id) }">
-                <span class="route-number">{{ index + 1 }}</span><div class="route-copy"><strong>{{ groups.find(group => group.id === id)?.name || `#${id}` }}</strong><small v-if="!routingGroups.some(group => group.id === id)">{{ text('不可用，请移除或替换', 'Unavailable — remove or replace') }}</small><small v-else-if="index === 0">{{ text('同分时首选', 'First when tied') }}</small><small v-else>{{ text('回退候选', 'Fallback group') }}</small></div>
+                <span class="route-number">{{ index + 1 }}</span>
+                <span v-if="groups.find(group => group.id === id)" class="key-group-platform-icon key-group-platform-icon--sm" aria-hidden="true">
+                  <PlatformIcon :platform="groups.find(group => group.id === id)!.platform" size="xs" />
+                </span>
+                <div class="route-copy"><strong>{{ groups.find(group => group.id === id)?.name || `#${id}` }}</strong><small v-if="!routingGroups.some(group => group.id === id)">{{ text('不可用，请移除或替换', 'Unavailable — remove or replace') }}</small><small v-else-if="index === 0">{{ text('同分时首选', 'First when tied') }}</small><small v-else>{{ text('回退候选', 'Fallback group') }}</small></div>
                 <div class="route-actions"><button type="button" :disabled="index === 0" :aria-label="text(`上移第${index + 1}个分组`, `Move group ${index + 1} up`)" @click="moveRouting(index, -1)">↑</button><button type="button" :disabled="index === form.routing.length - 1" :aria-label="text(`下移第${index + 1}个分组`, `Move group ${index + 1} down`)" @click="moveRouting(index, 1)">↓</button><button type="button" :aria-label="text(`移除第${index + 1}个分组`, `Remove group ${index + 1}`)" @click="removeRouting(index)">×</button></div>
               </li>
             </ol>
@@ -119,7 +126,12 @@
             <h4>{{ text('所选分组', 'Selected group') }}</h4>
             <div v-if="selectedGroup" class="key-selected-summary">
               <div class="key-selected-top">
-                <strong>{{ selectedGroup.name }}</strong>
+                <span class="key-selected-identity">
+                  <span class="key-group-platform-icon key-group-platform-icon--sm" aria-hidden="true">
+                    <PlatformIcon :platform="selectedGroup.platform" size="sm" />
+                  </span>
+                  <strong>{{ selectedGroup.name }}</strong>
+                </span>
                 <span class="key-rate-badge" :class="rateTierClass(selectedGroup)">
                   {{ text('分组倍率 ', 'Group rate ') }}<b>{{ rate(selectedGroup) }}×</b>
                 </span>
@@ -146,7 +158,17 @@
           </div>
           <label class="portal-field">{{ text('Key 并发上限', 'Key concurrency limit') }}<input v-model.number="form.concurrency" type="number" min="0" step="1" required data-test="key-concurrency" /><small>{{ text('0 为不额外限制，仍受用户和账号并发限制。', '0 adds no key limit; user and account limits still apply.') }}</small></label>
           <details class="key-advanced"><summary>{{ text('高级设置', 'Advanced settings') }}</summary>
-            <label class="portal-field">{{ text('Anthropic 缓存时长', 'Anthropic cache duration') }}<select v-model="form.cacheTtl" data-test="anthropic-cache-ttl"><option value="inherit">{{ text('跟随账号与全局设置', 'Follow account and global settings') }}</option><option value="off">{{ text('关闭覆盖', 'Disable override') }}</option><option value="5m">{{ text('强制 5 分钟', 'Force 5 minutes') }}</option><option value="1h">{{ text('强制 1 小时', 'Force 1 hour') }}</option></select><small>{{ text('仅对原生 Anthropic 生效（不包括 Bedrock）；关闭覆盖时按上游返回的用量计费。', 'Applies only to native Anthropic, excluding Bedrock. Disabling the override uses upstream usage.') }}</small></label>
+            <div class="portal-field">
+              <span>{{ text('Anthropic 缓存时长', 'Anthropic cache duration') }}</span>
+              <Select
+                v-model="form.cacheTtl"
+                :options="cacheTtlOptions"
+                :searchable="false"
+                :aria-label="text('Anthropic 缓存时长', 'Anthropic cache duration')"
+                data-test="anthropic-cache-ttl"
+              />
+              <small>{{ text('仅对原生 Anthropic 生效（不包括 Bedrock）；关闭覆盖时按上游返回的用量计费。', 'Applies only to native Anthropic, excluding Bedrock. Disabling the override uses upstream usage.') }}</small>
+            </div>
             <div class="key-rate-fields"><label v-for="field in rateFields" :key="field.key" class="portal-field">{{ field.label }}<input v-model.number="form[field.key]" type="number" min="0" step="0.01" required /></label></div><p class="key-hint">{{ text('窗口限额按 USD 计算，0 为不限。', 'Window limits are in USD; 0 means unlimited.') }}</p>
             <div v-if="editing" class="key-resets"><label><input v-model="form.resetQuota" type="checkbox" />{{ text('重置已用额度', 'Reset used quota') }}</label><label><input v-model="form.resetRates" type="checkbox" />{{ text('重置限流计数', 'Reset rate-limit usage') }}</label><small>{{ text('仅勾选后保存才会重置。', 'Resets apply only when selected and saved.') }}</small></div>
             <label class="portal-field">{{ text('IP 白名单（每行一个 IP 或 CIDR）', 'IP allowlist (one IP/CIDR per line)') }}<textarea v-model="form.allow" rows="2" /></label>
@@ -179,6 +201,8 @@ import { computed, reactive, ref, toRef, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PortalDialog from './PortalDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
+import PlatformIcon from '@/components/common/PlatformIcon.vue'
+import Select from '@/components/common/Select.vue'
 import GroupChangeIndicator from '@/components/common/GroupChangeIndicator.vue'
 import { keysAPI } from '@/api/keys'
 import { useOnboardingStore } from '@/stores/onboarding'
@@ -200,6 +224,12 @@ const category = ref<'all' | KeyGroupProvider>('all')
 const quickFilter = ref<'all' | 'drop' | 'value' | 'premium'>('all')
 const routingGroups = computed(() => props.groups.filter(isSmartRoutingGroup))
 const form = reactive({ name: '', group: '', smart: false, quota: 0, concurrency: 0, cacheTtl: 'inherit' as NonNullable<ApiKey['anthropic_cache_ttl_mode']>, days: '' as number | string, expiry: '', limit5h: 0, limit1d: 0, limit7d: 0, allow: '', block: '', custom: '', routing: [] as number[], resetQuota: false, resetRates: false })
+const cacheTtlOptions = computed(() => [
+  { value: 'inherit', label: text('跟随账号与全局设置', 'Follow account and global settings') },
+  { value: 'off', label: text('关闭覆盖', 'Disable override') },
+  { value: '5m', label: text('强制 5 分钟', 'Force 5 minutes') },
+  { value: '1h', label: text('强制 1 小时', 'Force 1 hour') },
+])
 const eligibleGroups = computed(() => form.smart ? routingGroups.value : props.groups)
 const selectedGroup = computed(() => props.groups.find(group => String(group.id) === form.group))
 const providers = computed(() => [
@@ -332,7 +362,7 @@ async function submit() {
 .key-picker,.key-configuration { min-width:0; padding:24px 28px; }
 .key-picker { border-right:1px solid rgb(var(--line)); background:rgb(var(--surface-2) / .55); }
 .key-editor h3 { display:flex; align-items:center; gap:10px; margin:0 0 18px; font-size:15.5px; font-weight:650; letter-spacing:-0.01em; color:rgb(var(--ink)); }
-.key-step { display:grid; place-items:center; width:26px; height:26px; border-radius:8px; background:rgb(var(--brand-moss)); color:#fff; font-family:var(--font-mono); font-size:12.5px; font-weight:700; }
+.key-step { display:grid; place-items:center; width:26px; height:26px; border-radius:8px; background:rgb(var(--action-bg)); color:rgb(var(--action-text)); font-family:var(--font-mono); font-size:12.5px; font-weight:700; }
 .key-mode { display:flex; padding:4px; margin-bottom:14px; border:1px solid rgb(var(--line)); border-radius:10px; background:rgb(var(--surface-2)); }
 .key-mode button { flex:1; padding:8px 10px; border:0; border-radius:7px; font:inherit; font-size:13px; font-weight:500; color:rgb(var(--ink-2)); background:transparent; cursor:pointer; transition:background-color var(--motion-fast) ease, color var(--motion-fast) ease; }
 .key-mode button[aria-pressed=true] { background:rgb(var(--surface)); color:rgb(var(--ink)); font-weight:650; box-shadow:0 1px 3px rgb(15 23 42 / .1); }
@@ -340,9 +370,9 @@ async function submit() {
 .key-search input { width:100%; min-width:0; padding:9px 0; border:0; background:transparent; color:rgb(var(--ink)); font:inherit; font-size:13.5px; outline:none; }
 .key-search:focus-within { border-color:rgb(var(--focus-ring)); box-shadow:0 0 0 3px rgb(var(--focus-ring) / .16); }
 .key-providers { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 10px; }
-.key-providers button { border:1px solid rgb(var(--line)); border-radius:8px; background:rgb(var(--surface)); padding:5px 10px; color:rgb(var(--ink-2)); font:inherit; font-size:12.5px; font-weight:550; cursor:pointer; transition:border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, color var(--motion-fast) ease; }
+.key-providers button { border:1px solid rgb(var(--line)); border-radius:999px; background:rgb(var(--surface)); padding:5px 11px; color:rgb(var(--ink-2)); font:inherit; font-size:12.5px; font-weight:550; cursor:pointer; transition:border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, color var(--motion-fast) ease; }
 .key-providers button:hover { border-color:rgb(var(--line-strong)); color:rgb(var(--ink)); }
-.key-providers button[aria-pressed=true] { background:rgb(var(--ink)); color:rgb(var(--surface)); border-color:rgb(var(--ink)); font-weight:600; }
+.key-providers button[aria-pressed=true] { background:rgb(var(--action-bg)); color:rgb(var(--action-text)); border-color:rgb(var(--action-bg)); font-weight:600; }
 .key-providers span { margin-left:4px; opacity:.75; font-variant-numeric:tabular-nums; }
 .key-quick-filters { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
 .key-quick-pill {
@@ -391,10 +421,10 @@ async function submit() {
   transition:border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
 }
 .key-group-card.is-price-drop {
-  border-left:3px solid #10b981;
+  border-color: rgb(16 185 129 / .38);
 }
 .key-group-card.is-premium-card {
-  border-left:3px solid #6366f1;
+  border-color: rgb(var(--line-strong));
 }
 .key-group-card:hover:not(:disabled) {
   border-color:rgb(var(--line-strong));
@@ -402,14 +432,16 @@ async function submit() {
   box-shadow:0 3px 10px rgb(15 23 42 / .06);
 }
 .key-group-card.selected {
-  border-color:rgb(var(--brand-moss));
-  background:rgb(var(--brand-moss) / .08);
-  box-shadow:0 0 0 1px rgb(var(--brand-moss) / .3), 0 4px 12px rgb(var(--brand-moss) / .1);
+  border-color:rgb(var(--ink));
+  background:rgb(var(--surface));
+  box-shadow:0 0 0 1px rgb(var(--ink)), 0 4px 12px rgb(13 13 15 / .08);
 }
 .key-group-card:disabled { cursor:default; }
 .key-group-card:disabled:not(.selected) { opacity:.45; }
-.key-radio { display:grid; place-items:center; flex-shrink:0; width:20px; height:20px; margin-top:1px; border:1.5px solid rgb(var(--line-strong)); border-radius:50%; color:rgb(var(--ink-3)); font-size:11px; font-weight:700; }
-.key-group-card.selected .key-radio { color:#fff; background:rgb(var(--brand-moss)); border-color:rgb(var(--brand-moss)); }
+.key-radio { display:grid; place-items:center; flex-shrink:0; width:20px; height:20px; margin-top:4px; border:1.5px solid rgb(var(--line-strong)); border-radius:50%; color:rgb(var(--ink-3)); font-size:11px; font-weight:700; }
+.key-group-card.selected .key-radio { color:rgb(var(--action-text)); background:rgb(var(--action-bg)); border-color:rgb(var(--action-bg)); }
+.key-group-platform-icon { display:inline-grid; place-items:center; width:30px; height:30px; flex-shrink:0; border-radius:8px; border:1px solid rgb(var(--line)); background:rgb(var(--surface)); margin-top:1px; }
+.key-group-platform-icon--sm { width:26px; height:26px; border-radius:7px; margin-top:0; }
 .key-group-copy { display:grid; gap:6px; min-width:0; flex:1; }
 .key-group-title { display:flex; align-items:center; gap:7px; font-size:14px; font-weight:650; color:rgb(var(--ink)); line-height:1.4; }
 .key-group-name-text { overflow-wrap:anywhere; }
@@ -447,16 +479,17 @@ async function submit() {
 .key-rate-badge small { font-size:11px; opacity:.82; color:inherit; }
 .key-rate-badge b { font-family:var(--font-mono); font-size:14px; font-weight:750; }
 .key-rate-badge.tier-deal { background:#dcfce7; color:#047857; border:1px solid #6ee7b7; }
-.key-rate-badge.tier-good { background:rgb(var(--brand-moss) / .12); color:rgb(var(--brand-moss)); border:1px solid rgb(var(--brand-moss) / .28); }
+.key-rate-badge.tier-good { background:rgb(var(--surface-2)); color:rgb(var(--ink)); border:1px solid rgb(var(--line-strong)); }
 .key-rate-badge.tier-standard { background:rgb(var(--surface-2)); color:rgb(var(--ink)); border:1px solid rgb(var(--line)); }
 :global(.dark) .key-rate-badge.tier-deal { background:rgba(16,185,129,.22); color:#6ee7b7; border-color:rgba(52,211,153,.45); }
-.key-user-rate { color:rgb(var(--brand-moss)) !important; font-weight:600; }
+.key-user-rate { color:rgb(var(--ink)) !important; font-weight:600; }
 .key-peak-note { color:rgb(var(--text-warn)) !important; }
 .key-count { display:flex; justify-content:space-between; margin:14px 0 0; padding-top:12px; border-top:1px solid rgb(var(--line)); color:rgb(var(--ink-3)); font-size:12.5px; font-variant-numeric:tabular-nums; }
 .key-editor h4 { margin:0 0 10px; font-size:13px; font-weight:600; color:rgb(var(--ink-2)); }
 .key-selected { margin-bottom:20px; }
-.key-selected-summary { display:grid; gap:8px; padding:14px 16px; border:1px solid rgb(var(--brand-moss) / .35); border-radius:12px; background:rgb(var(--brand-moss) / .08); font-size:13px; }
+.key-selected-summary { display:grid; gap:8px; padding:14px 16px; border:1.5px solid rgb(var(--ink) / .22); border-radius:12px; background:rgb(var(--surface-2) / .55); font-size:13px; }
 .key-selected-top { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.key-selected-identity { display:inline-flex; align-items:center; gap:9px; min-width:0; }
 .key-selected-top strong { font-size:14.5px; font-weight:650; color:rgb(var(--ink)); overflow-wrap:anywhere; }
 .key-selected-summary small { color:rgb(var(--ink-2)); line-height:1.6; white-space:pre-line; overflow-wrap:anywhere; }
 .key-selected-empty { margin:0 0 20px; padding:18px 16px; border:1px dashed rgb(var(--line-strong) / .8); border-radius:10px; color:rgb(var(--ink-3)); font-size:13px; line-height:1.65; background:rgb(var(--surface-2) / .35); }
@@ -464,13 +497,14 @@ async function submit() {
 .key-editor .portal-field { margin-bottom:16px; font-size:13px; gap:7px; }
 .key-editor .portal-field input,.key-editor .portal-field textarea { width:100%; min-width:0; padding:9px 12px; border-radius:var(--radius-control); font-size:13.5px; }
 .key-editor .portal-field small { color:rgb(var(--ink-3)); font-size:12px; line-height:1.5; }
-.key-advanced { margin-top:4px; border-top:1px solid rgb(var(--line)); }
-.key-advanced summary { cursor:pointer; padding:14px 0; color:rgb(var(--ink-2)); font-size:13px; font-weight:550; }
+.key-advanced { margin-top:8px; padding:0 14px; border:1px solid rgb(var(--line)); border-radius:12px; background:rgb(var(--surface-2) / .3); }
+.key-advanced summary { cursor:pointer; padding:13px 0; color:rgb(var(--ink)); font-size:13px; font-weight:600; }
+.key-advanced[open] { padding-bottom:6px; }
 .key-rate-fields { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 .key-rate-fields .portal-field { margin-bottom:0; }
 .key-resets { display:grid; gap:10px; margin:10px 0 20px; font-size:13px; }
 .key-resets label { display:flex; align-items:center; gap:8px; }
-.key-resets input { accent-color:rgb(var(--brand-moss)); }
+.key-resets input { accent-color:rgb(var(--ink)); }
 .key-resets small,.key-hint { color:rgb(var(--ink-3)); font-size:12.5px; line-height:1.65; }
 .key-hint { margin:8px 0 16px; }
 .key-empty { padding:30px 10px; color:rgb(var(--ink-3)); font-size:13px; text-align:center; }
@@ -479,7 +513,7 @@ async function submit() {
 .routing-order { display:grid; gap:8px; padding:0; margin:0; list-style:none; }
 .routing-order li { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid rgb(var(--line)); border-radius:10px; background:rgb(var(--surface-2) / .45); }
 .routing-order li.unavailable { border-color:rgb(var(--text-err) / .35); background:rgb(var(--status-err-bg) / .4); }
-.route-number { display:grid; place-items:center; width:22px; height:22px; flex-shrink:0; border-radius:6px; background:rgb(var(--brand-moss) / .14); color:rgb(var(--brand-moss)); font-family:var(--font-mono); font-size:12px; font-weight:650; }
+.route-number { display:grid; place-items:center; width:22px; height:22px; flex-shrink:0; border-radius:6px; background:rgb(var(--surface)); border:1px solid rgb(var(--line)); color:rgb(var(--ink)); font-family:var(--font-mono); font-size:12px; font-weight:650; }
 .route-copy { display:grid; gap:3px; flex:1; min-width:0; }
 .route-copy strong { overflow-wrap:anywhere; font-size:13px; font-weight:600; }
 .route-copy small { color:rgb(var(--ink-3)); font-size:12px; }
@@ -490,10 +524,10 @@ async function submit() {
 .key-editor-footer { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:16px 28px; border-top:1px solid rgb(var(--line)); background:rgb(var(--surface)); }
 .key-editor-footer>span { display:inline-flex; align-items:center; gap:8px; flex:1; min-width:0; overflow-wrap:anywhere; font-size:13px; color:rgb(var(--ink-2)); }
 .key-editor-footer>span strong { color:rgb(var(--ink)); }
-.key-footer-rate { padding:2px 7px; border-radius:999px; background:rgb(var(--brand-moss) / .12); color:rgb(var(--brand-moss)); font-family:var(--font-mono); font-size:12px; font-weight:650; }
+.key-footer-rate { padding:2px 8px; border-radius:999px; background:rgb(var(--surface-2)); border:1px solid rgb(var(--line)); color:rgb(var(--ink)); font-family:var(--font-mono); font-size:12px; font-weight:650; }
 .key-editor-footer .portal-button { font-size:13.5px; }
-.key-submit-btn { background:rgb(var(--brand-moss)); border-color:rgb(var(--brand-moss)); color:#fff; }
-.key-submit-btn:hover:not(:disabled) { filter:brightness(0.95); background:rgb(var(--brand-moss)); border-color:rgb(var(--brand-moss)); }
+.key-submit-btn { background:rgb(var(--action-bg)); border-color:rgb(var(--action-bg)); color:rgb(var(--action-text)); }
+.key-submit-btn:hover:not(:disabled) { background:rgb(var(--action-hover)); border-color:rgb(var(--action-hover)); }
 .key-editor button:focus-visible { outline:2px solid rgb(var(--focus-ring)); outline-offset:2px; }
 @media (max-width:767px), (max-width:1023px) and (max-height:500px) and (pointer:coarse) { .key-editor-body { grid-template-columns:minmax(0,1fr); } .key-picker,.key-configuration { padding:20px 0; } .key-picker { border-right:0; border-bottom:1px solid rgb(var(--line)); } .key-group-list { max-height:none; overflow:visible; } .key-editor-footer { padding:16px 0 0; } .key-editor-footer>span { flex-basis:100%; } .route-actions button { width:44px; height:44px; } .routing-order li { flex-wrap:wrap; } }
 @media(max-width:420px) { .key-common-fields { grid-template-columns:1fr; gap:0; } .key-group-card { flex-wrap:wrap; } .key-group-rate { flex-basis:100%; max-width:none; justify-items:start; text-align:left; padding-left:31px; } .key-rate-fields { grid-template-columns:1fr; } }

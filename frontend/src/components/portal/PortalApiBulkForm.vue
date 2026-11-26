@@ -7,13 +7,32 @@
       <fieldset v-if="pendingKeys.length" :disabled="submitting" class="portal-api-bulk-fields">
         <div class="portal-api-bulk-field">
           <label class="portal-api-bulk-check"><input v-model="enabled.group_id" type="checkbox" :disabled="!canChangeGroup && !enabled.group_id" data-test="enable-group" />{{ text('接入分组', 'Connection group') }}</label>
-          <label v-if="enabled.group_id" class="portal-field"><span class="sr-only">{{ text('选择可绑定分组', 'Choose an available group') }}</span><select v-model.number="groupId" required data-test="group-input"><option :value="null" disabled>{{ text('请选择分组', 'Select a group') }}</option><option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option></select></label>
+          <div v-if="enabled.group_id" class="portal-field">
+            <span class="sr-only">{{ text('选择可绑定分组', 'Choose an available group') }}</span>
+            <Select
+              v-model="groupId"
+              :options="groupOptions"
+              :searchable="groups.length > 4"
+              :placeholder="text('请选择分组', 'Select a group')"
+              :aria-label="text('选择可绑定分组', 'Choose an available group')"
+              data-test="group-input"
+            />
+          </div>
           <p v-if="routingKeys.length" class="portal-api-bulk-hint">{{ text('选择中包含智能路由密钥。请通过单个密钥的“编辑”调整路由；这里可继续修改其他字段。', 'This selection contains smart-routing keys. Edit those keys individually to change routing; other fields can still be updated here.') }}</p>
           <p v-else-if="groupsLoading || groupsError || !groups.length" class="portal-api-bulk-hint">{{ groupsLoading ? text('分组加载中，其他字段仍可编辑。', 'Groups are loading. Other fields can still be edited.') : text('暂无可用的分组列表，请关闭后刷新分组。其他字段仍可编辑。', 'No available group list. Close this dialog and refresh groups; other fields can still be edited.') }}</p>
         </div>
         <div class="portal-api-bulk-field">
           <label class="portal-api-bulk-check"><input v-model="enabled.status" type="checkbox" data-test="enable-status" />{{ text('启停状态', 'Status') }}</label>
-          <label v-if="enabled.status" class="portal-field"><span class="sr-only">{{ text('密钥状态', 'Key status') }}</span><select v-model="status" data-test="status-input"><option value="active">{{ text('启用', 'Enable') }}</option><option value="inactive">{{ text('停用', 'Disable') }}</option></select></label>
+          <div v-if="enabled.status" class="portal-field">
+            <span class="sr-only">{{ text('密钥状态', 'Key status') }}</span>
+            <Select
+              v-model="status"
+              :options="statusOptions"
+              :searchable="false"
+              :aria-label="text('密钥状态', 'Key status')"
+              data-test="status-input"
+            />
+          </div>
         </div>
         <div v-for="field in limitFields" :key="field.key" class="portal-api-bulk-field">
           <label class="portal-api-bulk-check"><input v-model="enabled[field.key]" type="checkbox" :data-test="'enable-' + field.key" />{{ field.label }}</label>
@@ -54,6 +73,7 @@
 import { computed, onBeforeUnmount, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PortalDialog from './PortalDialog.vue'
+import Select from '@/components/common/Select.vue'
 import { keysAPI } from '@/api/keys'
 import { useAppStore } from '@/stores/app'
 import type { ApiKey, Group, UpdateApiKeyRequest } from '@/types'
@@ -78,6 +98,11 @@ const requestError = ref('')
 const enabled = reactive<Record<EditableField, boolean>>({ group_id: false, status: false, quota: false, rate_limit_5h: false, rate_limit_1d: false, rate_limit_7d: false, expires_at: false, ip_whitelist: false, ip_blacklist: false })
 const groupId = ref<number | null>(null)
 const status = ref<'active' | 'inactive'>('active')
+const groupOptions = computed(() => props.groups.map(group => ({ value: group.id, label: group.name })))
+const statusOptions = computed(() => [
+  { value: 'active', label: text('启用', 'Enable') },
+  { value: 'inactive', label: text('停用', 'Disable') },
+])
 const limits = reactive<Record<LimitField, string | number>>({ quota: '', rate_limit_5h: '', rate_limit_1d: '', rate_limit_7d: '' })
 const ipLists = reactive<Record<IPField, string>>({ ip_whitelist: '', ip_blacklist: '' })
 const neverExpires = ref(false)

@@ -154,14 +154,15 @@
                 <label for="pg-temp">{{ zh ? '随机度 (Temperature)' : 'Temperature' }}</label>
                 <output for="pg-temp">{{ temperature.toFixed(1) }}</output>
               </div>
-              <input
+              <MdSlider
                 id="pg-temp"
-                v-model.number="temperature"
-                type="range"
-                min="0"
-                max="2"
-                step="0.1"
-                class="pg-range"
+                v-model="temperature"
+                :min="0"
+                :max="2"
+                :step="0.1"
+                :show-value="false"
+                :labeled="false"
+                :aria-label="zh ? '随机度 (Temperature)' : 'Temperature'"
               />
             </div>
 
@@ -170,14 +171,15 @@
                 <label for="pg-max-tokens">{{ zh ? '最大输出 (Max Tokens)' : 'Max tokens' }}</label>
                 <output for="pg-max-tokens">{{ maxTokens }}</output>
               </div>
-              <input
+              <MdSlider
                 id="pg-max-tokens"
-                v-model.number="maxTokens"
-                type="range"
-                min="64"
-                max="4096"
-                step="64"
-                class="pg-range"
+                v-model="maxTokens"
+                :min="64"
+                :max="4096"
+                :step="64"
+                :show-value="false"
+                :labeled="false"
+                :aria-label="zh ? '最大输出 (Max Tokens)' : 'Max tokens'"
               />
             </div>
           </div>
@@ -187,7 +189,7 @@
               <strong>{{ zh ? '启用 SSE 流式输出' : 'Stream SSE response' }}</strong>
               <small>{{ zh ? '开启后可精准测量首字延迟 (TTFT)' : 'Enables accurate Time-To-First-Token measurement' }}</small>
             </div>
-            <Toggle v-model="stream" :aria-label="zh ? '启用 SSE 流式输出' : 'Stream SSE response'" />
+            <MdSwitch v-model="stream" :aria-label="zh ? '启用 SSE 流式输出' : 'Stream SSE response'" />
           </div>
 
           <div class="pg-actions">
@@ -386,7 +388,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
-import Toggle from '@/components/common/Toggle.vue'
+import { MdSlider, MdSwitch } from '@/components/md'
 import ModelIcon from '@/components/common/ModelIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { keysAPI } from '@/api/keys'

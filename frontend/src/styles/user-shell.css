@@ -1,7 +1,7 @@
 /* User workspace shell — crisp architectural sidebar & translucent sticky topbar. */
 .user-portal {
-  --user-sidebar-width: 248px;
-  --user-topbar-height: 64px;
+  --user-sidebar-width: 244px;
+  --user-topbar-height: 60px;
   --user-canvas: rgb(var(--canvas));
   --user-border: rgb(var(--line));
   --user-active: rgb(var(--surface-2));
@@ -9,7 +9,7 @@
   color: rgb(var(--ink));
   background: var(--user-canvas);
   font-family: var(--font-sans);
-  font-size: 14.5px;
+  font-size: 14px;
 }
 .user-portal[data-sidebar-collapsed='true'] {
   --user-sidebar-width: 64px;
@@ -78,9 +78,9 @@
 .user-portal .user-navigation {
   position: relative;
   isolation: isolate;
-  --active-indicator-fill: rgb(var(--brand-moss) / .12);
+  --active-indicator-fill: rgb(var(--surface-2));
   --active-indicator-radius: 10px;
-  --active-indicator-edge: rgb(var(--brand-moss) / .24);
+  --active-indicator-edge: rgb(var(--line));
   min-height: 0;
   flex: 1;
   overflow-y: auto;
@@ -100,7 +100,7 @@
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 38px;
+  min-height: 36px;
   align-items: center;
   gap: 10px;
   padding: 7px 11px;
@@ -132,8 +132,8 @@
   opacity: 1;
 }
 .user-portal .user-nav-item.user-nav-active > .sidebar-nav-surface {
-  background: rgb(var(--brand-moss) / .12);
-  border: 1px solid rgb(var(--brand-moss) / .22);
+  background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--line));
   opacity: 1;
 }
 .user-portal .user-nav-item > svg {
@@ -156,7 +156,7 @@
   font-weight: 600;
 }
 .user-portal .user-nav-item.user-nav-active > svg {
-  color: rgb(var(--brand-moss));
+  color: rgb(var(--ink));
 }
 .user-portal .user-nav-label {
   min-width: 0;
@@ -358,16 +358,17 @@
   align-items: center;
   gap: 7px;
   padding: 0 12px;
-  border: 1px solid rgb(var(--brand-moss) / .28);
+  border: 1px solid rgb(var(--line));
   border-radius: 999px;
   color: rgb(var(--ink));
-  background: rgb(var(--brand-moss) / .08);
+  background: rgb(var(--surface));
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
   font-variant-numeric: tabular-nums;
   text-decoration: none;
   white-space: nowrap;
+  box-shadow: var(--shadow-panel);
   transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease;
 }
 .user-portal .user-balance-pill::before {
@@ -375,16 +376,16 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: rgb(var(--brand-moss));
+  background: #10b981;
   flex-shrink: 0;
 }
 .user-portal .user-balance-label {
-  color: rgb(var(--ink-2));
+  color: rgb(var(--ink-3));
   font-weight: 500;
 }
 .user-portal .user-balance-pill:hover {
-  background: rgb(var(--brand-moss) / .14);
-  border-color: rgb(var(--brand-moss) / .48);
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--line-strong));
 }
 .user-portal .user-announcement-control > div > button {
   width: 34px;

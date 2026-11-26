@@ -25,8 +25,10 @@ const render = (props: Record<string, unknown> = {}) => mount(PortalKeyForm, { p
 describe('PortalKeyForm', () => {
   it('persists an explicitly changed Anthropic cache TTL while retaining inherited settings by default', async () => {
     const wrapper = render({ editing: { ...editing, anthropic_cache_ttl_mode: '1h' } })
-    expect((wrapper.get('[data-test="anthropic-cache-ttl"]').element as HTMLSelectElement).value).toBe('1h')
-    await wrapper.get('[data-test="anthropic-cache-ttl"]').setValue('off')
+    const cacheSelect = wrapper.findComponent('[data-test="anthropic-cache-ttl"]')
+    expect(cacheSelect.props('modelValue')).toBe('1h')
+    cacheSelect.vm.$emit('update:modelValue', 'off')
+    await flushPromises()
     await wrapper.get('form').trigger('submit'); await flushPromises()
     expect(update).toHaveBeenCalledWith(42, expect.objectContaining({ anthropic_cache_ttl_mode: 'off' }))
     wrapper.unmount()

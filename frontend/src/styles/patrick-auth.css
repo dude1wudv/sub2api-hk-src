@@ -6,7 +6,6 @@
   min-height: 100svh;
   color: rgb(var(--ink));
   background-color: rgb(var(--canvas));
-  background-image: radial-gradient(ellipse 85% 380px at 50% 0%, rgb(var(--brand-moss) / .055), transparent 72%);
   font: 14.5px/1.6 var(--font-sans);
 }
 
@@ -238,10 +237,8 @@
   border: 1px solid rgb(var(--line));
   border-radius: var(--radius-card);
   background-color: rgb(var(--surface));
-  background-image:
-    radial-gradient(ellipse at 92% 8%, rgb(var(--brand-moss) / .1), transparent 56%),
-    radial-gradient(rgb(var(--line-strong) / .24) 1px, transparent 1px);
-  background-size: 100% 100%, 20px 20px;
+  background-image: radial-gradient(rgb(var(--line-strong) / .22) 1px, transparent 1px);
+  background-size: 20px 20px;
   color: rgb(var(--ink));
   box-shadow: var(--shadow-panel);
 }

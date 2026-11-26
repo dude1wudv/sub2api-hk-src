@@ -48,7 +48,10 @@
         <div v-if="topModels.length" class="insight-models">
           <div v-for="item in topModels" :key="item.model" class="insight-model-row">
             <div class="insight-model-meta">
-              <code :title="item.model">{{ item.model }}</code>
+              <span class="insight-model-id">
+                <ModelIcon :model="item.model" size="16px" />
+                <code :title="item.model">{{ item.model }}</code>
+              </span>
               <span>{{ item.sharePct }}% · ${{ item.cost.toFixed(3) }}</span>
             </div>
             <MdProgress variant="linear" :value="item.shareRatio" />
@@ -87,6 +90,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { MdBadge, MdButton, MdCard, MdProgress } from '@/components/md'
+import ModelIcon from '@/components/common/ModelIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { useAppStore } from '@/stores/app'
@@ -210,14 +214,14 @@ async function copySummary() {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: var(--md-sys-color-surface-container-low);
-  border: 1px solid var(--md-sys-color-outline-variant);
+  padding: 16px;
+  border-radius: 12px;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
 }
 
 .insight-box--tonal {
-  background: color-mix(in srgb, var(--md-sys-color-primary-container) 35%, var(--md-sys-color-surface-container-low));
+  background: rgb(var(--surface-2) / 0.45);
 }
 
 .insight-label-row {
@@ -227,25 +231,26 @@ async function copySummary() {
   gap: 8px;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--md-sys-color-on-surface-variant);
+  color: rgb(var(--ink-2));
 }
 
 .insight-muted {
   font-weight: 400;
   font-size: 0.75rem;
+  color: rgb(var(--ink-3));
 }
 
 .insight-big {
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--md-sys-color-on-surface);
+  color: rgb(var(--ink));
 }
 
 .insight-hint {
   margin: 0;
   font-size: 0.78rem;
-  color: var(--md-sys-color-on-surface-variant);
+  color: rgb(var(--ink-3));
 }
 
 .insight-cta {
@@ -261,7 +266,7 @@ async function copySummary() {
 .insight-model-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .insight-model-meta {
@@ -272,12 +277,19 @@ async function copySummary() {
   font-size: 0.78rem;
 }
 
+.insight-model-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .insight-model-meta code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  color: var(--md-sys-color-on-surface);
+  color: rgb(var(--ink));
 }
 
 .insight-model-meta span {

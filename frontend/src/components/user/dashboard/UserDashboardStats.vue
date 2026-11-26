@@ -4,7 +4,6 @@
       <div class="workspace-metric-label"><span>{{ t('dashboard.balance') }}</span><Icon name="creditCard" size="sm" /></div>
       <strong class="metric-value">USD {{ formatBalance(balance) }}</strong>
       <div class="workspace-metric-note"><span>{{ t('common.available') }}</span><RouterLink to="/purchase">{{ tx('充值余额', 'Top up') }} <span aria-hidden="true">↗</span></RouterLink></div>
-      <svg viewBox="0 0 160 76" aria-hidden="true" class="balance-ink"><path d="M-8 62C26 1 68 96 112 28s76 42 89 20" /></svg>
     </article>
     <article data-metric="requests" class="workspace-metric">
       <div class="workspace-metric-label"><span>{{ t('dashboard.todayRequests') }}</span><Icon name="chart" size="sm" /></div>
@@ -32,7 +31,14 @@
     <header class="workspace-section-title"><div><h2>{{ t('dashboard.platformBreakdown') }}</h2></div><span class="portal-tag">{{ t('dashboard.platformCount', { count: platformCount }) }}</span></header>
     <div class="workspace-platform-grid">
       <article v-for="item in platformCards" :key="item.platform" data-testid="platform-card" :data-platform="item.platform" class="workspace-platform" :class="{ 'workspace-platform-other': item.isOther }">
-        <header><span class="platform-ink-dot" aria-hidden="true"></span><h3>{{ item.isOther ? t('dashboard.platformOther') : platformLabel(item.platform) }}</h3><strong :title="t('dashboard.actual')">{{ formatCost(item.total_actual_cost) }}</strong></header>
+        <header>
+          <span v-if="!item.isOther" class="workspace-platform-icon" aria-hidden="true">
+            <PlatformIcon :platform="(item.platform as any)" size="sm" />
+          </span>
+          <span v-else class="platform-ink-dot" aria-hidden="true"></span>
+          <h3>{{ item.isOther ? t('dashboard.platformOther') : platformLabel(item.platform) }}</h3>
+          <strong :title="t('dashboard.actual')">{{ formatCost(item.total_actual_cost) }}</strong>
+        </header>
         <dl><div><dt>{{ t('dashboard.todayCost') }}</dt><dd>{{ formatCost(item.today_actual_cost) }}</dd></div><div><dt>{{ t('dashboard.requests') }}</dt><dd>{{ item.total_requests > 0 ? formatNumber(item.total_requests) : '—' }}</dd></div><div><dt>{{ t('dashboard.tokens') }}</dt><dd>{{ item.total_tokens > 0 ? formatTokens(item.total_tokens) : '—' }}</dd></div></dl>
         <div v-if="hasAnyLimit(item.quota) && !item.isOther" class="workspace-quotas">
           <h4>{{ t('dashboard.platformQuota.title') }}</h4>
@@ -43,7 +49,7 @@
               <strong v-else>USD {{ formatUsd(Number(quotaVal(item.quota, `${w}_usage_usd`)) || 0) }} / USD {{ formatUsd(Number(quotaVal(item.quota, `${w}_limit_usd`))) }}</strong>
               <small v-if="quotaVal(item.quota, `${w}_window_resets_at`)">{{ t('dashboard.platformQuota.resetsAt', { time: formatResetTime(String(quotaVal(item.quota, `${w}_window_resets_at`))) }) }}</small>
             </div>
-            <div v-if="Number(quotaVal(item.quota, `${w}_limit_usd`)) > 0" class="quota-vessel" role="progressbar" :aria-label="`${platformLabel(item.platform)} ${t(`dashboard.platformQuota.${w}`)}`" :aria-valuenow="calcPercent(Number(quotaVal(item.quota, `${w}_usage_usd`)) || 0, Number(quotaVal(item.quota, `${w}_limit_usd`)))" :aria-valuemin="0" :aria-valuemax="100"><span :style="{ height: calcPercent(Number(quotaVal(item.quota, `${w}_usage_usd`)) || 0, Number(quotaVal(item.quota, `${w}_limit_usd`))) + '%' }"></span></div>
+            <div v-if="Number(quotaVal(item.quota, `${w}_limit_usd`)) > 0" class="quota-vessel" role="progressbar" :aria-label="`${platformLabel(item.platform)} ${t(`dashboard.platformQuota.${w}`)}`" :aria-valuenow="calcPercent(Number(quotaVal(item.quota, `${w}_usage_usd`)) || 0, Number(quotaVal(item.quota, `${w}_limit_usd`)))" :aria-valuemin="0" :aria-valuemax="100"><span :style="{ width: calcPercent(Number(quotaVal(item.quota, `${w}_usage_usd`)) || 0, Number(quotaVal(item.quota, `${w}_limit_usd`))) + '%' }"></span></div>
           </div>
         </div>
         <p v-else-if="!item.isOther" class="workspace-unlimited">{{ platformQuotas === null ? tx('额度信息暂不可用', 'Quota information unavailable') : `${tx('平台额度', 'Platform quota')} · ${tx('无限制', 'Unlimited')}` }}</p>
@@ -57,6 +63,7 @@ import { formatUsageMoney } from '@/utils/portalUsage'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
+import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import type { PlatformDashboardStats, UserDashboardStats as UserStatsType } from '@/api/usage'
 import type { PlatformQuotaItem } from '@/types'
 

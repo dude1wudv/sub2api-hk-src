@@ -4,6 +4,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useChartPalette, useChartTheme } from '@/composables/useChartPalette'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
+import Select from '@/components/common/Select.vue'
+import ModelIcon from '@/components/common/ModelIcon.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { Line } from 'vue-chartjs'
@@ -22,6 +24,14 @@ const { t, locale } = useI18n()
 const tx = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const palette = useChartPalette()
 const theme = useChartTheme()
+const granularityOptions = computed(() => [
+  { value: 'day', label: t('dashboard.day') },
+  { value: 'hour', label: t('dashboard.hour') },
+])
+function onGranularityChange(value: string | number | boolean | null) {
+  emit('update:granularity', String(value ?? 'day'))
+  emit('granularityChange')
+}
 const number = (value: number) => value.toLocaleString(undefined, { notation: value >= 1e6 ? 'compact' : 'standard', maximumFractionDigits: 1 })
 const modelTotal = computed(() => props.models.reduce((sum, item) => sum + item.requests, 0))
 const displayModels = computed(() => rankChartRows(props.models, model => model.requests, palette.value))
@@ -64,9 +74,37 @@ const lineOptions = computed<ChartOptions<'line'>>(() => ({
 </script>
 
 <template>
-  <div class="workspace-chart-controls"><DateRangePicker :start-date="startDate" :end-date="endDate" @update:startDate="emit('update:startDate', $event)" @update:endDate="emit('update:endDate', $event)" @change="emit('dateRangeChange', $event)" /><label>{{ t('dashboard.granularity') }}<select :value="granularity" @change="emit('update:granularity', ($event.target as HTMLSelectElement).value); emit('granularityChange')"><option value="day">{{ t('dashboard.day') }}</option><option value="hour">{{ t('dashboard.hour') }}</option></select></label></div>
+  <div class="workspace-chart-controls">
+    <DateRangePicker :start-date="startDate" :end-date="endDate" @update:startDate="emit('update:startDate', $event)" @update:endDate="emit('update:endDate', $event)" @change="emit('dateRangeChange', $event)" />
+    <div class="workspace-granularity">
+      <span>{{ t('dashboard.granularity') }}</span>
+      <div class="workspace-granularity-select">
+        <Select
+          :model-value="granularity"
+          :options="granularityOptions"
+          :searchable="false"
+          :aria-label="t('dashboard.granularity')"
+          @update:model-value="onGranularityChange"
+        />
+      </div>
+    </div>
+  </div>
   <div class="workspace-charts" :aria-busy="loading">
     <article class="workspace-trend"><header><h3>{{ tx('用量趋势', 'Usage trend') }}</h3><span>{{ startDate }} — {{ endDate }}</span></header><div v-if="loading && !trend.length" class="workspace-chart-empty" role="status"><LoadingSpinner /></div><div v-else-if="!trend.length" class="workspace-chart-empty">{{ t('dashboard.noDataAvailable') }}</div><div v-else class="workspace-trend-chart"><Line :data="trendData" :options="lineOptions" role="img" :aria-label="tx('所选时间内的 Token 用量趋势，选择数据点可打开明细', 'Token usage in the selected period. Select a point to view details.')" /></div><div v-if="trend.length" class="workspace-date-links"><span>{{ tx('按日期查看', 'Explore a date') }}</span><button v-for="day in [...new Set(trend.map(item => item.date.slice(0, 10)))].slice(-7)" :key="day" type="button" @click="openDate(day)">{{ day.slice(5) }}</button></div></article>
-    <article class="workspace-models"><header><div><h3>{{ t('dashboard.modelDistribution') }}</h3><span>{{ tx('按请求次数 · 点击查看明细', 'By request count · Open for details') }}</span></div><Icon name="cube" size="sm" /></header><div v-if="!models.length" class="workspace-chart-empty">{{ t('dashboard.noDataAvailable') }}</div><ol v-else><li v-for="model in displayModels" :key="model.model"><button type="button" @click="openModel(model.model)"><span class="workspace-model-name"><i :style="{ background: model.chartColor }"></i><strong>{{ model.model }}</strong><Icon name="arrowRight" size="sm" /></span><span class="workspace-model-values"><span>{{ number(model.requests) }} {{ t('dashboard.requests') }}</span><strong>{{ formatUsageMoney(model.actual_cost, 4) }}</strong></span><span class="workspace-model-track" aria-hidden="true"><span :style="{ width: `${modelTotal > 0 ? model.requests / modelTotal * 100 : 0}%`, background: model.chartColor }"></span></span></button></li></ol></article>
+    <article class="workspace-models"><header><div><h3>{{ t('dashboard.modelDistribution') }}</h3><span>{{ tx('按请求次数 · 点击查看明细', 'By request count · Open for details') }}</span></div><Icon name="cube" size="sm" /></header><div v-if="!models.length" class="workspace-chart-empty">{{ t('dashboard.noDataAvailable') }}</div><ol v-else><li v-for="model in displayModels" :key="model.model"><button type="button" @click="openModel(model.model)"><span class="workspace-model-name"><ModelIcon :model="model.model" size="18px" /><strong>{{ model.model }}</strong><Icon name="arrowRight" size="sm" /></span><span class="workspace-model-values"><span>{{ number(model.requests) }} {{ t('dashboard.requests') }}</span><strong>{{ formatUsageMoney(model.actual_cost, 4) }}</strong></span><span class="workspace-model-track" aria-hidden="true"><span :style="{ width: `${modelTotal > 0 ? model.requests / modelTotal * 100 : 0}%`, background: model.chartColor }"></span></span></button></li></ol></article>
   </div>
 </template>
+
+<style scoped>
+.workspace-granularity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgb(var(--ink-2));
+}
+.workspace-granularity-select {
+  min-width: 112px;
+}
+</style>

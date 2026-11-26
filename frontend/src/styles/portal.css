@@ -166,6 +166,17 @@ textarea.portal-field {
   font-size: 14px;
   font-weight: 400;
 }
+.portal-field > select,
+select.portal-field {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 15px;
+  cursor: pointer;
+}
 .portal-field > :is(input, select, textarea):hover,
 input.portal-field:hover,
 select.portal-field:hover,
@@ -286,9 +297,9 @@ textarea.portal-field:focus {
 }
 .portal-pills > button.active,
 .portal-pills > [aria-pressed='true'] {
-  border-color: rgb(var(--brand-moss));
-  background: rgb(var(--brand-moss) / .09);
-  color: rgb(var(--ink));
+  border-color: rgb(var(--action-bg));
+  background: rgb(var(--action-bg));
+  color: rgb(var(--action-text));
   font-weight: 600;
 }
 .portal-pagination {
@@ -420,19 +431,18 @@ textarea.portal-field:focus {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: rgb(var(--brand-moss));
-  font-size: 12.5px;
+  color: rgb(var(--ink-3));
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   line-height: 1.4;
   margin: 0 0 6px;
 }
 .portal-eyebrow > span:empty {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: rgb(var(--brand-moss));
-  box-shadow: 0 0 0 3px rgb(var(--brand-moss) / .16);
+  background: rgb(var(--ink));
 }
 .portal-page-header h1,
 .portal-api-title-row h1 {
@@ -557,58 +567,42 @@ textarea.portal-field:focus {
   position: relative;
   z-index: 1;
   color: rgb(var(--ink));
-  font-weight: 550;
+  font-weight: 600;
   text-decoration: none;
 }
 .workspace-metric-note a:hover {
-  color: rgb(var(--brand-moss));
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
+/* Crisp OpenAI-white elevated balance card (no dark-green gradient or ink squiggle) */
 .workspace-metric-balance {
-  background: linear-gradient(155deg, #0f172a 0%, #162235 62%, #0f2926 100%);
-  color: #f8fafc;
-  border-color: #1e293b;
-  box-shadow: 0 8px 24px -6px rgb(15 23 42 / .24), inset 0 1px 0 rgb(255 255 255 / .08);
-  isolation: isolate;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  border: 1.5px solid rgb(var(--ink) / .16);
+  box-shadow: var(--shadow-card-hover);
 }
 :root.dark .workspace-metric-balance {
-  background: linear-gradient(155deg, #16202e 0%, #111b27 58%, #0f2924 100%);
-  border-color: rgb(var(--brand-moss) / .38);
-  box-shadow: 0 8px 28px -6px rgb(0 0 0 / .45), inset 0 1px 0 rgb(255 255 255 / .06);
+  background: rgb(var(--surface));
+  border-color: rgb(var(--line-strong));
 }
 .workspace-metric-balance > .metric-value {
-  color: #ffffff;
+  color: rgb(var(--ink));
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 .workspace-metric-balance .workspace-metric-label {
-  color: #cbd5e1;
+  color: rgb(var(--ink-2));
 }
 .workspace-metric-balance .workspace-metric-label svg {
-  color: #2dc49a;
+  color: rgb(var(--ink));
 }
 .workspace-metric-balance .workspace-metric-note {
-  color: #cbd5e1;
-  border-top-color: rgb(255 255 255 / .12);
+  color: rgb(var(--ink-3));
+  border-top-color: rgb(var(--line));
 }
 .workspace-metric-balance .workspace-metric-note a {
-  color: #5eead4;
-}
-.workspace-metric-balance .workspace-metric-note a:hover {
-  color: #99f6e4;
-}
-.balance-ink {
-  position: absolute;
-  right: -24px;
-  top: -18px;
-  width: 164px;
-  height: 112px;
-  z-index: -1;
-  pointer-events: none;
-  opacity: .22;
-}
-.balance-ink path {
-  fill: none;
-  stroke: #2dc49a;
-  stroke-width: 2;
-  stroke-linecap: round;
+  color: rgb(var(--ink));
+  font-weight: 600;
 }
 .workspace-facts {
   display: grid;
@@ -676,7 +670,7 @@ textarea.portal-field:focus {
   color: rgb(var(--ink-2));
 }
 .workspace-section-title > a:hover {
-  color: rgb(var(--brand-moss));
+  color: rgb(var(--ink));
 }
 .workspace-platform-grid {
   display: grid;
@@ -693,7 +687,7 @@ textarea.portal-field:focus {
 .workspace-platform > header {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgb(var(--line));
 }
@@ -709,13 +703,22 @@ textarea.portal-field:focus {
   margin-left: auto;
   color: rgb(var(--ink));
 }
+.workspace-platform-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface));
+}
 .platform-ink-dot {
   width: 8px;
   height: 8px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: rgb(var(--brand-moss));
-  box-shadow: 0 0 0 3px rgb(var(--brand-moss) / .14);
+  background: rgb(var(--ink-3));
 }
 .workspace-platform dl {
   display: grid;
@@ -754,13 +757,14 @@ textarea.portal-field:focus {
 }
 .workspace-quota-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   margin-top: 10px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 10px;
-  background: rgb(var(--surface-2) / .6);
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface-2) / .45);
 }
 .workspace-quota-copy {
   display: grid;
@@ -781,25 +785,22 @@ textarea.portal-field:focus {
 .quota-disabled {
   color: rgb(var(--text-err));
 }
-/* Precision vertical gauge replacing organic droplet vessel */
+/* Crisp horizontal linear progress bar */
 .quota-vessel {
   position: relative;
-  width: 10px;
-  height: 38px;
+  width: 100%;
+  height: 6px;
   flex-shrink: 0;
-  border: 1px solid rgb(var(--line-strong) / .45);
   border-radius: 999px;
   overflow: hidden;
-  background: rgb(var(--surface));
+  background: rgb(var(--line));
 }
 .quota-vessel > span {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgb(var(--brand-moss));
+  display: block;
+  height: 100%;
+  background: rgb(var(--ink));
   border-radius: 999px;
-  transition: height var(--motion-overlay) var(--motion-ease);
+  transition: width var(--motion-overlay) var(--motion-ease);
 }
 .workspace-unlimited {
   margin: 14px 0 0;
@@ -1152,7 +1153,7 @@ textarea.portal-field:focus {
   border-radius: 9px;
   background: rgb(var(--surface));
   border: 1px solid rgb(var(--line));
-  color: rgb(var(--brand-moss));
+  color: rgb(var(--ink));
   flex-shrink: 0;
 }
 .workspace-action-card > svg {
@@ -1211,7 +1212,8 @@ textarea.portal-field:focus {
   display: block;
   margin-top: 4px;
   overflow-wrap: anywhere;
-  color: rgb(var(--brand-moss));
+  color: rgb(var(--ink));
+  font-weight: 550;
   text-decoration: underline;
   text-underline-offset: 3px;
 }

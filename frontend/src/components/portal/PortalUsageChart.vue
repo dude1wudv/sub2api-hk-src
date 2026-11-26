@@ -12,6 +12,7 @@ useResizeObserver(container, entries => {
 })
 import type { PortalUsageMonth } from '@/utils/portalUsage'
 import { formatUsageMoney, formatUsageNumber } from '@/utils/portalUsage'
+import Select from '@/components/common/Select.vue'
 const props = defineProps<{ months: PortalUsageMonth[] }>()
 const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
@@ -22,12 +23,28 @@ const points = computed(() => props.months.map((month, index) => ({ ...month, x:
 const path = computed(() => points.value.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' '))
 const area = computed(() => points.value.length ? `${path.value} L ${points.value[points.value.length - 1]?.x} 180 L 56 180 Z` : '')
 const active = computed(() => points.value[selected.value] || points.value[points.value.length - 1])
+const monthOptions = computed(() => props.months.map(month => ({ value: month.key, label: month.key })))
+function onMonthChange(value: string | number | boolean | null) {
+  const idx = props.months.findIndex(month => month.key === String(value ?? ''))
+  if (idx >= 0) selected.value = idx
+}
 </script>
 
 <template>
   <div class="portal-usage-chart">
     <div class="chart-meta"><span>{{ copy('实际消费 · USD', 'Billed cost · USD') }}</span><span v-if="active">{{ active.key }} <strong>{{ formatUsageMoney(active.cost, 2) }}</strong></span></div>
-    <label v-if="mobile && months.length" class="chart-month-picker">{{ copy('月份', 'Month') }} <select :value="active?.key" @change="selected = months.findIndex(month => month.key === ($event.target as HTMLSelectElement).value)"><option v-for="month in months" :key="month.key" :value="month.key">{{ month.key }}</option></select></label>
+    <div v-if="mobile && months.length" class="chart-month-picker">
+      <span>{{ copy('月份', 'Month') }}</span>
+      <div class="chart-month-select">
+        <Select
+          :model-value="active?.key ?? ''"
+          :options="monthOptions"
+          :searchable="false"
+          :aria-label="copy('月份', 'Month')"
+          @update:model-value="onMonthChange"
+        />
+      </div>
+    </div>
     <div ref="container" class="chart-scroll"><svg :viewBox="`0 0 ${width} 220`" role="img" :aria-label="copy('过去十二个月的实际消费曲线', 'Billed cost over the last twelve months')">
       <title>{{ copy('过去十二个月的实际消费', 'Billed cost over the last twelve months') }}</title>
       <defs>
@@ -60,6 +77,6 @@ svg text { fill: var(--chart-text); font: 13px var(--font-sans); }
 .chart-point:focus circle { stroke-width: 3; }
 .chart-detail { text-align: right; min-height: 20px; font-size: 13px; color: rgb(var(--ink-3)); margin-top: 8px; }
 .chart-meta { flex-wrap: wrap; }
-.chart-month-picker { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:12px; }
-.chart-month-picker select { min-height:44px; max-width:100%; background:rgb(var(--surface)); color:rgb(var(--ink)); border:1px solid rgb(var(--line)); border-radius:var(--radius-control); padding:8px 12px; }
+.chart-month-picker { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:12px; font-size:13px; color:rgb(var(--ink-2)); }
+.chart-month-select { min-width:140px; }
 </style>
