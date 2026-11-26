@@ -142,11 +142,12 @@ func (s *OpenAIGatewayService) ForwardChatTTS(ctx context.Context, c *gin.Contex
 	if err != nil {
 		return nil, err
 	}
-	if parsed.Scheme == "https" {
+	switch parsed.Scheme {
+	case "https":
 		parsed.Scheme = "wss"
-	} else if parsed.Scheme == "http" {
+	case "http":
 		parsed.Scheme = "ws"
-	} else {
+	default:
 		return nil, ErrChatAuxiliaryUnavailable
 	}
 	query := parsed.Query()
