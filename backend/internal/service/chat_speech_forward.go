@@ -49,14 +49,7 @@ func (s *OpenAIGatewayService) chatSpeechAccount(ctx context.Context, key *APIKe
 	if err != nil || account == nil || account.ID != id {
 		return nil, ErrChatAuxiliaryUnavailable
 	}
-	current, err := s.SelectChatAuxiliaryAccount(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if _, err = s.validateUpstreamBaseURL("https://api.deepseek.com"); err != nil {
-		return nil, ErrChatAuxiliaryUnavailable
-	}
-	return current, nil
+	return s.SelectChatAuxiliaryAccount(ctx, id)
 }
 
 func chatSpeechResult(ctx context.Context, kind string, started time.Time, quantity *int64, status string) *OpenAIForwardResult {
@@ -71,7 +64,11 @@ func (s *OpenAIGatewayService) ForwardChatASR(ctx context.Context, key *APIKey, 
 	if err != nil {
 		return nil, nil, err
 	}
-	request, err := http.NewRequestWithContext(WithHTTPUpstreamRedirectsDisabled(ctx), http.MethodPost, "https://api.deepseek.com/v1/tools/asr", bytes.NewReader(input.Body))
+	target, err := s.chatAuxiliaryTarget(ctx, account, "asr")
+	if err != nil {
+		return nil, nil, err
+	}
+	request, err := http.NewRequestWithContext(WithHTTPUpstreamRedirectsDisabled(ctx), http.MethodPost, target, bytes.NewReader(input.Body))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -137,7 +134,23 @@ func (s *OpenAIGatewayService) ForwardChatTTS(ctx context.Context, c *gin.Contex
 	if err != nil {
 		return nil, err
 	}
-	query := url.Values{"format": {"pcm"}}
+	httpTarget, err := s.chatAuxiliaryTarget(ctx, account, "tts")
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := url.Parse(httpTarget)
+	if err != nil {
+		return nil, err
+	}
+	if parsed.Scheme == "https" {
+		parsed.Scheme = "wss"
+	} else if parsed.Scheme == "http" {
+		parsed.Scheme = "ws"
+	} else {
+		return nil, ErrChatAuxiliaryUnavailable
+	}
+	query := parsed.Query()
+	query.Set("format", "pcm")
 	if input.TTS.VoiceID != "" {
 		query.Set("voice_id", input.TTS.VoiceID)
 	}
@@ -150,7 +163,8 @@ func (s *OpenAIGatewayService) ForwardChatTTS(ctx context.Context, c *gin.Contex
 		dial = dialChatSpeech
 	}
 	started := time.Now()
-	conn, err := dial(ctx, "wss://api.deepseek.com/v1/tools/tts?"+query.Encode(), headers, resolveAccountProxyURL(account))
+	parsed.RawQuery = query.Encode()
+	conn, err := dial(ctx, parsed.String(), headers, resolveAccountProxyURL(account))
 	if err != nil {
 		return nil, err
 	}

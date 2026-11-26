@@ -10,7 +10,7 @@ import (
 
 // Configuration eligibility deliberately ignores transient health/quota state.
 // Every generation still traverses the gateway's live admission and scheduling.
-func (s *ChatModelService) modelCapabilities(ctx context.Context, group *Group, model string, metadata ModelMetadata, policy ChatModelPolicy, candidates []Account) (ChatCapabilities, string, bool, error) {
+func (s *ChatModelService) modelCapabilities(ctx context.Context, group *Group, model string, metadata ModelMetadata, policy ChatModelPolicy, candidates []Account, auxiliaryKinds map[string]bool) (ChatCapabilities, string, bool, error) {
 	caps := ChatCapabilities{Transport: policy.Transport, Reasons: map[string]string{}}
 	platform, routingModel := group.Platform, model
 	if err := domain.ValidateChatModelPolicies(map[string]ChatModelPolicy{model: policy}); err != nil {
@@ -75,12 +75,11 @@ func (s *ChatModelService) modelCapabilities(ctx context.Context, group *Group, 
 	caps.Reasoning = metadata.MetadataMatch == "exact" && metadata.Reasoning != nil && *metadata.Reasoning
 	caps.ReasoningEfforts = chatReasoningEfforts(model, caps)
 	caps.ToolCall = metadata.MetadataMatch == "exact" && metadata.ToolCall != nil && *metadata.ToolCall
-	_, auxiliaryErr := s.auxiliary.account(ctx)
-	tools := caps.ToolCall && auxiliaryErr == nil && !caps.NativeDeepSeekExtensions
+	tools := caps.ToolCall && auxiliaryKinds["search"] && auxiliaryKinds["fetch"] && !caps.NativeDeepSeekExtensions
 	caps.Search = caps.NativeSearch || tools
 	caps.ReadURL = caps.NativeReadURL || tools
-	caps.Voice = auxiliaryErr == nil
-	caps.OCR = auxiliaryErr == nil && !caps.NativeFiles
+	caps.Voice = auxiliaryKinds["asr"] && auxiliaryKinds["tts"]
+	caps.OCR = auxiliaryKinds["ocr"] && !caps.NativeFiles
 	caps.DocumentInput = true // All supported chat transports accept decoded text.
 	caps.ASR, caps.TTS = caps.Voice, caps.Voice
 	caps.DocumentMode = "text"
@@ -101,7 +100,7 @@ func (s *ChatModelService) modelCapabilities(ctx context.Context, group *Group, 
 	if caps.NativeReadURL {
 		caps.ReadURLSource = "native"
 	}
-	if auxiliaryErr == nil || caps.NativeDeepSeekExtensions {
+	if len(auxiliaryKinds) > 0 || caps.NativeDeepSeekExtensions {
 		caps.AuxiliaryPrices = chatAuxiliaryPrices()
 	}
 	for _, item := range []struct {

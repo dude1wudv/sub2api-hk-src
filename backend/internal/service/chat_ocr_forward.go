@@ -65,7 +65,12 @@ func (s *OpenAIGatewayService) ForwardChatOCR(ctx context.Context, key *APIKey, 
 	}
 	attempt, stop := context.WithTimeout(ctx, 185*time.Second)
 	defer stop()
-	request, err := http.NewRequestWithContext(WithHTTPUpstreamRedirectsDisabled(attempt), http.MethodPost, "https://api.deepseek.com/v1/tools/ocr", body)
+	target, err := s.chatAuxiliaryTarget(ctx, account, "ocr")
+	if err != nil {
+		knownFailure = true
+		return nil, nil, err
+	}
+	request, err := http.NewRequestWithContext(WithHTTPUpstreamRedirectsDisabled(attempt), http.MethodPost, target, body)
 	if err != nil {
 		knownFailure = true
 		return nil, nil, err

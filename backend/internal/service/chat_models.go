@@ -132,6 +132,10 @@ func (s *ChatModelService) catalogForGroup(ctx context.Context, userID int64, gr
 	if err != nil {
 		return nil, err
 	}
+	auxiliaryKinds, err := s.auxiliary.availableKinds(ctx, group.ID)
+	if err != nil {
+		return nil, err
+	}
 	search = strings.ToLower(strings.TrimSpace(search))
 	for _, model := range models {
 		if search != "" && !strings.Contains(strings.ToLower(model.ID), search) {
@@ -154,7 +158,7 @@ func (s *ChatModelService) catalogForGroup(ctx context.Context, userID int64, gr
 		if configured, ok := group.ChatModelPolicies[model.ID]; ok {
 			policy = configured
 		}
-		capabilities, platform, eligible, err := s.modelCapabilities(ctx, group, model.ID, metadata, policy, candidates)
+		capabilities, platform, eligible, err := s.modelCapabilities(ctx, group, model.ID, metadata, policy, candidates, auxiliaryKinds)
 		if err != nil {
 			return nil, err
 		}

@@ -141,13 +141,13 @@ func TestChatCapabilitiesMixedNativeFailClosed(t *testing.T) {
 	model := "deepseek-v4-flash"
 	native := Account{ID: 1, Platform: PlatformDeepseek, Type: AccountTypeAPIKey, Status: StatusActive, Schedulable: true, Credentials: map[string]any{"api_protocol": "anthropic", "api_key": "synthetic", "base_url": "https://api.deepseek.com/anthropic"}}
 	policy := ChatModelPolicy{Transport: "messages", DocumentInput: true, NativeDeepSeekExtensions: true, NativeFiles: true, NativeSearch: true, NativeReadURL: true}
-	caps, _, ok, err := s.modelCapabilities(context.Background(), &groups.groups[0], model, ModelMetadata{}, policy, []Account{native})
+	caps, _, ok, err := s.modelCapabilities(context.Background(), &groups.groups[0], model, ModelMetadata{}, policy, []Account{native}, nil)
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.True(t, caps.DocumentInput)
 	require.True(t, caps.Search)
 	require.False(t, caps.Voice)
-	caps, _, ok, err = s.modelCapabilities(context.Background(), &groups.groups[0], model, ModelMetadata{}, policy, append(accounts.accounts, native))
+	caps, _, ok, err = s.modelCapabilities(context.Background(), &groups.groups[0], model, ModelMetadata{}, policy, append(accounts.accounts, native), nil)
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.False(t, caps.NativeFiles)
@@ -157,7 +157,7 @@ func TestChatCapabilitiesMixedNativeFailClosed(t *testing.T) {
 	require.NotContains(t, caps.AcceptedDocumentExtensions, "pdf")
 	require.NotEmpty(t, caps.Reasons["native_files"])
 	policy.Transport = "responses"
-	_, _, _, err = s.modelCapabilities(context.Background(), &groups.groups[0], model, ModelMetadata{}, policy, []Account{native})
+	_, _, _, err = s.modelCapabilities(context.Background(), &groups.groups[0], model, ModelMetadata{}, policy, []Account{native}, nil)
 	require.ErrorIs(t, err, ErrChatInvalid)
 }
 
@@ -169,7 +169,9 @@ func TestChatSearchRequiresExactToolsAndSharedAccount(t *testing.T) {
 	account := accounts.accounts[0]
 	check := func(meta ModelMetadata, want bool) {
 		t.Helper()
-		caps, _, ok, err := s.modelCapabilities(context.Background(), &groups.groups[0], "shared-model", meta, policy, []Account{account})
+		available, err := s.auxiliary.availableKinds(t.Context(), groups.groups[0].ID)
+		require.NoError(t, err)
+		caps, _, ok, err := s.modelCapabilities(t.Context(), &groups.groups[0], "shared-model", meta, policy, []Account{account}, available)
 		require.NoError(t, err)
 		require.True(t, ok)
 		require.Equal(t, want, caps.Search)

@@ -36,7 +36,7 @@ export function qualityArtifactPlayableDocument(value: string | undefined): stri
       mediaRule ? match.replace(motionQuery, fullMotionCondition) : match,
     ) ?? ''
   })
-  const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce || ''
+  const nonce = Array.from(document.scripts).find(script => script.nonce)?.nonce
   artifact.querySelectorAll('script').forEach(script => {
     if (script.hasAttribute('src') || script.hasAttribute('href') || script.hasAttribute('xlink:href')) script.remove()
     else if (nonce) script.setAttribute('nonce', nonce)
