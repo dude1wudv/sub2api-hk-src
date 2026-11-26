@@ -35,10 +35,36 @@ func TestChatAuxiliaryOfficialAccount(t *testing.T) {
 	require.False(t, chatAuxiliaryAccountValid(a))
 }
 
+func TestChatAuxiliaryPrefersScopedDeepSeekSuiteAccount(t *testing.T) {
+	global := newDeepSeekToolsAccount()
+	global.ID = 23
+	global.Extra = nil
+	global.Credentials["base_url"] = "https://api.deepseek.com"
+	suite := newDeepSeekToolsAccount()
+	suite.ID = 88
+	suite.Credentials["base_url"] = "https://suite.example/v1"
+	suite.Extra[DeepSeekSuiteCapabilitiesKey] = []any{"ocr", "asr", "tts_ws"}
+	repo := &deepSeekToolsAccountRepo{latest: global, schedulable: []Account{*suite}}
+	auxiliary := NewChatAuxiliaryService(&config.Config{Chat: config.ChatConfig{AuxiliaryAccountID: global.ID}}, repo)
+
+	for _, kind := range []string{"search", "fetch", "ocr", "asr", "tts"} {
+		account, err := auxiliary.accountFor(t.Context(), 223, kind)
+		require.NoError(t, err, kind)
+		require.Equal(t, suite.ID, account.ID, kind)
+	}
+	repo.schedulable[0].GroupIDs = []int64{11}
+	account, err := auxiliary.accountFor(t.Context(), 223, "search")
+	require.NoError(t, err)
+	require.Equal(t, global.ID, account.ID)
+}
+
 func TestChatAuxiliaryScopeCannotComeFromClient(t *testing.T) {
 	groupID := int64(11)
 	key := &APIKey{ID: 2, UserID: 7, Key: "synthetic", Status: StatusActive, GroupID: &groupID}
-	svc := &OpenAIGatewayService{cfg: &config.Config{Chat: config.ChatConfig{AuxiliaryAccountID: 23}}}
+	account := newDeepSeekToolsAccount()
+	account.ID = 23
+	account.Credentials["base_url"] = "https://api.deepseek.com"
+	svc := &OpenAIGatewayService{cfg: &config.Config{Chat: config.ChatConfig{AuxiliaryAccountID: 23}}, accountRepo: &deepSeekToolsAccountRepo{latest: account}}
 	scope := &chatAuxiliaryScope{userID: 7, presetID: uuid.New(), sourceGroupID: 11, configuredAccountID: 23, operationID: uuid.New(), kind: "search"}
 	ctx := context.WithValue(context.Background(), chatAuxiliaryContextKey{}, scope)
 	id, err := svc.ValidateChatAuxiliaryScope(ctx, key, "search")
@@ -52,8 +78,10 @@ func TestChatAuxiliaryScopeCannotComeFromClient(t *testing.T) {
 	_, err = svc.ValidateChatAuxiliaryScope(ctx, key, "search")
 	require.Error(t, err)
 	key.UserID--
+	_, err = svc.SelectChatAuxiliaryAccount(ctx, scope.configuredAccountID)
+	require.NoError(t, err)
 	svc.cfg.Chat.AuxiliaryAccountID++
-	_, err = svc.ValidateChatAuxiliaryScope(ctx, key, "search")
+	_, err = svc.SelectChatAuxiliaryAccount(ctx, scope.configuredAccountID)
 	require.Error(t, err)
 }
 
@@ -174,5 +202,31 @@ func TestChatAuxiliarySharedJSONDoesNotGrantModelGroupAccess(t *testing.T) {
 	a.Schedulable = false
 	_, err = svc.ForwardChatAuxiliaryJSON(ctx, c, key, a, "search", body)
 	require.Error(t, err)
+	require.Equal(t, 1, upstream.calls)
+}
+
+func TestChatAuxiliarySuiteJSONUsesScopedAccountEndpoint(t *testing.T) {
+	groupID := int64(223)
+	key := &APIKey{ID: 2, UserID: 7, Key: "synthetic", Status: StatusActive, GroupID: &groupID}
+	account := newDeepSeekToolsAccount()
+	account.Credentials["base_url"] = "https://suite.example/v1"
+	account.Extra[DeepSeekSuiteCapabilitiesKey] = []any{"chat", "search", "fetch"}
+	upstream := &deepSeekToolsUpstream{response: &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"results":[{"title":"Release","url":"https://example.test","summary":"Synthetic"}]}`))}}
+	svc := &OpenAIGatewayService{cfg: &config.Config{Chat: config.ChatConfig{AuxiliaryAccountID: 23}}, accountRepo: &deepSeekToolsAccountRepo{latest: account}, httpUpstream: upstream}
+	scope := &chatAuxiliaryScope{userID: 7, presetID: uuid.New(), sourceGroupID: groupID, configuredAccountID: account.ID, operationID: uuid.New(), kind: "search"}
+	ctx := context.WithValue(t.Context(), chatAuxiliaryContextKey{}, scope)
+	body := []byte(`{"query":"official release"}`)
+	c, _ := newDeepSeekToolsContext(body)
+	c.Set("api_key", key)
+
+	result, err := svc.ForwardChatAuxiliaryJSON(ctx, c, key, account, "search", body)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, "https://suite.example/v1/tools/search", upstream.request.URL.String())
+	require.Equal(t, "Bearer synthetic-upstream-key", upstream.request.Header.Get("Authorization"))
+	require.Equal(t, "chat_auxiliary:"+scope.operationID.String(), result.RequestID)
+	account.Extra = nil
+	_, err = svc.ForwardChatAuxiliaryJSON(ctx, c, key, account, "search", body)
+	require.ErrorIs(t, err, ErrChatAuxiliaryUnavailable)
 	require.Equal(t, 1, upstream.calls)
 }

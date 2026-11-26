@@ -107,6 +107,35 @@ func TestChatSpeechASRUsesAuthoritativeDurationOnly(t *testing.T) {
 	}
 }
 
+func TestChatSpeechASRUsesDeepSeekSuiteEndpoint(t *testing.T) {
+	gateway, key, account, ctx := chatSpeechFixture(t, "asr")
+	gateway.cfg.Chat.AuxiliaryAccountID = 23
+	account.Credentials["base_url"] = "https://suite.example/v1"
+	account.Extra[DeepSeekSuiteCapabilitiesKey] = []any{"asr"}
+	account.Extra["deepseek_tools_group_ids"] = []any{float64(11)}
+	account.GroupIDs = []int64{11}
+	require.True(t, account.DeepSeekSuiteAllowed(i64p(11), "asr"))
+	_, err := gateway.deepSeekSuiteURL(account, "asr", "")
+	require.NoError(t, err)
+	_, err = gateway.ValidateChatAuxiliaryScope(ctx, key, "asr")
+	require.NoError(t, err)
+	_, err = gateway.SelectChatAuxiliaryAccount(ctx, account.ID)
+	require.NoError(t, err)
+	upstream := &deepSeekToolsUpstream{response: &http.Response{
+		StatusCode: 200,
+		Header:     http.Header{},
+		Body:       io.NopCloser(strings.NewReader(`{"request_id":"provider","text":"你好","duration_ms":3200}`)),
+	}}
+	gateway.httpUpstream = upstream
+
+	_, _, err = gateway.ForwardChatASR(ctx, key, account, &ChatAuxiliaryInput{
+		Body:        []byte("synthetic"),
+		ContentType: "multipart/form-data; boundary=x",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://suite.example/v1/tools/asr", upstream.request.URL.String())
+}
+
 type chatSpeechFrame struct {
 	kind coderws.MessageType
 	data []byte
@@ -177,6 +206,36 @@ func TestChatSpeechTTSRequiresSuccessAndAttestsBytes(t *testing.T) {
 			require.Contains(t, recorder.Body.String(), "event: error")
 		}
 	}
+}
+
+func TestChatSpeechTTSUsesDeepSeekSuiteEndpoint(t *testing.T) {
+	gateway, key, account, ctx := chatSpeechFixture(t, "tts")
+	gateway.cfg.Chat.AuxiliaryAccountID = 23
+	account.Credentials["base_url"] = "https://suite.example/v1"
+	account.Extra[DeepSeekSuiteCapabilitiesKey] = []any{"tts_ws"}
+	account.Extra["deepseek_tools_group_ids"] = []any{float64(11)}
+	account.GroupIDs = []int64{11}
+	require.True(t, account.DeepSeekSuiteAllowed(i64p(11), "tts_ws"))
+	_, err := gateway.ValidateChatAuxiliaryScope(ctx, key, "tts")
+	require.NoError(t, err)
+	_, err = gateway.SelectChatAuxiliaryAccount(ctx, account.ID)
+	require.NoError(t, err)
+	socket := &chatSpeechSocketFake{frames: []chatSpeechFrame{
+		{kind: coderws.MessageBinary, data: []byte{0, 1}},
+		{kind: coderws.MessageText, data: []byte(`{"event":"finish","code":"success"}`)},
+	}}
+	gateway.chatTTSDial = func(_ context.Context, target string, _ http.Header, _ string) (chatSpeechSocket, error) {
+		require.True(t, strings.HasPrefix(target, "wss://suite.example/v1/tools/tts?"))
+		return socket, nil
+	}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
+
+	result, err := gateway.ForwardChatTTS(ctx, c, key, account, &ChatAuxiliaryInput{
+		TTS: &ChatTTSInput{Text: "你好"},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
 }
 
 func TestChatSpeechTTSCancellationClosesWithoutReplay(t *testing.T) {

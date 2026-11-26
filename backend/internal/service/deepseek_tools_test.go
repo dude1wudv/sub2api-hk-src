@@ -382,14 +382,25 @@ func TestForwardDeepSeekToolReadTimeout(t *testing.T) {
 
 type deepSeekToolsAccountRepo struct {
 	AccountRepository
-	latest *Account
-	err    error
-	calls  int
+	latest      *Account
+	schedulable []Account
+	err         error
+	calls       int
 }
 
 func (repo *deepSeekToolsAccountRepo) GetByID(context.Context, int64) (*Account, error) {
 	repo.calls++
 	return repo.latest, repo.err
+}
+
+func (repo *deepSeekToolsAccountRepo) ListSchedulableByGroupIDAndPlatforms(context.Context, int64, []string) ([]Account, error) {
+	if repo.schedulable != nil {
+		return repo.schedulable, nil
+	}
+	if repo.latest == nil {
+		return nil, repo.err
+	}
+	return []Account{*repo.latest}, nil
 }
 
 func TestForwardDeepSeekToolRechecksQueuedAccountPermissions(t *testing.T) {

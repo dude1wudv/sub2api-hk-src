@@ -24,10 +24,19 @@ func TestChatSharedToolsAcrossTransports(t *testing.T) {
 			shared.Credentials["base_url"] = "https://api.deepseek.com"
 			shared.GroupIDs = []int64{99}
 			shared.Extra = nil
-			s.auxiliary = NewChatAuxiliaryService(&config.Config{Chat: config.ChatConfig{AuxiliaryAccountID: shared.ID}}, &deepSeekToolsAccountRepo{latest: shared})
+			cfg := &config.Config{Chat: config.ChatConfig{AuxiliaryAccountID: shared.ID}}
+			if tc.transport == "chat_completions" {
+				cfg.Chat.AuxiliaryAccountID = 0
+				shared.Credentials["base_url"] = "https://suite.example/v1"
+				shared.GroupIDs = []int64{11}
+				shared.Extra = map[string]any{deepSeekToolsGroupIDsExtraKey: []int64{11}}
+			}
+			s.auxiliary = NewChatAuxiliaryService(cfg, &deepSeekToolsAccountRepo{latest: shared})
 			s.models.auxiliary = s.auxiliary
 			yes := true
-			caps, _, ok, err := s.models.modelCapabilities(t.Context(), &groups.groups[0], "shared-model", ModelMetadata{MetadataMatch: "exact", ToolCall: &yes}, ChatModelPolicy{Transport: tc.transport}, candidates.accounts)
+			available, err := s.auxiliary.availableKinds(t.Context(), 11)
+			require.NoError(t, err)
+			caps, _, ok, err := s.models.modelCapabilities(t.Context(), &groups.groups[0], "shared-model", ModelMetadata{MetadataMatch: "exact", ToolCall: &yes}, ChatModelPolicy{Transport: tc.transport}, candidates.accounts, available)
 			require.NoError(t, err)
 			require.True(t, ok)
 			require.True(t, caps.Search)

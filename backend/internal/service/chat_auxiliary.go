@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -37,13 +38,9 @@ func NewChatAuxiliaryService(cfg *config.Config, accounts AccountRepository) *Ch
 	return &ChatAuxiliaryService{cfg: cfg, accounts: accounts}
 }
 
-func chatAuxiliaryKind(kind string) bool {
-	switch kind {
-	case "search", "fetch", "asr", "tts", "ocr":
-		return true
-	}
-	return false
-}
+var chatAuxiliaryKinds = []string{"search", "fetch", "asr", "tts", "ocr"}
+
+func chatAuxiliaryKind(kind string) bool { return slices.Contains(chatAuxiliaryKinds, kind) }
 
 func chatAuxiliaryAccountValid(account *Account) bool {
 	return account != nil && chatDeepSeekAccountAtBaseURL(account, account.GetOpenAIBaseURL()) && account.IsSchedulable()
@@ -82,11 +79,84 @@ func (s *ChatAuxiliaryService) account(ctx context.Context) (*Account, error) {
 	return a, nil
 }
 
-func (s *OpenAIGatewayService) SelectChatAuxiliaryAccount(ctx context.Context, accountID int64) (*Account, error) {
-	if s == nil || s.cfg == nil || accountID <= 0 || accountID != s.cfg.Chat.AuxiliaryAccountID {
+func (s *ChatAuxiliaryService) accountFor(ctx context.Context, groupID int64, kind string) (*Account, error) {
+	if !chatAuxiliaryKind(kind) || groupID <= 0 {
 		return nil, ErrChatAuxiliaryUnavailable
 	}
-	return NewChatAuxiliaryService(s.cfg, s.accountRepo).account(ctx)
+	accounts, err := s.suiteAccounts(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	if account := chatSuiteAccountFor(accounts, groupID, kind); account != nil {
+		return account, nil
+	}
+	return s.account(ctx)
+}
+
+func (s *ChatAuxiliaryService) availableKinds(ctx context.Context, groupID int64) (map[string]bool, error) {
+	available := make(map[string]bool, len(chatAuxiliaryKinds))
+	accounts, err := s.suiteAccounts(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	for _, kind := range chatAuxiliaryKinds {
+		if chatSuiteAccountFor(accounts, groupID, kind) != nil {
+			available[kind] = true
+		}
+	}
+	if len(available) < len(chatAuxiliaryKinds) {
+		if _, err := s.account(ctx); err == nil {
+			for _, kind := range chatAuxiliaryKinds {
+				available[kind] = true
+			}
+		}
+	}
+	return available, nil
+}
+
+func chatSuiteAccountFor(accounts []Account, groupID int64, kind string) *Account {
+	for index := range accounts {
+		if chatSuiteAccountAllowed(&accounts[index], groupID, kind) {
+			return &accounts[index]
+		}
+	}
+	return nil
+}
+
+func (s *ChatAuxiliaryService) suiteAccounts(ctx context.Context, groupID int64) ([]Account, error) {
+	if s == nil || s.accounts == nil {
+		return nil, nil
+	}
+	return s.accounts.ListSchedulableByGroupIDAndPlatforms(ctx, groupID, []string{PlatformOpenAI, PlatformDeepseek})
+}
+
+func chatSuiteKind(kind string) string {
+	if kind == "tts" {
+		return "tts_ws"
+	}
+	return kind
+}
+
+func chatSuiteAccountAllowed(account *Account, groupID int64, kind string) bool {
+	return account != nil && account.ID > 0 && account.IsSchedulable() &&
+		strings.TrimSpace(account.GetCredential("api_key")) != "" &&
+		openAIStickyAccountMatchesGroup(account, &groupID) &&
+		account.DeepSeekSuiteAllowed(&groupID, chatSuiteKind(kind))
+}
+
+func (s *OpenAIGatewayService) SelectChatAuxiliaryAccount(ctx context.Context, accountID int64) (*Account, error) {
+	scope, _ := ctx.Value(chatAuxiliaryContextKey{}).(*chatAuxiliaryScope)
+	if s == nil || s.cfg == nil || s.accountRepo == nil || scope == nil || accountID <= 0 ||
+		scope.configuredAccountID != accountID || !chatAuxiliaryKind(scope.kind) {
+		return nil, ErrChatAuxiliaryUnavailable
+	}
+	account, err := s.accountRepo.GetByID(ctx, accountID)
+	if err != nil || account == nil || account.ID != accountID ||
+		(!chatSuiteAccountAllowed(account, scope.sourceGroupID, scope.kind) &&
+			(accountID != s.cfg.Chat.AuxiliaryAccountID || !chatAuxiliaryAccountValid(account))) {
+		return nil, ErrChatAuxiliaryUnavailable
+	}
+	return account, nil
 }
 
 // HasChatAuxiliaryScope is for the pre-auth route guard, not an authorization check.
@@ -99,10 +169,25 @@ func (s *OpenAIGatewayService) ValidateChatAuxiliaryScope(ctx context.Context, k
 	scope, ok := ctx.Value(chatAuxiliaryContextKey{}).(*chatAuxiliaryScope)
 	if !ok || scope == nil || s == nil || s.cfg == nil || !chatAuxiliaryKind(kind) || scope.kind != kind ||
 		scope.presetID == uuid.Nil || scope.operationID == uuid.Nil || scope.configuredAccountID <= 0 ||
-		scope.configuredAccountID != s.cfg.Chat.AuxiliaryAccountID || !chatCredentialValid(key, scope.userID, scope.sourceGroupID) {
+		!chatCredentialValid(key, scope.userID, scope.sourceGroupID) {
 		return 0, ErrChatAuxiliaryUnavailable
 	}
 	return scope.configuredAccountID, nil
+}
+
+func (s *OpenAIGatewayService) chatAuxiliaryTarget(ctx context.Context, account *Account, kind string) (string, error) {
+	scope, _ := ctx.Value(chatAuxiliaryContextKey{}).(*chatAuxiliaryScope)
+	if scope != nil && chatSuiteAccountAllowed(account, scope.sourceGroupID, kind) {
+		return s.deepSeekSuiteURL(account, chatSuiteKind(kind), "")
+	}
+	if account == nil || account.ID != s.cfg.Chat.AuxiliaryAccountID || !chatAuxiliaryAccountValid(account) {
+		return "", ErrChatAuxiliaryUnavailable
+	}
+	const base = "https://api.deepseek.com"
+	if _, err := s.validateUpstreamBaseURL(base); err != nil {
+		return "", err
+	}
+	return base + "/v1/tools/" + kind, nil
 }
 
 func (s *ChatService) resolveChatAuxiliary(ctx context.Context, userID int64, presetID, sessionID uuid.UUID, kind string) (*APIKey, *chatAuxiliaryScope, error) {
@@ -122,7 +207,7 @@ func (s *ChatService) resolveChatAuxiliary(ctx context.Context, userID int64, pr
 	if err != nil {
 		return nil, nil, err
 	}
-	account, err := s.auxiliary.account(ctx)
+	account, err := s.auxiliary.accountFor(ctx, preset.GroupID, kind)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -144,15 +229,16 @@ func (s *OpenAIGatewayService) ForwardChatAuxiliaryJSON(ctx context.Context, c *
 	if _, err := ValidateDeepSeekToolRequest(DeepSeekToolKind(kind), body); err != nil {
 		return nil, err
 	}
-	if _, err := s.validateUpstreamBaseURL("https://api.deepseek.com"); err != nil {
-		return nil, ErrChatAuxiliaryUnavailable
-	}
 	scope, ok := ctx.Value(chatAuxiliaryContextKey{}).(*chatAuxiliaryScope)
 	if !ok || scope == nil {
 		return nil, ErrChatAuxiliaryUnavailable
 	}
-	result, err := s.forwardDeepSeekToolJSON(ctx, c, current, DeepSeekToolKind(kind), body, "https://api.deepseek.com/v1/tools/"+kind, "chat_auxiliary:"+scope.operationID.String())
-	if result != nil {
+	target, err := s.chatAuxiliaryTarget(ctx, current, kind)
+	if err != nil {
+		return nil, ErrChatAuxiliaryUnavailable
+	}
+	result, err := s.forwardDeepSeekToolJSON(ctx, c, current, DeepSeekToolKind(kind), body, target, "chat_auxiliary:"+scope.operationID.String())
+	if err == nil && result != nil {
 		quantity := int64(result.BillableToolCalls)
 		result.ChatAuxiliaryUsage, err = chatAuxiliaryUsage(kind, &quantity, "confirmed")
 		result.chatAuxiliaryOnly = true

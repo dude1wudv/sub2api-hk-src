@@ -112,7 +112,7 @@ func (s *ChatService) dispatchChatAuxiliary(ctx context.Context, w http.Response
 	if scope == nil || scope.kind != kind || !chatAuxiliaryKind(kind) || !chatCredentialValid(key, scope.userID, scope.sourceGroupID) {
 		return "", ErrChatCredentialUnavailable
 	}
-	if s.auxiliary == nil || s.auxiliary.cfg == nil || s.auxiliary.cfg.Chat.AuxiliaryAccountID != scope.configuredAccountID {
+	if scope.configuredAccountID <= 0 || scope.operationID == uuid.Nil {
 		return "", ErrChatAuxiliaryUnavailable
 	}
 	mediaType, params, err := mime.ParseMediaType(contentType)

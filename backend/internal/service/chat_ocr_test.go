@@ -116,6 +116,40 @@ func TestChatOCROnlyAuthoritativePagesAndNoAutomaticReplay(t *testing.T) {
 	}
 }
 
+func TestChatOCRUsesDeepSeekSuiteEndpoint(t *testing.T) {
+	gateway, key, account, ctx := chatSpeechFixture(t, "ocr")
+	gateway.cfg.Chat.AuxiliaryAccountID = 23
+	account.Credentials["base_url"] = "https://suite.example/v1"
+	account.Extra[DeepSeekSuiteCapabilitiesKey] = []any{"ocr"}
+	account.Extra["deepseek_tools_group_ids"] = []any{float64(11)}
+	account.GroupIDs = []int64{11}
+	require.True(t, account.DeepSeekSuiteAllowed(i64p(11), "ocr"))
+	_, err := gateway.ValidateChatAuxiliaryScope(ctx, key, "ocr")
+	require.NoError(t, err)
+	_, err = gateway.SelectChatAuxiliaryAccount(ctx, account.ID)
+	require.NoError(t, err)
+	_, native, _ := chatNativeFileFixture(t)
+	repo := &chatOCRRepoFake{ChatRepository: native.service.repo}
+	native.service.repo = repo
+	scope := ctx.Value(chatAuxiliaryContextKey{}).(*chatAuxiliaryScope)
+	var id uuid.UUID
+	for file := range native.files {
+		id = file
+	}
+	scope.chat = native.service
+	scope.parse = &ChatParseRecord{UserID: 7, AttachmentID: id, AccountID: account.ID, OperationID: scope.operationID}
+	upstream := &deepSeekToolsUpstream{response: &http.Response{
+		StatusCode: 200,
+		Header:     http.Header{"Content-Type": {"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(`{"id":"ocr-synthetic","object":"ocr.result","purpose":"text_recognition","page_count":1,"pages":[{"index":0,"text":"decoded","finish_reason":"stop"}]}`)),
+	}}
+	gateway.httpUpstream = upstream
+
+	_, _, err = gateway.ForwardChatOCR(ctx, key, account)
+	require.NoError(t, err)
+	require.Equal(t, "https://suite.example/v1/tools/ocr", upstream.request.URL.String())
+}
+
 func TestChatDocumentTextDecoding(t *testing.T) {
 	for _, raw := range [][]byte{[]byte("hello"), {0xef, 0xbb, 0xbf, 'h', 'e', 'l', 'l', 'o'}, {0xff, 0xfe, 'h', 0, 'e', 0, 'l', 0, 'l', 0, 'o', 0}, {0xfe, 0xff, 0, 'h', 0, 'e', 0, 'l', 0, 'l', 0, 'o'}} {
 		text, err := decodeChatDocumentText(raw)

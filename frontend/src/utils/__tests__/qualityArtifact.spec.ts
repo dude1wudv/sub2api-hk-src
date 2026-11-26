@@ -15,6 +15,21 @@ describe('qualityArtifactDocument', () => {
 
 
 describe('qualityArtifactPlayableDocument', () => {
+  it('uses a nonempty script nonce even when the browser hides its attribute', () => {
+    const empty = document.createElement('script')
+    empty.setAttribute('nonce', '')
+    const bootstrap = document.createElement('script')
+    Object.defineProperty(bootstrap, 'nonce', { value: 'host-nonce' })
+    document.head.append(empty, bootstrap)
+    try {
+      const html = qualityArtifactPlayableDocument('<main>art</main><script>startRide()</script>')!
+      expect(html.match(/nonce="host-nonce"/g)).toHaveLength(2)
+    } finally {
+      empty.remove()
+      bootstrap.remove()
+    }
+  })
+
   it('keeps inline animation with the host nonce while dropping external and embedded documents', () => {
     const script = document.createElement('script'); script.nonce = 'host-nonce'; document.head.append(script)
     const html = qualityArtifactPlayableDocument('<html><head><meta http-equiv="refresh" content="0;url=https://elsewhere.test"><script src="https://elsewhere.test/x.js"></script></head><body><div onclick="this.textContent=1">art</div><script>requestAnimationFrame(()=>{})</script><iframe src="https://elsewhere.test"></iframe></body></html>')!
