@@ -30,7 +30,9 @@ describe('PortalApiBulkForm', () => {
       },
     })
     await wrapper.get('[data-test="enable-status"]').setValue(true)
-    await wrapper.get('[data-test="status-input"]').setValue('inactive')
+    const statusSelect = wrapper.findComponent('[data-test="status-input"]')
+    statusSelect.vm.$emit('update:modelValue', 'inactive')
+    await flushPromises()
     await wrapper.get('form').trigger('submit')
     await wrapper.get('form').trigger('submit')
     expect(bulkUpdate).toHaveBeenCalledOnce()

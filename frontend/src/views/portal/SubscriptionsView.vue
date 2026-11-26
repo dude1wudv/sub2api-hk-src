@@ -227,10 +227,10 @@ onMounted(async () => {
 .subscription-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; scroll-margin-top: 20px; }
 .subscription-plan { display: flex; flex-direction: column; border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); padding: 26px; background: rgb(var(--surface)); box-shadow: var(--shadow-panel); position: relative; overflow: hidden; isolation: isolate; transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease; }
 .subscription-plan:hover { border-color: rgb(var(--line-strong)); box-shadow: var(--shadow-card-hover); }
-.plan-ink-accent { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, rgb(var(--brand-moss)) 0%, rgb(var(--focus-ring) / .55) 100%); pointer-events: none; z-index: 0; }
+.plan-ink-accent { display: none; }
 .plan-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .plan-title h2 { font: 650 22px/1.3 var(--font-sans); letter-spacing: -0.02em; margin: 0; }
-.plan-note { white-space: nowrap; color: rgb(var(--brand-moss)); background: rgb(var(--brand-moss) / .1); font-size: 12px; font-weight: 600; border: 1px solid rgb(var(--brand-moss) / .24); border-radius: 999px; padding: 3px 9px; }
+.plan-note { white-space: nowrap; color: rgb(var(--ink-2)); background: rgb(var(--surface-2)); font-size: 12px; font-weight: 600; border: 1px solid rgb(var(--line)); border-radius: 999px; padding: 3px 9px; }
 .plan-description { min-height: 36px; font-size: 13.5px; color: rgb(var(--ink-2)); line-height: 1.6; margin: 12px 0 22px; }
 .plan-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
 .plan-price strong { font-size: 32px; line-height: 1.2; font-weight: 650; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
@@ -239,7 +239,7 @@ onMounted(async () => {
 .plan-button { width: 100%; min-height: 44px; margin: 22px 0; border-radius: var(--radius-control); }
 .plan-features { display: grid; gap: 13px; margin: 0; padding: 18px 0 0; border-top: 1px solid rgb(var(--line)); list-style: none; }
 .plan-features li { display: flex; align-items: flex-start; gap: 10px; line-height: 1.55; font-size: 13.5px; color: rgb(var(--ink-2)); }
-.plan-features li > span { color: rgb(var(--brand-moss)); font-weight: 700; }
+.plan-features li > span { color: rgb(var(--ink)); font-weight: 700; }
 .plan-sale-end { color: rgb(var(--ink-3)); margin-top: 18px; font-size: 12.5px; }
 .current-subscriptions, .subscription-history { margin-top: 38px; }
 .current-subscriptions h2, .subscription-history h2 { font: 650 20px/1.3 var(--font-sans); letter-spacing: -0.015em; margin-bottom: 18px; }

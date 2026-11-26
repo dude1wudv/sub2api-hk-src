@@ -54,13 +54,13 @@
   border-bottom: 1px solid rgb(var(--line) / .75);
 }
 .admin-brand small {
-  font-size: 11.5px;
-  font-weight: 650;
-  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: rgb(var(--brand-moss) / .12);
-  border: 1px solid rgb(var(--brand-moss) / .24);
-  color: rgb(var(--brand-moss));
+  background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--line));
+  color: rgb(var(--ink-2));
   white-space: nowrap;
 }
 .admin-menu-search {
@@ -118,7 +118,7 @@
   width: 100%;
   gap: 10px;
   padding: 7px 11px;
-  min-height: 38px;
+  min-height: 36px;
   border: 0;
   border-radius: 10px;
   background: transparent;
@@ -143,8 +143,8 @@
   opacity: 1;
 }
 .admin-nav-item.active > .sidebar-nav-surface {
-  background: rgb(var(--brand-moss) / .12);
-  border: 1px solid rgb(var(--brand-moss) / .24);
+  background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--line));
   opacity: 1;
 }
 .admin-nav-item > svg,
@@ -176,7 +176,7 @@
   font-weight: 600;
 }
 .admin-nav-item.active svg {
-  color: rgb(var(--brand-moss));
+  color: rgb(var(--ink));
 }
 .admin-sidebar-bottom {
   padding: 10px;
@@ -790,13 +790,7 @@ body.admin-navigation-open {
 }
 .admin-workbench-intro::after,
 .admin-task-header::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  border-radius: inherit;
-  background: radial-gradient(ellipse at 100% 0%, rgb(var(--admin-accent) / .09), transparent 54%);
+  content: none;
 }
 .admin-eyebrow {
   display: inline-flex;

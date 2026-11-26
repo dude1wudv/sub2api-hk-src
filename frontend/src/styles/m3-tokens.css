@@ -1,5 +1,5 @@
 /*
- * Material Design 3 Design System Tokens (Seed: #0D8A6A Moss Emerald)
+ * Google Material Design 3 System Tokens — OpenAI Clean White Monochrome Theme
  * Single source of truth shared between Shadow DOM (@material/web) and Vue/Tailwind surfaces.
  * Controlled strictly by :root (light) and :root.dark (dark) to match useColorMode.ts.
  */
@@ -12,184 +12,209 @@
   --md-ref-typeface-weight-medium: 500;
   --md-ref-typeface-weight-bold: 600;
 
-  /* M3 System Color — Light Scheme (Seed #0D8A6A) */
-  --md-sys-color-primary: #0d8a6a;
+  /* M3 System Color — Light Scheme (OpenAI Pure White + Obsidian Ink) */
+  --md-sys-color-primary: #111113;
   --md-sys-color-on-primary: #ffffff;
-  --md-sys-color-primary-container: #b5f1da;
-  --md-sys-color-on-primary-container: #002117;
-  --md-sys-color-primary-fixed: #b5f1da;
-  --md-sys-color-primary-fixed-dim: #79d5b6;
-  --md-sys-color-on-primary-fixed: #002117;
-  --md-sys-color-on-primary-fixed-variant: #00513c;
+  --md-sys-color-primary-container: #f0f0f3;
+  --md-sys-color-on-primary-container: #0d0d0f;
+  --md-sys-color-primary-fixed: #f0f0f3;
+  --md-sys-color-primary-fixed-dim: #e2e2e7;
+  --md-sys-color-on-primary-fixed: #0d0d0f;
+  --md-sys-color-on-primary-fixed-variant: #3f3f46;
 
-  --md-sys-color-secondary: #4a635b;
+  --md-sys-color-secondary: #52525b;
   --md-sys-color-on-secondary: #ffffff;
-  --md-sys-color-secondary-container: #cde8de;
-  --md-sys-color-on-secondary-container: #072019;
-  --md-sys-color-secondary-fixed: #cde8de;
-  --md-sys-color-secondary-fixed-dim: #b1ccc2;
-  --md-sys-color-on-secondary-fixed: #072019;
-  --md-sys-color-on-secondary-fixed-variant: #334b43;
+  --md-sys-color-secondary-container: #f4f4f6;
+  --md-sys-color-on-secondary-container: #18181b;
+  --md-sys-color-secondary-fixed: #f4f4f6;
+  --md-sys-color-secondary-fixed-dim: #e4e4e8;
+  --md-sys-color-on-secondary-fixed: #18181b;
+  --md-sys-color-on-secondary-fixed-variant: #52525b;
 
-  --md-sys-color-tertiary: #3f6374;
+  --md-sys-color-tertiary: #3f3f46;
   --md-sys-color-on-tertiary: #ffffff;
-  --md-sys-color-tertiary-container: #c3e8fc;
-  --md-sys-color-on-tertiary-container: #001f2a;
-  --md-sys-color-tertiary-fixed: #c3e8fc;
-  --md-sys-color-tertiary-fixed-dim: #a7cce0;
-  --md-sys-color-on-tertiary-fixed: #001f2a;
-  --md-sys-color-on-tertiary-fixed-variant: #274b5b;
+  --md-sys-color-tertiary-container: #ededf0;
+  --md-sys-color-on-tertiary-container: #18181b;
+  --md-sys-color-tertiary-fixed: #ededf0;
+  --md-sys-color-tertiary-fixed-dim: #d4d4dc;
+  --md-sys-color-on-tertiary-fixed: #18181b;
+  --md-sys-color-on-tertiary-fixed-variant: #3f3f46;
 
-  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-error: #c81e1e;
   --md-sys-color-on-error: #ffffff;
-  --md-sys-color-error-container: #ffdad6;
-  --md-sys-color-on-error-container: #410002;
+  --md-sys-color-error-container: #fee2e2;
+  --md-sys-color-on-error-container: #7f1d1d;
 
-  --md-sys-color-background: #f5f9f7;
-  --md-sys-color-on-background: #171d1b;
-  --md-sys-color-surface: #f5f9f7;
-  --md-sys-color-on-surface: #171d1b;
-  --md-sys-color-surface-variant: #dbe5e0;
-  --md-sys-color-on-surface-variant: #3f4945;
+  --md-sys-color-background: #ffffff;
+  --md-sys-color-on-background: #0d0d0f;
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-on-surface: #0d0d0f;
+  --md-sys-color-surface-variant: #f4f4f6;
+  --md-sys-color-on-surface-variant: #52525b;
 
-  --md-sys-color-surface-dim: #d6dcd9;
-  --md-sys-color-surface-bright: #f5f9f7;
+  --md-sys-color-surface-dim: #ededf0;
+  --md-sys-color-surface-bright: #ffffff;
   --md-sys-color-surface-container-lowest: #ffffff;
-  --md-sys-color-surface-container-low: #eff4f2;
-  --md-sys-color-surface-container: #e9efec;
-  --md-sys-color-surface-container-high: #e3e9e6;
-  --md-sys-color-surface-container-highest: #dee4e1;
+  --md-sys-color-surface-container-low: #f9f9fa;
+  --md-sys-color-surface-container: #f4f4f6;
+  --md-sys-color-surface-container-high: #ededf0;
+  --md-sys-color-surface-container-highest: #e4e4e8;
 
-  --md-sys-color-outline: #6f7975;
-  --md-sys-color-outline-variant: #bfc9c4;
+  --md-sys-color-outline: #71717a;
+  --md-sys-color-outline-variant: #e5e5ea;
   --md-sys-color-shadow: #000000;
   --md-sys-color-scrim: #000000;
-  --md-sys-color-surface-tint: #0d8a6a;
+  --md-sys-color-surface-tint: transparent;
 
-  --md-sys-color-inverse-surface: #2b322f;
-  --md-sys-color-inverse-on-surface: #ecf2ef;
-  --md-sys-color-inverse-primary: #4fdab2;
+  --md-sys-color-inverse-surface: #18181b;
+  --md-sys-color-inverse-on-surface: #f4f4f6;
+  --md-sys-color-inverse-primary: #f4f4f6;
 
-  /* M3 System Shape */
+  /* M3 System Shape — Crisp OpenAI Developer Geometry */
   --md-sys-shape-corner-none: 0px;
-  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-extra-small: 6px;
   --md-sys-shape-corner-small: 8px;
-  --md-sys-shape-corner-medium: 12px;
-  --md-sys-shape-corner-large: 16px;
-  --md-sys-shape-corner-extra-large: 24px;
+  --md-sys-shape-corner-medium: 10px;
+  --md-sys-shape-corner-large: 14px;
+  --md-sys-shape-corner-extra-large: 18px;
   --md-sys-shape-corner-full: 9999px;
 
   /* M3 Elevation Shadows (Light) */
   --md-elevation-0: none;
-  --md-elevation-1: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px 1px rgb(15 23 42 / 0.04);
-  --md-elevation-2: 0 1px 2px rgb(15 23 42 / 0.08), 0 2px 6px 2px rgb(15 23 42 / 0.05);
-  --md-elevation-3: 0 4px 12px rgb(15 23 42 / 0.1), 0 1px 4px rgb(15 23 42 / 0.06);
+  --md-elevation-1: 0 1px 2px rgb(9 9 11 / 0.05);
+  --md-elevation-2: 0 2px 6px rgb(9 9 11 / 0.07), 0 1px 2px rgb(9 9 11 / 0.04);
+  --md-elevation-3: 0 12px 28px rgb(9 9 11 / 0.12), 0 2px 6px rgb(9 9 11 / 0.06);
 
-  /* Component-level M3 tuning */
-  --md-filled-button-container-shape: 9999px;
-  --md-filled-tonal-button-container-shape: 9999px;
-  --md-outlined-button-container-shape: 9999px;
-  --md-text-button-container-shape: 9999px;
-  --md-elevated-button-container-shape: 9999px;
-  --md-outlined-text-field-container-shape: 12px;
-  --md-outlined-select-text-field-container-shape: 12px;
-  --md-dialog-container-shape: 24px;
+  /* Component-level Google @material/web tuning */
+  --md-filled-button-container-shape: 10px;
+  --md-filled-tonal-button-container-shape: 10px;
+  --md-outlined-button-container-shape: 10px;
+  --md-text-button-container-shape: 10px;
+  --md-elevated-button-container-shape: 10px;
+  --md-outlined-button-outline-color: #e2e2e8;
+  --md-outlined-text-field-container-shape: 10px;
+  --md-outlined-select-text-field-container-shape: 10px;
+  --md-outlined-select-text-field-outline-color: #e2e2e8;
+  --md-dialog-container-shape: 18px;
   --md-menu-container-shape: 12px;
-  --md-filter-chip-container-shape: 10px;
-  --md-assist-chip-container-shape: 10px;
+  --md-menu-container-color: #ffffff;
+  --md-filter-chip-container-shape: 9999px;
+  --md-assist-chip-container-shape: 9999px;
   --md-primary-tab-container-color: transparent;
   --md-secondary-tab-container-color: transparent;
+  --md-slider-active-track-color: #111113;
+  --md-slider-handle-color: #111113;
+  --md-slider-inactive-track-color: #e4e4e8;
+  --md-switch-selected-track-color: #111113;
+  --md-switch-selected-handle-color: #ffffff;
+  --md-checkbox-selected-container-color: #111113;
+  --md-checkbox-selected-icon-color: #ffffff;
+  --md-linear-progress-active-indicator-color: #111113;
+  --md-linear-progress-track-color: #ededf0;
 
-  /* Bridge legacy design-system tokens smoothly to M3 Light */
-  --canvas: 245 249 247;
+  /* Keep design-system tokens aligned cleanly to pure white Light */
+  --canvas: 255 255 255;
   --surface: 255 255 255;
-  --surface-2: 239 244 242;
+  --surface-2: 244 244 246;
   --surface-elevated: 255 255 255;
-  --surface-sidebar: 239 244 242;
-  --surface-header: 245 249 247;
-  --ink: 23 29 27;
-  --ink-2: 63 73 69;
-  --ink-3: 94 108 103;
-  --line: 215 224 220;
-  --line-strong: 162 176 170;
+  --surface-sidebar: 249 249 250;
+  --surface-header: 255 255 255;
+  --ink: 13 13 15;
+  --ink-2: 63 63 70;
+  --ink-3: 94 94 104;
+  --line: 229 229 234;
+  --line-strong: 196 196 204;
 }
 
 :root.dark {
-  /* M3 System Color — Dark Scheme (Seed #0D8A6A) */
-  --md-sys-color-primary: #4fdab2;
-  --md-sys-color-on-primary: #003829;
-  --md-sys-color-primary-container: #00513d;
-  --md-sys-color-on-primary-container: #b5f1da;
-  --md-sys-color-primary-fixed: #b5f1da;
-  --md-sys-color-primary-fixed-dim: #4fdab2;
-  --md-sys-color-on-primary-fixed: #002117;
-  --md-sys-color-on-primary-fixed-variant: #00513c;
+  /* M3 System Color — Dark Scheme (OpenAI Obsidian Neutral) */
+  --md-sys-color-primary: #f4f4f6;
+  --md-sys-color-on-primary: #0d0d0f;
+  --md-sys-color-primary-container: #27272c;
+  --md-sys-color-on-primary-container: #f4f4f6;
+  --md-sys-color-primary-fixed: #f4f4f6;
+  --md-sys-color-primary-fixed-dim: #d4d4dc;
+  --md-sys-color-on-primary-fixed: #0d0d0f;
+  --md-sys-color-on-primary-fixed-variant: #3f3f46;
 
-  --md-sys-color-secondary: #b1ccc2;
-  --md-sys-color-on-secondary: #1d352d;
-  --md-sys-color-secondary-container: #334b43;
-  --md-sys-color-on-secondary-container: #cde8de;
-  --md-sys-color-secondary-fixed: #cde8de;
-  --md-sys-color-secondary-fixed-dim: #b1ccc2;
-  --md-sys-color-on-secondary-fixed: #072019;
-  --md-sys-color-on-secondary-fixed-variant: #334b43;
+  --md-sys-color-secondary: #a1a1aa;
+  --md-sys-color-on-secondary: #0d0d0f;
+  --md-sys-color-secondary-container: #232328;
+  --md-sys-color-on-secondary-container: #e4e4e8;
+  --md-sys-color-secondary-fixed: #e4e4e8;
+  --md-sys-color-secondary-fixed-dim: #a1a1aa;
+  --md-sys-color-on-secondary-fixed: #0d0d0f;
+  --md-sys-color-on-secondary-fixed-variant: #3f3f46;
 
-  --md-sys-color-tertiary: #a7cce0;
-  --md-sys-color-on-tertiary: #0b3444;
-  --md-sys-color-tertiary-container: #274b5b;
-  --md-sys-color-on-tertiary-container: #c3e8fc;
-  --md-sys-color-tertiary-fixed: #c3e8fc;
-  --md-sys-color-tertiary-fixed-dim: #a7cce0;
-  --md-sys-color-on-tertiary-fixed: #001f2a;
-  --md-sys-color-on-tertiary-fixed-variant: #274b5b;
+  --md-sys-color-tertiary: #d4d4dc;
+  --md-sys-color-on-tertiary: #0d0d0f;
+  --md-sys-color-tertiary-container: #2c2c32;
+  --md-sys-color-on-tertiary-container: #f4f4f6;
+  --md-sys-color-tertiary-fixed: #e4e4e8;
+  --md-sys-color-tertiary-fixed-dim: #a1a1aa;
+  --md-sys-color-on-tertiary-fixed: #0d0d0f;
+  --md-sys-color-on-tertiary-fixed-variant: #3f3f46;
 
-  --md-sys-color-error: #ffb4ab;
-  --md-sys-color-on-error: #690005;
-  --md-sys-color-error-container: #93000a;
-  --md-sys-color-on-error-container: #ffdad6;
+  --md-sys-color-error: #f87171;
+  --md-sys-color-on-error: #450a0a;
+  --md-sys-color-error-container: #7f1d1d;
+  --md-sys-color-on-error-container: #fecaca;
 
-  --md-sys-color-background: #0e1412;
-  --md-sys-color-on-background: #dee4e1;
-  --md-sys-color-surface: #0e1412;
-  --md-sys-color-on-surface: #dee4e1;
-  --md-sys-color-surface-variant: #3f4945;
-  --md-sys-color-on-surface-variant: #bfc9c4;
+  --md-sys-color-background: #0d0d0f;
+  --md-sys-color-on-background: #f4f4f6;
+  --md-sys-color-surface: #0d0d0f;
+  --md-sys-color-on-surface: #f4f4f6;
+  --md-sys-color-surface-variant: #27272c;
+  --md-sys-color-on-surface-variant: #b4b4be;
 
-  --md-sys-color-surface-dim: #0e1412;
-  --md-sys-color-surface-bright: #343b38;
-  --md-sys-color-surface-container-lowest: #090f0d;
-  --md-sys-color-surface-container-low: #161d1b;
-  --md-sys-color-surface-container: #1a211f;
-  --md-sys-color-surface-container-high: #252c29;
-  --md-sys-color-surface-container-highest: #2f3634;
+  --md-sys-color-surface-dim: #09090b;
+  --md-sys-color-surface-bright: #2a2a30;
+  --md-sys-color-surface-container-lowest: #09090b;
+  --md-sys-color-surface-container-low: #151518;
+  --md-sys-color-surface-container: #1b1b1f;
+  --md-sys-color-surface-container-high: #232329;
+  --md-sys-color-surface-container-highest: #2e2e35;
 
-  --md-sys-color-outline: #89938f;
-  --md-sys-color-outline-variant: #3f4945;
+  --md-sys-color-outline: #7e7e8a;
+  --md-sys-color-outline-variant: #2c2c33;
   --md-sys-color-shadow: #000000;
   --md-sys-color-scrim: #000000;
-  --md-sys-color-surface-tint: #4fdab2;
+  --md-sys-color-surface-tint: transparent;
 
-  --md-sys-color-inverse-surface: #dee4e1;
-  --md-sys-color-inverse-on-surface: #2b322f;
-  --md-sys-color-inverse-primary: #0d8a6a;
+  --md-sys-color-inverse-surface: #f4f4f6;
+  --md-sys-color-inverse-on-surface: #111113;
+  --md-sys-color-inverse-primary: #111113;
+
+  --md-outlined-button-outline-color: #32323a;
+  --md-outlined-select-text-field-outline-color: #32323a;
+  --md-menu-container-color: #1c1c21;
+  --md-slider-active-track-color: #f4f4f6;
+  --md-slider-handle-color: #f4f4f6;
+  --md-slider-inactive-track-color: #2e2e35;
+  --md-switch-selected-track-color: #f4f4f6;
+  --md-switch-selected-handle-color: #0d0d0f;
+  --md-checkbox-selected-container-color: #f4f4f6;
+  --md-checkbox-selected-icon-color: #0d0d0f;
+  --md-linear-progress-active-indicator-color: #f4f4f6;
+  --md-linear-progress-track-color: #27272c;
 
   /* M3 Elevation Shadows (Dark) */
   --md-elevation-1: 0 1px 3px rgb(0 0 0 / 0.35), 0 1px 2px rgb(0 0 0 / 0.25);
-  --md-elevation-2: 0 2px 8px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
-  --md-elevation-3: 0 8px 24px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.35);
+  --md-elevation-2: 0 2px 8px rgb(0 0 0 / 0.42), 0 1px 3px rgb(0 0 0 / 0.3);
+  --md-elevation-3: 0 12px 32px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.35);
 
-  /* Bridge legacy design-system tokens smoothly to M3 Dark */
-  --canvas: 14 20 18;
-  --surface: 22 29 27;
-  --surface-2: 26 33 31;
-  --surface-elevated: 37 44 41;
-  --surface-sidebar: 19 25 23;
-  --surface-header: 14 20 18;
-  --ink: 222 228 225;
-  --ink-2: 191 201 196;
-  --ink-3: 137 147 143;
-  --line: 47 54 52;
-  --line-strong: 79 90 86;
+  /* Keep design-system tokens aligned cleanly to Dark */
+  --canvas: 13 13 15;
+  --surface: 21 21 24;
+  --surface-2: 31 31 35;
+  --surface-elevated: 26 26 30;
+  --surface-sidebar: 17 17 20;
+  --surface-header: 13 13 15;
+  --ink: 244 244 246;
+  --ink-2: 208 208 216;
+  --ink-3: 158 158 168;
+  --line: 39 39 44;
+  --line-strong: 72 72 82;
 }
 
 /* Shared M3 Surface Helpers for Vue + Tailwind compound components */
@@ -233,7 +258,7 @@
 
 .m3-card-elevated {
   background-color: var(--md-sys-color-surface-container-lowest);
-  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 60%, transparent);
+  border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-sys-shape-corner-large);
   box-shadow: var(--md-elevation-1);
   color: var(--md-sys-color-on-surface);
@@ -244,8 +269,9 @@
 }
 
 .m3-card-tonal {
-  background-color: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
+  background-color: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface);
   border-radius: var(--md-sys-shape-corner-large);
 }
 

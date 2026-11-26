@@ -3,12 +3,23 @@
     <aside class="portal-api-sidebar">
       <div class="portal-api-sidebar-heading"><h2>{{ text('接入分组', 'Connections') }}</h2><span>{{ connections.length }}</span></div>
       <label class="portal-api-model-search portal-api-group-search"><Icon name="search" size="sm" aria-hidden="true" /><input v-model="groupSearch" type="search" :aria-label="text('搜索分组', 'Search connections')" :placeholder="text('搜索分组', 'Search connections')" /></label>
-      <select class="portal-api-mobile-groups input" :value="selectedGroupId ?? ''" :aria-label="text('接入分组', 'Connections')" @change="$emit('update:selectedGroupId', Number(($event.target as HTMLSelectElement).value))">
-        <option v-for="connection in connections" :key="connection.id" :value="connection.id">{{ connection.name }} · {{ connection.count }}</option>
-      </select>
+      <div class="portal-api-mobile-groups">
+        <Select
+          :model-value="selectedGroupId ?? ''"
+          :options="connectionSelectOptions"
+          :searchable="connections.length > 5"
+          :aria-label="text('接入分组', 'Connections')"
+          @update:model-value="onMobileGroupChange"
+        />
+      </div>
       <nav ref="groupNav" class="portal-api-group-nav" :aria-label="text('接入分组', 'Connections')" tabindex="0" @scroll="updateGroupScroll">
         <button v-for="connection in visibleConnections" :key="connection.id" type="button" :aria-current="selectedGroupId === connection.id ? 'true' : undefined" :aria-pressed="selectedGroupId === connection.id" @click="$emit('update:selectedGroupId', connection.id)">
-          <span class="portal-api-connection-name">{{ connection.name }}</span>
+          <span class="portal-api-connection-head">
+            <span class="portal-api-connection-icon" aria-hidden="true">
+              <PlatformIcon :platform="connection.platform" size="sm" />
+            </span>
+            <span class="portal-api-connection-name">{{ connection.name }}</span>
+          </span>
           <span class="portal-api-connection-meta"><span>{{ connection.count }} {{ text('模型', 'models') }}</span><span v-if="connection.rate != null">×{{ connection.rate }}</span></span>
           <small v-if="showCreate && !bindableGroupIds.includes(connection.id)">{{ text('仅价格预览', 'Pricing preview only') }}</small>
         </button>
@@ -181,6 +192,8 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import Icon from '@/components/icons/Icon.vue'
 import ModelIcon from '@/components/common/ModelIcon.vue'
+import PlatformIcon from '@/components/common/PlatformIcon.vue'
+import Select from '@/components/common/Select.vue'
 import ModelCapabilities from '@/components/modelPlaza/ModelCapabilities.vue'
 import { getActivePinia } from 'pinia'
 import { useClipboard } from '@/composables/useClipboard'
@@ -209,7 +222,7 @@ import { formatPeakRateWindow, hasPeakRate, serverTimezoneLabel } from '@/utils/
 
 const props = withDefaults(defineProps<{
   groups: ModelPlazaGroup[]
-  availableConnections?: { id: number; name: string }[]
+  availableConnections?: { id: number; name: string; platform?: string }[]
   bindableGroupIds?: number[]
   selectedGroupId: number | null
   search?: string
@@ -245,9 +258,20 @@ const connections = computed(() => {
   for (const group of props.groups) result.set(group.id, group)
   return [...result.values()].map(connection => {
     const group = props.groups.find(group => group.id === connection.id)
-    return { ...connection, count: group?.models.length ?? 0, rate: group ? group.user_rate_multiplier ?? group.rate_multiplier : null }
+    const platform = (group?.platform || (connection as { platform?: string }).platform || group?.models?.[0]?.platform || 'openai') as any
+    return { ...connection, platform, count: group?.models.length ?? 0, rate: group ? group.user_rate_multiplier ?? group.rate_multiplier : null }
   })
 })
+const connectionSelectOptions = computed(() =>
+  connections.value.map(connection => ({
+    value: connection.id,
+    label: `${connection.name} · ${connection.count}`
+  }))
+)
+function onMobileGroupChange(value: string | number | boolean | null) {
+  const id = Number(value)
+  if (Number.isFinite(id) && id > 0) emit('update:selectedGroupId', id)
+}
 const visibleConnections = computed(() => connections.value.filter(group => group.name.toLowerCase().includes(groupSearch.value.trim().toLowerCase())))
 const selectedGroup = computed(() => props.groups.find(group => group.id === props.selectedGroupId))
 const selectedPlatform = ref('')
@@ -511,9 +535,27 @@ function chooseExampleModel() {
 }
 
 .portal-api-group-nav button[aria-pressed='true'] {
-  background: rgb(var(--brand-moss) / 0.1);
-  border-color: rgb(var(--brand-moss) / 0.32);
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--ink) / 0.2);
   color: rgb(var(--ink));
+}
+
+.portal-api-connection-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.portal-api-connection-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface));
 }
 
 .portal-api-connection-name {
@@ -528,6 +570,7 @@ function chooseExampleModel() {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding-left: 32px;
   font-size: 11.5px;
   color: rgb(var(--ink-3));
   font-variant-numeric: tabular-nums;
@@ -537,6 +580,7 @@ function chooseExampleModel() {
   padding: 1px 6px;
   border-radius: 999px;
   background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--line));
   color: rgb(var(--ink-2));
   font-family: var(--font-mono);
   font-size: 11px;
@@ -544,8 +588,9 @@ function chooseExampleModel() {
 }
 
 .portal-api-group-nav button[aria-pressed='true'] .portal-api-connection-meta > span:last-child {
-  background: rgb(var(--brand-moss) / 0.16);
-  color: rgb(var(--brand-moss));
+  background: rgb(var(--surface));
+  border-color: rgb(var(--line-strong));
+  color: rgb(var(--ink));
 }
 
 .portal-api-group-scroll-hint {
@@ -654,44 +699,23 @@ function chooseExampleModel() {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 14px;
-  padding-top: 14px;
+  margin-top: 6px;
+  padding-top: 12px;
   border-top: 1px solid rgb(var(--line));
 }
 
-.portal-fact-pill {
+.portal-api-group-facts > span {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid rgb(var(--line));
-  background: rgb(var(--surface-2) / 0.65);
+  background: rgb(var(--surface));
   font-size: 12px;
+  font-weight: 500;
   color: rgb(var(--ink-2));
   font-variant-numeric: tabular-nums;
-}
-
-.portal-fact-pill strong {
-  color: rgb(var(--ink));
-  font-family: var(--font-mono);
-  font-weight: 650;
-}
-
-.portal-fact-pill.is-rate {
-  border-color: rgb(var(--brand-moss) / 0.3);
-  background: rgb(var(--brand-moss) / 0.1);
-  color: rgb(var(--brand-moss));
-}
-
-.portal-fact-pill.is-rate strong {
-  color: rgb(var(--brand-moss));
-}
-
-.portal-fact-pill.is-accent {
-  border-color: rgb(99 102 241 / 0.3);
-  background: rgb(99 102 241 / 0.1);
-  color: rgb(79 70 229);
 }
 
 .portal-api-catalog-surface {
@@ -708,7 +732,7 @@ function chooseExampleModel() {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0 0 18px;
+  margin: 0 0 12px;
 }
 
 .portal-model-platforms > button {
@@ -718,7 +742,7 @@ function chooseExampleModel() {
   min-height: 36px;
   padding: 6px 12px;
   border: 1px solid rgb(var(--line));
-  border-radius: 9px;
+  border-radius: 999px;
   background: rgb(var(--surface));
   color: rgb(var(--ink-2));
   font-size: 13px;
@@ -734,9 +758,9 @@ function chooseExampleModel() {
 }
 
 .portal-model-platforms > button[aria-pressed='true'] {
-  border-color: rgb(var(--brand-moss));
-  color: rgb(var(--brand-moss));
-  background: rgb(var(--brand-moss) / 0.08);
+  border-color: rgb(var(--action-bg));
+  color: rgb(var(--action-text));
+  background: rgb(var(--action-bg));
   font-weight: 600;
 }
 
@@ -747,7 +771,7 @@ function chooseExampleModel() {
 }
 
 .portal-model-platforms > button[aria-pressed='true'] > span {
-  color: rgb(var(--brand-moss));
+  color: rgb(var(--action-text) / 0.78);
 }
 
 .portal-api-table-heading {
@@ -757,7 +781,7 @@ function chooseExampleModel() {
   flex-wrap: wrap;
   gap: 8px 16px;
   padding: 10px 14px;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
   border-radius: 10px;
   background: rgb(var(--surface-2) / 0.55);
   border: 1px solid rgb(var(--line));
@@ -776,7 +800,7 @@ function chooseExampleModel() {
   display: inline-flex;
   align-items: center;
   font-weight: 600;
-  color: rgb(var(--brand-moss));
+  color: rgb(var(--ink));
 }
 
 .portal-api-unit-hint {

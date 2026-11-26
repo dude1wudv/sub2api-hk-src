@@ -13,6 +13,7 @@ import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import ModelCostCalculator from '@/components/portal/ModelCostCalculator.vue'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { MdTabs } from '@/components/md'
 
 const AvailableChannelsView = defineAsyncComponent(() => import('@/views/user/AvailableChannelsView.vue'))
 
@@ -92,19 +93,12 @@ onBeforeUnmount(() => request?.abort())
         <RouterLink v-if="auth.isAuthenticated" to="/playground" class="portal-button secondary">{{ text('在线调试', 'Playground') }}</RouterLink>
         <RouterLink v-if="auth.isAuthenticated" to="/keys?create=1" class="portal-button">{{ text('创建密钥', 'Create a key') }} ↗</RouterLink>
       </PortalPageHeader>
-      <div class="portal-tabs portal-models-tabs" role="tablist" :aria-label="text('模型广场视图', 'Model plaza views')">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          type="button"
-          role="tab"
-          :aria-selected="activeTab === tab.id"
-          :class="{ active: activeTab === tab.id }"
-          @click="activeTab = tab.id"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
+      <MdTabs
+        v-model="activeTab"
+        :items="tabs"
+        class="portal-models-tabs"
+        :aria-label="text('模型广场视图', 'Model plaza views')"
+      />
       <PortalApiModels
         v-if="activeTab === 'catalog'"
         v-model:selected-group-id="groupId"

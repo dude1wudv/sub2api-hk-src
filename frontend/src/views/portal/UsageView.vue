@@ -461,10 +461,10 @@ watch(() => route.query.tab, (tab) => {
 .usage-page { max-width: 1520px; font-family:var(--font-sans); -webkit-font-smoothing:antialiased; }
 .usage-page :deep(.portal-page-header h1) { font-size:26px; font-weight:650; letter-spacing:-0.022em; line-height:1.28; }
 .usage-balance { display:flex; align-items:center; gap:10px; padding:8px 14px; border:1px solid rgb(var(--line)); border-radius:var(--radius-control); background:rgb(var(--surface)); box-shadow:var(--shadow-panel); font-size:13px; }
-.usage-balance > svg { color:rgb(var(--brand-moss)); }
+.usage-balance > svg { color:rgb(var(--ink)); }
 .usage-balance > span { color:rgb(var(--ink-2)); }
 .usage-balance strong { font-weight:650; font-variant-numeric:tabular-nums; color:rgb(var(--ink)); }
-.usage-balance a { border-left:1px solid rgb(var(--line)); padding-left:12px; color:rgb(var(--brand-moss)); font-weight:600; text-decoration:none; }
+.usage-balance a { border-left:1px solid rgb(var(--line)); padding-left:12px; color:rgb(var(--ink)); font-weight:600; text-decoration:none; }
 .usage-balance a:hover { text-decoration:underline; text-underline-offset:3px; }
 .usage-history { margin:24px 0 0; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); padding:18px 24px; background:rgb(var(--surface)); box-shadow:var(--shadow-panel); }
 .usage-history > summary { cursor:pointer; font-size:13.5px; font-weight:550; color:rgb(var(--ink-2)); }

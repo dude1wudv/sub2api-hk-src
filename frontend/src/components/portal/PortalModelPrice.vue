@@ -56,7 +56,7 @@ defineProps<{
 }
 
 .portal-model-price-adjusted-value {
-  color: rgb(var(--brand-moss));
+  color: rgb(var(--ink));
   font-family: var(--font-mono);
   font-size: 13.5px;
   font-weight: 700;

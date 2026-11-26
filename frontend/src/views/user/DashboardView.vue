@@ -203,10 +203,10 @@ onBeforeUnmount(() => { disposed = true; chartRequest++ })
   padding: 2px 9px;
   border-radius: 9999px;
   font-size: 11.5px;
-  font-weight: 650;
-  background: rgb(var(--brand-moss) / 0.12);
-  color: rgb(var(--brand-moss));
-  border: 1px solid rgb(var(--brand-moss) / 0.25);
+  font-weight: 600;
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-2));
+  border: 1px solid rgb(var(--line));
 }
 
 .dashboard-qc-endpoint code {
