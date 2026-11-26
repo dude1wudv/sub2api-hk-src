@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import type { DashboardStats } from '@/types'
+import { UiSelect } from '@/ui'
 import DashboardView from '../DashboardView.vue'
 
 const { getSnapshotV2, getUserUsageTrend, getUserSpendingRanking, getUpstreamBalances, routerPush } = vi.hoisted(() => ({
@@ -200,7 +201,7 @@ describe('admin DashboardView', () => {
     expect(routerPush).toHaveBeenLastCalledWith({ path: '/admin/usage', query: expect.objectContaining({
       model: 'gpt-example', start_date: expect.any(String), end_date: expect.any(String)
     }) })
-    await wrapper.get('[data-test="dashboard-drill-model"]').setValue('gpt-example')
+    await wrapper.get('[data-test="dashboard-drill-model"]').getComponent(UiSelect).vm.$emit('update:modelValue', 'gpt-example')
     await wrapper.get('[data-test="trend-usage-drill"]').trigger('click')
     expect(routerPush).toHaveBeenLastCalledWith({ path: '/admin/usage', query: {
       model: 'gpt-example', start_date: '2026-10-11', end_date: '2026-10-11'

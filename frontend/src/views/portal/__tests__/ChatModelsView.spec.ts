@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import type * as VueI18n from 'vue-i18n'
 import ChatModelsView from '../ChatModelsView.vue'
+import { UiSelect } from '@/ui'
 
 const { chat, getAvailable, app } = vi.hoisted(() => ({
   chat: { presets: vi.fn(), catalog: vi.fn(), createPreset: vi.fn(), updatePreset: vi.fn(), orderPresets: vi.fn(), deletePreset: vi.fn(), reconnectPreset: vi.fn() },
@@ -94,19 +95,21 @@ describe('ChatModelsView', () => {
     chat.presets.mockResolvedValue([first, second])
     const wrapper = render(); await flushPromises()
     const form = wrapper.get('[data-preset-id=a] .chat-reasoning')
-    expect((form.get('#normal-effort-a').element as HTMLSelectElement).value).toBe('low')
-    expect((form.get('#thinking-effort-a').element as HTMLSelectElement).value).toBe('high')
-    expect(form.get('button').attributes('disabled')).toBeDefined()
-    await form.get('#normal-effort-a').setValue('medium')
-    await form.get('#thinking-effort-a').setValue('low')
+    const selectsA = form.findAllComponents(UiSelect)
+    expect(selectsA[0]!.props('modelValue')).toBe('low')
+    expect(selectsA[1]!.props('modelValue')).toBe('high')
+    expect(form.get('button[type="submit"]').attributes('disabled')).toBeDefined()
+    selectsA[0]!.vm.$emit('update:modelValue', 'medium')
+    selectsA[1]!.vm.$emit('update:modelValue', 'low')
+    await flushPromises()
     expect(chat.updatePreset).not.toHaveBeenCalled()
     chat.presets.mockResolvedValue([{ ...first, normal_reasoning_effort: 'medium', thinking_reasoning_effort: 'low' }, second])
     await form.trigger('submit'); await flushPromises()
     expect(chat.updatePreset).toHaveBeenCalledTimes(1)
     expect(chat.updatePreset).toHaveBeenCalledWith('a', { normal_reasoning_effort: 'medium', thinking_reasoning_effort: 'low' })
-    expect((form.get('#normal-effort-a').element as HTMLSelectElement).value).toBe('medium')
-    expect((wrapper.get('#thinking-effort-b').element as HTMLSelectElement).value).toBe('high')
-    expect(form.get('button').attributes('disabled')).toBeDefined()
+    expect(selectsA[0]!.props('modelValue')).toBe('medium')
+    expect(wrapper.get('[data-preset-id=b] .chat-reasoning').findAllComponents(UiSelect)[1]!.props('modelValue')).toBe('high')
+    expect(form.get('button[type="submit"]').attributes('disabled')).toBeDefined()
     wrapper.unmount()
   })
 
@@ -115,13 +118,16 @@ describe('ChatModelsView', () => {
     chat.updatePreset.mockRejectedValueOnce(new Error('保存失败'))
     const wrapper = render(); await flushPromises()
     expect(wrapper.find('[data-preset-id=b] .chat-reasoning').exists()).toBe(false)
-    expect(wrapper.findAll('#normal-effort-c option').map(option => option.attributes('value'))).toEqual(['low', 'high'])
+    const normalSelectC = wrapper.get('[data-preset-id=c] .chat-reasoning').findAllComponents(UiSelect)[0]!
+    expect((normalSelectC.props('options') as Array<{ value: string }>).map(option => option.value)).toEqual(['low', 'high'])
     const form = wrapper.get('[data-preset-id=a] .chat-reasoning')
-    await form.get('#normal-effort-a').setValue('high')
+    const normalSelectA = form.findAllComponents(UiSelect)[0]!
+    normalSelectA.vm.$emit('update:modelValue', 'high')
+    await flushPromises()
     await form.trigger('submit'); await flushPromises()
     expect(app.showError).toHaveBeenCalledWith('保存失败')
-    expect((form.get('#normal-effort-a').element as HTMLSelectElement).value).toBe('high')
-    expect(form.get('button').attributes('disabled')).toBeUndefined()
+    expect(normalSelectA.props('modelValue')).toBe('high')
+    expect(form.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
     wrapper.unmount()
   })
 

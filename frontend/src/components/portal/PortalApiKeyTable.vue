@@ -1,17 +1,20 @@
 <template>
-  <div v-if="mobile" class="portal-api-cards">
+  <!-- Mobile Card View -->
+  <div v-if="mobile" class="grid grid-cols-1 gap-3">
     <article
       v-for="apiKey in keys"
       :key="apiKey.id"
-      class="portal-api-card"
+      class="atelier-surface space-y-3 p-4 transition-colors"
+      :class="selectable && selectedIds.includes(apiKey.id) ? 'border-[var(--atelier-ink)] bg-[var(--atelier-selected-row)]' : ''"
       :data-key-id="apiKey.id"
       :data-selected="selectable && selectedIds.includes(apiKey.id)"
       data-test="api-key-card"
     >
-      <header class="portal-api-card-head">
-        <label v-if="selectable" class="portal-api-card-check">
+      <header class="flex items-center gap-2.5">
+        <label v-if="selectable" class="inline-flex items-center">
           <input
             type="checkbox"
+            class="h-4 w-4 accent-[var(--atelier-ink)]"
             :checked="selectedIds.includes(apiKey.id)"
             :disabled="busyIds.has(apiKey.id)"
             :aria-label="text('选择密钥：', 'Select key: ') + apiKey.name"
@@ -19,18 +22,34 @@
             @change="emit('select', apiKey.id, ($event.target as HTMLInputElement).checked)"
           />
         </label>
-        <strong class="portal-api-card-name" :title="apiKey.name">{{ apiKey.name }}</strong>
-        <span class="portal-api-status" :data-status="apiKey.status">{{ statusName(apiKey.status) }}</span>
+        <strong class="portal-api-card-name min-w-0 flex-1 truncate text-sm font-semibold text-[var(--atelier-ink)]" :title="apiKey.name">
+          {{ apiKey.name }}
+        </strong>
+        <span
+          class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+          :class="statusBadgeClass(apiKey.status)"
+          :data-status="apiKey.status"
+        >
+          <UiStatusDot :tone="statusDotTone(apiKey.status)" />
+          {{ statusName(apiKey.status) }}
+        </span>
       </header>
-      <span class="portal-api-secret">
-        <code>{{ masked(apiKey.key) }}</code>
-        <button type="button" :aria-label="text('复制密钥：', 'Copy key: ') + apiKey.name" @click="emit('copy', apiKey)">
-          <Icon name="copy" size="sm" aria-hidden="true" />
+
+      <div class="flex items-center justify-between gap-2 rounded-lg border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] px-3 py-1.5">
+        <code class="min-w-0 flex-1 truncate font-mono text-xs text-[var(--atelier-ink)]">{{ masked(apiKey.key) }}</code>
+        <button
+          type="button"
+          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--atelier-ink-secondary)] transition-colors hover:bg-[var(--atelier-surface)] hover:text-[var(--atelier-ink)]"
+          :aria-label="text('复制密钥：', 'Copy key: ') + apiKey.name"
+          @click="emit('copy', apiKey)"
+        >
+          <Icon name="copy" size="xs" aria-hidden="true" />
         </button>
-      </span>
-      <InkSurface as="button" interactive
+      </div>
+
+      <button
         type="button"
-        class="portal-api-group"
+        class="flex w-full flex-wrap items-center gap-2 rounded-lg border border-[var(--atelier-border)] bg-[var(--atelier-surface)] px-3 py-2 text-left text-xs transition-colors hover:border-[var(--atelier-border-strong)] hover:bg-[var(--atelier-hover)] disabled:opacity-50"
         :disabled="busyIds.has(apiKey.id)"
         :title="text('点击修改分组', 'Click to change group')"
         :aria-label="groupLabel(apiKey)"
@@ -39,7 +58,7 @@
       >
         <GroupBadge
           v-if="groupFor(apiKey)"
-          class="portal-api-card-group-badge"
+          class="min-w-0 max-w-full flex-wrap"
           :truncate="false"
           :name="groupFor(apiKey)?.name || ''"
           :platform="groupFor(apiKey)?.platform"
@@ -51,67 +70,91 @@
           :peak-end="groupFor(apiKey)?.peak_end"
           :peak-rate-multiplier="groupFor(apiKey)?.peak_rate_multiplier"
         />
-        <span v-else class="portal-api-muted">{{ text('未绑定分组', 'No group') }}</span>
-        <span v-if="routingCount(apiKey)" class="portal-api-routing">{{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}</span>
-      </InkSurface>
+        <span v-else class="text-[var(--atelier-ink-muted)]">{{ text('未绑定分组', 'No group') }}</span>
+        <span v-if="routingCount(apiKey)" class="portal-api-routing font-mono text-xs font-medium text-[var(--atelier-ink-secondary)]">
+          {{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}
+        </span>
+      </button>
       <GroupChangeIndicator :group="groupFor(apiKey)" />
-      <dl class="portal-api-facts">
+
+      <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
         <div>
-          <dt>{{ text('今日', 'Today') }}</dt>
-          <dd>{{ usageFor(apiKey.id) ? money(usageFor(apiKey.id)?.today_actual_cost ?? 0) : '—' }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ text('今日', 'Today') }}</dt>
+          <dd class="mt-0.5 font-mono font-medium tabular-nums text-[var(--atelier-ink)]">
+            {{ usageFor(apiKey.id) ? money(usageFor(apiKey.id)?.today_actual_cost ?? 0) : '—' }}
+          </dd>
         </div>
         <div>
-          <dt>{{ text('累计', 'Total') }}</dt>
-          <dd>{{ usageFor(apiKey.id) ? money(usageFor(apiKey.id)?.total_actual_cost ?? 0) : '—' }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ text('累计', 'Total') }}</dt>
+          <dd class="mt-0.5 font-mono font-medium tabular-nums text-[var(--atelier-ink)]">
+            {{ usageFor(apiKey.id) ? money(usageFor(apiKey.id)?.total_actual_cost ?? 0) : '—' }}
+          </dd>
         </div>
         <div>
-          <dt>{{ text('此 Key 当前请求数', 'Active requests for this key') }}</dt>
-          <dd>{{ concurrency(apiKey) }}<small class="portal-api-waiting">{{ waiting(apiKey) }}</small></dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ text('此 Key 当前请求数', 'Active requests for this key') }}</dt>
+          <dd class="mt-0.5 font-mono tabular-nums text-[var(--atelier-ink)]">
+            <span class="portal-api-concurrency">{{ concurrency(apiKey) }}</span>
+            <small v-if="waiting(apiKey)" class="portal-api-waiting ml-1.5 text-[var(--atelier-ink-muted)]">{{ waiting(apiKey) }}</small>
+          </dd>
         </div>
         <div>
-          <dt>{{ text('过期时间', 'Expires') }}</dt>
-          <dd :class="apiKey.status === 'expired' ? 'portal-api-expired' : undefined">{{ apiKey.expires_at ? date(apiKey.expires_at) : text('永久有效', 'Never expires') }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ text('最近使用', 'Last used') }}</dt>
+          <dd class="mt-0.5 font-mono tabular-nums text-[var(--atelier-ink-secondary)]">
+            {{ apiKey.last_used_at ? date(apiKey.last_used_at) : text('尚未使用', 'Never') }}
+          </dd>
         </div>
         <div>
-          <dt>{{ text('创建时间', 'Created') }}</dt>
-          <dd>{{ date(apiKey.created_at) }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ text('过期时间', 'Expires') }}</dt>
+          <dd class="mt-0.5 font-mono tabular-nums" :class="apiKey.status === 'expired' ? 'text-[var(--atelier-err)] font-medium' : 'text-[var(--atelier-ink-secondary)]'">
+            {{ apiKey.expires_at ? date(apiKey.expires_at) : text('永久有效', 'Never expires') }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ text('创建时间', 'Created') }}</dt>
+          <dd class="mt-0.5 font-mono tabular-nums text-[var(--atelier-ink-secondary)]">{{ date(apiKey.created_at) }}</dd>
         </div>
       </dl>
+
       <PortalKeyUsageLimits :api-key="apiKey" />
-      <div class="portal-api-card-actions">
-        <button type="button" data-test="key-usage" @click="emit('usage', apiKey)">{{ text('用量详情', 'Usage details') }}</button>
-        <button type="button" data-test="use-key" :disabled="busyIds.has(apiKey.id)" @click="emit('use', apiKey)">
-          <Icon name="terminal" size="sm" aria-hidden="true" />
+
+      <div class="grid grid-cols-3 gap-2 border-t border-[var(--atelier-border-subtle)] pt-3">
+        <button type="button" data-test="key-usage" class="atelier-btn atelier-btn-secondary h-9 px-2 text-xs" @click="emit('usage', apiKey)">
+          {{ text('用量详情', 'Usage') }}
+        </button>
+        <button type="button" data-test="use-key" class="atelier-btn atelier-btn-secondary h-9 px-2 text-xs" :disabled="busyIds.has(apiKey.id)" @click="emit('use', apiKey)">
+          <Icon name="terminal" size="xs" aria-hidden="true" />
           <span>{{ text('使用密钥', 'Use key') }}</span>
         </button>
-        <button v-if="!hideCcs" type="button" data-test="import-ccs" :disabled="busyIds.has(apiKey.id)" @click="emit('import-ccs', apiKey)">
-          <Icon name="upload" size="sm" aria-hidden="true" />
+        <button v-if="!hideCcs" type="button" data-test="import-ccs" class="atelier-btn atelier-btn-secondary h-9 px-2 text-xs" :disabled="busyIds.has(apiKey.id)" @click="emit('import-ccs', apiKey)">
+          <Icon name="upload" size="xs" aria-hidden="true" />
           <span>{{ text('导入到 CCS', 'Import to CCS') }}</span>
         </button>
-        <button type="button" :disabled="busyIds.has(apiKey.id)" @click="emit('toggle', apiKey)">
-          <Icon :name="apiKey.status === 'active' ? 'ban' : 'play'" size="sm" aria-hidden="true" />
+        <button type="button" class="atelier-btn atelier-btn-secondary h-9 px-2 text-xs" :disabled="busyIds.has(apiKey.id)" @click="emit('toggle', apiKey)">
+          <Icon :name="apiKey.status === 'active' ? 'ban' : 'play'" size="xs" aria-hidden="true" />
           <span>{{ apiKey.status === 'active' ? text('禁用', 'Disable') : text('启用', 'Enable') }}</span>
         </button>
-        <button type="button" data-test="edit-key" :disabled="busyIds.has(apiKey.id)" @click="emit('edit', apiKey)">
-          <Icon name="edit" size="sm" aria-hidden="true" />
+        <button type="button" data-test="edit-key" class="atelier-btn atelier-btn-secondary h-9 px-2 text-xs" :disabled="busyIds.has(apiKey.id)" @click="emit('edit', apiKey)">
+          <Icon name="edit" size="xs" aria-hidden="true" />
           <span>{{ text('编辑', 'Edit') }}</span>
         </button>
-        <button type="button" class="portal-api-delete" :disabled="busyIds.has(apiKey.id)" @click="emit('delete', apiKey)">
-          <Icon name="trash" size="sm" aria-hidden="true" />
+        <button type="button" class="atelier-btn atelier-btn-ghost h-9 px-2 text-xs text-[var(--atelier-err)] hover:bg-[var(--atelier-err-bg)]" :disabled="busyIds.has(apiKey.id)" @click="emit('delete', apiKey)">
+          <Icon name="trash" size="xs" aria-hidden="true" />
           <span>{{ text('删除', 'Delete') }}</span>
         </button>
       </div>
     </article>
   </div>
 
-  <div v-else class="portal-api-table-wrap">
-    <table class="portal-api-table">
-      <caption class="portal-api-table-caption">{{ text('API 密钥', 'API keys') }}</caption>
+  <!-- Desktop Full-Width Borderless Editorial Table -->
+  <div v-else class="overflow-x-auto border-y border-[var(--atelier-border)] bg-[var(--atelier-surface)]">
+    <table class="atelier-table">
+      <caption class="sr-only">{{ text('API 密钥', 'API keys') }}</caption>
       <thead>
         <tr>
-          <th v-if="selectable" class="portal-api-select-col">
+          <th v-if="selectable" class="w-10">
             <input
               type="checkbox"
+              class="h-4 w-4 accent-[var(--atelier-ink)]"
               :checked="allSelected"
               :indeterminate.prop="someSelected"
               :disabled="!keys.length || busy"
@@ -120,15 +163,13 @@
               @change="emit('select-all', ($event.target as HTMLInputElement).checked)"
             />
           </th>
-          <th>{{ text('名称', 'Name') }}</th>
-          <th>{{ text('API 密钥', 'API key') }}</th>
-          <th>{{ text('分组', 'Group') }}</th>
-          <th>{{ text('此 Key 当前请求数', 'Active requests for this key') }}</th>
-          <th>{{ text('用量', 'Usage') }}</th>
-          <th>{{ text('过期时间', 'Expires') }}</th>
+          <th>{{ text('密钥名称', 'Key') }}</th>
+          <th>{{ text('分组与路由', 'Group') }}</th>
+          <th>{{ text('用量与配额', 'Usage & quota') }}</th>
+          <th>{{ text('并发', 'Concurrency') }}</th>
           <th>{{ text('状态', 'Status') }}</th>
-          <th>{{ text('创建时间', 'Created') }}</th>
-          <th class="portal-api-actions-col">{{ text('操作', 'Actions') }}</th>
+          <th>{{ text('最近使用 / 过期', 'Last used / Expiry') }}</th>
+          <th class="text-right">{{ text('操作', 'Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -136,11 +177,12 @@
           v-for="apiKey in keys"
           :key="apiKey.id"
           :data-key-id="apiKey.id"
-          :data-selected="selectable && selectedIds.includes(apiKey.id)"
+          :data-selected="selectable && selectedIds.includes(apiKey.id) ? 'true' : 'false'"
         >
-          <td v-if="selectable" class="portal-api-select-col">
+          <td v-if="selectable" class="w-10">
             <input
               type="checkbox"
+              class="h-4 w-4 accent-[var(--atelier-ink)]"
               :checked="selectedIds.includes(apiKey.id)"
               :disabled="busyIds.has(apiKey.id)"
               :aria-label="text('选择密钥：', 'Select key: ') + apiKey.name"
@@ -148,80 +190,176 @@
               @change="emit('select', apiKey.id, ($event.target as HTMLInputElement).checked)"
             />
           </td>
-          <td class="portal-api-name" :title="apiKey.name">{{ apiKey.name }}</td>
-          <td>
-            <span class="portal-api-secret">
-              <code>{{ masked(apiKey.key) }}</code>
-              <button type="button" :aria-label="text('复制密钥：', 'Copy key: ') + apiKey.name" @click="emit('copy', apiKey)">
-                <Icon name="copy" size="sm" aria-hidden="true" />
+
+          <!-- Name + Masked Secret Quick-Copy -->
+          <td class="min-w-[200px]">
+            <div class="font-medium text-[var(--atelier-ink)]" :title="apiKey.name">
+              {{ apiKey.name }}
+            </div>
+            <div class="mt-1 inline-flex max-w-[210px] items-center gap-1 rounded-md border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] px-2 py-0.5">
+              <code class="truncate font-mono text-[11.5px] text-[var(--atelier-ink-secondary)]">
+                {{ masked(apiKey.key) }}
+              </code>
+              <button
+                type="button"
+                class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--atelier-ink-muted)] transition-colors hover:bg-[var(--atelier-surface)] hover:text-[var(--atelier-ink)]"
+                :aria-label="text('复制密钥：', 'Copy key: ') + apiKey.name"
+                @click="emit('copy', apiKey)"
+              >
+                <Icon name="copy" size="xs" aria-hidden="true" />
               </button>
-            </span>
+            </div>
           </td>
-          <td>
-            <InkSurface as="button" interactive
+
+          <!-- Group with Full-Color BrandPlatformIcon -->
+          <td class="min-w-[180px]">
+            <button
               type="button"
-              class="portal-api-group"
+              class="group inline-flex max-w-[260px] flex-wrap items-center gap-2 rounded-lg border border-transparent px-2 py-1 -mx-2 text-left transition-colors hover:border-[var(--atelier-border)] hover:bg-[var(--atelier-hover)] disabled:opacity-50"
               :disabled="busyIds.has(apiKey.id)"
               :title="text('点击修改分组', 'Click to change group')"
               :aria-label="groupLabel(apiKey)"
               data-test="edit-group"
               @click="emit('edit', apiKey)"
             >
-              <GroupBadge
-                v-if="groupFor(apiKey)"
-                :name="groupFor(apiKey)?.name || ''"
-                :platform="groupFor(apiKey)?.platform"
-                :subscription-type="groupFor(apiKey)?.subscription_type"
-                :rate-multiplier="groupFor(apiKey)?.rate_multiplier"
-                :user-rate-multiplier="groupRates[groupFor(apiKey)?.id ?? -1] ?? null"
-                :peak-rate-enabled="groupFor(apiKey)?.peak_rate_enabled"
-                :peak-start="groupFor(apiKey)?.peak_start"
-                :peak-end="groupFor(apiKey)?.peak_end"
-                :peak-rate-multiplier="groupFor(apiKey)?.peak_rate_multiplier"
-              />
-              <span v-else class="portal-api-muted">{{ text('未绑定分组', 'No group') }}</span>
-              <span v-if="routingCount(apiKey)" class="portal-api-routing">{{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}</span>
-            </InkSurface>
+              <template v-if="groupFor(apiKey)">
+                <BrandPlatformIcon :platform="groupFor(apiKey)?.platform" size="sm" />
+                <span class="truncate text-sm font-medium text-[var(--atelier-ink)]">
+                  {{ groupFor(apiKey)?.name }}
+                </span>
+                <span class="rounded bg-[var(--atelier-subtle)] px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-[var(--atelier-ink-secondary)]">
+                  {{ effectiveRateText(groupFor(apiKey)!) }}
+                </span>
+              </template>
+              <span v-else class="text-xs text-[var(--atelier-ink-muted)]">{{ text('未绑定分组', 'No group') }}</span>
+              <span
+                v-if="routingCount(apiKey)"
+                class="portal-api-routing w-full font-mono text-[11px] font-medium text-[var(--atelier-ink-secondary)]"
+              >
+                {{ text('智能路由', 'Smart routing') }} · {{ routingCount(apiKey) }}
+              </span>
+            </button>
             <GroupChangeIndicator :group="groupFor(apiKey)" />
           </td>
-          <td><span class="portal-api-concurrency" :data-full="(queueCounts[apiKey.id]?.current_concurrency ?? 0) >= (apiKey.concurrency_limit || Infinity)">{{ concurrency(apiKey) }}</span><small class="portal-api-waiting">{{ waiting(apiKey) }}</small></td>
-          <td>
-            <div v-if="usageFor(apiKey.id)" class="portal-api-usage">
-              <span>{{ text('今日', 'Today') }} <strong>{{ money(usageFor(apiKey.id)?.today_actual_cost ?? 0) }}</strong></span>
-              <span>{{ text('累计', 'Total') }} <strong>{{ money(usageFor(apiKey.id)?.total_actual_cost ?? 0) }}</strong></span>
+
+          <!-- Usage & 4px Quota Progress -->
+          <td class="min-w-[180px]">
+            <div v-if="usageFor(apiKey.id)" class="flex items-baseline gap-3 font-mono text-xs tabular-nums">
+              <span>
+                <span class="text-[var(--atelier-ink-muted)]">{{ text('今', '1d') }}</span>
+                <strong class="ml-1 font-medium text-[var(--atelier-ink)]">{{ money(usageFor(apiKey.id)?.today_actual_cost ?? 0) }}</strong>
+              </span>
+              <span>
+                <span class="text-[var(--atelier-ink-muted)]">{{ text('累', 'All') }}</span>
+                <strong class="ml-1 font-medium text-[var(--atelier-ink-secondary)]">{{ money(usageFor(apiKey.id)?.total_actual_cost ?? 0) }}</strong>
+              </span>
             </div>
-            <span v-else class="portal-api-muted">—</span>
+            <span v-else class="font-mono text-xs text-[var(--atelier-ink-muted)]">—</span>
             <PortalKeyUsageLimits :api-key="apiKey" />
           </td>
-          <td>
-            <span class="portal-api-expiry" :class="apiKey.status === 'expired' ? 'portal-api-expired' : 'portal-api-muted'">
-              {{ apiKey.expires_at ? date(apiKey.expires_at) : text('永久有效', 'Never expires') }}
+
+          <!-- Concurrency & Queue -->
+          <td class="whitespace-nowrap">
+            <span
+              class="portal-api-concurrency inline-flex items-center rounded-md border px-2 py-0.5 font-mono text-xs tabular-nums"
+              :class="isConcurrencyFull(apiKey) ? 'border-[var(--atelier-warn)]/30 bg-[var(--atelier-warn-bg)] text-[var(--atelier-warn)]' : 'border-[var(--atelier-border)] bg-[var(--atelier-subtle)] text-[var(--atelier-ink-secondary)]'"
+              :data-full="isConcurrencyFull(apiKey)"
+            >
+              {{ concurrency(apiKey) }}
+            </span>
+            <small v-if="waiting(apiKey)" class="portal-api-waiting mt-1 block font-mono text-[11px] tabular-nums text-[var(--atelier-ink-muted)]">
+              {{ waiting(apiKey) }}
+            </small>
+          </td>
+
+          <!-- Status -->
+          <td class="whitespace-nowrap">
+            <span
+              class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+              :class="statusBadgeClass(apiKey.status)"
+              :data-status="apiKey.status"
+            >
+              <UiStatusDot :tone="statusDotTone(apiKey.status)" />
+              {{ statusName(apiKey.status) }}
             </span>
           </td>
-          <td><span class="portal-api-status" :data-status="apiKey.status">{{ statusName(apiKey.status) }}</span></td>
-          <td class="portal-api-created">{{ date(apiKey.created_at) }}</td>
-          <td class="portal-api-actions-col">
-            <div class="portal-api-actions">
-              <button type="button" data-test="key-usage" @click="emit('usage', apiKey)">{{ text('用量详情', 'Usage details') }}</button>
-              <button type="button" data-test="use-key" :disabled="busyIds.has(apiKey.id)" @click="emit('use', apiKey)">
-                <Icon name="terminal" size="sm" aria-hidden="true" />
-                <span>{{ text('使用密钥', 'Use key') }}</span>
+
+          <!-- Last Used & Expiry -->
+          <td class="whitespace-nowrap font-mono text-xs tabular-nums">
+            <div class="text-[var(--atelier-ink-secondary)]">
+              {{ apiKey.last_used_at ? date(apiKey.last_used_at) : text('尚未使用', 'Never used') }}
+            </div>
+            <div
+              class="mt-0.5 text-[11px]"
+              :class="apiKey.status === 'expired' ? 'font-medium text-[var(--atelier-err)]' : 'text-[var(--atelier-ink-muted)]'"
+            >
+              {{ apiKey.expires_at ? `${text('到期 ', 'Exp ')}${date(apiKey.expires_at)}` : text('永久有效', 'Never expires') }}
+            </div>
+          </td>
+
+          <!-- Row Actions -->
+          <td class="whitespace-nowrap text-right">
+            <div class="inline-flex items-center justify-end gap-1">
+              <button
+                type="button"
+                data-test="use-key"
+                class="atelier-btn atelier-btn-secondary h-7 px-2.5 text-xs"
+                :disabled="busyIds.has(apiKey.id)"
+                @click="emit('use', apiKey)"
+              >
+                <Icon name="terminal" size="xs" aria-hidden="true" />
+                <span>{{ text('接入', 'Connect') }}</span>
               </button>
-              <button v-if="!hideCcs" type="button" data-test="import-ccs" :disabled="busyIds.has(apiKey.id)" @click="emit('import-ccs', apiKey)">
-                <Icon name="upload" size="sm" aria-hidden="true" />
-                <span>{{ text('导入到 CCS', 'Import to CCS') }}</span>
+              <button
+                type="button"
+                data-test="key-usage"
+                class="atelier-btn atelier-btn-ghost h-7 px-2 text-xs"
+                :title="text('用量详情', 'Usage details')"
+                @click="emit('usage', apiKey)"
+              >
+                {{ text('用量', 'Usage') }}
               </button>
-              <button type="button" :disabled="busyIds.has(apiKey.id)" @click="emit('toggle', apiKey)">
-                <Icon :name="apiKey.status === 'active' ? 'ban' : 'play'" size="sm" aria-hidden="true" />
-                <span>{{ apiKey.status === 'active' ? text('禁用', 'Disable') : text('启用', 'Enable') }}</span>
+              <button
+                v-if="!hideCcs"
+                type="button"
+                data-test="import-ccs"
+                class="atelier-btn atelier-btn-ghost h-7 px-2 text-xs"
+                :title="text('导入到 CCS', 'Import to CCS')"
+                :disabled="busyIds.has(apiKey.id)"
+                @click="emit('import-ccs', apiKey)"
+              >
+                CCS
               </button>
-              <button type="button" data-test="edit-key" :disabled="busyIds.has(apiKey.id)" @click="emit('edit', apiKey)">
-                <Icon name="edit" size="sm" aria-hidden="true" />
-                <span>{{ text('编辑', 'Edit') }}</span>
+              <button
+                type="button"
+                class="atelier-btn atelier-btn-ghost h-7 w-7 p-0"
+                :title="apiKey.status === 'active' ? text('禁用', 'Disable') : text('启用', 'Enable')"
+                :aria-label="apiKey.status === 'active' ? text('禁用', 'Disable') : text('启用', 'Enable')"
+                :disabled="busyIds.has(apiKey.id)"
+                @click="emit('toggle', apiKey)"
+              >
+                <Icon :name="apiKey.status === 'active' ? 'ban' : 'play'" size="xs" aria-hidden="true" />
               </button>
-              <button type="button" class="portal-api-delete" :disabled="busyIds.has(apiKey.id)" @click="emit('delete', apiKey)">
-                <Icon name="trash" size="sm" aria-hidden="true" />
-                <span>{{ text('删除', 'Delete') }}</span>
+              <button
+                type="button"
+                data-test="edit-key"
+                class="atelier-btn atelier-btn-ghost h-7 w-7 p-0"
+                :title="text('编辑', 'Edit')"
+                :aria-label="text('编辑', 'Edit')"
+                :disabled="busyIds.has(apiKey.id)"
+                @click="emit('edit', apiKey)"
+              >
+                <Icon name="edit" size="xs" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="atelier-btn atelier-btn-ghost h-7 w-7 p-0 text-[var(--atelier-err)] hover:bg-[var(--atelier-err-bg)] hover:text-[var(--atelier-err)]"
+                :title="text('删除', 'Delete')"
+                :aria-label="text('删除', 'Delete')"
+                :disabled="busyIds.has(apiKey.id)"
+                @click="emit('delete', apiKey)"
+              >
+                <Icon name="trash" size="xs" aria-hidden="true" />
               </button>
             </div>
           </td>
@@ -236,9 +374,9 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMediaQuery } from '@vueuse/core'
 import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
+import { BrandPlatformIcon, UiStatusDot } from '@/ui'
 import GroupBadge from '@/components/common/GroupBadge.vue'
 import GroupChangeIndicator from '@/components/common/GroupChangeIndicator.vue'
-import InkSurface from '@/components/common/InkSurface.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatUsageMoney } from '@/utils/portalUsage'
 import { maskApiKey } from '@/utils/maskApiKey'
@@ -247,23 +385,26 @@ import type { APIKeyQueueItem } from '@/api/keys'
 import PortalKeyUsageLimits from './PortalKeyUsageLimits.vue'
 import type { ApiKey, Group } from '@/types'
 
-const props = withDefaults(defineProps<{
-  queueCounts?: Record<number, APIKeyQueueItem>
-  queueUnavailable?: boolean
-  keys: ApiKey[]
-  groups: Group[]
-  groupRates: Record<number, number>
-  usageStats: Record<string, BatchApiKeyUsageStats>
-  busyIds: Set<number>
-  selectable?: boolean
-  selectedIds: number[]
-  hideCcs?: boolean
-}>(), {
-  queueCounts: () => ({}),
-  queueUnavailable: false,
-  selectable: false,
-  hideCcs: false,
-})
+const props = withDefaults(
+  defineProps<{
+    queueCounts?: Record<number, APIKeyQueueItem>
+    queueUnavailable?: boolean
+    keys: ApiKey[]
+    groups: Group[]
+    groupRates: Record<number, number>
+    usageStats: Record<string, BatchApiKeyUsageStats>
+    busyIds: Set<number>
+    selectable?: boolean
+    selectedIds: number[]
+    hideCcs?: boolean
+  }>(),
+  {
+    queueCounts: () => ({}),
+    queueUnavailable: false,
+    selectable: false,
+    hideCcs: false
+  }
+)
 
 const emit = defineEmits<{
   select: [id: number, checked: boolean]
@@ -278,129 +419,94 @@ const emit = defineEmits<{
 }>()
 
 const { locale } = useI18n()
-const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
+const text = (zh: string, en: string) => (locale.value.startsWith('zh') ? zh : en)
 const mobile = useMediaQuery(MOBILE_CONTENT_QUERY)
 const busy = computed(() => props.busyIds.size > 0)
-const selectedOnPage = computed(() => props.keys.filter(key => props.selectedIds.includes(key.id)))
+const selectedOnPage = computed(() => props.keys.filter((key) => props.selectedIds.includes(key.id)))
 const allSelected = computed(() => props.keys.length > 0 && selectedOnPage.value.length === props.keys.length)
 const someSelected = computed(() => selectedOnPage.value.length > 0 && !allSelected.value)
+
+function isConcurrencyFull(key: ApiKey) {
+  return (props.queueCounts[key.id]?.current_concurrency ?? 0) >= (key.concurrency_limit || Infinity)
+}
 
 function concurrency(key: ApiKey) {
   if (props.queueUnavailable) return text('暂不可用', 'Unavailable')
   const count = props.queueCounts[key.id]?.current_concurrency
   if (count !== undefined) return key.concurrency_limit ? `${count} / ${key.concurrency_limit}` : String(count)
-  return key.current_concurrency_status === 'available' ? key.current_concurrency : key.current_concurrency_status === 'unsupported' ? text('未支持', 'Unsupported') : text('暂不可用', 'Unavailable')
+  return key.current_concurrency_status === 'available'
+    ? key.current_concurrency
+    : key.current_concurrency_status === 'unsupported'
+      ? text('未支持', 'Unsupported')
+      : text('暂不可用', 'Unavailable')
 }
+
 function waiting(key: ApiKey) {
   if (props.queueUnavailable || props.queueCounts[key.id] === undefined) return ''
   return text('排队 ', 'Waiting ') + props.queueCounts[key.id].current_waiting
 }
+
 function usageFor(id: number) {
   return props.usageStats[String(id)]
 }
+
 function groupFor(apiKey: ApiKey) {
-  return (apiKey.group_id == null ? undefined : props.groups.find(group => group.id === apiKey.group_id)) || apiKey.group
+  return (apiKey.group_id == null ? undefined : props.groups.find((group) => group.id === apiKey.group_id)) || apiKey.group
 }
+
+function effectiveRateText(group: NonNullable<ReturnType<typeof groupFor>>) {
+  const userRate = props.groupRates[group.id]
+  const rateVal = userRate != null ? userRate : (group.rate_multiplier ?? 1)
+  return `${rateVal}×`
+}
+
 function routingCount(apiKey: ApiKey) {
   return apiKey.routing_group_ids?.length ?? 0
 }
+
 function groupLabel(apiKey: ApiKey) {
   const groupName = groupFor(apiKey)?.name || text('未绑定分组', 'No group')
   return text('修改分组：', 'Change group: ') + apiKey.name + ' · ' + groupName
 }
+
 function masked(value: string) {
   return maskApiKey(value)
 }
+
 function statusName(status: ApiKey['status']) {
   return {
     active: text('活跃', 'Active'),
     inactive: text('停用', 'Inactive'),
     expired: text('过期', 'Expired'),
-    quota_exhausted: text('额度用尽', 'Quota exhausted'),
+    quota_exhausted: text('额度用尽', 'Quota exhausted')
   }[status]
 }
+
+function statusDotTone(status: ApiKey['status']): 'ok' | 'neutral' | 'err' {
+  if (status === 'active') return 'ok'
+  if (status === 'inactive') return 'neutral'
+  return 'err'
+}
+
+function statusBadgeClass(status: ApiKey['status']): string {
+  if (status === 'active') return 'bg-[var(--atelier-ok-bg)] text-[var(--atelier-ok)]'
+  if (status === 'inactive') return 'bg-[var(--atelier-subtle)] text-[var(--atelier-ink-muted)]'
+  return 'bg-[var(--atelier-err-bg)] text-[var(--atelier-err)]'
+}
+
 function date(value: string) {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return '—'
   return parsed.toLocaleString(locale.value.startsWith('zh') ? 'zh-CN' : 'en-US', {
-    year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hour12: false
   })
 }
+
 function money(value: number) {
   return formatUsageMoney(value, 4)
 }
 </script>
-
-<style scoped>
-.portal-api-table-caption { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-.portal-api-table-wrap { overflow:auto; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); box-shadow:var(--shadow-panel); }
-.portal-api-table { width:max-content; min-width:100%; border-collapse:separate; border-spacing:0; text-align:left; font-size:13.5px; font-variant-numeric:tabular-nums; color:rgb(var(--ink)); }
-.portal-api-table th { padding:11px 14px; color:rgb(var(--ink-2)); background:rgb(var(--surface-2)); font-size:12.5px; font-weight:600; white-space:nowrap; border-bottom:1px solid rgb(var(--line)); }
-.portal-api-table td { padding:14px; border-bottom:1px solid rgb(var(--line)); vertical-align:middle; background:rgb(var(--surface)); transition:background-color var(--motion-fast) ease; }
-.portal-api-table tbody tr:last-child td { border-bottom:0; }
-.portal-api-table tbody tr:hover td { background:rgb(var(--table-hover)); }
-.portal-api-table tbody tr[data-selected='true'] td { background:rgb(var(--brand-moss) / .08); }
-.portal-api-select-col { width:42px; }
-.portal-api-select-col input { width:15px; height:15px; accent-color:rgb(var(--brand-moss)); }
-.portal-api-name { max-width:170px; overflow:hidden; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
-.portal-api-secret { display:inline-flex; max-width:215px; align-items:center; gap:5px; padding:3px 5px 3px 9px; border:1px solid rgb(var(--line)); border-radius:8px; background:rgb(var(--surface-2)); color:rgb(var(--ink-2)); }
-.portal-api-secret code { min-width:0; overflow:hidden; font-family:var(--font-mono); font-size:12.5px; color:rgb(var(--ink)); text-overflow:ellipsis; white-space:nowrap; }
-.portal-api-secret button { display:inline-flex; flex:none; align-items:center; justify-content:center; width:26px; height:26px; padding:2px; border:0; border-radius:6px; color:rgb(var(--ink-2)); background:transparent; cursor:pointer; transition:color var(--motion-fast) ease, background-color var(--motion-fast) ease; }
-.portal-api-secret button:hover { color:rgb(var(--brand-moss)); background:rgb(var(--surface)); }
-.portal-api-group { display:inline-flex; max-width:280px; align-items:center; flex-wrap:wrap; gap:6px; padding:4px 7px; border:1px solid transparent; border-radius:8px; color:inherit; background:transparent; font:inherit; text-align:left; cursor:pointer; transition:background-color var(--motion-fast) ease, border-color var(--motion-fast) ease; }
-.portal-api-group:not(:disabled):is(:hover, :focus-visible) { background:rgb(var(--brand-moss) / .1); border-color:rgb(var(--brand-moss) / .28); }
-.portal-api-group:not(:disabled):active { background:rgb(var(--brand-moss) / .16); }
-.portal-api-group:focus-visible { outline:2px solid rgb(var(--focus-ring)); outline-offset:2px; }
-.portal-api-group:disabled { opacity:.45; cursor:wait; }
-.portal-api-group :deep(.truncate) { max-width:160px; }
-.portal-api-routing { color:rgb(var(--brand-moss)); font-size:12.5px; font-weight:600; white-space:nowrap; }
-.portal-api-muted { color:rgb(var(--ink-3)); }
-.portal-api-expiry { white-space:nowrap; font-size:13px; }
-.portal-api-expired { color:rgb(var(--text-err)); font-weight:550; }
-.portal-api-concurrency { display:inline-flex; min-width:30px; justify-content:center; padding:2px 9px; border:1px solid rgb(var(--line)); border-radius:8px; background:rgb(var(--surface-2)); color:rgb(var(--ink-2)); font-size:12.5px; font-weight:550; font-variant-numeric:tabular-nums; }
-.portal-api-waiting { display:block; margin-top:4px; color:rgb(var(--ink-3)); font-size:12px; font-variant-numeric:tabular-nums; }
-.portal-api-concurrency[data-full=true] { color:rgb(var(--text-warn)); background:rgb(var(--status-warn-bg)); border-color:rgb(var(--text-warn) / .25); }
-.portal-api-usage { display:grid; gap:2px; color:rgb(var(--ink-2)); font-size:13px; white-space:nowrap; font-variant-numeric:tabular-nums; }
-.portal-api-usage strong { color:rgb(var(--ink)); font-weight:600; }
-.portal-api-status { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-size:12.5px; font-weight:600; white-space:nowrap; border:1px solid transparent; }
-.portal-api-status[data-status='active'] { color:rgb(var(--text-ok)); background:rgb(var(--status-ok-bg)); border-color:rgb(var(--text-ok) / .2); }
-.portal-api-status[data-status='inactive'] { color:rgb(var(--ink-3)); background:rgb(var(--surface-2)); border-color:rgb(var(--line)); }
-.portal-api-status[data-status='expired'],
-.portal-api-status[data-status='quota_exhausted'] { color:rgb(var(--text-err)); background:rgb(var(--status-err-bg)); border-color:rgb(var(--text-err) / .22); }
-.portal-api-created { min-width:132px; color:rgb(var(--ink-2)); font-size:13px; white-space:nowrap; font-variant-numeric:tabular-nums; }
-.portal-api-actions-col { position:sticky; right:0; z-index:1; box-shadow:-8px 0 12px -12px rgb(15 23 42 / .22); }
-.portal-api-table th.portal-api-actions-col { z-index:2; background:rgb(var(--surface-2)); }
-.portal-api-actions { display:flex; align-items:flex-start; gap:2px; }
-.portal-api-actions > button { position:relative; display:inline-flex; min-width:46px; flex-direction:column; align-items:center; gap:3px; padding:5px 4px; border:0; border-radius:8px; color:rgb(var(--ink-2)); background:transparent; font:inherit; font-size:12px; font-weight:500; line-height:1.2; cursor:pointer; transition:background-color var(--motion-fast) ease, color var(--motion-fast) ease; }
-.portal-api-actions > button:hover:not(:disabled) { background:rgb(var(--surface-2)); color:rgb(var(--ink)); }
-.portal-api-actions > button:disabled { opacity:.45; cursor:wait; }
-.portal-api-actions .portal-api-delete { color:rgb(var(--text-err)); }
-.portal-api-actions .portal-api-delete:hover:not(:disabled) { background:rgb(var(--status-err-bg)); }
-.portal-api-cards { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }
-.portal-api-card { display:grid; min-width:0; grid-template-columns:minmax(0,1fr); gap:12px; padding:16px; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); box-shadow:var(--shadow-panel); }
-.portal-api-card[data-selected='true'] { border-color:rgb(var(--brand-moss)); background:rgb(var(--brand-moss) / .06); }
-.portal-api-card-head { display:flex; align-items:center; gap:8px; }
-.portal-api-card-check { display:inline-flex; }
-.portal-api-card-check input { width:18px; height:18px; accent-color:rgb(var(--brand-moss)); }
-.portal-api-card-name { min-width:0; flex:1; font-size:15px; font-weight:650; overflow-wrap:anywhere; }
-.portal-api-card .portal-api-secret { max-width:none; width:100%; justify-content:space-between; min-height:38px; }
-.portal-api-card .portal-api-secret code { flex:1; }
-.portal-api-card .portal-api-secret button { width:44px; height:44px; }
-.portal-api-card .portal-api-group { max-width:none; width:100%; min-height:44px; padding:8px 10px; border:1px solid rgb(var(--line)); background:rgb(var(--surface-2) / .65); }
-.portal-api-card .portal-api-group:not(:disabled):is(:hover, :focus-visible) { background:rgb(var(--brand-moss) / .12); border-color:rgb(var(--brand-moss) / .35); }
-.portal-api-card-group-badge { min-width:0; max-width:100%; flex-wrap:wrap; }
-.portal-api-facts { display:grid; grid-template-columns:minmax(0,1fr); gap:10px 16px; margin:0; font-variant-numeric:tabular-nums; }
-.portal-api-facts div:last-child { grid-column:1 / -1; }
-.portal-api-facts dt { color:rgb(var(--ink-3)); font-size:12.5px; }
-.portal-api-facts dd { margin:2px 0 0; color:rgb(var(--ink)); font-size:13.5px; font-weight:500; overflow-wrap:anywhere; }
-.portal-api-card-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding-top:12px; border-top:1px solid rgb(var(--line)); }
-.portal-api-card-actions > button { display:inline-flex; min-height:44px; align-items:center; justify-content:center; gap:6px; padding:8px 6px; border:1px solid rgb(var(--line)); border-radius:var(--radius-control); color:rgb(var(--ink)); background:rgb(var(--surface)); font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; }
-.portal-api-card-actions > button:hover:not(:disabled) { background:rgb(var(--surface-2)); border-color:rgb(var(--line-strong)); }
-.portal-api-card-actions > button:disabled { opacity:.45; cursor:wait; }
-.portal-api-card-actions .portal-api-delete { color:rgb(var(--text-err)); border-color:rgb(var(--text-err) / .24); }
-</style>

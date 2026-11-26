@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import GroupCacheTestView from '../GroupCacheTestView.vue'
+import { UiSelect } from '@/ui'
 import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import { DEFAULT_CACHE_SETTINGS, saveCacheHistory, type CacheTestRun } from '@/utils/groupCacheTest'
 
@@ -19,10 +20,11 @@ describe('manual group cache tests', () => {
     list.mockResolvedValue({ items: [], pages: 1 })
     const wrapper = mount(GroupCacheTestView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
-    expect(wrapper.get('[data-testid="cache-group"]').findAll('option').map(option => option.attributes('value'))).toEqual([undefined, '72', '179'])
-    await wrapper.get('[data-testid="cache-group"]').setValue(179); await flushPromises()
+    const groupSelect = wrapper.get('[data-testid="cache-group"]').getComponent(UiSelect)
+    expect(groupSelect.props('options').map((option: { value: unknown }) => option.value)).toEqual([null, 72, 179])
+    groupSelect.vm.$emit('update:modelValue', 179); await flushPromises()
     expect((wrapper.get('[data-testid="cache-model"]').element as HTMLInputElement).value).toBe('deepseek-v4.1-flash')
-    expect((wrapper.get('[data-testid="cache-protocol"]').element as HTMLSelectElement).value).toBe('chat')
+    expect(wrapper.get('[data-testid="cache-protocol"]').getComponent(UiSelect).props('modelValue')).toBe('chat')
     expect(executeCacheRun).not.toHaveBeenCalled()
     expect(wrapper.get('[data-testid="cache-start"]').attributes('disabled')).toBeDefined()
     wrapper.unmount()

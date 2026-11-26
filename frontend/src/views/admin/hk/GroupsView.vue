@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-page admin-page--resources" data-admin-page="groups">
+  <div class="space-y-6" data-admin-page="groups">
     <TablePageLayout>
       <template #filters>
         <div
@@ -74,7 +74,7 @@
               </button>
               <div
                 v-if="showColumnDropdown"
-                class="table-toolbar-menu absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                class="table-toolbar-menu absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-xl border border-[var(--atelier-border-strong)] bg-[var(--atelier-surface)] py-1 shadow-[var(--atelier-shadow-md)]"
               >
                 <button
                   v-for="col in toggleableColumns"
@@ -527,35 +527,12 @@
             </span>
           </div>
           <!-- 分组选择下拉 -->
-          <select
-            class="input"
-            @change="
-              (e) => {
-                const val = Number((e.target as HTMLSelectElement).value);
-                if (
-                  val &&
-                  !createForm.copy_accounts_from_group_ids.includes(val)
-                ) {
-                  createForm.copy_accounts_from_group_ids.push(val);
-                }
-                (e.target as HTMLSelectElement).value = '';
-              }
-            "
-          >
-            <option value="">
-              {{ t("admin.groups.copyAccounts.selectPlaceholder") }}
-            </option>
-            <option
-              v-for="opt in copyAccountsGroupOptions"
-              :key="opt.value"
-              :value="opt.value"
-              :disabled="
-                createForm.copy_accounts_from_group_ids.includes(opt.value)
-              "
-            >
-              {{ opt.label }}
-            </option>
-          </select>
+          <UiSelect
+            :model-value="''"
+            :options="copyAccountsSelectOptionsCreate"
+            :placeholder="t('admin.groups.copyAccounts.selectPlaceholder')"
+            @update:model-value="onSelectCopyAccountGroupCreate"
+          />
           <p class="input-hint">{{ t("admin.groups.copyAccounts.hint") }}</p>
         </div>
 </section>
@@ -2196,35 +2173,12 @@
             </span>
           </div>
           <!-- 分组选择下拉 -->
-          <select
-            class="input"
-            @change="
-              (e) => {
-                const val = Number((e.target as HTMLSelectElement).value);
-                if (
-                  val &&
-                  !editForm.copy_accounts_from_group_ids.includes(val)
-                ) {
-                  editForm.copy_accounts_from_group_ids.push(val);
-                }
-                (e.target as HTMLSelectElement).value = '';
-              }
-            "
-          >
-            <option value="">
-              {{ t("admin.groups.copyAccounts.selectPlaceholder") }}
-            </option>
-            <option
-              v-for="opt in copyAccountsGroupOptionsForEdit"
-              :key="opt.value"
-              :value="opt.value"
-              :disabled="
-                editForm.copy_accounts_from_group_ids.includes(opt.value)
-              "
-            >
-              {{ opt.label }}
-            </option>
-          </select>
+          <UiSelect
+            :model-value="''"
+            :options="copyAccountsSelectOptionsEdit"
+            :placeholder="t('admin.groups.copyAccounts.selectPlaceholder')"
+            @update:model-value="onSelectCopyAccountGroupEdit"
+          />
           <p class="input-hint">
             {{ t("admin.groups.copyAccounts.hintEdit") }}
           </p>
@@ -4362,6 +4316,7 @@ import BaseDialog from "@/components/common/BaseDialog.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
 import Select from "@/components/common/Select.vue";
+import { UiSelect, type UiSelectOption } from "@/ui";
 import PlatformIcon from "@/components/common/PlatformIcon.vue";
 import { platformLabel } from "@/utils/platformColors";
 import Icon from "@/components/icons/Icon.vue";
@@ -4871,6 +4826,36 @@ const copyAccountsGroupOptionsForEdit = computed(() => {
     label: copyAccountsGroupLabel(g),
   }));
 });
+
+const copyAccountsSelectOptionsCreate = computed<UiSelectOption[]>(() =>
+  copyAccountsGroupOptions.value.map((opt) => ({
+    value: opt.value,
+    label: opt.label,
+    disabled: createForm.copy_accounts_from_group_ids.includes(opt.value),
+  }))
+);
+
+const copyAccountsSelectOptionsEdit = computed<UiSelectOption[]>(() =>
+  copyAccountsGroupOptionsForEdit.value.map((opt) => ({
+    value: opt.value,
+    label: opt.label,
+    disabled: editForm.copy_accounts_from_group_ids.includes(opt.value),
+  }))
+);
+
+const onSelectCopyAccountGroupCreate = (val: string | number | boolean | null) => {
+  const num = Number(val);
+  if (num && !createForm.copy_accounts_from_group_ids.includes(num)) {
+    createForm.copy_accounts_from_group_ids.push(num);
+  }
+};
+
+const onSelectCopyAccountGroupEdit = (val: string | number | boolean | null) => {
+  const num = Number(val);
+  if (num && !editForm.copy_accounts_from_group_ids.includes(num)) {
+    editForm.copy_accounts_from_group_ids.push(num);
+  }
+};
 
 const groups = ref<AdminGroup[]>([]);
 const loading = ref(false);

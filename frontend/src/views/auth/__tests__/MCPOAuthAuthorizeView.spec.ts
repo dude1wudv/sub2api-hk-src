@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MCPOAuthAuthorizeView from '../MCPOAuthAuthorizeView.vue'
+import { UiSelect } from '@/ui'
 import type { MCPAuthorization, MCPConsent } from '@/api/mcp'
 
 const { auth, previewAuthorization, authorize, routeState, assign } = vi.hoisted(() => ({
@@ -60,7 +61,8 @@ describe('MCP OAuth consent', () => {
     expect(wrapper.text()).toContain('mcp.untrustedApplicationHint')
     expect(authorize).not.toHaveBeenCalled()
     expect(assign).not.toHaveBeenCalled()
-    expect(wrapper.find('#mcp-consent-scope option[value="admin"]').exists()).toBe(false)
+    const scopeSelect = wrapper.findAllComponents(UiSelect).find(c => c.props('id') === 'mcp-consent-scope')!
+    expect(scopeSelect.props('options').some((o: { value: unknown }) => o.value === 'admin')).toBe(false)
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(authorize).toHaveBeenCalledWith({ authorization: request, approved: true, scope: 'user', read_only: true })
@@ -140,9 +142,11 @@ describe('MCP OAuth consent', () => {
     authorize.mockRejectedValueOnce({ reason: 'STEP_UP_REQUIRED' }).mockResolvedValueOnce({ redirect_url: redirectURL })
     const wrapper = render()
     await flushPromises()
-    expect((wrapper.get('#mcp-consent-scope').element as HTMLSelectElement).value).toBe('user')
-    await wrapper.get('#mcp-consent-scope').setValue('admin')
-    await wrapper.get('#mcp-consent-permissions').setValue('false')
+    const scopeSelect = wrapper.findAllComponents(UiSelect).find(c => c.props('id') === 'mcp-consent-scope')!
+    const permSelect = wrapper.findAllComponents(UiSelect).find(c => c.props('id') === 'mcp-consent-permissions')!
+    expect(scopeSelect.props('modelValue')).toBe('user')
+    await scopeSelect.vm.$emit('update:modelValue', 'admin')
+    await permSelect.vm.$emit('update:modelValue', false)
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(authorize).toHaveBeenCalledTimes(1)
@@ -158,12 +162,14 @@ describe('MCP OAuth consent', () => {
     auth.isAdmin = true
     const wrapper = render()
     await flushPromises()
+    const scopeSelect = wrapper.findAllComponents(UiSelect).find(c => c.props('id') === 'mcp-consent-scope')!
+    const permSelect = wrapper.findAllComponents(UiSelect).find(c => c.props('id') === 'mcp-consent-permissions')!
     expect(wrapper.find('[data-testid="admin-write-hint"]').exists()).toBe(false)
-    await wrapper.get('#mcp-consent-permissions').setValue('false')
+    await permSelect.vm.$emit('update:modelValue', false)
     expect(wrapper.find('[data-testid="admin-write-hint"]').exists()).toBe(false)
-    await wrapper.get('#mcp-consent-scope').setValue('admin')
+    await scopeSelect.vm.$emit('update:modelValue', 'admin')
     expect(wrapper.get('[data-testid="admin-write-hint"]').text()).toBe('mcp.adminWriteHint')
-    await wrapper.get('#mcp-consent-permissions').setValue('true')
+    await permSelect.vm.$emit('update:modelValue', true)
     expect(wrapper.find('[data-testid="admin-write-hint"]').exists()).toBe(false)
   })
 
@@ -172,7 +178,8 @@ describe('MCP OAuth consent', () => {
     authorize.mockRejectedValue({ reason: 'STEP_UP_REQUIRED' })
     const wrapper = render()
     await flushPromises()
-    await wrapper.get('#mcp-consent-scope').setValue('admin')
+    const scopeSelect = wrapper.findAllComponents(UiSelect).find(c => c.props('id') === 'mcp-consent-scope')!
+    await scopeSelect.vm.$emit('update:modelValue', 'admin')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     await wrapper.get('[data-testid="step-up-cancel"]').trigger('click')

@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n'
 import { redeemAPI, type RedeemHistoryItem } from '@/api/redeem'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatPortalBalance, maskPortalRedeemCode } from '@/utils/portalPurchase'
+import { UiButton, UiSelect, type UiSelectOption } from '@/ui'
 
 const props = withDefaults(defineProps<{ compact?: boolean; refreshKey?: number }>(), { compact: false, refreshKey: 0 })
 const { locale } = useI18n()
@@ -20,6 +21,11 @@ const pageSize = ref(props.compact ? 5 : 20)
 const selectedPageSize = ref(pageSize.value)
 const total = ref(0)
 const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+const pageSizeOptions: UiSelectOption[] = [
+  { value: 20, label: '20' },
+  { value: 50, label: '50' },
+  { value: 100, label: '100' },
+]
 let request = 0
 let failedTarget: { page: number; size: number } | null = null
 
@@ -84,6 +90,12 @@ async function load(targetPage = page.value, targetSize = pageSize.value) {
   }
 }
 
+function handlePageSizeChange(val: string | number | boolean | null) {
+  const next = Number(val) || 20
+  selectedPageSize.value = next
+  void load(1, next)
+}
+
 function retry() { void load(failedTarget?.page ?? page.value, failedTarget?.size ?? pageSize.value) }
 watch(() => props.refreshKey, () => { void load(1, pageSize.value) })
 onMounted(() => { void load(1, pageSize.value) })
@@ -91,68 +103,151 @@ onBeforeUnmount(() => { request++ })
 </script>
 
 <template>
-  <section class="redeem-history" :aria-label="copy('本站兑换记录', 'Redemption history on this site')">
-    <header class="redeem-history-heading">
-      <h2>{{ compact ? copy('最近兑换', 'Recent redemptions') : copy('本站兑换记录', 'Redemption history') }}</h2>
-      <RouterLink v-if="compact" to="/orders" class="redeem-view-all">{{ copy('查看全部', 'View all') }} <span aria-hidden="true">→</span></RouterLink>
-      <button v-else type="button" class="portal-button secondary" :disabled="loading" @click="load()">{{ copy('刷新', 'Refresh') }}</button>
+  <section class="atelier-surface overflow-hidden" :aria-label="copy('本站兑换记录', 'Redemption history on this site')">
+    <header class="flex items-center justify-between gap-4 border-b border-[var(--atelier-border)] px-5 py-4">
+      <h2 class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+        {{ compact ? copy('最近兑换', 'Recent redemptions') : copy('本站兑换记录', 'Redemption history') }}
+      </h2>
+      <RouterLink
+        v-if="compact"
+        to="/orders"
+        class="text-xs font-medium text-[var(--atelier-ink-secondary)] hover:text-[var(--atelier-ink)] hover:underline"
+      >
+        {{ copy('查看全部', 'View all') }} <span aria-hidden="true">→</span>
+      </RouterLink>
+      <UiButton v-else variant="secondary" size="sm" type="button" :disabled="loading" @click="load()">
+        {{ copy('刷新', 'Refresh') }}
+      </UiButton>
     </header>
-    <div v-if="error" class="portal-error redeem-history-error" role="alert"><p>{{ error }}</p><button type="button" class="portal-button secondary" :disabled="loading" @click="retry">{{ copy('重试', 'Retry') }}</button></div>
-    <div class="portal-table-wrap" :aria-busy="loading">
-      <div v-if="mobile" class="mobile-records">
-          <div v-if="loading" class="mobile-record-state">{{ copy('正在加载兑换记录…', 'Loading redemption history…') }}</div>
-          <div v-else-if="!rows.length" class="mobile-record-state">{{ error ? copy('记录暂时无法显示', 'History is temporarily unavailable') : copy('暂无兑换记录', 'No redemptions yet') }}</div>
-          <dl v-for="item in loading ? [] : rows" :key="item.id" class="mobile-record">
-  <div  class="mobile-record-field"><dt>{{ copy('时间', 'Date') }}</dt><dd ><time :datetime="item.used_at || item.created_at">{{ formattedDate(item.used_at || item.created_at) }}</time><small>#{{ item.id }}</small></dd></div>
-  <div  class="mobile-record-field"><dt>{{ copy('类型', 'Type') }}</dt><dd >{{ typeLabel(item.type) }}<small v-if="item.type === 'subscription' && item.group?.name">{{ item.group.name }}</small></dd></div>
-  <div  class="mobile-record-field"><dt>{{ copy('金额 / 额度', 'Amount / allowance') }}</dt><dd >{{ valueLabel(item) }}</dd></div>
-  <div  class="mobile-record-field"><dt>{{ copy('兑换码', 'Code') }}</dt><dd >{{ item.maskedCode }}</dd></div>
-</dl>
 
-</div>
-<table v-else class="portal-table redeem-history-table">
-        <thead><tr><th scope="col">{{ copy('时间', 'Date') }}</th><th scope="col">{{ copy('类型', 'Type') }}</th><th scope="col">{{ copy('金额 / 额度', 'Amount / allowance') }}</th><th scope="col">{{ copy('兑换码', 'Code') }}</th></tr></thead>
-        <tbody>
-          <tr v-if="loading"><td colspan="4" class="redeem-history-empty" role="status">{{ copy('正在加载兑换记录…', 'Loading redemption history…') }}</td></tr>
-          <tr v-else-if="!rows.length"><td colspan="4" class="redeem-history-empty">{{ error ? copy('记录暂时无法显示', 'History is temporarily unavailable') : copy('暂无兑换记录', 'No redemptions yet') }}</td></tr>
-          <tr v-for="item in loading ? [] : rows" :key="item.id">
-            <td><time :datetime="item.used_at || item.created_at">{{ formattedDate(item.used_at || item.created_at) }}</time><small>#{{ item.id }}</small></td>
-            <td>{{ typeLabel(item.type) }}<small v-if="item.type === 'subscription' && item.group?.name">{{ item.group.name }}</small></td>
-            <td class="redeem-history-value">{{ valueLabel(item) }}</td>
-            <td class="redeem-history-code">{{ item.maskedCode }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div v-if="!compact && total > 0" class="portal-pagination redeem-history-pagination">
-      <label>{{ copy('每页', 'Per page') }} <select v-model.number="selectedPageSize" :disabled="loading" @change="load(1, selectedPageSize)"><option :value="20">20</option><option :value="50">50</option><option :value="100">100</option></select></label>
-      <span class="portal-muted">{{ copy(`共 ${total} 条`, `${total} records`) }} · {{ page }} / {{ pages }}</span>
-      <button type="button" :disabled="loading || page <= 1" @click="load(page - 1)">{{ copy('上一页', 'Previous') }}</button>
-      <button type="button" :disabled="loading || page >= pages" @click="load(page + 1)">{{ copy('下一页', 'Next') }}</button>
+    <div class="p-5">
+      <div
+        v-if="error"
+        class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--atelier-err)]/25 bg-[var(--atelier-err-bg)] px-4 py-3 text-xs text-[var(--atelier-err)]"
+        role="alert"
+      >
+        <p class="m-0">{{ error }}</p>
+        <UiButton variant="secondary" size="sm" type="button" :disabled="loading" @click="retry">
+          {{ copy('重试', 'Retry') }}
+        </UiButton>
+      </div>
+
+      <div class="overflow-x-auto" :aria-busy="loading">
+        <div v-if="mobile" class="space-y-3">
+          <div v-if="loading" class="py-10 text-center text-xs text-[var(--atelier-ink-muted)]" role="status">
+            {{ copy('正在加载兑换记录…', 'Loading redemption history…') }}
+          </div>
+          <div v-else-if="!rows.length" class="py-10 text-center text-xs text-[var(--atelier-ink-muted)]">
+            {{ error ? copy('记录暂时无法显示', 'History is temporarily unavailable') : copy('暂无兑换记录', 'No redemptions yet') }}
+          </div>
+          <dl
+            v-for="item in loading ? [] : rows"
+            :key="item.id"
+            class="space-y-2 rounded-xl border border-[var(--atelier-border)] p-3.5 text-xs"
+          >
+            <div class="flex justify-between gap-2">
+              <dt class="text-[var(--atelier-ink-muted)]">{{ copy('时间', 'Date') }}</dt>
+              <dd class="text-right font-mono">
+                <time :datetime="item.used_at || item.created_at">{{ formattedDate(item.used_at || item.created_at) }}</time>
+                <span class="block text-[11px] text-[var(--atelier-ink-muted)]">#{{ item.id }}</span>
+              </dd>
+            </div>
+            <div class="flex justify-between gap-2">
+              <dt class="text-[var(--atelier-ink-muted)]">{{ copy('类型', 'Type') }}</dt>
+              <dd class="text-right">
+                {{ typeLabel(item.type) }}
+                <span v-if="item.type === 'subscription' && item.group?.name" class="block text-[11px] text-[var(--atelier-ink-muted)]">
+                  {{ item.group.name }}
+                </span>
+              </dd>
+            </div>
+            <div class="flex justify-between gap-2">
+              <dt class="text-[var(--atelier-ink-muted)]">{{ copy('金额 / 额度', 'Amount / allowance') }}</dt>
+              <dd class="font-mono font-semibold tabular-nums text-[var(--atelier-ink)]">{{ valueLabel(item) }}</dd>
+            </div>
+            <div class="flex justify-between gap-2">
+              <dt class="text-[var(--atelier-ink-muted)]">{{ copy('兑换码', 'Code') }}</dt>
+              <dd class="font-mono text-[var(--atelier-ink-secondary)]">{{ item.maskedCode }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <table v-else class="atelier-table min-w-[540px] text-xs">
+          <thead>
+            <tr>
+              <th scope="col">{{ copy('时间', 'Date') }}</th>
+              <th scope="col">{{ copy('类型', 'Type') }}</th>
+              <th scope="col">{{ copy('金额 / 额度', 'Amount / allowance') }}</th>
+              <th scope="col">{{ copy('兑换码', 'Code') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="loading">
+              <td colspan="4" class="py-12 text-center text-[var(--atelier-ink-muted)]" role="status">
+                {{ copy('正在加载兑换记录…', 'Loading redemption history…') }}
+              </td>
+            </tr>
+            <tr v-else-if="!rows.length">
+              <td colspan="4" class="py-12 text-center text-[var(--atelier-ink-muted)]">
+                {{ error ? copy('记录暂时无法显示', 'History is temporarily unavailable') : copy('暂无兑换记录', 'No redemptions yet') }}
+              </td>
+            </tr>
+            <tr v-for="item in loading ? [] : rows" :key="item.id">
+              <td class="whitespace-nowrap">
+                <time :datetime="item.used_at || item.created_at" class="font-mono tabular-nums text-[var(--atelier-ink)]">
+                  {{ formattedDate(item.used_at || item.created_at) }}
+                </time>
+                <span class="block font-mono text-[11px] text-[var(--atelier-ink-muted)]">#{{ item.id }}</span>
+              </td>
+              <td class="whitespace-nowrap">
+                <span class="text-[var(--atelier-ink)]">{{ typeLabel(item.type) }}</span>
+                <span v-if="item.type === 'subscription' && item.group?.name" class="block text-[11px] text-[var(--atelier-ink-muted)]">
+                  {{ item.group.name }}
+                </span>
+              </td>
+              <td class="whitespace-nowrap font-mono font-semibold tabular-nums text-[var(--atelier-ink)]">
+                {{ valueLabel(item) }}
+              </td>
+              <td class="whitespace-nowrap font-mono text-[var(--atelier-ink-secondary)]">
+                {{ item.maskedCode }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div
+        v-if="!compact && total > 0"
+        class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--atelier-border)] pt-4 text-xs text-[var(--atelier-ink-secondary)]"
+      >
+        <div class="flex items-center gap-2">
+          <span>{{ copy('每页', 'Per page') }}</span>
+          <div class="w-20">
+            <UiSelect
+              :model-value="selectedPageSize"
+              :options="pageSizeOptions"
+              :disabled="loading"
+              size="sm"
+              :aria-label="copy('每页条数', 'Rows per page')"
+              @update:model-value="handlePageSizeChange"
+            />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span class="font-mono tabular-nums text-[var(--atelier-ink-muted)]">
+            {{ copy(`共 ${total} 条`, `${total} records`) }} · {{ page }} / {{ pages }}
+          </span>
+          <div class="flex items-center gap-1.5">
+            <UiButton variant="secondary" size="sm" type="button" :disabled="loading || page <= 1" @click="load(page - 1)">
+              {{ copy('上一页', 'Previous') }}
+            </UiButton>
+            <UiButton variant="secondary" size="sm" type="button" :disabled="loading || page >= pages" @click="load(page + 1)">
+              {{ copy('下一页', 'Next') }}
+            </UiButton>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 </template>
-
-<style scoped>
-.redeem-history-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
-.redeem-history-heading h2 { margin: 0; font-size: 17.5px; font-weight: 650; letter-spacing: -0.015em; }
-.redeem-view-all { font-size: 13px; font-weight: 550; color: rgb(var(--brand-moss)); text-decoration: none; }
-.redeem-view-all:hover { text-decoration: underline; text-underline-offset: 3px; }
-.redeem-history-error { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
-.redeem-history-error p { margin: 0; }
-.redeem-history-error button { flex-shrink: 0; }
-.redeem-history-table { min-width: 560px; }
-.redeem-history-table td { white-space: nowrap; }
-.redeem-history-table small { display: block; color: rgb(var(--ink-3)); font-size: 12.5px; margin-top: 4px; }
-.redeem-history-empty { height: 150px; text-align: center; color: rgb(var(--ink-3)); }
-.redeem-history-value { font-weight: 600; font-variant-numeric: tabular-nums; color: rgb(var(--ink)); }
-.redeem-history-code { font-family: var(--font-mono); font-size: 12.5px; color: rgb(var(--ink-2)); }
-.redeem-history-pagination { font-size: 13px; }
-.redeem-history-pagination label { margin-right: auto; display: flex; align-items: center; gap: 10px; }
-@media (max-width: 600px) {
-  .redeem-history-heading { gap: 12px; }
-  .redeem-history-pagination { gap: 10px; }
-  .redeem-history-pagination label { width: 100%; }
-  .redeem-history-error { align-items: flex-start; flex-direction: column; gap: 12px; }
-}
-</style>

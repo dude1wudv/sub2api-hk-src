@@ -7,55 +7,57 @@
           <div class="relative flex-1 sm:max-w-64">
             <Icon
               name="search"
-              size="md"
-              class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-400"
+              size="sm"
+              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--atelier-ink-muted)]"
             />
             <input
               v-model="searchQuery"
               type="text"
               :placeholder="t('admin.redeem.searchCodes')"
-              class="input pl-10"
+              class="atelier-input !pl-9"
               @input="handleSearch"
             />
           </div>
-          <Select
-            v-model="filters.type"
-            :options="filterTypeOptions"
-            class="w-36"
-            @change="loadCodes"
-          />
-          <Select
-            v-model="filters.status"
-            :options="filterStatusOptions"
-            class="w-36"
-            @change="loadCodes"
-          />
+          <div class="w-40">
+            <UiSelect
+              :model-value="filters.type"
+              :options="filterTypeOptions"
+              @update:model-value="filters.type = String($event ?? ''); loadCodes()"
+            />
+          </div>
+          <div class="w-40">
+            <UiSelect
+              :model-value="filters.status"
+              :options="filterStatusOptions"
+              @update:model-value="filters.status = String($event ?? ''); loadCodes()"
+            />
+          </div>
 
           <!-- Right: Action buttons -->
           <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
-            <button
-              @click="loadCodes"
+            <UiButton
+              variant="secondary"
               :disabled="loading"
-              class="btn btn-secondary"
               :title="t('common.refresh')"
+              @click="loadCodes"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
-            </button>
-            <button @click="handleExportCodes" class="btn btn-secondary">
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
+            </UiButton>
+            <UiButton variant="secondary" @click="handleExportCodes">
               {{ t('admin.redeem.exportCsv') }}
-            </button>
-            <button
+            </UiButton>
+            <UiButton
+              variant="secondary"
               data-test="batch-update-open"
-              @click="openBatchUpdateDialog"
               :disabled="selectedCount === 0 || batchUpdating"
-              class="btn btn-secondary"
+              @click="openBatchUpdateDialog"
             >
-              <Icon name="edit" size="md" class="mr-2" />
+              <Icon name="edit" size="sm" />
               {{ t('admin.redeem.batchUpdate') }}
-            </button>
-            <button @click="showGenerateDialog = true" class="btn btn-primary">
+            </UiButton>
+            <UiButton variant="primary" @click="showGenerateDialog = true">
               {{ t('admin.redeem.generateCodes') }}
-            </button>
+            </UiButton>
           </div>
         </div>
       </template>
@@ -212,26 +214,18 @@
       <template #pagination>
         <div
           v-if="selectedCount > 0"
-          class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20"
+          class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--atelier-border-strong)] bg-[var(--atelier-subtle)] px-4 py-3"
         >
-          <span class="text-sm font-medium text-primary-900 dark:text-primary-100">
+          <span class="text-sm font-medium text-[var(--atelier-ink)]">
             {{ t('admin.redeem.selectedCount', { count: selectedCount }) }}
           </span>
           <div class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              class="text-xs font-medium text-primary-700 hover:text-primary-800 dark:text-primary-300 dark:hover:text-primary-200"
-              @click="clearSelectedCodes"
-            >
+            <UiButton variant="ghost" size="sm" @click="clearSelectedCodes">
               {{ t('admin.redeem.clearSelection') }}
-            </button>
-            <button
-              type="button"
-              class="btn btn-primary btn-sm"
-              @click="openBatchUpdateDialog"
-            >
+            </UiButton>
+            <UiButton variant="primary" size="sm" @click="openBatchUpdateDialog">
               {{ t('admin.redeem.batchUpdate') }}
-            </button>
+            </UiButton>
           </div>
         </div>
 
@@ -246,9 +240,9 @@
 
         <!-- Batch Actions -->
         <div v-if="filters.status === 'unused'" class="flex justify-end">
-          <button @click="showDeleteUnusedDialog = true" class="btn btn-danger">
+          <UiButton variant="danger" @click="showDeleteUnusedDialog = true">
             {{ t('admin.redeem.deleteAllUnused') }}
-          </button>
+          </UiButton>
         </div>
       </template>
     </TablePageLayout>
@@ -584,6 +578,7 @@ import Pagination from '@/components/common/Pagination.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
+import { UiButton, UiSelect } from '@/ui'
 import GroupBadge from '@/components/common/GroupBadge.vue'
 import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
 import Icon from '@/components/icons/Icon.vue'

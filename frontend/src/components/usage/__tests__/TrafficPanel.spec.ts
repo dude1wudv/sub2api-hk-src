@@ -4,6 +4,7 @@ import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 import { flushPromises, mount } from '@vue/test-utils'
 import TrafficPanel from '../TrafficPanel.vue'
 import Select from '@/components/common/Select.vue'
+import { UiSelect, UiStatusDot } from '@/ui'
 import { Bar, Doughnut } from 'vue-chartjs'
 import type { TrafficReport } from '@/api/traffic'
 
@@ -48,14 +49,16 @@ describe.each([false, true])('TrafficPanel (mobile=%s)', (mobile) => {
   afterEach(() => vi.restoreAllMocks())
   it('shows a total-led overview and calculates composition from the same report', async () => {
     const wrapper = render(); await flushPromises()
-    expect(wrapper.findAll('.traffic-metric')).toHaveLength(4)
-    expect(wrapper.get('.traffic-metric').text()).toContain('traffic.total')
+    expect(wrapper.findAll('strong[title]')).toHaveLength(4)
+    expect(wrapper.text()).toContain('traffic.total')
     expect(wrapper.getComponent(Doughnut).props('data').datasets[0].data).toEqual([1024, 2048])
-    expect(wrapper.get('.traffic-direction-legend').text()).toContain('33.3%')
-    expect(wrapper.get('.traffic-direction-legend').text()).toContain('66.7%')
-    expect(wrapper.get('.traffic-insights').text()).toContain('3.00 KiB')
-    expect(wrapper.get('.traffic-measurement-notes').attributes('open')).toBeUndefined()
-    expect(wrapper.get('.traffic-status').classes()).toContain('is-canceled')
+    const composition = wrapper.findAll('article').find(article => article.text().includes('traffic.composition'))!
+    expect(composition.text()).toContain('33.3%')
+    expect(composition.text()).toContain('66.7%')
+    expect(composition.get('dl').text()).toContain('3.00 KiB')
+    const notes = wrapper.findAll('details').find(details => details.text().includes('traffic.scopeTitle'))!
+    expect(notes.attributes('open')).toBeUndefined()
+    expect(wrapper.get('section[aria-label="traffic.records"]').getComponent(UiStatusDot).props('tone')).toBe('warn')
   })
 
   it.each([['day', 'hour'], ['week', 'day'], ['month', 'day'], ['year', 'month']] as const)('plots independent %s buckets, including decreases and idle buckets', async (period, bucket) => {
@@ -63,7 +66,7 @@ describe.each([false, true])('TrafficPanel (mobile=%s)', (mobile) => {
     const trend = uploads.map((upload, i) => ({ bucket: `bucket-${i}`, upload_bytes: upload, download_bytes: downloads[i]!, total_bytes: upload + downloads[i]!, requests: upload ? 1 : 0 }))
     getTraffic.mockResolvedValue({ ...fixture(), period, trend, upload_bytes: 1400, download_bytes: 2800, total_bytes: 4200 })
     const wrapper = render(); await flushPromises()
-    await wrapper.get('#traffic-period').setValue(period); await flushPromises()
+    wrapper.getComponent(UiSelect).vm.$emit('update:modelValue', period); await flushPromises()
     const data = wrapper.getComponent(Bar).props('data') as { labels: string[]; datasets: Array<{ data: number[] }> }
     expect(data.labels).toEqual(trend.map(point => point.bucket))
     expect(data.datasets.map(dataset => dataset.data)).toEqual([uploads, downloads])
@@ -98,7 +101,7 @@ describe.each([false, true])('TrafficPanel (mobile=%s)', (mobile) => {
     const nextPage = wrapper.findAll('button').find(b => b.text() === 'traffic.next')!
     await nextPage.trigger('click'); await flushPromises()
     expect(getTraffic).toHaveBeenLastCalledWith(true, expect.objectContaining({ view: 'details', cursor: 'cursor-page-2', date: '2026-10-01' }), expect.any(AbortSignal))
-    await wrapper.get('#traffic-period').setValue('year'); await flushPromises()
+    wrapper.getComponent(UiSelect).vm.$emit('update:modelValue', 'year'); await flushPromises()
     expect(getTraffic).toHaveBeenLastCalledWith(true, expect.objectContaining({ period: 'year', view: 'summary' }), expect.any(AbortSignal))
     await wrapper.findAll('button').find(b => b.text() === 'traffic.previousPeriod')!.trigger('click'); await flushPromises()
     expect(getTraffic).toHaveBeenLastCalledWith(true, expect.objectContaining({ date: '2025-10-01' }), expect.any(AbortSignal))
@@ -230,7 +233,7 @@ describe.each([false, true])('TrafficPanel (mobile=%s)', (mobile) => {
     getTraffic.mockImplementationOnce(() => new Promise<TrafficReport>(resolve => { resolveFirst = resolve }))
     const wrapper = render()
     const firstSignal = getTraffic.mock.calls[0]![2] as AbortSignal
-    await wrapper.get('#traffic-period').setValue('day'); await flushPromises()
+    wrapper.getComponent(UiSelect).vm.$emit('update:modelValue', 'day'); await flushPromises()
     expect(firstSignal.aborted).toBe(true)
     resolveFirst({ ...fixture(), items: [{ ...fixture().items[0]!, endpoint: '/stale' }] }); await flushPromises()
     expect(wrapper.text()).not.toContain('/stale')
@@ -249,7 +252,7 @@ describe.each([false, true])('TrafficPanel (mobile=%s)', (mobile) => {
     await click('traffic.previous')
     expect(getTraffic.mock.lastCall?.[1]).toMatchObject({ view: 'details', cursor: undefined })
     await click('traffic.next')
-    await wrapper.get('#traffic-period').setValue('day'); await flushPromises()
+    wrapper.getComponent(UiSelect).vm.$emit('update:modelValue', 'day'); await flushPromises()
     const detailCalls = getTraffic.mock.calls.filter(call => call[1].view === 'details')
     expect(detailCalls.at(-1)?.[1].cursor).toBeUndefined()
   })

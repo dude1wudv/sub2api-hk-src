@@ -1,32 +1,32 @@
 <template>
   <div class="admin-page admin-page--security" data-admin-page="prompt-audit">
     <div class="mx-auto max-w-[1600px]" :class="activeTab === 'config' && draft ? 'pb-28' : 'pb-8'">
-      <header class="admin-task-header mb-6 flex flex-wrap items-end justify-between gap-4">
+      <header class="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--atelier-border)] pb-5">
         <div>
-          <h1 class="mt-1 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">{{ t('admin.promptAudit.title') }}</h1>
-          <p class="mt-2 max-w-3xl text-sm text-gray-500 dark:text-dark-300">{{ t('admin.promptAudit.description') }}</p>
+          <h1 class="text-2xl font-semibold tracking-tight text-[var(--atelier-ink)]">{{ t('admin.promptAudit.title') }}</h1>
+          <p class="mt-1.5 max-w-3xl text-sm text-[var(--atelier-ink-secondary)]">{{ t('admin.promptAudit.description') }}</p>
         </div>
-        <div v-if="draft" class="text-right text-xs text-gray-500 dark:text-dark-400">
+        <div v-if="draft" class="text-right font-mono text-xs tabular-nums text-[var(--atelier-ink-muted)]">
           <p>{{ t('admin.promptAudit.configVersion', { version: draft.config_version }) }}</p>
           <p v-if="draft.updated_at" class="mt-1">{{ formatDate(draft.updated_at) }}</p>
         </div>
       </header>
 
-      <div v-if="loadErrors.config && !draft" role="alert" class="rounded-xl border border-red-200 bg-red-50 p-5 dark:border-red-900 dark:bg-red-950/30">
-        <p class="text-sm text-red-700 dark:text-red-300">{{ loadErrors.config }}</p>
-        <button type="button" class="btn btn-secondary btn-sm mt-3" @click="loadConfig">{{ t('admin.promptAudit.actions.retry') }}</button>
+      <div v-if="loadErrors.config && !draft" role="alert" class="rounded-xl border border-[var(--atelier-err)]/30 bg-[var(--atelier-err-bg)] p-5">
+        <p class="text-sm text-[var(--atelier-err)]">{{ loadErrors.config }}</p>
+        <UiButton variant="secondary" size="sm" class="mt-3" @click="loadConfig">{{ t('admin.promptAudit.actions.retry') }}</UiButton>
       </div>
 
       <template v-else>
-        <div class="mb-4" role="tablist" :aria-label="t('admin.promptAudit.title')">
-          <div class="tabs inline-flex">
+        <div class="mb-5" role="tablist" :aria-label="t('admin.promptAudit.title')">
+          <div class="atelier-tabs-list">
             <button
               v-for="tab in pageTabs"
               :key="tab.id"
               type="button"
               role="tab"
-              class="tab"
-              :class="{ 'tab-active': activeTab === tab.id }"
+              class="atelier-tab-trigger"
+              :data-active="activeTab === tab.id ? 'true' : 'false'"
               :aria-selected="activeTab === tab.id"
               :data-test="`tab-${tab.id}`"
               @click="activeTab = tab.id"
@@ -36,7 +36,7 @@
           </div>
         </div>
 
-        <main class="card px-4 sm:px-6 lg:px-8">
+        <main class="atelier-surface px-4 sm:px-6 lg:px-8">
           <div v-show="activeTab === 'config'" data-test="tab-panel-config">
             <RuntimeOverview :runtime="runtime" :loading="loading.runtime" :error="loadErrors.runtime" @refresh="loadRuntime" />
 
@@ -48,7 +48,7 @@
                 @update:endpoints="updateEndpoints"
                 @probe="runProbe"
               />
-              <div v-if="loadErrors.groups" role="alert" class="mt-5 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">{{ loadErrors.groups }}</div>
+              <div v-if="loadErrors.groups" role="alert" class="mt-5 rounded-xl border border-[var(--atelier-warn)]/30 bg-[var(--atelier-warn-bg)] px-4 py-3 text-sm text-[var(--atelier-warn)]">{{ loadErrors.groups }}</div>
               <PolicyPanel :draft="draft" :groups="groups" @update:draft="replaceDraft" />
             </template>
           </div>
@@ -58,12 +58,12 @@
               v-if="draft?.enabled && !draft.store_pass_events"
               data-test="pass-events-disabled-notice"
               role="status"
-              class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200"
+              class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--atelier-warn)]/30 bg-[var(--atelier-warn-bg)] px-4 py-3 text-sm text-[var(--atelier-warn)]"
             >
               <span>{{ t('admin.promptAudit.events.passEventsDisabled') }}</span>
-              <button type="button" class="btn btn-secondary btn-sm" @click="activeTab = 'config'">
+              <UiButton variant="secondary" size="sm" @click="activeTab = 'config'">
                 {{ t('admin.promptAudit.events.openConfiguration') }}
-              </button>
+              </UiButton>
             </div>
             <EventWorkspace
               :events="events.items"
@@ -89,7 +89,7 @@
       </template>
     </div>
 
-    <div v-if="draft && activeTab === 'config'" class="admin-fixed-submit-bar fixed inset-x-0 bottom-0 z-30 border-t px-4 py-3">
+    <div v-if="draft && activeTab === 'config'" class="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--atelier-border-strong)] bg-[var(--atelier-surface)]/95 px-4 py-3 backdrop-blur">
       <div class="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
           <SaveToggle :label="t('admin.promptAudit.saveBar.enabled')" :model-value="draft.enabled" data-test="enabled-toggle" @update:model-value="setEnabled" />
@@ -98,13 +98,13 @@
           <SaveToggle :label="t('admin.promptAudit.saveBar.storePass')" :model-value="draft.store_pass_events" data-test="store-pass-toggle" @update:model-value="replaceDraft({ ...draft!, store_pass_events: $event })" />
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-sm" :class="dirty ? 'text-amber-700 dark:text-amber-300' : 'text-gray-500 dark:text-dark-400'">
+          <span class="text-xs font-medium" :class="dirty ? 'text-[var(--atelier-warn)]' : 'text-[var(--atelier-ink-muted)]'">
             {{ dirty ? t('admin.promptAudit.saveBar.dirty') : t('admin.promptAudit.saveBar.synced') }}
           </span>
-          <button type="button" class="btn btn-secondary" :disabled="!dirty || loading.saving" @click="resetDraft">{{ t('common.reset') }}</button>
-          <button type="button" class="btn btn-primary" :disabled="!dirty || loading.saving" data-test="save-config" @click="saveConfig">
+          <UiButton variant="secondary" :disabled="!dirty || loading.saving" @click="resetDraft">{{ t('common.reset') }}</UiButton>
+          <UiButton variant="primary" :disabled="!dirty || loading.saving" :loading="loading.saving" data-test="save-config" @click="saveConfig">
             {{ loading.saving ? t('common.saving') : t('common.save') }}
-          </button>
+          </UiButton>
         </div>
       </div>
     </div>
@@ -146,6 +146,7 @@
 import { computed, defineComponent, h, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import { UiButton } from '@/ui'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorCode, extractApiErrorMessage } from '@/utils/apiError'
 import RuntimeOverview from './components/RuntimeOverview.vue'

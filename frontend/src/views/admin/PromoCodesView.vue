@@ -9,31 +9,32 @@
               v-model="searchQuery"
               type="text"
               :placeholder="t('admin.promo.searchCodes')"
-              class="input"
+              class="atelier-input"
               @input="handleSearch"
             />
           </div>
-          <Select
-            v-model="filters.status"
-            :options="filterStatusOptions"
-            class="w-36"
-            @change="loadCodes"
-          />
+          <div class="w-40">
+            <UiSelect
+              :model-value="filters.status"
+              :options="filterStatusOptions"
+              @update:model-value="filters.status = String($event ?? ''); loadCodes()"
+            />
+          </div>
 
           <!-- Right: Action buttons -->
           <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
-            <button
-              @click="loadCodes"
+            <UiButton
+              variant="secondary"
               :disabled="loading"
-              class="btn btn-secondary"
               :title="t('common.refresh')"
+              @click="loadCodes"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
-            </button>
-            <button @click="showCreateDialog = true" class="btn btn-primary">
-              <Icon name="plus" size="md" class="mr-1" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
+            </UiButton>
+            <UiButton variant="primary" @click="showCreateDialog = true">
+              <Icon name="plus" size="sm" />
               {{ t('admin.promo.createCode') }}
-            </button>
+            </UiButton>
           </div>
         </div>
       </template>
@@ -275,8 +276,8 @@
           />
         </div>
         <div>
-          <label class="input-label">{{ t('admin.promo.status') }}</label>
-          <Select v-model="editForm.status" :options="statusOptions" />
+          <label class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ t('admin.promo.status') }}</label>
+          <UiSelect :model-value="editForm.status" :options="statusOptions" @update:model-value="editForm.status = String($event ?? 'active') as any" />
         </div>
         <div>
           <label class="input-label">
@@ -400,7 +401,7 @@ import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import Select from '@/components/common/Select.vue'
+import { UiButton, UiSelect } from '@/ui'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()

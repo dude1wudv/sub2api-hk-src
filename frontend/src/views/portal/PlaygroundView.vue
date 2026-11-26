@@ -1,38 +1,62 @@
 <template>
-  <div class="portal-page playground-page">
-    <PortalPageHeader
-      :title="zh ? 'API 调试台' : 'API Playground'"
-      :description="zh ? '直接选用你的 API 密钥向网关发送测试请求，实时观测首字延迟、吞吐速率、原始 JSON 与当前生效倍率。' : 'Send live gateway requests with your API key to inspect TTFT, throughput, raw JSON payloads, and effective billing multipliers.'"
-    >
-      <span v-if="billingInfo" class="pg-rate-pill" :class="{ 'is-peak': peakActive }">
-        <span class="pg-rate-dot" aria-hidden="true" />
-        {{ zh ? '生效倍率' : 'Effective' }}
-        <strong>{{ formatMultiplier(billingInfo.effective_rate_multiplier) }}</strong>
-        <template v-if="peakActive"> · {{ zh ? '高峰期' : 'Peak' }}</template>
-      </span>
-      <button type="button" class="portal-button secondary" @click="router.push('/keys')">
-        <Icon name="key" size="sm" aria-hidden="true" />
-        {{ zh ? '管理密钥' : 'Manage keys' }}
-      </button>
-      <button type="button" class="portal-button" @click="copyActiveSnippet">
-        <Icon name="copy" size="sm" aria-hidden="true" />
-        {{ zh ? '复制代码' : 'Copy snippet' }}
-      </button>
-    </PortalPageHeader>
+  <div class="mx-auto max-w-[1440px] space-y-6 pb-10">
+    <!-- Editorial Page Header -->
+    <header class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+          {{ zh ? 'API 调试台' : 'API Playground' }}
+        </h1>
+        <p class="mt-1 text-sm text-[var(--atelier-ink-secondary)]">
+          {{ zh ? '直接选用你的 API 密钥向网关发送测试请求，实时观测首字延迟、吞吐速率、原始 JSON 与当前生效倍率。' : 'Send live gateway requests with your API key to inspect TTFT, throughput, raw JSON payloads, and effective billing multipliers.' }}
+        </p>
+      </div>
 
-    <div class="playground-grid">
-      <!-- Left: Request configuration -->
-      <section class="portal-panel pg-config-panel" :aria-label="zh ? '请求配置' : 'Request parameters'">
-        <header class="pg-panel-header">
-          <div>
-            <h2>{{ zh ? '请求配置' : 'Request Parameters' }}</h2>
-            <p>{{ zh ? '密钥仅保存在当前内存会话中，不会写入本地存储。' : 'API keys stay in memory for this session only and are never saved to localStorage.' }}</p>
-          </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span
+          v-if="billingInfo"
+          class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium"
+          :class="peakActive
+            ? 'border-[var(--atelier-warn)]/30 bg-[var(--atelier-warn-bg)] text-[var(--atelier-warn)]'
+            : 'border-[var(--atelier-border)] bg-[var(--atelier-surface)] text-[var(--atelier-ink-secondary)]'"
+        >
+          <UiStatusDot :tone="peakActive ? 'warn' : 'ok'" />
+          <span>{{ zh ? '生效倍率' : 'Effective' }}</span>
+          <strong class="font-mono tabular-nums text-[var(--atelier-ink)]">
+            {{ formatMultiplier(billingInfo.effective_rate_multiplier) }}
+          </strong>
+          <template v-if="peakActive"> · {{ zh ? '高峰期' : 'Peak' }}</template>
+        </span>
+
+        <UiButton variant="secondary" size="md" type="button" @click="router.push('/keys')">
+          <Icon name="key" size="sm" aria-hidden="true" />
+          {{ zh ? '管理密钥' : 'Manage keys' }}
+        </UiButton>
+        <UiButton variant="primary" size="md" type="button" @click="copyActiveSnippet">
+          <Icon name="copy" size="sm" aria-hidden="true" />
+          {{ zh ? '复制代码' : 'Copy snippet' }}
+        </UiButton>
+      </div>
+    </header>
+
+    <!-- Asymmetric Split Workspace -->
+    <div class="grid grid-cols-1 items-start gap-5 xl:grid-cols-[440px_minmax(0,1fr)]">
+      <!-- Left: Request Configuration -->
+      <section class="atelier-surface overflow-hidden" :aria-label="zh ? '请求配置' : 'Request parameters'">
+        <header class="border-b border-[var(--atelier-border)] px-5 py-4">
+          <h2 class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+            {{ zh ? '请求配置' : 'Request Parameters' }}
+          </h2>
+          <p class="mt-0.5 text-xs text-[var(--atelier-ink-muted)]">
+            {{ zh ? '密钥仅保存在当前内存会话中，不会写入本地存储。' : 'API keys stay in memory for this session only and are never saved to localStorage.' }}
+          </p>
         </header>
 
-        <div class="pg-stack">
-          <div v-if="keyOptions.length > 0" class="portal-field">
-            <span class="pg-field-label">{{ zh ? 'API 密钥' : 'API Key' }}</span>
+        <div class="space-y-4 p-5">
+          <!-- API Key Selector -->
+          <div v-if="keyOptions.length > 0" class="space-y-1.5">
+            <span class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              {{ zh ? 'API 密钥' : 'API Key' }}
+            </span>
             <Select
               v-model="selectedKeyId"
               :options="keyOptions"
@@ -42,89 +66,104 @@
             />
           </div>
 
-          <label v-if="selectedKeyId === '__custom__' || keyOptions.length === 0" class="portal-field">
-            <span>{{ zh ? '临时测试 API Key' : 'Custom API Key' }}</span>
+          <label v-if="selectedKeyId === '__custom__' || keyOptions.length === 0" class="block space-y-1.5">
+            <span class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              {{ zh ? '临时测试 API Key' : 'Custom API Key' }}
+            </span>
             <input
               v-model="customKey"
               type="password"
-              class="pg-mono-input"
+              class="atelier-input font-mono text-xs"
               autocomplete="off"
               :placeholder="zh ? '粘贴 sk-... 密钥（仅本次调试有效）' : 'Paste sk-... key (memory only)'"
             />
           </label>
 
-          <div class="portal-field">
-            <span class="pg-field-label">{{ zh ? '网关协议' : 'Protocol' }}</span>
-            <div class="pg-segmented" role="radiogroup" :aria-label="zh ? '网关协议' : 'Protocol'">
-              <button
-                type="button"
-                role="radio"
-                :aria-checked="protocol === 'openai'"
-                :class="{ active: protocol === 'openai' }"
-                @click="protocol = 'openai'"
-              >
-                <strong>OpenAI</strong>
-                <code>/v1/chat/completions</code>
-              </button>
-              <button
-                type="button"
-                role="radio"
-                :aria-checked="protocol === 'anthropic'"
-                :class="{ active: protocol === 'anthropic' }"
-                @click="protocol = 'anthropic'"
-              >
-                <strong>Anthropic</strong>
-                <code>/v1/messages</code>
-              </button>
-            </div>
+          <!-- Protocol Switch -->
+          <div class="space-y-1.5">
+            <span class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              {{ zh ? '网关协议' : 'Protocol' }}
+            </span>
+            <UiSegmented
+              v-model="protocol"
+              :options="protocolOptions"
+              :aria-label="zh ? '网关协议' : 'Protocol'"
+              class="w-full [&>button]:flex-1"
+            >
+              <template #option="{ option }">
+                <span class="flex flex-col items-center leading-tight py-0.5">
+                  <span class="text-xs font-semibold">{{ option.label }}</span>
+                  <code class="mt-0.5 font-mono text-[10px] opacity-70">
+                    {{ option.value === 'openai' ? '/v1/chat/completions' : '/v1/messages' }}
+                  </code>
+                </span>
+              </template>
+            </UiSegmented>
           </div>
 
-          <label class="portal-field">
-            <span>{{ zh ? '模型名称' : 'Model ID' }}</span>
+          <!-- Model ID -->
+          <label class="block space-y-1.5">
+            <span class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              {{ zh ? '模型名称' : 'Model ID' }}
+            </span>
             <input
               v-model="model"
               type="text"
-              class="pg-mono-input"
+              class="atelier-input font-mono text-xs"
               placeholder="gpt-4o / claude-sonnet-4-5"
             />
           </label>
 
-          <div v-if="quickModels.length" class="pg-quick-section">
-            <span class="pg-micro-label">{{ zh ? '常用 / 推荐模型' : 'Quick models' }}</span>
-            <div class="pg-chip-group" role="group" :aria-label="zh ? '常用模型' : 'Quick models'">
+          <!-- Quick Model Chips -->
+          <div v-if="quickModels.length" class="space-y-1.5">
+            <span class="block text-[11px] font-medium text-[var(--atelier-ink-muted)]">
+              {{ zh ? '常用 / 推荐模型' : 'Quick models' }}
+            </span>
+            <div class="flex flex-wrap gap-1.5" role="group" :aria-label="zh ? '常用模型' : 'Quick models'">
               <button
                 v-for="item in quickModels"
                 :key="item"
                 type="button"
-                class="pg-chip"
-                :class="{ active: model === item }"
+                class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs transition-colors"
+                :class="model === item
+                  ? 'border-[var(--atelier-ink)] bg-[var(--atelier-ink)] text-[var(--atelier-ink-inverse)]'
+                  : 'border-[var(--atelier-border)] bg-[var(--atelier-surface)] text-[var(--atelier-ink-secondary)] hover:border-[var(--atelier-border-strong)] hover:text-[var(--atelier-ink)]'"
                 :aria-pressed="model === item"
                 @click="model = item"
               >
-                <ModelIcon :model="item" size="14px" />
+                <BrandModelIcon :model="item" size="xs" />
                 <span>{{ item }}</span>
               </button>
             </div>
           </div>
 
-          <label class="portal-field">
-            <span>{{ zh ? 'System Prompt（可选）' : 'System prompt (optional)' }}</span>
+          <!-- System Prompt -->
+          <label class="block space-y-1.5">
+            <span class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              {{ zh ? 'System Prompt（可选）' : 'System prompt (optional)' }}
+            </span>
             <textarea
               v-model="systemPrompt"
               rows="2"
+              class="atelier-input resize-y text-xs leading-relaxed"
               :placeholder="zh ? '设定角色、语气或输出格式要求…' : 'Define role, style, or output format…'"
             />
           </label>
 
-          <div class="pg-quick-section">
-            <span class="pg-micro-label">{{ zh ? '快捷测试场景' : 'Prompt presets' }}</span>
-            <div class="pg-chip-group" role="group" :aria-label="zh ? '快捷测试场景' : 'Prompt presets'">
+          <!-- Prompt Presets -->
+          <div class="space-y-1.5">
+            <span class="block text-[11px] font-medium text-[var(--atelier-ink-muted)]">
+              {{ zh ? '快捷测试场景' : 'Prompt presets' }}
+            </span>
+            <div class="flex flex-wrap gap-1.5" role="group" :aria-label="zh ? '快捷测试场景' : 'Prompt presets'">
               <button
                 v-for="preset in promptPresets"
                 :key="preset.id"
                 type="button"
-                class="pg-chip"
-                :class="{ active: activePresetId === preset.id }"
+                class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors"
+                :class="activePresetId === preset.id
+                  ? 'border-[var(--atelier-border-strong)] bg-[var(--atelier-subtle)] font-medium text-[var(--atelier-ink)]'
+                  : 'border-[var(--atelier-border)] bg-[var(--atelier-surface)] text-[var(--atelier-ink-secondary)] hover:border-[var(--atelier-border-strong)] hover:text-[var(--atelier-ink)]'"
                 :aria-pressed="activePresetId === preset.id"
                 @click="applyPreset(preset)"
               >
@@ -134,247 +173,278 @@
             </div>
           </div>
 
-          <label class="portal-field">
-            <span class="pg-label-row">
+          <!-- User Prompt -->
+          <label class="block space-y-1.5">
+            <span class="flex items-center justify-between text-xs font-medium text-[var(--atelier-ink-secondary)]">
               <span>User Prompt</span>
-              <small>{{ zh ? 'Ctrl / ⌘ + Enter 发送' : 'Ctrl / ⌘ + Enter to send' }}</small>
+              <small class="font-normal text-[11px] text-[var(--atelier-ink-muted)]">
+                {{ zh ? 'Ctrl / ⌘ + Enter 发送' : 'Ctrl / ⌘ + Enter to send' }}
+              </small>
             </span>
             <textarea
               v-model="userPrompt"
               rows="4"
+              class="atelier-input resize-y text-sm leading-relaxed"
               :placeholder="zh ? '输入你想测试的问题或指令…' : 'Enter a prompt to test…'"
               @keydown.ctrl.enter.prevent="runRequest"
               @keydown.meta.enter.prevent="runRequest"
             />
           </label>
 
-          <div class="pg-params-box">
-            <div class="pg-slider-field">
-              <div class="pg-slider-head">
-                <label for="pg-temp">{{ zh ? '随机度 (Temperature)' : 'Temperature' }}</label>
-                <output for="pg-temp">{{ temperature.toFixed(1) }}</output>
-              </div>
-              <MdSlider
-                id="pg-temp"
-                v-model="temperature"
-                :min="0"
-                :max="2"
-                :step="0.1"
-                :show-value="false"
-                :labeled="false"
-                :aria-label="zh ? '随机度 (Temperature)' : 'Temperature'"
-              />
-            </div>
+          <!-- Sliders -->
+          <div class="atelier-surface-subtle space-y-3.5 p-4">
+            <UiSlider
+              v-model="temperature"
+              :min="0"
+              :max="2"
+              :step="0.1"
+              :label="zh ? '随机度 (Temperature)' : 'Temperature'"
+            >
+              <template #value>{{ temperature.toFixed(1) }}</template>
+            </UiSlider>
 
-            <div class="pg-slider-field">
-              <div class="pg-slider-head">
-                <label for="pg-max-tokens">{{ zh ? '最大输出 (Max Tokens)' : 'Max tokens' }}</label>
-                <output for="pg-max-tokens">{{ maxTokens }}</output>
-              </div>
-              <MdSlider
-                id="pg-max-tokens"
-                v-model="maxTokens"
-                :min="64"
-                :max="4096"
-                :step="64"
-                :show-value="false"
-                :labeled="false"
-                :aria-label="zh ? '最大输出 (Max Tokens)' : 'Max tokens'"
-              />
-            </div>
+            <UiSlider
+              v-model="maxTokens"
+              :min="64"
+              :max="4096"
+              :step="64"
+              :label="zh ? '最大输出 (Max Tokens)' : 'Max tokens'"
+            >
+              <template #value>{{ maxTokens }}</template>
+            </UiSlider>
           </div>
 
-          <div class="pg-switch-card">
-            <div class="pg-switch-copy">
-              <strong>{{ zh ? '启用 SSE 流式输出' : 'Stream SSE response' }}</strong>
-              <small>{{ zh ? '开启后可精准测量首字延迟 (TTFT)' : 'Enables accurate Time-To-First-Token measurement' }}</small>
+          <!-- SSE Switch -->
+          <div class="flex items-center justify-between gap-3 rounded-xl border border-[var(--atelier-border)] px-4 py-3">
+            <div>
+              <strong class="block text-xs font-semibold text-[var(--atelier-ink)]">
+                {{ zh ? '启用 SSE 流式输出' : 'Stream SSE response' }}
+              </strong>
+              <small class="text-[11px] text-[var(--atelier-ink-muted)]">
+                {{ zh ? '开启后可精准测量首字延迟 (TTFT)' : 'Enables accurate Time-To-First-Token measurement' }}
+              </small>
             </div>
-            <MdSwitch v-model="stream" :aria-label="zh ? '启用 SSE 流式输出' : 'Stream SSE response'" />
+            <UiSwitch v-model="stream" :aria-label="zh ? '启用 SSE 流式输出' : 'Stream SSE response'" />
           </div>
 
-          <div class="pg-actions">
-            <button
+          <!-- Actions -->
+          <div class="flex items-center gap-2 pt-1">
+            <UiButton
               v-if="!running"
+              variant="primary"
+              size="lg"
               type="button"
-              class="portal-button pg-run-btn"
+              class="flex-1"
               :disabled="!canRun"
               @click="runRequest"
             >
               <Icon name="play" size="sm" aria-hidden="true" />
               {{ zh ? '发送测试请求' : 'Send request' }}
-            </button>
-            <button
+            </UiButton>
+            <UiButton
               v-else
+              variant="danger"
+              size="lg"
               type="button"
-              class="portal-button danger pg-run-btn"
+              class="flex-1"
               @click="stopRequest"
             >
               <Icon name="x" size="sm" aria-hidden="true" />
               {{ zh ? '中止生成' : 'Stop' }}
-            </button>
-            <button
+            </UiButton>
+            <UiButton
+              variant="secondary"
+              size="lg"
               type="button"
-              class="portal-button secondary"
               :disabled="running"
               @click="clearOutput"
             >
               {{ zh ? '清空输出' : 'Clear' }}
-            </button>
+            </UiButton>
           </div>
         </div>
       </section>
 
-      <!-- Right: Live telemetry & output inspector -->
-      <section class="portal-panel pg-output-panel" :aria-label="zh ? '响应与观测面板' : 'Response and telemetry'">
-        <header class="pg-panel-header pg-output-head">
-          <div class="pg-output-title-group">
-            <h2>{{ zh ? '响应与观测面板' : 'Response & Telemetry' }}</h2>
-            <span class="pg-endpoint-badge">
-              <span class="pg-method">POST</span>
-              <code>{{ protocol === 'anthropic' ? '/v1/messages' : '/v1/chat/completions' }}</code>
+      <!-- Right: Live Telemetry & Output Inspector -->
+      <section class="atelier-surface flex min-h-[640px] flex-col overflow-hidden" :aria-label="zh ? '响应与观测面板' : 'Response and telemetry'">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--atelier-border)] px-5 py-4">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <h2 class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+              {{ zh ? '响应与观测面板' : 'Response & Telemetry' }}
+            </h2>
+            <span class="inline-flex items-center gap-1.5 rounded-md border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] px-2 py-0.5 font-mono text-[11px]">
+              <span class="font-semibold text-[var(--atelier-ink)]">POST</span>
+              <code class="text-[var(--atelier-ink-secondary)]">{{ protocol === 'anthropic' ? '/v1/messages' : '/v1/chat/completions' }}</code>
             </span>
           </div>
-          <span v-if="running" class="pg-live-status" role="status">
-            <span class="pg-live-dot" aria-hidden="true" />
+
+          <span
+            v-if="running"
+            class="inline-flex items-center gap-1.5 rounded-full bg-[var(--atelier-info-bg)] px-2.5 py-1 text-xs font-medium text-[var(--atelier-info)]"
+            role="status"
+          >
+            <UiStatusDot tone="info" class="animate-pulse" />
             {{ zh ? '流式接收中…' : 'Streaming…' }}
           </span>
         </header>
 
-        <div v-if="running" class="pg-progress-track" aria-hidden="true">
-          <div class="pg-progress-bar" />
+        <!-- Slim Indeterminate Bar when Running -->
+        <div v-if="running" class="h-[2px] w-full overflow-hidden bg-[var(--atelier-subtle)]" aria-hidden="true">
+          <div class="pg-progress-indeterminate h-full w-1/3 bg-[var(--atelier-ink)]" />
         </div>
 
-        <div class="pg-kpi-grid">
-          <div class="pg-kpi">
-            <span>{{ zh ? '首字延迟 (TTFT)' : 'TTFT' }}</span>
-            <strong>{{ ttftMs !== null ? `${ttftMs} ms` : '—' }}</strong>
+        <!-- Horizontal Borderless Telemetry Strip -->
+        <div class="grid grid-cols-2 divide-y divide-[var(--atelier-border)] border-b border-[var(--atelier-border)] sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+          <div class="px-5 py-3.5">
+            <span class="block text-[11px] text-[var(--atelier-ink-muted)]">{{ zh ? '首字延迟 (TTFT)' : 'TTFT' }}</span>
+            <strong class="mt-0.5 block font-mono text-base font-semibold tabular-nums text-[var(--atelier-ink)]">
+              {{ ttftMs !== null ? `${ttftMs} ms` : '—' }}
+            </strong>
           </div>
-          <div class="pg-kpi">
-            <span>{{ zh ? '总耗时' : 'Total time' }}</span>
-            <strong>{{ totalMs !== null ? `${totalMs} ms` : '—' }}</strong>
+          <div class="px-5 py-3.5">
+            <span class="block text-[11px] text-[var(--atelier-ink-muted)]">{{ zh ? '总耗时' : 'Total time' }}</span>
+            <strong class="mt-0.5 block font-mono text-base font-semibold tabular-nums text-[var(--atelier-ink)]">
+              {{ totalMs !== null ? `${totalMs} ms` : '—' }}
+            </strong>
           </div>
-          <div class="pg-kpi">
-            <span>{{ zh ? 'Token 消耗 (入/出)' : 'Tokens (in/out)' }}</span>
-            <strong>{{ usage.totalTokens > 0 ? `${usage.inputTokens} / ${usage.outputTokens}` : '—' }}</strong>
+          <div class="px-5 py-3.5">
+            <span class="block text-[11px] text-[var(--atelier-ink-muted)]">{{ zh ? 'Token 消耗 (入/出)' : 'Tokens (in/out)' }}</span>
+            <strong class="mt-0.5 block font-mono text-base font-semibold tabular-nums text-[var(--atelier-ink)]">
+              {{ usage.totalTokens > 0 ? `${usage.inputTokens} / ${usage.outputTokens}` : '—' }}
+            </strong>
           </div>
-          <div class="pg-kpi">
-            <span>{{ zh ? '生成速率' : 'Throughput' }}</span>
-            <strong>{{ tokensPerSecond !== null ? `${tokensPerSecond} tok/s` : '—' }}</strong>
+          <div class="px-5 py-3.5">
+            <span class="block text-[11px] text-[var(--atelier-ink-muted)]">{{ zh ? '生成速率' : 'Throughput' }}</span>
+            <strong class="mt-0.5 block font-mono text-base font-semibold tabular-nums text-[var(--atelier-ink)]">
+              {{ tokensPerSecond !== null ? `${tokensPerSecond} tok/s` : '—' }}
+            </strong>
           </div>
         </div>
 
-        <div v-if="billingInfo" class="pg-billing-banner">
-          <div class="pg-billing-details">
-            <span>{{ zh ? '分组倍率' : 'Group' }} <strong>{{ formatMultiplier(billingInfo.group_rate_multiplier) }}</strong></span>
-            <span v-if="billingInfo.user_rate_multiplier != null" class="pg-billing-sep">·</span>
-            <span v-if="billingInfo.user_rate_multiplier != null">{{ zh ? '个人覆盖' : 'Personal' }} <strong>{{ formatMultiplier(billingInfo.user_rate_multiplier) }}</strong></span>
+        <!-- Billing Multiplier Info Bar -->
+        <div
+          v-if="billingInfo"
+          class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--atelier-border)] bg-[var(--atelier-subtle)]/55 px-5 py-2.5 text-xs"
+        >
+          <div class="flex flex-wrap items-center gap-2 text-[var(--atelier-ink-secondary)]">
+            <span>
+              {{ zh ? '分组倍率' : 'Group' }}
+              <strong class="font-mono tabular-nums text-[var(--atelier-ink)]">{{ formatMultiplier(billingInfo.group_rate_multiplier) }}</strong>
+            </span>
+            <template v-if="billingInfo.user_rate_multiplier != null">
+              <span class="text-[var(--atelier-ink-muted)]">·</span>
+              <span>
+                {{ zh ? '个人覆盖' : 'Personal' }}
+                <strong class="font-mono tabular-nums text-[var(--atelier-ink)]">{{ formatMultiplier(billingInfo.user_rate_multiplier) }}</strong>
+              </span>
+            </template>
             <template v-if="billingInfo.peak_rate_enabled && billingInfo.peak_start && billingInfo.peak_end">
-              <span class="pg-billing-sep">·</span>
-              <span>{{ zh ? '高峰时段' : 'Peak window' }} <strong>{{ billingInfo.peak_start }}–{{ billingInfo.peak_end }}</strong></span>
+              <span class="text-[var(--atelier-ink-muted)]">·</span>
+              <span>
+                {{ zh ? '高峰时段' : 'Peak window' }}
+                <strong class="font-mono tabular-nums text-[var(--atelier-ink)]">{{ billingInfo.peak_start }}–{{ billingInfo.peak_end }}</strong>
+              </span>
             </template>
           </div>
-          <span class="pg-billing-tag" :class="{ 'is-peak': peakActive }">
+          <span
+            class="rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold tabular-nums"
+            :class="peakActive
+              ? 'bg-[var(--atelier-warn-bg)] text-[var(--atelier-warn)]'
+              : 'bg-[var(--atelier-ok-bg)] text-[var(--atelier-ok)]'"
+          >
             {{ zh ? '当前生效' : 'Active' }} {{ formatMultiplier(billingInfo.effective_rate_multiplier) }}
           </span>
         </div>
 
-        <div class="portal-tabs pg-tabs" role="tablist" :aria-label="zh ? '响应视图' : 'Output views'">
-          <button
-            v-for="tab in outputTabs"
-            :key="tab.id"
-            type="button"
-            role="tab"
-            :aria-selected="outputTab === tab.id"
-            :class="{ active: outputTab === tab.id }"
-            @click="outputTab = tab.id"
-          >
-            {{ tab.label }}
-          </button>
+        <!-- Output Underline Tabs -->
+        <div class="px-5 pt-2">
+          <UiTabs
+            v-model="outputTab"
+            :tabs="outputTabs"
+            :aria-label="zh ? '响应视图' : 'Output views'"
+          />
         </div>
 
-        <div v-if="errorMessage" class="pg-error-box" role="alert">
-          <Icon name="exclamationCircle" size="sm" aria-hidden="true" />
-          <div>
-            <strong>{{ zh ? '请求失败' : 'Request failed' }}</strong>
-            <p>{{ errorMessage }}</p>
+        <!-- Error Banner -->
+        <div
+          v-if="errorMessage"
+          class="mx-5 mt-4 flex items-start gap-2.5 rounded-lg border border-[var(--atelier-err)]/25 bg-[var(--atelier-err-bg)] px-4 py-3 text-xs text-[var(--atelier-err)]"
+          role="alert"
+        >
+          <Icon name="exclamationCircle" size="sm" class="mt-0.5 shrink-0" aria-hidden="true" />
+          <div class="min-w-0">
+            <strong class="block font-semibold">{{ zh ? '请求失败' : 'Request failed' }}</strong>
+            <p class="mt-0.5 break-words">{{ errorMessage }}</p>
           </div>
         </div>
 
-        <!-- Tab 1: Rendered text output -->
-        <div v-if="outputTab === 'response'" class="pg-tab-panel">
-          <div v-if="outputText" class="pg-response-body">
-            <pre class="pg-response-pre">{{ outputText }}</pre>
-            <div class="pg-panel-foot">
-              <button type="button" class="portal-button secondary pg-sm-btn" @click="copyText(outputText)">
+        <!-- Tab 1: Live Text Output -->
+        <div v-if="outputTab === 'response'" class="flex flex-1 flex-col p-5">
+          <div v-if="outputText" class="flex flex-1 flex-col gap-3">
+            <pre class="min-h-[340px] flex-1 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-subtle)]/50 p-4 font-sans text-sm leading-relaxed text-[var(--atelier-ink)]">{{ outputText }}</pre>
+            <div class="flex justify-end">
+              <UiButton variant="secondary" size="sm" type="button" @click="copyText(outputText)">
                 <Icon name="copy" size="xs" aria-hidden="true" />
                 {{ zh ? '复制回复文本' : 'Copy output' }}
-              </button>
+              </UiButton>
             </div>
           </div>
-          <div v-else class="pg-empty-state">
-            <div class="pg-empty-icon" aria-hidden="true">
-              <Icon name="terminal" size="lg" />
+
+          <div v-else class="relative flex flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-[var(--atelier-border-strong)] px-6 py-16 text-center">
+            <DotMatrixBackdrop mask="center" class="opacity-60" />
+            <div class="relative z-10 flex flex-col items-center">
+              <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-surface)] text-[var(--atelier-ink-secondary)]" aria-hidden="true">
+                <Icon name="terminal" size="md" />
+              </div>
+              <h3 class="text-sm font-semibold text-[var(--atelier-ink)]">
+                {{ running ? (zh ? '正在等待首字返回…' : 'Waiting for first token…') : (zh ? '尚未发起请求' : 'No response yet') }}
+              </h3>
+              <p class="mt-1.5 max-w-md text-xs leading-relaxed text-[var(--atelier-ink-muted)]">
+                {{ zh ? '在左侧选择 API Key 与模型，点击「发送测试请求」即可实时查看流式回复与延迟指标。' : 'Select an API key and model on the left, then click Send request to inspect live output and latency.' }}
+              </p>
             </div>
-            <h3>{{ running ? (zh ? '正在等待首字返回…' : 'Waiting for first token…') : (zh ? '尚未发起请求' : 'No response yet') }}</h3>
-            <p>{{ zh ? '在左侧选择 API Key 与模型，点击「发送测试请求」即可实时查看流式回复与延迟指标。' : 'Select an API key and model on the left, then click Send request to inspect live output and latency.' }}</p>
           </div>
         </div>
 
         <!-- Tab 2: Raw JSON -->
-        <div v-else-if="outputTab === 'json'" class="pg-tab-panel pg-json-grid">
-          <div class="pg-code-block">
-            <div class="pg-code-head">
+        <div v-else-if="outputTab === 'json'" class="grid flex-1 grid-cols-1 gap-4 p-5 lg:grid-cols-2">
+          <div class="flex flex-col overflow-hidden rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-subtle)]/50">
+            <div class="flex items-center justify-between border-b border-[var(--atelier-border)] px-3.5 py-2 text-xs font-medium text-[var(--atelier-ink-secondary)]">
               <span>Request Body</span>
-              <button type="button" class="portal-inline-button" @click="copyText(formattedRequestJson)">
+              <button type="button" class="font-medium text-[var(--atelier-ink)] hover:underline" @click="copyText(formattedRequestJson)">
                 {{ zh ? '复制' : 'Copy' }}
               </button>
             </div>
-            <pre>{{ formattedRequestJson }}</pre>
+            <pre class="max-h-[440px] flex-1 overflow-auto p-3.5 font-mono text-xs leading-relaxed text-[var(--atelier-ink)]">{{ formattedRequestJson }}</pre>
           </div>
-          <div class="pg-code-block">
-            <div class="pg-code-head">
+
+          <div class="flex flex-col overflow-hidden rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-subtle)]/50">
+            <div class="flex items-center justify-between border-b border-[var(--atelier-border)] px-3.5 py-2 text-xs font-medium text-[var(--atelier-ink-secondary)]">
               <span>{{ zh ? '响应原始负载' : 'Raw Response Payload' }}</span>
-              <button v-if="formattedResponseJson" type="button" class="portal-inline-button" @click="copyText(formattedResponseJson)">
+              <button v-if="formattedResponseJson" type="button" class="font-medium text-[var(--atelier-ink)] hover:underline" @click="copyText(formattedResponseJson)">
                 {{ zh ? '复制' : 'Copy' }}
               </button>
             </div>
-            <pre>{{ formattedResponseJson || (zh ? '// 发送请求后在此展示原始响应 JSON' : '// Send a request to inspect raw JSON') }}</pre>
+            <pre class="max-h-[440px] flex-1 overflow-auto p-3.5 font-mono text-xs leading-relaxed text-[var(--atelier-ink)]">{{ formattedResponseJson || (zh ? '// 发送请求后在此展示原始响应 JSON' : '// Send a request to inspect raw JSON') }}</pre>
           </div>
         </div>
 
-        <!-- Tab 3: Code snippets -->
-        <div v-else class="pg-tab-panel">
-          <div class="pg-snippet-bar">
-            <div class="pg-chip-group" role="group" :aria-label="zh ? '代码语言' : 'Snippet language'">
-              <button
-                type="button"
-                class="pg-chip"
-                :class="{ active: snippetLang === 'curl' }"
-                :aria-pressed="snippetLang === 'curl'"
-                @click="snippetLang = 'curl'"
-              >cURL</button>
-              <button
-                type="button"
-                class="pg-chip"
-                :class="{ active: snippetLang === 'python' }"
-                :aria-pressed="snippetLang === 'python'"
-                @click="snippetLang = 'python'"
-              >Python</button>
-              <button
-                type="button"
-                class="pg-chip"
-                :class="{ active: snippetLang === 'node' }"
-                :aria-pressed="snippetLang === 'node'"
-                @click="snippetLang = 'node'"
-              >Node.js</button>
-            </div>
-            <button type="button" class="portal-button secondary pg-sm-btn" @click="copyActiveSnippet">
+        <!-- Tab 3: Code Snippets -->
+        <div v-else class="flex flex-1 flex-col gap-3 p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <UiSegmented
+              v-model="snippetLang"
+              :options="snippetOptions"
+              size="sm"
+              :aria-label="zh ? '代码语言' : 'Snippet language'"
+            />
+            <UiButton variant="secondary" size="sm" type="button" @click="copyActiveSnippet">
               <Icon name="copy" size="xs" aria-hidden="true" />
               {{ zh ? '复制代码' : 'Copy code' }}
-            </button>
+            </UiButton>
           </div>
-          <div class="pg-code-block">
-            <pre>{{ activeSnippet }}</pre>
+          <div class="flex-1 overflow-hidden rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-subtle)]/50">
+            <pre class="max-h-[460px] overflow-auto p-4 font-mono text-xs leading-relaxed text-[var(--atelier-ink)]">{{ activeSnippet }}</pre>
           </div>
         </div>
       </section>
@@ -386,10 +456,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
-import { MdSlider, MdSwitch } from '@/components/md'
-import ModelIcon from '@/components/common/ModelIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { keysAPI } from '@/api/keys'
 import { getModelPlaza } from '@/api/modelPlaza'
@@ -408,6 +475,16 @@ import {
   type PlaygroundProtocol,
   type PlaygroundUsage
 } from '@/utils/playgroundStream'
+import {
+  BrandModelIcon,
+  DotMatrixBackdrop,
+  UiButton,
+  UiSegmented,
+  UiSlider,
+  UiStatusDot,
+  UiSwitch,
+  UiTabs
+} from '@/ui'
 
 const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
@@ -442,6 +519,17 @@ const snippetLang = ref<'curl' | 'python' | 'node'>('curl')
 const billingInfo = ref<KeyBillingInfo | null>(null)
 let abortController: AbortController | null = null
 let billingController: AbortController | null = null
+
+const protocolOptions = [
+  { value: 'openai' as const, label: 'OpenAI' },
+  { value: 'anthropic' as const, label: 'Anthropic' },
+]
+
+const snippetOptions = [
+  { value: 'curl' as const, label: 'cURL' },
+  { value: 'python' as const, label: 'Python' },
+  { value: 'node' as const, label: 'Node.js' },
+]
 
 const keyOptions = computed<SelectOption[]>(() => {
   const list: SelectOption[] = apiKeys.value
@@ -489,9 +577,9 @@ const promptPresets = computed(() => [
 ])
 
 const outputTabs = computed(() => [
-  { id: 'response', label: zh.value ? '实时输出' : 'Response' },
-  { id: 'json', label: 'Request / JSON' },
-  { id: 'snippet', label: zh.value ? '导出代码' : 'Code Snippets' }
+  { value: 'response', label: zh.value ? '实时输出' : 'Response' },
+  { value: 'json', label: 'Request / JSON' },
+  { value: 'snippet', label: zh.value ? '导出代码' : 'Code Snippets' }
 ])
 
 const canRun = computed(() => Boolean(activeApiKey.value && model.value.trim() && userPrompt.value.trim()))
@@ -710,642 +798,13 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.playground-page {
-  min-width: 0;
-}
-
-.pg-rate-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid rgb(var(--brand-moss) / 0.28);
-  background: rgb(var(--brand-moss) / 0.1);
-  color: rgb(var(--brand-moss));
-  font-size: 12.5px;
-  font-weight: 550;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.pg-rate-pill.is-peak {
-  border-color: rgb(var(--text-warn) / 0.35);
-  background: rgb(var(--status-warn-bg) / 0.7);
-  color: rgb(var(--text-warn));
-}
-
-.pg-rate-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.playground-grid {
-  display: grid;
-  grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-
-.pg-config-panel,
-.pg-output-panel {
-  min-width: 0;
-  padding: 22px 24px;
-}
-
-.pg-panel-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 16px;
-  margin-bottom: 18px;
-  border-bottom: 1px solid rgb(var(--line));
-}
-
-.pg-panel-header h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  color: rgb(var(--ink));
-}
-
-.pg-panel-header p {
-  margin: 4px 0 0;
-  font-size: 12.5px;
-  color: rgb(var(--ink-3));
-  line-height: 1.5;
-}
-
-.pg-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
-
-.pg-field-label {
-  font-size: 13px;
-  font-weight: 550;
-  color: rgb(var(--ink-2));
-}
-
-.pg-label-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.pg-label-row small {
-  font-size: 11.5px;
-  font-weight: 400;
-  color: rgb(var(--ink-3));
-}
-
-.pg-mono-input {
-  font-family: var(--font-mono);
-  font-size: 13px;
-}
-
-.pg-segmented {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  padding: 4px;
-  border: 1px solid rgb(var(--line));
-  border-radius: 10px;
-  background: rgb(var(--surface-2));
-}
-
-.pg-segmented button {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-width: 0;
-  padding: 8px 11px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: rgb(var(--ink-2));
-  text-align: left;
-  cursor: pointer;
-  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
-}
-
-.pg-segmented button strong {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.pg-segmented button code {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: rgb(var(--ink-3));
-}
-
-.pg-segmented button:hover:not(.active) {
-  color: rgb(var(--ink));
-  background: rgb(var(--surface) / 0.55);
-}
-
-.pg-segmented button.active {
-  background: rgb(var(--surface));
-  border-color: rgb(var(--brand-moss) / 0.35);
-  color: rgb(var(--ink));
-  box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
-}
-
-.pg-segmented button.active code {
-  color: rgb(var(--brand-moss));
-}
-
-.pg-quick-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.pg-micro-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgb(var(--ink-3));
-}
-
-.pg-chip-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.pg-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 100%;
-  padding: 5px 10px;
-  border: 1px solid rgb(var(--line));
-  border-radius: 8px;
-  background: rgb(var(--surface));
-  color: rgb(var(--ink-2));
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.4;
-  cursor: pointer;
-  transition: border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, color var(--motion-fast) ease;
-}
-
-.pg-chip span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pg-chip:hover {
-  border-color: rgb(var(--line-strong));
-  color: rgb(var(--ink));
-  background: rgb(var(--surface-2) / 0.6);
-}
-
-.pg-chip.active {
-  border-color: rgb(var(--brand-moss));
-  background: rgb(var(--brand-moss) / 0.1);
-  color: rgb(var(--brand-moss));
-  font-weight: 600;
-}
-
-.pg-params-box {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  padding: 14px;
-  border: 1px solid rgb(var(--line));
-  border-radius: 10px;
-  background: rgb(var(--surface-2) / 0.45);
-}
-
-.pg-slider-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.pg-slider-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.pg-slider-head label {
-  font-size: 12px;
-  font-weight: 550;
-  color: rgb(var(--ink-2));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pg-slider-head output {
-  padding: 1px 7px;
-  border-radius: 6px;
-  background: rgb(var(--surface));
-  border: 1px solid rgb(var(--line));
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: rgb(var(--ink));
-  font-variant-numeric: tabular-nums;
-}
-
-.pg-range {
-  width: 100%;
-  accent-color: rgb(var(--brand-moss));
-  cursor: pointer;
-}
-
-.pg-switch-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid rgb(var(--line));
-  border-radius: 10px;
-  background: rgb(var(--surface-2) / 0.35);
-}
-
-.pg-switch-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.pg-switch-copy strong {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgb(var(--ink));
-}
-
-.pg-switch-copy small {
-  font-size: 12px;
-  color: rgb(var(--ink-3));
-}
-
-.pg-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding-top: 4px;
-}
-
-.pg-run-btn {
-  flex: 1 1 160px;
-}
-
-.pg-output-head {
-  align-items: center;
-}
-
-.pg-output-title-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.pg-endpoint-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 9px 3px 4px;
-  border: 1px solid rgb(var(--line));
-  border-radius: 7px;
-  background: rgb(var(--surface-2) / 0.7);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: rgb(var(--ink-2));
-}
-
-.pg-method {
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgb(var(--brand-moss) / 0.14);
-  color: rgb(var(--brand-moss));
-  font-weight: 700;
-  font-size: 10.5px;
-}
-
-.pg-live-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgb(var(--brand-moss) / 0.12);
-  color: rgb(var(--brand-moss));
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.pg-live-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  animation: pg-blink 1.2s ease-in-out infinite;
-}
-
-@keyframes pg-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-
-.pg-progress-track {
-  position: relative;
-  height: 3px;
-  margin: -10px 0 16px;
-  border-radius: 999px;
-  background: rgb(var(--brand-moss) / 0.16);
-  overflow: hidden;
-}
-
-.pg-progress-bar {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 38%;
-  border-radius: 999px;
-  background: rgb(var(--brand-moss));
-  animation: pg-slide 1.3s ease-in-out infinite;
+.pg-progress-indeterminate {
+  animation: pg-slide 1.4s ease-in-out infinite;
 }
 
 @keyframes pg-slide {
   0% { transform: translateX(-100%); }
-  100% { transform: translateX(320%); }
-}
-
-.pg-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.pg-kpi {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
-  border: 1px solid rgb(var(--line));
-  border-radius: 10px;
-  background: rgb(var(--surface-2) / 0.45);
-  min-width: 0;
-}
-
-.pg-kpi span {
-  font-size: 11.5px;
-  color: rgb(var(--ink-3));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.pg-kpi strong {
-  font-family: var(--font-mono);
-  font-size: 15px;
-  font-weight: 650;
-  color: rgb(var(--ink));
-  font-variant-numeric: tabular-nums;
-}
-
-.pg-billing-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
-  margin-bottom: 16px;
-  padding: 9px 14px;
-  border: 1px solid rgb(var(--line));
-  border-radius: 10px;
-  background: rgb(var(--surface-2) / 0.4);
-  font-size: 12.5px;
-  color: rgb(var(--ink-2));
-}
-
-.pg-billing-details {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.pg-billing-details strong {
-  color: rgb(var(--ink));
-  font-family: var(--font-mono);
-}
-
-.pg-billing-sep {
-  color: rgb(var(--ink-3));
-}
-
-.pg-billing-tag {
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: rgb(var(--brand-moss) / 0.12);
-  color: rgb(var(--brand-moss));
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.pg-billing-tag.is-peak {
-  background: rgb(var(--status-warn-bg) / 0.8);
-  color: rgb(var(--text-warn));
-}
-
-.pg-tabs {
-  margin-bottom: 16px;
-}
-
-.pg-error-box {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 14px;
-  padding: 12px 14px;
-  border: 1px solid rgb(var(--text-err) / 0.3);
-  border-radius: 10px;
-  background: rgb(var(--status-err-bg) / 0.6);
-  color: rgb(var(--text-err));
-  font-size: 13px;
-}
-
-.pg-error-box p {
-  margin: 3px 0 0;
-  word-break: break-word;
-  color: rgb(var(--ink));
-}
-
-.pg-tab-panel {
-  min-width: 0;
-}
-
-.pg-response-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pg-response-pre {
-  margin: 0;
-  padding: 18px;
-  min-height: 260px;
-  max-height: 540px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  border-radius: 12px;
-  background: rgb(var(--surface-2) / 0.45);
-  border: 1px solid rgb(var(--line));
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.65;
-  color: rgb(var(--ink));
-}
-
-.pg-panel-foot {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.pg-sm-btn {
-  min-height: 34px;
-  padding: 5px 12px;
-  font-size: 12.5px;
-}
-
-.pg-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 260px;
-  padding: 36px 24px;
-  border: 1px dashed rgb(var(--line-strong) / 0.75);
-  border-radius: 12px;
-  background: rgb(var(--surface-2) / 0.3);
-}
-
-.pg-empty-icon {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 12px;
-  border-radius: 12px;
-  background: rgb(var(--surface));
-  border: 1px solid rgb(var(--line));
-  color: rgb(var(--ink-3));
-}
-
-.pg-empty-state h3 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: rgb(var(--ink));
-}
-
-.pg-empty-state p {
-  margin: 6px 0 0;
-  max-width: 420px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: rgb(var(--ink-3));
-}
-
-.pg-json-grid {
-  display: grid;
-  gap: 14px;
-}
-
-.pg-snippet-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.pg-code-block {
-  border-radius: 12px;
-  border: 1px solid rgb(var(--line));
-  background: rgb(var(--surface-2) / 0.5);
-  overflow: hidden;
-}
-
-.pg-code-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
-  border-bottom: 1px solid rgb(var(--line));
-  background: rgb(var(--surface-2) / 0.75);
-  font-size: 12px;
-  font-weight: 600;
-  color: rgb(var(--ink-2));
-}
-
-.pg-code-block pre {
-  margin: 0;
-  padding: 14px 16px;
-  max-height: 380px;
-  overflow: auto;
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: rgb(var(--ink));
-}
-
-.playground-page button:focus-visible,
-.playground-page input:focus-visible,
-.playground-page textarea:focus-visible {
-  outline: 2px solid rgb(var(--focus-ring));
-  outline-offset: 2px;
-}
-
-@media (max-width: 1080px) {
-  .playground-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 680px) {
-  .pg-kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .pg-params-box,
-  .pg-segmented {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  50% { transform: translateX(120%); }
+  100% { transform: translateX(300%); }
 }
 </style>

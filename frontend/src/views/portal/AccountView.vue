@@ -1,146 +1,345 @@
 <template>
-  <div class="portal-page">
-  <div class="portal-account" data-testid="portal-account">
-    <PortalPageHeader :title="copy('账户设置', 'Account settings')" />
-    <p v-if="notice" class="portal-account-success" role="status">{{ notice }}</p>
-    <p v-if="loadError" class="portal-account-error" role="alert">
-      {{ copy('账户资料读取失败：', 'Could not load your profile: ') }}{{ loadError }}
-      <button type="button" class="portal-account-action" :disabled="loading || profileRetryAfter > 0" @click="loadProfile">{{ profileRetryAfter > 0 ? `${profileRetryAfter}s` : copy('重试资料', 'Retry profile') }}</button>
+  <div class="mx-auto max-w-[1160px] space-y-6 pb-10" data-testid="portal-account">
+    <header>
+      <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+        {{ copy('账户设置', 'Account settings') }}
+      </h1>
+      <p class="mt-1 text-sm text-[var(--atelier-ink-secondary)]">
+        {{ copy('管理个人资料、第三方登录绑定、安全凭据与通知偏好。', 'Manage your profile, connected identities, security credentials, and preferences.') }}
+      </p>
+    </header>
+
+    <p v-if="notice" class="rounded-xl border border-[var(--atelier-ok)]/25 bg-[var(--atelier-ok-bg)] px-4 py-3 text-sm text-[var(--atelier-ok)]" role="status">
+      {{ notice }}
     </p>
-    <p v-if="settingsError" class="portal-account-error" role="alert">
-      {{ copy('账户功能设置读取失败：', 'Could not load account settings: ') }}{{ settingsError }}
-      <button type="button" class="portal-account-action" :disabled="settingsLoading || settingsRetryAfter > 0" @click="loadSettings(true)">{{ settingsRetryAfter > 0 ? `${settingsRetryAfter}s` : copy('重试设置', 'Retry settings') }}</button>
+    <p v-if="loadError" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--atelier-err)]/25 bg-[var(--atelier-err-bg)] px-4 py-3 text-sm text-[var(--atelier-err)]" role="alert">
+      <span>{{ copy('账户资料读取失败：', 'Could not load your profile: ') }}{{ loadError }}</span>
+      <UiButton variant="secondary" size="sm" :disabled="loading || profileRetryAfter > 0" @click="loadProfile">
+        {{ profileRetryAfter > 0 ? `${profileRetryAfter}s` : copy('重试资料', 'Retry profile') }}
+      </UiButton>
     </p>
-    <p v-if="loading && !user" class="portal-account-note" role="status">{{ copy('正在读取账户…', 'Loading account…') }}</p>
+    <p v-if="settingsError" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--atelier-err)]/25 bg-[var(--atelier-err-bg)] px-4 py-3 text-sm text-[var(--atelier-err)]" role="alert">
+      <span>{{ copy('账户功能设置读取失败：', 'Could not load account settings: ') }}{{ settingsError }}</span>
+      <UiButton variant="secondary" size="sm" :disabled="settingsLoading || settingsRetryAfter > 0" @click="loadSettings(true)">
+        {{ settingsRetryAfter > 0 ? `${settingsRetryAfter}s` : copy('重试设置', 'Retry settings') }}
+      </UiButton>
+    </p>
+    <p v-if="loading && !user" class="atelier-surface py-12 text-center text-sm text-[var(--atelier-ink-muted)]" role="status">
+      {{ copy('正在读取账户…', 'Loading account…') }}
+    </p>
 
-    <div v-if="user" class="portal-account-layout">
-      <aside class="portal-account-guide"><img v-if="safeAvatarUrl" :src="safeAvatarUrl" :alt="user.username || 'Avatar'" class="portal-account-guide-avatar object-cover" /><span v-else class="portal-account-guide-avatar" aria-hidden="true">{{ initial }}</span><strong>{{ user.username?.trim() || copy('未设置昵称', 'Display name not set') }}</strong><span>{{ displayEmail }}</span><nav :aria-label="copy('账户设置分区', 'Account settings sections')"><a href="#account-identity">{{ copy('资料与登录', 'Profile & sign-in') }} <span aria-hidden="true">↗</span></a><a href="#account-security">{{ copy('账户安全', 'Account security') }} <span aria-hidden="true">↗</span></a><a href="#account-appearance">{{ copy('动效偏好', 'Motion preferences') }} <span aria-hidden="true">↗</span></a><a v-if="settings?.balance_low_notify_enabled" href="#account-notifications">{{ copy('余额通知', 'Balance notifications') }} <span aria-hidden="true">↗</span></a></nav></aside>
-      <div class="portal-account-panel">
-      <section id="account-identity" class="portal-account-section" :aria-label="copy('账户信息', 'Account information')"><h2>{{ copy('资料与登录', 'Profile & sign-in') }}</h2><p v-if="bindingError" class="portal-account-error" role="alert">{{ bindingError }}</p>
-        <div class="portal-account-row">
-          <div class="portal-account-row__identity">
-            <img v-if="safeAvatarUrl" :src="safeAvatarUrl" :alt="user.username || 'Avatar'" class="portal-account-avatar object-cover" />
-            <span v-else class="portal-account-avatar" aria-hidden="true">{{ initial }}</span>
-            <div class="portal-account-row__text">
-              <strong>{{ user.username?.trim() || copy('未设置昵称', 'Display name not set') }}</strong>
-              <small>{{ copy('账户昵称与头像', 'Display name & avatar') }}</small>
+    <div v-if="user" class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <!-- Left Identity & Anchor Nav -->
+      <aside class="atelier-surface p-5 lg:sticky lg:top-16">
+        <div class="flex items-center gap-3">
+          <img
+            v-if="safeAvatarUrl"
+            :src="safeAvatarUrl"
+            :alt="user.username || 'Avatar'"
+            class="h-11 w-11 shrink-0 rounded-full border border-[var(--atelier-border)] object-cover"
+          />
+          <span
+            v-else
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--atelier-border-strong)] bg-[var(--atelier-subtle)] font-mono text-sm font-semibold text-[var(--atelier-ink)]"
+            aria-hidden="true"
+          >
+            {{ initial }}
+          </span>
+          <div class="min-w-0">
+            <strong class="block truncate text-sm font-semibold text-[var(--atelier-ink)]">
+              {{ user.username?.trim() || copy('未设置昵称', 'Display name not set') }}
+            </strong>
+            <span class="block truncate text-xs text-[var(--atelier-ink-muted)]">
+              {{ displayEmail || copy('未绑定邮箱', 'No email bound') }}
+            </span>
+          </div>
+        </div>
+
+        <nav class="mt-5 flex flex-col gap-1 border-t border-[var(--atelier-border)] pt-4" :aria-label="copy('账户设置分区', 'Account settings sections')">
+          <a
+            href="#account-identity"
+            class="flex items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--atelier-ink-secondary)] transition-colors hover:bg-[var(--atelier-hover)] hover:text-[var(--atelier-ink)]"
+          >
+            <span>{{ copy('资料与登录', 'Profile & sign-in') }}</span>
+            <span aria-hidden="true" class="text-[var(--atelier-ink-muted)]">↗</span>
+          </a>
+          <a
+            href="#account-security"
+            class="flex items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--atelier-ink-secondary)] transition-colors hover:bg-[var(--atelier-hover)] hover:text-[var(--atelier-ink)]"
+          >
+            <span>{{ copy('账户安全', 'Account security') }}</span>
+            <span aria-hidden="true" class="text-[var(--atelier-ink-muted)]">↗</span>
+          </a>
+          <a
+            v-if="settings?.balance_low_notify_enabled"
+            href="#account-notifications"
+            class="flex items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--atelier-ink-secondary)] transition-colors hover:bg-[var(--atelier-hover)] hover:text-[var(--atelier-ink)]"
+          >
+            <span>{{ copy('余额通知', 'Balance notifications') }}</span>
+            <span aria-hidden="true" class="text-[var(--atelier-ink-muted)]">↗</span>
+          </a>
+          <a
+            href="#account-appearance"
+            class="flex items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--atelier-ink-secondary)] transition-colors hover:bg-[var(--atelier-hover)] hover:text-[var(--atelier-ink)]"
+          >
+            <span>{{ copy('动效偏好', 'Motion preferences') }}</span>
+            <span aria-hidden="true" class="text-[var(--atelier-ink-muted)]">↗</span>
+          </a>
+        </nav>
+      </aside>
+
+      <!-- Right Sections -->
+      <div class="space-y-5">
+        <!-- Profile & Sign-in -->
+        <section id="account-identity" class="atelier-surface scroll-mt-16 overflow-hidden" :aria-label="copy('账户信息', 'Account information')">
+          <header class="border-b border-[var(--atelier-border)] px-6 py-4">
+            <h2 class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+              {{ copy('资料与登录', 'Profile & sign-in') }}
+            </h2>
+          </header>
+
+          <div class="divide-y divide-[var(--atelier-border)] px-6">
+            <p v-if="bindingError" class="py-3 text-xs text-[var(--atelier-err)]" role="alert">{{ bindingError }}</p>
+
+            <div class="flex flex-wrap items-center justify-between gap-4 py-4">
+              <div class="flex items-center gap-3.5">
+                <img
+                  v-if="safeAvatarUrl"
+                  :src="safeAvatarUrl"
+                  :alt="user.username || 'Avatar'"
+                  class="h-10 w-10 shrink-0 rounded-full border border-[var(--atelier-border)] object-cover"
+                />
+                <span
+                  v-else
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--atelier-border-strong)] bg-[var(--atelier-subtle)] font-mono text-sm font-semibold text-[var(--atelier-ink)]"
+                  aria-hidden="true"
+                >
+                  {{ initial }}
+                </span>
+                <div>
+                  <strong class="block text-sm font-medium text-[var(--atelier-ink)]">
+                    {{ user.username?.trim() || copy('未设置昵称', 'Display name not set') }}
+                  </strong>
+                  <small class="text-xs text-[var(--atelier-ink-muted)]">{{ copy('账户昵称与头像', 'Display name & avatar') }}</small>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <UiButton variant="secondary" size="sm" @click="openEditor('name')">{{ copy('更改昵称', 'Edit name') }}</UiButton>
+                <UiButton variant="secondary" size="sm" @click="openEditor('avatar')">{{ copy('设置头像', 'Avatar') }}</UiButton>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-4 py-4">
+              <div class="flex items-center gap-3.5">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] text-[var(--atelier-ink-secondary)]" aria-hidden="true">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect x="3" y="5" width="18" height="14" rx="2" />
+                    <path d="m4 7 8 6 8-6" />
+                  </svg>
+                </span>
+                <div>
+                  <strong class="block text-sm font-medium text-[var(--atelier-ink)]">{{ copy('邮箱', 'Email') }}</strong>
+                  <small class="text-xs text-[var(--atelier-ink-muted)]">{{ displayEmail || copy('尚未绑定', 'Not connected') }}</small>
+                </div>
+              </div>
+              <UiButton variant="secondary" size="sm" @click="openEditor('email')">
+                {{ emailBound ? copy('更改', 'Change') : copy('绑定', 'Connect') }}
+              </UiButton>
+            </div>
+
+            <div v-for="item in providers" :key="item.provider" class="flex flex-wrap items-center justify-between gap-4 py-4">
+              <div class="flex items-center gap-3.5">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] font-mono text-xs font-semibold text-[var(--atelier-ink)]" aria-hidden="true">
+                  {{ item.monogram }}
+                </span>
+                <div>
+                  <strong class="block text-sm font-medium text-[var(--atelier-ink)]">{{ item.label }}</strong>
+                  <small class="block text-xs text-[var(--atelier-ink-muted)]">
+                    {{ item.details?.display_name || item.details?.subject_hint || (item.bound ? copy('已绑定', 'Connected') : copy('尚未绑定', 'Not connected')) }}
+                  </small>
+                  <small v-if="item.bound && item.details?.bound_count && item.details.bound_count > 1" class="block text-xs text-[var(--atelier-ink-muted)]">
+                    {{ copy(`${item.details.bound_count} 个关联身份`, `${item.details.bound_count} connected identities`) }}
+                  </small>
+                  <small v-if="item.bound && !item.canUnbind" class="block text-xs text-[var(--atelier-ink-muted)]">
+                    {{ copy('保留至少一种可用的登录方式', 'Keep at least one available sign-in method') }}
+                  </small>
+                  <small v-else-if="!item.bound && item.provider === 'wechat' && !item.canBind" class="block text-xs text-[var(--atelier-ink-muted)]">
+                    {{ wechatHint }}
+                  </small>
+                </div>
+              </div>
+              <UiButton v-if="item.canUnbind" variant="secondary" size="sm" :disabled="busy" @click="openUnbind(item.provider)">
+                {{ copy('解绑', 'Disconnect') }}
+              </UiButton>
+              <UiButton v-else-if="item.canBind" variant="secondary" size="sm" :disabled="busy || actionRetryAfter > 0" @click="bindProvider(item.provider)">
+                {{ copy('绑定', 'Connect') }}
+              </UiButton>
+              <span v-else class="inline-flex items-center gap-1.5 rounded-full bg-[var(--atelier-subtle)] px-2.5 py-0.5 text-xs text-[var(--atelier-ink-muted)]">
+                <UiStatusDot :tone="item.bound ? 'ok' : 'neutral'" />
+                {{ item.bound ? copy('已关联', 'Connected') : copy('暂不可用', 'Unavailable') }}
+              </span>
             </div>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <button type="button" class="portal-account-action" @click="openEditor('name')">{{ copy('更改昵称', 'Edit name') }}</button>
-            <button type="button" class="portal-account-action" @click="openEditor('avatar')">{{ copy('设置头像', 'Avatar') }}</button>
-          </div>
-        </div>
-        <div class="portal-account-row">
-          <div class="portal-account-row__identity">
-            <span class="portal-account-provider" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></svg></span>
-            <div class="portal-account-row__text">
-              <strong>{{ copy('邮箱', 'Email') }}</strong>
-              <small>{{ displayEmail || copy('尚未绑定', 'Not connected') }}</small>
+        </section>
+
+        <!-- Account Security -->
+        <section id="account-security" class="atelier-surface scroll-mt-16 overflow-hidden" :aria-label="copy('账户安全', 'Account security')">
+          <header class="border-b border-[var(--atelier-border)] px-6 py-4">
+            <h2 class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+              {{ copy('账户安全', 'Account security') }}
+            </h2>
+          </header>
+
+          <div class="divide-y divide-[var(--atelier-border)] px-6">
+            <div class="flex flex-wrap items-center justify-between gap-4 py-4">
+              <div>
+                <strong class="block text-sm font-medium text-[var(--atelier-ink)]">{{ copy('登录密码', 'Password') }}</strong>
+                <small class="text-xs text-[var(--atelier-ink-muted)]">{{ copy('定期更新密码以保护账户安全', 'Update your password regularly to keep your account secure') }}</small>
+              </div>
+              <UiButton variant="secondary" size="sm" @click="openEditor('password')">
+                {{ copy('更改', 'Change') }}
+              </UiButton>
+            </div>
+
+            <div class="py-2">
+              <PortalAccountSecurity :passkey-enabled="settings?.passkey_enabled === true" />
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-4 py-4">
+              <div class="max-w-lg">
+                <strong class="block text-sm font-medium text-[var(--atelier-ink)]">{{ copy('登录设备与会话', 'Active device sessions') }}</strong>
+                <small class="text-xs text-[var(--atelier-ink-muted)]">
+                  {{ copy('立即注销所有浏览器与设备的登录态，当前设备也需要重新登录。', 'Sign out every active session across all devices immediately.') }}
+                </small>
+              </div>
+              <UiButton
+                variant="secondary"
+                size="sm"
+                data-testid="revoke-all-sessions"
+                :disabled="busy"
+                @click="openEditor('revokeAll')"
+              >
+                {{ copy('退出全部设备', 'Sign out all devices') }}
+              </UiButton>
             </div>
           </div>
-          <button type="button" class="portal-account-action" @click="openEditor('email')">{{ emailBound ? copy('更改', 'Change') : copy('绑定', 'Connect') }}</button>
-        </div>
-        <div v-for="item in providers" :key="item.provider" class="portal-account-row">
-          <div class="portal-account-row__identity">
-            <span class="portal-account-provider" aria-hidden="true">{{ item.monogram }}</span>
-            <div class="portal-account-row__text">
-              <strong>{{ item.label }}</strong>
-              <small>{{ item.details?.display_name || item.details?.subject_hint || (item.bound ? copy('已绑定', 'Connected') : copy('尚未绑定', 'Not connected')) }}</small>
-              <small v-if="item.bound && item.details?.bound_count && item.details.bound_count > 1">{{ copy(`${item.details.bound_count} 个关联身份`, `${item.details.bound_count} connected identities`) }}</small>
-              <small v-if="item.bound && !item.canUnbind">{{ copy('保留至少一种可用的登录方式', 'Keep at least one available sign-in method') }}</small>
-              <small v-else-if="!item.bound && item.provider === 'wechat' && !item.canBind">{{ wechatHint }}</small>
+        </section>
+
+        <!-- Notifications -->
+        <section
+          v-if="settings?.balance_low_notify_enabled"
+          id="account-notifications"
+          class="atelier-surface scroll-mt-16 p-6"
+          :aria-label="copy('通知', 'Notifications')"
+        >
+          <PortalAccountNotifications :default-threshold="settings.balance_low_notify_threshold ?? 0" />
+        </section>
+
+        <!-- Motion Preferences -->
+        <section id="account-appearance" class="atelier-surface scroll-mt-16 overflow-hidden">
+          <header class="border-b border-[var(--atelier-border)] px-6 py-4">
+            <h2 class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+              {{ copy('动效偏好', 'Motion preferences') }}
+            </h2>
+          </header>
+          <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+            <div>
+              <strong class="block text-sm font-medium text-[var(--atelier-ink)]">{{ copy('减少装饰动效', 'Reduce decorative motion') }}</strong>
+              <small class="text-xs text-[var(--atelier-ink-muted)]">
+                {{ copy('停止流动、跟随和位移，保留操作反馈。', 'Stop flow, pointer and movement effects while keeping action feedback.') }}
+              </small>
             </div>
+            <MotionPreferenceToggle show-label />
           </div>
-          <button v-if="item.canUnbind" type="button" class="portal-account-action" :disabled="busy" @click="openUnbind(item.provider)">{{ copy('解绑', 'Disconnect') }}</button>
-          <button v-else-if="item.canBind" type="button" class="portal-account-action" :disabled="busy || actionRetryAfter > 0" @click="bindProvider(item.provider)">{{ copy('绑定', 'Connect') }}</button>
-          <span v-else class="portal-account-status">{{ item.bound ? copy('已关联', 'Connected') : copy('暂不可用', 'Unavailable') }}</span>
-        </div>
-      </section>
-
-      <section id="account-security" class="portal-account-section" :aria-label="copy('账户安全', 'Account security')">
-        <h2>{{ copy('账户安全', 'Account security') }}</h2>
-        <div class="portal-account-row">
-          <div class="portal-account-row__text">
-            <strong>{{ copy('登录密码', 'Password') }}</strong>
-          </div>
-          <button type="button" class="portal-account-action" @click="openEditor('password')">{{ copy('更改', 'Change') }}</button>
-        </div>
-        <PortalAccountSecurity :passkey-enabled="settings?.passkey_enabled === true" />
-        <div class="portal-account-row">
-          <div class="portal-account-row__text">
-            <strong>{{ copy('登录设备与会话', 'Active device sessions') }}</strong>
-            <small>{{ copy('立即注销所有浏览器与设备的登录态，当前设备也需要重新登录。', 'Sign out every active session across all devices immediately.') }}</small>
-          </div>
-          <button type="button" class="portal-account-action" data-testid="revoke-all-sessions" :disabled="busy" @click="openEditor('revokeAll')">{{ copy('退出全部设备', 'Sign out all devices') }}</button>
-        </div>
-      </section>
-
-      <section id="account-notifications" v-if="settings?.balance_low_notify_enabled" class="portal-account-section" :aria-label="copy('通知', 'Notifications')">
-        <PortalAccountNotifications :default-threshold="settings.balance_low_notify_threshold ?? 0" />
-      </section>
-      <section id="account-appearance" class="portal-account-section"><h2>{{ copy('动效偏好', 'Motion preferences') }}</h2><div class="portal-account-row"><div class="portal-account-row__text"><strong>{{ copy('减少装饰动效', 'Reduce decorative motion') }}</strong><small>{{ copy('停止流动、跟随和位移，保留操作反馈。', 'Stop flow, pointer and movement effects while keeping action feedback.') }}</small></div><MotionPreferenceToggle show-label /></div></section>
+        </section>
       </div>
     </div>
 
     <PortalAccountDialog v-if="editor" :title="editorTitle" :busy="busy" :close-label="copy('关闭', 'Close')" @close="closeEditor">
-      <p v-if="error" class="portal-account-error" role="alert">{{ error }}</p>
-      <p v-if="actionRetryAfter > 0" class="portal-account-note" role="status">{{ copy(`请在 ${actionRetryAfter} 秒后重试。`, `Try again in ${actionRetryAfter} seconds.`) }}</p>
-      <form class="portal-account-form" @submit.prevent="submit">
-        <label v-if="editor === 'name'">
-          {{ copy('账户昵称', 'Display name') }}
-          <input v-model="name" class="portal-account-input" autocomplete="nickname" required autofocus />
+      <p v-if="error" class="mb-3 rounded-lg bg-[var(--atelier-err-bg)] px-3.5 py-2.5 text-xs text-[var(--atelier-err)]" role="alert">{{ error }}</p>
+      <p v-if="actionRetryAfter > 0" class="mb-3 text-xs text-[var(--atelier-ink-muted)]" role="status">
+        {{ copy(`请在 ${actionRetryAfter} 秒后重试。`, `Try again in ${actionRetryAfter} seconds.`) }}
+      </p>
+      <form class="space-y-4" @submit.prevent="submit">
+        <label v-if="editor === 'name'" class="block space-y-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+          <span>{{ copy('账户昵称', 'Display name') }}</span>
+          <input v-model="name" class="atelier-input" autocomplete="nickname" required autofocus />
         </label>
 
-        <label v-else-if="editor === 'avatar'">
-          {{ copy('头像图片链接（HTTPS URL，留空恢复首字母头像）', 'Avatar image URL (HTTPS, leave blank to reset)') }}
-          <input v-model="avatarInput" class="portal-account-input" type="url" placeholder="https://example.com/avatar.png" autofocus />
+        <label v-else-if="editor === 'avatar'" class="block space-y-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+          <span>{{ copy('头像图片链接（HTTPS URL，留空恢复首字母头像）', 'Avatar image URL (HTTPS, leave blank to reset)') }}</span>
+          <input v-model="avatarInput" class="atelier-input" type="url" placeholder="https://example.com/avatar.png" autofocus />
         </label>
 
         <template v-else-if="editor === 'email'">
-          <p>{{ emailBound ? copy('输入新邮箱，并使用当前密码确认更改。', 'Enter the new email address and confirm with your current password.') : copy('绑定邮箱并设置密码，之后可使用邮箱登录。', 'Connect your email and set a password to enable email sign-in.') }}</p>
-          <label>
-            {{ emailBound ? copy('新邮箱', 'New email address') : copy('邮箱地址', 'Email address') }}
-            <input v-model="email" class="portal-account-input" type="email" autocomplete="email" required autofocus />
+          <p class="text-xs leading-relaxed text-[var(--atelier-ink-secondary)]">
+            {{ emailBound ? copy('输入新邮箱，并使用当前密码确认更改。', 'Enter the new email address and confirm with your current password.') : copy('绑定邮箱并设置密码，之后可使用邮箱登录。', 'Connect your email and set a password to enable email sign-in.') }}
+          </p>
+          <label class="block space-y-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+            <span>{{ emailBound ? copy('新邮箱', 'New email address') : copy('邮箱地址', 'Email address') }}</span>
+            <input v-model="email" class="atelier-input" type="email" autocomplete="email" required autofocus />
           </label>
-          <label>
-            {{ copy('邮箱验证码', 'Email verification code') }}
-            <span class="portal-account-inline">
-              <input v-model="emailCode" class="portal-account-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required />
-              <button type="button" class="portal-account-action" :disabled="busy || cooldown > 0 || actionRetryAfter > 0 || !validEmail" @click="sendEmailCode">{{ cooldown > 0 ? `${cooldown}s` : copy('发送验证码', 'Send code') }}</button>
-            </span>
+          <label class="block space-y-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+            <span>{{ copy('邮箱验证码', 'Email verification code') }}</span>
+            <div class="flex gap-2">
+              <input v-model="emailCode" class="atelier-input flex-1 font-mono" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required />
+              <UiButton variant="secondary" size="md" type="button" :disabled="busy || cooldown > 0 || actionRetryAfter > 0 || !validEmail" @click="sendEmailCode">
+                {{ cooldown > 0 ? `${cooldown}s` : copy('发送验证码', 'Send code') }}
+              </UiButton>
+            </div>
           </label>
-          <label>
-            {{ emailBound ? copy('当前密码', 'Current password') : copy('设置密码', 'Set password') }}
-            <input v-model="password" class="portal-account-input" type="password" :autocomplete="emailBound ? 'current-password' : 'new-password'" :minlength="emailBound ? undefined : passwordPolicy.min_length" required />
-            <span v-if="!emailBound" class="portal-account-note">{{ passwordHint }}</span>
+          <label class="block space-y-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+            <span>{{ emailBound ? copy('当前密码', 'Current password') : copy('设置密码', 'Set password') }}</span>
+            <input v-model="password" class="atelier-input" type="password" :autocomplete="emailBound ? 'current-password' : 'new-password'" :minlength="emailBound ? undefined : passwordPolicy.min_length" required />
+            <span v-if="!emailBound" class="block text-[11px] font-normal text-[var(--atelier-ink-muted)]">{{ passwordHint }}</span>
           </label>
         </template>
 
         <template v-else-if="editor === 'password'">
-          <label>{{ copy('当前密码', 'Current password') }}<input v-model="password" class="portal-account-input" type="password" autocomplete="current-password" required autofocus /></label>
-          <label>{{ copy('新密码', 'New password') }}<input v-model="newPassword" class="portal-account-input" type="password" autocomplete="new-password" :minlength="passwordPolicy.min_length" required /><span class="portal-account-note">{{ passwordHint }}</span></label>
-          <label>{{ copy('确认新密码', 'Confirm new password') }}<input v-model="confirmPassword" class="portal-account-input" type="password" autocomplete="new-password" :minlength="passwordPolicy.min_length" required /></label>
+          <label class="block space-y-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+            <span>{{ copy('当前密码', 'Current password') }}</span>
+            <input v-model="password" class="atelier-input" type="password" autocomplete="current-password" required autofocus />
+          </label>
+          <label class="block space-y-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+            <span>{{ copy('新密码', 'New password') }}</span>
+            <input v-model="newPassword" class="atelier-input" type="password" autocomplete="new-password" :minlength="passwordPolicy.min_length" required />
+            <span class="block text-[11px] font-normal text-[var(--atelier-ink-muted)]">{{ passwordHint }}</span>
+          </label>
+          <label class="block space-y-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+            <span>{{ copy('确认新密码', 'Confirm new password') }}</span>
+            <input v-model="confirmPassword" class="atelier-input" type="password" autocomplete="new-password" :minlength="passwordPolicy.min_length" required />
+          </label>
         </template>
 
-        <p v-else-if="editor === 'revokeAll'">{{ copy('确认立即退出全部设备的登录会话？所有浏览器与客户端需重新验证登录。', 'Sign out all active sessions across every device? You will need to sign in again.') }}</p>
+        <p v-else-if="editor === 'revokeAll'" class="text-sm leading-relaxed text-[var(--atelier-ink-secondary)]">
+          {{ copy('确认立即退出全部设备的登录会话？所有浏览器与客户端需重新验证登录。', 'Sign out all active sessions across every device? You will need to sign in again.') }}
+        </p>
 
-        <p v-else-if="editor === 'unbind'">{{ copy(`确认解除与 ${selectedProvider?.label} 的关联？解除后无法再使用这一身份登录。`, `Disconnect ${selectedProvider?.label}? You will no longer be able to use this identity to sign in.`) }}</p>
+        <p v-else-if="editor === 'unbind'" class="text-sm leading-relaxed text-[var(--atelier-ink-secondary)]">
+          {{ copy(`确认解除与 ${selectedProvider?.label} 的关联？解除后无法再使用这一身份登录。`, `Disconnect ${selectedProvider?.label}? You will no longer be able to use this identity to sign in.`) }}
+        </p>
 
-        <div class="portal-account-form__actions">
-          <button type="button" class="portal-account-action" :disabled="busy" @click="closeEditor">{{ copy('取消', 'Cancel') }}</button>
-          <button type="submit" class="portal-account-action portal-account-action--primary" :disabled="busy || actionRetryAfter > 0">{{ busy ? copy('处理中…', 'Processing…') : editor === 'unbind' ? copy('确认解绑', 'Disconnect') : editor === 'revokeAll' ? copy('确认退出全部设备', 'Sign out all') : editor === 'email' ? copy('确认', 'Confirm') : copy('保存', 'Save') }}</button>
+        <div class="flex justify-end gap-2 pt-2">
+          <UiButton variant="secondary" size="md" type="button" :disabled="busy" @click="closeEditor">
+            {{ copy('取消', 'Cancel') }}
+          </UiButton>
+          <UiButton
+            :variant="editor === 'revokeAll' || editor === 'unbind' ? 'danger' : 'primary'"
+            size="md"
+            type="submit"
+            :disabled="busy || actionRetryAfter > 0"
+            :loading="busy"
+          >
+            {{ busy ? copy('处理中…', 'Processing…') : editor === 'unbind' ? copy('确认解绑', 'Disconnect') : editor === 'revokeAll' ? copy('确认退出全部设备', 'Sign out all') : editor === 'email' ? copy('确认', 'Confirm') : copy('保存', 'Save') }}
+          </UiButton>
         </div>
       </form>
     </PortalAccountDialog>
   </div>
-  </div>
 </template>
 
 <script setup lang="ts">
-import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import MotionPreferenceToggle from '@/components/common/MotionPreferenceToggle.vue'
-
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -158,6 +357,7 @@ import PortalAccountDialog from '@/components/portal/PortalAccountDialog.vue'
 import PortalAccountSecurity from '@/components/portal/PortalAccountSecurity.vue'
 import PortalAccountNotifications from '@/components/portal/PortalAccountNotifications.vue'
 import '@/styles/PortalAccount.css'
+import { UiButton, UiStatusDot } from '@/ui'
 
 type SupportedProvider = 'linuxdo' | 'oidc' | 'wechat' | 'dingtalk'
 const { locale } = useI18n()
@@ -216,7 +416,6 @@ const displayEmail = computed(() => {
 const wechatSettings = computed<WeChatOAuthPublicSettings | null>(() => {
   if (!settings.value) return null
   if (hasExplicitWeChatOAuthCapabilities(settings.value)) return settings.value
-  // Preserve the legacy public-settings contract while using the existing strict resolver.
   return { ...settings.value, wechat_oauth_open_enabled: settings.value.wechat_oauth_enabled, wechat_oauth_mp_enabled: settings.value.wechat_oauth_enabled }
 })
 const wechatStart = computed(() => resolveWeChatOAuthStartStrict(wechatSettings.value))

@@ -1,11 +1,8 @@
 import { initColorMode } from '@/composables/useColorMode'
 import { initMotionPreferences } from '@/composables/useMotionPreferences'
-import '@/styles/design-system.css'
-import '@/styles/m3-tokens.css'
-import '@/styles/patrick.css'
-import '@/styles/portal.css'
+import '@/styles/atelier/index.css'
 
-/** Fork presentation bootstrap. Upstream theme and iOS viewport setup stay out of main.ts. */
+/** Atelier presentation bootstrap — completely decoupled from legacy portal/design-system CSS. */
 export function initHkFrontend() {
   initColorMode()
   initMotionPreferences()

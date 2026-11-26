@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-page admin-page--resources" data-admin-page="subscriptions">
+  <div class="space-y-6" data-admin-page="subscriptions">
     <TablePageLayout>
       <template #filters>
         <!-- Top Toolbar: Left (search + filters) / Right (actions) -->
@@ -37,7 +37,7 @@
               <!-- User Dropdown -->
               <div
                 v-if="showFilterUserDropdown && (filterUserResults.length > 0 || filterUserKeyword)"
-                class="table-toolbar-menu absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-dark-700 dark:bg-dark-800"
+                class="table-toolbar-menu absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-[var(--atelier-border-strong)] bg-[var(--atelier-surface)] shadow-[var(--atelier-shadow-md)]"
               >
                 <div
                   v-if="filterUserLoading"
@@ -1626,14 +1626,17 @@ onUnmounted(() => {
 }
 
 .usage-label {
-  @apply w-10 flex-shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400;
+  @apply w-10 flex-shrink-0 text-xs font-medium;
+  color: var(--atelier-ink-muted);
 }
 
 .usage-amount {
-  @apply whitespace-nowrap text-xs tabular-nums text-gray-600 dark:text-gray-300;
+  @apply whitespace-nowrap font-mono text-xs tabular-nums;
+  color: var(--atelier-ink-secondary);
 }
 
 .reset-info {
-  @apply flex items-center gap-1 pl-12 text-[10px] text-blue-600 dark:text-blue-400;
+  @apply flex items-center gap-1 pl-12 text-[10px];
+  color: var(--atelier-info);
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-page admin-page--resources" data-admin-page="accounts">
+  <div class="space-y-6" data-admin-page="accounts">
     <TablePageLayout page-scroll>
       <template #filters>
         <div class="flex flex-wrap-reverse items-start justify-between gap-3">
@@ -38,7 +38,7 @@
                 </button>
                 <div
                   v-if="showAutoRefreshDropdown"
-                  class="table-toolbar-menu absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-xl border border-gray-200/90 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-dark-700/90 dark:bg-dark-800/95"
+                  class="table-toolbar-menu absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-xl border border-[var(--atelier-border-strong)] bg-[var(--atelier-surface)] p-1.5 shadow-[var(--atelier-shadow-md)]"
                 >
                   <div class="space-y-0.5 p-1">
                     <button
@@ -78,7 +78,7 @@
                 <Teleport to="body">
                   <div
                     v-if="showAccountToolsDropdown"
-                    class="action-menu fixed z-[9999] origin-top-right overflow-hidden rounded-xl border border-gray-200 shadow-2xl dark:border-dark-700"
+                    class="action-menu fixed z-[9999] origin-top-right overflow-hidden rounded-xl border border-[var(--atelier-border-strong)] bg-[var(--atelier-surface)] shadow-[var(--atelier-shadow-md)]"
                     :style="accountToolsDropdownStyle"
                     @click.stop
                   >
@@ -3111,7 +3111,14 @@ onUnmounted(() => {
 }
 
 .account-summary-panel {
-  @apply rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors duration-150 hover:border-gray-300 dark:border-dark-700 dark:bg-dark-800 dark:hover:border-dark-600;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--atelier-border);
+  background-color: var(--atelier-surface);
+  padding: 1rem;
+  transition: border-color var(--motion-fast) ease;
+}
+.account-summary-panel:hover {
+  border-color: var(--atelier-border-strong);
 }
 
 .account-table-shell {
@@ -3119,31 +3126,38 @@ onUnmounted(() => {
 }
 
 .account-summary-label {
-  @apply text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-dark-300;
+  @apply text-[11px] font-medium uppercase tracking-wider;
+  color: var(--atelier-ink-muted);
 }
 
 .account-summary-value {
-  @apply mt-1 text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl;
+  @apply mt-1 font-mono text-xl font-semibold tracking-tight tabular-nums sm:text-2xl;
+  color: var(--atelier-ink);
 }
 
 .account-summary-detail {
-  @apply mt-2 text-xs text-gray-500 tabular-nums dark:text-gray-400;
+  @apply mt-2 font-mono text-xs tabular-nums;
+  color: var(--atelier-ink-muted);
 }
 
 .account-summary-pill {
-  @apply inline-flex flex-shrink-0 items-center rounded-md bg-gray-100/90 px-2 py-0.5 text-xs font-medium tabular-nums text-gray-600 dark:bg-dark-700/90 dark:text-gray-300;
+  @apply inline-flex flex-shrink-0 items-center rounded-md px-2 py-0.5 font-mono text-xs font-medium tabular-nums;
+  background-color: var(--atelier-subtle);
+  color: var(--atelier-ink-secondary);
 }
 
 .account-summary-subvalue {
-  @apply block text-sm font-semibold tabular-nums;
+  @apply block font-mono text-sm font-semibold tabular-nums;
 }
 
 .account-summary-sublabel {
-  @apply block text-[11px] text-gray-500 dark:text-dark-400 mt-0.5;
+  @apply mt-0.5 block text-[11px];
+  color: var(--atelier-ink-muted);
 }
 
 .account-summary-meter {
-  @apply h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700/80;
+  @apply h-1 overflow-hidden rounded-full;
+  background-color: var(--atelier-subtle);
 }
 
 .account-summary-meter-fill {
@@ -3151,43 +3165,87 @@ onUnmounted(() => {
 }
 
 .proxy-health-row {
-  @apply rounded-lg border border-gray-100/90 bg-gray-50/70 p-3 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:border-dark-700/70 dark:bg-dark-900/40 dark:hover:border-dark-600 dark:hover:bg-dark-900/60;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--atelier-border-subtle);
+  background-color: var(--atelier-subtle);
+  padding: 0.75rem;
+  transition: border-color var(--motion-fast) ease;
+}
+.proxy-health-row:hover {
+  border-color: var(--atelier-border-strong);
 }
 
 .proxy-health-dot {
-  @apply h-2 w-2 flex-shrink-0 rounded-full;
+  @apply h-1.5 w-1.5 flex-shrink-0 rounded-full;
 }
 
 .proxy-health-chip {
-  @apply inline-flex flex-shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-medium tabular-nums;
+  @apply inline-flex flex-shrink-0 items-center rounded-md px-2 py-0.5 font-mono text-xs font-medium tabular-nums;
 }
 
 .quota-pool-card {
-  @apply cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors duration-150 hover:border-primary-300 hover:bg-primary-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-dark-700 dark:bg-dark-800 dark:hover:border-primary-700/60 dark:hover:bg-primary-950/20 dark:focus-visible:ring-offset-dark-900;
+  cursor: pointer;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--atelier-border);
+  background-color: var(--atelier-surface);
+  padding: 1rem;
+  transition: border-color var(--motion-fast) ease, background-color var(--motion-fast) ease;
+}
+.quota-pool-card:hover {
+  border-color: var(--atelier-border-strong);
+  background-color: var(--atelier-hover);
+}
+.quota-pool-card:focus-visible {
+  outline: 2px solid var(--atelier-focus);
+  outline-offset: 2px;
 }
 
 .quota-pool-card-oauth {
-  @apply border-emerald-200/60 dark:border-emerald-900/40;
+  border-color: var(--atelier-border-strong);
 }
 
 .quota-pool-card-active {
-  @apply border-primary-400/80 bg-primary-50/50 shadow-sm dark:border-primary-600/80 dark:bg-primary-950/30;
+  border-color: var(--atelier-ink);
+  background-color: var(--atelier-subtle);
 }
 
 .quota-pool-restore {
-  @apply rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:bg-dark-700;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--atelier-border-strong);
+  background-color: var(--atelier-surface);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--atelier-ink);
+  transition: background-color var(--motion-fast) ease;
+}
+.quota-pool-restore:hover:not(:disabled) {
+  background-color: var(--atelier-subtle);
+}
+.quota-pool-restore:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .quota-pool-label {
-  @apply text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-dark-300;
+  @apply text-[11px] font-medium uppercase tracking-wider;
+  color: var(--atelier-ink-muted);
 }
 
 .quota-pool-value {
-  @apply mt-1 text-xl font-bold tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-2xl;
+  @apply mt-1 font-mono text-xl font-semibold tracking-tight tabular-nums sm:text-2xl;
+  color: var(--atelier-ink);
 }
 
 .quota-pool-enter {
-  @apply inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:border-primary-300 hover:text-primary-600 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-300 dark:hover:border-primary-600 dark:hover:text-primary-400;
+  @apply inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors;
+  border: 1px solid var(--atelier-border);
+  background-color: var(--atelier-surface);
+  color: var(--atelier-ink-secondary);
+}
+.quota-pool-enter:hover {
+  border-color: var(--atelier-border-strong);
+  color: var(--atelier-ink);
 }
 
 .quota-pool-windows {
@@ -3195,15 +3253,18 @@ onUnmounted(() => {
 }
 
 .quota-pool-window-row {
-  @apply grid grid-cols-[2rem_minmax(0,1fr)_3rem] items-center gap-2 text-xs text-gray-500 tabular-nums dark:text-gray-400;
+  @apply grid grid-cols-[2rem_minmax(0,1fr)_3rem] items-center gap-2 font-mono text-xs tabular-nums;
+  color: var(--atelier-ink-muted);
 }
 
 .quota-pool-window-row strong {
-  @apply text-right font-semibold tabular-nums text-gray-700 dark:text-gray-200;
+  @apply text-right font-semibold tabular-nums;
+  color: var(--atelier-ink);
 }
 
 .quota-pool-meter {
-  @apply h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700/80;
+  @apply h-1 overflow-hidden rounded-full;
+  background-color: var(--atelier-subtle);
 }
 
 .quota-pool-meter-fill {
@@ -3211,6 +3272,7 @@ onUnmounted(() => {
 }
 
 .quota-pool-stats {
-  @apply mt-3 flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums text-gray-500 dark:text-gray-400;
+  @apply mt-3 flex flex-wrap items-center justify-between gap-2 font-mono text-xs tabular-nums;
+  color: var(--atelier-ink-muted);
 }
 </style>

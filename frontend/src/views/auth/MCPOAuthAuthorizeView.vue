@@ -1,68 +1,133 @@
 <template>
-  <main class="patrick-surface min-h-screen bg-[rgb(var(--canvas))] px-4 py-8 sm:py-12">
-    <section class="card mx-auto max-w-2xl p-5 sm:p-8" aria-labelledby="mcp-consent-title" :aria-busy="loading || submitting">
+  <main class="min-h-screen bg-[var(--atelier-canvas)] px-4 py-8 sm:py-12">
+    <section
+      class="atelier-surface mx-auto max-w-2xl p-6 sm:p-8"
+      aria-labelledby="mcp-consent-title"
+      :aria-busy="loading || submitting"
+    >
       <div class="mb-6 flex items-start gap-3">
-        <div class="rounded-xl bg-primary-50 p-3 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400"><Icon name="mcp" size="lg" /></div>
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] text-[var(--atelier-ink)]">
+          <Icon name="mcp" size="md" />
+        </div>
         <div>
-          <h1 id="mcp-consent-title" class="text-xl font-semibold text-gray-900 dark:text-white">{{ t('mcp.consentTitle') }}</h1>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('mcp.consentDescription') }}</p>
+          <h1 id="mcp-consent-title" class="text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+            {{ t('mcp.consentTitle') }}
+          </h1>
+          <p class="mt-1 text-sm text-[var(--atelier-ink-secondary)]">
+            {{ t('mcp.consentDescription') }}
+          </p>
         </div>
       </div>
-      <p v-if="loading" role="status" class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">{{ t('mcp.consentLoading') }}</p>
+
+      <p v-if="loading" role="status" class="py-10 text-center text-sm text-[var(--atelier-ink-muted)]">
+        {{ t('mcp.consentLoading') }}
+      </p>
+
       <div v-else-if="previewError" class="space-y-4">
-        <p role="alert" class="text-sm text-red-600 dark:text-red-400">{{ previewError }}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('mcp.consentRetryHint') }}</p>
-        <RouterLink to="/settings/mcp" class="btn btn-secondary">{{ t('mcp.backToConnections') }}</RouterLink>
+        <p role="alert" class="rounded-lg border border-[var(--atelier-err)]/25 bg-[var(--atelier-err-bg)] px-4 py-3 text-sm text-[var(--atelier-err)]">
+          {{ previewError }}
+        </p>
+        <p class="text-sm text-[var(--atelier-ink-secondary)]">{{ t('mcp.consentRetryHint') }}</p>
+        <RouterLink to="/settings/mcp" class="atelier-btn atelier-btn-secondary h-9 px-4 text-sm">
+          {{ t('mcp.backToConnections') }}
+        </RouterLink>
       </div>
+
       <form v-else-if="consent" class="space-y-6" @submit.prevent="decide(true)">
-        <div class="rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface-2))] p-4">
+        <div class="atelier-surface-subtle p-4 sm:p-5">
           <dl class="space-y-4 text-sm">
             <div>
-              <dt class="text-gray-500 dark:text-gray-400">{{ t('mcp.applicationName') }}</dt>
-              <dd data-testid="client-name" class="mt-1 break-all text-lg font-semibold text-gray-900 dark:text-white">{{ consent.client_name }}</dd>
+              <dt class="text-xs text-[var(--atelier-ink-muted)]">{{ t('mcp.applicationName') }}</dt>
+              <dd data-testid="client-name" class="mt-1 break-all text-base font-semibold text-[var(--atelier-ink)]">
+                {{ consent.client_name }}
+              </dd>
             </div>
             <div>
-              <dt class="text-gray-500 dark:text-gray-400">{{ t('mcp.clientId') }}</dt>
-              <dd class="mt-1 truncate font-mono text-xs text-gray-700 dark:text-gray-200" :title="consent.client_id">{{ consent.client_id }}</dd>
+              <dt class="text-xs text-[var(--atelier-ink-muted)]">{{ t('mcp.clientId') }}</dt>
+              <dd class="mt-1 truncate font-mono text-xs text-[var(--atelier-ink-secondary)]" :title="consent.client_id">
+                {{ consent.client_id }}
+              </dd>
             </div>
             <div>
-              <dt class="text-gray-500 dark:text-gray-400">{{ t('mcp.returnAddress') }}</dt>
-              <dd data-testid="redirect-origin" class="mt-1 break-all font-semibold text-gray-900 dark:text-white">{{ redirectOrigin }}</dd>
-              <dd data-testid="redirect-uri" class="mt-1 break-all font-mono text-xs text-gray-600 dark:text-gray-300">{{ consent.redirect_uri }}</dd>
+              <dt class="text-xs text-[var(--atelier-ink-muted)]">{{ t('mcp.returnAddress') }}</dt>
+              <dd data-testid="redirect-origin" class="mt-1 break-all font-semibold text-[var(--atelier-ink)]">
+                {{ redirectOrigin }}
+              </dd>
+              <dd data-testid="redirect-uri" class="mt-1 break-all font-mono text-xs text-[var(--atelier-ink-secondary)]">
+                {{ consent.redirect_uri }}
+              </dd>
             </div>
             <div>
-              <dt class="text-gray-500 dark:text-gray-400">{{ t('mcp.requestedAccess') }}</dt>
-              <dd class="mt-1 text-gray-700 dark:text-gray-200">{{ t('mcp.requestedAccessDescription') }}</dd>
-              <dd class="mt-1 break-all font-mono text-xs text-gray-600 dark:text-gray-300">{{ consent.resource }}</dd>
+              <dt class="text-xs text-[var(--atelier-ink-muted)]">{{ t('mcp.requestedAccess') }}</dt>
+              <dd class="mt-1 text-sm text-[var(--atelier-ink)]">{{ t('mcp.requestedAccessDescription') }}</dd>
+              <dd class="mt-1 break-all font-mono text-xs text-[var(--atelier-ink-secondary)]">{{ consent.resource }}</dd>
             </div>
           </dl>
-          <p class="mt-4 border-t border-gray-200 pt-4 text-sm text-amber-800 dark:border-dark-700 dark:text-amber-300">{{ t('mcp.untrustedApplicationHint') }}</p>
+          <p class="mt-4 border-t border-[var(--atelier-border)] pt-3.5 text-xs text-[var(--atelier-warn)]">
+            {{ t('mcp.untrustedApplicationHint') }}
+          </p>
         </div>
-        <p v-if="authStore.user?.email" class="break-all text-sm text-gray-600 dark:text-gray-300">{{ t('mcp.signedInAs', { email: authStore.user.email }) }}</p>
-        <div>
-          <label for="mcp-consent-scope" class="input-label">{{ t('mcp.scope') }}</label>
-          <select id="mcp-consent-scope" v-model="scope" class="input" :disabled="submitting" aria-describedby="mcp-scope-hint">
-            <option value="user">{{ t('mcp.userScope') }}</option>
-            <option v-if="authStore.isAdmin" value="admin">{{ t('mcp.adminScope') }}</option>
-          </select>
-          <p id="mcp-scope-hint" class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ scope === 'admin' ? t('mcp.adminScopeHint') : t('mcp.userScopeHint') }}</p>
+
+        <p v-if="authStore.user?.email" class="break-all text-xs text-[var(--atelier-ink-secondary)]">
+          {{ t('mcp.signedInAs', { email: authStore.user.email }) }}
+        </p>
+
+        <div class="space-y-1.5">
+          <label for="mcp-consent-scope" class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+            {{ t('mcp.scope') }}
+          </label>
+          <UiSelect
+            id="mcp-consent-scope"
+            :model-value="scope"
+            :options="scopeOptions"
+            :disabled="submitting"
+            :aria-label="t('mcp.scope')"
+            @update:model-value="handleScopeChange"
+          />
+          <p id="mcp-scope-hint" class="text-xs text-[var(--atelier-ink-muted)]">
+            {{ scope === 'admin' ? t('mcp.adminScopeHint') : t('mcp.userScopeHint') }}
+          </p>
         </div>
-        <div>
-          <label for="mcp-consent-permissions" class="input-label">{{ t('mcp.permissions') }}</label>
-          <select id="mcp-consent-permissions" v-model="readOnly" class="input" :disabled="submitting" aria-describedby="mcp-permissions-hint">
-            <option :value="true">{{ t('mcp.readOnly') }}</option>
-            <option :value="false">{{ t('mcp.readWrite') }}</option>
-          </select>
-          <p id="mcp-permissions-hint" class="mt-2 text-xs" :class="readOnly ? 'text-gray-500 dark:text-gray-400' : 'text-amber-700 dark:text-amber-400'">{{ readOnly ? t('mcp.readOnlyHint') : t('mcp.readWriteHint') }}</p>
-          <p v-if="scope === 'admin' && !readOnly" data-testid="admin-write-hint" class="mt-1 text-xs text-amber-700 dark:text-amber-400">{{ t('mcp.adminWriteHint') }}</p>
+
+        <div class="space-y-1.5">
+          <label for="mcp-consent-permissions" class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+            {{ t('mcp.permissions') }}
+          </label>
+          <UiSelect
+            id="mcp-consent-permissions"
+            :model-value="readOnly"
+            :options="permissionOptions"
+            :disabled="submitting"
+            :aria-label="t('mcp.permissions')"
+            @update:model-value="handleReadOnlyChange"
+          />
+          <p
+            id="mcp-permissions-hint"
+            class="text-xs"
+            :class="readOnly ? 'text-[var(--atelier-ink-muted)]' : 'text-[var(--atelier-warn)]'"
+          >
+            {{ readOnly ? t('mcp.readOnlyHint') : t('mcp.readWriteHint') }}
+          </p>
+          <p v-if="scope === 'admin' && !readOnly" data-testid="admin-write-hint" class="text-xs text-[var(--atelier-warn)]">
+            {{ t('mcp.adminWriteHint') }}
+          </p>
         </div>
-        <p v-if="submitError" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>
-        <div class="flex justify-end gap-3 border-t border-gray-100 pt-5 dark:border-dark-700">
-          <button data-testid="deny" type="button" class="btn btn-secondary" :disabled="submitting" @click="decide(false)">{{ t('mcp.deny') }}</button>
-          <button data-testid="approve" type="submit" class="btn btn-primary" :disabled="submitting">{{ submitting ? t('common.processing') : t('mcp.approve') }}</button>
+
+        <p v-if="submitError" role="alert" class="rounded-lg bg-[var(--atelier-err-bg)] px-3.5 py-2.5 text-xs text-[var(--atelier-err)]">
+          {{ submitError }}
+        </p>
+
+        <div class="flex justify-end gap-2.5 border-t border-[var(--atelier-border)] pt-5">
+          <UiButton data-testid="deny" variant="secondary" size="md" type="button" :disabled="submitting" @click="decide(false)">
+            {{ t('mcp.deny') }}
+          </UiButton>
+          <UiButton data-testid="approve" variant="primary" size="md" type="submit" :disabled="submitting" :loading="submitting">
+            {{ submitting ? t('common.processing') : t('mcp.approve') }}
+          </UiButton>
         </div>
       </form>
     </section>
+
     <TotpStepUpDialog :controller="stepUp" />
   </main>
 </template>
@@ -76,6 +141,7 @@ import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
 import { Icon } from '@/components/icons'
 import { isStepUpBlocked, isStepUpCancelled, stepUpBlockReason, useStepUp } from '@/composables/useStepUp'
 import { useAuthStore } from '@/stores/auth'
+import { UiButton, UiSelect, type UiSelectOption } from '@/ui'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -91,6 +157,25 @@ const readOnly = ref(true)
 let authorization: MCPAuthorization | null = null
 let generation = 0
 const redirectOrigin = computed(() => consent.value ? new URL(consent.value.redirect_uri).origin : '')
+
+const scopeOptions = computed<UiSelectOption[]>(() => {
+  const opts: UiSelectOption[] = [{ value: 'user', label: t('mcp.userScope') }]
+  if (authStore.isAdmin) opts.push({ value: 'admin', label: t('mcp.adminScope') })
+  return opts
+})
+
+const permissionOptions = computed<UiSelectOption[]>(() => [
+  { value: true, label: t('mcp.readOnly') },
+  { value: false, label: t('mcp.readWrite') },
+])
+
+function handleScopeChange(val: string | number | boolean | null) {
+  scope.value = val === 'admin' && authStore.isAdmin ? 'admin' : 'user'
+}
+
+function handleReadOnlyChange(val: string | number | boolean | null) {
+  readOnly.value = Boolean(val)
+}
 
 function errorMessage(error: unknown, fallback: string): string {
   const message = (error as { message?: unknown } | null)?.message
@@ -165,12 +250,10 @@ async function decide(approved: boolean): Promise<void> {
   submitError.value = ''
   try {
     const action = async () => {
-      // A changed route or unmounted page must not retry a previous consent.
       if (current !== generation) throw new Error(t('mcp.invalidRequest'))
       try {
         return await mcpAPI.authorize(input)
       } catch (error) {
-        // Do not open a step-up prompt for a request that is no longer shown.
         if (current !== generation) throw new Error(t('mcp.invalidRequest'))
         throw error
       }

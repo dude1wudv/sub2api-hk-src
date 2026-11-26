@@ -1,85 +1,231 @@
 <template>
-  <section class="card space-y-4 p-6" :aria-label="t('adminAccessKeys.title')">
-    <h2 class="text-lg font-semibold">{{ t('adminAccessKeys.title') }}</h2>
-    <p class="text-sm text-gray-500">{{ t('adminAccessKeys.authorizationHint') }}</p>
-    <p class="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">{{ t('adminAccessKeys.sharedAccountWarning') }}</p>
-    <p v-if="error" role="alert" class="text-sm text-red-600">{{ error }}</p>
-    <p v-if="notice" role="status" class="text-sm text-green-600">{{ notice }}</p>
-    <div v-if="secret" class="space-y-2 rounded-lg border border-amber-300 p-4">
-      <p>{{ t('adminAccessKeys.secretWarning') }}</p>
-      <code class="block select-all break-all">{{ secret }}</code>
-      <button type="button" class="btn btn-secondary btn-sm" @click="copySecret">{{ t('adminAccessKeys.copySecret') }}</button>
-      <button type="button" data-test="dismiss-secret" class="btn btn-secondary btn-sm" @click="secret = ''">{{ t('adminAccessKeys.dismissSecret') }}</button>
-    </div>
-    <div class="flex gap-2">
-      <button type="button" data-test="create" class="btn btn-primary" :disabled="busy || loading || !loaded" @click="edit()">{{ t('adminAccessKeys.create') }}</button>
-      <button type="button" class="btn btn-secondary" :disabled="busy || loading" @click="load">{{ t('adminAccessKeys.refresh') }}</button>
-    </div>
-    <p v-if="loading">{{ t('adminAccessKeys.loading') }}</p>
-    <div v-for="item in items" :key="item.id" class="space-y-2 rounded-lg border border-gray-200 p-4 dark:border-dark-700">
-      <p class="font-medium">{{ item.name }} <code>{{ item.key_prefix }}…</code> · {{ status(item) }}</p>
-      <p class="text-sm text-gray-500">{{ item.description || t('adminAccessKeys.noDescription') }} · {{ t('adminAccessKeys.expires', { value: item.expires_at || t('adminAccessKeys.never') }) }}</p>
-      <p class="text-sm text-gray-500">{{ t('adminAccessKeys.lastUsed', { value: item.last_used_at || t('adminAccessKeys.neverUsed') }) }} {{ item.last_used_ip }}</p>
-      <div class="space-y-1 text-sm text-gray-500" :aria-label="t('adminAccessKeys.summaryLabel')">
-        <p v-if="item.policy.full_access" class="font-semibold text-red-600">{{ t('adminAccessKeys.fullAccessLabel') }}</p>
-        <p>{{ t('adminAccessKeys.summary', { globals: item.policy.global_permissions.length, rules: item.policy.rules.length }) }}</p>
-        <p v-for="(rule, index) in item.policy.rules" :key="index">{{ t('adminAccessKeys.ruleLine', { index: index + 1, summary: ruleSummary(rule) }) }}</p>
+  <section class="atelier-surface space-y-5 p-6" :aria-label="t('adminAccessKeys.title')">
+    <div class="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--atelier-border)] pb-4">
+      <div>
+        <h2 class="text-lg font-semibold text-[var(--atelier-ink)]">{{ t('adminAccessKeys.title') }}</h2>
+        <p class="mt-1 text-sm text-[var(--atelier-ink-secondary)]">{{ t('adminAccessKeys.authorizationHint') }}</p>
       </div>
-      <div v-if="!item.revoked_at" class="flex flex-wrap gap-2">
-        <button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="edit(item)">{{ t('adminAccessKeys.editPermissions') }}</button>
-        <button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="toggle(item)">{{ item.enabled ? t('adminAccessKeys.disable') : t('adminAccessKeys.enable') }}</button>
-        <button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="rotateKey(item)">{{ t('adminAccessKeys.rotate') }}</button>
-        <button type="button" class="btn btn-secondary btn-sm text-red-600" :disabled="busy" @click="revokeKey(item)">{{ t('adminAccessKeys.revoke') }}</button>
-      </div>
-      <div v-else>
-        <button type="button" class="btn btn-secondary btn-sm text-red-600" :disabled="busy" @click="deleteRecord(item)">{{ t('adminAccessKeys.deleteRecord') }}</button>
+      <div class="flex gap-2">
+        <UiButton variant="primary" data-test="create" :disabled="busy || loading || !loaded" @click="edit()">
+          {{ t('adminAccessKeys.create') }}
+        </UiButton>
+        <UiButton variant="secondary" :disabled="busy || loading" @click="load">
+          {{ t('adminAccessKeys.refresh') }}
+        </UiButton>
       </div>
     </div>
-    <div v-if="draft" class="space-y-4 rounded-lg border border-gray-200 p-4 dark:border-dark-700">
-      <h3 class="font-semibold">{{ editingID ? t('adminAccessKeys.editTitle') : t('adminAccessKeys.createTitle') }}</h3>
-      <label class="block">{{ t('adminAccessKeys.name') }}<input v-model="draft.name" data-test="name" class="input mt-1" maxlength="100" /></label>
-      <label class="block">{{ t('adminAccessKeys.description') }}<textarea v-model="draft.description" class="input mt-1" maxlength="1000" /></label>
-      <label class="block">{{ t('adminAccessKeys.expiration') }}<input v-model="expiration" type="datetime-local" class="input mt-1" /></label>
-      <label class="block">{{ t('adminAccessKeys.allowedIps') }}<textarea v-model="ips" class="input mt-1" placeholder="192.0.2.1&#10;2001:db8::/32" /></label>
-      <label class="flex gap-2"><input v-model="draft.enabled" type="checkbox" />{{ t('adminAccessKeys.enabled') }}</label>
-      <div class="space-y-2 rounded-lg border border-red-300 p-3">
-        <label class="flex gap-2"><input data-test="full-access" type="checkbox" :checked="draft.policy.full_access || fullAccessPrompt" :disabled="busy" @change="changeFullAccess" />{{ t('adminAccessKeys.fullAccessLabel') }}</label>
-        <p class="text-sm text-red-700 dark:text-red-300">{{ t('adminAccessKeys.fullAccessWarning') }}</p>
-        <p v-if="draft.policy.full_access" class="text-sm">{{ t('adminAccessKeys.rulesSuspended') }}</p>
+
+    <div class="flex items-start gap-2.5 rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-warn-bg)] px-4 py-3 text-sm text-[var(--atelier-warn)]">
+      <UiStatusDot tone="warn" class="mt-1.5" />
+      <p>{{ t('adminAccessKeys.sharedAccountWarning') }}</p>
+    </div>
+
+    <p v-if="error" role="alert" class="rounded-lg bg-[var(--atelier-err-bg)] px-3.5 py-2.5 text-sm text-[var(--atelier-err)]">{{ error }}</p>
+    <p v-if="notice" role="status" class="rounded-lg bg-[var(--atelier-ok-bg)] px-3.5 py-2.5 text-sm text-[var(--atelier-ok)]">{{ notice }}</p>
+
+    <div v-if="secret" class="space-y-2.5 rounded-xl border border-[var(--atelier-warn)]/40 bg-[var(--atelier-surface)] p-4">
+      <p class="text-sm font-medium text-[var(--atelier-ink)]">{{ t('adminAccessKeys.secretWarning') }}</p>
+      <code class="block select-all break-all rounded-lg bg-[var(--atelier-subtle)] px-3 py-2 font-mono text-xs text-[var(--atelier-ink)]">{{ secret }}</code>
+      <div class="flex flex-wrap gap-2">
+        <UiButton variant="secondary" size="sm" @click="copySecret">{{ t('adminAccessKeys.copySecret') }}</UiButton>
+        <UiButton variant="secondary" size="sm" data-test="dismiss-secret" @click="secret = ''">{{ t('adminAccessKeys.dismissSecret') }}</UiButton>
+      </div>
+    </div>
+
+    <p v-if="loading" class="text-sm text-[var(--atelier-ink-muted)]">{{ t('adminAccessKeys.loading') }}</p>
+
+    <div class="space-y-3">
+      <div v-for="item in items" :key="item.id" class="space-y-2.5 rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-surface)] p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-medium text-[var(--atelier-ink)]">{{ item.name }}</span>
+            <code class="rounded bg-[var(--atelier-subtle)] px-1.5 py-0.5 font-mono text-xs text-[var(--atelier-ink-secondary)]">{{ item.key_prefix }}…</code>
+            <span class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium" :class="statusBadgeClass(item)">
+              <UiStatusDot :tone="statusTone(item)" />
+              {{ status(item) }}
+            </span>
+          </div>
+          <div v-if="!item.revoked_at" class="flex flex-wrap gap-2">
+            <UiButton variant="secondary" size="sm" :disabled="busy" @click="edit(item)">{{ t('adminAccessKeys.editPermissions') }}</UiButton>
+            <UiButton variant="secondary" size="sm" :disabled="busy" @click="toggle(item)">{{ item.enabled ? t('adminAccessKeys.disable') : t('adminAccessKeys.enable') }}</UiButton>
+            <UiButton variant="secondary" size="sm" :disabled="busy" @click="rotateKey(item)">{{ t('adminAccessKeys.rotate') }}</UiButton>
+            <UiButton variant="secondary" size="sm" class="!text-[var(--atelier-err)]" :disabled="busy" @click="revokeKey(item)">{{ t('adminAccessKeys.revoke') }}</UiButton>
+          </div>
+          <div v-else>
+            <UiButton variant="secondary" size="sm" class="!text-[var(--atelier-err)]" :disabled="busy" @click="deleteRecord(item)">{{ t('adminAccessKeys.deleteRecord') }}</UiButton>
+          </div>
+        </div>
+        <p class="text-xs text-[var(--atelier-ink-secondary)]">{{ item.description || t('adminAccessKeys.noDescription') }} · {{ t('adminAccessKeys.expires', { value: item.expires_at || t('adminAccessKeys.never') }) }}</p>
+        <p class="text-xs tabular-nums text-[var(--atelier-ink-muted)]">{{ t('adminAccessKeys.lastUsed', { value: item.last_used_at || t('adminAccessKeys.neverUsed') }) }} {{ item.last_used_ip }}</p>
+        <div class="space-y-1 rounded-lg bg-[var(--atelier-subtle)]/70 p-3 text-xs text-[var(--atelier-ink-secondary)]" :aria-label="t('adminAccessKeys.summaryLabel')">
+          <p v-if="item.policy.full_access" class="font-semibold text-[var(--atelier-err)]">{{ t('adminAccessKeys.fullAccessLabel') }}</p>
+          <p>{{ t('adminAccessKeys.summary', { globals: item.policy.global_permissions.length, rules: item.policy.rules.length }) }}</p>
+          <p v-for="(rule, index) in item.policy.rules" :key="index">{{ t('adminAccessKeys.ruleLine', { index: index + 1, summary: ruleSummary(rule) }) }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="draft" class="space-y-4 rounded-xl border border-[var(--atelier-border-strong)] bg-[var(--atelier-canvas)] p-5">
+      <h3 class="text-base font-semibold text-[var(--atelier-ink)]">{{ editingID ? t('adminAccessKeys.editTitle') : t('adminAccessKeys.createTitle') }}</h3>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+          <span>{{ t('adminAccessKeys.name') }}</span>
+          <input v-model="draft.name" data-test="name" class="atelier-input mt-1.5" maxlength="100" />
+        </label>
+        <label class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+          <span>{{ t('adminAccessKeys.expiration') }}</span>
+          <input v-model="expiration" type="datetime-local" class="atelier-input mt-1.5" />
+        </label>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+          <span>{{ t('adminAccessKeys.description') }}</span>
+          <textarea v-model="draft.description" class="atelier-input mt-1.5" rows="2" maxlength="1000" />
+        </label>
+        <label class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+          <span>{{ t('adminAccessKeys.allowedIps') }}</span>
+          <textarea v-model="ips" class="atelier-input mt-1.5 font-mono text-xs" rows="2" placeholder="192.0.2.1&#10;2001:db8::/32" />
+        </label>
+      </div>
+      <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-[var(--atelier-ink)]">
+        <input v-model="draft.enabled" type="checkbox" class="rounded border-[var(--atelier-border-strong)]" />
+        {{ t('adminAccessKeys.enabled') }}
+      </label>
+      <div class="space-y-2 rounded-xl border border-[var(--atelier-err)]/30 bg-[var(--atelier-err-bg)]/50 p-3.5">
+        <label class="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--atelier-ink)]">
+          <input data-test="full-access" type="checkbox" :checked="draft.policy.full_access || fullAccessPrompt" :disabled="busy" @change="changeFullAccess" />
+          {{ t('adminAccessKeys.fullAccessLabel') }}
+        </label>
+        <p class="text-xs text-[var(--atelier-err)]">{{ t('adminAccessKeys.fullAccessWarning') }}</p>
+        <p v-if="draft.policy.full_access" class="text-xs text-[var(--atelier-ink-secondary)]">{{ t('adminAccessKeys.rulesSuspended') }}</p>
       </div>
       <fieldset :disabled="busy || !!draft.policy.full_access" class="space-y-4">
-      <fieldset v-for="(rule, index) in draft.policy.rules" :key="index" class="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-dark-700">
-        <legend>{{ t('adminAccessKeys.ruleLegend', { index: index + 1 }) }}</legend>
-        <label class="flex gap-2"><input v-model="rule.all_groups" type="checkbox" />{{ t('adminAccessKeys.allGroups') }}</label>
-        <label class="block">{{ t('adminAccessKeys.groups') }}<select v-model="rule.group_ids" :data-test="`groups-${index}`" multiple class="input mt-1" :disabled="rule.all_groups"><option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option></select></label>
-        <label class="flex gap-2"><input v-model="rule.include_ungrouped" type="checkbox" />{{ t('adminAccessKeys.includeUngrouped') }}</label>
-        <div>{{ t('adminAccessKeys.accountTypes') }}<div class="flex flex-wrap gap-4"><label v-for="type in accountTypes" :key="type" class="flex gap-2"><input v-model="rule.account_types" type="checkbox" :value="type" />{{ type }}</label></div></div>
-        <label class="block">{{ t('adminAccessKeys.platforms') }}<select v-model="rule.platforms" multiple class="input mt-1"><option v-for="platform in CONCRETE_PLATFORM_OPTIONS" :key="platform.value" :value="platform.value">{{ platform.label }}</option></select></label>
-        <div>{{ t('adminAccessKeys.accountOperations') }}<div class="grid gap-2 sm:grid-cols-2"><label v-for="permission in accountPermissions" :key="permission.id" class="flex gap-2"><input v-model="rule.permissions" type="checkbox" :value="permission.id" />{{ permissionLabel(permission) }} <span class="text-xs text-gray-500">{{ permission.id }}</span></label></div></div>
-        <div v-if="groupPermissions.length" class="space-y-2 rounded border border-amber-300 p-3">
-          <p>{{ t('adminAccessKeys.groupOperations') }}</p>
-          <p class="text-sm text-amber-700 dark:text-amber-300">{{ t('adminAccessKeys.modelAllowlistHint') }}</p>
-          <div class="grid gap-2 sm:grid-cols-2"><label v-for="permission in groupPermissions" :key="permission.id" class="flex gap-2"><input v-model="rule.permissions" type="checkbox" :value="permission.id" />{{ permissionLabel(permission) }} <span class="text-xs text-gray-500">{{ permission.id }}</span></label></div>
-        </div>
-        <button type="button" class="btn btn-secondary btn-sm" @click="draft.policy.rules.splice(index, 1)">{{ t('adminAccessKeys.removeRule') }}</button>
-      </fieldset>
-      <button type="button" data-test="add-rule" class="btn btn-secondary btn-sm" @click="draft.policy.rules.push(emptyRule())">{{ t('adminAccessKeys.addRule') }}</button>
-      <fieldset class="space-y-3 rounded-lg border border-amber-300 p-3">
-        <legend>{{ t('adminAccessKeys.globalPermissions') }}</legend>
-        <fieldset v-for="category in globalCategories" :key="category.name" class="space-y-2 rounded border border-gray-200 p-3 dark:border-dark-700">
-          <legend class="text-sm font-medium">{{ category.name }}</legend>
-          <label v-for="permission in category.permissions" :key="permission.id" class="flex gap-2"><input v-model="draft.policy.global_permissions" type="checkbox" :value="permission.id" />{{ permissionLabel(permission) }} <span class="text-xs text-gray-500">{{ permission.id }}</span></label>
+        <fieldset v-for="(rule, index) in draft.policy.rules" :key="index" class="space-y-3 rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-surface)] p-4">
+          <legend class="px-1 text-xs font-semibold uppercase tracking-wider text-[var(--atelier-ink-muted)]">{{ t('adminAccessKeys.ruleLegend', { index: index + 1 }) }}</legend>
+          <div class="flex flex-wrap gap-4">
+            <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-[var(--atelier-ink)]">
+              <input v-model="rule.all_groups" type="checkbox" />
+              {{ t('adminAccessKeys.allGroups') }}
+            </label>
+            <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-[var(--atelier-ink)]">
+              <input v-model="rule.include_ungrouped" type="checkbox" />
+              {{ t('adminAccessKeys.includeUngrouped') }}
+            </label>
+          </div>
+          <div>
+            <p class="text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ t('adminAccessKeys.groups') }}</p>
+            <div
+              :data-test="`groups-${index}`"
+              class="mt-1.5 max-h-40 overflow-y-auto rounded-lg border border-[var(--atelier-border-strong)] bg-[var(--atelier-surface)] p-2.5"
+              :class="{ 'pointer-events-none opacity-50': rule.all_groups }"
+            >
+              <div class="grid gap-1.5 sm:grid-cols-2 md:grid-cols-3">
+                <label
+                  v-for="group in groups"
+                  :key="group.id"
+                  class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs text-[var(--atelier-ink)] hover:bg-[var(--atelier-hover)]"
+                >
+                  <input
+                    v-model="rule.group_ids"
+                    type="checkbox"
+                    :value="group.id"
+                    :disabled="rule.all_groups"
+                  />
+                  <span class="truncate">{{ group.name }}</span>
+                </label>
+              </div>
+              <p v-if="!groups.length" class="py-1 text-xs text-[var(--atelier-ink-muted)]">
+                {{ t('adminAccessKeys.noGroups') }}
+              </p>
+            </div>
+          </div>
+          <div>
+            <p class="text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ t('adminAccessKeys.accountTypes') }}</p>
+            <div class="mt-1.5 flex flex-wrap gap-3">
+              <label v-for="type in accountTypes" :key="type" class="inline-flex cursor-pointer items-center gap-1.5 text-xs text-[var(--atelier-ink)]">
+                <input v-model="rule.account_types" type="checkbox" :value="type" />
+                {{ type }}
+              </label>
+            </div>
+          </div>
+          <div>
+            <p class="text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ t('adminAccessKeys.platforms') }}</p>
+            <div class="mt-1.5 max-h-36 overflow-y-auto rounded-lg border border-[var(--atelier-border-strong)] bg-[var(--atelier-surface)] p-2.5">
+              <div class="grid gap-1.5 sm:grid-cols-2 md:grid-cols-3">
+                <label
+                  v-for="platform in CONCRETE_PLATFORM_OPTIONS"
+                  :key="platform.value"
+                  class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs text-[var(--atelier-ink)] hover:bg-[var(--atelier-hover)]"
+                >
+                  <input
+                    v-model="rule.platforms"
+                    type="checkbox"
+                    :value="platform.value"
+                  />
+                  <span class="truncate">{{ platform.label }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p class="text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ t('adminAccessKeys.accountOperations') }}</p>
+            <div class="mt-1.5 grid gap-2 sm:grid-cols-2">
+              <label v-for="permission in accountPermissions" :key="permission.id" class="flex cursor-pointer items-center gap-2 text-xs text-[var(--atelier-ink)]">
+                <input v-model="rule.permissions" type="checkbox" :value="permission.id" />
+                <span>{{ permissionLabel(permission) }}</span>
+                <span class="font-mono text-[11px] text-[var(--atelier-ink-muted)]">{{ permission.id }}</span>
+              </label>
+            </div>
+          </div>
+          <div v-if="groupPermissions.length" class="space-y-2 rounded-lg border border-[var(--atelier-warn)]/30 bg-[var(--atelier-warn-bg)]/40 p-3">
+            <p class="text-xs font-medium text-[var(--atelier-ink)]">{{ t('adminAccessKeys.groupOperations') }}</p>
+            <p class="text-xs text-[var(--atelier-warn)]">{{ t('adminAccessKeys.modelAllowlistHint') }}</p>
+            <div class="grid gap-2 sm:grid-cols-2">
+              <label v-for="permission in groupPermissions" :key="permission.id" class="flex cursor-pointer items-center gap-2 text-xs text-[var(--atelier-ink)]">
+                <input v-model="rule.permissions" type="checkbox" :value="permission.id" />
+                <span>{{ permissionLabel(permission) }}</span>
+                <span class="font-mono text-[11px] text-[var(--atelier-ink-muted)]">{{ permission.id }}</span>
+              </label>
+            </div>
+          </div>
+          <UiButton variant="secondary" size="sm" @click="draft.policy.rules.splice(index, 1)">
+            {{ t('adminAccessKeys.removeRule') }}
+          </UiButton>
+        </fieldset>
+        <UiButton variant="secondary" size="sm" data-test="add-rule" @click="draft.policy.rules.push(emptyRule())">
+          {{ t('adminAccessKeys.addRule') }}
+        </UiButton>
+        <fieldset class="space-y-3 rounded-xl border border-[var(--atelier-warn)]/35 bg-[var(--atelier-surface)] p-4">
+          <legend class="px-1 text-xs font-semibold uppercase tracking-wider text-[var(--atelier-ink-muted)]">{{ t('adminAccessKeys.globalPermissions') }}</legend>
+          <fieldset v-for="category in globalCategories" :key="category.name" class="space-y-2 rounded-lg border border-[var(--atelier-border)] p-3">
+            <legend class="px-1 text-xs font-medium text-[var(--atelier-ink)]">{{ category.name }}</legend>
+            <label v-for="permission in category.permissions" :key="permission.id" class="flex cursor-pointer items-center gap-2 text-xs text-[var(--atelier-ink)]">
+              <input v-model="draft.policy.global_permissions" type="checkbox" :value="permission.id" />
+              <span>{{ permissionLabel(permission) }}</span>
+              <span class="font-mono text-[11px] text-[var(--atelier-ink-muted)]">{{ permission.id }}</span>
+            </label>
+          </fieldset>
         </fieldset>
       </fieldset>
-      </fieldset>
-      <div class="flex gap-2"><button type="button" data-test="save" class="btn btn-primary" :disabled="busy || fullAccessPrompt" @click="save">{{ busy ? t('adminAccessKeys.processing') : t('adminAccessKeys.save') }}</button><button type="button" class="btn btn-secondary" :disabled="busy" @click="draft = null">{{ t('adminAccessKeys.cancel') }}</button></div>
+      <div class="flex gap-2">
+        <UiButton variant="primary" data-test="save" :disabled="busy || fullAccessPrompt" :loading="busy" @click="save">
+          {{ busy ? t('adminAccessKeys.processing') : t('adminAccessKeys.save') }}
+        </UiButton>
+        <UiButton variant="secondary" :disabled="busy" @click="draft = null">
+          {{ t('adminAccessKeys.cancel') }}
+        </UiButton>
+      </div>
     </div>
+
     <BaseDialog :show="fullAccessPrompt" :title="t('adminAccessKeys.fullAccessConfirmTitle')" width="normal" @close="cancelFullAccess">
-      <p class="text-red-700 dark:text-red-300">{{ t('adminAccessKeys.fullAccessWarning') }}</p>
-      <label class="mt-4 block">{{ t('adminAccessKeys.fullAccessPhraseHint', { phrase: t('adminAccessKeys.fullAccessPhrase') }) }}<input v-model="fullAccessPhrase" data-test="full-access-phrase" class="input mt-1" autocomplete="off" /></label>
+      <p class="text-sm text-[var(--atelier-err)]">{{ t('adminAccessKeys.fullAccessWarning') }}</p>
+      <label class="mt-4 block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+        <span>{{ t('adminAccessKeys.fullAccessPhraseHint', { phrase: t('adminAccessKeys.fullAccessPhrase') }) }}</span>
+        <input v-model="fullAccessPhrase" data-test="full-access-phrase" class="atelier-input mt-1.5" autocomplete="off" />
+      </label>
       <template #footer>
-        <button type="button" data-test="full-access-cancel" class="btn btn-secondary" @click="cancelFullAccess">{{ t('adminAccessKeys.cancel') }}</button>
-        <button type="button" data-test="full-access-confirm" class="btn btn-danger" :disabled="fullAccessPhrase !== t('adminAccessKeys.fullAccessPhrase')" @click="confirmFullAccess">{{ t('adminAccessKeys.fullAccessConfirmTitle') }}</button>
+        <UiButton variant="secondary" data-test="full-access-cancel" @click="cancelFullAccess">{{ t('adminAccessKeys.cancel') }}</UiButton>
+        <UiButton variant="danger" data-test="full-access-confirm" :disabled="fullAccessPhrase !== t('adminAccessKeys.fullAccessPhrase')" @click="confirmFullAccess">{{ t('adminAccessKeys.fullAccessConfirmTitle') }}</UiButton>
       </template>
     </BaseDialog>
     <TotpStepUpDialog :controller="stepUp" />
@@ -95,6 +241,7 @@ import { getAllIncludingInactive } from '@/api/admin/groups'
 import { CONCRETE_PLATFORM_OPTIONS } from '@/constants/platforms'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
+import { UiButton, UiStatusDot } from '@/ui'
 import { useAdminAccessKeyPermissions } from '@/composables/useAdminAccessKeyPermissions'
 import { isStepUpCancelled, useStepUp } from '@/composables/useStepUp'
 
@@ -241,5 +388,18 @@ async function deleteRecord(item: AdminKey) {
 }
 async function copySecret() { try { await navigator.clipboard.writeText(secret.value); notice.value = t('adminAccessKeys.copied') } catch { error.value = t('adminAccessKeys.copyFailed') } }
 function status(item: AdminKey) { return item.revoked_at ? t('adminAccessKeys.statusRevoked') : !item.enabled ? t('adminAccessKeys.statusDisabled') : item.expires_at && new Date(item.expires_at).getTime() <= Date.now() ? t('adminAccessKeys.statusExpired') : t('adminAccessKeys.statusEnabled') }
+function statusTone(item: AdminKey): 'ok' | 'warn' | 'err' | 'neutral' {
+  if (item.revoked_at) return 'err'
+  if (!item.enabled) return 'neutral'
+  if (item.expires_at && new Date(item.expires_at).getTime() <= Date.now()) return 'warn'
+  return 'ok'
+}
+function statusBadgeClass(item: AdminKey): string {
+  const tone = statusTone(item)
+  if (tone === 'ok') return 'bg-[var(--atelier-ok-bg)] text-[var(--atelier-ok)]'
+  if (tone === 'err') return 'bg-[var(--atelier-err-bg)] text-[var(--atelier-err)]'
+  if (tone === 'warn') return 'bg-[var(--atelier-warn-bg)] text-[var(--atelier-warn)]'
+  return 'bg-[var(--atelier-subtle)] text-[var(--atelier-ink-secondary)]'
+}
 onMounted(load)
 </script>

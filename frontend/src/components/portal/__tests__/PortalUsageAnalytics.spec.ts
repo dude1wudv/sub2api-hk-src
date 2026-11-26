@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import PortalUsageAnalytics from '../PortalUsageAnalytics.vue'
 import { useColorMode } from '@/composables/useColorMode'
+import { BrandModelIcon, UiSelect } from '@/ui'
 
 const { getStats, getDashboardModels, getDashboardSnapshotV2 } = vi.hoisted(() => ({ getStats: vi.fn(), getDashboardModels: vi.fn(), getDashboardSnapshotV2: vi.fn() }))
 vi.mock('@/api', () => ({ usageAPI: { getStats, getDashboardModels, getDashboardSnapshotV2 } }))
@@ -62,7 +63,7 @@ describe('PortalUsageAnalytics', () => {
     expect(getDashboardSnapshotV2).toHaveBeenCalledWith(expect.objectContaining({ include_trend: true, include_group_stats: true, include_model_stats: false }))
     expect(wrapper.get('[data-testid="analytics-requests"]').text()).toBe('42')
     expect(wrapper.text()).toContain('Statistics use the applied record filters. Time zone:')
-    expect(wrapper.get('[data-distribution="models"] .model-icon').exists()).toBe(true)
+    expect(wrapper.get('[data-distribution="models"]').findComponent(BrandModelIcon).props('model')).toBe('claude-sonnet')
     expect(wrapper.text()).toContain('/v1/responses')
     const line = wrapper.findComponent({ name: 'Line' })
     const datasets = line.props('data').datasets
@@ -76,8 +77,8 @@ describe('PortalUsageAnalytics', () => {
     const wrapper = mountAnalytics()
     await flushPromises()
     const section = wrapper.get('[data-distribution="models"]')
-    await section.findAll('button')[1].trigger('click')
-    expect(section.findAll('button')[1].attributes('aria-pressed')).toBe('true')
+    await section.findAll('[role="radio"]')[1].trigger('click')
+    expect(section.findAll('[role="radio"]')[1].attributes('aria-checked')).toBe('true')
     expect(wrapper.findComponent({ name: 'Doughnut' }).props('data').datasets[0].data).toEqual([0.5])
     expect(getStats).toHaveBeenCalledTimes(1)
     wrapper.unmount()
@@ -86,9 +87,9 @@ describe('PortalUsageAnalytics', () => {
   it('exposes keyboard model/date drilldowns and clickable chart data points', async () => {
     const wrapper = mountAnalytics()
     await flushPromises()
-    await wrapper.get('.analytics-model-link').trigger('click')
+    await wrapper.get('[data-distribution="models"] tbody button').trigger('click')
     expect(wrapper.emitted('drilldown')?.[0]?.[0]).toMatchObject({ model: 'claude-sonnet', start: expect.any(String), end: expect.any(String) })
-    await wrapper.get('.analytics-drilldown').trigger('submit')
+    await wrapper.get('article form').trigger('submit')
     expect(wrapper.emitted('drilldown')?.[1]?.[0]).toEqual({ start: '2026-10-10', end: '2026-10-10' })
     wrapper.findComponent({ name: 'Line' }).props('options').onClick({}, [{ index: 0 }])
     expect(wrapper.emitted('drilldown')?.[2]?.[0]).toEqual({ start: '2026-10-10', end: '2026-10-10' })
@@ -119,10 +120,10 @@ describe('PortalUsageAnalytics', () => {
     for (const [id, tokenFirst, costFirst] of cases) {
       const section = wrapper.get(`[data-distribution="${id}"]`)
       const chart = section.findComponent({ name: 'Doughnut' })
-      const buttons = section.findAll('.analytics-segment button')
+      const buttons = section.findAll('[role="radio"]')
       const rows = () => section.findAll('tbody tr').map(row => row.get('td').attributes('title'))
       const initialData = chart.props('data')
-      const initialColors = section.findAll('.analytics-row-label i').map(dot => dot.attributes('style'))
+      const initialColors = section.findAll('tbody td span.rounded-full').map(dot => dot.attributes('style'))
       expect(initialData.labels).toEqual([tokenFirst, costFirst])
       expect(initialData.datasets[0].data).toEqual([9000, 300])
       expect(rows()).toEqual([tokenFirst, costFirst])
@@ -132,11 +133,11 @@ describe('PortalUsageAnalytics', () => {
       expect(chart.props('data').datasets[0].data).toEqual([8, 0.25])
       expect(chart.props('data').datasets[0].backgroundColor).toEqual([...initialData.datasets[0].backgroundColor].reverse())
       expect(rows()).toEqual([costFirst, tokenFirst])
-      expect(section.findAll('.analytics-row-label i').map(dot => dot.attributes('style'))).toEqual([...initialColors].reverse())
+      expect(section.findAll('tbody td span.rounded-full').map(dot => dot.attributes('style'))).toEqual([...initialColors].reverse())
       if (id === 'models') {
         chart.props('options').onClick({}, [{ index: 0 }])
         expect(wrapper.emitted('drilldown')?.at(-1)?.[0]).toMatchObject({ model: 'cost-first' })
-        await section.find('.analytics-model-link').trigger('click')
+        await section.find('tbody button').trigger('click')
         expect(wrapper.emitted('drilldown')?.at(-1)?.[0]).toMatchObject({ model: 'cost-first' })
       }
 
@@ -160,7 +161,7 @@ describe('PortalUsageAnalytics', () => {
     const wrapper = mountAnalytics()
     await flushPromises()
     expect(wrapper.get('[data-testid="analytics-actual-cost"]').text()).toBe('USD 1234567890.4724')
-    expect(wrapper.get('.analytics-summary-wide [data-testid="analytics-actual-cost"]').exists()).toBe(true)
+    expect(wrapper.get('.border-b [data-testid="analytics-actual-cost"]').exists()).toBe(true)
     wrapper.unmount()
   })
 
@@ -171,12 +172,12 @@ describe('PortalUsageAnalytics', () => {
     const wrapper = mountAnalytics()
     await flushPromises()
     expect(wrapper.get('[data-testid="analytics-actual-cost"]').text()).toBe('< USD 0.000001')
-    expect(wrapper.get('[data-distribution="models"] .analytics-actual').text()).toBe('< USD 0.000001')
+    expect(wrapper.get('[data-distribution="models"] tbody td:nth-child(4)').text()).toBe('< USD 0.000001')
     expect(wrapper.text()).not.toContain('$')
     const line = wrapper.findComponent({ name: 'Line' })
     expect(line.props('options').plugins.tooltip.callbacks.footer([{ dataIndex: 0 }])).toContain('Actual < USD 0.000001')
     const section = wrapper.get('[data-distribution="models"]')
-    await section.findAll('.analytics-segment button')[1].trigger('click')
+    await section.findAll('[role="radio"]')[1].trigger('click')
     const doughnut = section.findComponent({ name: 'Doughnut' })
     expect(doughnut.props('options').plugins.tooltip.callbacks.label({ label: 'claude-sonnet', raw: 1e-8 })).toBe('claude-sonnet: < USD 0.000001')
     wrapper.unmount()
@@ -185,14 +186,15 @@ describe('PortalUsageAnalytics', () => {
   it('applies calendar date ranges to every aggregate and reloads the selected granularity', async () => {
     const wrapper = mountAnalytics()
     await flushPromises()
-    await wrapper.get('[data-testid="analytics-preset"]').setValue('custom')
+    wrapper.get('[data-testid="analytics-preset"]').getComponent(UiSelect).vm.$emit('update:modelValue', 'custom')
+    await flushPromises()
     await wrapper.get('[data-testid="analytics-start"]').setValue('2026-09-01')
     await wrapper.get('[data-testid="analytics-end"]').setValue('2026-09-03')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(getStats).toHaveBeenLastCalledWith(expect.objectContaining({ start_date: '2026-09-01', end_date: '2026-09-03' }))
     expect(getDashboardModels).toHaveBeenLastCalledWith(expect.objectContaining({ start_date: '2026-09-01', end_date: '2026-09-03' }))
-    await wrapper.get('[data-testid="analytics-granularity"]').setValue('hour')
+    wrapper.get('[data-testid="analytics-granularity"]').getComponent(UiSelect).vm.$emit('update:modelValue', 'hour')
     await flushPromises()
     expect(getDashboardSnapshotV2).toHaveBeenLastCalledWith(expect.objectContaining({ granularity: 'hour', start_date: '2026-09-01' }))
     await wrapper.get('[data-testid="analytics-start"]').setValue('2026-09-04')
@@ -208,7 +210,7 @@ describe('PortalUsageAnalytics', () => {
     getStats.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve }))
     const wrapper = mountAnalytics()
     await flushPromises()
-    await wrapper.get('[data-testid="analytics-preset"]').setValue('today')
+    wrapper.get('[data-testid="analytics-preset"]').getComponent(UiSelect).vm.$emit('update:modelValue', 'today')
     await flushPromises()
     expect(wrapper.get('[data-testid="analytics-requests"]').text()).toBe('42')
     resolveOld(summary(999))

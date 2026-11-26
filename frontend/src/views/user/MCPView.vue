@@ -1,82 +1,194 @@
 <template>
-  <div class="portal-page mcp-page">
-    <MdPageHeader
-      :eyebrow="t('mcp.title')"
-      :title="t('mcp.title')"
-      :description="t('mcp.connectionDescription')"
-    />
-    <div class="mx-auto max-w-5xl space-y-6">
-      <section class="card p-5 sm:p-6" aria-labelledby="mcp-connection-title" :aria-busy="connectionLoading">
-        <div class="flex items-start gap-3">
-          <div class="rounded-xl bg-primary-50 p-3 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400">
-            <Icon name="mcp" size="lg" />
-          </div>
-          <div>
-            <h2 id="mcp-connection-title" class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('mcp.connectionTitle') }}</h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('mcp.connectionDescription') }}</p>
-          </div>
-        </div>
-        <div class="mt-5">
-          <label for="mcp-endpoint" class="input-label">{{ t('mcp.endpoint') }}</label>
-          <div class="flex flex-col gap-2 sm:flex-row">
-            <input id="mcp-endpoint" :value="endpoint" :placeholder="connectionLoading ? t('mcp.connectionLoading') : ''" class="input min-w-0 flex-1 font-mono text-sm" readonly />
-            <button data-testid="copy-endpoint" class="btn btn-secondary shrink-0" type="button" :disabled="!endpoint || connectionLoading" @click="copyToClipboard(endpoint)">{{ t('mcp.copyEndpoint') }}</button>
-          </div>
-          <div v-if="connectionError" class="mt-3 flex flex-wrap items-center gap-3">
-            <p role="alert" class="text-sm text-red-600 dark:text-red-400">{{ connectionError }}</p>
-            <button data-testid="retry-connection" class="btn btn-secondary btn-sm" type="button" :disabled="connectionLoading" @click="loadConnection">{{ t('common.refresh') }}</button>
-          </div>
-          <ol class="mt-5 list-decimal space-y-2 pl-5 text-sm text-gray-600 dark:text-gray-300">
-            <li>{{ t('mcp.connectStep1') }}</li>
-            <li>{{ t('mcp.connectStep2') }}</li>
-            <li>{{ t('mcp.connectStep3') }}</li>
-          </ol>
-        </div>
-        <p class="mt-5 border-t border-gray-100 pt-4 text-sm text-gray-500 dark:border-dark-700 dark:text-gray-400">{{ t('mcp.capabilities') }}</p>
-      </section>
+  <div class="mx-auto max-w-[1040px] space-y-6 pb-10">
+    <header>
+      <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+        {{ t('mcp.title') }}
+      </h1>
+      <p class="mt-1 text-sm text-[var(--atelier-ink-secondary)]">
+        {{ t('mcp.connectionDescription') }}
+      </p>
+    </header>
 
-      <section class="card" aria-labelledby="mcp-grants-title">
-        <div class="flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 p-5 dark:border-dark-700 sm:p-6">
-          <div class="max-w-xl">
-            <h2 id="mcp-grants-title" class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('mcp.grantsTitle') }}</h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('mcp.grantsDescription') }}</p>
-          </div>
-          <button data-testid="refresh-grants" type="button" class="btn btn-secondary" :disabled="loading || revoking" @click="loadGrants">{{ t('common.refresh') }}</button>
+    <!-- MCP Endpoint Connection Card -->
+    <section class="atelier-surface p-6" aria-labelledby="mcp-connection-title" :aria-busy="connectionLoading">
+      <div class="flex items-start gap-3">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] text-[var(--atelier-ink)]">
+          <Icon name="mcp" size="md" />
         </div>
-        <div class="p-5 sm:p-6" :aria-busy="loading">
-          <p v-if="loadError" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
-          <p v-else-if="loading" role="status" class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">{{ t('mcp.loading') }}</p>
-          <p v-else-if="grants.length === 0" class="rounded-xl border border-dashed border-gray-200 px-4 py-10 text-center text-sm text-gray-500 dark:border-dark-700 dark:text-gray-400">{{ t('mcp.empty') }}</p>
-          <ul v-else class="divide-y divide-gray-100 dark:divide-dark-700">
-            <li v-for="grant in grants" :key="grant.id" class="flex items-start justify-between gap-4 py-5 first:pt-0 last:pb-0" :data-grant-id="grant.id">
-              <div class="min-w-0 space-y-2">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="break-all font-medium text-gray-900 dark:text-white">{{ grant.client_name }}</span>
-                  <span class="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-dark-700 dark:text-gray-300">{{ grant.scope === 'admin' ? t('mcp.adminScope') : t('mcp.userScope') }}</span>
-                  <span class="rounded-md bg-primary-50 px-2 py-0.5 text-xs text-primary-700 dark:bg-primary-900/20 dark:text-primary-300">{{ grant.read_only ? t('mcp.readOnly') : t('mcp.readWrite') }}</span>
-                  <span class="text-xs" :class="isActive(grant) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'">{{ grantStatus(grant) }}</span>
-                </div>
-                <p class="truncate font-mono text-xs text-gray-500 dark:text-gray-400" :title="grant.client_id">{{ grant.client_id }}</p>
-                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                  <span>{{ t('mcp.createdAt', { date: formatDate(grant.created_at) }) }}</span>
-                  <span>{{ t('mcp.expiresAt', { date: formatDate(grant.expires_at) }) }}</span>
-                  <span>{{ grant.last_used_at ? t('mcp.lastUsedAt', { date: formatDate(grant.last_used_at) }) : t('mcp.neverUsed') }}</span>
-                </div>
+        <div>
+          <h2 id="mcp-connection-title" class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+            {{ t('mcp.connectionTitle') }}
+          </h2>
+          <p class="mt-0.5 text-sm text-[var(--atelier-ink-secondary)]">
+            {{ t('mcp.connectionDescription') }}
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-5">
+        <label for="mcp-endpoint" class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+          {{ t('mcp.endpoint') }}
+        </label>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <input
+            id="mcp-endpoint"
+            :value="endpoint"
+            :placeholder="connectionLoading ? t('mcp.connectionLoading') : ''"
+            class="atelier-input min-w-0 flex-1 font-mono text-xs"
+            readonly
+          />
+          <UiButton
+            data-testid="copy-endpoint"
+            variant="secondary"
+            size="md"
+            type="button"
+            class="shrink-0"
+            :disabled="!endpoint || connectionLoading"
+            @click="copyToClipboard(endpoint)"
+          >
+            {{ t('mcp.copyEndpoint') }}
+          </UiButton>
+        </div>
+
+        <div v-if="connectionError" class="mt-3 flex flex-wrap items-center gap-3">
+          <p role="alert" class="text-xs text-[var(--atelier-err)]">{{ connectionError }}</p>
+          <UiButton
+            data-testid="retry-connection"
+            variant="secondary"
+            size="sm"
+            type="button"
+            :disabled="connectionLoading"
+            @click="loadConnection"
+          >
+            {{ t('common.refresh') }}
+          </UiButton>
+        </div>
+
+        <ol class="mt-5 list-decimal space-y-1.5 pl-5 text-sm text-[var(--atelier-ink-secondary)]">
+          <li>{{ t('mcp.connectStep1') }}</li>
+          <li>{{ t('mcp.connectStep2') }}</li>
+          <li>{{ t('mcp.connectStep3') }}</li>
+        </ol>
+      </div>
+
+      <p class="mt-5 border-t border-[var(--atelier-border)] pt-4 text-xs text-[var(--atelier-ink-muted)]">
+        {{ t('mcp.capabilities') }}
+      </p>
+    </section>
+
+    <!-- Authorized MCP Grants -->
+    <section class="atelier-surface overflow-hidden" aria-labelledby="mcp-grants-title">
+      <header class="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--atelier-border)] px-6 py-4">
+        <div class="max-w-xl">
+          <h2 id="mcp-grants-title" class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+            {{ t('mcp.grantsTitle') }}
+          </h2>
+          <p class="mt-0.5 text-xs text-[var(--atelier-ink-secondary)]">
+            {{ t('mcp.grantsDescription') }}
+          </p>
+        </div>
+        <UiButton
+          data-testid="refresh-grants"
+          variant="secondary"
+          size="sm"
+          type="button"
+          :disabled="loading || revoking"
+          @click="loadGrants"
+        >
+          {{ t('common.refresh') }}
+        </UiButton>
+      </header>
+
+      <div class="p-6" :aria-busy="loading">
+        <p v-if="loadError" role="alert" class="rounded-lg bg-[var(--atelier-err-bg)] px-3.5 py-2.5 text-xs text-[var(--atelier-err)]">
+          {{ loadError }}
+        </p>
+        <p v-else-if="loading" role="status" class="py-10 text-center text-sm text-[var(--atelier-ink-muted)]">
+          {{ t('mcp.loading') }}
+        </p>
+        <p
+          v-else-if="grants.length === 0"
+          class="rounded-xl border border-dashed border-[var(--atelier-border-strong)] px-4 py-10 text-center text-sm text-[var(--atelier-ink-muted)]"
+        >
+          {{ t('mcp.empty') }}
+        </p>
+        <ul v-else class="divide-y divide-[var(--atelier-border)]">
+          <li
+            v-for="grant in grants"
+            :key="grant.id"
+            class="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
+            :data-grant-id="grant.id"
+          >
+            <div class="min-w-0 space-y-1.5">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="break-all text-sm font-semibold text-[var(--atelier-ink)]">{{ grant.client_name }}</span>
+                <span class="rounded-md border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--atelier-ink-secondary)]">
+                  {{ grant.scope === 'admin' ? t('mcp.adminScope') : t('mcp.userScope') }}
+                </span>
+                <span class="rounded-md border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--atelier-ink-secondary)]">
+                  {{ grant.read_only ? t('mcp.readOnly') : t('mcp.readWrite') }}
+                </span>
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                  :class="isActive(grant) ? 'bg-[var(--atelier-ok-bg)] text-[var(--atelier-ok)]' : 'bg-[var(--atelier-subtle)] text-[var(--atelier-ink-muted)]'"
+                >
+                  <UiStatusDot :tone="isActive(grant) ? 'ok' : 'neutral'" />
+                  {{ grantStatus(grant) }}
+                </span>
               </div>
-              <button v-if="!grant.revoked_at" type="button" class="btn btn-ghost btn-sm shrink-0 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20" :aria-label="`${t('mcp.revoke')} ${grant.client_name}`" @click="revokeTarget = grant">{{ t('mcp.revoke') }}</button>
-            </li>
-          </ul>
-        </div>
-      </section>
-    </div>
+              <p class="truncate font-mono text-xs text-[var(--atelier-ink-muted)]" :title="grant.client_id">
+                {{ grant.client_id }}
+              </p>
+              <div class="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-[var(--atelier-ink-muted)]">
+                <span>{{ t('mcp.createdAt', { date: formatDate(grant.created_at) }) }}</span>
+                <span>{{ t('mcp.expiresAt', { date: formatDate(grant.expires_at) }) }}</span>
+                <span>{{ grant.last_used_at ? t('mcp.lastUsedAt', { date: formatDate(grant.last_used_at) }) : t('mcp.neverUsed') }}</span>
+              </div>
+            </div>
+            <UiButton
+              v-if="!grant.revoked_at"
+              variant="ghost"
+              size="sm"
+              type="button"
+              class="shrink-0 !text-[var(--atelier-err)] hover:!bg-[var(--atelier-err-bg)]"
+              :aria-label="`${t('mcp.revoke')} ${grant.client_name}`"
+              @click="revokeTarget = grant"
+            >
+              {{ t('mcp.revoke') }}
+            </UiButton>
+          </li>
+        </ul>
+      </div>
+    </section>
 
-    <BaseDialog :show="!!revokeTarget" :title="t('mcp.revokeTitle')" width="narrow" :close-on-escape="!revoking" :show-close-button="!revoking" @close="closeRevoke">
-      <p class="text-sm text-gray-600 dark:text-gray-300">{{ t('mcp.revokeConfirm', { name: revokeTarget?.client_name || '' }) }}</p>
-      <p v-if="revokeError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ revokeError }}</p>
+    <BaseDialog
+      :show="!!revokeTarget"
+      :title="t('mcp.revokeTitle')"
+      width="narrow"
+      :close-on-escape="!revoking"
+      :show-close-button="!revoking"
+      @close="closeRevoke"
+    >
+      <p class="text-sm text-[var(--atelier-ink-secondary)]">
+        {{ t('mcp.revokeConfirm', { name: revokeTarget?.client_name || '' }) }}
+      </p>
+      <p v-if="revokeError" role="alert" class="mt-3 text-xs text-[var(--atelier-err)]">{{ revokeError }}</p>
       <template #footer>
-        <div class="flex justify-end gap-3">
-          <button type="button" class="btn btn-secondary" :disabled="revoking" @click="closeRevoke">{{ t('common.cancel') }}</button>
-          <button data-testid="confirm-revoke" type="button" class="btn btn-danger" :disabled="revoking || loading" @click="revokeGrant">{{ revoking ? t('common.processing') : t('mcp.revoke') }}</button>
+        <div class="flex justify-end gap-2">
+          <UiButton variant="secondary" size="md" type="button" :disabled="revoking" @click="closeRevoke">
+            {{ t('common.cancel') }}
+          </UiButton>
+          <UiButton
+            data-testid="confirm-revoke"
+            variant="danger"
+            size="md"
+            type="button"
+            :disabled="revoking || loading"
+            :loading="revoking"
+            @click="revokeGrant"
+          >
+            {{ revoking ? t('common.processing') : t('mcp.revoke') }}
+          </UiButton>
         </div>
       </template>
     </BaseDialog>
@@ -88,12 +200,12 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { mcpAPI, type MCPGrant } from '@/api/mcp'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import { MdPageHeader } from '@/components/md'
 import { Icon } from '@/components/icons'
 import { useClipboard } from '@/composables/useClipboard'
 import { useAppStore } from '@/stores/app'
 import { userFacingError } from '@/utils/userFacingError'
 import { formatDate } from '@/utils/format'
+import { UiButton, UiStatusDot } from '@/ui'
 
 const { t, locale } = useI18n()
 const appStore = useAppStore()

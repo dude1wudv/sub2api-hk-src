@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-page admin-page--resources" data-admin-page="proxies">
+  <div class="space-y-6" data-admin-page="proxies">
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-wrap items-center gap-3">

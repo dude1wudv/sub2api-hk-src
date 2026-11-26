@@ -6,6 +6,7 @@ import enCommon from "@/i18n/locales/en/common";
 import enSettings from "@/i18n/locales/en/admin/settings";
 import zhCommon from "@/i18n/locales/zh/common";
 import zhSettings from "@/i18n/locales/zh/admin/settings";
+import { UiButton, UiSelect } from "@/ui";
 import SettingsView from "../SettingsView.vue";
 
 const {
@@ -1499,10 +1500,10 @@ describe("admin SettingsView payment visible method controls", () => {
     await flushPromises();
     await openGatewayTab(wrapper);
 
-    const modeSelect = wrapper.get('[data-testid="openai-ttft-mode"]');
-    expect((modeSelect.element as HTMLSelectElement).value).toBe("visible");
+    const modeSelect = wrapper.get('[data-testid="openai-ttft-mode"]').getComponent(UiSelect);
+    expect(modeSelect.props("modelValue")).toBe("visible");
 
-    await modeSelect.setValue("semantic");
+    await modeSelect.vm.$emit("update:modelValue", "semantic");
     await wrapper.find("form").trigger("submit.prevent");
     await flushPromises();
 
@@ -1523,10 +1524,10 @@ describe("admin SettingsView payment visible method controls", () => {
     await openGatewayTab(wrapper);
     const fields = wrapper.get('[data-testid="reasoning-default-fields"]');
     expect((fields.get('input[type="checkbox"]').element as HTMLInputElement).checked).toBe(true);
-    await fields.findAll("select")[2]!.setValue("medium");
+    await fields.findAllComponents(UiSelect)[2]!.vm.$emit("update:modelValue", "medium");
     await fields.get('[data-testid="reasoning-default-add"]').trigger("click");
     expect(fields.findAll("tbody tr")).toHaveLength(2);
-    await fields.findAll("tbody tr")[1]!.get("button").trigger("click");
+    await fields.findAll("tbody tr")[1]!.getComponent(UiButton).trigger("click");
     await wrapper.find("form").trigger("submit.prevent");
     await flushPromises();
     expect(updateSettings.mock.calls.at(-1)?.[0].gateway_reasoning_effort_default).toEqual({

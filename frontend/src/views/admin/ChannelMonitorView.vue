@@ -1,32 +1,32 @@
 <template>
-  <div class="admin-page admin-page--resources" data-admin-page="channel-monitor">
+  <div class="space-y-6" data-admin-page="channel-monitor">
     <div class="w-full min-w-0 space-y-6 pb-8">
-      <header
-        class="page-header admin-monitor-header mb-0 p-5 sm:p-6"
-      >
-        <h1 class="page-title admin-monitor-title flex items-center gap-2.5 text-xl font-semibold tracking-tight">
-          <span class="admin-monitor-icon inline-flex h-8 w-8 items-center justify-center rounded-lg">
-            <Icon name="chart" size="sm" />
-          </span>
-          {{ t('admin.channelMonitor.title') }}
-        </h1>
-        <p class="page-description admin-monitor-desc mt-1.5 text-xs">
-          {{
-            isV1Mode
-              ? t('channelMonitorV2.admin.descriptionV1')
-              : t('channelMonitorV2.admin.descriptionV2')
-          }}
-        </p>
-        <div class="admin-monitor-tabbar mt-4 pt-4">
+      <header class="page-header atelier-surface mb-0 p-5 sm:p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <h1 class="page-title flex items-center gap-2.5 text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+              <Icon name="chart" size="sm" class="text-[var(--atelier-ink-secondary)]" />
+              {{ t('admin.channelMonitor.title') }}
+            </h1>
+            <p class="page-description mt-1 text-sm text-[var(--atelier-ink-secondary)]">
+              {{
+                isV1Mode
+                  ? t('channelMonitorV2.admin.descriptionV1')
+                  : t('channelMonitorV2.admin.descriptionV2')
+              }}
+            </p>
+          </div>
+        </div>
+        <div class="mt-5 border-b border-[var(--atelier-border)]">
           <div
-            class="tabs inline-flex w-full max-w-xl flex-wrap sm:w-auto"
+            class="tabs flex items-center gap-6"
             role="tablist"
             :aria-label="t('channelMonitorV2.admin.tabAria')"
           >
             <button
               type="button"
               role="tab"
-              class="tab flex-1 sm:flex-none"
+              class="tab"
               :class="adminMonitorTab === 'v2' ? 'tab-active' : ''"
               :aria-selected="adminMonitorTab === 'v2'"
               @click="adminMonitorTab = 'v2'"
@@ -36,7 +36,7 @@
             <button
               type="button"
               role="tab"
-              class="tab flex-1 sm:flex-none"
+              class="tab"
               :class="adminMonitorTab === 'legacy' ? 'tab-active' : ''"
               :aria-selected="adminMonitorTab === 'legacy'"
               @click="adminMonitorTab = 'legacy'"
@@ -394,41 +394,28 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.admin-monitor-header {
-  background: rgb(var(--surface));
-  border: 1px solid rgb(var(--line));
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-panel);
+.tabs {
+  margin-bottom: -1px;
 }
-.admin-monitor-title {
-  color: rgb(var(--ink));
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.125rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--atelier-ink-secondary);
+  border-bottom: 2px solid transparent;
+  transition: color var(--motion-fast) ease, border-color var(--motion-fast) ease;
+  cursor: pointer;
 }
-.admin-monitor-icon {
-  color: rgb(var(--brand-moss));
-  background: rgb(var(--brand-moss) / 0.1);
-  border: 1px solid rgb(var(--brand-moss) / 0.22);
+.tab:hover {
+  color: var(--atelier-ink);
 }
-.admin-monitor-desc {
-  color: rgb(var(--ink-3));
-}
-.admin-monitor-tabbar {
-  border-top: 1px solid rgb(var(--line));
-}
-.admin-monitor-tabbar :deep(.tabs) {
-  background: rgb(var(--surface-2));
-  border: 1px solid rgb(var(--line));
-  border-radius: var(--radius-control);
-  padding: 2px;
-  gap: 2px;
-}
-.admin-monitor-tabbar :deep(.tab) {
-  border-radius: calc(var(--radius-control) - 2px);
-  color: rgb(var(--ink-2));
-}
-.admin-monitor-tabbar :deep(.tab-active) {
-  background: rgb(var(--surface));
-  color: rgb(var(--ink));
+.tab-active {
+  color: var(--atelier-ink);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+  border-bottom-color: var(--atelier-ink);
 }
 </style>

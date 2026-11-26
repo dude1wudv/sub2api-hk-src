@@ -1,441 +1,461 @@
 <template>
-  <div class="admin-page admin-page--analysis" data-admin-page="dashboard">
-    <div class="operations-dashboard space-y-6">
-      <InkSurface as="section" interactive class="admin-workbench-intro">
-        <div>
-          <span class="admin-eyebrow">{{ zh ? '遥测总览' : 'Telemetry overview' }}</span>
-          <h2>{{ zh ? '资源与用量' : 'Resources & usage' }}</h2>
-        </div>
-        <span v-if="stats?.stats_stale" class="admin-status-note" role="status">{{ zh ? '统计待更新' : 'Statistics awaiting refresh' }}</span>
-      </InkSurface>
-      <div class="admin-dashboard-toolbar"><router-link to="/admin/accounts" class="btn btn-secondary"><Icon name="server" size="sm" />{{ t('nav.accounts') }}</router-link><button class="btn btn-secondary" :disabled="loading || chartsLoading" @click="loadDashboardStats"><Icon name="refresh" size="sm" />{{ t('common.refresh') }}</button></div>
-      <nav class="operations-links" :aria-label="zh ? '运营快捷入口' : 'Operations shortcuts'">
-        <router-link to="/admin/users"><Icon name="users" size="sm" />{{ t('admin.users.title') }}</router-link>
-        <router-link to="/admin/groups"><Icon name="grid" size="sm" />{{ t('admin.groups.title') }}</router-link>
-        <router-link to="/admin/usage"><Icon name="chart" size="sm" />{{ t('admin.usage.title') }}</router-link>
-        <router-link to="/admin/audit-logs"><Icon name="shield" size="sm" />{{ t('admin.audit.title') }}</router-link>
-      </nav>
-      <div class="dashboard-section-heading"><h2>{{ zh ? '核心运营指标' : 'Core operational metrics' }}</h2></div>
-      <!-- Loading State -->
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <LoadingSpinner />
-      </div>
+  <div class="space-y-6" data-admin-page="dashboard">
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center py-16">
+      <LoadingSpinner />
+    </div>
 
-      <template v-else-if="stats">
-        <!-- Row 1: Core Stats -->
-        <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
-          <!-- Total API Keys -->
-          <div data-metric="keys" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-            <div class="flex items-center gap-3">
-              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-100/70 text-link-700 dark:bg-link-900/30 dark:text-link-300">
-                <Icon name="key" size="md" :stroke-width="2" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
-                  {{ t('admin.dashboard.apiKeys') }}
-                </p>
-                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
-                  {{ stats.total_api_keys }}
-                </p>
-                <p class="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  <span class="tabular-nums">{{ stats.active_api_keys }}</span> {{ t('common.active') }}
-                </p>
-              </div>
-            </div>
+    <template v-else-if="stats">
+      <!-- Single-Row Atelier Metric Ribbon (replaces 4-equal-grid KPI boxes) -->
+      <UiMetricRibbon
+        :primary-label="t('admin.dashboard.todayRequests')"
+        :primary-value="formatNumber(stats.today_requests)"
+        :primary-meta="`${t('common.total')}: ${formatNumber(stats.total_requests)}`"
+        :metrics="ribbonMetrics"
+        show-dots
+      >
+        <template #primaryAction>
+          <div class="flex flex-wrap items-center gap-2">
+            <span
+              v-if="stats.stats_stale"
+              role="status"
+              class="inline-flex items-center gap-1.5 rounded-full border border-[var(--atelier-border)] bg-[var(--atelier-warn-bg)] px-2.5 py-1 text-xs font-medium text-[var(--atelier-warn)]"
+            >
+              <UiStatusDot tone="warn" />
+              {{ zh ? '统计待更新' : 'Statistics awaiting refresh' }}
+            </span>
+            <UiButton
+              variant="secondary"
+              size="sm"
+              :disabled="loading || chartsLoading"
+              @click="loadDashboardStats"
+            >
+              <Icon name="refresh" size="sm" :class="chartsLoading ? 'animate-spin' : ''" />
+              {{ t('common.refresh') }}
+            </UiButton>
+            <router-link to="/admin/accounts" class="atelier-btn atelier-btn-secondary h-8 px-3 text-xs">
+              <Icon name="server" size="sm" />
+              {{ t('nav.accounts') }}
+            </router-link>
           </div>
+        </template>
+      </UiMetricRibbon>
 
-          <!-- Service Accounts -->
-          <div data-metric="accounts" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-            <div class="flex items-center gap-3">
-              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
-                <Icon name="server" size="md" :stroke-width="2" />
+      <!-- Asymmetric Operational Ledger (7 / 5 split) -->
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <!-- Left: Fleet, Keys, Users & Consumption Ledger -->
+        <section class="atelier-surface flex flex-col justify-between p-5 lg:col-span-7">
+          <div>
+            <div class="flex items-center justify-between gap-3 border-b border-[var(--atelier-border)] pb-3">
+              <div>
+                <h2 class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+                  {{ zh ? '资源与核心运营指标' : 'Resources & core operational metrics' }}
+                </h2>
+                <p class="mt-0.5 text-xs text-[var(--atelier-ink-muted)]">
+                  {{ zh ? '实时统计口径，点击异常账号可直接筛选排查' : 'Live operational totals — drill directly into error accounts or admin modules' }}
+                </p>
               </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
-                  {{ t('admin.dashboard.accounts') }}
-                </p>
-                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
-                  {{ stats.total_accounts }}
-                </p>
-                <p class="truncate text-xs">
-                  <span class="font-medium text-emerald-600 dark:text-emerald-400"
-                    ><span class="tabular-nums">{{ stats.normal_accounts }}</span> {{ t('common.active') }}</span
+              <span class="font-mono text-xs tabular-nums text-[var(--atelier-ink-muted)]">
+                {{ formatTokens(stats.rpm) }} RPM · {{ formatTokens(stats.tpm) }} TPM
+              </span>
+            </div>
+
+            <dl class="divide-y divide-[var(--atelier-border-subtle)]">
+              <!-- API Keys -->
+              <div data-metric="keys" class="flex flex-wrap items-center justify-between gap-3 py-3.5">
+                <dt class="flex items-center gap-2.5 text-sm text-[var(--atelier-ink-secondary)]">
+                  <Icon name="key" size="sm" class="text-[var(--atelier-ink-muted)]" />
+                  <span>{{ t('admin.dashboard.apiKeys') }}</span>
+                </dt>
+                <dd class="flex items-baseline gap-3">
+                  <span class="font-mono text-base font-semibold tabular-nums text-[var(--atelier-ink)]">
+                    {{ formatNumber(stats.total_api_keys) }}
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 text-xs text-[var(--atelier-ok)]">
+                    <UiStatusDot tone="ok" />
+                    <span class="font-mono tabular-nums">{{ formatNumber(stats.active_api_keys) }}</span>
+                    {{ t('common.active') }}
+                  </span>
+                </dd>
+              </div>
+
+              <!-- Accounts -->
+              <div data-metric="accounts" class="flex flex-wrap items-center justify-between gap-3 py-3.5">
+                <dt class="flex items-center gap-2.5 text-sm text-[var(--atelier-ink-secondary)]">
+                  <Icon name="server" size="sm" class="text-[var(--atelier-ink-muted)]" />
+                  <span>{{ t('admin.dashboard.accounts') }}</span>
+                </dt>
+                <dd class="flex flex-wrap items-center gap-3">
+                  <span class="font-mono text-base font-semibold tabular-nums text-[var(--atelier-ink)]">
+                    {{ formatNumber(stats.total_accounts) }}
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 text-xs text-[var(--atelier-ok)]">
+                    <UiStatusDot tone="ok" />
+                    <span class="font-mono tabular-nums">{{ formatNumber(stats.normal_accounts) }}</span>
+                    {{ t('common.active') }}
+                  </span>
+                  <button
+                    v-if="stats.error_accounts > 0"
+                    type="button"
+                    data-test="error-account-drill"
+                    class="inline-flex items-center gap-1 rounded-full bg-[var(--atelier-err-bg)] px-2.5 py-0.5 text-xs font-medium text-[var(--atelier-err)] transition-opacity hover:opacity-85"
+                    @click="goToErrorAccounts"
                   >
-                  <button v-if="stats.error_accounts > 0" type="button" class="admin-metric-drill" data-test="error-account-drill" @click="goToErrorAccounts">
-                    <span class="tabular-nums">{{ stats.error_accounts }}</span> {{ t('common.error') }}<Icon name="arrowRight" size="sm" />
+                    <UiStatusDot tone="err" />
+                    <span class="font-mono tabular-nums">{{ stats.error_accounts }}</span>
+                    {{ t('common.error') }}
+                    <Icon name="arrowRight" size="xs" />
                   </button>
-                </p>
+                </dd>
               </div>
-            </div>
+
+              <!-- Users & Balance -->
+              <div data-metric="users" class="flex flex-wrap items-center justify-between gap-3 py-3.5">
+                <dt class="flex items-center gap-2.5 text-sm text-[var(--atelier-ink-secondary)]">
+                  <Icon name="userPlus" size="sm" class="text-[var(--atelier-ink-muted)]" />
+                  <span>{{ t('admin.dashboard.users') }}</span>
+                </dt>
+                <dd class="flex flex-wrap items-baseline gap-3">
+                  <span class="font-mono text-base font-semibold tabular-nums text-[var(--atelier-ok)]">
+                    +{{ formatNumber(stats.today_new_users) }}
+                  </span>
+                  <span class="text-xs text-[var(--atelier-ink-muted)]">
+                    {{ t('common.total') }}:
+                    <span class="font-mono font-medium tabular-nums text-[var(--atelier-ink-secondary)]">{{ formatNumber(stats.total_users) }}</span>
+                  </span>
+                  <span data-metric="user-balance" class="text-xs text-[var(--atelier-ink-muted)]">
+                    {{ zh ? '用户余额' : 'User balance' }}:
+                    <span class="font-mono font-semibold tabular-nums text-[var(--atelier-ink)]">${{ formatCost(stats.users_with_balance_total) }}</span>
+                    ({{ stats.users_with_balance ?? 0 }})
+                  </span>
+                </dd>
+              </div>
+
+              <!-- Today Tokens & Cost Breakdown -->
+              <div data-metric="tokens" class="flex flex-wrap items-center justify-between gap-3 py-3.5">
+                <dt class="flex items-center gap-2.5 text-sm text-[var(--atelier-ink-secondary)]">
+                  <Icon name="cube" size="sm" class="text-[var(--atelier-ink-muted)]" />
+                  <span>{{ t('admin.dashboard.todayTokens') }}</span>
+                </dt>
+                <dd class="flex flex-wrap items-baseline gap-3">
+                  <span class="font-mono text-base font-semibold tabular-nums text-[var(--atelier-ink)]">
+                    {{ formatTokens(stats.today_tokens) }}
+                  </span>
+                  <span class="font-mono text-xs tabular-nums">
+                    <span class="font-medium text-[var(--atelier-ok)]" :title="t('admin.dashboard.actual')">${{ formatCost(stats.today_actual_cost) }}</span>
+                    <span class="mx-1 text-[var(--atelier-ink-muted)]">/</span>
+                    <span class="font-medium text-[var(--atelier-warn)]" :title="t('admin.dashboard.accountCost')">${{ formatCost(stats.today_account_cost) }}</span>
+                    <span class="mx-1 text-[var(--atelier-ink-muted)]">/</span>
+                    <span class="text-[var(--atelier-ink-muted)]" :title="t('admin.dashboard.standard')">${{ formatCost(stats.today_cost) }}</span>
+                  </span>
+                </dd>
+              </div>
+
+              <!-- Total Tokens & Cost Breakdown -->
+              <div data-metric="total-tokens" class="flex flex-wrap items-center justify-between gap-3 py-3.5">
+                <dt class="flex items-center gap-2.5 text-sm text-[var(--atelier-ink-secondary)]">
+                  <Icon name="database" size="sm" class="text-[var(--atelier-ink-muted)]" />
+                  <span>{{ t('admin.dashboard.totalTokens') }}</span>
+                </dt>
+                <dd class="flex flex-wrap items-baseline gap-3">
+                  <span class="font-mono text-base font-semibold tabular-nums text-[var(--atelier-ink)]">
+                    {{ formatTokens(stats.total_tokens) }}
+                  </span>
+                  <span class="font-mono text-xs tabular-nums">
+                    <span class="font-medium text-[var(--atelier-ok)]" :title="t('admin.dashboard.actual')">${{ formatCost(stats.total_actual_cost) }}</span>
+                    <span class="mx-1 text-[var(--atelier-ink-muted)]">/</span>
+                    <span class="font-medium text-[var(--atelier-warn)]" :title="t('admin.dashboard.accountCost')">${{ formatCost(stats.total_account_cost) }}</span>
+                    <span class="mx-1 text-[var(--atelier-ink-muted)]">/</span>
+                    <span class="text-[var(--atelier-ink-muted)]" :title="t('admin.dashboard.standard')">${{ formatCost(stats.total_cost) }}</span>
+                  </span>
+                </dd>
+              </div>
+            </dl>
           </div>
 
-          <!-- Today Requests -->
-          <div data-metric="requests" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-            <div class="flex items-center gap-3">
-              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
-                <Icon name="chart" size="md" :stroke-width="2" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
-                  {{ t('admin.dashboard.todayRequests') }}
-                </p>
-                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
-                  {{ stats.today_requests }}
-                </p>
-                <p class="truncate text-xs text-gray-400 dark:text-dark-400">
-                  {{ t('common.total') }}: <span class="font-medium text-gray-600 dark:text-dark-200 tabular-nums">{{ formatNumber(stats.total_requests) }}</span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- New Users Today -->
-          <div data-metric="users" class="card relative overflow-hidden p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-            <div class="flex items-center gap-3">
-              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                <Icon name="userPlus" size="md" :stroke-width="2" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
-                  {{ t('admin.dashboard.users') }}
-                </p>
-                <p class="metric-value text-emerald-600 tabular-nums dark:text-emerald-400">
-                  +{{ stats.today_new_users }}
-                </p>
-                <p class="truncate text-xs text-gray-400 dark:text-dark-400">
-                  {{ t('common.total') }}: <span class="font-medium text-gray-600 dark:text-dark-200 tabular-nums">{{ formatNumber(stats.total_users) }}</span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div data-metric="user-balance" class="card p-4">
-          <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ zh ? '用户余额' : 'User balance' }}</p>
-          <p class="metric-value tabular-nums">${{ formatCost(stats.users_with_balance_total) }}</p>
-          <p class="text-xs text-gray-500 dark:text-dark-300">{{ stats.users_with_balance ?? 0 }} {{ zh ? '个用户有余额（包含赠送余额）' : 'users hold a balance (including credits)' }}</p>
-        </div>
-
-        <!-- Row 2: Token Stats -->
-        <div class="dashboard-section-heading"><h2>{{ zh ? '消耗与性能' : 'Consumption & performance' }}</h2></div>
-        <div class="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4">
-          <!-- Today Tokens -->
-          <div data-metric="tokens" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-            <div class="flex items-center gap-3">
-              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                <Icon name="cube" size="md" :stroke-width="2" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
-                  {{ t('admin.dashboard.todayTokens') }}
-                </p>
-                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
-                  {{ formatTokens(stats.today_tokens) }}
-                </p>
-                <p class="truncate text-xs">
-                  <span
-                    class="font-medium text-emerald-600 tabular-nums dark:text-emerald-400"
-                    :title="t('admin.dashboard.actual')"
-                    >${{ formatCost(stats.today_actual_cost) }}</span
-                  >
-                  <span class="text-gray-300 dark:text-dark-600"> / </span>
-                  <span
-                    class="font-medium text-amber-600 tabular-nums dark:text-amber-400"
-                    :title="t('admin.dashboard.accountCost')"
-                    >${{ formatCost(stats.today_account_cost) }}</span
-                  >
-                  <span class="text-gray-300 dark:text-dark-600"> / </span>
-                  <span
-                    class="text-gray-400 tabular-nums dark:text-dark-400"
-                    :title="t('admin.dashboard.standard')"
-                    >${{ formatCost(stats.today_cost) }}</span
-                  >
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Total Tokens -->
-          <div data-metric="tokens" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-            <div class="flex items-center gap-3">
-              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
-                <Icon name="database" size="md" :stroke-width="2" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
-                  {{ t('admin.dashboard.totalTokens') }}
-                </p>
-                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
-                  {{ formatTokens(stats.total_tokens) }}
-                </p>
-                <p class="truncate text-xs">
-                  <span
-                    class="font-medium text-emerald-600 tabular-nums dark:text-emerald-400"
-                    :title="t('admin.dashboard.actual')"
-                    >${{ formatCost(stats.total_actual_cost) }}</span
-                  >
-                  <span class="text-gray-300 dark:text-dark-600"> / </span>
-                  <span
-                    class="font-medium text-amber-600 tabular-nums dark:text-amber-400"
-                    :title="t('admin.dashboard.accountCost')"
-                    >${{ formatCost(stats.total_account_cost) }}</span
-                  >
-                  <span class="text-gray-300 dark:text-dark-600"> / </span>
-                  <span
-                    class="text-gray-400 tabular-nums dark:text-dark-400"
-                    :title="t('admin.dashboard.standard')"
-                    >${{ formatCost(stats.total_cost) }}</span
-                  >
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Performance (RPM/TPM) -->
-          <div data-metric="performance" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-            <div class="flex items-center gap-3">
-              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-50 text-link-700 dark:bg-link-950/30 dark:text-link-300">
-                <Icon name="bolt" size="md" :stroke-width="2" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
-                  {{ t('admin.dashboard.performance') }}
-                </p>
-                <div class="flex items-baseline gap-1.5">
-                  <p class="metric-value text-gray-900 tabular-nums dark:text-white">
-                    {{ formatTokens(stats.rpm) }}
-                  </p>
-                  <span class="text-xs font-semibold uppercase text-gray-400 dark:text-dark-400">RPM</span>
-                </div>
-                <div class="flex items-baseline gap-1.5">
-                  <p class="text-xs font-semibold text-link-700 tabular-nums dark:text-link-300">
-                    {{ formatTokens(stats.tpm) }}
-                  </p>
-                  <span class="text-[10px] uppercase text-gray-400 dark:text-dark-400">TPM</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Avg Response Time -->
-          <div data-metric="latency" class="card p-4 transition-colors hover:border-gray-300 dark:hover:border-dark-500">
-            <div class="flex items-center gap-3">
-              <div class="metric-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
-                <Icon name="clock" size="md" :stroke-width="2" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">
-                  {{ t('admin.dashboard.avgResponse') }}
-                </p>
-                <p class="metric-value text-gray-900 tabular-nums dark:text-white">
-                  {{ formatDuration(stats.average_duration_ms) }}
-                </p>
-                <p class="truncate text-xs text-gray-400 dark:text-dark-400">
-                  <span class="font-medium text-gray-600 dark:text-dark-200 tabular-nums">{{ stats.active_users }}</span> {{ t('admin.dashboard.activeUsers') }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card p-4 sm:p-5">
-          <div class="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('admin.dashboard.upstreamBalance.title') }}</p>
-              <p class="metric-value tabular-nums">${{ formatCost(upstreamBalances?.total || 0) }}</p>
-              <p class="mt-1 text-xs text-gray-400 dark:text-dark-400">{{ t('admin.dashboard.upstreamBalance.autoRefresh') }}</p>
-            </div>
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-link-100/70 text-link-700 dark:bg-link-900/30 dark:text-link-300">
-              <Icon name="dollar" size="md" />
-            </div>
-          </div>
-          <div v-if="upstreamBalancesLoading" class="py-4"><LoadingSpinner size="sm" /></div>
-          <template v-else-if="upstreamBalances?.items?.length">
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <div v-for="item in upstreamBalances.items" :key="item.id" class="rounded-xl border border-gray-200/80 bg-gray-50/60 p-3.5 transition-colors hover:border-gray-300 dark:border-dark-700 dark:bg-dark-900/45 dark:hover:border-dark-500">
-                <div class="flex items-start justify-between gap-2">
-                  <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">{{ item.group_name || item.name }}</p>
-                    <p class="truncate text-xs text-gray-400 dark:text-dark-400">{{ item.name }}</p>
-                  </div>
-                  <span v-if="item.error" class="badge badge-danger text-xs font-medium">{{ t('admin.dashboard.upstreamBalance.error') }}</span>
-                </div>
-                <p class="mt-2 break-all text-lg font-semibold text-gray-900 tabular-nums dark:text-white">{{ item.error ? '--' : `$${formatCost(item.balance)}` }}</p>
-              </div>
-            </div>
-            <div class="mt-3.5 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div v-for="entry in upstreamConsumptionCards" :key="entry.label" class="rounded-xl border border-gray-200/80 bg-gray-50/70 p-3.5 dark:border-dark-700 dark:bg-dark-900/45">
-                <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ entry.label }}</p>
-                <p class="mt-1 break-all font-mono text-lg font-semibold text-amber-700 tabular-nums dark:text-amber-300">${{ formatCost(entry.value) }}</p>
-              </div>
-            </div>
-          </template>
-          <p v-else class="text-sm text-gray-500 dark:text-dark-400">{{ t('admin.dashboard.upstreamBalance.empty') }}</p>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="card p-4 sm:p-5">
-          <div class="mb-3.5 flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ t('admin.dashboard.quickActions') }}
-            </h2>
-          </div>
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <!-- Compact Operations Shortcuts -->
+          <nav
+            class="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--atelier-border)] pt-4"
+            :aria-label="zh ? '运营快捷入口' : 'Operations shortcuts'"
+          >
+            <router-link to="/admin/users" class="atelier-btn atelier-btn-ghost h-8 px-2.5 text-xs">
+              <Icon name="users" size="sm" />
+              {{ t('admin.users.title') }}
+            </router-link>
+            <router-link to="/admin/groups" class="atelier-btn atelier-btn-ghost h-8 px-2.5 text-xs">
+              <Icon name="grid" size="sm" />
+              {{ t('admin.groups.title') }}
+            </router-link>
+            <router-link to="/admin/usage" class="atelier-btn atelier-btn-ghost h-8 px-2.5 text-xs">
+              <Icon name="chart" size="sm" />
+              {{ t('admin.usage.title') }}
+            </router-link>
+            <router-link to="/admin/audit-logs" class="atelier-btn atelier-btn-ghost h-8 px-2.5 text-xs">
+              <Icon name="shield" size="sm" />
+              {{ t('admin.audit.title') }}
+            </router-link>
             <button
               v-if="canUseBatchImage"
               type="button"
-              class="group flex items-center gap-3 rounded-xl border border-gray-200/80 bg-white/50 p-3.5 text-left transition-[border-color,background-color] hover:border-link-300 hover:bg-link-50/50 dark:border-dark-700 dark:bg-dark-800/40 dark:hover:border-link-700 dark:hover:bg-link-950/20"
+              class="atelier-btn atelier-btn-ghost ml-auto h-8 px-2.5 text-xs"
               @click="router.push('/batch-image')"
             >
-              <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-link-100/80 text-link-700 dark:bg-link-900/30 dark:text-link-300">
-                <Icon name="sparkles" size="md" :stroke-width="2" />
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="block text-sm font-semibold text-gray-900 dark:text-white">
-                  {{ t('admin.dashboard.batchImage') }}
-                </span>
-                <span class="block text-xs text-gray-500 dark:text-dark-400">
-                  {{ t('admin.dashboard.batchImageDesc') }}
-                </span>
-              </span>
-              <Icon name="chevronRight" size="sm" class="text-gray-400 group-hover:text-link-600" />
+              <Icon name="sparkles" size="sm" />
+              {{ t('admin.dashboard.batchImage') }}
             </button>
-            <button
-              type="button"
-              class="group flex items-center gap-3 rounded-xl border border-gray-200/80 bg-white/50 p-3.5 text-left transition-[border-color,background-color] hover:border-primary-300 hover:bg-primary-50/50 dark:border-dark-700 dark:bg-dark-800/40 dark:hover:border-primary-700 dark:hover:bg-primary-950/20"
-              @click="router.push('/admin/groups')"
-            >
-              <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
-                <Icon name="grid" size="md" :stroke-width="2" />
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="block text-sm font-semibold text-gray-900 dark:text-white">
-                  {{ t('admin.dashboard.groupPricing') }}
-                </span>
-                <span class="block text-xs text-gray-500 dark:text-dark-400">
-                  {{ t('admin.dashboard.groupPricingDesc') }}
-                </span>
-              </span>
-              <Icon name="chevronRight" size="sm" class="text-gray-400 group-hover:text-primary-600" />
-            </button>
-          </div>
-        </div>
+          </nav>
+        </section>
 
-        <!-- Charts Section -->
-        <div class="space-y-6">
-          <!-- Date Range Filter -->
-          <div class="card p-3.5 sm:p-4">
-            <div class="flex flex-wrap items-center gap-4">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="text-sm font-medium text-gray-700 dark:text-dark-200"
-                  >{{ t('admin.dashboard.timeRange') }}:</span
-                >
-                <DateRangePicker
-                  v-model:start-date="startDate"
-                  v-model:end-date="endDate"
-                  @change="onDateRangeChange"
-                />
+        <!-- Right: Upstream Balance & Consumption Panel -->
+        <section class="atelier-surface flex flex-col justify-between p-5 lg:col-span-5">
+          <div>
+            <div class="flex items-start justify-between gap-3 border-b border-[var(--atelier-border)] pb-3.5">
+              <div>
+                <p class="text-xs font-medium text-[var(--atelier-ink-muted)]">
+                  {{ t('admin.dashboard.upstreamBalance.title') }}
+                </p>
+                <p class="mt-1 font-mono text-2xl font-semibold tracking-tight tabular-nums text-[var(--atelier-ink)]">
+                  ${{ formatCost(upstreamBalances?.total || 0) }}
+                </p>
+                <p class="mt-0.5 text-xs text-[var(--atelier-ink-muted)]">
+                  {{ t('admin.dashboard.upstreamBalance.autoRefresh') }}
+                </p>
               </div>
-              <button @click="loadDashboardStats" :disabled="chartsLoading" class="btn btn-secondary px-3">
-                <Icon name="refresh" size="sm" class="mr-1.5" :class="chartsLoading ? 'animate-spin' : ''" />
-                {{ t('common.refresh') }}
-              </button>
-              <div class="ml-auto flex items-center gap-2">
-                <span class="text-sm font-medium text-gray-700 dark:text-dark-200"
-                  >{{ t('admin.dashboard.granularity') }}:</span
+              <UiButton variant="ghost" size="sm" @click="router.push('/admin/groups')">
+                {{ t('admin.dashboard.groupPricing') }}
+                <Icon name="chevronRight" size="xs" />
+              </UiButton>
+            </div>
+
+            <div v-if="upstreamBalancesLoading" class="flex justify-center py-8">
+              <LoadingSpinner size="sm" />
+            </div>
+            <template v-else-if="upstreamBalances?.items?.length">
+              <ul class="mt-3 max-h-48 divide-y divide-[var(--atelier-border-subtle)] overflow-y-auto pr-1">
+                <li
+                  v-for="item in upstreamBalances.items"
+                  :key="item.id"
+                  class="flex items-center justify-between gap-3 py-2.5"
                 >
-                <div class="w-28">
-                  <Select
-                    v-model="granularity"
-                    :options="granularityOptions"
-                    @change="loadChartData"
-                  />
+                  <div class="flex min-w-0 items-center gap-2">
+                    <UiStatusDot :tone="item.error ? 'err' : 'ok'" />
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-medium text-[var(--atelier-ink)]">
+                        {{ item.group_name || item.name }}
+                      </p>
+                      <p class="truncate text-xs text-[var(--atelier-ink-muted)]">{{ item.name }}</p>
+                    </div>
+                  </div>
+                  <div class="shrink-0 text-right">
+                    <span
+                      v-if="item.error"
+                      class="rounded-full bg-[var(--atelier-err-bg)] px-2 py-0.5 text-xs font-medium text-[var(--atelier-err)]"
+                    >
+                      {{ t('admin.dashboard.upstreamBalance.error') }}
+                    </span>
+                    <span
+                      v-else
+                      class="font-mono text-sm font-semibold tabular-nums text-[var(--atelier-ink)]"
+                    >
+                      ${{ formatCost(item.balance) }}
+                    </span>
+                  </div>
+                </li>
+              </ul>
+
+              <div class="mt-4 grid grid-cols-2 gap-2.5 border-t border-[var(--atelier-border)] pt-4">
+                <div
+                  v-for="entry in upstreamConsumptionCards"
+                  :key="entry.label"
+                  class="atelier-surface-subtle px-3 py-2.5"
+                >
+                  <p class="text-[11px] font-medium text-[var(--atelier-ink-muted)]">{{ entry.label }}</p>
+                  <p class="mt-0.5 font-mono text-sm font-semibold tabular-nums text-[var(--atelier-ink)]">
+                    ${{ formatCost(entry.value) }}
+                  </p>
                 </div>
               </div>
-            </div>
-            <div class="admin-chart-scope">
-              <span>{{ zh ? '以下图表跟随所选时间；顶部指标保持今日或累计口径。' : 'Charts follow this range; headline metrics retain their today or all-time scope.' }}</span>
-              <label class="admin-inline-field">
-                <span>{{ t('usage.model') }}</span>
-                <select v-model="drillModel" class="input" data-test="dashboard-drill-model">
-                  <option value="">{{ zh ? '全部模型' : 'All models' }}</option>
-                  <option v-for="model in modelStats" :key="model.model" :value="model.model">{{ model.model }}</option>
-                </select>
-              </label>
-              <button type="button" class="btn btn-secondary" data-test="usage-range-drill" @click="goToUsage(drillModel)">{{ zh ? '查看区间明细' : 'View requests in range' }}<Icon name="arrowRight" size="sm" /></button>
-            </div>
+            </template>
+            <p v-else class="py-8 text-center text-sm text-[var(--atelier-ink-muted)]">
+              {{ t('admin.dashboard.upstreamBalance.empty') }}
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Analytics Filter Bar -->
+      <section class="atelier-surface p-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              {{ t('admin.dashboard.timeRange') }}
+            </span>
+            <DateRangePicker
+              v-model:start-date="startDate"
+              v-model:end-date="endDate"
+              @change="onDateRangeChange"
+            />
           </div>
 
-          <!-- Charts Grid -->
-          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <section class="admin-chart-panel">
-              <ModelDistributionChart
-              :model-stats="modelStats"
-              :enable-ranking-view="true"
-              :ranking-items="rankingItems"
-              :ranking-total-actual-cost="rankingTotalActualCost"
-              :ranking-total-requests="rankingTotalRequests"
-              :ranking-total-tokens="rankingTotalTokens"
-              :loading="chartsLoading"
-              :ranking-loading="rankingLoading"
-              :ranking-error="rankingError"
-              :start-date="startDate"
-              :end-date="endDate"
-              @ranking-click="goToUserUsage"
-              />
-              <details v-if="modelStats.length" class="admin-chart-details">
-                <summary>{{ zh ? '按模型查看请求明细' : 'Explore requests by model' }}<span>{{ modelStats.length }}</span></summary>
-                <ul class="admin-drill-list">
-                  <li v-for="model in modelStats" :key="model.model">
-                    <button type="button" data-test="model-usage-drill" @click="goToUsage(model.model)"><span>{{ model.model }}</span><span class="tabular-nums">{{ formatNumber(model.requests) }} {{ zh ? '次' : 'requests' }}</span><Icon name="arrowRight" size="sm" /></button>
-                  </li>
-                </ul>
-              </details>
-            </section>
-            <section class="admin-chart-panel admin-chart-panel--trend">
-              <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" fill />
-              <div v-if="trendDays.length" class="admin-chart-footer">
-                <label class="admin-inline-field"><span>{{ zh ? '选择日期' : 'Choose a day' }}</span><select v-model="drillDate" class="input" data-test="dashboard-drill-date"><option v-for="day in trendDays" :key="day" :value="day">{{ day }}</option></select></label>
-                <button type="button" class="btn btn-secondary" :disabled="!drillDate" data-test="trend-usage-drill" @click="goToUsage(drillModel, drillDate)">{{ zh ? '查看当天明细' : 'View this day' }}<Icon name="arrowRight" size="sm" /></button>
-              </div>
-            </section>
-          </div>
-
-          <!-- User Usage Trend (Full Width) -->
-          <div class="card p-4 sm:p-5">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.dashboard.recentUsage') }} (Top 12)</h3>
-              <div
-                class="inline-flex rounded-lg border border-gray-200 bg-gray-100/80 p-0.5 dark:border-dark-700 dark:bg-dark-900/60"
-                role="group"
-                :aria-label="t('admin.dashboard.recentUsage')"
-              >
-                <button v-for="metric in (['tokens', 'actual_cost'] as const)" :key="metric" type="button"
-                  class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
-                  :class="userTrendMetric === metric
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'"
-                  :aria-pressed="userTrendMetric === metric" @click="setUserTrendMetric(metric)">
-                  {{ t(metric === 'tokens' ? 'admin.dashboard.tokens' : 'admin.dashboard.actualSpending') }}
-                </button>
-              </div>
-            </div>
-            <div class="h-64">
-              <div v-if="userTrendLoading" class="flex h-full items-center justify-center">
-                <LoadingSpinner size="md" />
-              </div>
-              <Line v-else-if="userTrendChartData" :data="userTrendChartData" :options="lineOptions" />
-              <div
-                v-else
-                class="flex h-full items-center justify-center text-sm text-gray-500 dark:text-dark-400"
-              >
-                {{ t('admin.dashboard.noDataAvailable') }}
-              </div>
-            </div>
+          <div class="ml-auto flex flex-wrap items-center gap-2.5">
+            <span class="text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              {{ t('admin.dashboard.granularity') }}
+            </span>
+            <UiSegmented
+              :model-value="granularity"
+              :options="granularityOptions"
+              size="sm"
+              :aria-label="t('admin.dashboard.granularity')"
+              @update:model-value="onGranularityChange"
+            />
           </div>
         </div>
-      </template>
-    </div>
+
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--atelier-border-subtle)] pt-3">
+          <span class="text-xs text-[var(--atelier-ink-muted)]">
+            {{ zh ? '以下图表跟随所选时间；顶部指标保持今日或累计口径。' : 'Charts follow this range; headline metrics retain their today or all-time scope.' }}
+          </span>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-2" data-test="dashboard-drill-model">
+              <span class="text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ t('usage.model') }}</span>
+              <div class="w-48">
+                <UiSelect
+                  :model-value="drillModel"
+                  :options="drillModelOptions"
+                  size="sm"
+                  :aria-label="t('usage.model')"
+                  @update:model-value="(val) => (drillModel = String(val ?? ''))"
+                />
+              </div>
+            </div>
+            <UiButton
+              variant="secondary"
+              size="sm"
+              data-test="usage-range-drill"
+              @click="goToUsage(drillModel)"
+            >
+              {{ zh ? '查看区间明细' : 'View requests in range' }}
+              <Icon name="arrowRight" size="xs" />
+            </UiButton>
+          </div>
+        </div>
+      </section>
+
+      <!-- Asymmetric Charts Grid (5 / 7 split) -->
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <section class="atelier-surface flex flex-col justify-between p-5 lg:col-span-5">
+          <ModelDistributionChart
+            :model-stats="modelStats"
+            :enable-ranking-view="true"
+            :ranking-items="rankingItems"
+            :ranking-total-actual-cost="rankingTotalActualCost"
+            :ranking-total-requests="rankingTotalRequests"
+            :ranking-total-tokens="rankingTotalTokens"
+            :loading="chartsLoading"
+            :ranking-loading="rankingLoading"
+            :ranking-error="rankingError"
+            :start-date="startDate"
+            :end-date="endDate"
+            @ranking-click="goToUserUsage"
+          />
+
+          <details
+            v-if="modelStats.length"
+            class="mt-4 border-t border-[var(--atelier-border-subtle)] pt-3"
+          >
+            <summary class="flex cursor-pointer list-none items-center justify-between text-xs font-medium text-[var(--atelier-ink-secondary)] hover:text-[var(--atelier-ink)]">
+              <span>{{ zh ? '按模型查看请求明细' : 'Explore requests by model' }}</span>
+              <span class="rounded-full bg-[var(--atelier-subtle)] px-2 py-0.5 font-mono text-[11px] tabular-nums text-[var(--atelier-ink-secondary)]">
+                {{ modelStats.length }}
+              </span>
+            </summary>
+            <ul class="mt-2.5 max-h-56 divide-y divide-[var(--atelier-border-subtle)] overflow-y-auto">
+              <li v-for="model in modelStats" :key="model.model">
+                <button
+                  type="button"
+                  data-test="model-usage-drill"
+                  class="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-left text-xs transition-colors hover:bg-[var(--atelier-hover)]"
+                  @click="goToUsage(model.model)"
+                >
+                  <span class="flex min-w-0 items-center gap-2 text-[var(--atelier-ink)]">
+                    <BrandModelIcon :model="model.model" size="xs" />
+                    <span class="truncate font-mono">{{ model.model }}</span>
+                  </span>
+                  <span class="flex shrink-0 items-center gap-1.5 font-mono tabular-nums text-[var(--atelier-ink-muted)]">
+                    {{ formatNumber(model.requests) }} {{ zh ? '次' : 'requests' }}
+                    <Icon name="arrowRight" size="xs" />
+                  </span>
+                </button>
+              </li>
+            </ul>
+          </details>
+        </section>
+
+        <section class="atelier-surface flex flex-col justify-between p-5 lg:col-span-7">
+          <div class="min-h-0 flex-1">
+            <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" fill />
+          </div>
+
+          <div
+            v-if="trendDays.length"
+            class="mt-4 flex flex-wrap items-center justify-end gap-2.5 border-t border-[var(--atelier-border-subtle)] pt-3"
+          >
+            <div class="flex items-center gap-2" data-test="dashboard-drill-date">
+              <span class="text-xs font-medium text-[var(--atelier-ink-secondary)]">
+                {{ zh ? '选择日期' : 'Choose a day' }}
+              </span>
+              <div class="w-40">
+                <UiSelect
+                  :model-value="drillDate"
+                  :options="drillDateOptions"
+                  size="sm"
+                  :aria-label="zh ? '选择日期' : 'Choose a day'"
+                  @update:model-value="(val) => (drillDate = String(val ?? ''))"
+                />
+              </div>
+            </div>
+            <UiButton
+              variant="secondary"
+              size="sm"
+              :disabled="!drillDate"
+              data-test="trend-usage-drill"
+              @click="goToUsage(drillModel, drillDate)"
+            >
+              {{ zh ? '查看当天明细' : 'View this day' }}
+              <Icon name="arrowRight" size="xs" />
+            </UiButton>
+          </div>
+        </section>
+      </div>
+
+      <!-- User Usage Trend (Full Width) -->
+      <section class="atelier-surface p-5">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h3 class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+            {{ t('admin.dashboard.recentUsage') }} (Top 12)
+          </h3>
+          <UiSegmented
+            :model-value="userTrendMetric"
+            :options="userTrendMetricOptions"
+            size="sm"
+            :aria-label="t('admin.dashboard.recentUsage')"
+            @update:model-value="setUserTrendMetric"
+          />
+        </div>
+        <div class="h-64">
+          <div v-if="userTrendLoading" class="flex h-full items-center justify-center">
+            <LoadingSpinner size="md" />
+          </div>
+          <Line v-else-if="userTrendChartData" :data="userTrendChartData" :options="lineOptions" />
+          <div
+            v-else
+            class="flex h-full items-center justify-center text-sm text-[var(--atelier-ink-muted)]"
+          >
+            {{ t('admin.dashboard.noDataAvailable') }}
+          </div>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
 
@@ -445,10 +465,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
-
-const chartTheme = useChartTheme()
-const { t, locale } = useI18n()
-const zh = computed(() => locale.value.startsWith('zh'))
 import { adminAPI } from '@/api/admin'
 import type {
   DashboardStats,
@@ -460,12 +476,21 @@ import type {
 import type { UpstreamBalanceSummary } from '@/api/admin/dashboard'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
-import InkSurface from '@/components/common/InkSurface.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
-import Select from '@/components/common/Select.vue'
 import ModelDistributionChart from '@/components/charts/ModelDistributionChart.vue'
 import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
+import {
+  BrandModelIcon,
+  UiButton,
+  UiMetricRibbon,
+  UiSegmented,
+  UiSelect,
+  UiStatusDot,
+  type RibbonMetric,
+  type SegmentedOption,
+  type UiSelectOption
+} from '@/ui'
 
 import {
   Chart as ChartJS,
@@ -489,6 +514,10 @@ ChartJS.register(
   Legend,
   Filler
 )
+
+const chartTheme = useChartTheme()
+const { t, locale } = useI18n()
+const zh = computed(() => locale.value.startsWith('zh'))
 
 const appStore = useAppStore()
 const router = useRouter()
@@ -549,11 +578,60 @@ const defaultRange = getLast24HoursRangeDates()
 const startDate = ref(defaultRange.start)
 const endDate = ref(defaultRange.end)
 
-// Granularity options for Select component
-const granularityOptions = computed(() => [
+const granularityOptions = computed<SegmentedOption<'day' | 'hour'>[]>(() => [
   { value: 'day', label: t('admin.dashboard.day') },
   { value: 'hour', label: t('admin.dashboard.hour') }
 ])
+
+const userTrendMetricOptions = computed<SegmentedOption<'tokens' | 'actual_cost'>[]>(() => [
+  { value: 'tokens', label: t('admin.dashboard.tokens') },
+  { value: 'actual_cost', label: t('admin.dashboard.actualSpending') }
+])
+
+const drillModelOptions = computed<UiSelectOption[]>(() => [
+  { value: '', label: zh.value ? '全部模型' : 'All models' },
+  ...modelStats.value.map((m) => ({ value: m.model, label: m.model }))
+])
+
+const drillDateOptions = computed<UiSelectOption[]>(() =>
+  trendDays.value.map((day) => ({ value: day, label: day }))
+)
+
+const onGranularityChange = (val: 'day' | 'hour') => {
+  if (granularity.value === val) return
+  granularity.value = val
+  loadChartData()
+}
+
+// Ribbon headline metrics
+const ribbonMetrics = computed<RibbonMetric[]>(() => {
+  if (!stats.value) return []
+  return [
+    {
+      label: t('admin.dashboard.todayTokens'),
+      value: formatTokens(stats.value.today_tokens),
+      sub: `$${formatCost(stats.value.today_actual_cost)} / $${formatCost(stats.value.today_account_cost)}`
+    },
+    {
+      label: t('admin.dashboard.performance'),
+      value: `${formatTokens(stats.value.rpm)} RPM`,
+      sub: `${formatTokens(stats.value.tpm)} TPM`,
+      dot: 'info'
+    },
+    {
+      label: t('admin.dashboard.avgResponse'),
+      value: formatDuration(stats.value.average_duration_ms),
+      sub: `${stats.value.active_users} ${t('admin.dashboard.activeUsers')}`
+    },
+    {
+      label: t('admin.dashboard.accounts'),
+      value: `${stats.value.normal_accounts}/${stats.value.total_accounts}`,
+      dot: stats.value.error_accounts > 0 ? 'err' : 'ok',
+      delta: stats.value.error_accounts > 0 ? `${stats.value.error_accounts} ${t('common.error')}` : undefined,
+      deltaTone: stats.value.error_accounts > 0 ? 'err' : 'neutral'
+    }
+  ]
+})
 
 // Dark mode detection
 const userTrendPalette = useChartPalette()
@@ -783,12 +861,10 @@ const onDateRangeChange = (range: {
   endDate: string
   preset: string | null
 }) => {
-  // Auto-select granularity based on date range
   const start = new Date(range.startDate)
   const end = new Date(range.endDate)
   const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
 
-  // If range is 1 day, use hourly granularity
   if (daysDiff <= 1) {
     granularity.value = 'hour'
   } else {
@@ -936,6 +1012,3 @@ onUnmounted(() => {
   if (upstreamBalanceRefreshTimer) clearInterval(upstreamBalanceRefreshTimer)
 })
 </script>
-
-<style scoped>
-</style>

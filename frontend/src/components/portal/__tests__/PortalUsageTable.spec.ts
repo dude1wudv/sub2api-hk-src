@@ -73,7 +73,7 @@ describe('PortalUsageTable latency states', () => {
         columns: ['model', 'type', 'tokens', 'cost'], sortBy: 'created_at', sortOrder: 'desc',
       },
     })
-    expect(wrapper.get('.model-icon path').attributes('fill')).toBe('#D97706')
+    expect(wrapper.get('.model-icon path').attributes('fill')).toBe('#D97757')
     expect(wrapper.get('.usage-input-icon').attributes('aria-hidden')).toBe('true')
     expect(wrapper.find('.usage-output-icon').exists()).toBe(true)
     expect(wrapper.get('.usage-cache-read').text()).toBe('90')

@@ -1,106 +1,138 @@
 <script setup lang="ts">
-import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
+import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 import { formatPortalBalance, PATRICK_CARD_ORDER_URL, PATRICK_CARD_SHOP_URL } from '@/utils/portalPurchase'
 import PortalRedeemForm from '@/components/portal/PortalRedeemForm.vue'
 import PortalRedeemHistory from '@/components/portal/PortalRedeemHistory.vue'
+import { UiMetricRibbon, UiTabs } from '@/ui'
 
 const { locale } = useI18n()
+const router = useRouter()
 const auth = useAuthStore()
 const app = useAppStore()
 const denominations = computed(() => app.cachedPublicSettings?.card_shop_denominations_usd ?? [1, 10, 50])
 const copy = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const balance = computed(() => auth.user ? formatPortalBalance(auth.user.balance, locale.value) : '—')
+const subscriptionEnabled = computed(() => resolveFeatureFlag(app.cachedPublicSettings, FeatureFlags.subscription))
 const historyVersion = ref(0)
+
+const billingTabs = computed(() => {
+  const tabs: Array<{ value: string; label: string }> = []
+  if (!auth.isSimpleMode) {
+    tabs.push({ value: 'purchase', label: copy('充值与兑换', 'Top up & redeem') })
+    tabs.push({ value: 'orders', label: copy('兑换记录', 'Redemption history') })
+  }
+  if (subscriptionEnabled.value) {
+    tabs.push({ value: 'subscriptions', label: copy('订阅计划', 'Subscriptions') })
+  }
+  return tabs
+})
+
+function handleTabChange(val: string) {
+  if (val === 'orders') void router.push('/orders')
+  else if (val === 'subscriptions') void router.push('/subscriptions')
+}
 </script>
 
 <template>
-  <div class="portal-page purchase-page">
-    <PortalPageHeader :title="copy('充值与兑换', 'Top up & redeem')" />
-    <nav class="purchase-tabs" :aria-label="copy('充值与兑换记录', 'Top up and redemption history')">
-      <RouterLink to="/purchase" class="active" aria-current="page">{{ copy('充值与兑换', 'Top up & redeem') }}</RouterLink>
-      <RouterLink to="/orders">{{ copy('兑换记录', 'Redemption history') }}</RouterLink>
-    </nav>
+  <div class="mx-auto max-w-[1240px] space-y-6 pb-10">
+    <header>
+      <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+        {{ copy('充值与兑换', 'Top up & redeem') }}
+      </h1>
+      <p class="mt-1 text-sm text-[var(--atelier-ink-secondary)]">
+        {{ copy('通过兑换码快速为账户充值余额或激活权益。', 'Top up your account balance or activate allowances using redemption codes.') }}
+      </p>
+    </header>
 
-    <section class="portal-panel purchase-balance" :aria-label="copy('账户余额', 'Account balance')">
-      <div><p>{{ copy('当前余额', 'Current balance') }}</p><strong>{{ balance }}</strong><small>{{ copy('可用于按量计费的模型调用', 'Available for pay-as-you-go model requests') }}</small></div>
-      <RouterLink to="/usage" class="portal-button secondary">{{ copy('查看用量', 'View usage') }}</RouterLink>
-    </section>
+    <UiTabs
+      v-if="billingTabs.length > 1"
+      model-value="purchase"
+      :tabs="billingTabs"
+      :aria-label="copy('计费与兑换导航', 'Billing and redemption navigation')"
+      @update:model-value="handleTabChange"
+    />
 
-    <div class="purchase-grid">
-      <section class="portal-panel purchase-shop" aria-labelledby="purchase-shop-title">
-        <div class="purchase-step-heading"><span aria-hidden="true">01</span><h2 id="purchase-shop-title">{{ copy('购买兑换码', 'Purchase a code') }}</h2></div>
-        <p class="portal-muted">{{ copy('在发卡网 patrickapi 店铺购买兑换码，完成后返回本站兑换。', 'Buy a code from the patrickapi card shop, then return here to redeem it.') }}</p>
-        <div class="purchase-denominations"><span>{{ copy('到账面额', 'Balance denominations') }}</span><strong v-for="amount in denominations" :key="amount">{{ formatPortalBalance(amount, locale) }}</strong></div>
-        <a :href="PATRICK_CARD_SHOP_URL" target="_blank" rel="noopener noreferrer" class="portal-button purchase-shop-button">
-          {{ copy('前往发卡网购买', 'Visit card shop') }} <span aria-hidden="true">↗</span>
-        </a>
-        <p class="purchase-shop-note">{{ copy('面额、售价和库存以发卡网页面为准。', 'Available denominations, prices, and stock are shown in the card shop.') }}</p>
-        <div class="purchase-order-help">
+    <!-- Balance Ribbon -->
+    <UiMetricRibbon
+      :primary-label="copy('当前余额', 'Current balance')"
+      :primary-value="balance"
+      :primary-meta="copy('可用于按量计费的模型调用', 'Available for pay-as-you-go model requests')"
+      :show-dots="true"
+    >
+      <template #primaryAction>
+        <RouterLink to="/usage" class="atelier-btn atelier-btn-secondary h-9 px-3.5 text-xs">
+          {{ copy('查看用量', 'View usage') }}
+        </RouterLink>
+      </template>
+    </UiMetricRibbon>
+
+    <!-- Two-Column Purchase & Redeem Grid -->
+    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+      <section class="atelier-surface p-6" aria-labelledby="purchase-shop-title">
+        <div class="flex items-center gap-3">
+          <span
+            class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--atelier-border-strong)] bg-[var(--atelier-subtle)] font-mono text-xs font-semibold text-[var(--atelier-ink)]"
+            aria-hidden="true"
+          >
+            01
+          </span>
+          <h2 id="purchase-shop-title" class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+            {{ copy('购买兑换码', 'Purchase a code') }}
+          </h2>
+        </div>
+
+        <p class="mt-3 text-sm leading-relaxed text-[var(--atelier-ink-secondary)]">
+          {{ copy('在发卡网 patrickapi 店铺购买兑换码，完成后返回本站兑换。', 'Buy a code from the patrickapi card shop, then return here to redeem it.') }}
+        </p>
+
+        <div class="mt-5 flex flex-wrap items-center gap-2 text-xs text-[var(--atelier-ink-secondary)]">
+          <span class="mr-1">{{ copy('到账面额', 'Balance denominations') }}</span>
+          <strong
+            v-for="amount in denominations"
+            :key="amount"
+            class="rounded-lg border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] px-2.5 py-1 font-mono text-xs font-semibold tabular-nums text-[var(--atelier-ink)]"
+          >
+            {{ formatPortalBalance(amount, locale) }}
+          </strong>
+        </div>
+
+        <div class="mt-6">
+          <a
+            :href="PATRICK_CARD_SHOP_URL"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="atelier-btn atelier-btn-primary h-10 px-4 text-sm"
+          >
+            {{ copy('前往发卡网购买', 'Visit card shop') }}
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+
+        <p class="mt-3 text-xs text-[var(--atelier-ink-muted)]">
+          {{ copy('面额、售价和库存以发卡网页面为准。', 'Available denominations, prices, and stock are shown in the card shop.') }}
+        </p>
+
+        <div class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--atelier-border)] pt-4 text-xs text-[var(--atelier-ink-muted)]">
           <span>{{ copy('已购买但找不到兑换码？', 'Already purchased but cannot find your code?') }}</span>
-          <a :href="PATRICK_CARD_ORDER_URL" target="_blank" rel="noopener noreferrer">{{ copy('查询发卡网订单', 'Find your card-shop order') }} <span aria-hidden="true">↗</span></a>
+          <a
+            :href="PATRICK_CARD_ORDER_URL"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="font-medium text-[var(--atelier-ink)] underline underline-offset-4 hover:opacity-80"
+          >
+            {{ copy('查询发卡网订单', 'Find your card-shop order') }} <span aria-hidden="true">↗</span>
+          </a>
         </div>
       </section>
 
       <PortalRedeemForm @redeemed="historyVersion++" />
     </div>
 
-    <div class="purchase-history"><PortalRedeemHistory compact :refresh-key="historyVersion" /></div>
+    <PortalRedeemHistory compact :refresh-key="historyVersion" />
   </div>
 </template>
-
-<style scoped>
-.purchase-tabs { display: flex; gap: 28px; border-bottom: 1px solid rgb(var(--line)); margin-bottom: 26px; }
-.purchase-tabs a { padding: 0 0 13px; color: rgb(var(--ink-3)); font: 500 14.5px/1.5 var(--font-sans); text-decoration: none; transition: color var(--motion-fast) ease; }
-.purchase-tabs a:hover { color: rgb(var(--ink)); }
-.purchase-tabs .active { color: rgb(var(--ink)); font-weight: 600; border-bottom: 2px solid rgb(var(--brand-moss)); margin-bottom: -1px; }
-.purchase-balance {
-  background: linear-gradient(155deg, #0f172a 0%, #162235 62%, #0f2926 100%);
-  border-color: #1e293b;
-  color: #f8fafc;
-  box-shadow: 0 8px 24px -6px rgb(15 23 42 / .24), inset 0 1px 0 rgb(255 255 255 / .08);
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 24px 26px;
-  margin-bottom: 24px;
-}
-:global(:root.dark) .purchase-balance {
-  background: linear-gradient(155deg, #16202e 0%, #111b27 58%, #0f2924 100%);
-  border-color: rgb(var(--brand-moss) / .38);
-  box-shadow: 0 8px 28px -6px rgb(0 0 0 / .45), inset 0 1px 0 rgb(255 255 255 / .06);
-}
-.purchase-balance p { margin: 0 0 8px; color: #cbd5e1; font-size: 13px; font-weight: 550; }
-.purchase-balance strong { display: block; color: #ffffff; font-size: 32px; line-height: 1.18; font-weight: 650; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
-.purchase-balance small { display: block; margin-top: 10px; font-size: 13px; color: #94a3b8; }
-.purchase-balance .portal-button.secondary { background: rgb(255 255 255 / .1); border-color: rgb(255 255 255 / .2); color: #f8fafc; }
-.purchase-balance .portal-button.secondary:hover { background: rgb(255 255 255 / .18); border-color: rgb(255 255 255 / .34); }
-.purchase-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 22px; }
-.purchase-shop { padding: 26px; }
-.purchase-step-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
-.purchase-step-heading > span { display: grid; place-items: center; width: 28px; height: 28px; background: rgb(var(--brand-moss) / .12); color: rgb(var(--brand-moss)); border: 1px solid rgb(var(--brand-moss) / .24); border-radius: 8px; font-family: var(--font-mono); font-size: 12.5px; font-weight: 650; }
-.purchase-step-heading h2 { margin: 0; font-size: 17.5px; font-weight: 650; letter-spacing: -0.015em; }
-.purchase-shop > p { margin: 0; font-size: 13.5px; line-height: 1.7; }
-.purchase-denominations { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; font-size: 13px; color: rgb(var(--ink-2)); }
-.purchase-denominations strong { padding: 6px 12px; border: 1px solid rgb(var(--line)); border-radius: 9px; background: rgb(var(--surface-2)); color: rgb(var(--ink)); font-weight: 600; font-variant-numeric: tabular-nums; }
-.purchase-shop-button { margin-top: 24px; }
-.purchase-shop .purchase-shop-note { margin-top: 14px; color: rgb(var(--ink-3)); font-size: 13px; }
-.purchase-order-help { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 26px; padding-top: 18px; border-top: 1px solid rgb(var(--line)); color: rgb(var(--ink-3)); font-size: 13px; line-height: 1.7; }
-.purchase-order-help a { color: rgb(var(--brand-moss)); font-weight: 550; text-decoration: underline; text-underline-offset: 3px; }
-.purchase-history { margin-top: 34px; }
-@media (max-width: 899px) { .purchase-grid { grid-template-columns: 1fr; gap: 18px; } }
-@media (max-width: 767px) {
-  .purchase-tabs { gap: 22px; margin-bottom: 20px; }
-  .purchase-balance { flex-wrap: wrap; gap: 16px; padding: 20px; }
-  .purchase-balance strong { font-size: 27px; }
-  .purchase-balance .portal-button { padding-inline: 14px; }
-  .purchase-shop { padding: 20px; }
-  .purchase-history { margin-top: 28px; }
-}
-</style>

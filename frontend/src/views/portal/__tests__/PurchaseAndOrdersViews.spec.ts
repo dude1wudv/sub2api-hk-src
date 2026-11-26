@@ -1,11 +1,16 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import PurchaseView from '../PurchaseView.vue'
 import OrdersView from '../OrdersView.vue'
+import { UiMetricRibbon, UiTabs } from '@/ui'
 import { PATRICK_CARD_ORDER_URL, PATRICK_CARD_SHOP_URL } from '@/utils/portalPurchase'
 
-const authState = vi.hoisted(() => ({ user: { balance: 12.5 } }))
+const { authState, routerPush } = vi.hoisted(() => ({
+  authState: { user: { balance: 12.5 } },
+  routerPush: vi.fn(),
+}))
 
+vi.mock('vue-router', () => ({ useRouter: () => ({ push: routerPush }) }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ cachedPublicSettings: { card_shop_denominations_usd: [1, 10, 50] } }) }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => authState }))
 vi.mock('@/components/portal/PortalRedeemForm.vue', () => ({
@@ -29,13 +34,17 @@ vi.mock('vue-i18n', async () => {
 const global = { stubs: { RouterLink: RouterLinkStub } }
 
 describe('portal purchase and order links', () => {
+  beforeEach(() => {
+    routerPush.mockClear()
+  })
+
   it('uses the public card-shop URLs and reloads local redemption history after success', async () => {
     const wrapper = mount(PurchaseView, { global })
     const shop = wrapper.findAll('a').find(link => link.text().includes('Visit card shop'))!
     const orders = wrapper.findAll('a').find(link => link.text().includes('Find your card-shop order'))!
     expect(shop.attributes()).toMatchObject({ href: PATRICK_CARD_SHOP_URL, target: '_blank', rel: 'noopener noreferrer' })
     expect(orders.attributes()).toMatchObject({ href: PATRICK_CARD_ORDER_URL, target: '_blank', rel: 'noopener noreferrer' })
-    expect(wrapper.get('.purchase-balance strong').text()).toContain('USD 12.50')
+    expect(wrapper.getComponent(UiMetricRibbon).props('primaryValue')).toContain('USD 12.50')
     expect(wrapper.get('.mock-history').attributes('data-compact')).toBe('')
 
     await wrapper.get('.mock-redeem-success').trigger('click')
@@ -49,7 +58,10 @@ describe('portal purchase and order links', () => {
     expect(external.attributes()).toMatchObject({ target: '_blank', rel: 'noopener noreferrer' })
     expect(wrapper.get('.mock-history').exists()).toBe(true)
     expect(wrapper.get('.mock-history').attributes('data-compact')).toBeUndefined()
-    expect(wrapper.get('.redemption-tabs').findComponent(RouterLinkStub).props('to')).toBe('/purchase')
+    const tabs = wrapper.getComponent(UiTabs)
+    expect(tabs.props('tabs')).toEqual(expect.arrayContaining([expect.objectContaining({ value: 'purchase' })]))
+    tabs.vm.$emit('update:modelValue', 'purchase')
+    expect(routerPush).toHaveBeenCalledWith('/purchase')
     wrapper.unmount()
   })
 })

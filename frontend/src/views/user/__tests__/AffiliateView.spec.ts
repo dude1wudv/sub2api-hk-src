@@ -86,8 +86,8 @@ describe.each([false, true])('AffiliateView (mobile=%s)', (mobile) => {
     for (const value of values) {
       expect(value.classes()).toEqual(expect.arrayContaining([
         'min-w-0',
+        'flex-1',
         'break-all',
-        'sm:flex-1',
         'sm:truncate',
       ]))
       expect(Array.from(value.element.parentElement?.classList ?? [])).toEqual(expect.arrayContaining([
@@ -104,8 +104,6 @@ describe.each([false, true])('AffiliateView (mobile=%s)', (mobile) => {
     expect(copyButtons).toHaveLength(2)
     for (const button of copyButtons) {
       expect(button.classes()).toEqual(expect.arrayContaining([
-        'w-full',
-        'sm:w-auto',
         'sm:shrink-0',
       ]))
     }

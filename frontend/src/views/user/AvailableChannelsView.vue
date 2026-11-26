@@ -1,34 +1,51 @@
 <template>
-  <div class="portal-page user-service-page">
-    <PortalPageHeader :title="t('nav.availableChannels')" />
+  <div class="mx-auto max-w-[1440px] space-y-6 pb-10">
+    <header>
+      <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+        {{ t('nav.availableChannels') }}
+      </h1>
+      <p class="mt-1 text-sm text-[var(--atelier-ink-secondary)]">
+        {{ copy('浏览当前账户可用的模型渠道、分组与实时计费倍率。', 'Browse available model channels, routing groups, and active rate multipliers for your account.') }}
+      </p>
+    </header>
+
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-          <div class="flex flex-1 flex-wrap items-center gap-3">
-            <div class="relative w-full sm:w-80">
-              <Icon
-                name="search"
-                size="md"
-                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
-              />
-              <input
-                v-model="searchQuery"
-                type="text"
-                :placeholder="t('availableChannels.searchPlaceholder')"
-                class="input pl-10"
-              />
-            </div>
+        <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div class="relative w-full sm:max-w-sm">
+            <Icon
+              name="search"
+              size="sm"
+              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--atelier-ink-muted)]"
+            />
+            <input
+              v-model="searchQuery"
+              type="text"
+              :placeholder="t('availableChannels.searchPlaceholder')"
+              class="atelier-input !pl-9"
+            />
           </div>
 
-          <div class="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-3 lg:w-auto">
-            <button
-              @click="loadChannels"
-              :disabled="loading"
-              class="btn btn-secondary"
-              :title="t('common.refresh', 'Refresh')"
+          <div class="flex items-center justify-end gap-2">
+            <UiButton
+              v-if="!loading && !loadError && searchQuery.trim() && !filteredChannels.length"
+              variant="ghost"
+              size="sm"
+              type="button"
+              @click="searchQuery = ''"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
-            </button>
+              {{ copy('清除搜索', 'Clear search') }}
+            </UiButton>
+            <UiButton
+              variant="secondary"
+              size="md"
+              :disabled="loading"
+              :title="t('common.refresh', 'Refresh')"
+              @click="loadChannels"
+            >
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
+              <span>{{ t('common.refresh', 'Refresh') }}</span>
+            </UiButton>
           </div>
         </div>
       </template>
@@ -36,7 +53,6 @@
       <template #table>
         <PortalDataState v-if="loadError" :error="loadError" :retry-label="copy('重试', 'Retry')" @retry="loadChannels" />
         <PortalDataState v-if="ratesError" :error="ratesError" :retry-label="copy('刷新价格', 'Refresh pricing')" @retry="loadChannels" />
-        <button v-if="!loading && !loadError && searchQuery.trim() && !filteredChannels.length" type="button" class="portal-inline-button" @click="searchQuery = ''">{{ copy('清除搜索', 'Clear search') }}</button>
         <AvailableChannelsTable
           v-if="!loadError || channels.length"
           :columns="columnLabels"
@@ -55,7 +71,6 @@
 </template>
 
 <script setup lang="ts">
-import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
@@ -65,6 +80,7 @@ import userChannelsAPI, { type UserAvailableChannel } from '@/api/channels'
 import userGroupsAPI from '@/api/groups'
 import PortalDataState from '@/components/portal/PortalDataState.vue'
 import { userFacingError } from '@/utils/userFacingError'
+import { UiButton } from '@/ui'
 
 const { t, locale } = useI18n()
 const copy = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
@@ -84,12 +100,6 @@ const columnLabels = computed(() => ({
   supportedModels: t('availableChannels.columns.supportedModels'),
 }))
 
-/**
- * 搜索过滤：
- * - 命中渠道名/描述 → 整个渠道（所有 platforms）都保留
- * - 否则按 platform/group/model 维度在 sections 里过滤，保留有匹配的 section
- * - 所有 sections 都不匹配时，渠道本身被过滤掉
- */
 const filteredChannels = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return channels.value
@@ -115,8 +125,6 @@ async function loadChannels() {
   loadError.value = ''
   ratesError.value = ''
   try {
-    // 渠道列表和用户专属倍率并发拉取。专属倍率失败不阻塞渠道展示——
-    // 失败时只是无法渲染专属倍率角标，降级为仅显示默认倍率。
     const [list, rates] = await Promise.all([
       userChannelsAPI.getAvailable(),
       userGroupsAPI.getUserGroupRates().catch((err: unknown) => {

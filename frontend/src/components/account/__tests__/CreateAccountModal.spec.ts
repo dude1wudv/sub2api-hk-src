@@ -1,6 +1,7 @@
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { UiSelect } from '@/ui'
 import {
   BUILTIN_PLATFORM_CATALOG,
   resetPlatformCatalog,
@@ -976,7 +977,7 @@ describe('CreateAccountModal gemini explicit cache upstream switch', () => {
     await selectButtonByText(wrapper, 'admin.accounts.gemini.accountType.apiKeyTitle')
     expect(wrapper.find('[data-testid="gemini-oauth-tier"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="gemini-apikey-note"]').exists()).toBe(true)
-    await wrapper.get('[data-testid="gemini-apikey-tier"]').setValue('aistudio_paid')
+    await wrapper.get('[data-testid="gemini-apikey-tier"]').getComponent(UiSelect).vm.$emit('update:modelValue', 'aistudio_paid')
 
     const baseUrlInput = wrapper
       .findAll('form#create-account-form input[type="text"]')
@@ -1009,7 +1010,7 @@ describe('CreateAccountModal gemini explicit cache upstream switch', () => {
     const wrapper = mountModal()
     await selectButtonByText(wrapper, 'Gemini')
     await selectButtonByText(wrapper, 'admin.accounts.gemini.accountType.apiKeyTitle')
-    await wrapper.get('[data-testid="gemini-apikey-tier"]').setValue('aistudio_paid')
+    await wrapper.get('[data-testid="gemini-apikey-tier"]').getComponent(UiSelect).vm.$emit('update:modelValue', 'aistudio_paid')
     await wrapper.get('form#create-account-form input[type="text"]').setValue('gemini official')
     await wrapper.get('form#create-account-form input[type="password"]').setValue('AIza-official')
     await wrapper.get('form#create-account-form').trigger('submit.prevent')
