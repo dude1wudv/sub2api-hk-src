@@ -40,22 +40,23 @@ describe.each([false, true])('PortalRedeemHistory (mobile=%s)', (mobile) => {
   it('keeps the current page and loaded rows after a later page request fails', async () => {
     const wrapper = mount(PortalRedeemHistory, { global: { stubs: { RouterLink: RouterLinkStub } } })
     await flushPromises()
-    await wrapper.get('.redeem-history-pagination button:last-of-type').trigger('click')
+    const nextButton = () => wrapper.findAll('button').find(button => button.text().trim() === 'Next')!
+    await nextButton().trigger('click')
     await flushPromises()
     expect(getHistory).toHaveBeenLastCalledWith(2, 20)
     expect(wrapper.text()).toContain('2 / 4')
 
     getHistory.mockRejectedValueOnce(new Error('temporary network failure'))
-    await wrapper.get('.redeem-history-pagination button:last-of-type').trigger('click')
+    await nextButton().trigger('click')
     await flushPromises()
 
     expect(getHistory).toHaveBeenLastCalledWith(3, 20)
-    expect(wrapper.get('.redeem-history-error').text()).toContain('temporary network failure')
+    expect(wrapper.get('[role="alert"]').text()).toContain('temporary network failure')
     expect(wrapper.text()).toContain('2 / 4')
     expect(wrapper.text()).toContain('•••• •••• CRET')
-    expect(wrapper.get('.redeem-history-pagination button:last-of-type').attributes('disabled')).toBeUndefined()
+    expect(nextButton().attributes('disabled')).toBeUndefined()
 
-    await wrapper.get('.redeem-history-error button').trigger('click')
+    await wrapper.get('[role="alert"] button').trigger('click')
     await flushPromises()
     expect(getHistory).toHaveBeenLastCalledWith(3, 20)
     expect(wrapper.text()).toContain('3 / 4')

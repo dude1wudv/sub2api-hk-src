@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-page admin-page--resources" data-admin-page="channels">
+  <div class="space-y-6" data-admin-page="channels">
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
@@ -1726,10 +1726,18 @@ onUnmounted(() => {
 }
 
 .channel-tab-active {
-  @apply border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400;
+  border-color: var(--atelier-ink);
+  color: var(--atelier-ink);
+  font-weight: 600;
 }
 
 .channel-tab-inactive {
-  @apply border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300;
+  border-color: transparent;
+  color: var(--atelier-ink-secondary);
+}
+
+.channel-tab-inactive:hover {
+  color: var(--atelier-ink);
+  border-color: var(--atelier-border-strong);
 }
 </style>

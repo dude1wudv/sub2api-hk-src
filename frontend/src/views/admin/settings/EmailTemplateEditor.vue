@@ -1,51 +1,54 @@
 <template>
-  <div class="card">
+  <div class="atelier-surface">
     <div
-      class="flex flex-col gap-3 border-b border-gray-100 px-6 py-4 dark:border-dark-700 lg:flex-row lg:items-start lg:justify-between"
+      class="flex flex-col gap-3 border-b border-[var(--atelier-border)] px-6 py-4 lg:flex-row lg:items-start lg:justify-between"
     >
       <div>
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <h2 class="text-lg font-semibold text-[var(--atelier-ink)]">
           {{ t("admin.settings.emailTemplates.title") }}
         </h2>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p class="mt-1 text-sm text-[var(--atelier-ink-secondary)]">
           {{ t("admin.settings.emailTemplates.description") }}
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button
-          type="button"
-          class="btn btn-secondary btn-sm"
+        <UiButton
+          variant="secondary"
+          size="sm"
           :disabled="loadingTemplate || previewing || !canPreview"
+          :loading="previewing"
           @click="refreshPreview"
         >
           {{ previewing ? t("admin.settings.emailTemplates.previewing") : t("admin.settings.emailTemplates.preview") }}
-        </button>
-        <button
-          type="button"
-          class="btn btn-secondary btn-sm"
+        </UiButton>
+        <UiButton
+          variant="secondary"
+          size="sm"
           :disabled="loadingTemplate || restoring || !selectedEvent || !selectedLocale"
+          :loading="restoring"
           @click="restoreOfficial"
         >
           {{ restoring ? t("admin.settings.emailTemplates.restoring") : t("admin.settings.emailTemplates.restoreOfficial") }}
-        </button>
-        <button
-          type="button"
-          class="btn btn-primary btn-sm"
+        </UiButton>
+        <UiButton
+          variant="primary"
+          size="sm"
           :disabled="loadingTemplate || saving || !canSave"
+          :loading="saving"
           @click="saveTemplate"
         >
           {{ saving ? t("admin.settings.emailTemplates.saving") : t("admin.settings.emailTemplates.save") }}
-        </button>
+        </UiButton>
       </div>
     </div>
 
     <div class="space-y-6 p-6">
       <div
         v-if="loadingList"
-        class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
+        class="flex items-center gap-2 text-sm text-[var(--atelier-ink-muted)]"
       >
         <span
-          class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
+          class="h-4 w-4 animate-spin rounded-full border-2 border-[var(--atelier-ink)] border-t-transparent"
         ></span>
         {{ t("common.loading") }}
       </div>
@@ -53,75 +56,62 @@
       <template v-else>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label class="input-label" for="email-template-event">
+            <label class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]" for="email-template-event">
               {{ t("admin.settings.emailTemplates.event") }}
             </label>
-            <select
+            <UiSelect
               id="email-template-event"
-              v-model="selectedEvent"
-              class="input"
+              :model-value="selectedEvent"
+              :options="eventSelectOptions"
               :disabled="loadingTemplate || eventOptions.length === 0"
-            >
-              <option
-                v-for="option in eventOptions"
-                :key="option.value"
-                :value="option.value"
-              >
-                {{ formatEventOptionLabel(option) }}
-              </option>
-            </select>
+              @update:model-value="selectedEvent = String($event ?? '')"
+            />
           </div>
           <div>
-            <label class="input-label" for="email-template-locale">
+            <label class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]" for="email-template-locale">
               {{ t("admin.settings.emailTemplates.locale") }}
             </label>
-            <select
+            <UiSelect
               id="email-template-locale"
-              v-model="selectedLocale"
-              class="input"
+              :model-value="selectedLocale"
+              :options="localeSelectOptions"
               :disabled="loadingTemplate || localeOptions.length === 0"
-            >
-              <option
-                v-for="localeOption in localeOptions"
-                :key="localeOption"
-                :value="localeOption"
-              >
-                {{ formatLocale(localeOption) }}
-              </option>
-            </select>
+              @update:model-value="selectedLocale = String($event ?? '')"
+            />
           </div>
         </div>
 
         <div
           v-if="selectedEventMeta"
-          class="rounded-lg border border-primary-100 bg-primary-50/70 p-4 dark:border-primary-900/50 dark:bg-primary-950/20"
+          class="rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-subtle)]/70 p-4"
         >
           <div class="flex flex-wrap items-center gap-2">
-            <div class="text-sm font-semibold text-gray-900 dark:text-white">
+            <div class="text-sm font-semibold text-[var(--atelier-ink)]">
               {{ selectedEventMeta.label }}
             </div>
             <span
-              class="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-600 shadow-sm ring-1 ring-gray-200 dark:bg-dark-800 dark:text-gray-300 dark:ring-dark-600"
+              class="rounded-md border border-[var(--atelier-border)] bg-[var(--atelier-surface)] px-2 py-0.5 text-xs font-medium text-[var(--atelier-ink-secondary)]"
             >
               {{ selectedEventMeta.categoryLabel }}
             </span>
             <span
-              class="rounded-full px-2.5 py-1 text-xs font-medium"
+              class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium"
               :class="
                 selectedEventMeta.optional
-                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                  ? 'bg-[var(--atelier-warn-bg)] text-[var(--atelier-warn)]'
+                  : 'bg-[var(--atelier-ok-bg)] text-[var(--atelier-ok)]'
               "
             >
+              <UiStatusDot :tone="selectedEventMeta.optional ? 'warn' : 'ok'" />
               {{ selectedEventMeta.optional ? localText("可退订通知", "Optional") : localText("事务邮件", "Transactional") }}
             </span>
           </div>
-          <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+          <p class="mt-2 text-sm leading-6 text-[var(--atelier-ink-secondary)]">
             {{ selectedEventMeta.timing }}
           </p>
           <p
             v-if="selectedEventDescription"
-            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+            class="mt-1 text-xs text-[var(--atelier-ink-muted)]"
           >
             {{ selectedEventDescription }}
           </p>
@@ -129,7 +119,7 @@
 
         <div
           v-if="!eventOptions.length || !localeOptions.length"
-          class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+          class="rounded-xl border border-[var(--atelier-warn)]/30 bg-[var(--atelier-warn-bg)] p-4 text-sm text-[var(--atelier-warn)]"
         >
           {{ t("admin.settings.emailTemplates.empty") }}
         </div>
@@ -137,48 +127,48 @@
         <div v-else class="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div class="space-y-4">
             <div>
-              <label class="input-label" for="email-template-subject">
+              <label class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]" for="email-template-subject">
                 {{ t("admin.settings.emailTemplates.subject") }}
               </label>
               <input
                 id="email-template-subject"
                 v-model="subject"
                 type="text"
-                class="input"
+                class="atelier-input"
                 :disabled="loadingTemplate"
                 :placeholder="t('admin.settings.emailTemplates.subjectPlaceholder')"
               />
             </div>
 
             <div>
-              <label class="input-label" for="email-template-html">
+              <label class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]" for="email-template-html">
                 {{ t("admin.settings.emailTemplates.html") }}
               </label>
               <textarea
                 id="email-template-html"
                 v-model="html"
                 rows="18"
-                class="input min-h-[28rem] resize-y font-mono text-sm leading-6"
+                class="atelier-input min-h-[28rem] resize-y font-mono text-xs leading-6"
                 :disabled="loadingTemplate"
                 :placeholder="t('admin.settings.emailTemplates.htmlPlaceholder')"
               ></textarea>
             </div>
 
             <div
-              class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/60"
+              class="rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-subtle)]/60 p-4"
             >
-              <div class="text-sm font-medium text-gray-900 dark:text-white">
+              <div class="text-sm font-medium text-[var(--atelier-ink)]">
                 {{ t("admin.settings.emailTemplates.placeholders") }}
               </div>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <p class="mt-1 text-xs text-[var(--atelier-ink-secondary)]">
                 {{ t("admin.settings.emailTemplates.placeholdersHelp") }}
               </p>
-              <div class="mt-3 flex flex-wrap gap-2">
+              <div class="mt-3 flex flex-wrap gap-1.5">
                 <button
                   v-for="placeholder in placeholderList"
                   :key="placeholder"
                   type="button"
-                  class="rounded-full border border-gray-200 bg-white px-3 py-1 font-mono text-xs text-gray-700 transition-colors hover:border-primary-300 hover:text-primary-600 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-200 dark:hover:border-primary-500 dark:hover:text-primary-300"
+                  class="rounded-md border border-[var(--atelier-border-strong)] bg-[var(--atelier-surface)] px-2.5 py-1 font-mono text-xs text-[var(--atelier-ink-secondary)] transition-colors hover:border-[var(--atelier-ink)] hover:text-[var(--atelier-ink)]"
                   @click="copyPlaceholder(placeholder)"
                 >
                   {{ placeholder }}
@@ -189,29 +179,29 @@
 
           <div class="space-y-4">
             <div
-              class="rounded-lg border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-800"
+              class="overflow-hidden rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-surface)]"
             >
               <div
-                class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-dark-700"
+                class="flex items-center justify-between border-b border-[var(--atelier-border)] px-4 py-3"
               >
                 <div>
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">
+                  <div class="text-sm font-medium text-[var(--atelier-ink)]">
                     {{ t("admin.settings.emailTemplates.livePreview") }}
                   </div>
-                  <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  <div class="mt-0.5 text-xs text-[var(--atelier-ink-secondary)]">
                     {{ previewSubject || t("admin.settings.emailTemplates.noPreview") }}
                   </div>
                 </div>
                 <span
                   v-if="isCustomTemplate"
-                  class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                  class="rounded-md border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] px-2 py-0.5 text-xs font-medium text-[var(--atelier-ink)]"
                 >
                   {{ t("admin.settings.emailTemplates.customized") }}
                 </span>
               </div>
-              <div class="bg-gray-100 p-3 dark:bg-dark-900">
+              <div class="bg-[var(--atelier-canvas)] p-3">
                 <iframe
-                  class="h-[36rem] w-full rounded-md border border-gray-200 bg-white dark:border-dark-700"
+                  class="h-[36rem] w-full rounded-lg border border-[var(--atelier-border)] bg-white"
                   sandbox=""
                   :srcdoc="previewHtml"
                   :title="t('admin.settings.emailTemplates.livePreview')"
@@ -219,7 +209,7 @@
               </div>
             </div>
 
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="text-xs text-[var(--atelier-ink-muted)]">
               {{ t("admin.settings.emailTemplates.previewSecurityHint") }}
             </p>
           </div>
@@ -239,6 +229,7 @@ import type {
 } from "@/api/admin/settings";
 import { useAppStore } from "@/stores";
 import { extractApiErrorMessage } from "@/utils/apiError";
+import { UiButton, UiSelect, UiStatusDot, type UiSelectOption } from "@/ui";
 
 const { t, locale } = useI18n();
 const appStore = useAppStore();
@@ -520,6 +511,20 @@ const selectedEventOption = computed(() => {
 });
 
 const selectedEventMeta = computed(() => eventMetaFor(selectedEventOption.value));
+
+const eventSelectOptions = computed<UiSelectOption[]>(() =>
+  eventOptions.value.map((option) => ({
+    value: option.value,
+    label: formatEventOptionLabel(option),
+  })),
+);
+
+const localeSelectOptions = computed<UiSelectOption[]>(() =>
+  localeOptions.value.map((localeOption) => ({
+    value: localeOption,
+    label: formatLocale(localeOption),
+  })),
+);
 
 const selectedEventDescription = computed(() => {
   return (

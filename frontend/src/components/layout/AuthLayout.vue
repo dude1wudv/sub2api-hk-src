@@ -1,62 +1,113 @@
 <template>
-  <div class="patrick-surface patrick-auth">
-    <header class="pa-header">
-      <div class="pa-header-inner">
-        <router-link to="/home" class="pa-brand-link" :aria-label="zh ? 'patrickapi 首页' : 'patrickapi home'">
+  <div class="flex min-h-screen flex-col bg-[var(--atelier-surface)] text-[var(--atelier-ink)]">
+    <!-- Minimal Auth Header -->
+    <header class="border-b border-[var(--atelier-border-subtle)] bg-[var(--atelier-surface)]">
+      <div class="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
+        <router-link to="/home" class="inline-flex items-center" :aria-label="zh ? '返回首页' : 'Home'">
           <PatrickBrand />
         </router-link>
-        <nav class="pa-header-actions" :aria-label="zh ? '页面导航' : 'Page navigation'">
-          <router-link to="/home" class="pa-nav-link">{{ zh ? '首页' : 'Home' }}</router-link>
-          <router-link to="/key-usage" class="pa-nav-link">{{ zh ? '查额' : 'Usage' }}</router-link>
-          <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="pa-nav-link">{{ zh ? '文档' : 'Docs' }}</a>
+        <nav class="flex items-center gap-3 text-xs text-[var(--atelier-ink-secondary)] sm:gap-5" :aria-label="zh ? '页面导航' : 'Page navigation'">
+          <router-link to="/home" class="transition-colors hover:text-[var(--atelier-ink)]">{{ zh ? '首页' : 'Home' }}</router-link>
+          <router-link to="/key-usage" class="transition-colors hover:text-[var(--atelier-ink)]">{{ zh ? '用量查询' : 'Usage' }}</router-link>
+          <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="transition-colors hover:text-[var(--atelier-ink)]">{{ zh ? '文档' : 'Docs' }}</a>
           <ColorModeToggle />
           <LocaleSwitcher />
         </nav>
       </div>
     </header>
 
-    <main class="pa-main">
-      <InkSurface class="pa-story">
-        <div class="pa-story-top">
-          <p class="pa-story-eyebrow"><i aria-hidden="true" />PATRICKAPI // ACCESS</p>
-          <h1>{{ zh ? '统一网关账户中心' : 'Unified Gateway Console' }}</h1>
-          <p class="pa-story-subtitle">{{ zh ? '集中管理多协议 API 密钥、分组路由、速率配额与实时 Token 计量账单。' : 'Manage multi-protocol API keys, group routing, rate quotas and live token billing in one place.' }}</p>
+    <!-- Airtable Asymmetric Two-Column Auth Layout: Left Pure White Form + Right Deep Plum Showcase Card -->
+    <main class="mx-auto grid w-full max-w-6xl flex-1 items-center gap-12 px-5 py-10 sm:px-8 lg:grid-cols-12 lg:py-14">
+      <section class="mx-auto w-full max-w-[420px] lg:col-span-6 lg:mx-0" :aria-label="zh ? '账户访问' : 'Account access'">
+        <div class="w-full">
+          <slot />
         </div>
-        <svg class="pa-story-art" viewBox="0 0 440 210" fill="none" aria-hidden="true">
-          <rect x="16" y="18" width="408" height="174" rx="16" class="pa-art-frame" />
-          <line x1="16" y1="54" x2="424" y2="54" class="pa-art-divider" />
-          <circle cx="38" cy="36" r="4" class="pa-story-moss" />
-          <circle cx="52" cy="36" r="4" class="pa-story-drop" />
-          <rect x="344" y="29" width="62" height="14" rx="4" class="pa-art-pill" />
-          <path d="M84 124H174M266 124H356" class="pa-art-bus" />
-          <path d="M174 124H192M248 124H266" class="pa-art-bus-active" />
-          <rect x="36" y="96" width="66" height="56" rx="11" class="pa-art-node" />
-          <path d="M62 117L55 124L62 131M76 117L83 124L76 131" class="pa-art-glyph" />
-          <rect x="188" y="84" width="64" height="80" rx="14" class="pa-art-core" />
-          <path d="M211 139V111C211 108.5 213 106.5 215.5 106.5H224.5a9.5 9.5 0 0 1 0 19H211" class="pa-art-p" />
-          <circle cx="232" cy="136" r="3.2" class="pa-story-moss" />
-          <rect x="338" y="82" width="66" height="36" rx="9" class="pa-art-node" />
-          <rect x="338" y="130" width="66" height="36" rx="9" class="pa-art-node" />
-          <circle cx="352" cy="100" r="3.5" class="pa-story-moss" />
-          <circle cx="352" cy="148" r="3.5" class="pa-story-drop" />
-          <line x1="363" y1="100" x2="390" y2="100" class="pa-art-line" />
-          <line x1="363" y1="148" x2="390" y2="148" class="pa-art-line" />
-        </svg>
-        <div class="pa-story-notes">
-          <span><i class="pa-dot pa-dot--moss" aria-hidden="true" />{{ zh ? 'API 密钥隔离' : 'Scoped API keys' }}</span>
-          <span><i class="pa-dot pa-dot--copper" aria-hidden="true" />{{ zh ? '实时用量遥测' : 'Live telemetry' }}</span>
-          <span><i class="pa-dot pa-dot--moss" aria-hidden="true" />{{ zh ? '多因素安全保护' : '2FA & Passkey' }}</span>
+        <div v-if="$slots.footer" class="mt-6 text-center text-sm text-[var(--atelier-ink-secondary)]">
+          <slot name="footer" />
         </div>
-      </InkSurface>
-      <section class="pa-form-area" :aria-label="zh ? '账户访问' : 'Account access'">
-        <div class="pa-form-card"><slot /></div>
-        <div v-if="$slots.footer" class="pa-form-footer"><slot name="footer" /></div>
       </section>
+
+      <!-- Right Visual Anchor: Matte Deep Plum Showcase Card with 3 Restrained Asymmetric Micro-UIs -->
+      <aside class="hidden lg:col-span-6 lg:block" aria-hidden="true">
+        <div class="relative overflow-hidden rounded-3xl bg-[var(--atelier-showcase)] p-9 text-[var(--atelier-showcase-ink)] shadow-[var(--atelier-shadow-md)]">
+          <div class="max-w-md">
+            <h2 class="text-[28px] font-semibold leading-[1.22] tracking-[-0.025em] text-white">
+              {{ zh ? '统一接入全球顶尖大模型，稳健如一。' : 'One resilient gateway for every frontier model.' }}
+            </h2>
+            <p class="mt-3 text-sm leading-relaxed text-white/70">
+              {{ zh ? 'OpenAI / Anthropic 原生协议直通，密钥分组配额与实时 Token 计量清晰可见。' : 'Native OpenAI & Anthropic compatibility with scoped API keys and real-time token metering.' }}
+            </p>
+            <router-link
+              to="/model-plaza"
+              class="mt-5 inline-flex h-8 items-center gap-1.5 rounded-lg bg-white px-3.5 text-xs font-medium text-[#14171F] transition-opacity hover:opacity-90"
+            >
+              <span>{{ zh ? '查看模型与定价' : 'Explore models & pricing' }}</span>
+              <Icon name="arrowRight" size="xs" />
+            </router-link>
+          </div>
+
+          <!-- 3 Asymmetric Restrained Micro-UIs (No stiff 6-box grid, no pastel icon pads) -->
+          <div class="mt-9 space-y-3.5">
+            <!-- Micro UI 1: Wide Live Streaming Preview Card -->
+            <div class="rounded-2xl border border-white/10 bg-[#1B0829]/85 p-4 backdrop-blur-sm">
+              <div class="flex items-center justify-between text-[11px] text-white/60">
+                <span class="inline-flex items-center gap-2 font-mono text-white/90">
+                  <UiStatusDot tone="ok" />
+                  POST /v1/chat/completions
+                </span>
+                <span class="font-mono tabular-nums text-white/60">200 OK · 184ms</span>
+              </div>
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white">
+                  <BrandModelIcon model="claude" size="xs" /> Claude
+                </span>
+                <span class="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white">
+                  <BrandModelIcon model="openai" size="xs" /> OpenAI
+                </span>
+                <span class="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white">
+                  <BrandModelIcon model="gemini" size="xs" /> Gemini
+                </span>
+                <span class="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white">
+                  <BrandModelIcon model="deepseek" size="xs" /> DeepSeek
+                </span>
+              </div>
+            </div>
+
+            <!-- Micro UI 2 & 3: Two Compact Asymmetric Telemetry Cards -->
+            <div class="grid grid-cols-12 gap-3.5">
+              <div class="col-span-7 rounded-2xl border border-white/10 bg-white/[0.96] p-4 text-[#14171F]">
+                <div class="flex items-center justify-between text-[11px] text-[#525866]">
+                  <span>{{ zh ? '首字延迟 TTFT' : 'Median TTFT' }}</span>
+                  <span class="inline-flex items-center gap-1 font-mono text-[11px] text-[#14171F]">
+                    <UiStatusDot tone="ok" /> 99.98%
+                  </span>
+                </div>
+                <p class="mt-1 font-mono text-xl font-semibold tabular-nums text-[#14171F]">180ms</p>
+                <svg class="mt-2 h-8 w-full" viewBox="0 0 180 32" fill="none">
+                  <path
+                    d="M2 24 C 24 22, 34 14, 54 17 C 74 20, 92 10, 114 13 C 136 16, 152 9, 178 11"
+                    stroke="#14171F"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </div>
+              <div class="col-span-5 flex flex-col justify-between rounded-2xl border border-white/10 bg-white/10 p-4 text-white">
+                <p class="text-[11px] text-white/65">{{ zh ? '密钥隔离' : 'Scoped Key' }}</p>
+                <code class="mt-2 truncate font-mono text-xs text-white/95">sk-sub2-••••9a4f</code>
+                <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/15">
+                  <div class="h-full w-2/3 rounded-full bg-white/85" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </main>
 
-    <footer class="pa-footer">
-      <div class="pa-footer-inner">
-        <span>&copy; {{ currentYear }} patrickapi</span>
+    <footer class="border-t border-[var(--atelier-border-subtle)] bg-[var(--atelier-surface)] py-5">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-5 text-xs text-[var(--atelier-ink-muted)] sm:px-8">
+        <span>&copy; {{ currentYear }} {{ appStore.siteName || 'patrickapi' }}</span>
         <MotionPreferenceToggle show-label />
       </div>
     </footer>
@@ -69,11 +120,11 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 import PatrickBrand from '@/components/brand/PatrickBrand.vue'
+import Icon from '@/components/icons/Icon.vue'
 import ColorModeToggle from '@/components/common/ColorModeToggle.vue'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
-import InkSurface from '@/components/common/InkSurface.vue'
 import MotionPreferenceToggle from '@/components/common/MotionPreferenceToggle.vue'
-import '@/styles/patrick-auth.css'
+import { BrandModelIcon, UiStatusDot } from '@/ui'
 
 const appStore = useAppStore()
 const { locale } = useI18n()
@@ -81,5 +132,7 @@ const zh = computed(() => locale.value.startsWith('zh'))
 const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || '', { allowRelative: true }))
 const currentYear = new Date().getFullYear()
 
-onMounted(() => { void appStore.fetchPublicSettings().catch(() => undefined) })
+onMounted(() => {
+  void appStore.fetchPublicSettings().catch(() => undefined)
+})
 </script>

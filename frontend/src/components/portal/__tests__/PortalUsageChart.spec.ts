@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick, ref } from 'vue'
 import PortalUsageChart from '../PortalUsageChart.vue'
+import Select from '@/components/common/Select.vue'
 
 const state = vi.hoisted(() => ({ resize: undefined as undefined | ((entries: { contentRect: { width: number } }[]) => void) }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ locale: ref('en') }) }))
@@ -14,7 +15,7 @@ describe('responsive monthly usage chart', () => {
     const wrapper = mount(PortalUsageChart, { props: { months: months.slice(0, count) } })
     state.resize?.([{ contentRect: { width: 320 } }])
     await nextTick()
-    expect(wrapper.get('svg').attributes('viewBox')).toBe('0 0 320 220')
+    expect(wrapper.get('.chart-scroll svg').attributes('viewBox')).toBe('0 0 320 220')
     expect(wrapper.html()).not.toMatch(/NaN|Infinity/)
     expect(wrapper.findAll('.chart-point')).toHaveLength(count)
     if (count === 12) expect(wrapper.findAll('.chart-point text')).toHaveLength(5)
@@ -22,16 +23,18 @@ describe('responsive monthly usage chart', () => {
   })
   it('selects every month without hover and retains all data points on resize', async () => {
     const wrapper = mount(PortalUsageChart, { props: { months } })
-    expect(wrapper.findAll('option')).toHaveLength(12)
+    const select = wrapper.getComponent(Select)
+    expect(select.props('options')).toHaveLength(12)
     for (const month of months) {
-      await wrapper.get('select').setValue(month.key)
+      select.vm.$emit('update:modelValue', month.key)
+      await nextTick()
       expect(wrapper.get('.chart-detail').text()).toContain(month.key)
     }
     await wrapper.findAll('.chart-point')[0].trigger('click')
     expect(wrapper.get('.chart-detail').text()).toContain('2026-01')
     state.resize?.([{ contentRect: { width: 900 } }])
     await nextTick()
-    expect(wrapper.get('svg').attributes('viewBox')).toBe('0 0 900 220')
+    expect(wrapper.get('.chart-scroll svg').attributes('viewBox')).toBe('0 0 900 220')
     expect(wrapper.findAll('.chart-point')).toHaveLength(12)
     wrapper.unmount()
   })

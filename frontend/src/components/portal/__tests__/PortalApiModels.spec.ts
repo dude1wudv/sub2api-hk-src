@@ -286,8 +286,9 @@ describe('PortalApiModels pricing display', () => {
       },
     })
 
-    expect(wrapper.get('.portal-api-price-description strong').text()).toBe('Actual prices')
-    expect(wrapper.get('.portal-api-price-description').html()).not.toContain('onerror')
+    const notes = wrapper.findAll('details').find(details => details.text().includes('Pricing notes'))!
+    expect(notes.get('strong').text()).toBe('Actual prices')
+    expect(notes.html()).not.toContain('onerror')
     wrapper.unmount()
   })
 })

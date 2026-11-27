@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-page admin-page--resources" data-admin-page="users">
+  <div class="space-y-6" data-admin-page="users">
     <TablePageLayout>
       <!-- Single Row: Search, Filters, and Actions -->
       <template #filters>
@@ -678,7 +678,7 @@
       <div
         v-if="activeMenuId !== null && menuPosition"
         ref="actionMenuRef"
-        class="action-menu action-menu-content fixed z-[9999] overflow-y-auto overscroll-contain rounded-xl border border-gray-200 py-1.5 shadow-xl dark:border-dark-700"
+        class="action-menu action-menu-content fixed z-[9999] overflow-y-auto overscroll-contain rounded-xl border border-[var(--atelier-border-strong)] bg-[var(--atelier-surface)] py-1.5 shadow-[var(--atelier-shadow-md)]"
         :style="menuPosition"
       >
         <div class="py-0.5">

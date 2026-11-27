@@ -1,0 +1,318 @@
+/* ==========================================================================
+   Atelier Design System — Semantic Tokens (Airtable Warm Ivory × OpenAI/Linear Neutral Charcoal)
+   ========================================================================== */
+
+:root {
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'HarmonyOS Sans SC',
+    'Hiragino Sans GB', 'Microsoft YaHei UI', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Core Atelier Surfaces (Light) */
+  --atelier-canvas: #f8f8f4;
+  --atelier-surface: #ffffff;
+  --atelier-subtle: #f2f2ec;
+  --atelier-elevated: #ffffff;
+  --atelier-hover: rgba(20, 23, 31, 0.045);
+  --atelier-active: rgba(20, 23, 31, 0.07);
+  --atelier-selected-row: #f7f7f8;
+
+  /* Borders */
+  --atelier-border: rgba(20, 23, 31, 0.08);
+  --atelier-border-strong: rgba(20, 23, 31, 0.16);
+  --atelier-border-subtle: rgba(20, 23, 31, 0.05);
+
+  /* Ink & Text (WCAG AA >= 4.5:1 on both canvas & surface) */
+  --atelier-ink: #14171f;
+  --atelier-ink-secondary: #4b5160;
+  --atelier-ink-muted: #626876;
+  --atelier-ink-inverse: #ffffff;
+
+  /* Focus & Anchors (strictly restrained) */
+  --atelier-focus: #2563eb;
+  --atelier-showcase: #2c0d42;
+  --atelier-showcase-ink: #faf7fc;
+
+  /* Semantic Status (dots & subtle pills only) */
+  --atelier-ok: #15803d;
+  --atelier-ok-bg: rgba(21, 128, 61, 0.09);
+  --atelier-warn: #b45309;
+  --atelier-warn-bg: rgba(180, 83, 9, 0.09);
+  --atelier-err: #dc2626;
+  --atelier-err-bg: rgba(220, 38, 38, 0.09);
+  --atelier-info: #2563eb;
+  --atelier-info-bg: rgba(37, 99, 235, 0.08);
+
+  /* Shadows & Scrim */
+  --atelier-shadow-xs: 0 1px 2px rgba(20, 23, 31, 0.04);
+  --atelier-shadow-sm: 0 2px 8px rgba(20, 23, 31, 0.05), 0 1px 2px rgba(20, 23, 31, 0.03);
+  --atelier-shadow-md: 0 10px 30px rgba(20, 23, 31, 0.07), 0 2px 6px rgba(20, 23, 31, 0.04);
+  --atelier-shadow-drawer: -12px 0 36px rgba(20, 23, 31, 0.09), -1px 0 0 rgba(20, 23, 31, 0.08);
+  --atelier-scrim: rgba(20, 23, 31, 0.08);
+
+  /* Dot-Matrix Motif (Hero / Ribbon edges / Empty states ONLY) */
+  --atelier-dot-color: rgba(0, 0, 0, 0.12);
+
+  /* Radii & Motion */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-overlay: 14px;
+  --motion-fast: 140ms;
+  --motion-overlay: 200ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Shell Dimensions */
+  --shell-topbar-height: 52px;
+  --shell-sidebar-width: 232px;
+  --shell-sidebar-collapsed: 64px;
+
+  /* Tailwind varPalette RGB Triplets — Neutral Charcoal Ink Primary (ZERO loud blue/green flood) */
+  --canvas: 248 248 244;
+  --surface: 255 255 255;
+  --surface-2: 242 242 236;
+  --surface-elevated: 255 255 255;
+  --surface-sidebar: 248 248 244;
+  --surface-header: 255 255 255;
+  --line: 232 232 227;
+  --line-strong: 209 210 205;
+  --ink: 20 23 31;
+  --ink-2: 75 81 96;
+  --ink-3: 98 104 118;
+  --action-bg: 20 23 31;
+  --action-text: 255 255 255;
+  --status-ok-bg: 240 253 244;
+  --status-warn-bg: 255 251 235;
+  --status-err-bg: 254 242 242;
+  --status-link-bg: 239 246 255;
+  --focus-ring: 37 99 235;
+
+  --color-primary-50: 246 246 247;
+  --color-primary-100: 235 236 239;
+  --color-primary-200: 213 216 222;
+  --color-primary-300: 176 181 191;
+  --color-primary-400: 118 125 139;
+  --color-primary-500: 20 23 31;
+  --color-primary-600: 15 17 24;
+  --color-primary-700: 12 14 20;
+  --color-primary-800: 9 11 16;
+  --color-primary-900: 6 8 12;
+  --color-primary-950: 4 5 8;
+  --text-primary: 20 23 31;
+
+  --color-accent-50: 248 245 252;
+  --color-accent-100: 238 230 248;
+  --color-accent-200: 218 202 240;
+  --color-accent-300: 185 157 224;
+  --color-accent-400: 145 106 199;
+  --color-accent-500: 109 68 168;
+  --color-accent-600: 88 47 140;
+  --color-accent-700: 66 30 107;
+  --color-accent-800: 44 13 66;
+  --color-accent-900: 33 10 50;
+  --color-accent-950: 22 6 34;
+  --text-accent: 88 47 140;
+
+  --color-link-50: 239 246 255;
+  --color-link-100: 219 234 254;
+  --color-link-200: 191 219 254;
+  --color-link-300: 147 197 253;
+  --color-link-400: 96 165 250;
+  --color-link-500: 37 99 235;
+  --color-link-600: 29 78 216;
+  --color-link-700: 30 64 175;
+  --color-link-800: 30 58 138;
+  --color-link-900: 23 37 84;
+  --color-link-950: 17 24 62;
+  --text-link: 37 99 235;
+
+  --color-ok-50: 240 253 244;
+  --color-ok-100: 220 252 231;
+  --color-ok-200: 187 247 208;
+  --color-ok-300: 134 239 172;
+  --color-ok-400: 74 222 128;
+  --color-ok-500: 22 163 74;
+  --color-ok-600: 21 128 61;
+  --color-ok-700: 21 101 52;
+  --color-ok-800: 22 83 45;
+  --color-ok-900: 20 67 37;
+  --color-ok-950: 5 46 22;
+  --text-ok: 21 115 55;
+
+  --color-warn-50: 255 251 235;
+  --color-warn-100: 254 243 199;
+  --color-warn-200: 253 230 138;
+  --color-warn-300: 252 211 77;
+  --color-warn-400: 251 191 36;
+  --color-warn-500: 217 119 6;
+  --color-warn-600: 180 83 9;
+  --color-warn-700: 146 64 14;
+  --color-warn-800: 120 53 15;
+  --color-warn-900: 99 42 14;
+  --color-warn-950: 69 26 3;
+  --text-warn: 154 68 8;
+
+  --color-err-50: 254 242 242;
+  --color-err-100: 254 226 226;
+  --color-err-200: 254 202 202;
+  --color-err-300: 252 165 165;
+  --color-err-400: 248 113 113;
+  --color-err-500: 220 38 38;
+  --color-err-600: 185 28 28;
+  --color-err-700: 153 27 27;
+  --color-err-800: 127 29 29;
+  --color-err-900: 105 24 24;
+  --color-err-950: 69 10 10;
+  --text-err: 185 28 28;
+
+  /* Warm Neutral Gray Scale */
+  --color-gray-50: 248 248 244;
+  --color-gray-100: 242 242 236;
+  --color-gray-200: 228 228 222;
+  --color-gray-300: 205 206 200;
+  --color-gray-400: 154 158 168;
+  --color-gray-500: 112 118 130;
+  --color-gray-600: 82 88 102;
+  --color-gray-700: 54 59 71;
+  --color-gray-800: 32 36 46;
+  --color-gray-900: 20 23 31;
+  --color-gray-950: 12 14 19;
+
+  /* Neutral Charcoal Dark Scale (NOT blue-black) */
+  --color-dark-50: 245 245 247;
+  --color-dark-100: 229 231 235;
+  --color-dark-200: 198 202 210;
+  --color-dark-300: 160 166 177;
+  --color-dark-400: 118 124 136;
+  --color-dark-500: 82 88 99;
+  --color-dark-600: 54 58 66;
+  --color-dark-700: 38 41 47;
+  --color-dark-800: 26 28 33;
+  --color-dark-900: 21 23 26;
+  --color-dark-950: 14 15 17;
+
+  /* Chart Palette (6-digit hex for Chart.js compatibility + Atelier neutrality) */
+  --chart-1: #14171f;
+  --chart-2: #d97757;
+  --chart-3: #2563eb;
+  --chart-4: #15803d;
+  --chart-5: #b45309;
+  --chart-6: #6d44a8;
+  --chart-7: #0f766e;
+  --chart-8: #dc2626;
+  --chart-9: #525866;
+  --chart-10: #4d6bfe;
+  --chart-text: #525866;
+  --chart-grid: #e8e8e3;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-text: #14171f;
+  --chart-tooltip-border: #d8d8d2;
+  --chart-series-1: #14171f;
+  --chart-series-2: #525866;
+  --chart-series-3: #2563eb;
+  --chart-series-4: #15803d;
+  --chart-series-5: #b45309;
+  --chart-series-6: #6d44a8;
+  --chart-tick: #868c98;
+}
+
+:root.dark {
+  /* Core Atelier Surfaces (OpenAI / Linear Pure Neutral Charcoal Dark) */
+  --atelier-canvas: #0e0f11;
+  --atelier-surface: #15171a;
+  --atelier-subtle: #1d2024;
+  --atelier-elevated: #1a1c20;
+  --atelier-hover: rgba(255, 255, 255, 0.055);
+  --atelier-active: rgba(255, 255, 255, 0.09);
+  --atelier-selected-row: rgba(255, 255, 255, 0.045);
+
+  --atelier-border: rgba(255, 255, 255, 0.085);
+  --atelier-border-strong: rgba(255, 255, 255, 0.16);
+  --atelier-border-subtle: rgba(255, 255, 255, 0.05);
+
+  --atelier-ink: #f5f5f7;
+  --atelier-ink-secondary: #a8aeb9;
+  --atelier-ink-muted: #8b929e;
+  --atelier-ink-inverse: #0e0f11;
+
+  --atelier-focus: #60a5fa;
+  --atelier-showcase: #201031;
+  --atelier-showcase-ink: #f5f2f9;
+
+  --atelier-ok: #4ade80;
+  --atelier-ok-bg: rgba(74, 222, 128, 0.12);
+  --atelier-warn: #fbbf24;
+  --atelier-warn-bg: rgba(251, 191, 36, 0.12);
+  --atelier-err: #f87171;
+  --atelier-err-bg: rgba(248, 113, 113, 0.13);
+  --atelier-info: #60a5fa;
+  --atelier-info-bg: rgba(96, 165, 250, 0.12);
+
+  --atelier-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --atelier-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --atelier-shadow-md: 0 14px 36px rgba(0, 0, 0, 0.45);
+  --atelier-shadow-drawer: -14px 0 40px rgba(0, 0, 0, 0.55), -1px 0 0 rgba(255, 255, 255, 0.08);
+  --atelier-scrim: rgba(0, 0, 0, 0.42);
+
+  --atelier-dot-color: rgba(255, 255, 255, 0.1);
+
+  --canvas: 14 15 17;
+  --surface: 21 23 26;
+  --surface-2: 29 32 36;
+  --surface-elevated: 26 28 32;
+  --surface-sidebar: 14 15 17;
+  --surface-header: 21 23 26;
+  --line: 38 41 47;
+  --line-strong: 58 62 71;
+  --ink: 245 245 247;
+  --ink-2: 168 174 185;
+  --ink-3: 139 146 158;
+  --action-bg: 245 245 247;
+  --action-text: 14 15 17;
+  --status-ok-bg: 15 36 24;
+  --status-warn-bg: 38 28 12;
+  --status-err-bg: 42 18 20;
+  --status-link-bg: 18 28 46;
+  --focus-ring: 96 165 250;
+
+  --color-primary-50: 32 35 40;
+  --color-primary-100: 42 46 53;
+  --color-primary-200: 66 71 80;
+  --color-primary-300: 118 124 136;
+  --color-primary-400: 196 200 208;
+  --color-primary-500: 245 245 247;
+  --color-primary-600: 228 230 235;
+  --color-primary-700: 206 210 218;
+  --color-primary-800: 180 185 196;
+  --color-primary-900: 140 146 158;
+  --color-primary-950: 100 106 118;
+  --text-primary: 245 245 247;
+
+  --text-accent: 196 165 245;
+  --text-link: 96 165 250;
+  --text-ok: 74 222 128;
+  --text-warn: 251 191 36;
+  --text-err: 248 113 113;
+
+  --chart-1: #f5f5f7;
+  --chart-2: #e68a6a;
+  --chart-3: #60a5fa;
+  --chart-4: #4ade80;
+  --chart-5: #fbbf24;
+  --chart-6: #c4a5f5;
+  --chart-7: #2dd4bf;
+  --chart-8: #f87171;
+  --chart-9: #a0a6b1;
+  --chart-10: #7c96ff;
+  --chart-text: #a0a6b1;
+  --chart-grid: #26292f;
+  --chart-tooltip-bg: #1a1c20;
+  --chart-tooltip-text: #f5f5f7;
+  --chart-tooltip-border: #363a42;
+  --chart-series-1: #f5f5f7;
+  --chart-series-2: #a0a6b1;
+  --chart-series-3: #60a5fa;
+  --chart-series-4: #4ade80;
+  --chart-series-5: #fbbf24;
+  --chart-series-6: #c4a5f5;
+  --chart-tick: #7e8592;
+}

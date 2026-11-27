@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import DataTable from '../DataTable.vue'
+import { UiSelect } from '@/ui'
 import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 
 vi.mock('vue-i18n', () => ({
@@ -103,16 +104,18 @@ describe('DataTable', () => {
     const wrapper = mount(DataTable, { props })
     await flushPromises()
 
-    const picker = wrapper.get<HTMLSelectElement>('[data-test="mobile-sort-key"]')
-    expect(picker.element.value).toBe('name')
-    expect(picker.findAll('option').map(option => option.element.value)).toEqual(['name', 'id', 'platform_type'])
-    await picker.setValue('id')
+    const picker = wrapper.get('[data-test="mobile-sort-key"]').getComponent(UiSelect)
+    expect(picker.props('modelValue')).toBe('name')
+    expect((picker.props('options') as Array<{ value: string }>).map(option => option.value)).toEqual(['name', 'id', 'platform_type'])
+    picker.vm.$emit('update:modelValue', 'id')
+    await flushPromises()
     expect(wrapper.emitted('sort')?.at(-1)).toEqual(['id', 'asc'])
 
     await wrapper.get('[data-test="mobile-sort-order"]').trigger('click')
     expect(wrapper.emitted('sort')?.at(-1)).toEqual(['id', 'desc'])
     expect(wrapper.get('[data-test="mobile-sort-order"]').attributes('aria-label')).toBe('common.switchToAscending')
-    await picker.setValue('platform_type')
+    picker.vm.$emit('update:modelValue', 'platform_type')
+    await flushPromises()
     expect(wrapper.emitted('sort')?.at(-1)).toEqual(['platform_type', 'desc'])
     expect(JSON.parse(localStorage.getItem('account-table-sort')!)).toEqual({ key: 'platform_type', order: 'desc' })
     expect((wrapper.vm as any).sortedData).toEqual(props.data)
@@ -127,7 +130,7 @@ describe('DataTable', () => {
 
     const restored = mount(DataTable, { props })
     await flushPromises()
-    expect(restored.get<HTMLSelectElement>('[data-test="mobile-sort-key"]').element.value).toBe('platform_type')
+    expect(restored.get('[data-test="mobile-sort-key"]').getComponent(UiSelect).props('modelValue')).toBe('platform_type')
     expect(restored.get('[data-test="mobile-sort-order"]').text()).toBe('common.descending')
     expect(restored.emitted('sort')).toBeUndefined()
     restored.unmount()
@@ -145,7 +148,7 @@ describe('DataTable', () => {
     await flushPromises()
     expect(wrapper.find('[data-test="mobile-sort"]').exists()).toBe(false)
     await wrapper.setProps({ mobileSort: true, loading: true })
-    expect(wrapper.get<HTMLSelectElement>('[data-test="mobile-sort-key"]').element.disabled).toBe(true)
+    expect(wrapper.get('[data-test="mobile-sort-key"]').getComponent(UiSelect).props('disabled')).toBe(true)
     expect(wrapper.get<HTMLButtonElement>('[data-test="mobile-sort-order"]').element.disabled).toBe(true)
     wrapper.unmount()
   })

@@ -1,99 +1,244 @@
 <template>
-  <div class="portal-page portal-api-page">
-    <header class="portal-api-header">
-      <div>
-        <div class="portal-api-title-row">
-          <h1>{{ text('API 密钥', 'API keys') }}</h1>
-          <span class="portal-api-count">{{ keysKnown ? keyTotal : "—" }}</span>
-        </div>
+  <div class="space-y-6">
+    <!-- Minimal Page Header -->
+    <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex items-center gap-2.5">
+        <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+          {{ text('API 密钥', 'API keys') }}
+        </h1>
+        <span class="portal-api-count inline-flex h-6 min-w-[26px] items-center justify-center rounded-full border border-[var(--atelier-border)] bg-[var(--atelier-surface)] px-2 font-mono text-xs font-medium tabular-nums text-[var(--atelier-ink-secondary)]">
+          {{ keysKnown ? keyTotal : '—' }}
+        </span>
       </div>
-      <div class="portal-api-header-actions">
-        <button type="button" class="portal-api-icon-button" :disabled="keysLoading || groupsLoading || retryRemaining > 0" :aria-label="text('刷新', 'Refresh')" data-test="refresh-keys" @click="refreshPage"><Icon name="refresh" size="sm" aria-hidden="true" /></button>
-        <button type="button" class="portal-button secondary" :aria-pressed="bulkMode" data-test="bulk-mode-toggle" @click="toggleBulkMode">{{ bulkMode ? text('退出批量管理', 'Exit bulk management') : text('批量管理', 'Bulk management') }}</button>
-        <button type="button" class="portal-button" data-tour="keys-create-btn" :disabled="creationDisabled" aria-describedby="key-creation-state" @click="openCreate()"><Icon name="plus" size="sm" aria-hidden="true" />{{ text('创建密钥', 'Create key') }}</button>
+      <div class="flex flex-wrap items-center gap-2">
+        <UiButton
+          variant="ghost"
+          size="sm"
+          :disabled="keysLoading || groupsLoading || retryRemaining > 0"
+          :aria-label="text('刷新', 'Refresh')"
+          data-test="refresh-keys"
+          @click="refreshPage"
+        >
+          <Icon name="refresh" size="xs" aria-hidden="true" />
+          {{ text('刷新', 'Refresh') }}
+        </UiButton>
+        <UiButton
+          variant="secondary"
+          size="sm"
+          :aria-pressed="bulkMode"
+          data-test="bulk-mode-toggle"
+          @click="toggleBulkMode"
+        >
+          {{ bulkMode ? text('退出批量管理', 'Exit bulk') : text('批量管理', 'Bulk edit') }}
+        </UiButton>
+        <UiButton
+          variant="primary"
+          size="sm"
+          data-tour="keys-create-btn"
+          :disabled="creationDisabled"
+          aria-describedby="key-creation-state"
+          @click="openCreate()"
+        >
+          <Icon name="plus" size="xs" aria-hidden="true" />
+          {{ text('创建密钥', 'Create key') }}
+        </UiButton>
       </div>
     </header>
-    <div id="api-quick-start" class="portal-api-access-strip">
-      <div class="portal-api-access-copy">
-        <strong>{{ text('一站式 API 接入中心', 'API Quickstart Hub') }}</strong>
-        <p>{{ text('统一支持 OpenAI 与 Anthropic 原生协议，可按密钥自动生成客户端配置并在线自检连通性与实时倍率。', 'Unified OpenAI & Anthropic protocols with one-click client configs, live key ping, and effective rate check.') }}</p>
+
+    <!-- Compact Quickstart + Endpoint Bar -->
+    <div id="api-quick-start" class="atelier-surface flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+      <div class="portal-api-endpoint flex min-w-0 flex-wrap items-center gap-2 text-xs">
+        <span class="rounded-md bg-[var(--atelier-subtle)] px-2 py-0.5 font-medium text-[var(--atelier-ink-secondary)]">
+          {{ text('OpenAI 兼容 Base URL', 'OpenAI Base URL') }}
+        </span>
+        <code class="truncate font-mono text-[13px] text-[var(--atelier-ink)]" :title="apiBaseUrl">
+          {{ apiBaseUrl || '—' }}
+        </code>
+        <button
+          type="button"
+          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--atelier-ink-secondary)] transition-colors hover:bg-[var(--atelier-hover)] hover:text-[var(--atelier-ink)] disabled:opacity-40"
+          :disabled="!apiBaseUrl"
+          :aria-label="text('复制 API 端点', 'Copy API endpoint')"
+          data-test="copy-endpoint"
+          @click="copyEndpoint"
+        >
+          <Icon name="copy" size="xs" aria-hidden="true" />
+        </button>
       </div>
-      <div class="portal-api-access-actions">
-        <MdButton variant="filled" size="sm" @click="quickstartOpen = true">
-          <template #icon><Icon name="bolt" size="sm" aria-hidden="true" /></template>
+      <div class="flex flex-wrap items-center gap-2">
+        <UiButton variant="secondary" size="sm" @click="quickstartOpen = true">
+          <Icon name="bolt" size="xs" aria-hidden="true" />
           {{ text('一键接入配置', 'Quickstart hub') }}
-        </MdButton>
-        <RouterLink to="/playground" class="portal-button secondary portal-api-access-link"><Icon name="play" size="sm" aria-hidden="true" />{{ text('在线调试', 'Playground') }}</RouterLink>
-        <MdButton variant="outlined" size="sm" @click="docsOpen = true">
-          <template #icon><Icon name="book" size="sm" aria-hidden="true" /></template>
-          {{ text('接入指南', 'Connection guide') }}
-        </MdButton>
+        </UiButton>
+        <RouterLink to="/playground" class="atelier-btn atelier-btn-ghost h-8 px-3 text-xs">
+          <Icon name="play" size="xs" aria-hidden="true" />
+          {{ text('在线调试', 'Playground') }}
+        </RouterLink>
+        <UiButton variant="ghost" size="sm" @click="docsOpen = true">
+          <Icon name="book" size="xs" aria-hidden="true" />
+          {{ text('接入指南', 'Guide') }}
+        </UiButton>
       </div>
     </div>
-    <p id="key-creation-state" v-if="groupsLoading" class="portal-api-inline-state" role="status">{{ text('正在读取可绑定分组…', 'Loading groups available for your keys…') }}</p>
-    <div id="key-creation-state" v-else-if="groupsError" class="portal-error portal-api-inline-state" role="alert">{{ groupsError }} <button type="button" class="portal-inline-button" :disabled="retryRemaining > 0" @click="loadGroups">{{ retryRemaining > 0 ? `${retryRemaining}s` : text('重试分组加载', 'Retry groups') }}</button></div>
-    <p id="key-creation-state" v-else-if="!groups.length" class="portal-api-inline-state">{{ text('当前账户没有可绑定分组，暂时无法创建 API Key。', 'Your account has no available group for creating an API key.') }} <button type="button" class="portal-inline-button" @click="loadGroups">{{ text('刷新分组', 'Refresh groups') }}</button></p>
 
-    <section id="portal-api-keys" class="portal-section portal-api-keys" aria-labelledby="portal-api-keys-title">
-      <h2 id="portal-api-keys-title" class="portal-api-table-heading">{{ text('密钥列表', 'Key list') }}</h2>
-      <div v-if="lastCreated" class="portal-api-created-key" role="status">
-        <span>{{ text('密钥已创建：', 'Key created: ') }}<strong>{{ lastCreated.name }}</strong></span>
-        <button type="button" class="portal-inline-button" @click="copyKey(lastCreated)"><Icon name="copy" size="sm" aria-hidden="true" />{{ text('复制密钥', 'Copy key') }}</button>
-        <button type="button" class="portal-inline-button" :aria-label="text('关闭创建提示', 'Dismiss creation message')" @click="lastCreated = null">✕</button>
+    <!-- Group Availability State -->
+    <p id="key-creation-state" v-if="groupsLoading" class="text-xs text-[var(--atelier-ink-muted)]" role="status">
+      {{ text('正在读取可绑定分组…', 'Loading groups available for your keys…') }}
+    </p>
+    <div
+      id="key-creation-state"
+      v-else-if="groupsError"
+      class="flex items-center justify-between gap-2 rounded-xl border border-[var(--atelier-err)]/25 bg-[var(--atelier-err-bg)] px-4 py-2.5 text-xs text-[var(--atelier-err)]"
+      role="alert"
+    >
+      <span>{{ groupsError }}</span>
+      <UiButton variant="ghost" size="sm" :disabled="retryRemaining > 0" @click="loadGroups">
+        {{ retryRemaining > 0 ? `${retryRemaining}s` : text('重试分组加载', 'Retry groups') }}
+      </UiButton>
+    </div>
+    <div
+      id="key-creation-state"
+      v-else-if="!groups.length"
+      class="flex items-center justify-between gap-2 rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] px-4 py-2.5 text-xs text-[var(--atelier-ink-secondary)]"
+    >
+      <span>{{ text('当前账户没有可绑定分组，暂时无法创建 API Key。', 'Your account has no available group for creating an API key.') }}</span>
+      <UiButton variant="ghost" size="sm" @click="loadGroups">{{ text('刷新分组', 'Refresh groups') }}</UiButton>
+    </div>
+
+    <!-- Main Key List Section -->
+    <section id="portal-api-keys" class="space-y-4" aria-labelledby="portal-api-keys-title">
+      <h2 id="portal-api-keys-title" class="sr-only">{{ text('密钥列表', 'Key list') }}</h2>
+
+      <!-- Newly Created Key Notice Banner -->
+      <div
+        v-if="lastCreated && !keyFormOpen"
+        class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--atelier-ok)]/25 bg-[var(--atelier-ok-bg)] px-4 py-2.5 text-xs text-[var(--atelier-ink)]"
+        role="status"
+      >
+        <div class="flex items-center gap-2">
+          <UiStatusDot tone="ok" />
+          <span>{{ text('密钥已创建：', 'Key created: ') }}<strong class="font-semibold">{{ lastCreated.name }}</strong></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <UiButton variant="secondary" size="sm" @click="copyKey(lastCreated)">
+            <Icon name="copy" size="xs" aria-hidden="true" />
+            {{ text('复制密钥', 'Copy key') }}
+          </UiButton>
+          <button
+            type="button"
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--atelier-ink-secondary)] hover:bg-[var(--atelier-hover)] hover:text-[var(--atelier-ink)]"
+            :aria-label="text('关闭创建提示', 'Dismiss creation message')"
+            @click="lastCreated = null"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
-      <form v-if="keysKnown && (keyTotal > 0 || hasKeyFilters)" class="portal-api-key-filters" @submit.prevent="applyKeyFilters">
-        <label class="portal-api-key-search"><Icon name="search" size="sm" aria-hidden="true" /><input v-model="keySearch" type="search" :aria-label="text('搜索 API Key', 'Search API keys')" :placeholder="text('搜索名称或密钥', 'Search name or key')" /><button type="submit" class="portal-inline-button">{{ text('搜索', 'Search') }}</button></label>
-        <div class="portal-api-filter-select">
-          <Select
-            v-model="keyStatusFilter"
+      <!-- Filters Bar -->
+      <form
+        v-if="keysKnown && (keyTotal > 0 || hasKeyFilters)"
+        class="flex flex-wrap items-center gap-2.5"
+        @submit.prevent="applyKeyFilters"
+      >
+        <div class="relative min-w-[220px] flex-1 sm:max-w-xs">
+          <Icon name="search" size="xs" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--atelier-ink-muted)]" aria-hidden="true" />
+          <input
+            v-model="keySearch"
+            type="search"
+            class="atelier-input !min-h-[36px] !pl-8 !pr-16 text-xs"
+            :aria-label="text('搜索 API Key', 'Search API keys')"
+            :placeholder="text('搜索名称或密钥', 'Search name or key')"
+          />
+          <button
+            type="submit"
+            class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium text-[var(--atelier-ink-secondary)] hover:bg-[var(--atelier-hover)] hover:text-[var(--atelier-ink)]"
+          >
+            {{ text('搜索', 'Search') }}
+          </button>
+        </div>
+        <div class="w-36">
+          <UiSelect
+            :model-value="keyStatusFilter"
             :options="statusFilterOptions"
-            :searchable="false"
+            size="sm"
             :aria-label="text('密钥状态', 'Key status')"
-            @change="applyKeyFilters"
+            @update:model-value="(val) => { keyStatusFilter = String(val ?? ''); applyKeyFilters() }"
           />
         </div>
-        <div v-if="groups.length > 1" class="portal-api-filter-select portal-api-filter-select--group">
-          <Select
-            v-model="keyGroupFilter"
+        <div v-if="groups.length > 1" class="w-48">
+          <UiSelect
+            :model-value="keyGroupFilter"
             :options="groupFilterOptions"
-            :searchable="groups.length > 4"
-            :search-placeholder="text('搜索分组', 'Search groups')"
+            size="sm"
             :aria-label="text('密钥分组', 'Key group')"
-            @change="applyKeyFilters"
+            @update:model-value="(val) => { keyGroupFilter = String(val ?? ''); applyKeyFilters() }"
           />
         </div>
+        <UiButton v-if="hasKeyFilters" variant="ghost" size="sm" @click="resetKeyFilters">
+          {{ text('清除筛选', 'Reset') }}
+        </UiButton>
       </form>
-      <div class="portal-api-endpoint">
-        <span>{{ text('OpenAI 兼容 Base URL', 'OpenAI-compatible Base URL') }}</span>
-        <span class="portal-api-endpoint-tag">{{ text('默认', 'Default') }}</span>
-        <code :title="apiBaseUrl">{{ apiBaseUrl || '—' }}</code>
-        <button type="button" :disabled="!apiBaseUrl" :aria-label="text('复制 API 端点', 'Copy API endpoint')" data-test="copy-endpoint" @click="copyEndpoint"><Icon name="copy" size="sm" aria-hidden="true" /></button>
+
+      <!-- Action / Load Errors -->
+      <p v-if="actionError" class="rounded-xl border border-[var(--atelier-err)]/25 bg-[var(--atelier-err-bg)] px-4 py-2.5 text-xs text-[var(--atelier-err)]" role="alert">
+        {{ actionError }}
+      </p>
+      <div v-if="keysLoading && !keys.length" class="atelier-surface py-12 text-center text-sm text-[var(--atelier-ink-muted)]" role="status">
+        {{ text('正在加载密钥…', 'Loading API keys…') }}
+      </div>
+      <div
+        v-if="keysError"
+        class="flex items-center justify-between gap-2 rounded-xl border border-[var(--atelier-err)]/25 bg-[var(--atelier-err-bg)] px-4 py-2.5 text-xs text-[var(--atelier-err)]"
+        role="alert"
+      >
+        <span>{{ keysError }}</span>
+        <UiButton variant="ghost" size="sm" :disabled="retryRemaining > 0" @click="loadKeys">
+          {{ retryRemaining > 0 ? `${retryRemaining}s` : text('重试', 'Retry') }}
+        </UiButton>
       </div>
 
-      <div v-if="bulkMode" class="portal-api-bulk-toolbar">
-        <label><input type="checkbox" :checked="allPageKeysSelected" :indeterminate="somePageKeysSelected" :disabled="keysLoading || !!keysError || !keys.length || busyKeyIds.size > 0" data-test="bulk-select-all" @change="selectPageKeys(($event.target as HTMLInputElement).checked)" />{{ text('当前页全选', 'Select this page') }}</label>
-        <span aria-live="polite">{{ text('已选择 ', 'Selected: ') }}{{ selectedKeys.length }}{{ text(' 个', ' keys') }}</span>
-        <button type="button" class="portal-button" :disabled="!selectedKeys.length || keysLoading || !!keysError || busyKeyIds.size > 0" data-test="bulk-edit-keys" @click="bulkFormOpen = true">{{ text('批量编辑', 'Edit selected') }}</button>
-        <button type="button" class="portal-inline-button" :disabled="!selectedKeys.length" @click="clearSelection">{{ text('清空选择', 'Clear selection') }}</button>
-        <p>{{ text('仅选择当前页；筛选、翻页或更改每页数量会清空选择。', 'Selection is limited to this page and clears when filters, page or page size change.') }}</p>
+      <!-- Empty State -->
+      <div
+        v-if="!keysLoading && !keysError && !keys.length"
+        class="atelier-surface relative overflow-hidden px-6 py-12 text-center"
+      >
+        <DotMatrixBackdrop mask="edges" />
+        <div class="relative z-10 mx-auto max-w-md space-y-3">
+          <p class="text-sm text-[var(--atelier-ink-secondary)]">
+            {{ hasKeyFilters ? text('没有符合筛选条件的密钥。', 'No keys match these filters.') : text('还没有 API Key。创建一个密钥，开始接入你的应用。', 'No API keys yet. Create one to connect your application.') }}
+          </p>
+          <div>
+            <UiButton v-if="hasKeyFilters" variant="secondary" size="sm" @click="resetKeyFilters">
+              {{ text('清除筛选', 'Clear filters') }}
+            </UiButton>
+            <UiButton v-else variant="primary" size="sm" :disabled="creationDisabled" aria-describedby="key-creation-state" @click="openCreate()">
+              <Icon name="plus" size="xs" aria-hidden="true" />
+              {{ text('创建密钥', 'Create key') }}
+            </UiButton>
+          </div>
+        </div>
       </div>
 
-      <p v-if="actionError" class="portal-error" role="alert">{{ actionError }}</p>
-      <div v-if="keysLoading && !keys.length" class="portal-api-key-state" role="status">{{ text('正在加载密钥…', 'Loading API keys…') }}</div>
-      <div v-if="keysError" class="portal-error" role="alert">{{ keysError }} <button type="button" class="portal-inline-button" :disabled="retryRemaining > 0" @click="loadKeys">{{ retryRemaining > 0 ? `${retryRemaining}s` : text('重试', 'Retry') }}</button></div>
-      <div v-if="!keysLoading && !keysError && !keys.length" class="portal-api-key-state">
-        <p>{{ hasKeyFilters ? text('没有符合筛选条件的密钥。', 'No keys match these filters.') : text('还没有 API Key。创建一个密钥，开始接入你的应用。', 'No API keys yet. Create one to connect your application.') }}</p>
-        <button v-if="hasKeyFilters" type="button" class="portal-button secondary" @click="resetKeyFilters">{{ text('清除筛选', 'Clear filters') }}</button>
-        <button v-else type="button" class="portal-button" :disabled="creationDisabled" aria-describedby="key-creation-state" @click="openCreate()">{{ text('创建密钥', 'Create key') }}</button>
-      </div>
-      <p v-if="keysError && keys.length" class="portal-muted">{{ text('以下为上次成功加载的数据。', 'Showing the last successfully loaded data.') }}</p>
-      <PortalDataState v-if="usageError" :error="usageError" :retry-label="text('重试用量', 'Retry usage') + (retryRemaining > 0 ? ` (${retryRemaining}s)` : '')" :retry-disabled="usageLoading || retryRemaining > 0" @retry="retryUsage" />
-      <p v-if="usageLoading" role="status" class="portal-muted">{{ text('正在刷新密钥用量…', 'Refreshing key usage…') }}</p>
+      <p v-if="keysError && keys.length" class="text-xs text-[var(--atelier-ink-muted)]">
+        {{ text('以下为上次成功加载的数据。', 'Showing the last successfully loaded data.') }}
+      </p>
+      <PortalDataState
+        v-if="usageError"
+        :error="usageError"
+        :retry-label="text('重试用量', 'Retry usage') + (retryRemaining > 0 ? ` (${retryRemaining}s)` : '')"
+        :retry-disabled="usageLoading || retryRemaining > 0"
+        @retry="retryUsage"
+      />
+      <p v-if="usageLoading" role="status" class="text-xs text-[var(--atelier-ink-muted)]">
+        {{ text('正在刷新密钥用量…', 'Refreshing key usage…') }}
+      </p>
+
+      <!-- Borderless Full-Width Editorial Table -->
       <PortalApiKeyTable
+        v-if="keys.length"
         :queue-counts="queueCounts"
         :queue-unavailable="queueUnavailable"
-        v-if="keys.length"
         :keys="keys"
         :groups="groups"
         :group-rates="groupRates"
@@ -113,59 +258,210 @@
         @delete="confirmDelete"
       />
 
-      <nav v-if="keyTotal > 0 && !keysError" class="portal-api-pager" :aria-label="text('密钥分页', 'API key pages')">
-        <div class="portal-api-pager-summary">
-          <span>{{ text('显示 ', 'Showing ') }}{{ rangeStart }}{{ text(' 至 ', '–') }}{{ rangeEnd }}{{ text(' 共 ', ' of ') }}{{ keyTotal }}{{ text(' 条结果', ' results') }}</span>
-          <div class="portal-api-pager-size">
-            <span>{{ text('每页', 'Per page') }}</span>
-            <div class="portal-api-pager-select">
-              <Select
-                v-model="keyPageSize"
+      <!-- Floating Bulk Action Bar (cleanly appears when bulkMode or selected) -->
+      <div
+        v-if="bulkMode"
+        class="sticky bottom-4 z-20 mx-auto flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--atelier-border-strong)] bg-[var(--atelier-surface)] px-4 py-2.5 shadow-[var(--atelier-shadow-md)]"
+      >
+        <div class="flex items-center gap-3 text-xs">
+          <label class="inline-flex cursor-pointer items-center gap-2 font-medium text-[var(--atelier-ink)]">
+            <input
+              type="checkbox"
+              class="h-4 w-4 accent-[var(--atelier-ink)]"
+              :checked="allPageKeysSelected"
+              :indeterminate="somePageKeysSelected"
+              :disabled="keysLoading || !!keysError || !keys.length || busyKeyIds.size > 0"
+              data-test="bulk-select-all"
+              @change="selectPageKeys(($event.target as HTMLInputElement).checked)"
+            />
+            <span>{{ text('当前页全选', 'Select page') }}</span>
+          </label>
+          <span class="font-mono tabular-nums text-[var(--atelier-ink-secondary)]" aria-live="polite">
+            {{ text('已选择 ', 'Selected: ') }}{{ selectedKeys.length }}{{ text(' 个', ' keys') }}
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <UiButton variant="ghost" size="sm" :disabled="!selectedKeys.length" @click="clearSelection">
+            {{ text('清空选择', 'Clear') }}
+          </UiButton>
+          <UiButton
+            variant="primary"
+            size="sm"
+            :disabled="!selectedKeys.length || keysLoading || !!keysError || busyKeyIds.size > 0"
+            data-test="bulk-edit-keys"
+            @click="bulkFormOpen = true"
+          >
+            {{ text('批量编辑', 'Edit selected') }}
+          </UiButton>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <nav
+        v-if="keyTotal > 0 && !keysError"
+        class="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs text-[var(--atelier-ink-secondary)]"
+        :aria-label="text('密钥分页', 'API key pages')"
+      >
+        <div class="flex flex-wrap items-center gap-3 font-mono tabular-nums">
+          <span>
+            {{ text('显示 ', 'Showing ') }}{{ rangeStart }}{{ text(' 至 ', '–') }}{{ rangeEnd }}{{ text(' 共 ', ' of ') }}{{ keyTotal }}{{ text(' 条', '') }}
+          </span>
+          <div class="inline-flex items-center gap-2">
+            <span class="font-sans text-[var(--atelier-ink-muted)]">{{ text('每页', 'Per page') }}</span>
+            <div class="w-20">
+              <UiSelect
+                :model-value="keyPageSize"
                 :options="pageSizeOptions"
-                :searchable="false"
+                size="sm"
                 :disabled="keysLoading"
                 :aria-label="text('每页密钥数量', 'Keys per page')"
-                @change="changePageSize"
+                @update:model-value="(val) => { keyPageSize = Number(val || 20); changePageSize() }"
               />
             </div>
           </div>
         </div>
-        <div class="portal-api-pager-pages">
-          <button type="button" :disabled="keysLoading || keyPage <= 1" :aria-label="text('上一页', 'Previous')" @click="goToPage(keyPage - 1)">‹</button>
+        <div class="flex items-center gap-1">
+          <button
+            type="button"
+            class="atelier-btn atelier-btn-secondary h-8 w-8 p-0 font-mono text-xs"
+            :disabled="keysLoading || keyPage <= 1"
+            :aria-label="text('上一页', 'Previous')"
+            @click="goToPage(keyPage - 1)"
+          >‹</button>
           <template v-for="(page, index) in pageList" :key="page">
-            <span v-if="pageSeparated(index)" class="portal-api-pager-gap">…</span>
-            <button type="button" :disabled="keysLoading" :aria-current="page === keyPage ? 'page' : undefined" @click="goToPage(page)">{{ page }}</button>
+            <span v-if="pageSeparated(index)" class="px-1 text-[var(--atelier-ink-muted)]">…</span>
+            <button
+              type="button"
+              class="atelier-btn h-8 min-w-[32px] px-2 font-mono text-xs tabular-nums"
+              :class="page === keyPage ? 'atelier-btn-primary' : 'atelier-btn-secondary'"
+              :disabled="keysLoading"
+              :aria-current="page === keyPage ? 'page' : undefined"
+              @click="goToPage(page)"
+            >{{ page }}</button>
           </template>
-          <button type="button" :disabled="keysLoading || keyPage >= keyPages" :aria-label="text('下一页', 'Next')" @click="goToPage(keyPage + 1)">›</button>
+          <button
+            type="button"
+            class="atelier-btn atelier-btn-secondary h-8 w-8 p-0 font-mono text-xs"
+            :disabled="keysLoading || keyPage >= keyPages"
+            :aria-label="text('下一页', 'Next')"
+            @click="goToPage(keyPage + 1)"
+          >›</button>
         </div>
       </nav>
     </section>
 
-    <section class="portal-api-resources" :aria-label="text('接入资源', 'Connection resources')">
-      <RouterLink v-if="plazaEnabled" to="/model-plaza?embedded=1"><Icon name="grid" size="sm" />{{ text('模型与价格', 'Models & pricing') }}<Icon name="arrowRight" size="sm" /></RouterLink>
-      <button type="button" @click="examplesOpen = !examplesOpen" :aria-expanded="examplesOpen"><Icon name="terminal" size="sm" />{{ text('调用示例', 'Request examples') }}<Icon name="chevronDown" size="sm" /></button>
-      <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer"><Icon name="book" size="sm" />{{ text('接入文档', 'Documentation') }}<Icon name="externalLink" size="sm" /></a>
-      <button v-else type="button" @click="docsOpen = true"><Icon name="book" size="sm" />{{ text('接入指南', 'Quick start') }}<Icon name="arrowRight" size="sm" /></button>
+    <!-- Bottom Resource Links -->
+    <section class="flex flex-wrap items-center gap-2 border-t border-[var(--atelier-border)] pt-5" :aria-label="text('接入资源', 'Connection resources')">
+      <RouterLink
+        v-if="plazaEnabled"
+        to="/model-plaza?embedded=1"
+        class="atelier-btn atelier-btn-secondary h-8 px-3 text-xs"
+      >
+        <Icon name="grid" size="xs" aria-hidden="true" />
+        {{ text('模型与价格', 'Models & pricing') }}
+        <Icon name="arrowRight" size="xs" aria-hidden="true" />
+      </RouterLink>
+      <UiButton variant="secondary" size="sm" :aria-expanded="examplesOpen" @click="examplesOpen = !examplesOpen">
+        <Icon name="terminal" size="xs" aria-hidden="true" />
+        {{ text('调用示例', 'Request examples') }}
+        <Icon name="chevronDown" size="xs" aria-hidden="true" />
+      </UiButton>
+      <a
+        v-if="docUrl"
+        :href="docUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="atelier-btn atelier-btn-secondary h-8 px-3 text-xs"
+      >
+        <Icon name="book" size="xs" aria-hidden="true" />
+        {{ text('接入文档', 'Documentation') }}
+        <Icon name="externalLink" size="xs" aria-hidden="true" />
+      </a>
+      <UiButton v-else variant="secondary" size="sm" @click="docsOpen = true">
+        <Icon name="book" size="xs" aria-hidden="true" />
+        {{ text('接入指南', 'Quick start') }}
+        <Icon name="arrowRight" size="xs" aria-hidden="true" />
+      </UiButton>
     </section>
     <PortalApiExamples v-if="examplesOpen" v-model:model="exampleModel" />
 
-    <PortalKeyForm :open="keyFormOpen" :editing="editingKey" :groups="groups" :group-rates="groupRates" :selected-group="formGroupId" @close="keyFormOpen = false" @saved="onKeySaved" />
+    <!-- Slide-over Create / Edit Key Drawer -->
+    <PortalKeyForm
+      :open="keyFormOpen"
+      :editing="editingKey"
+      :groups="groups"
+      :group-rates="groupRates"
+      :selected-group="formGroupId"
+      :base-url="apiRoot || apiBaseUrl"
+      @close="closeKeyForm"
+      @saved="onKeySaved"
+    />
+
     <PortalKeyUsageDialog :api-key="usageKey" @close="usageKey = null" />
-    <UseKeyModal :show="!!useKeyTarget" :api-key="useKeyTarget?.key || ''" :base-url="apiRoot" :platform="useKeyTarget?.group?.platform || null" :claude-code-only="useKeyTarget?.group?.claude_code_only || false" :allow-messages-dispatch="useKeyTarget?.group?.allow_messages_dispatch || false" @close="useKeyTarget = null" />
+    <UseKeyModal
+      :show="!!useKeyTarget"
+      :api-key="useKeyTarget?.key || ''"
+      :base-url="apiRoot"
+      :platform="useKeyTarget?.group?.platform || null"
+      :claude-code-only="useKeyTarget?.group?.claude_code_only || false"
+      :allow-messages-dispatch="useKeyTarget?.group?.allow_messages_dispatch || false"
+      @close="useKeyTarget = null"
+    />
+
     <PortalDialog :open="ccsClientOpen" :title="t('keys.ccsClientSelect.title')" @close="closeCcsClient">
-      <p>{{ t('keys.ccsClientSelect.description') }}</p>
-      <div class="portal-api-ccs-choices">
-        <button type="button" @click="chooseCcsClient('claude')"><Icon name="terminal" size="md" aria-hidden="true" /><strong>{{ t('keys.ccsClientSelect.claudeCode') }}</strong><span>{{ t('keys.ccsClientSelect.claudeCodeDesc') }}</span></button>
-        <button type="button" @click="chooseCcsClient('gemini')"><Icon name="sparkles" size="md" aria-hidden="true" /><strong>{{ t('keys.ccsClientSelect.geminiCli') }}</strong><span>{{ t('keys.ccsClientSelect.geminiCliDesc') }}</span></button>
+      <p class="text-sm text-[var(--atelier-ink-secondary)]">{{ t('keys.ccsClientSelect.description') }}</p>
+      <div class="portal-api-ccs-choices mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          class="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-surface)] p-4 text-center transition-colors hover:border-[var(--atelier-ink)] hover:bg-[var(--atelier-hover)]"
+          @click="chooseCcsClient('claude')"
+        >
+          <Icon name="terminal" size="md" aria-hidden="true" />
+          <strong class="text-sm font-semibold text-[var(--atelier-ink)]">{{ t('keys.ccsClientSelect.claudeCode') }}</strong>
+          <span class="text-xs text-[var(--atelier-ink-muted)]">{{ t('keys.ccsClientSelect.claudeCodeDesc') }}</span>
+        </button>
+        <button
+          type="button"
+          class="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-surface)] p-4 text-center transition-colors hover:border-[var(--atelier-ink)] hover:bg-[var(--atelier-hover)]"
+          @click="chooseCcsClient('gemini')"
+        >
+          <Icon name="sparkles" size="md" aria-hidden="true" />
+          <strong class="text-sm font-semibold text-[var(--atelier-ink)]">{{ t('keys.ccsClientSelect.geminiCli') }}</strong>
+          <span class="text-xs text-[var(--atelier-ink-muted)]">{{ t('keys.ccsClientSelect.geminiCliDesc') }}</span>
+        </button>
       </div>
     </PortalDialog>
-    <PortalApiBulkForm :open="bulkFormOpen" :selected-keys="selectedKeys" :groups="groups" :groups-loading="groupsLoading" :groups-error="groupsError" @close="bulkFormOpen = false" @updated="onBulkUpdated" />
+
+    <PortalApiBulkForm
+      :open="bulkFormOpen"
+      :selected-keys="selectedKeys"
+      :groups="groups"
+      :groups-loading="groupsLoading"
+      :groups-error="groupsError"
+      @close="bulkFormOpen = false"
+      @updated="onBulkUpdated"
+    />
+
     <PortalDialog :open="!!deleteTarget" :title="text('删除 API Key', 'Delete API key')" @close="closeDelete">
-      <p>{{ text('删除后，使用此密钥的应用将无法继续请求。', 'Applications using this key will no longer be able to send requests.') }}</p>
-      <p class="portal-api-delete-name">{{ deleteTarget?.name }}</p>
-      <p v-if="deleteError" class="portal-error" role="alert">{{ deleteError }}</p>
-      <template #footer><div class="portal-dialog-actions"><button type="button" class="portal-button secondary" :disabled="deleting" @click="closeDelete">{{ text('取消', 'Cancel') }}</button><button type="button" class="portal-button" :disabled="deleting" @click="deleteKey">{{ deleting ? text('删除中…', 'Deleting…') : text('确认删除', 'Delete key') }}</button></div></template>
+      <p class="text-sm text-[var(--atelier-ink-secondary)]">
+        {{ text('删除后，使用此密钥的应用将无法继续请求。', 'Applications using this key will no longer be able to send requests.') }}
+      </p>
+      <p class="my-4 rounded-lg bg-[var(--atelier-subtle)] px-3 py-2 font-mono text-sm font-medium text-[var(--atelier-ink)]">
+        {{ deleteTarget?.name }}
+      </p>
+      <p v-if="deleteError" class="text-xs text-[var(--atelier-err)]" role="alert">{{ deleteError }}</p>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <UiButton variant="secondary" size="sm" :disabled="deleting" @click="closeDelete">
+            {{ text('取消', 'Cancel') }}
+          </UiButton>
+          <UiButton variant="danger" size="sm" :loading="deleting" @click="deleteKey">
+            {{ deleting ? text('删除中…', 'Deleting…') : text('确认删除', 'Delete key') }}
+          </UiButton>
+        </div>
+      </template>
     </PortalDialog>
+
     <PortalQuickstartDrawer
       :open="quickstartOpen"
       :keys="keys"
@@ -173,14 +469,29 @@
       :initial-key-id="lastCreated?.id || null"
       @close="quickstartOpen = false"
     />
+
     <PortalDialog :open="docsOpen" :title="text('API 接入指南', 'API quick start')" @close="docsOpen = false">
-      <ol class="portal-api-guide">
-        <li>{{ text('点击创建 API Key，在弹窗中选择分组并查看分组倍率。完整模型和价格可在模型与价格页面查看。', 'Create an API key to choose a group and review its multiplier. Open Models & pricing for the full catalog.') }}</li>
+      <ol class="list-decimal space-y-2.5 pl-5 text-sm leading-relaxed text-[var(--atelier-ink-secondary)]">
+        <li>{{ text('点击创建 API Key，在抽屉中选择分组并查看分组倍率。完整模型和价格可在模型与价格页面查看。', 'Create an API key to choose a group and review its multiplier. Open Models & pricing for the full catalog.') }}</li>
         <li>{{ text('创建 API Key，并在需要时设置额度、有效期、IP 限制或路由分组。', 'Create an API key and configure quota, expiry, IP restrictions or routing groups as needed.') }}</li>
-        <li>{{ text('使用页面下方的接口地址和调用示例，以所选分组支持的模型发送请求。', 'Use the base URL and examples below to request a model supported by your group.') }}</li>
-        <li v-if="!authStore.isSimpleMode"><RouterLink to="/usage">{{ text('在用量信息中查看请求与费用。', 'Review requests and costs in Usage.') }}</RouterLink> <RouterLink to="/purchase">{{ text('需要补充额度时前往充值。', 'Recharge when you need more balance.') }}</RouterLink></li>
+        <li>{{ text('使用页面顶部的接口地址和调用示例，以所选分组支持的模型发送请求。', 'Use the base URL and examples to request a model supported by your group.') }}</li>
+        <li v-if="!authStore.isSimpleMode">
+          <RouterLink to="/usage" class="font-medium text-[var(--atelier-ink)] underline underline-offset-2">
+            {{ text('在用量信息中查看请求与费用。', 'Review requests and costs in Usage.') }}
+          </RouterLink>
+          {{ ' ' }}
+          <RouterLink to="/purchase" class="font-medium text-[var(--atelier-ink)] underline underline-offset-2">
+            {{ text('需要补充额度时前往充值。', 'Recharge when you need more balance.') }}
+          </RouterLink>
+        </li>
       </ol>
-      <template #footer><div class="portal-dialog-actions"><button type="button" class="portal-button" @click="docsOpen = false; showExamples()">{{ text('查看示例', 'View examples') }}</button></div></template>
+      <template #footer>
+        <div class="flex justify-end">
+          <UiButton variant="primary" size="sm" @click="docsOpen = false; showExamples()">
+            {{ text('查看示例', 'View examples') }}
+          </UiButton>
+        </div>
+      </template>
     </PortalDialog>
   </div>
 </template>
@@ -189,9 +500,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { UiButton, UiSelect, UiStatusDot, DotMatrixBackdrop } from '@/ui'
 import Icon from '@/components/icons/Icon.vue'
-import Select from '@/components/common/Select.vue'
-import { MdButton } from '@/components/md'
 import UseKeyModal from '@/components/keys/UseKeyModal.vue'
 import PortalApiKeyTable from '@/components/portal/PortalApiKeyTable.vue'
 import PortalApiExamples from '@/components/portal/PortalApiExamples.vue'
@@ -217,7 +527,7 @@ import { sanitizeUrl } from '@/utils/url'
 import type { ApiKey, Group } from '@/types'
 
 const { locale, t } = useI18n()
-const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
+const text = (zh: string, en: string) => (locale.value.startsWith('zh') ? zh : en)
 const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
@@ -232,17 +542,17 @@ const statusFilterOptions = computed(() => [
   { value: 'active', label: text('已启用', 'Active') },
   { value: 'inactive', label: text('已停用', 'Inactive') },
   { value: 'expired', label: text('已过期', 'Expired') },
-  { value: 'quota_exhausted', label: text('额度用尽', 'Quota exhausted') },
+  { value: 'quota_exhausted', label: text('额度用尽', 'Quota exhausted') }
 ])
 const groupFilterOptions = computed(() => [
   { value: '', label: text('全部分组', 'All groups') },
   { value: '0', label: text('未绑定分组', 'No group') },
-  ...groups.value.map(group => ({ value: String(group.id), label: group.name, description: group.description || '' })),
+  ...groups.value.map((group) => ({ value: String(group.id), label: group.name }))
 ])
 const pageSizeOptions = [
   { value: 10, label: '10' },
   { value: 20, label: '20' },
-  { value: 50, label: '50' },
+  { value: 50, label: '50' }
 ]
 const { remaining: retryRemaining, start: startRetryCooldown } = useRetryCooldown()
 const groupsLoading = ref(true)
@@ -265,10 +575,10 @@ const keyPageSize = ref(20)
 const keyTotal = ref(0)
 const keysKnown = ref(false)
 const keyPages = computed(() => Math.max(1, Math.ceil(keyTotal.value / keyPageSize.value)))
-const rangeStart = computed(() => keyTotal.value === 0 ? 0 : (keyPage.value - 1) * keyPageSize.value + 1)
+const rangeStart = computed(() => (keyTotal.value === 0 ? 0 : (keyPage.value - 1) * keyPageSize.value + 1))
 const rangeEnd = computed(() => Math.min(keyPage.value * keyPageSize.value, keyTotal.value))
 const pageList = computed(() => {
-  const pages = new Set([1, keyPages.value, keyPage.value - 1, keyPage.value, keyPage.value + 1].filter(page => page >= 1 && page <= keyPages.value))
+  const pages = new Set([1, keyPages.value, keyPage.value - 1, keyPage.value, keyPage.value + 1].filter((page) => page >= 1 && page <= keyPages.value))
   return [...pages].sort((left, right) => left - right)
 })
 function pageSeparated(index: number) {
@@ -290,7 +600,7 @@ const busyKeyIds = ref(new Set<number>())
 const bulkMode = ref(false)
 const bulkFormOpen = ref(false)
 const selectedKeyIds = ref<number[]>([])
-const selectedKeys = computed(() => keys.value.filter(key => selectedKeyIds.value.includes(key.id)))
+const selectedKeys = computed(() => keys.value.filter((key) => selectedKeyIds.value.includes(key.id)))
 const allPageKeysSelected = computed(() => keys.value.length > 0 && selectedKeys.value.length === keys.value.length)
 const somePageKeysSelected = computed(() => selectedKeys.value.length > 0 && !allPageKeysSelected.value)
 const actionError = ref('')
@@ -303,9 +613,12 @@ const deleteError = ref('')
 const deleting = ref(false)
 const docsOpen = ref(false)
 const quickstartOpen = ref(route.query.quickstart === '1')
-watch(() => route.query.quickstart, (val) => {
-  if (val === '1') quickstartOpen.value = true
-})
+watch(
+  () => route.query.quickstart,
+  (val) => {
+    if (val === '1') quickstartOpen.value = true
+  }
+)
 let consumingCreate = false
 
 let disposed = false
@@ -343,19 +656,24 @@ async function loadKeys() {
   keysLoading.value = true
   keysError.value = ''
   try {
-    const result = await keysAPI.list(keyPage.value, keyPageSize.value, {
-      search: appliedKeySearch.value || undefined,
-      status: keyStatusFilter.value || undefined,
-      group_id: keyGroupFilter.value || undefined,
-      sort_by: 'created_at',
-      sort_order: 'desc',
-    }, { signal: controller.signal })
+    const result = await keysAPI.list(
+      keyPage.value,
+      keyPageSize.value,
+      {
+        search: appliedKeySearch.value || undefined,
+        status: keyStatusFilter.value || undefined,
+        group_id: keyGroupFilter.value || undefined,
+        sort_by: 'created_at',
+        sort_order: 'desc'
+      },
+      { signal: controller.signal }
+    )
     if (disposed || request !== keyRequest) return
     keys.value = result.items || []
-    selectedKeyIds.value = selectedKeyIds.value.filter(id => keys.value.some(key => key.id === id))
+    selectedKeyIds.value = selectedKeyIds.value.filter((id) => keys.value.some((key) => key.id === id))
     keyTotal.value = result.total || 0
     keysKnown.value = true
-    const visible = new Set(keys.value.map(key => String(key.id)))
+    const visible = new Set(keys.value.map((key) => String(key.id)))
     usageStats.value = Object.fromEntries(Object.entries(usageStats.value).filter(([id]) => visible.has(id)))
     if (keyPage.value > keyPages.value) {
       clearSelection()
@@ -363,7 +681,7 @@ async function loadKeys() {
       await loadKeys()
       return
     }
-    void loadUsage(keys.value.map(key => key.id), controller.signal, request)
+    void loadUsage(keys.value.map((key) => key.id), controller.signal, request)
   } catch (error) {
     if (!disposed && request === keyRequest) keysError.value = errorMessage(error, text('密钥加载失败，请重试。', 'Could not load API keys. Please retry.'))
   } finally {
@@ -371,7 +689,12 @@ async function loadKeys() {
   }
 }
 async function loadUsage(ids: number[], signal: AbortSignal, request: number) {
-  if (!ids.length) { usageStats.value = {}; usageError.value = ''; usageLoading.value = false; return }
+  if (!ids.length) {
+    usageStats.value = {}
+    usageError.value = ''
+    usageLoading.value = false
+    return
+  }
   usageLoading.value = true
   usageError.value = ''
   try {
@@ -386,7 +709,9 @@ async function loadUsage(ids: number[], signal: AbortSignal, request: number) {
   }
 }
 function retryUsage() {
-  if (keyController && !usageLoading.value && retryRemaining.value <= 0) void loadUsage(keys.value.map(key => key.id), keyController.signal, keyRequest)
+  if (keyController && !usageLoading.value && retryRemaining.value <= 0) {
+    void loadUsage(keys.value.map((key) => key.id), keyController.signal, keyRequest)
+  }
 }
 function refreshPage() {
   void loadGroups()
@@ -415,7 +740,7 @@ function executeCcsImport(key: ApiKey, clientType: CcSwitchClientType) {
     clientType,
     providerName,
     apiKey: key.key,
-    usageScript: CC_SWITCH_USAGE_SCRIPT,
+    usageScript: CC_SWITCH_USAGE_SCRIPT
   })
   try {
     window.open(deeplink, '_self')
@@ -452,26 +777,33 @@ function goToPage(page: number) {
   keyPage.value = page
   void loadKeys()
 }
-function changePageSize() { clearSelection(); keyPage.value = 1; void loadKeys() }
+function changePageSize() {
+  clearSelection()
+  keyPage.value = 1
+  void loadKeys()
+}
 function clearSelection() { selectedKeyIds.value = [] }
-function toggleBulkMode() { bulkMode.value = !bulkMode.value; clearSelection() }
+function toggleBulkMode() {
+  bulkMode.value = !bulkMode.value
+  clearSelection()
+}
 function selectKey(id: number, checked: boolean) {
-  if (!bulkMode.value || keysLoading.value || keysError.value || busyKeyIds.value.has(id) || !keys.value.some(key => key.id === id)) return
-  selectedKeyIds.value = checked ? [...new Set([...selectedKeyIds.value, id])] : selectedKeyIds.value.filter(selected => selected !== id)
+  if (!bulkMode.value || keysLoading.value || keysError.value || busyKeyIds.value.has(id) || !keys.value.some((key) => key.id === id)) return
+  selectedKeyIds.value = checked ? [...new Set([...selectedKeyIds.value, id])] : selectedKeyIds.value.filter((selected) => selected !== id)
 }
 function selectPageKeys(checked: boolean) {
   if (!bulkMode.value || keysLoading.value || keysError.value || busyKeyIds.value.size) return
-  selectedKeyIds.value = checked ? keys.value.map(key => key.id) : []
+  selectedKeyIds.value = checked ? keys.value.map((key) => key.id) : []
 }
 function onBulkUpdated(succeededIds: number[]) {
   const succeeded = new Set(succeededIds)
-  selectedKeyIds.value = selectedKeyIds.value.filter(id => !succeeded.has(id))
+  selectedKeyIds.value = selectedKeyIds.value.filter((id) => !succeeded.has(id))
   void loadKeys()
 }
 function openCreate(groupId?: number) {
   if (creationDisabled.value) return
   editingKey.value = null
-  formGroupId.value = groupId != null && groups.value.some(group => group.id === groupId) ? groupId : undefined
+  formGroupId.value = groupId != null && groups.value.some((group) => group.id === groupId) ? groupId : undefined
   keyFormOpen.value = true
 }
 function openEdit(key: ApiKey) {
@@ -484,11 +816,13 @@ function openEdit(key: ApiKey) {
   formGroupId.value = undefined
   keyFormOpen.value = true
 }
+function closeKeyForm() {
+  keyFormOpen.value = false
+  editingKey.value = null
+}
 async function onKeySaved(key: ApiKey) {
   clearSelection()
   const created = !editingKey.value
-  keyFormOpen.value = false
-  editingKey.value = null
   if (created) {
     lastCreated.value = key
     keySearch.value = ''
@@ -496,6 +830,14 @@ async function onKeySaved(key: ApiKey) {
     keyStatusFilter.value = ''
     keyGroupFilter.value = ''
     keyPage.value = 1
+    // Keep drawer open on creation if full key is returned so user sees the Creation Success state
+    if (!key?.key) {
+      keyFormOpen.value = false
+      editingKey.value = null
+    }
+  } else {
+    keyFormOpen.value = false
+    editingKey.value = null
   }
   appStore.showSuccess(created ? text('API Key 已创建', 'API key created') : text('API Key 已保存', 'API key saved'))
   await loadKeys()
@@ -544,132 +886,49 @@ async function deleteKey() {
 function scrollTo(id: string) {
   void nextTick(() => document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }))
 }
-function showExamples() { examplesOpen.value = true; scrollTo('portal-api-examples') }
+function showExamples() {
+  examplesOpen.value = true
+  scrollTo('portal-api-examples')
+}
 
-// Preserve bookmarked model searches after moving the catalog off the key page.
-watch(() => route.query.model, value => {
-  const model = typeof value === 'string' ? value : Array.isArray(value) ? value[0] || '' : ''
-  if (model && plazaEnabled.value) void router.replace({ path:'/model-plaza', query:{ embedded:'1', model } })
-}, { immediate: true })
-watch([() => route.query.create, groupsLoading, groupsError], async ([create, loading, error]) => {
-  if (create !== '1' || loading || error || consumingCreate || disposed) return
-  consumingCreate = true
-  if (!creationDisabled.value) openCreate()
-  else actionError.value = text('当前账户没有可绑定分组，暂时无法创建 API Key。', 'Your account has no available group for creating an API key.')
-  const query = { ...route.query }
-  delete query.create
-  try { await router.replace({ path: route.path, query, hash: route.hash }) }
-  finally { consumingCreate = false }
-}, { immediate: true })
-watch(() => route.query.guide, value => {
-  if (value !== '1') return
-  docsOpen.value = true
-  const query = { ...route.query }
-  delete query.guide
-  void router.replace({ path: route.path, query, hash: route.hash })
-}, { immediate: true })
-onMounted(() => { void loadGroups(); void loadKeys() })
+watch(
+  () => route.query.model,
+  (value) => {
+    const model = typeof value === 'string' ? value : Array.isArray(value) ? value[0] || '' : ''
+    if (model && plazaEnabled.value) void router.replace({ path: '/model-plaza', query: { embedded: '1', model } })
+  },
+  { immediate: true }
+)
+watch(
+  [() => route.query.create, groupsLoading, groupsError],
+  async ([create, loading, error]) => {
+    if (create !== '1' || loading || error || consumingCreate || disposed) return
+    consumingCreate = true
+    if (!creationDisabled.value) openCreate()
+    else actionError.value = text('当前账户没有可绑定分组，暂时无法创建 API Key。', 'Your account has no available group for creating an API key.')
+    const query = { ...route.query }
+    delete query.create
+    try { await router.replace({ path: route.path, query, hash: route.hash }) } finally { consumingCreate = false }
+  },
+  { immediate: true }
+)
+watch(
+  () => route.query.guide,
+  (value) => {
+    if (value !== '1') return
+    docsOpen.value = true
+    const query = { ...route.query }
+    delete query.guide
+    void router.replace({ path: route.path, query, hash: route.hash })
+  },
+  { immediate: true }
+)
+onMounted(() => {
+  void loadGroups()
+  void loadKeys()
+})
 onBeforeUnmount(() => {
   disposed = true
   keyController?.abort()
 })
 </script>
-
-<style scoped>
-.portal-api-page {
-  width: calc(100% - 56px);
-  max-width: 1360px;
-  min-height: calc(100dvh - 56px);
-  margin: 0 auto;
-  padding: 28px 0 64px;
-}
-.portal-api-intro { margin:10px 0 0; font-size:14px; line-height:1.7; color:rgb(var(--ink-2)); }
-.portal-api-access-strip { display:flex; align-items:center; justify-content:space-between; gap:24px; position:relative; padding:20px 24px; margin-bottom:24px; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); box-shadow:var(--shadow-panel); }
-.portal-api-access-copy { position:relative; z-index:1; display:grid; gap:4px; }
-.portal-api-access-strip strong { font-size:15.5px; font-weight:650; letter-spacing:-0.01em; color:rgb(var(--ink)); }
-.portal-api-access-copy p { margin:0; font-size:13.5px; color:rgb(var(--ink-2)); line-height:1.55; }
-.portal-api-access-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; flex-shrink:0; }
-.portal-api-access-link { min-height:34px; padding:6px 14px; font-size:13px; border-radius:var(--radius-control); }
-.portal-api-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; }
-.portal-api-eyebrow { margin:0 0 6px; color:rgb(var(--ink-3)); font-size:13px; font-weight:650; letter-spacing:.08em; }
-.portal-api-title-row { display:flex; align-items:center; gap:10px; }
-.portal-api-title-row h1 { margin:0; color:rgb(var(--ink)); font-size:26px; font-weight:650; letter-spacing:-0.022em; line-height:1.28; }
-.portal-api-count { display:inline-flex; min-width:26px; align-items:center; justify-content:center; padding:2px 9px; border:1px solid rgb(var(--line)); border-radius:999px; background:rgb(var(--surface)); color:rgb(var(--ink-2)); font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums; }
-.portal-api-header-actions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
-.portal-api-icon-button { display:inline-flex; width:40px; height:40px; align-items:center; justify-content:center; border:1px solid rgb(var(--line)); border-radius:var(--radius-control); color:rgb(var(--ink-2)); background:rgb(var(--surface)); box-shadow:0 1px 2px rgb(15 23 42 / .03); cursor:pointer; transition:border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, color var(--motion-fast) ease; }
-.portal-api-icon-button:hover:not(:disabled) { border-color:rgb(var(--line-strong)); background:rgb(var(--surface-2)); color:rgb(var(--ink)); }
-.portal-api-icon-button:disabled { opacity:.45; cursor:not-allowed; }
-.portal-api-header-actions .portal-button { min-height:40px; }
-.portal-api-resources { display:flex; flex-wrap:wrap; align-items:center; gap:10px 12px; margin-top:28px; padding-top:22px; border-top:1px solid rgb(var(--line)); }
-.portal-api-resources > :is(button,a) { display:inline-flex; align-items:center; gap:8px; color:rgb(var(--ink-2)); background:rgb(var(--surface)); border:1px solid rgb(var(--line)); border-radius:var(--radius-control); padding:8px 14px; font:inherit; font-size:13px; font-weight:550; text-decoration:none; box-shadow:0 1px 2px rgb(15 23 42 / .03); transition:border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, color var(--motion-fast) ease; }
-.portal-api-resources > :is(button,a):hover { color:rgb(var(--ink)); border-color:rgb(var(--line-strong)); background:rgb(var(--surface-2)); }
-.portal-api-inline-state { margin-top:18px; font-size:13.5px; }
-.portal-api-keys { scroll-margin-top:80px; }
-.portal-api-table-heading { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-.portal-api-bulk-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:0 0 18px; padding:14px 16px; border:1px solid rgb(var(--line-strong)); border-radius:12px; background:rgb(var(--surface)); box-shadow:var(--shadow-panel); font-size:13px; }
-.portal-api-bulk-toolbar label { display:inline-flex; align-items:center; gap:8px; font-weight:500; }
-.portal-api-bulk-toolbar input { width:15px; height:15px; accent-color:rgb(var(--ink)); }
-.portal-api-bulk-toolbar p { flex-basis:100%; margin:0; font-size:12.5px; color:rgb(var(--ink-3)); }
-.portal-api-bulk-toolbar .portal-button { min-height:32px; padding:5px 12px; }
-.portal-api-bulk-toolbar .portal-inline-button:disabled { opacity:.45; cursor:not-allowed; }
-.portal-api-key-filters { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:16px 0 14px; }
-.portal-api-key-search { display:flex; min-width:200px; max-width:340px; flex:1; align-items:center; gap:8px; min-height:40px; padding:0 12px; border:1px solid rgb(var(--line)); border-radius:var(--radius-control); background:rgb(var(--surface)); font-size:13.5px; transition:border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease; }
-.portal-api-key-search input { min-width:0; width:100%; padding:7px 0; border:0; outline:none; color:rgb(var(--ink)); background:transparent; font:inherit; }
-.portal-api-key-search:hover { border-color:rgb(var(--line-strong)); }
-.portal-api-key-search:focus-within { border-color:rgb(var(--focus-ring)); box-shadow:0 0 0 3px rgb(var(--focus-ring) / .14); }
-.portal-api-key-search > button { flex-shrink:0; }
-.portal-api-filter-select { min-width:152px; max-width:240px; }
-.portal-api-filter-select--group { min-width:190px; max-width:280px; }
-.portal-api-endpoint { display:inline-flex; max-width:100%; align-items:center; gap:8px; margin:0 0 16px; padding:6px 8px 6px 14px; border:1px solid rgb(var(--line)); border-radius:999px; background:rgb(var(--surface)); box-shadow:0 1px 2px rgb(15 23 42 / .03); color:rgb(var(--ink-2)); font-size:13px; }
-.portal-api-endpoint > span { flex:none; white-space:nowrap; }
-.portal-api-endpoint-tag { padding:2px 8px; border-radius:999px; background:rgb(var(--surface-2)); border:1px solid rgb(var(--line)); color:rgb(var(--ink-2)); font-size:12px; font-weight:600; }
-.portal-api-endpoint code { min-width:0; overflow:hidden; color:rgb(var(--ink)); font-family:var(--font-mono); font-size:12.5px; text-overflow:ellipsis; white-space:nowrap; }
-.portal-api-endpoint button { display:inline-flex; flex:none; align-items:center; justify-content:center; width:28px; height:28px; margin-left:auto; padding:4px; border:0; border-radius:999px; color:rgb(var(--ink-2)); background:rgb(var(--surface-2)); cursor:pointer; transition:color var(--motion-fast) ease, background-color var(--motion-fast) ease; }
-.portal-api-endpoint button:hover:not(:disabled) { color:rgb(var(--ink)); background:rgb(var(--line)); }
-.portal-api-endpoint button:disabled { opacity:.4; cursor:not-allowed; }
-.portal-api-key-state { padding:40px 24px; border:1px dashed rgb(var(--line-strong) / .7); border-radius:var(--radius-card); color:rgb(var(--ink-3)); background:rgb(var(--surface)); text-align:center; font-size:13.5px; box-shadow:var(--shadow-panel); }
-.portal-api-key-state p { margin:0 0 16px; }
-.portal-api-created-key { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:14px 0; padding:12px 16px; border:1px solid rgb(var(--text-ok) / .28); border-radius:12px; background:rgb(var(--status-ok-bg)); color:rgb(var(--ink)); font-size:13.5px; }
-.portal-api-created-key strong { font-weight:600; }
-.portal-api-created-key > button:last-child { margin-left:auto; }
-.portal-api-pager { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:18px; color:rgb(var(--ink-2)); font-size:13px; }
-.portal-api-pager-summary { display:flex; align-items:center; flex-wrap:wrap; gap:12px; font-variant-numeric:tabular-nums; }
-.portal-api-pager-size { display:inline-flex; align-items:center; gap:8px; }
-.portal-api-pager-select { width:84px; }
-.portal-api-pager-pages button { min-width:34px; min-height:34px; padding:0 9px; border:1px solid rgb(var(--line)); border-radius:8px; background:rgb(var(--surface)); color:rgb(var(--ink)); font-variant-numeric:tabular-nums; transition:border-color var(--motion-fast) ease, background-color var(--motion-fast) ease; }
-.portal-api-pager-pages button:hover:not(:disabled):not([aria-current='page']) { border-color:rgb(var(--line-strong)); background:rgb(var(--surface-2)); }
-.portal-api-pager-pages { display:flex; align-items:center; gap:6px; }
-.portal-api-pager-pages button[aria-current='page'] { border-color:rgb(var(--action-bg)); background:rgb(var(--action-bg)); color:rgb(var(--action-text)); font-weight:600; }
-.portal-api-pager button:disabled { color:rgb(var(--ink-3)); opacity:.5; cursor:not-allowed; }
-.portal-api-pager-gap { padding:0 2px; }
-.portal-api-delete-name { margin:16px 0; padding:10px 12px; border-radius:8px; background:rgb(var(--surface-2)); font-weight:600; overflow-wrap:anywhere; }
-.portal-api-guide { display:grid; gap:14px; padding-left:22px; list-style:decimal; line-height:1.65; }
-.portal-api-guide a { color:rgb(var(--ink)); font-weight:550; text-decoration:underline; text-underline-offset:3px; }
-.portal-api-ccs-choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:16px; }
-.portal-api-ccs-choices button { display:flex; min-height:120px; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:16px; border:1px solid rgb(var(--line)); border-radius:12px; background:rgb(var(--surface)); color:rgb(var(--ink)); font:inherit; cursor:pointer; transition:border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease; }
-.portal-api-ccs-choices button:hover { border-color:rgb(var(--ink)); background:rgb(var(--surface-2)); box-shadow:var(--shadow-panel); }
-.portal-api-ccs-choices span { color:rgb(var(--ink-3)); font-size:13px; text-align:center; }
-@media(max-width:1199px) {
-  .portal-api-page { width:calc(100% - 48px); }
-}
-@media (max-width:767px), (max-width:1023px) and (max-height:500px) and (pointer:coarse) {
-  .portal-api-icon-button, .portal-api-endpoint button { width:44px; height:44px; }
-  .portal-api-header-actions .portal-button { min-height:44px; white-space:normal; }
-  .portal-api-access-strip { padding:18px; align-items:flex-start; flex-direction:column; gap:14px; }
-  .portal-api-page { width:calc(100% - 32px); padding:18px 0 48px; }
-  .portal-api-title-row h1 { font-size:22px; }
-  .portal-api-header { flex-direction:column; }
-  .portal-api-header-actions { width:100%; justify-content:flex-start; }
-  .portal-api-key-filters { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .portal-api-key-search { min-width:0; max-width:none; width:100%; grid-column:1 / -1; }
-  .portal-api-key-search input { font-size:16px; }
-  .portal-api-filter-select, .portal-api-filter-select--group { width:100%; min-width:0; max-width:none; }
-  .portal-api-endpoint { display:grid; grid-template-columns:minmax(0,1fr) auto 44px; width:100%; gap:4px 8px; padding:10px 12px; border-radius:var(--radius-control); }
-  .portal-api-endpoint > span:first-child { white-space:normal; }
-  .portal-api-endpoint code { grid-column:1 / 3; grid-row:2; overflow:visible; white-space:normal; overflow-wrap:anywhere; }
-  .portal-api-endpoint button { grid-column:3; grid-row:1 / 3; }
-  .portal-api-pager { align-items:flex-start; }
-  .portal-api-pager-pages { flex-wrap:wrap; }
-  .portal-api-ccs-choices { grid-template-columns:1fr; }
-}
-</style>

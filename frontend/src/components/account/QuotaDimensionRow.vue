@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import QuotaNotifyToggle from './QuotaNotifyToggle.vue'
 import type { QuotaThresholdType, QuotaResetMode } from '@/constants/account'
+import { UiSelect, type UiSelectOption } from '@/ui'
 
 const { t } = useI18n()
 
@@ -44,10 +46,10 @@ const onLimitInput = (e: Event) => {
   emit('update:limit', Number.isNaN(raw) ? null : raw)
 }
 
-const onModeChange = (e: Event) => {
-  const val = (e.target as HTMLSelectElement).value as QuotaResetMode
-  emit('update:resetMode', val)
-  if (val === 'fixed') {
+const onModeChange = (val: string | number | boolean | null) => {
+  const mode = (val as QuotaResetMode) || 'rolling'
+  emit('update:resetMode', mode)
+  if (mode === 'fixed') {
     if (props.resetHour == null) emit('update:resetHour', 0)
     if (props.dim === 'weekly' && props.resetDay == null) emit('update:resetDay', 1)
     if (!props.resetTimezone) emit('update:resetTimezone', 'UTC')
@@ -64,22 +66,48 @@ function getTimezoneOffsetLabel(tz: string): string {
     return ''
   }
 }
+
+const resetModeOptions = computed<UiSelectOption[]>(() => [
+  { value: 'rolling', label: t('admin.accounts.quotaResetModeRolling') },
+  { value: 'fixed', label: t('admin.accounts.quotaResetModeFixed') }
+])
+
+const daySelectOptions = computed<UiSelectOption[]>(() =>
+  props.dayOptions.map((d) => ({
+    value: d.value,
+    label: t('admin.accounts.dayOfWeek.' + d.key)
+  }))
+)
+
+const hourSelectOptions = computed<UiSelectOption[]>(() =>
+  props.hourOptions.map((h) => ({
+    value: h,
+    label: `${String(h).padStart(2, '0')}:00`
+  }))
+)
+
+const timezoneSelectOptions = computed<UiSelectOption[]>(() =>
+  (props.timezoneOptions ?? []).map((tz) => ({
+    value: tz,
+    label: `${tz} (${getTimezoneOffsetLabel(tz)})`
+  }))
+)
 </script>
 
 <template>
   <div>
     <!-- Title row (only when global notify is enabled) -->
     <div v-if="quotaNotifyGlobalEnabled" class="flex items-center gap-2 mb-1">
-      <span class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 min-w-0">{{ label }}</span>
-      <span v-if="limit && limit > 0" class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 min-w-0">{{ t('admin.accounts.quotaNotify.alert') }}</span>
+      <span class="text-xs font-medium text-[var(--atelier-ink-secondary)] flex-1 min-w-0">{{ label }}</span>
+      <span v-if="limit && limit > 0" class="text-xs font-medium text-[var(--atelier-ink-secondary)] flex-1 min-w-0">{{ t('admin.accounts.quotaNotify.alert') }}</span>
     </div>
-    <label v-else class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">{{ label }}</label>
+    <label v-else class="text-xs font-medium text-[var(--atelier-ink-secondary)] mb-1 block">{{ label }}</label>
 
     <!-- Input row -->
     <div class="flex items-center gap-2">
       <div :class="['relative', quotaNotifyGlobalEnabled ? 'flex-1 min-w-0' : 'flex-1']">
-        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">$</span>
-        <input :value="limit" @input="onLimitInput" type="number" min="0" step="0.01" class="input pl-6 py-1.5 text-sm" :placeholder="t('admin.accounts.quotaLimitPlaceholder')" />
+        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--atelier-ink-muted)] text-sm">$</span>
+        <input :value="limit" @input="onLimitInput" type="number" min="0" step="0.01" class="input pl-6 py-1.5 font-mono text-sm tabular-nums" :placeholder="t('admin.accounts.quotaLimitPlaceholder')" />
       </div>
       <QuotaNotifyToggle
         v-if="quotaNotifyGlobalEnabled && limit && limit > 0"
@@ -90,31 +118,52 @@ function getTimezoneOffsetLabel(tz: string): string {
     </div>
 
     <!-- Reset mode row (daily/weekly only) -->
-    <div v-if="hasResetMode" class="mt-1 flex items-center gap-2 flex-wrap">
-      <label class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t('admin.accounts.quotaResetMode') }}</label>
-      <select :value="resetMode || 'rolling'" @change="onModeChange" class="input py-1 text-xs w-auto">
-        <option value="rolling">{{ t('admin.accounts.quotaResetModeRolling') }}</option>
-        <option value="fixed">{{ t('admin.accounts.quotaResetModeFixed') }}</option>
-      </select>
+    <div v-if="hasResetMode" class="mt-1.5 flex items-center gap-2 flex-wrap">
+      <label class="text-xs text-[var(--atelier-ink-muted)] whitespace-nowrap">{{ t('admin.accounts.quotaResetMode') }}</label>
+      <div class="min-w-[7.5rem]">
+        <UiSelect
+          :model-value="resetMode || 'rolling'"
+          :options="resetModeOptions"
+          size="sm"
+          :block="false"
+          @update:model-value="onModeChange"
+        />
+      </div>
       <template v-if="resetMode === 'fixed'">
         <!-- Weekly: day of week selector -->
         <template v-if="dim === 'weekly'">
-          <label class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t('admin.accounts.quotaWeeklyResetDay') }}</label>
-          <select :value="resetDay ?? 1" @change="emit('update:resetDay', Number(($event.target as HTMLSelectElement).value))" class="input py-1 text-xs w-28">
-            <option v-for="d in dayOptions" :key="d.value" :value="d.value">{{ t('admin.accounts.dayOfWeek.' + d.key) }}</option>
-          </select>
+          <label class="text-xs text-[var(--atelier-ink-muted)] whitespace-nowrap">{{ t('admin.accounts.quotaWeeklyResetDay') }}</label>
+          <div class="w-28">
+            <UiSelect
+              :model-value="resetDay ?? 1"
+              :options="daySelectOptions"
+              size="sm"
+              @update:model-value="(val) => emit('update:resetDay', Number(val))"
+            />
+          </div>
         </template>
-        <label class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t('admin.accounts.quotaResetHour') }}</label>
-        <select :value="resetHour ?? 0" @change="emit('update:resetHour', Number(($event.target as HTMLSelectElement).value))" class="input py-1 text-xs w-24">
-          <option v-for="h in hourOptions" :key="h" :value="h">{{ String(h).padStart(2, '0') }}:00</option>
-        </select>
+        <label class="text-xs text-[var(--atelier-ink-muted)] whitespace-nowrap">{{ t('admin.accounts.quotaResetHour') }}</label>
+        <div class="w-24">
+          <UiSelect
+            :model-value="resetHour ?? 0"
+            :options="hourSelectOptions"
+            size="sm"
+            @update:model-value="(val) => emit('update:resetHour', Number(val))"
+          />
+        </div>
         <template v-if="timezoneOptions && timezoneOptions.length > 0">
-          <select :value="resetTimezone || 'UTC'" @change="emit('update:resetTimezone', ($event.target as HTMLSelectElement).value)" class="input py-1 text-xs w-auto">
-            <option v-for="tz in timezoneOptions" :key="tz" :value="tz">{{ tz }} ({{ getTimezoneOffsetLabel(tz) }})</option>
-          </select>
+          <div class="min-w-[10rem]">
+            <UiSelect
+              :model-value="resetTimezone || 'UTC'"
+              :options="timezoneSelectOptions"
+              size="sm"
+              :block="false"
+              @update:model-value="(val) => emit('update:resetTimezone', String(val ?? 'UTC'))"
+            />
+          </div>
         </template>
       </template>
-      <span class="text-[11px] text-gray-500 dark:text-gray-400">
+      <span class="text-[11px] text-[var(--atelier-ink-muted)]">
         <template v-if="resetMode === 'fixed'">{{ hintFixed }}</template>
         <template v-else>{{ hintRolling }}</template>
       </span>

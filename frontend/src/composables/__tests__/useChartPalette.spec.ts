@@ -53,7 +53,7 @@ describe('chart palette', () => {
   })
 
   it('declares every chart root token as six-digit hex in both modes', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/styles/design-system.css'), 'utf8')
+    const css = readFileSync(resolve(process.cwd(), 'src/styles/atelier/tokens.css'), 'utf8')
     const tokens = [...css.matchAll(/(--chart-[\w-]+)\s*:\s*([^;]+);/g)]
     const required = [...Array.from({ length: 10 }, (_, i) => `--chart-${i + 1}`), '--chart-text', '--chart-grid', '--chart-tooltip-bg', '--chart-tooltip-text', '--chart-tooltip-border']
     for (const name of required) {

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import OpenCodeGoProtocolRulesEditor from '../OpenCodeGoProtocolRulesEditor.vue'
+import { UiSelect } from '@/ui'
 import type { OpenCodeGoProtocolRule } from '../credentialsBuilder'
 
 vi.mock('vue-i18n', async () => {
@@ -44,13 +45,13 @@ describe('OpenCodeGoProtocolRulesEditor protocol sets', () => {
     ]
     const wrapper = mountEditor(rows)
 
-    await wrapper.get('[data-testid="opencode-go-protocol-select-0"]').setValue('chat_completions')
+    await wrapper.get('[data-testid="opencode-go-protocol-select-0"]').getComponent(UiSelect).vm.$emit('update:modelValue', 'chat_completions')
     expect(rows[0]).toEqual({ pattern: 'gpt-*', protocol: 'chat_completions', extraProtocols: ['responses'] })
 
-    await wrapper.get('[data-testid="opencode-go-protocol-select-0"]').setValue('anthropic')
+    await wrapper.get('[data-testid="opencode-go-protocol-select-0"]').getComponent(UiSelect).vm.$emit('update:modelValue', 'anthropic')
     expect(rows[0]).toEqual({ pattern: 'gpt-*', protocol: 'anthropic', extraProtocols: ['responses'] })
 
-    await wrapper.get('[data-testid="opencode-go-protocol-select-1"]').setValue('responses')
+    await wrapper.get('[data-testid="opencode-go-protocol-select-1"]').getComponent(UiSelect).vm.$emit('update:modelValue', 'responses')
     expect(rows[1]).toEqual({ pattern: 'grok-*', protocol: 'responses' })
   })
 

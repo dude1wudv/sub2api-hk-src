@@ -1,20 +1,19 @@
 <template>
   <div v-if="!isDesktopViewport" class="table-cards min-w-0 max-w-full space-y-3">
     <div v-if="mobileSort && sortableColumns.length" class="table-mobile-sort flex min-w-0 items-center gap-2" data-test="mobile-sort">
-      <label class="flex min-w-0 flex-1 items-center gap-2">
-        <span class="shrink-0 text-sm text-gray-600 dark:text-gray-300">{{ t('common.sortBy') }}</span>
-        <select
-          class="input !min-h-11 min-w-0 flex-1 text-base"
-          :aria-label="t('common.sortBy')"
-          :value="sortKey"
-          :disabled="loading"
-          data-test="mobile-sort-key"
-          @change="setSort(($event.target as HTMLSelectElement).value, sortOrder)"
-        >
-          <option v-if="!sortKey" value="" disabled>{{ t('common.selectOption') }}</option>
-          <option v-for="column in sortableColumns" :key="column.key" :value="column.key">{{ column.label }}</option>
-        </select>
-      </label>
+      <div class="flex min-w-0 flex-1 items-center gap-2">
+        <span class="shrink-0 text-sm text-[var(--atelier-ink-secondary)]">{{ t('common.sortBy') }}</span>
+        <div class="min-w-0 flex-1" data-test="mobile-sort-key">
+          <UiSelect
+            :model-value="sortKey || ''"
+            :options="sortableColumns.map((col) => ({ value: col.key, label: col.label }))"
+            :placeholder="t('common.selectOption')"
+            :aria-label="t('common.sortBy')"
+            :disabled="loading"
+            @update:model-value="(val) => setSort(String(val ?? ''), sortOrder)"
+          />
+        </div>
+      </div>
       <button
         type="button"
         class="btn btn-secondary min-h-11 shrink-0 gap-1.5 px-3"
@@ -299,6 +298,7 @@ import { useVirtualizer, observeElementRect as observeElementRectDefault } from 
 import { useI18n } from 'vue-i18n'
 import type { Column } from './types'
 import Icon from '@/components/icons/Icon.vue'
+import UiSelect from '@/ui/UiSelect.vue'
 import { useMediaQuery } from '@vueuse/core'
 import { MOBILE_CONTENT_QUERY } from '@/utils/responsive'
 

@@ -1,6 +1,11 @@
 <template>
-  <div class="portal-page user-service-page">
-    <PortalPageHeader :title="t('nav.channelStatus')" />
+  <div class="mx-auto max-w-[1440px] space-y-6 pb-10">
+    <header>
+      <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+        {{ t('nav.channelStatus') }}
+      </h1>
+    </header>
+
     <MonitorHero
       :overall-status="overallStatus"
       :interval-seconds="DEFAULT_INTERVAL_SECONDS"
@@ -27,12 +32,16 @@
       :title="detailTitle"
       @close="closeDetail"
     />
-    <ModelQualityResults v-if="qualityTarget" :group-id="qualityTarget.group_id!" :group-name="qualityTarget.name" @close="qualityTarget = null" />
+    <ModelQualityResults
+      v-if="qualityTarget"
+      :group-id="qualityTarget.group_id!"
+      :group-name="qualityTarget.name"
+      @close="qualityTarget = null"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -56,7 +65,6 @@ import { useAutoRefresh } from '@/composables/useAutoRefresh'
 const { t } = useI18n()
 const appStore = useAppStore()
 
-// ── State ──
 const items = ref<UserMonitorView[]>([])
 const loading = ref(false)
 const currentWindow = ref<MonitorWindow>('7d')
@@ -77,7 +85,6 @@ const autoRefresh = useAutoRefresh({
 })
 const countdown = autoRefresh.countdown
 
-// ── Computed ──
 const overallStatus = computed<OverallStatus>(() => {
   if (items.value.length === 0) return 'operational'
   for (const it of items.value) {
@@ -91,7 +98,6 @@ const detailTitle = computed(() => {
   return detailTarget.value?.name || t('channelStatus.detailTitle')
 })
 
-// ── Loaders ──
 async function reload(silent = false) {
   if (abortController) abortController.abort()
   const ctrl = new AbortController()
@@ -116,8 +122,6 @@ async function reload(silent = false) {
 
 async function refresh(silent = false) {
   await reload(silent)
-  // After base reload, refresh any cached detail records so non-7d availability
-  // values stay in sync without forcing the user to switch tabs again.
   if (currentWindow.value !== '7d') {
     await Promise.all(items.value.map(it => loadDetail(it.id, true)))
   }
@@ -137,7 +141,6 @@ async function ensureDetailsForWindow() {
   await Promise.all(items.value.map(it => loadDetail(it.id)))
 }
 
-// ── Handlers ──
 async function handleWindowChange(value: MonitorWindow) {
   currentWindow.value = value
   await ensureDetailsForWindow()

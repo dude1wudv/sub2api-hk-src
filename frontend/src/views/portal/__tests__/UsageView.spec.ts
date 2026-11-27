@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import UsageView from '../UsageView.vue'
 import PortalUsageAnalytics from '@/components/portal/PortalUsageAnalytics.vue'
+import { UiSelect } from '@/ui'
 import { usageMonthWindow } from '@/utils/portalUsage'
 
 const { query, listMyErrorRequests, getStats, getDashboardTrend, getDashboardModels, getDashboardSnapshotV2, listKeys, getAvailable } = vi.hoisted(() => ({
@@ -79,7 +80,7 @@ describe('portal UsageView access and request races', () => {
       end_date: dates.end,
       timezone: expect.any(String),
     }))
-    expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Record type"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Error requests')
     expect(listMyErrorRequests).not.toHaveBeenCalled()
     expect(wrapper.get('[data-testid="usage-table"]').text()).toBe('1')
@@ -108,18 +109,19 @@ describe('portal UsageView access and request races', () => {
     const wrapper = mountUsage(true)
     await flushPromises()
     const panel = wrapper.get('#usage-filters')
-    const selects = panel.findAll('select')
+    const selects = panel.findAllComponents(UiSelect)
     const inputs = panel.findAll('input')
     const callsBefore = getDashboardModels.mock.calls.length
     await inputs[0].setValue('2026-09-01')
     await inputs[1].setValue('2026-09-03')
-    await selects[0].setValue('7')
+    selects[0].vm.$emit('update:modelValue', '7')
     await inputs[2].setValue('test-model')
-    await selects[1].setValue('3')
-    await selects[2].setValue('sync')
-    await selects[3].setValue('0')
-    await selects[4].setValue('token')
-    await selects[5].setValue('false')
+    selects[1].vm.$emit('update:modelValue', '3')
+    selects[2].vm.$emit('update:modelValue', 'sync')
+    selects[3].vm.$emit('update:modelValue', '0')
+    selects[4].vm.$emit('update:modelValue', 'token')
+    selects[5].vm.$emit('update:modelValue', 'false')
+    await flushPromises()
     expect(getDashboardModels).toHaveBeenCalledTimes(callsBefore)
 
     await panel.trigger('submit')
@@ -133,7 +135,7 @@ describe('portal UsageView access and request races', () => {
     expect(getStats).toHaveBeenLastCalledWith(expect.objectContaining(filters))
     expect(getDashboardModels).toHaveBeenLastCalledWith(expect.objectContaining(filters))
     expect(getDashboardSnapshotV2).toHaveBeenLastCalledWith(expect.objectContaining({ ...filters, include_trend: true }))
-    expect(wrapper.get('.analytics-range').text()).toBe('2026-09-01 — 2026-09-03')
+    expect(wrapper.getComponent(PortalUsageAnalytics).get('form span.font-mono').text()).toBe('2026-09-01 — 2026-09-03')
     expect(getDashboardModels).toHaveBeenCalledTimes(callsBefore + 1)
 
     await panel.findAll('button').find(button => button.text() === 'Reset')!.trigger('click')
@@ -160,7 +162,7 @@ describe('portal UsageView access and request races', () => {
     expect(getDashboardModels).toHaveBeenLastCalledWith(expect.objectContaining({ api_key_id: 7, group_id: 3, model: 'gpt-5', start_date: '2026-09-04' }))
 
     await wrapper.get('[data-testid="analytics-start"]').setValue('2026-09-01')
-    await wrapper.get('.analytics-controls').trigger('submit')
+    await wrapper.getComponent(PortalUsageAnalytics).get('form').trigger('submit')
     await flushPromises()
     expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ api_key_id: 7, group_id: 3, model: 'gpt-5', start_date: '2026-09-01', end_date: '2026-09-04' }), expect.anything())
     expect(getStats).toHaveBeenLastCalledWith(expect.objectContaining({ api_key_id: 7, group_id: 3, model: 'gpt-5', start_date: '2026-09-01', end_date: '2026-09-04' }))
@@ -188,7 +190,7 @@ describe('portal UsageView access and request races', () => {
     await router.push('/usage?start_date=2026-09-04&end_date=2026-09-04&model=gpt-5&api_key_id=7')
     await flushPromises()
     expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, start_date: '2026-09-04', end_date: '2026-09-04', model: 'gpt-5', api_key_id: 7 }), expect.anything())
-    expect(wrapper.get('.usage-filter-summary').text()).toContain('gpt-5')
+    expect(wrapper.get('#usage-records').text()).toContain('gpt-5')
     await router.push('/usage?start_date=2026-09-07&end_date=2026-09-07&model=claude-sonnet')
     await flushPromises()
     expect(query).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, start_date: '2026-09-07', model: 'claude-sonnet', api_key_id: undefined, group_id: undefined }), expect.anything())
@@ -227,7 +229,7 @@ describe('portal UsageView access and request races', () => {
     })
     const wrapper = mountUsage()
     await flushPromises()
-    const tabs = wrapper.findAll('[role="tab"]')
+    const tabs = wrapper.get('[aria-label="Record type"]').findAll('[role="radio"]')
     expect(tabs).toHaveLength(2)
     await tabs[1].trigger('click')
     await flushPromises()

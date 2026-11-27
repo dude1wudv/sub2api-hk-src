@@ -2,25 +2,25 @@
   <AuthLayout>
     <div class="space-y-6">
       <!-- Title -->
-      <div class="text-center">
-        <h2 class="pa-display-title text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+      <div>
+        <h2 class="text-2xl font-semibold tracking-[-0.025em] text-[var(--atelier-ink)]">
           {{ t('auth.welcomeBack') }}
         </h2>
-        <p class="mt-1 text-xs text-gray-500 dark:text-dark-300">
+        <p class="mt-1.5 text-sm text-[var(--atelier-ink-secondary)]">
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
       <!-- Login Form -->
-      <p v-if="retryAfter > 0" class="text-sm text-gray-500" role="status">{{ isChinese ? `请在 ${retryAfter} 秒后重试。` : `Try again in ${retryAfter} seconds.` }}</p>
-      <form @submit.prevent="handleLogin" class="space-y-5">
+      <p v-if="retryAfter > 0" class="text-sm text-[var(--atelier-ink-secondary)]" role="status">{{ isChinese ? `请在 ${retryAfter} 秒后重试。` : `Try again in ${retryAfter} seconds.` }}</p>
+      <form @submit.prevent="handleLogin" class="space-y-4">
         <!-- Email Input -->
         <div>
-          <label for="email" class="input-label">
+          <label for="email" class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]">
             {{ t('auth.emailLabel') }}
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-300" />
+              <Icon name="mail" size="sm" class="text-[var(--atelier-ink-muted)]" />
             </div>
             <input
               id="email"
@@ -30,8 +30,8 @@
               autofocus
               autocomplete="email"
               :disabled="authActionDisabled"
-              class="input pl-11"
-              :class="{ 'input-error': errors.email }"
+              class="atelier-input pl-10"
+              :class="{ '!border-[var(--atelier-err)]': errors.email }"
               :placeholder="t('auth.emailPlaceholder')"
             />
           </div>
@@ -39,12 +39,21 @@
 
         <!-- Password Input -->
         <div>
-          <label for="password" class="input-label">
-            {{ t('auth.passwordLabel') }}
-          </label>
+          <div class="mb-1.5 flex items-center justify-between gap-2">
+            <label for="password" class="block text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              {{ t('auth.passwordLabel') }}
+            </label>
+            <router-link
+              v-if="passwordResetEnabled && !backendModeEnabled"
+              to="/forgot-password"
+              class="text-xs font-medium text-[var(--atelier-focus)] transition-opacity hover:opacity-80"
+            >
+              {{ t('auth.forgotPassword') }}
+            </router-link>
+          </div>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-300" />
+              <Icon name="lock" size="sm" class="text-[var(--atelier-ink-muted)]" />
             </div>
             <input
               id="password"
@@ -53,8 +62,8 @@
               required
               autocomplete="current-password"
               :disabled="authActionDisabled"
-              class="input pl-11 pr-11"
-              :class="{ 'input-error': errors.password }"
+              class="atelier-input pl-10 pr-10"
+              :class="{ '!border-[var(--atelier-err)]': errors.password }"
               :placeholder="t('auth.passwordPlaceholder')"
             />
             <button
@@ -64,21 +73,11 @@
               :aria-label="t('common.password')"
               :aria-pressed="showPassword"
               aria-controls="password"
-              class="absolute inset-y-0 right-0 flex min-h-[44px] min-w-[44px] items-center justify-center text-gray-400 transition-colors hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:text-dark-300 dark:hover:text-dark-100"
+              class="absolute inset-y-0 right-0 flex min-h-[38px] min-w-[38px] items-center justify-center text-[var(--atelier-ink-muted)] transition-colors hover:text-[var(--atelier-ink)] focus:outline-none"
             >
-              <Icon v-if="showPassword" name="eyeOff" size="md" />
-              <Icon v-else name="eye" size="md" />
+              <Icon v-if="showPassword" name="eyeOff" size="sm" />
+              <Icon v-else name="eye" size="sm" />
             </button>
-          </div>
-          <div class="mt-1 flex items-center justify-between">
-            <span></span>
-            <router-link
-              v-if="passwordResetEnabled && !backendModeEnabled"
-              to="/forgot-password"
-              class="text-sm font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
-            >
-              {{ t('auth.forgotPassword') }}
-            </router-link>
           </div>
         </div>
 

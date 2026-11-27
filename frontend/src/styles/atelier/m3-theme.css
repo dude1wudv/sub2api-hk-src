@@ -1,0 +1,96 @@
+/* ==========================================================================
+   @material/web (M3) Theme Override — Charcoal Ink Neutrality (Zero Default Purple)
+   ========================================================================== */
+
+:root {
+  --md-ref-typeface-brand: var(--font-sans);
+  --md-ref-typeface-plain: var(--font-sans);
+
+  --md-sys-color-primary: var(--atelier-ink);
+  --md-sys-color-on-primary: var(--atelier-ink-inverse);
+  --md-sys-color-primary-container: var(--atelier-subtle);
+  --md-sys-color-on-primary-container: var(--atelier-ink);
+
+  --md-sys-color-secondary: var(--atelier-ink-secondary);
+  --md-sys-color-on-secondary: var(--atelier-ink-inverse);
+  --md-sys-color-secondary-container: var(--atelier-subtle);
+  --md-sys-color-on-secondary-container: var(--atelier-ink);
+
+  --md-sys-color-surface: var(--atelier-surface);
+  --md-sys-color-surface-container: var(--atelier-surface);
+  --md-sys-color-surface-container-low: var(--atelier-canvas);
+  --md-sys-color-surface-container-high: var(--atelier-subtle);
+  --md-sys-color-surface-container-highest: var(--atelier-subtle);
+  --md-sys-color-surface-variant: var(--atelier-subtle);
+  --md-sys-color-on-surface: var(--atelier-ink);
+  --md-sys-color-on-surface-variant: var(--atelier-ink-secondary);
+  --md-sys-color-outline: var(--atelier-border-strong);
+  --md-sys-color-outline-variant: var(--atelier-border);
+  --md-sys-color-error: var(--atelier-err);
+  --md-sys-color-on-error: #ffffff;
+
+  /* Switch — crisp charcoal track, clean proportions */
+  --md-switch-track-width: 40px;
+  --md-switch-track-height: 22px;
+  --md-switch-handle-width: 16px;
+  --md-switch-handle-height: 16px;
+  --md-switch-selected-handle-width: 16px;
+  --md-switch-selected-handle-height: 16px;
+  --md-switch-pressed-handle-width: 18px;
+  --md-switch-pressed-handle-height: 18px;
+  --md-switch-state-layer-size: 32px;
+  --md-switch-selected-track-color: var(--atelier-ink);
+  --md-switch-selected-hover-track-color: var(--atelier-ink);
+  --md-switch-selected-focus-track-color: var(--atelier-ink);
+  --md-switch-selected-pressed-track-color: var(--atelier-ink);
+  --md-switch-selected-handle-color: var(--atelier-ink-inverse);
+  --md-switch-selected-hover-handle-color: var(--atelier-ink-inverse);
+  --md-switch-selected-focus-handle-color: var(--atelier-ink-inverse);
+  --md-switch-selected-pressed-handle-color: var(--atelier-ink-inverse);
+  --md-switch-track-color: #d7d7d0;
+  --md-switch-hover-track-color: #c8c8c0;
+  --md-switch-track-outline-color: transparent;
+  --md-switch-handle-color: #ffffff;
+  --md-switch-hover-handle-color: #ffffff;
+
+  /* Slider — sleek 4px track & crisp circular handle */
+  --md-slider-active-track-color: var(--atelier-ink);
+  --md-slider-active-track-height: 4px;
+  --md-slider-inactive-track-color: rgba(20, 23, 31, 0.14);
+  --md-slider-inactive-track-height: 4px;
+  --md-slider-handle-color: var(--atelier-ink);
+  --md-slider-hover-handle-color: var(--atelier-ink);
+  --md-slider-focus-handle-color: var(--atelier-ink);
+  --md-slider-pressed-handle-color: var(--atelier-ink);
+  --md-slider-handle-width: 16px;
+  --md-slider-handle-height: 16px;
+  --md-slider-label-container-color: var(--atelier-ink);
+  --md-slider-label-label-text-color: var(--atelier-ink-inverse);
+  --md-slider-state-layer-size: 32px;
+
+  /* Checkbox — 6px crisp radius */
+  --md-checkbox-container-size: 16px;
+  --md-checkbox-container-shape: 4px;
+  --md-checkbox-selected-container-color: var(--atelier-ink);
+  --md-checkbox-selected-icon-color: var(--atelier-ink-inverse);
+  --md-checkbox-outline-color: var(--atelier-border-strong);
+  --md-checkbox-state-layer-size: 30px;
+
+  /* Buttons — unified 8px radius */
+  --md-filled-button-container-shape: 8px;
+  --md-outlined-button-container-shape: 8px;
+  --md-text-button-container-shape: 8px;
+  --md-filled-tonal-button-container-shape: 8px;
+  --md-outlined-text-field-container-shape: 8px;
+  --md-outlined-select-text-field-container-shape: 8px;
+  --md-outlined-text-field-focus-outline-color: var(--atelier-focus);
+  --md-outlined-select-text-field-focus-outline-color: var(--atelier-focus);
+}
+
+.dark {
+  --md-switch-track-color: #2f333a;
+  --md-switch-hover-track-color: #3a3f48;
+  --md-switch-handle-color: #d4d7de;
+  --md-switch-hover-handle-color: #ffffff;
+  --md-slider-inactive-track-color: rgba(255, 255, 255, 0.16);
+}

@@ -29,7 +29,7 @@ describe('account groups details', () => {
       expect(Number.parseFloat(panel.style.left) + Math.min(384, Number.parseFloat(panel.style.maxWidth))).toBeLessThanOrEqual(width - 12)
       expect(Number.parseFloat(panel.style.maxHeight)).toBeLessThanOrEqual(180)
       expect(panel.querySelector('.overflow-y-auto')).not.toBeNull()
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flushPromises()
+      panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await flushPromises()
       expect(panel.style.display).toBe('none')
     }
   })

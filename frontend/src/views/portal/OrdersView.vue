@@ -1,40 +1,78 @@
 <script setup lang="ts">
-import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
+import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 import { PATRICK_CARD_ORDER_URL } from '@/utils/portalPurchase'
 import PortalRedeemHistory from '@/components/portal/PortalRedeemHistory.vue'
+import { UiTabs } from '@/ui'
 
 const { locale } = useI18n()
+const router = useRouter()
+const auth = useAuthStore()
+const app = useAppStore()
 const copy = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
+const subscriptionEnabled = computed(() => resolveFeatureFlag(app.cachedPublicSettings, FeatureFlags.subscription))
+
+const billingTabs = computed(() => {
+  const tabs: Array<{ value: string; label: string }> = []
+  if (!auth.isSimpleMode) {
+    tabs.push({ value: 'purchase', label: copy('充值与兑换', 'Top up & redeem') })
+    tabs.push({ value: 'orders', label: copy('兑换记录', 'Redemption history') })
+  }
+  if (subscriptionEnabled.value) {
+    tabs.push({ value: 'subscriptions', label: copy('订阅计划', 'Subscriptions') })
+  }
+  return tabs
+})
+
+function handleTabChange(val: string) {
+  if (val === 'purchase') void router.push('/purchase')
+  else if (val === 'subscriptions') void router.push('/subscriptions')
+}
 </script>
 
 <template>
-  <div class="portal-page redemption-page">
-    <PortalPageHeader :title="copy('兑换记录', 'Redemption history')" />
-    <nav class="redemption-tabs" :aria-label="copy('充值与兑换记录', 'Top up and redemption history')">
-      <RouterLink to="/purchase">{{ copy('充值与兑换', 'Top up & redeem') }}</RouterLink>
-      <RouterLink to="/orders" class="active" aria-current="page">{{ copy('兑换记录', 'Redemption history') }}</RouterLink>
-    </nav>
-    <aside class="redemption-orders-note">
-      <div>
-        <h2>{{ copy('本站兑换记录', 'Redemptions on patrickapi') }}</h2>
-        <p>{{ copy('这里显示在本站完成的兑换及额度调整。发卡网的购买订单、付款和发货记录，请前往发卡网查询。', 'This page shows redemptions and allowance adjustments on patrickapi. Purchase, payment, and delivery records are available in the card shop.') }}</p>
+  <div class="mx-auto max-w-[1240px] space-y-6 pb-10">
+    <header>
+      <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+        {{ copy('兑换记录', 'Redemption history') }}
+      </h1>
+      <p class="mt-1 text-sm text-[var(--atelier-ink-secondary)]">
+        {{ copy('查看在本站完成的兑换码核销及额度调整明细。', 'Review code redemptions and allowance adjustments completed on this site.') }}
+      </p>
+    </header>
+
+    <UiTabs
+      v-if="billingTabs.length > 1"
+      model-value="orders"
+      :tabs="billingTabs"
+      :aria-label="copy('计费与兑换导航', 'Billing and redemption navigation')"
+      @update:model-value="handleTabChange"
+    />
+
+    <aside class="atelier-surface-subtle flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
+      <div class="max-w-2xl">
+        <h2 class="text-[15px] font-semibold tracking-[-0.015em] text-[var(--atelier-ink)]">
+          {{ copy('本站兑换记录', 'Redemptions on patrickapi') }}
+        </h2>
+        <p class="mt-1 text-sm leading-relaxed text-[var(--atelier-ink-secondary)]">
+          {{ copy('这里显示在本站完成的兑换及额度调整。发卡网的购买订单、付款和发货记录，请前往发卡网查询。', 'This page shows redemptions and allowance adjustments on patrickapi. Purchase, payment, and delivery records are available in the card shop.') }}
+        </p>
       </div>
-      <a :href="PATRICK_CARD_ORDER_URL" target="_blank" rel="noopener noreferrer" class="portal-button secondary">{{ copy('查询发卡网订单', 'Card-shop orders') }} <span aria-hidden="true">↗</span></a>
+      <a
+        :href="PATRICK_CARD_ORDER_URL"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="atelier-btn atelier-btn-secondary h-9 shrink-0 px-3.5 text-xs"
+      >
+        {{ copy('查询发卡网订单', 'Card-shop orders') }}
+        <span aria-hidden="true">↗</span>
+      </a>
     </aside>
+
     <PortalRedeemHistory />
   </div>
 </template>
-
-<style scoped>
-.redemption-tabs { display: flex; gap: 28px; border-bottom: 1px solid rgb(var(--line)); margin-bottom: 26px; }
-.redemption-tabs a { padding-bottom: 13px; color: rgb(var(--ink-3)); font: 500 14.5px/1.5 var(--font-sans); text-decoration: none; transition: color var(--motion-fast) ease; }
-.redemption-tabs a:hover { color: rgb(var(--ink)); }
-.redemption-tabs .active { color: rgb(var(--ink)); font-weight: 600; border-bottom: 2px solid rgb(var(--brand-moss)); margin-bottom: -1px; }
-.redemption-orders-note { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 24px; margin-bottom: 30px; border: 1px solid rgb(var(--brand-moss) / .24); border-radius: var(--radius-card); background: linear-gradient(135deg, rgb(var(--brand-moss) / .08) 0%, rgb(var(--surface)) 70%); box-shadow: var(--shadow-panel); }
-.redemption-orders-note h2 { margin: 0 0 6px; font: 650 17px/1.4 var(--font-sans); letter-spacing: -0.01em; }
-.redemption-orders-note p { max-width: 720px; margin: 0; color: rgb(var(--ink-2)); font-size: 13.5px; line-height: 1.7; }
-.redemption-orders-note > a { flex-shrink: 0; }
-@media (max-width: 899px) { .redemption-orders-note { align-items: flex-start; flex-direction: column; gap: 16px; } }
-@media (max-width: 767px) { .redemption-orders-note { padding: 18px; margin-bottom: 24px; } .redemption-tabs { gap: 22px; margin-bottom: 20px; } }
-</style>

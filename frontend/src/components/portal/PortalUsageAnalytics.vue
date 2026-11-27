@@ -8,11 +8,11 @@ import { usageAPI } from '@/api'
 import type { TrendParams } from '@/api/usage'
 import type { UsageStatsResponse, ModelStat, GroupStat, TrendDataPoint } from '@/types'
 import Icon from '@/components/icons/Icon.vue'
-import ModelIcon from '@/components/common/ModelIcon.vue'
 import type { UsageDrilldown } from '@/views/portal/usageRoute'
 import { validUsageDate } from '@/views/portal/usageRoute'
 import { distributionValue, rankChartRows } from '@/utils/chartDistribution'
 import { formatUsageMoney } from '@/utils/portalUsage'
+import { BrandModelIcon, UiButton, UiSegmented, UiSelect, type UiSelectOption } from '@/ui'
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 const { locale, t } = useI18n()
@@ -41,9 +41,28 @@ const chartTheme = useChartTheme()
 const number = (value: number) => !Number.isFinite(value) ? '—' : value >= 1e9 ? `${(value / 1e9).toFixed(2)}B` : value >= 1e6 ? `${(value / 1e6).toFixed(2)}M` : value >= 1e3 ? `${(value / 1e3).toFixed(2)}K` : value.toLocaleString()
 const money = (value: number) => formatUsageMoney(value, 4)
 const duration = (value: number) => Number.isFinite(value) ? `${(value / 1000).toFixed(2)}s` : '—'
-const metricNumberStyle = (value: string) => ({ '--metric-width': Math.max(value.length * 0.64, 1) })
 const selectedDay = ref('')
 const availableDays = computed(() => [...new Set(trend.value.map(item => item.date.slice(0, 10)).filter(validUsageDate))])
+
+const presetOptions = computed<UiSelectOption[]>(() => [
+  { value: 'month', label: tx('本月', 'This month') },
+  { value: 'today', label: tx('今天', 'Today') },
+  { value: '7', label: tx('近 7 天', 'Last 7 days') },
+  { value: '30', label: tx('近 30 天', 'Last 30 days') },
+  { value: 'custom', label: tx('自定义', 'Custom') },
+])
+const granularityOptions = computed<UiSelectOption[]>(() => [
+  { value: 'day', label: tx('按天', 'Daily') },
+  { value: 'hour', label: tx('按小时', 'Hourly') },
+])
+const daySelectOptions = computed<UiSelectOption[]>(() =>
+  availableDays.value.map(day => ({ value: day, label: day }))
+)
+const metricSegmentedOptions = computed(() => [
+  { value: 'tokens' as const, label: 'Token' },
+  { value: 'actual_cost' as const, label: tx('实际消费', 'Actual cost') },
+])
+
 function openModel(model: string) { emit('drilldown', { ...applied.value, model }) }
 function openDate(date: string) {
   const day = date.slice(0, 10)
@@ -87,7 +106,8 @@ async function load() {
   if (!availableDays.value.includes(selectedDay.value)) selectedDay.value = availableDays.value[availableDays.value.length - 1] || ''
 }
 
-function changePreset() {
+function changePreset(value: string | number | boolean | null) {
+  preset.value = String(value ?? 'month')
   if (preset.value === 'custom') return
   const today = new Date()
   const first = new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -95,6 +115,11 @@ function changePreset() {
   else if (preset.value === '7' || preset.value === '30') first.setDate(first.getDate() - Number(preset.value) + 1)
   start.value = dateText(first); end.value = dateText(today)
   granularity.value = preset.value === 'today' ? 'hour' : 'day'
+  void load()
+}
+
+function handleGranularityChange(value: string | number | boolean | null) {
+  granularity.value = value === 'hour' ? 'hour' : 'day'
   void load()
 }
 
@@ -123,7 +148,7 @@ function distributionData(id: string, rows: DistributionRow[]) {
 function hasDistribution(id: string, rows: DistributionRow[]) {
   return rows.some(row => distributionValue(row, metrics.value[id]) > 0)
 }
-const doughnutOptions = computed<ChartOptions<'doughnut'>>(() => ({ responsive: true, maintainAspectRatio: false, animation: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { ...chartTheme.value.tooltip, callbacks: { label: context => `${context.label}: ${Number(context.raw).toLocaleString(undefined, { maximumFractionDigits: 6 })}` } } } }))
+const doughnutOptions = computed<ChartOptions<'doughnut'>>(() => ({ responsive: true, maintainAspectRatio: false, animation: false, cutout: '74%', plugins: { legend: { display: false }, tooltip: { ...chartTheme.value.tooltip, callbacks: { label: context => `${context.label}: ${Number(context.raw).toLocaleString(undefined, { maximumFractionDigits: 6 })}` } } } }))
 function distributionOptions(id: string, rows: DistributionRow[]): ChartOptions<'doughnut'> {
   return { ...doughnutOptions.value, plugins: { ...doughnutOptions.value.plugins, tooltip: { ...chartTheme.value.tooltip, callbacks: {
     label: context => `${context.label}: ${metrics.value[id] === 'actual_cost' ? money(Number(context.raw)) : number(Number(context.raw))}`,
@@ -147,14 +172,14 @@ const lineOptions = computed<ChartOptions<'line'>>(() => ({
   onClick: (_event, items) => { const item = trend.value[items[0]?.index ?? -1]; if (item) openDate(item.date) },
   interaction: { intersect: false, mode: 'index' },
   elements: { point: { radius: trend.value.length > 48 ? 0 : 2, hoverRadius: 5 }, line: { borderWidth: 2, tension: 0.2 } },
-  plugins: { legend: { position: 'bottom', labels: { color: chartTheme.value.text, usePointStyle: true, boxWidth: 8, font: { size: 13 } } }, tooltip: { ...chartTheme.value.tooltip, callbacks: {
+  plugins: { legend: { position: 'bottom', labels: { color: chartTheme.value.text, usePointStyle: true, boxWidth: 8, font: { size: 12 } } }, tooltip: { ...chartTheme.value.tooltip, callbacks: {
     label: context => `${context.dataset.label}: ${context.dataset.yAxisID === 'percentage' ? `${Number(context.raw).toFixed(1)}%` : number(Number(context.raw))}`,
     footer: items => { const item = trend.value[items[0]?.dataIndex ?? -1]; return item ? `${tx('实际', 'Actual')} ${money(item.actual_cost)} · ${tx('标准', 'Standard')} ${money(item.cost)}` : '' },
   } } },
   scales: {
-    x: { grid: { display: false }, ticks: { color: chartTheme.value.text, maxTicksLimit: 8, font: { size: 13 } } },
-    y: { beginAtZero: true, grid: { color: chartTheme.value.grid }, ticks: { color: chartTheme.value.text, callback: value => number(Number(value)), font: { size: 13 } } },
-    percentage: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { color: colors.value[3], callback: value => `${value}%`, font: { size: 13 } } },
+    x: { grid: { display: false }, ticks: { color: chartTheme.value.text, maxTicksLimit: 8, font: { size: 12 } } },
+    y: { beginAtZero: true, grid: { color: chartTheme.value.grid }, ticks: { color: chartTheme.value.text, callback: value => number(Number(value)), font: { size: 12 } } },
+    percentage: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { color: colors.value[3], callback: value => `${value}%`, font: { size: 12 } } },
   },
 }))
 watch(() => props.filters, filters => {
@@ -170,107 +195,270 @@ onBeforeUnmount(() => { requestSequence++ })
 </script>
 
 <template>
-  <section class="portal-usage-analytics" :aria-label="tx('用量分析', 'Usage analytics')" :aria-busy="loading">
-    <p v-if="errors.stats" role="alert" class="analytics-error">{{ tx('汇总与端点统计暂时无法加载，请重试。', 'Summary and endpoint statistics could not be loaded. Please retry.') }}</p>
-    <div class="analytics-summary">
-      <article><span class="analytics-metric-icon blue"><Icon name="document" /></span><div><span>{{ tx('总请求数', 'Total requests') }}</span><strong data-testid="analytics-requests" :style="metricNumberStyle(stats ? number(stats.total_requests) : '—')">{{ stats ? number(stats.total_requests) : '—' }}</strong><small>{{ tx('所选分析时间段内', 'In the analysis period') }}</small></div></article>
-      <article><span class="analytics-metric-icon amber"><Icon name="cube" /></span><div><span>{{ tx('总 Token', 'Total tokens') }}</span><strong :style="metricNumberStyle(stats ? number(stats.total_tokens) : '—')">{{ stats ? number(stats.total_tokens) : '—' }}</strong><small v-if="stats">{{ tx('输入', 'Input') }} {{ number(stats.total_input_tokens) }} · {{ tx('输出', 'Output') }} {{ number(stats.total_output_tokens) }}</small><small v-if="stats">{{ tx('缓存写入', 'Cache creation') }} {{ number(stats.total_cache_creation_tokens) }} · {{ tx('读取', 'Read') }} {{ number(stats.total_cache_read_tokens) }}</small></div></article>
-      <article :class="{ 'analytics-summary-wide': stats && money(stats.total_actual_cost).length > 14 }"><span class="analytics-metric-icon green"><Icon name="dollar" /></span><div><span>{{ tx('实际消费', 'Actual cost') }}</span><strong data-testid="analytics-actual-cost" :style="metricNumberStyle(stats ? money(stats.total_actual_cost) : '—')">{{ stats ? money(stats.total_actual_cost) : '—' }}</strong><small v-if="stats">{{ tx('标准费用', 'Standard cost') }} <s>{{ money(stats.total_cost) }}</s></small></div></article>
-      <article><span class="analytics-metric-icon purple"><Icon name="clock" /></span><div><span>{{ tx('平均耗时', 'Average duration') }}</span><strong :style="metricNumberStyle(stats ? duration(stats.average_duration_ms) : '—')">{{ stats ? duration(stats.average_duration_ms) : '—' }}</strong><small>{{ tx('单次请求平均总耗时', 'Average request duration') }}</small></div></article>
+  <section class="space-y-5" :aria-label="tx('用量分析', 'Usage analytics')" :aria-busy="loading">
+    <p v-if="errors.stats" role="alert" class="rounded-lg border border-[var(--atelier-err)]/25 bg-[var(--atelier-err-bg)] px-3.5 py-2.5 text-xs text-[var(--atelier-err)]">
+      {{ tx('汇总与端点统计暂时无法加载，请重试。', 'Summary and endpoint statistics could not be loaded. Please retry.') }}
+    </p>
+
+    <!-- Borderless Horizontal Metric Ribbon -->
+    <div class="border-b border-[var(--atelier-border)] pb-5">
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p class="text-xs font-medium text-[var(--atelier-ink-muted)]">{{ tx('实际消费', 'Actual cost') }}</p>
+          <div class="mt-1 flex flex-wrap items-baseline gap-2.5">
+            <strong
+              data-testid="analytics-actual-cost"
+              class="font-mono text-3xl font-semibold tracking-tight tabular-nums text-[var(--atelier-ink)]"
+            >
+              {{ stats ? money(stats.total_actual_cost) : '—' }}
+            </strong>
+            <span v-if="stats" class="font-mono text-xs tabular-nums text-[var(--atelier-ink-muted)]">
+              {{ tx('标准费用', 'Standard cost') }} <s>{{ money(stats.total_cost) }}</s>
+            </span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-start gap-x-6 gap-y-3 lg:flex-nowrap">
+          <div class="min-w-[115px]">
+            <p class="text-xs text-[var(--atelier-ink-muted)]">{{ tx('总请求数', 'Total requests') }}</p>
+            <strong
+              data-testid="analytics-requests"
+              class="mt-1 block font-mono text-lg font-semibold tabular-nums text-[var(--atelier-ink)]"
+            >
+              {{ stats ? number(stats.total_requests) : '—' }}
+            </strong>
+            <p class="mt-0.5 text-[11px] text-[var(--atelier-ink-muted)]">{{ tx('所选分析时间段内', 'In the analysis period') }}</p>
+          </div>
+
+          <div class="hidden h-10 w-px bg-[var(--atelier-border)] sm:block" aria-hidden="true" />
+
+          <div class="min-w-[170px]">
+            <p class="text-xs text-[var(--atelier-ink-muted)]">{{ tx('总 Token', 'Total tokens') }}</p>
+            <strong class="mt-1 block font-mono text-lg font-semibold tabular-nums text-[var(--atelier-ink)]">
+              {{ stats ? number(stats.total_tokens) : '—' }}
+            </strong>
+            <p v-if="stats" class="mt-0.5 font-mono text-[11px] tabular-nums text-[var(--atelier-ink-muted)]">
+              {{ tx('输入', 'In') }} {{ number(stats.total_input_tokens) }} · {{ tx('输出', 'Out') }} {{ number(stats.total_output_tokens) }}
+            </p>
+            <p v-if="stats" class="font-mono text-[11px] tabular-nums text-[var(--atelier-ink-muted)]">
+              {{ tx('缓存写', 'Cache W') }} {{ number(stats.total_cache_creation_tokens) }} · {{ tx('读', 'R') }} {{ number(stats.total_cache_read_tokens) }}
+            </p>
+          </div>
+
+          <div class="hidden h-10 w-px bg-[var(--atelier-border)] sm:block" aria-hidden="true" />
+
+          <div class="min-w-[110px]">
+            <p class="text-xs text-[var(--atelier-ink-muted)]">{{ tx('平均耗时', 'Average duration') }}</p>
+            <strong class="mt-1 block font-mono text-lg font-semibold tabular-nums text-[var(--atelier-ink)]">
+              {{ stats ? duration(stats.average_duration_ms) : '—' }}
+            </strong>
+            <p class="mt-0.5 text-[11px] text-[var(--atelier-ink-muted)]">{{ tx('单次请求平均耗时', 'Avg request latency') }}</p>
+          </div>
+        </div>
+      </div>
     </div>
-    <form class="analytics-controls" @submit.prevent="load">
-      <label><Icon name="calendar" size="sm" />{{ tx('时间范围', 'Period') }}<select v-model="preset" data-testid="analytics-preset" @change="changePreset"><option value="month">{{ tx('本月', 'This month') }}</option><option value="today">{{ tx('今天', 'Today') }}</option><option value="7">{{ tx('近 7 天', 'Last 7 days') }}</option><option value="30">{{ tx('近 30 天', 'Last 30 days') }}</option><option value="custom">{{ tx('自定义', 'Custom') }}</option></select></label>
-      <template v-if="preset === 'custom'"><label>{{ tx('开始日期', 'Start date') }}<input v-model="start" data-testid="analytics-start" type="date" required /></label><label>{{ tx('结束日期', 'End date') }}<input v-model="end" data-testid="analytics-end" type="date" required /></label><button class="analytics-apply" type="submit">{{ tx('应用', 'Apply') }}</button></template>
-      <span class="analytics-range">{{ applied.start }} — {{ applied.end }}</span>
-      <label class="analytics-granularity">{{ tx('粒度', 'Granularity') }}<select v-model="granularity" data-testid="analytics-granularity" @change="load"><option value="day">{{ tx('按天', 'Daily') }}</option><option value="hour">{{ tx('按小时', 'Hourly') }}</option></select></label>
-      <button class="analytics-refresh" type="button" :aria-label="tx('刷新用量分析', 'Refresh usage analytics')" :disabled="loading" @click="load"><Icon name="refresh" size="sm" /></button>
+
+    <!-- Period & Granularity Controls -->
+    <form class="atelier-surface flex flex-wrap items-center gap-3 px-4 py-3" @submit.prevent="load">
+      <div class="flex items-center gap-2 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+        <Icon name="calendar" size="sm" />
+        <span>{{ tx('时间范围', 'Period') }}</span>
+        <div class="w-32" data-testid="analytics-preset">
+          <UiSelect
+            :model-value="preset"
+            :options="presetOptions"
+            size="sm"
+            :aria-label="tx('时间范围', 'Period')"
+            @update:model-value="changePreset"
+          />
+        </div>
+      </div>
+
+      <template v-if="preset === 'custom'">
+        <label class="flex items-center gap-1.5 text-xs text-[var(--atelier-ink-secondary)]">
+          <span>{{ tx('开始', 'Start') }}</span>
+          <input v-model="start" data-testid="analytics-start" type="date" required class="atelier-input !min-h-8 !w-auto !py-1 !text-xs" />
+        </label>
+        <label class="flex items-center gap-1.5 text-xs text-[var(--atelier-ink-secondary)]">
+          <span>{{ tx('结束', 'End') }}</span>
+          <input v-model="end" data-testid="analytics-end" type="date" required class="atelier-input !min-h-8 !w-auto !py-1 !text-xs" />
+        </label>
+        <UiButton variant="primary" size="sm" type="submit">{{ tx('应用', 'Apply') }}</UiButton>
+      </template>
+
+      <span class="rounded-md bg-[var(--atelier-subtle)] px-2.5 py-1 font-mono text-xs tabular-nums text-[var(--atelier-ink-secondary)]">
+        {{ applied.start }} — {{ applied.end }}
+      </span>
+
+      <div class="ml-auto flex items-center gap-2">
+        <span class="text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ tx('粒度', 'Granularity') }}</span>
+        <div class="w-28" data-testid="analytics-granularity">
+          <UiSelect
+            :model-value="granularity"
+            :options="granularityOptions"
+            size="sm"
+            :aria-label="tx('粒度', 'Granularity')"
+            @update:model-value="handleGranularityChange"
+          />
+        </div>
+        <UiButton
+          variant="secondary"
+          size="sm"
+          type="button"
+          :aria-label="tx('刷新用量分析', 'Refresh usage analytics')"
+          :disabled="loading"
+          @click="load"
+        >
+          <Icon name="refresh" size="sm" />
+        </UiButton>
+      </div>
     </form>
-    <p v-if="rangeError" role="alert" class="analytics-error">{{ rangeError }}</p>
-    <p class="analytics-timezone">{{ tx('统计使用下方已应用的明细筛选条件。时区：', 'Statistics use the applied record filters. Time zone: ') }}{{ timezone }}</p>
-    <div class="analytics-grid">
-      <article v-for="section in sections" :key="section.id" class="analytics-panel" :data-distribution="section.id">
-        <header><h3><Icon :name="section.icon" size="sm" />{{ section.title }}</h3><div class="analytics-segment" :aria-label="section.title"><button type="button" :aria-pressed="metrics[section.id] === 'tokens'" @click="metrics[section.id] = 'tokens'">Token</button><button type="button" :aria-pressed="metrics[section.id] === 'actual_cost'" @click="metrics[section.id] = 'actual_cost'">{{ tx('实际消费', 'Actual cost') }}</button></div></header>
-        <p v-if="loading" class="analytics-state" role="status">{{ tx('正在加载统计…', 'Loading statistics…') }}</p>
-        <p v-else-if="section.error" class="analytics-state analytics-error" role="alert">{{ tx('统计加载失败，点击刷新重试。', 'Could not load statistics. Refresh to retry.') }}</p>
-        <p v-else-if="!section.rows.length" class="analytics-state">{{ tx('所选时间段暂无记录', 'No requests in this period') }}</p>
-        <div v-else class="analytics-distribution">
-          <div class="analytics-doughnut"><Doughnut v-if="hasDistribution(section.id, section.rows)" :data="distributionData(section.id, section.rows)" :options="distributionOptions(section.id, section.rows)" :aria-label="section.title" role="img" /><span v-else class="analytics-zero">{{ tx('当前指标为 0', 'Metric total is 0') }}</span></div>
-          <div class="analytics-table-scroll"><table><thead><tr><th>{{ section.column }}</th><th>{{ tx('请求', 'Requests') }}</th><th>Token</th><th>{{ tx('实际', 'Actual') }}</th><th>{{ tx('标准', 'Standard') }}</th></tr></thead><tbody><tr v-for="row in section.rows" :key="row.id"><td :title="row.name"><span class="analytics-row-label"><i :style="{ background: row.chartColor }" /><ModelIcon v-if="section.id === 'models'" :model="row.name" size="16px" /><button v-if="section.id === 'models'" type="button" class="analytics-model-link" :aria-label="tx(`查看 ${row.name} 的请求明细`, `View requests for ${row.name}`)" @click="openModel(row.name)">{{ row.name }} <span aria-hidden="true">↗</span></button><span v-else>{{ row.name }}</span></span></td><td>{{ number(row.requests) }}</td><td>{{ number(row.total_tokens) }}</td><td class="analytics-actual">{{ money(row.actual_cost) }}</td><td>{{ money(row.cost) }}</td></tr></tbody></table></div>
+
+    <p v-if="rangeError" role="alert" class="text-xs text-[var(--atelier-err)]">{{ rangeError }}</p>
+    <p class="text-xs text-[var(--atelier-ink-muted)]">
+      {{ tx('统计使用下方已应用的明细筛选条件。时区：', 'Statistics use the applied record filters. Time zone: ') }}{{ timezone }}
+    </p>
+
+    <!-- Asymmetric Analytics Grid -->
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+      <!-- Trend Panel (wide hero chart on top/right) -->
+      <article class="atelier-surface flex flex-col xl:col-span-12">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--atelier-border)] px-5 py-3.5">
+          <h3 class="flex items-center gap-2 text-sm font-semibold text-[var(--atelier-ink)]">
+            <Icon name="chart" size="sm" class="text-[var(--atelier-ink-secondary)]" />
+            {{ tx('Token 使用趋势', 'Token usage trend') }}
+          </h3>
+          <form v-if="availableDays.length" class="flex items-center gap-2" @submit.prevent="openDate(selectedDay)">
+            <div class="w-36">
+              <UiSelect
+                :model-value="selectedDay"
+                :options="daySelectOptions"
+                size="sm"
+                :aria-label="tx('选择明细日期', 'Choose a date for details')"
+                @update:model-value="(v) => { selectedDay = String(v ?? '') }"
+              />
+            </div>
+            <UiButton variant="secondary" size="sm" type="submit">
+              {{ tx('查看明细', 'View details') }} ↗
+            </UiButton>
+          </form>
+        </header>
+
+        <div class="p-5">
+          <p v-if="loading" class="flex h-[240px] items-center justify-center text-sm text-[var(--atelier-ink-muted)]" role="status">
+            {{ tx('正在加载统计…', 'Loading statistics…') }}
+          </p>
+          <p v-else-if="errors.snapshot" class="flex h-[240px] items-center justify-center text-sm text-[var(--atelier-err)]" role="alert">
+            {{ tx('趋势加载失败，点击刷新重试。', 'Could not load trend. Refresh to retry.') }}
+          </p>
+          <p v-else-if="!trend.length" class="flex h-[240px] items-center justify-center text-sm text-[var(--atelier-ink-muted)]">
+            {{ tx('所选时间段暂无记录', 'No requests in this period') }}
+          </p>
+          <div v-else class="h-[260px] min-w-0">
+            <Line
+              :data="trendData"
+              :options="lineOptions"
+              :aria-label="tx('输入、输出、缓存写入、缓存读取和缓存命中率趋势', 'Input, output, cache creation, cache read and cache hit rate trend')"
+              role="img"
+            />
+          </div>
+          <p class="mt-3 text-xs text-[var(--atelier-ink-muted)]">
+            {{ tx('缓存命中率 = 缓存读取 /（输入 + 缓存写入 + 缓存读取）', 'Cache hit rate = cache read / (input + cache creation + cache read)') }}
+          </p>
         </div>
       </article>
-      <article class="analytics-panel analytics-trend"><header><div><h3><Icon name="chart" size="sm" />{{ tx('Token 使用趋势', 'Token usage trend') }}</h3></div><form v-if="availableDays.length" class="analytics-drilldown" @submit.prevent="openDate(selectedDay)"><select v-model="selectedDay" :aria-label="tx('选择明细日期', 'Choose a date for details')"><option v-for="day in availableDays" :key="day" :value="day">{{ day }}</option></select><button type="submit">{{ tx('查看明细', 'View details') }} ↗</button></form></header><p v-if="loading" class="analytics-state" role="status">{{ tx('正在加载统计…', 'Loading statistics…') }}</p><p v-else-if="errors.snapshot" class="analytics-state analytics-error" role="alert">{{ tx('趋势加载失败，点击刷新重试。', 'Could not load trend. Refresh to retry.') }}</p><p v-else-if="!trend.length" class="analytics-state">{{ tx('所选时间段暂无记录', 'No requests in this period') }}</p><div v-else class="analytics-line"><Line :data="trendData" :options="lineOptions" :aria-label="tx('输入、输出、缓存写入、缓存读取和缓存命中率趋势', 'Input, output, cache creation, cache read and cache hit rate trend')" role="img" /></div><p class="analytics-chart-note">{{ tx('缓存命中率 = 缓存读取 /（输入 + 缓存写入 + 缓存读取）', 'Cache hit rate = cache read / (input + cache creation + cache read)') }}</p></article>
+
+      <!-- Distribution Panels (Models 6 cols, Groups 6 cols, Endpoints 12 cols or 4/4/4) -->
+      <article
+        v-for="(section, idx) in sections"
+        :key="section.id"
+        :data-distribution="section.id"
+        :class="[
+          'atelier-surface flex min-w-0 flex-col',
+          idx === 0 ? 'xl:col-span-6' : idx === 1 ? 'xl:col-span-6' : 'xl:col-span-12'
+        ]"
+      >
+        <header class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--atelier-border)] px-5 py-3.5">
+          <h3 class="flex items-center gap-2 text-sm font-semibold text-[var(--atelier-ink)]">
+            <Icon :name="section.icon" size="sm" class="text-[var(--atelier-ink-secondary)]" />
+            {{ section.title }}
+          </h3>
+          <UiSegmented
+            :model-value="metrics[section.id]"
+            :options="metricSegmentedOptions"
+            size="sm"
+            :aria-label="section.title"
+            @update:model-value="(val) => { metrics[section.id] = val }"
+          />
+        </header>
+
+        <div class="p-5">
+          <p v-if="loading" class="flex min-h-[200px] items-center justify-center text-sm text-[var(--atelier-ink-muted)]" role="status">
+            {{ tx('正在加载统计…', 'Loading statistics…') }}
+          </p>
+          <p v-else-if="section.error" class="flex min-h-[200px] items-center justify-center text-sm text-[var(--atelier-err)]" role="alert">
+            {{ tx('统计加载失败，点击刷新重试。', 'Could not load statistics. Refresh to retry.') }}
+          </p>
+          <p v-else-if="!section.rows.length" class="flex min-h-[200px] items-center justify-center text-sm text-[var(--atelier-ink-muted)]">
+            {{ tx('所选时间段暂无记录', 'No requests in this period') }}
+          </p>
+          <div v-else class="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+            <div class="flex h-36 w-36 shrink-0 items-center justify-center">
+              <Doughnut
+                v-if="hasDistribution(section.id, section.rows)"
+                :data="distributionData(section.id, section.rows)"
+                :options="distributionOptions(section.id, section.rows)"
+                :aria-label="section.title"
+                role="img"
+              />
+              <span
+                v-else
+                class="flex h-32 w-32 items-center justify-center rounded-full border-[10px] border-[var(--atelier-subtle)] p-2 text-center text-xs text-[var(--atelier-ink-muted)]"
+              >
+                {{ tx('当前指标为 0', 'Metric total is 0') }}
+              </span>
+            </div>
+
+            <div class="max-h-64 w-full min-w-0 flex-1 overflow-auto">
+              <table class="atelier-table text-xs">
+                <thead>
+                  <tr>
+                    <th class="!pl-0">{{ section.column }}</th>
+                    <th class="!text-right">{{ tx('请求', 'Requests') }}</th>
+                    <th class="!text-right">Token</th>
+                    <th class="!text-right">{{ tx('实际', 'Actual') }}</th>
+                    <th class="!text-right">{{ tx('标准', 'Standard') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in section.rows" :key="row.id">
+                    <td :title="row.name" class="!pl-0">
+                      <span class="flex max-w-[200px] items-center gap-2 break-all text-[var(--atelier-ink)]">
+                        <span class="h-2 w-2 shrink-0 rounded-full" :style="{ background: row.chartColor }" />
+                        <BrandModelIcon v-if="section.id === 'models'" :model="row.name" size="sm" />
+                        <button
+                          v-if="section.id === 'models'"
+                          type="button"
+                          class="inline-flex items-center gap-1 text-left font-mono font-medium text-[var(--atelier-ink)] underline decoration-[var(--atelier-border-strong)] underline-offset-4 hover:decoration-[var(--atelier-ink)]"
+                          :aria-label="tx(`查看 ${row.name} 的请求明细`, `View requests for ${row.name}`)"
+                          @click="openModel(row.name)"
+                        >
+                          {{ row.name }} <span class="text-[var(--atelier-ink-muted)]" aria-hidden="true">↗</span>
+                        </button>
+                        <span v-else class="font-mono">{{ row.name }}</span>
+                      </span>
+                    </td>
+                    <td class="text-right font-mono tabular-nums text-[var(--atelier-ink-secondary)]">{{ number(row.requests) }}</td>
+                    <td class="text-right font-mono tabular-nums text-[var(--atelier-ink-secondary)]">{{ number(row.total_tokens) }}</td>
+                    <td class="text-right font-mono font-semibold tabular-nums text-[var(--atelier-ok)]">{{ money(row.actual_cost) }}</td>
+                    <td class="text-right font-mono tabular-nums text-[var(--atelier-ink-muted)]">{{ money(row.cost) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </article>
     </div>
   </section>
 </template>
-
-<style scoped>
-.portal-usage-analytics { margin: 0 0 28px; color: rgb(var(--ink)); font-size: 14px; }
-.analytics-timezone, .analytics-chart-note { color: rgb(var(--ink-3)); font-size: 12.5px; margin: 8px 0 0; line-height: 1.6; }
-.analytics-refresh { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 7px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-control); padding: 8px 12px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); white-space: nowrap; cursor: pointer; }
-.analytics-refresh:disabled { opacity: .5; cursor: not-allowed; }
-.analytics-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 18px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); background: rgb(var(--surface)); box-shadow: var(--shadow-panel); }
-.analytics-controls label { display: flex; align-items: center; gap: 8px; color: rgb(var(--ink-2)); font-size: 13px; font-weight: 500; }
-.analytics-controls select, .analytics-controls input { min-width: 0; min-height: 38px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-control); background: rgb(var(--surface)); color: rgb(var(--ink)); padding: 7px 11px; font: inherit; font-size: 13.5px; font-weight: 400; transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease; }
-.analytics-controls :is(select, input):hover { border-color: rgb(var(--line-strong)); }
-.analytics-controls :is(select, input):focus { border-color: rgb(var(--focus-ring)); box-shadow: 0 0 0 3px rgb(var(--focus-ring) / .14); outline: none; }
-.analytics-range { font-size: 13px; color: rgb(var(--ink-3)); font-variant-numeric: tabular-nums; padding: 6px 10px; border-radius: 8px; background: rgb(var(--surface-2)); }
-.analytics-granularity { margin-left: auto; }
-.analytics-apply { min-height: 38px; background: rgb(var(--action-bg)); color: rgb(var(--action-text)); border: 0; border-radius: var(--radius-control); padding: 8px 16px; font-size: 13.5px; font-weight: 550; cursor: pointer; }
-.analytics-timezone { margin: 10px 2px 18px; }
-.analytics-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); margin-bottom: 18px; overflow: hidden; background: rgb(var(--line)); box-shadow: var(--shadow-panel); }
-.analytics-summary article { display: flex; gap: 13px; padding: 20px 20px; min-width: 0; background: rgb(var(--surface)); }
-.analytics-summary-wide { grid-column: 1 / -1; }
-.analytics-summary article > div { flex: 1; min-width: 0; container-type: inline-size; }
-.analytics-summary article > div > span { color: rgb(var(--ink-2)); font-size: 13px; font-weight: 550; }
-.analytics-summary strong { display: block; margin: 6px 0 4px; font-size: clamp(15px, calc(100cqi / var(--metric-width, 6)), 28px); line-height: 1.2; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.analytics-summary small { display: block; color: rgb(var(--ink-3)); font-size: 12.5px; line-height: 1.6; font-variant-numeric: tabular-nums; }
-.analytics-metric-icon { width: 36px; height: 36px; padding: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 10px; }
-.blue { background: color-mix(in srgb, var(--chart-1) 12%, transparent); color: var(--chart-1); }
-.amber { background: color-mix(in srgb, var(--chart-4) 14%, transparent); color: var(--chart-4); }
-.green { background: color-mix(in srgb, var(--chart-3) 12%, transparent); color: var(--chart-3); }
-.purple { background: color-mix(in srgb, var(--chart-7) 12%, transparent); color: var(--chart-7); }
-.analytics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-.analytics-trend .analytics-line { height: 264px; }
-.analytics-model-link { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0; text-align: left; color: rgb(var(--ink)); text-decoration: underline; text-decoration-color: rgb(var(--line-strong)); text-underline-offset: 4px; white-space: normal; overflow-wrap: anywhere; cursor: pointer; }
-.analytics-model-link:hover { color: rgb(var(--brand-moss)); text-decoration-color: rgb(var(--brand-moss)); }
-.analytics-model-link > span { color: rgb(var(--ink-3)); flex-shrink: 0; }
-.analytics-drilldown { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; max-width: 100%; }
-.analytics-drilldown select { min-width: 0; min-height: 36px; padding: 6px 10px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-control); background: rgb(var(--surface)); color: rgb(var(--ink)); font-size: 13px; font-variant-numeric: tabular-nums; }
-.analytics-drilldown button { min-height: 36px; padding: 6px 12px; border: 1px solid rgb(var(--line)); border-radius: var(--radius-control); background: rgb(var(--surface-2)); color: rgb(var(--ink)); font-size: 13px; font-weight: 550; white-space: nowrap; cursor: pointer; }
-.analytics-drilldown button:hover { border-color: rgb(var(--line-strong)); background: rgb(var(--surface)); }
-.analytics-panel { container-type: inline-size; border: 1px solid rgb(var(--line)); border-radius: var(--radius-card); padding: 0 20px 20px; min-width: 0; background: rgb(var(--surface)); box-shadow: var(--shadow-panel); }
-.analytics-panel header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; min-height: 62px; margin: 0 -20px 18px; padding: 12px 20px; border-bottom: 1px solid rgb(var(--line)); }
-.analytics-panel h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; margin: 0; }
-.analytics-panel h3 svg { color: rgb(var(--brand-moss)); }
-.analytics-segment { display: flex; background: rgb(var(--surface-2)); border: 1px solid rgb(var(--line)); border-radius: 9px; padding: 3px; }
-.analytics-segment button { min-height: 30px; padding: 4px 10px; border: 0; border-radius: 6px; font-size: 12.5px; font-weight: 500; background: transparent; color: rgb(var(--ink-2)); white-space: nowrap; cursor: pointer; }
-.analytics-segment button[aria-pressed='true'] { background: rgb(var(--surface)); color: rgb(var(--ink)); font-weight: 600; box-shadow: 0 1px 2px rgb(15 23 42 / .06); }
-.analytics-distribution { display: flex; align-items: center; gap: 18px; min-height: 280px; }
-.analytics-doughnut { width: 128px; height: 128px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.analytics-zero { color: rgb(var(--ink-3)); font-size: 12.5px; text-align: center; border: 12px solid rgb(var(--surface-2)); width: 132px; height: 132px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 8px; }
-.analytics-table-scroll { min-width: 0; flex: 1; max-height: 296px; overflow: auto; overscroll-behavior: contain; }
-.analytics-table-scroll table { border-collapse: collapse; width: 100%; font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.analytics-table-scroll td:not(:first-child) { @apply font-mono; }
-.analytics-model-link { @apply font-mono font-medium; }
-.analytics-table-scroll th { font-size: 12px; font-weight: 600; color: rgb(var(--ink-3)); text-align: right; padding: 0 8px 10px; }
-.analytics-table-scroll td { padding: 8px; border-top: 1px solid rgb(var(--line)); text-align: right; color: rgb(var(--ink-2)); }
-.analytics-table-scroll tbody tr:hover td { background: rgb(var(--table-hover)); }
-.analytics-table-scroll td:first-child, .analytics-table-scroll th:first-child { text-align: left; padding-left: 0; }
-.analytics-row-label { display: flex; gap: 7px; align-items: center; color: rgb(var(--ink)); min-width: 100px; max-width: 190px; white-space: normal; overflow-wrap: anywhere; }
-.analytics-row-label i { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.analytics-row-label :deep(svg) { flex-shrink: 0; }
-.analytics-table-scroll .analytics-actual { color: rgb(var(--text-ok)); font-weight: 600; }
-.analytics-state { min-height: 210px; display: flex; align-items: center; justify-content: center; text-align: center; color: rgb(var(--ink-3)); font-size: 13.5px; }
-.analytics-error { color: rgb(var(--text-err)); }
-.analytics-line { height: 260px; min-width: 0; }
-.analytics-chart-note { font-size: 12.5px; line-height: 1.6; }
-.portal-usage-analytics :is(button, input, select):focus-visible { outline: 2px solid rgb(var(--focus-ring)); outline-offset: 2px; }
-.portal-usage-analytics button { transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease); }
-.analytics-refresh:hover:not(:disabled) { background: rgb(var(--surface-2)); border-color: rgb(var(--line-strong)); color: rgb(var(--ink)); }
-.analytics-apply:hover { background: rgb(var(--action-hover)); }
-@container (min-width: 660px) { .analytics-doughnut { width: 176px; height: 176px; } .analytics-table-scroll table { font-size: 13px; } }
-@container (max-width: 480px) { .analytics-distribution { flex-direction: column; align-items: stretch; gap: 20px; } .analytics-doughnut { align-self: center; width: 144px; height: 144px; } .analytics-table-scroll { width: 100%; flex: auto; } }
-@media (min-width: 768px) and (max-width: 1199px) { .analytics-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 767px) { .analytics-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .analytics-grid { grid-template-columns: 1fr; } .analytics-summary article { gap: 8px; padding: 16px 14px; } .analytics-summary .analytics-metric-icon { display: none; } .analytics-controls { display: grid; grid-template-columns: minmax(0, 1fr); padding: 14px; } .analytics-controls label { display: grid; grid-template-columns: 76px minmax(0, 1fr); } .analytics-controls label > svg { display: none; } .analytics-controls select, .analytics-controls input { width: 100%; font-size: 16px; min-height: 44px; } .analytics-range { padding: 6px 10px; justify-self: start; } .analytics-granularity { margin-left: 0; } .analytics-refresh { justify-content: center; min-height: 44px; } .analytics-apply { width: 100%; min-height: 44px; } .analytics-segment button, .analytics-model-link { min-height: 44px; } .analytics-line { height: 250px; } }
-@media (prefers-reduced-motion: reduce) { .portal-usage-analytics button { transition: none; } }
-</style>

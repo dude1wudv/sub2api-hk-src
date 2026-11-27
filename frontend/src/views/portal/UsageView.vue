@@ -22,12 +22,12 @@ import PortalUsageTable from '@/components/portal/PortalUsageTable.vue'
 import PortalUsageErrorTable from '@/components/portal/PortalUsageErrorTable.vue'
 import PortalUsageDetail from '@/components/portal/PortalUsageDetail.vue'
 import PortalDialog from '@/components/portal/PortalDialog.vue'
-import PortalPageHeader from '@/components/portal/PortalPageHeader.vue'
 import Icon from '@/components/icons/Icon.vue'
 import InflightRequests from '@/components/usage/InflightRequests.vue'
 import TrafficPanel from '@/components/usage/TrafficPanel.vue'
 import { formatDateLocalInput } from '@/utils/format'
 import { parseUsageRoute, usageFiltersQuery, usageDrilldownQuery, validUsageDate, type UsageDrilldown } from './usageRoute'
+import { UiButton, UiCheckbox, UiSegmented, UiSelect, UiStatusDot, UiTabs, type UiSelectOption } from '@/ui'
 
 const { locale } = useI18n()
 const zh = computed(() => locale.value.startsWith('zh'))
@@ -40,8 +40,17 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 const dates = usageMonthWindow()
 const sectionTab = ref<string>(route.query.tab === 'traffic' ? 'traffic' : 'usage')
 const sectionTabs = computed(() => [
-  { id: 'usage', label: copy('Token 用量与明细', 'Token usage & logs') },
-  { id: 'traffic', label: copy('网络流量监控', 'Network traffic') },
+  { value: 'usage', label: copy('Token 用量与明细', 'Token usage & logs') },
+  { value: 'traffic', label: copy('网络流量监控', 'Network traffic') },
+])
+const recordTypeOptions = computed(() => [
+  { value: 'usage' as const, label: copy('用量记录', 'Usage logs') },
+  { value: 'errors' as const, label: copy('错误请求', 'Error requests') },
+])
+const quickRangeOptions = computed(() => [
+  { value: 'today', label: copy('今日', 'Today') },
+  { value: '7d', label: copy('近 7 天', '7 days') },
+  { value: 'month', label: copy('本月', 'This month') },
 ])
 const monthStats = ref<UsageStatsResponse | null>(null)
 const months = ref<PortalUsageMonth[]>([])
@@ -68,6 +77,53 @@ const pageState = computed(() => pagination[activeTab.value])
 const sortState = computed(() => sorting[activeTab.value])
 const totalPages = computed(() => Math.max(1, Math.ceil(pageState.value.total / pageState.value.size)))
 const categoryOptions = computed<Record<string, string>>(() => zh.value ? { auth: '认证', rate_limit: '速率限制', quota: '额度', invalid_request: '请求参数', service_unavailable: '服务不可用', upstream: '上游', internal: '内部错误', cyber: '安全策略' } : { auth: 'Authentication', rate_limit: 'Rate limit', quota: 'Quota', invalid_request: 'Invalid request', service_unavailable: 'Service unavailable', upstream: 'Upstream', internal: 'Internal', cyber: 'Security policy' })
+
+const keySelectOptions = computed<UiSelectOption[]>(() => [
+  { value: '', label: copy('全部 Key', 'All keys') },
+  ...keys.value.map(key => ({ value: String(key.id), label: key.name })),
+])
+const groupSelectOptions = computed<UiSelectOption[]>(() => [
+  { value: '', label: copy('全部分组', 'All groups') },
+  ...groups.value.map(group => ({ value: String(group.id), label: group.name })),
+])
+const requestTypeSelectOptions = computed<UiSelectOption[]>(() => [
+  { value: '', label: copy('全部类型', 'All types') },
+  { value: 'sync', label: copy('同步', 'Sync') },
+  { value: 'stream', label: copy('流式', 'Stream') },
+  { value: 'ws_v2', label: 'WS' },
+  { value: 'live', label: 'Live' },
+  { value: 'cyber', label: 'Cyber' },
+])
+const billingTypeSelectOptions = computed<UiSelectOption[]>(() => [
+  { value: '', label: copy('全部方式', 'All sources') },
+  { value: '0', label: copy('余额', 'Balance') },
+  { value: '1', label: copy('订阅', 'Subscription') },
+])
+const billingModeSelectOptions = computed<UiSelectOption[]>(() => [
+  { value: '', label: copy('全部模式', 'All modes') },
+  { value: 'token', label: 'Token' },
+  { value: 'per_request', label: copy('按次', 'Per request') },
+  { value: 'image', label: copy('图片', 'Image') },
+  { value: 'video', label: copy('视频', 'Video') },
+])
+const compactionSelectOptions = computed<UiSelectOption[]>(() => [
+  { value: '', label: copy('全部请求', 'All requests') },
+  { value: 'true', label: copy('仅原生压缩', 'Compaction only') },
+  { value: 'false', label: copy('非原生压缩', 'No compaction') },
+])
+const categorySelectOptions = computed<UiSelectOption[]>(() => [
+  { value: '', label: copy('全部分类', 'All categories') },
+  ...Object.entries(categoryOptions.value).map(([key, label]) => ({ value: key, label })),
+])
+const statusSelectOptions = computed<UiSelectOption[]>(() => [
+  { value: '', label: copy('全部状态', 'All status codes') },
+  ...COMMON_ERROR_STATUS_CODES.map(code => ({ value: String(code), label: String(code) })),
+])
+const pageSizeOptions: UiSelectOption[] = [
+  { value: 10, label: '10' },
+  { value: 20, label: '20' },
+  { value: 50, label: '50' },
+]
 
 function defaultFilters() {
   return { start: dates.currentStart, end: dates.end, key: '', group: '', model: '', requestType: '', billingType: '', billingMode: '', compaction: '', status: '', category: '' }
@@ -199,7 +255,6 @@ function applyFilters() {
   pagination.usage.page = 1
   pagination.errors.page = 1
   void loadRows()
-  // The watcher ignores this same filter state; browser history still restores it.
   void router.push({ path: '/usage', query: usageFiltersQuery(applied.value) })
 }
 function resetFilters() { Object.assign(draft, defaultFilters()); applyFilters() }
@@ -217,14 +272,17 @@ async function drilldown(value: UsageDrilldown) {
   pagination.errors.page = 1
   filterError.value = ''
   activeTab.value = 'usage'
-  // A repeated chart selection can be a duplicate navigation, so reset locally too.
   if (alreadyUsage) void loadRows()
   await router.push({ path: '/usage', query, hash: '#usage-records' })
   await nextTick()
   document.getElementById('usage-records')?.scrollIntoView({ block: 'start', behavior: 'auto' })
 }
 function changePage(page: number) { pageState.value.page = page; void loadRows() }
-function changePageSize(event: Event) { pageState.value.size = Number((event.target as HTMLSelectElement).value); pageState.value.page = 1; void loadRows() }
+function changePageSize(value: string | number | boolean | null) {
+  pageState.value.size = Number(value) || 10
+  pageState.value.page = 1
+  void loadRows()
+}
 function changeSort(key: string) {
   if (!['created_at', 'model', ...(activeTab.value === 'errors' ? ['status_code'] : [])].includes(key)) return
   const state = sortState.value
@@ -361,7 +419,8 @@ const quickDatePreset = computed(() => {
   return ''
 })
 
-function applyQuickRange(preset: 'today' | '7d' | 'month') {
+function applyQuickRange(preset: string) {
+  if (preset !== 'today' && preset !== '7d' && preset !== 'month') return
   const today = formatDateLocalInput(new Date())
   if (preset === 'today') {
     draft.start = today
@@ -376,142 +435,492 @@ function applyQuickRange(preset: 'today' | '7d' | 'month') {
   applyFilters()
 }
 
+function handleSectionTabChange(val: string) {
+  sectionTab.value = val
+  if (val === 'traffic') {
+    void router.replace({ path: '/usage', query: { ...route.query, tab: 'traffic' } })
+  } else {
+    const nextQuery = { ...route.query }
+    delete nextQuery.tab
+    void router.replace({ path: '/usage', query: nextQuery })
+  }
+}
+
 watch(() => route.query.tab, (tab) => {
   if (tab === 'traffic') sectionTab.value = 'traffic'
-  else if (tab === 'usage') sectionTab.value = 'usage'
+  else if (tab === 'usage' || tab === undefined) sectionTab.value = 'usage'
 })
 </script>
 
 <template>
-  <div class="portal-page usage-page">
-    <PortalPageHeader :title="copy('用量与流量中心', 'Usage & traffic')">
-      <div class="usage-balance"><Icon name="creditCard" size="sm" /><span>{{ copy('余额', 'Balance') }}</span><strong>{{ auth.user ? formatUsageMoney(auth.user.balance, 2) : '—' }}</strong><RouterLink v-if="!auth.isSimpleMode" to="/purchase">{{ copy('充值', 'Recharge') }} ↗</RouterLink></div>
-    </PortalPageHeader>
+  <div class="mx-auto max-w-[1440px] space-y-6 pb-10">
+    <!-- Editorial Page Header -->
+    <header class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-[22px] font-semibold tracking-[-0.02em] text-[var(--atelier-ink)]">
+          {{ copy('用量与流量中心', 'Usage & traffic') }}
+        </h1>
+        <p class="mt-1 text-sm text-[var(--atelier-ink-secondary)]">
+          {{ copy('按时间、模型与 API Key 追踪 Token 消耗、费用构成与应用流量。', 'Track token consumption, billing cost, and application traffic by date, model, and API key.') }}
+        </p>
+      </div>
 
-    <nav class="portal-tabs usage-hub-tabs" :aria-label="copy('用量与流量视图', 'Usage and traffic views')">
-      <button
-        v-for="tab in sectionTabs"
-        :key="tab.id"
-        type="button"
-        :aria-pressed="sectionTab === tab.id"
-        :class="{ active: sectionTab === tab.id }"
-        @click="sectionTab = tab.id"
-      >
-        {{ tab.label }}
-      </button>
-    </nav>
+      <div class="flex items-center gap-3 rounded-lg border border-[var(--atelier-border)] bg-[var(--atelier-surface)] px-3.5 py-2 text-sm">
+        <span class="text-xs text-[var(--atelier-ink-muted)]">{{ copy('当前余额', 'Balance') }}</span>
+        <strong class="font-mono text-sm font-semibold tabular-nums text-[var(--atelier-ink)]">
+          {{ auth.user ? formatUsageMoney(auth.user.balance, 2) : '—' }}
+        </strong>
+        <RouterLink
+          v-if="!auth.isSimpleMode"
+          to="/purchase"
+          class="border-l border-[var(--atelier-border)] pl-3 text-xs font-medium text-[var(--atelier-ink)] hover:underline"
+        >
+          {{ copy('充值', 'Recharge') }} ↗
+        </RouterLink>
+      </div>
+    </header>
 
-    <div v-if="sectionTab === 'traffic'" class="usage-traffic-panel">
+    <!-- Primary Underline Tabs: Usage vs Traffic -->
+    <UiTabs
+      :model-value="sectionTab"
+      :tabs="sectionTabs"
+      :aria-label="copy('用量与流量视图', 'Usage and traffic views')"
+      @update:model-value="handleSectionTabChange"
+    />
+
+    <!-- Traffic Panel -->
+    <div v-if="sectionTab === 'traffic'" class="pt-1">
       <TrafficPanel :admin="false" />
     </div>
 
+    <!-- Token Usage & Details -->
     <template v-else>
-    <PortalUsageAnalytics :filters="analyticsFilters" @range-change="changeAnalysisRange" @drilldown="drilldown" />
+      <PortalUsageAnalytics
+        :filters="analyticsFilters"
+        @range-change="changeAnalysisRange"
+        @drilldown="drilldown"
+      />
 
-    <section id="usage-records" class="usage-records" aria-labelledby="usage-records-title">
-      <div class="usage-section-heading"><div><h2 id="usage-records-title">{{ copy('请求明细', 'Request details') }}</h2><p class="usage-record-description">{{ copy('查看每次请求的 Token、费用与响应表现。', 'Inspect tokens, cost and response performance for each request.') }}</p></div>
-        <div class="usage-quick-ranges" role="group" :aria-label="copy('快捷时间范围', 'Quick date range')">
-          <button type="button" class="usage-range-pill" :class="{ active: quickDatePreset === 'today' }" :aria-pressed="quickDatePreset === 'today'" @click="applyQuickRange('today')">{{ copy('今日', 'Today') }}</button>
-          <button type="button" class="usage-range-pill" :class="{ active: quickDatePreset === '7d' }" :aria-pressed="quickDatePreset === '7d'" @click="applyQuickRange('7d')">{{ copy('近 7 天', '7 days') }}</button>
-          <button type="button" class="usage-range-pill" :class="{ active: quickDatePreset === 'month' }" :aria-pressed="quickDatePreset === 'month'" @click="applyQuickRange('month')">{{ copy('本月', 'This month') }}</button>
+      <section
+        id="usage-records"
+        class="atelier-surface scroll-mt-6 p-5 sm:p-6"
+        aria-labelledby="usage-records-title"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-4 pb-4">
+          <div>
+            <h2 id="usage-records-title" class="text-base font-semibold tracking-tight text-[var(--atelier-ink)]">
+              {{ copy('请求明细', 'Request details') }}
+            </h2>
+            <p class="mt-0.5 text-xs text-[var(--atelier-ink-secondary)]">
+              {{ copy('查看每次请求的 Token、费用与响应表现。', 'Inspect tokens, cost and response performance for each request.') }}
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <UiSegmented
+              v-if="errorsEnabled"
+              v-model="activeTab"
+              :options="recordTypeOptions"
+              size="sm"
+              :aria-label="copy('明细类别', 'Record type')"
+            />
+            <UiSegmented
+              :model-value="quickDatePreset"
+              :options="quickRangeOptions"
+              size="sm"
+              :aria-label="copy('快捷时间范围', 'Quick date range')"
+              @update:model-value="applyQuickRange"
+            />
+          </div>
         </div>
-      </div>
-      <div v-if="errorsEnabled" class="usage-record-tabs" role="tablist" :aria-label="copy('明细类别', 'Record type')"><button role="tab" :aria-selected="activeTab === 'usage'" :class="{ active: activeTab === 'usage' }" @click="activeTab = 'usage'">{{ copy('用量记录', 'Usage logs') }}</button><button role="tab" :aria-selected="activeTab === 'errors'" :class="{ active: activeTab === 'errors' }" @click="activeTab = 'errors'">{{ copy('错误请求', 'Error requests') }}</button></div>
-      <form v-if="showFilters" id="usage-filters" class="usage-filter-panel" @submit.prevent="applyFilters">
-        <div class="usage-filter-grid"><label class="portal-field">{{ copy('开始日期', 'Start date') }}<input v-model="draft.start" type="date" :max="draft.end || dates.end" required /></label><label class="portal-field">{{ copy('结束日期', 'End date') }}<input v-model="draft.end" type="date" :min="draft.start" :max="dates.end" required /></label><label class="portal-field">API Key<select v-model="draft.key"><option value="">{{ copy('全部 Key', 'All keys') }}</option><option v-for="key in keys" :key="key.id" :value="String(key.id)">{{ key.name }}</option></select></label><label class="portal-field">{{ copy('模型', 'Model') }}<input v-model="draft.model" list="portal-usage-models" :placeholder="copy('全部模型', 'All models')" /><datalist id="portal-usage-models"><option v-for="model in modelNames" :key="model" :value="model" /></datalist></label>
-          <template v-if="activeTab === 'usage'"><label class="portal-field">{{ copy('分组', 'Group') }}<select v-model="draft.group"><option value="">{{ copy('全部分组', 'All groups') }}</option><option v-for="group in groups" :key="group.id" :value="String(group.id)">{{ group.name }}</option></select></label><label class="portal-field">{{ copy('请求类型', 'Request type') }}<select v-model="draft.requestType"><option value="">{{ copy('全部类型', 'All types') }}</option><option value="sync">{{ copy('同步', 'Sync') }}</option><option value="stream">{{ copy('流式', 'Stream') }}</option><option value="ws_v2">WS</option><option value="live">Live</option><option value="cyber">Cyber</option></select></label><label v-if="subscriptionEnabled" class="portal-field">{{ copy('扣费方式', 'Billing source') }}<select v-model="draft.billingType"><option value="">{{ copy('全部方式', 'All sources') }}</option><option value="0">{{ copy('余额', 'Balance') }}</option><option value="1">{{ copy('订阅', 'Subscription') }}</option></select></label><label class="portal-field">{{ copy('计费模式', 'Billing mode') }}<select v-model="draft.billingMode"><option value="">{{ copy('全部模式', 'All modes') }}</option><option value="token">Token</option><option value="per_request">{{ copy('按次', 'Per request') }}</option><option value="image">{{ copy('图片', 'Image') }}</option><option value="video">{{ copy('视频', 'Video') }}</option></select></label><label class="portal-field">{{ copy('原生压缩', 'Native compaction') }}<select v-model="draft.compaction"><option value="">{{ copy('全部请求', 'All requests') }}</option><option value="true">{{ copy('仅原生压缩', 'Compaction only') }}</option><option value="false">{{ copy('非原生压缩', 'No compaction') }}</option></select></label></template>
-          <template v-else><label class="portal-field">{{ copy('错误分类', 'Error category') }}<select v-model="draft.category"><option value="">{{ copy('全部分类', 'All categories') }}</option><option v-for="(label, key) in categoryOptions" :key="key" :value="key">{{ label }}</option></select></label><label class="portal-field">{{ copy('状态码', 'Status code') }}<select v-model="draft.status"><option value="">{{ copy('全部状态', 'All status codes') }}</option><option v-for="code in COMMON_ERROR_STATUS_CODES" :key="code" :value="String(code)">{{ code }}</option></select></label></template>
-        </div><p v-if="optionsError" class="usage-options-note">{{ optionsError }} <button type="button" @click="loadOptions">{{ copy('重试', 'Retry') }}</button></p><p v-if="filterError" class="portal-error" role="alert">{{ filterError }}</p><div class="usage-filter-actions"><span>{{ activeTab === 'usage' ? copy('筛选同时应用于上方统计和明细', 'Filters apply to statistics and details') : copy('错误分类和状态码仅应用于错误明细', 'Error category and status apply to error details only') }} · {{ timezoneLabel(timezone) }}</span><button class="portal-button secondary" type="button" @click="resetFilters">{{ copy('重置', 'Reset') }}</button><button class="portal-button" type="submit">{{ copy('应用筛选', 'Apply filters') }}</button></div>
-      </form>
-      <div class="usage-toolbar">
-        <button class="portal-button secondary" :disabled="rowsLoading" :aria-label="copy('刷新明细', 'Refresh details')" @click="loadRows"><Icon name="refresh" size="sm" /></button>
-        <button class="portal-button secondary" :aria-expanded="showFilters" aria-controls="usage-filters" @click="showFilters = !showFilters"><Icon name="filter" size="sm" />{{ copy('筛选', 'Filters') }}<span v-if="filtersActive" class="usage-filter-dot" :aria-label="copy('已应用筛选', 'Filters applied')"></span></button>
-        <button class="portal-button secondary" @click="showColumns = true"><Icon name="grid" size="sm" />{{ copy('显示列', 'Columns') }}</button>
-        <button class="portal-button" :disabled="exporting" @click="exportCsv"><Icon name="download" size="sm" />{{ exporting ? copy('导出中…', 'Exporting…') : copy('导出 CSV', 'Export CSV') }}</button>
-      </div>
-      <InflightRequests />
-      <div class="usage-range"><div class="usage-filter-summary"><span>{{ applied.start }} — {{ applied.end }}</span><span v-if="applied.model" class="portal-tag">{{ applied.model }}</span><span v-if="applied.key" class="portal-tag">{{ keys.find(key => String(key.id) === applied.key)?.name || `Key #${applied.key}` }}</span><button v-if="filtersActive" class="portal-inline-button" @click="resetFilters">{{ copy('清除条件', 'Clear filters') }} ×</button></div><span class="usage-record-count">{{ zh ? `共 ${pageState.total} 条记录` : `${pageState.total} records` }}</span></div>
-      <p v-if="exportProgress" class="usage-export-status" role="status">{{ exportProgress }} <button v-if="exporting" @click="cancelExport">{{ copy('取消导出', 'Cancel export') }}</button></p><p v-if="exportError" class="portal-error" role="alert">{{ exportError }}</p>
-      <div v-if="rowsLoading" class="usage-list-loading" role="status">{{ copy('正在加载明细…', 'Loading details…') }}</div><p v-else-if="rowsError" class="portal-error" role="alert">{{ rowsError }} <button @click="loadRows">{{ copy('重试', 'Retry') }}</button></p><PortalUsageTable v-else-if="activeTab === 'usage'" :rows="usageRows" :columns="usageColumns" :sort-by="sorting.usage.by" :sort-order="sorting.usage.order" @sort="changeSort" @detail="openDetail" /><PortalUsageErrorTable v-else-if="errorsEnabled" :rows="errorRows" :columns="errorColumns" :sort-by="sorting.errors.by" :sort-order="sorting.errors.order" @sort="changeSort" @detail="openErrorDetail" />
-      <div v-if="!rowsError && pageState.total > 0" class="portal-pagination usage-pagination"><label>{{ copy('每页', 'Per page') }}<select :value="pageState.size" :disabled="rowsLoading" @change="changePageSize"><option :value="10">10</option><option :value="20">20</option><option :value="50">50</option></select></label><span class="portal-muted">{{ zh ? `共 ${pageState.total} 条` : `${pageState.total} records` }} · {{ pageState.page }} / {{ totalPages }}</span><button :disabled="rowsLoading || pageState.page <= 1" @click="changePage(pageState.page - 1)" :aria-label="copy('上一页', 'Previous page')">←</button><button :disabled="rowsLoading || pageState.page >= totalPages" @click="changePage(pageState.page + 1)" :aria-label="copy('下一页', 'Next page')">→</button></div>
-    </section>
-    <details class="usage-history"><summary>{{ copy('查看过去 12 个月的消费', 'View spending over the last 12 months') }}</summary>
-    <div class="usage-history-summary"><span>{{ copy('本月消费', 'This month') }}</span><strong>{{ overviewLoading ? '—' : monthStats ? formatUsageMoney(monthStats.total_actual_cost, 2) : '—' }}</strong><small v-if="monthStats && !overviewLoading">{{ formatUsageNumber(monthStats.total_requests) }} {{ copy('次请求', 'requests') }}</small></div>
-      <p v-if="monthError" class="portal-error" role="alert">{{ monthError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></p>
-      <section class="usage-monthly" aria-labelledby="usage-monthly-title"><div class="usage-section-heading"><h2 id="usage-monthly-title">{{ copy('每月用量', 'Monthly usage') }}</h2><button class="portal-inline-button" :disabled="overviewLoading" @click="loadOverview">{{ overviewLoading ? copy('加载中…', 'Loading…') : copy('刷新', 'Refresh') }}</button></div><div v-if="overviewLoading" class="usage-chart-loading" role="status">{{ copy('正在加载每月用量…', 'Loading monthly usage…') }}</div><div v-else-if="trendError" class="portal-error" role="alert">{{ trendError }} <button @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button></div><PortalUsageChart v-else :months="months" /></section>
-    </details>
+
+        <!-- Filters Form -->
+        <form
+          v-if="showFilters"
+          id="usage-filters"
+          class="mb-4 rounded-xl border border-[var(--atelier-border)] bg-[var(--atelier-subtle)]/55 p-4"
+          @submit.prevent="applyFilters"
+        >
+          <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+            <label class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              <span>{{ copy('开始日期', 'Start date') }}</span>
+              <input v-model="draft.start" type="date" :max="draft.end || dates.end" required class="atelier-input" />
+            </label>
+            <label class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              <span>{{ copy('结束日期', 'End date') }}</span>
+              <input v-model="draft.end" type="date" :min="draft.start" :max="dates.end" required class="atelier-input" />
+            </label>
+            <div class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              <span>API Key</span>
+              <UiSelect
+                :model-value="draft.key"
+                :options="keySelectOptions"
+                :aria-label="copy('筛选 API Key', 'Filter API Key')"
+                @update:model-value="(v) => { draft.key = String(v ?? '') }"
+              />
+            </div>
+            <label class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+              <span>{{ copy('模型', 'Model') }}</span>
+              <input
+                v-model="draft.model"
+                list="portal-usage-models"
+                :placeholder="copy('全部模型', 'All models')"
+                class="atelier-input"
+              />
+              <datalist id="portal-usage-models">
+                <option v-for="model in modelNames" :key="model" :value="model" />
+              </datalist>
+            </label>
+
+            <template v-if="activeTab === 'usage'">
+              <div class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+                <span>{{ copy('分组', 'Group') }}</span>
+                <UiSelect
+                  :model-value="draft.group"
+                  :options="groupSelectOptions"
+                  :aria-label="copy('筛选分组', 'Filter group')"
+                  @update:model-value="(v) => { draft.group = String(v ?? '') }"
+                />
+              </div>
+              <div class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+                <span>{{ copy('请求类型', 'Request type') }}</span>
+                <UiSelect
+                  :model-value="draft.requestType"
+                  :options="requestTypeSelectOptions"
+                  :aria-label="copy('筛选请求类型', 'Filter request type')"
+                  @update:model-value="(v) => { draft.requestType = String(v ?? '') }"
+                />
+              </div>
+              <div v-if="subscriptionEnabled" class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+                <span>{{ copy('扣费方式', 'Billing source') }}</span>
+                <UiSelect
+                  :model-value="draft.billingType"
+                  :options="billingTypeSelectOptions"
+                  :aria-label="copy('筛选扣费方式', 'Filter billing source')"
+                  @update:model-value="(v) => { draft.billingType = String(v ?? '') }"
+                />
+              </div>
+              <div class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+                <span>{{ copy('计费模式', 'Billing mode') }}</span>
+                <UiSelect
+                  :model-value="draft.billingMode"
+                  :options="billingModeSelectOptions"
+                  :aria-label="copy('筛选计费模式', 'Filter billing mode')"
+                  @update:model-value="(v) => { draft.billingMode = String(v ?? '') }"
+                />
+              </div>
+              <div class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+                <span>{{ copy('原生压缩', 'Native compaction') }}</span>
+                <UiSelect
+                  :model-value="draft.compaction"
+                  :options="compactionSelectOptions"
+                  :aria-label="copy('筛选原生压缩', 'Filter native compaction')"
+                  @update:model-value="(v) => { draft.compaction = String(v ?? '') }"
+                />
+              </div>
+            </template>
+
+            <template v-else>
+              <div class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+                <span>{{ copy('错误分类', 'Error category') }}</span>
+                <UiSelect
+                  :model-value="draft.category"
+                  :options="categorySelectOptions"
+                  :aria-label="copy('筛选错误分类', 'Filter error category')"
+                  @update:model-value="(v) => { draft.category = String(v ?? '') }"
+                />
+              </div>
+              <div class="flex flex-col gap-1.5 text-xs font-medium text-[var(--atelier-ink-secondary)]">
+                <span>{{ copy('状态码', 'Status code') }}</span>
+                <UiSelect
+                  :model-value="draft.status"
+                  :options="statusSelectOptions"
+                  :aria-label="copy('筛选状态码', 'Filter status code')"
+                  @update:model-value="(v) => { draft.status = String(v ?? '') }"
+                />
+              </div>
+            </template>
+          </div>
+
+          <p v-if="optionsError" class="mt-3 text-xs text-[var(--atelier-ink-muted)]">
+            {{ optionsError }}
+            <button type="button" class="ml-1.5 underline hover:text-[var(--atelier-ink)]" @click="loadOptions">
+              {{ copy('重试', 'Retry') }}
+            </button>
+          </p>
+          <p v-if="filterError" class="mt-3 text-xs text-[var(--atelier-err)]" role="alert">{{ filterError }}</p>
+
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--atelier-border)] pt-3.5">
+            <span class="text-xs text-[var(--atelier-ink-muted)]">
+              {{ activeTab === 'usage' ? copy('筛选同时应用于上方统计和明细', 'Filters apply to statistics and details') : copy('错误分类和状态码仅应用于错误明细', 'Error category and status apply to error details only') }}
+              · {{ timezoneLabel(timezone) }}
+            </span>
+            <div class="flex items-center gap-2">
+              <UiButton variant="secondary" size="sm" type="button" @click="resetFilters">
+                {{ copy('重置', 'Reset') }}
+              </UiButton>
+              <UiButton variant="primary" size="sm" type="submit">
+                {{ copy('应用筛选', 'Apply filters') }}
+              </UiButton>
+            </div>
+          </div>
+        </form>
+
+        <!-- Action Toolbar -->
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2 text-xs text-[var(--atelier-ink-secondary)]">
+            <span class="font-mono tabular-nums">{{ applied.start }} — {{ applied.end }}</span>
+            <span
+              v-if="applied.model"
+              class="inline-flex items-center rounded-md border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] px-2 py-0.5 font-mono text-xs text-[var(--atelier-ink)]"
+            >
+              {{ applied.model }}
+            </span>
+            <span
+              v-if="applied.key"
+              class="inline-flex items-center rounded-md border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] px-2 py-0.5 text-xs text-[var(--atelier-ink)]"
+            >
+              {{ keys.find(key => String(key.id) === applied.key)?.name || `Key #${applied.key}` }}
+            </span>
+            <button
+              v-if="filtersActive"
+              type="button"
+              class="text-xs font-medium text-[var(--atelier-ink-secondary)] underline hover:text-[var(--atelier-ink)]"
+              @click="resetFilters"
+            >
+              {{ copy('清除条件', 'Clear filters') }} ×
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="mr-1 font-mono text-xs tabular-nums text-[var(--atelier-ink-muted)]">
+              {{ zh ? `共 ${pageState.total} 条记录` : `${pageState.total} records` }}
+            </span>
+            <UiButton
+              variant="secondary"
+              size="sm"
+              :disabled="rowsLoading"
+              :aria-label="copy('刷新明细', 'Refresh details')"
+              @click="loadRows"
+            >
+              <Icon name="refresh" size="sm" />
+            </UiButton>
+            <UiButton
+              variant="secondary"
+              size="sm"
+              :aria-expanded="showFilters"
+              aria-controls="usage-filters"
+              @click="showFilters = !showFilters"
+            >
+              <Icon name="filter" size="sm" />
+              {{ copy('筛选', 'Filters') }}
+              <UiStatusDot v-if="filtersActive" tone="info" />
+            </UiButton>
+            <UiButton variant="secondary" size="sm" @click="showColumns = true">
+              <Icon name="grid" size="sm" />
+              {{ copy('显示列', 'Columns') }}
+            </UiButton>
+            <UiButton variant="primary" size="sm" :disabled="exporting" :loading="exporting" @click="exportCsv">
+              <Icon v-if="!exporting" name="download" size="sm" />
+              {{ exporting ? copy('导出中…', 'Exporting…') : copy('导出 CSV', 'Export CSV') }}
+            </UiButton>
+          </div>
+        </div>
+
+        <InflightRequests class="mb-4" />
+
+        <p v-if="exportProgress" class="mb-3 text-xs text-[var(--atelier-ink-secondary)]" role="status">
+          {{ exportProgress }}
+          <button
+            v-if="exporting"
+            type="button"
+            class="ml-2 font-medium text-[var(--atelier-ink)] underline"
+            @click="cancelExport"
+          >
+            {{ copy('取消导出', 'Cancel export') }}
+          </button>
+        </p>
+        <p v-if="exportError" class="mb-3 rounded-lg border border-[var(--atelier-err)]/20 bg-[var(--atelier-err-bg)] px-3.5 py-2.5 text-xs text-[var(--atelier-err)]" role="alert">
+          {{ exportError }}
+        </p>
+
+        <div
+          v-if="rowsLoading"
+          class="flex min-h-[240px] items-center justify-center rounded-xl border border-[var(--atelier-border)] text-sm text-[var(--atelier-ink-muted)]"
+          role="status"
+        >
+          {{ copy('正在加载明细…', 'Loading details…') }}
+        </div>
+        <div
+          v-else-if="rowsError"
+          class="rounded-xl border border-[var(--atelier-err)]/25 bg-[var(--atelier-err-bg)] px-4 py-3 text-sm text-[var(--atelier-err)]"
+          role="alert"
+        >
+          {{ rowsError }}
+          <button type="button" class="ml-2 font-medium underline" @click="loadRows">
+            {{ copy('重试', 'Retry') }}
+          </button>
+        </div>
+        <PortalUsageTable
+          v-else-if="activeTab === 'usage'"
+          :rows="usageRows"
+          :columns="usageColumns"
+          :sort-by="sorting.usage.by"
+          :sort-order="sorting.usage.order"
+          @sort="changeSort"
+          @detail="openDetail"
+        />
+        <PortalUsageErrorTable
+          v-else-if="errorsEnabled"
+          :rows="errorRows"
+          :columns="errorColumns"
+          :sort-by="sorting.errors.by"
+          :sort-order="sorting.errors.order"
+          @sort="changeSort"
+          @detail="openErrorDetail"
+        />
+
+        <!-- Pagination -->
+        <div
+          v-if="!rowsError && pageState.total > 0"
+          class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--atelier-border)] pt-4 text-xs text-[var(--atelier-ink-secondary)]"
+        >
+          <div class="flex items-center gap-2">
+            <span>{{ copy('每页', 'Per page') }}</span>
+            <div class="w-20">
+              <UiSelect
+                :model-value="pageState.size"
+                :options="pageSizeOptions"
+                :disabled="rowsLoading"
+                size="sm"
+                :aria-label="copy('每页条数', 'Rows per page')"
+                @update:model-value="changePageSize"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span class="font-mono tabular-nums text-[var(--atelier-ink-muted)]">
+              {{ zh ? `共 ${pageState.total} 条` : `${pageState.total} records` }} · {{ pageState.page }} / {{ totalPages }}
+            </span>
+            <div class="flex items-center gap-1.5">
+              <UiButton
+                variant="secondary"
+                size="sm"
+                :disabled="rowsLoading || pageState.page <= 1"
+                :aria-label="copy('上一页', 'Previous page')"
+                @click="changePage(pageState.page - 1)"
+              >
+                ←
+              </UiButton>
+              <UiButton
+                variant="secondary"
+                size="sm"
+                :disabled="rowsLoading || pageState.page >= totalPages"
+                :aria-label="copy('下一页', 'Next page')"
+                @click="changePage(pageState.page + 1)"
+              >
+                →
+              </UiButton>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Last 12 months spending -->
+      <details class="atelier-surface px-5 py-4 sm:px-6">
+        <summary class="cursor-pointer select-none text-sm font-medium text-[var(--atelier-ink-secondary)] hover:text-[var(--atelier-ink)]">
+          {{ copy('查看过去 12 个月的消费', 'View spending over the last 12 months') }}
+        </summary>
+        <div class="mt-4 flex flex-wrap items-baseline gap-3 border-t border-[var(--atelier-border)] pt-4">
+          <span class="text-xs text-[var(--atelier-ink-muted)]">{{ copy('本月消费', 'This month') }}</span>
+          <strong class="font-mono text-2xl font-semibold tabular-nums text-[var(--atelier-ink)]">
+            {{ overviewLoading ? '—' : monthStats ? formatUsageMoney(monthStats.total_actual_cost, 2) : '—' }}
+          </strong>
+          <small v-if="monthStats && !overviewLoading" class="font-mono text-xs tabular-nums text-[var(--atelier-ink-muted)]">
+            {{ formatUsageNumber(monthStats.total_requests) }} {{ copy('次请求', 'requests') }}
+          </small>
+        </div>
+        <p v-if="monthError" class="mt-3 text-xs text-[var(--atelier-err)]" role="alert">
+          {{ monthError }}
+          <button type="button" class="ml-2 underline" @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button>
+        </p>
+        <section class="mt-5" aria-labelledby="usage-monthly-title">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 id="usage-monthly-title" class="text-sm font-semibold text-[var(--atelier-ink)]">
+              {{ copy('每月用量', 'Monthly usage') }}
+            </h2>
+            <UiButton variant="ghost" size="sm" :disabled="overviewLoading" @click="loadOverview">
+              {{ overviewLoading ? copy('加载中…', 'Loading…') : copy('刷新', 'Refresh') }}
+            </UiButton>
+          </div>
+          <div v-if="overviewLoading" class="flex h-[240px] items-center justify-center text-sm text-[var(--atelier-ink-muted)]" role="status">
+            {{ copy('正在加载每月用量…', 'Loading monthly usage…') }}
+          </div>
+          <div v-else-if="trendError" class="rounded-lg bg-[var(--atelier-err-bg)] px-3.5 py-2.5 text-xs text-[var(--atelier-err)]" role="alert">
+            {{ trendError }}
+            <button type="button" class="ml-2 underline" @click="loadOverview">{{ copy('重新加载', 'Reload') }}</button>
+          </div>
+          <PortalUsageChart v-else :months="months" />
+        </section>
+      </details>
     </template>
-    <PortalDialog :open="showColumns" :title="copy('显示列', 'Visible columns')" @close="showColumns = false"><div class="usage-column-list"><label v-for="column in columnsAvailable" :key="column.key"><input type="checkbox" :checked="columnKeys.includes(column.key)" :disabled="'fixed' in column && column.fixed" @change="toggleColumn(column.key)" />{{ usageColumnLabel(column.key, !zh) }}</label></div></PortalDialog>
+
+    <!-- Columns Dialog -->
+    <PortalDialog :open="showColumns" :title="copy('显示列', 'Visible columns')" @close="showColumns = false">
+      <div class="grid grid-cols-2 gap-3">
+        <UiCheckbox
+          v-for="column in columnsAvailable"
+          :key="column.key"
+          :model-value="columnKeys.includes(column.key)"
+          :disabled="'fixed' in column && column.fixed"
+          :label="usageColumnLabel(column.key, !zh)"
+          @update:model-value="toggleColumn(column.key)"
+        />
+      </div>
+    </PortalDialog>
+
     <PortalUsageDetail :open="detailOpen" :row="detailRow" :loading="detailLoading" :error="detailError" @close="closeDetail" />
-    <PortalDialog :open="errorDetailOpen && errorsEnabled" :title="copy('错误请求详情', 'Error request details')" wide @close="closeErrorDetail"><p v-if="errorDetailLoading" class="portal-muted" role="status">{{ copy('正在加载详情…', 'Loading details…') }}</p><p v-if="errorDetailError" class="portal-error" role="alert">{{ errorDetailError }}</p><template v-if="errorDetail"><dl class="usage-error-metadata"><dt>{{ copy('时间', 'Time') }}</dt><dd>{{ new Date(errorDetail.created_at).toLocaleString(locale, { hour12: false }) }}</dd><dt>{{ copy('模型', 'Model') }}</dt><dd>{{ errorDetail.model }}</dd><dt>{{ copy('类型', 'Type') }}</dt><dd>{{ usageErrorRequestLabel(errorDetail, !zh) }}</dd><dt>{{ copy('状态码', 'Status code') }}</dt><dd>{{ errorDetail.status_code }}</dd><dt v-if="errorDetail.upstream_status_code">{{ copy('上游状态码', 'Upstream status code') }}</dt><dd v-if="errorDetail.upstream_status_code">{{ errorDetail.upstream_status_code }}</dd><dt>{{ copy('分类', 'Category') }}</dt><dd>{{ categoryOptions[errorDetail.category] || errorDetail.category }}</dd><dt>API Key</dt><dd>{{ errorDetail.key_name }}<span v-if="errorDetail.key_deleted">{{ copy('（已删除）', ' (deleted)') }}</span></dd><dt>{{ copy('分组', 'Group') }}</dt><dd>{{ errorDetail.group_name || '—' }}</dd><dt>{{ copy('端点', 'Endpoint') }}</dt><dd>{{ errorDetail.inbound_endpoint || '—' }}</dd><dt>IP</dt><dd>{{ errorDetail.client_ip || '—' }}</dd><dt>{{ copy('平台', 'Platform') }}</dt><dd>{{ errorDetail.platform }}</dd><dt>{{ copy('消息', 'Message') }}</dt><dd>{{ errorDetail.message }}</dd><dt>User-Agent</dt><dd>{{ errorDetail.user_agent || '—' }}</dd></dl><h3 class="usage-error-body-title">{{ copy('错误响应', 'Error response') }}</h3><pre class="usage-error-body">{{ errorDetail.error_body || copy('未记录响应内容', 'No response body recorded') }}</pre></template></PortalDialog>
+
+    <PortalDialog :open="errorDetailOpen && errorsEnabled" :title="copy('错误请求详情', 'Error request details')" wide @close="closeErrorDetail">
+      <p v-if="errorDetailLoading" class="text-sm text-[var(--atelier-ink-muted)]" role="status">
+        {{ copy('正在加载详情…', 'Loading details…') }}
+      </p>
+      <p v-if="errorDetailError" class="text-sm text-[var(--atelier-err)]" role="alert">{{ errorDetailError }}</p>
+      <template v-if="errorDetail">
+        <dl class="grid grid-cols-[110px_minmax(0,1fr)] gap-x-5 gap-y-2.5 text-xs">
+          <dt class="text-[var(--atelier-ink-muted)]">{{ copy('时间', 'Time') }}</dt>
+          <dd class="font-mono text-[var(--atelier-ink)]">{{ new Date(errorDetail.created_at).toLocaleString(locale, { hour12: false }) }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ copy('模型', 'Model') }}</dt>
+          <dd class="break-all font-mono text-[var(--atelier-ink)]">{{ errorDetail.model }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ copy('类型', 'Type') }}</dt>
+          <dd class="text-[var(--atelier-ink)]">{{ usageErrorRequestLabel(errorDetail, !zh) }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ copy('状态码', 'Status code') }}</dt>
+          <dd class="font-mono text-[var(--atelier-ink)]">{{ errorDetail.status_code }}</dd>
+          <template v-if="errorDetail.upstream_status_code">
+            <dt class="text-[var(--atelier-ink-muted)]">{{ copy('上游状态码', 'Upstream status code') }}</dt>
+            <dd class="font-mono text-[var(--atelier-ink)]">{{ errorDetail.upstream_status_code }}</dd>
+          </template>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ copy('分类', 'Category') }}</dt>
+          <dd class="text-[var(--atelier-ink)]">{{ categoryOptions[errorDetail.category] || errorDetail.category }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">API Key</dt>
+          <dd class="text-[var(--atelier-ink)]">{{ errorDetail.key_name }}<span v-if="errorDetail.key_deleted">{{ copy('（已删除）', ' (deleted)') }}</span></dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ copy('分组', 'Group') }}</dt>
+          <dd class="text-[var(--atelier-ink)]">{{ errorDetail.group_name || '—' }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ copy('端点', 'Endpoint') }}</dt>
+          <dd class="break-all font-mono text-[var(--atelier-ink)]">{{ errorDetail.inbound_endpoint || '—' }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">IP</dt>
+          <dd class="font-mono text-[var(--atelier-ink)]">{{ errorDetail.client_ip || '—' }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ copy('平台', 'Platform') }}</dt>
+          <dd class="text-[var(--atelier-ink)]">{{ errorDetail.platform }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">{{ copy('消息', 'Message') }}</dt>
+          <dd class="break-words text-[var(--atelier-ink)]">{{ errorDetail.message }}</dd>
+          <dt class="text-[var(--atelier-ink-muted)]">User-Agent</dt>
+          <dd class="break-all text-[var(--atelier-ink)]">{{ errorDetail.user_agent || '—' }}</dd>
+        </dl>
+        <h3 class="mt-5 mb-2 text-sm font-semibold text-[var(--atelier-ink)]">{{ copy('错误响应', 'Error response') }}</h3>
+        <pre class="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-[var(--atelier-border)] bg-[var(--atelier-subtle)] p-3.5 font-mono text-xs text-[var(--atelier-ink)]">{{ errorDetail.error_body || copy('未记录响应内容', 'No response body recorded') }}</pre>
+      </template>
+    </PortalDialog>
   </div>
 </template>
-
-<style scoped>
-.usage-hub-tabs { margin: 0 0 18px; }
-.usage-traffic-panel { margin-top: 8px; }
-.usage-filter-summary { display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-width:0; }
-.usage-filter-summary .portal-tag { overflow-wrap:anywhere; }
-.usage-records { scroll-margin-top:24px; min-width:0; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); padding:24px; box-shadow:var(--shadow-panel); margin-top:28px; }
-.usage-records .usage-section-heading h2 { font-size:18px; font-weight:650; letter-spacing:-0.015em; }
-.usage-records .usage-filter-panel { background:rgb(var(--surface-2) / .55); }
-.usage-records .usage-range { gap:14px; align-items:center; }
-@media(max-width:767px) { .usage-records { padding:18px 14px; } .usage-filter-summary { font-size:13px; } .usage-range > button { white-space:nowrap; flex-shrink:0; } }
-
-.usage-page { max-width: 1520px; font-family:var(--font-sans); -webkit-font-smoothing:antialiased; }
-.usage-page :deep(.portal-page-header h1) { font-size:26px; font-weight:650; letter-spacing:-0.022em; line-height:1.28; }
-.usage-balance { display:flex; align-items:center; gap:10px; padding:8px 14px; border:1px solid rgb(var(--line)); border-radius:var(--radius-control); background:rgb(var(--surface)); box-shadow:var(--shadow-panel); font-size:13px; }
-.usage-balance > svg { color:rgb(var(--ink)); }
-.usage-balance > span { color:rgb(var(--ink-2)); }
-.usage-balance strong { font-weight:650; font-variant-numeric:tabular-nums; color:rgb(var(--ink)); }
-.usage-balance a { border-left:1px solid rgb(var(--line)); padding-left:12px; color:rgb(var(--ink)); font-weight:600; text-decoration:none; }
-.usage-balance a:hover { text-decoration:underline; text-underline-offset:3px; }
-.usage-history { margin:24px 0 0; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); padding:18px 24px; background:rgb(var(--surface)); box-shadow:var(--shadow-panel); }
-.usage-history > summary { cursor:pointer; font-size:13.5px; font-weight:550; color:rgb(var(--ink-2)); }
-.usage-history > summary:hover { color:rgb(var(--ink)); }
-.usage-history-summary { display:flex; flex-wrap:wrap; align-items:baseline; gap:12px; margin-top:20px; }
-.usage-history-summary span, .usage-history-summary small { color:rgb(var(--ink-2)); font-size:13px; font-variant-numeric:tabular-nums; }
-.usage-history-summary strong { font-size:24px; font-weight:650; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
-.usage-record-description { color:rgb(var(--ink-2)); font-size:13.5px; margin-top:4px; }
-.usage-record-count { flex-shrink:0; font-variant-numeric:tabular-nums; font-weight:500; color:rgb(var(--ink-2)); }
-.usage-records :deep(.inflight) { margin:18px 0; }
-.usage-monthly { margin-top: 28px; }
-.usage-section-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
-.usage-section-heading h2 { font-size: 16px; font-weight: 600; margin: 0; }
-.usage-section-heading > button { font-size: 13px; color: rgb(var(--ink-3)); }
-.usage-quick-ranges { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-.usage-range-pill { padding: 6px 12px; border: 1px solid rgb(var(--line)); border-radius: 8px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); font: inherit; font-size: 12.5px; font-weight: 550; cursor: pointer; transition: border-color var(--motion-fast) ease, background-color var(--motion-fast) ease, color var(--motion-fast) ease; }
-.usage-range-pill:hover { border-color: rgb(var(--line-strong)); color: rgb(var(--ink)); background: rgb(var(--surface-2) / .6); }
-.usage-range-pill.active { border-color: rgb(var(--brand-moss)); background: rgb(var(--brand-moss) / .1); color: rgb(var(--brand-moss)); font-weight: 650; }
-.usage-chart-loading { height: 265px; display: grid; place-items: center; color: rgb(var(--ink-3)); }
-.usage-toolbar { display: flex; justify-content:flex-end; gap: 8px; flex-wrap: wrap; margin:16px 0; }
-.usage-toolbar .portal-button { min-height: 38px; font-size: 13px; padding: 7px 13px; }
-.usage-filter-dot { width: 6px; height: 6px; background: rgb(var(--brand-moss)); border-radius: 50%; }
-.usage-record-tabs { display: flex; gap: 22px; margin: 0 0 20px; border-bottom: 1px solid rgb(var(--line)); }
-.usage-record-tabs button { padding: 0 0 11px; color: rgb(var(--ink-3)); font-size: 14px; font-weight: 500; border-bottom: 2px solid transparent; cursor: pointer; }
-.usage-record-tabs .active { color: rgb(var(--ink)); font-weight: 600; border-bottom-color: rgb(var(--brand-moss)); }
-.usage-filter-panel { border: 1px solid rgb(var(--line)); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
-.usage-filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 16px; }
-.usage-filter-grid label { font-size: 13px; color: rgb(var(--ink-2)); }
-.usage-filter-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgb(var(--line)); }
-.usage-filter-actions > span { color: rgb(var(--ink-3)); font-size: 12.5px; margin-right: auto; }
-.usage-options-note, .usage-export-status { color: rgb(var(--ink-3)); font-size: 13px; margin: 14px 0; }
-.usage-options-note button, .usage-export-status button, .portal-error button { text-decoration: underline; margin-left: 8px; }
-.usage-range { display: flex; align-items: center; justify-content: space-between; color: rgb(var(--ink-3)); font-size: 13px; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
-.usage-list-loading { display: grid; place-items: center; min-height: 280px; border: 1px solid rgb(var(--line)); border-radius: 12px; color: rgb(var(--ink-3)); }
-.usage-pagination { font-size: 13px; }
-.usage-pagination label { margin-right: auto; }
-.usage-pagination select { margin-left: 8px; }
-.usage-column-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
-.usage-column-list label { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
-.usage-column-list input { accent-color: rgb(var(--brand-moss)); }
-.usage-error-metadata { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px 20px; font-size: 13px; }
-.usage-error-metadata dt { color: rgb(var(--ink-3)); }
-.usage-error-metadata dd { overflow-wrap: anywhere; }
-.usage-error-body-title { margin: 24px 0 12px; font-size: 15px; font-weight: 600; }
-.usage-error-body { padding: 16px; background: rgb(var(--surface-2)); border: 1px solid rgb(var(--line)); border-radius: 10px; font-family: var(--font-mono); font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 340px; overflow: auto; }
-.portal-error { margin: 16px 0; }
-@media (max-width: 1100px) { .usage-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 767px) { .usage-section-heading { flex-wrap: wrap; align-items: flex-start; } .usage-toolbar { width: 100%; } .usage-toolbar .portal-button { min-height:44px; } .usage-toolbar .portal-button:last-child { flex:1; } .usage-record-tabs { gap: 16px; overflow-x: auto; } .usage-filter-panel { padding: 16px; } .usage-filter-actions { flex-wrap: wrap; } .usage-filter-actions > span { width: 100%; margin-bottom: 6px; } .usage-pagination { justify-content: flex-start; } }
-@media (max-width: 440px) { .usage-filter-grid { grid-template-columns: 1fr; } .usage-pagination { gap: 8px; } .usage-error-metadata { grid-template-columns: 80px minmax(0, 1fr); gap: 12px; } }
-</style>

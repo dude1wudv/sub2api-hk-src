@@ -9,31 +9,32 @@
               v-model="searchQuery"
               type="text"
               :placeholder="t('admin.announcements.searchAnnouncements')"
-              class="input"
+              class="atelier-input"
               @input="handleSearch"
             />
           </div>
-          <Select
-            v-model="filters.status"
-            :options="statusFilterOptions"
-            class="w-40"
-            @change="handleStatusChange"
-          />
+          <div class="w-40">
+            <UiSelect
+              :model-value="filters.status"
+              :options="statusFilterOptions"
+              @update:model-value="filters.status = String($event ?? ''); handleStatusChange()"
+            />
+          </div>
 
           <!-- Right: Action buttons -->
           <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
-            <button
-              @click="loadAnnouncements"
+            <UiButton
+              variant="secondary"
               :disabled="loading"
-              class="btn btn-secondary"
               :title="t('common.refresh')"
+              @click="loadAnnouncements"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
-            </button>
-            <button @click="openCreateDialog" class="btn btn-primary">
-              <Icon name="plus" size="md" class="mr-1" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
+            </UiButton>
+            <UiButton variant="primary" @click="openCreateDialog">
+              <Icon name="plus" size="sm" />
               {{ t('admin.announcements.createAnnouncement') }}
-            </button>
+            </UiButton>
           </div>
         </div>
       </template>
@@ -188,26 +189,26 @@
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label class="input-label">{{ t('admin.announcements.form.status') }}</label>
-            <Select v-model="form.status" :options="statusOptions" />
+            <label class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ t('admin.announcements.form.status') }}</label>
+            <UiSelect :model-value="form.status" :options="statusOptions" @update:model-value="form.status = String($event ?? 'draft') as any" />
           </div>
           <div>
-            <label class="input-label">{{ t('admin.announcements.form.notifyMode') }}</label>
-            <Select v-model="form.notify_mode" :options="notifyModeOptions" />
-            <p class="input-hint">{{ t('admin.announcements.form.notifyModeHint') }}</p>
+            <label class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ t('admin.announcements.form.notifyMode') }}</label>
+            <UiSelect :model-value="form.notify_mode" :options="notifyModeOptions" @update:model-value="form.notify_mode = String($event ?? 'silent') as any" />
+            <p class="mt-1 text-xs text-[var(--atelier-ink-muted)]">{{ t('admin.announcements.form.notifyModeHint') }}</p>
           </div>
         </div>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label class="input-label">{{ t('admin.announcements.form.startsAt') }}</label>
-            <input v-model="form.starts_at_str" type="datetime-local" max="9999-12-31T23:59" class="input" />
-            <p class="input-hint">{{ t('admin.announcements.form.startsAtHint') }}</p>
+            <label class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ t('admin.announcements.form.startsAt') }}</label>
+            <input v-model="form.starts_at_str" type="datetime-local" max="9999-12-31T23:59" class="atelier-input" />
+            <p class="mt-1 text-xs text-[var(--atelier-ink-muted)]">{{ t('admin.announcements.form.startsAtHint') }}</p>
           </div>
           <div>
-            <label class="input-label">{{ t('admin.announcements.form.endsAt') }}</label>
-            <input v-model="form.ends_at_str" type="datetime-local" max="9999-12-31T23:59" class="input" />
-            <p class="input-hint">{{ t('admin.announcements.form.endsAtHint') }}</p>
+            <label class="mb-1.5 block text-xs font-medium text-[var(--atelier-ink-secondary)]">{{ t('admin.announcements.form.endsAt') }}</label>
+            <input v-model="form.ends_at_str" type="datetime-local" max="9999-12-31T23:59" class="atelier-input" />
+            <p class="mt-1 text-xs text-[var(--atelier-ink-muted)]">{{ t('admin.announcements.form.endsAtHint') }}</p>
           </div>
         </div>
 
@@ -219,12 +220,12 @@
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <button type="button" @click="closeEdit" class="btn btn-secondary">
+          <UiButton variant="secondary" @click="closeEdit">
             {{ t('common.cancel') }}
-          </button>
-          <button type="submit" form="announcement-form" :disabled="saving" class="btn btn-primary">
+          </UiButton>
+          <UiButton type="submit" form="announcement-form" variant="primary" :disabled="saving" :loading="saving">
             {{ saving ? t('common.saving') : t('common.save') }}
-          </button>
+          </UiButton>
         </div>
       </template>
     </BaseDialog>
@@ -271,7 +272,7 @@ import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
-import Select from '@/components/common/Select.vue'
+import { UiButton, UiSelect } from '@/ui'
 import EmptyState from '@/components/common/EmptyState.vue'
 import Icon from '@/components/icons/Icon.vue'
 

@@ -112,7 +112,7 @@ describe('HomeView compact mode', () => {
   it('treats whitespace-only custom content as empty and selects compact mode', () => {
     const wrapper = mountHome({ compact_home_enabled: true, home_content: ' \n\t ' })
 
-    expect(wrapper.get('[data-testid="compact-home"]').get('h1').text()).toBe('Model APIs.One endpoint.')
+    expect(wrapper.get('[data-testid="compact-home"]').get('h1').text()).toBe('One endpoint for frontier models.')
     expect(wrapper.get('[data-testid="compact-home"] .home-entry').exists()).toBe(true)
   })
 
@@ -122,7 +122,7 @@ describe('HomeView compact mode', () => {
 
     expect(wrapper.get('[data-testid="patrick-home"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="home-console"]').findComponent(RouterLinkStub).props('to')).toBe('/login')
-    expect(wrapper.get('h1').text()).toBe('Model APIs.One endpoint.')
+    expect(wrapper.get('h1').text()).toBe('One endpoint for frontier models.')
     expect(wrapper.get('.home-endpoint code').text()).toMatch(/^https?:\/\//)
   })
 
@@ -160,17 +160,18 @@ describe('HomeView compact mode', () => {
     expect(compactDestination(wrapper)).toBe('/admin/dashboard')
   })
 
-  it('keeps the connection diagram, endpoint and placeholder example on the same protocol', async () => {
+  it('keeps the preview card, endpoint and placeholder example on the same protocol', async () => {
     const wrapper = mountHome()
     expect(wrapper.get('.portal-api-code pre').text()).toContain('/v1/chat/completions')
-    await wrapper.get('.ink-destination--anthropic').trigger('click')
-    expect(wrapper.get('.ink-connection').attributes('data-protocol')).toBe('anthropic')
+    const anthropicToggle = wrapper.findAll('[role="radio"]').find(btn => btn.text().includes('Anthropic'))!
+    await anthropicToggle.trigger('click')
+    expect(wrapper.get('.home-endpoint').attributes('data-protocol')).toBe('anthropic')
     expect(wrapper.get('.home-endpoint code').text()).not.toMatch(/\/v1$/)
     expect(wrapper.get('.portal-api-code pre').text()).toContain('/v1/messages')
     expect(wrapper.get('.portal-api-code pre').text()).toContain('YOUR_API_KEY')
     expect(wrapper.get('.portal-api-code pre').text()).toContain('anthropic-version')
     await wrapper.get('.portal-api-protocols button[data-active-indicator-item="openai"]').trigger('click')
-    expect(wrapper.get('.ink-connection').attributes('data-protocol')).toBe('openai')
+    expect(wrapper.get('.home-endpoint').attributes('data-protocol')).toBe('openai')
     expect(wrapper.get('.home-endpoint code').text()).toMatch(/\/v1$/)
     wrapper.unmount()
   })
@@ -181,8 +182,10 @@ describe('HomeView compact mode', () => {
     const wrapper = mountHome()
     const timer = vi.spyOn(globalThis, 'setTimeout')
     await wrapper.get('.home-endpoint button').trigger('click')
-    if (change === 'protocol') await wrapper.get('.ink-destination--anthropic').trigger('click')
-    else wrapper.unmount()
+    if (change === 'protocol') {
+      const anthropicToggle = wrapper.findAll('[role="radio"]').find(btn => btn.text().includes('Anthropic'))!
+      await anthropicToggle.trigger('click')
+    } else wrapper.unmount()
     finish(true)
     await flushPromises()
     expect(timer.mock.calls.filter(call => call[1] === 2200)).toHaveLength(0)

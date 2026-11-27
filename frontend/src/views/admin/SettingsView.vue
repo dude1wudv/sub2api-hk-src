@@ -420,27 +420,18 @@
                   <!-- Action -->
                   <div>
                     <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      class="mb-2 block text-sm font-medium text-[var(--atelier-ink)]"
                     >
                       {{ t("admin.settings.streamTimeout.action") }}
                     </label>
-                    <select
-                      v-model="streamTimeoutForm.action"
-                      class="input w-64"
-                    >
-                      <option value="temp_unsched">
-                        {{
-                          t("admin.settings.streamTimeout.actionTempUnsched")
-                        }}
-                      </option>
-                      <option value="error">
-                        {{ t("admin.settings.streamTimeout.actionError") }}
-                      </option>
-                      <option value="none">
-                        {{ t("admin.settings.streamTimeout.actionNone") }}
-                      </option>
-                    </select>
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    <div class="w-64">
+                      <UiSelect
+                        :model-value="streamTimeoutForm.action"
+                        :options="streamTimeoutActionOptions"
+                        @update:model-value="streamTimeoutForm.action = String($event ?? 'temp_unsched') as any"
+                      />
+                    </div>
+                    <p class="mt-1.5 text-xs text-[var(--atelier-ink-muted)]">
                       {{ t("admin.settings.streamTimeout.actionHint") }}
                     </p>
                   </div>
@@ -3640,22 +3631,15 @@
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                   <div>
                     <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      class="mb-2 block text-sm font-medium text-[var(--atelier-ink)]"
                     >
                       {{ t("admin.settings.oidc.tokenAuthMethod") }}
                     </label>
-                    <select
-                      v-model="form.oidc_connect_token_auth_method"
-                      class="input font-mono text-sm"
-                    >
-                      <option value="client_secret_post">
-                        client_secret_post
-                      </option>
-                      <option value="client_secret_basic">
-                        client_secret_basic
-                      </option>
-                      <option value="none">none</option>
-                    </select>
+                    <UiSelect
+                      :model-value="form.oidc_connect_token_auth_method"
+                      :options="oidcTokenAuthMethodOptions"
+                      @update:model-value="form.oidc_connect_token_auth_method = String($event ?? 'client_secret_post') as any"
+                    />
                   </div>
 
                   <div>
@@ -4528,11 +4512,14 @@
                     :key="`codex-fp-${i}`"
                     class="mb-2 flex items-center gap-2"
                   >
-                    <select v-model="row.type" class="input w-32 text-sm">
-                      <option value="header_exact">{{ t("admin.settings.gatewayForwarding.codexFpTypeHeaderExact") }}</option>
-                      <option value="header_prefix">{{ t("admin.settings.gatewayForwarding.codexFpTypeHeaderPrefix") }}</option>
-                      <option value="body_path">{{ t("admin.settings.gatewayForwarding.codexFpTypeBodyPath") }}</option>
-                    </select>
+                    <div class="w-36 shrink-0">
+                      <UiSelect
+                        :model-value="row.type"
+                        :options="codexFingerprintTypeOptions"
+                        size="sm"
+                        @update:model-value="row.type = String($event ?? 'header_exact') as any"
+                      />
+                    </div>
                     <input
                       v-model="row.match"
                       type="text"
@@ -5300,18 +5287,14 @@
                   >
                     {{ t("admin.settings.gatewayForwarding.grokDefaultBaseURLMode") }}
                   </label>
-                  <select
-                    id="grok-default-base-url-mode"
-                    v-model="form.grok_default_base_url_mode"
-                    class="input mt-2 w-full"
-                    data-testid="grok-default-base-url-mode"
-                  >
-                    <option value="cli">{{ t("admin.settings.gatewayForwarding.grokBaseURLModeCLI") }}</option>
-                    <option value="api">{{ t("admin.settings.gatewayForwarding.grokBaseURLModeAPI") }}</option>
-                    <option value="us-east-1">{{ t("admin.settings.gatewayForwarding.grokBaseURLModeUSEast1") }}</option>
-                    <option value="us-west-2">{{ t("admin.settings.gatewayForwarding.grokBaseURLModeUSWest2") }}</option>
-                    <option value="eu-west-1">{{ t("admin.settings.gatewayForwarding.grokBaseURLModeEUWest1") }}</option>
-                  </select>
+                  <div class="mt-2" data-testid="grok-default-base-url-mode">
+                    <UiSelect
+                      id="grok-default-base-url-mode"
+                      :model-value="form.grok_default_base_url_mode"
+                      :options="grokDefaultBaseURLModeOptions"
+                      @update:model-value="form.grok_default_base_url_mode = String($event ?? 'cli') as any"
+                    />
+                  </div>
                   <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                     {{ t("admin.settings.gatewayForwarding.grokDefaultBaseURLModeHint") }}
                   </p>
@@ -5325,19 +5308,14 @@
                 >
                   {{ t("admin.settings.gatewayForwarding.openaiTTFTMode") }}
                 </label>
-                <select
-                  id="openai-ttft-mode"
-                  v-model="form.openai_ttft_mode"
-                  class="input mt-2 w-full"
-                  data-testid="openai-ttft-mode"
-                >
-                  <option value="semantic">
-                    {{ t("admin.settings.gatewayForwarding.openaiTTFTModeSemantic") }}
-                  </option>
-                  <option value="visible">
-                    {{ t("admin.settings.gatewayForwarding.openaiTTFTModeVisible") }}
-                  </option>
-                </select>
+                <div class="mt-2" data-testid="openai-ttft-mode">
+                  <UiSelect
+                    id="openai-ttft-mode"
+                    :model-value="form.openai_ttft_mode"
+                    :options="openaiTTFTModeOptions"
+                    @update:model-value="form.openai_ttft_mode = String($event ?? 'semantic') as any"
+                  />
+                </div>
                 <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                   {{ t("admin.settings.gatewayForwarding.openaiTTFTModeHint") }}
                 </p>
@@ -6840,18 +6818,16 @@
                   <!-- Visibility -->
                   <div>
                     <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      class="mb-1 block text-xs font-medium text-[var(--atelier-ink-secondary)]"
                     >
                       {{ t("admin.settings.customMenu.visibility") }}
                     </label>
-                    <select v-model="item.visibility" class="input text-sm">
-                      <option value="user">
-                        {{ t("admin.settings.customMenu.visibilityUser") }}
-                      </option>
-                      <option value="admin">
-                        {{ t("admin.settings.customMenu.visibilityAdmin") }}
-                      </option>
-                    </select>
+                    <UiSelect
+                      :model-value="item.visibility"
+                      :options="customMenuVisibilityOptions"
+                      size="sm"
+                      @update:model-value="item.visibility = String($event ?? 'user') as any"
+                    />
                   </div>
 
                   <!-- URL (full width) -->
@@ -8983,6 +8959,7 @@ import type { ProviderInstance } from "@/types/payment";
 import Icon from "@/components/icons/Icon.vue";
 import ActiveIndicator from "@/components/common/ActiveIndicator.vue";
 import Select, { type SelectOption } from "@/components/common/Select.vue";
+import { UiSelect, type UiSelectOption } from "@/ui";
 import {
   SITE_BILLING_MODES,
   SITE_BILLING_MODE_I18N_KEYS,
@@ -13293,6 +13270,42 @@ watch(
   },
 );
 const { resetDraft: resetSettingsDraft } = useAdminDraft(() => !loading.value, () => ({ form, webSearchConfig, openaiFastPolicyForm }), () => saving.value)
+
+const streamTimeoutActionOptions = computed<UiSelectOption[]>(() => [
+  { value: "temp_unsched", label: t("admin.settings.streamTimeout.actionTempUnsched") },
+  { value: "error", label: t("admin.settings.streamTimeout.actionError") },
+  { value: "none", label: t("admin.settings.streamTimeout.actionNone") },
+]);
+
+const oidcTokenAuthMethodOptions: UiSelectOption[] = [
+  { value: "client_secret_post", label: "client_secret_post" },
+  { value: "client_secret_basic", label: "client_secret_basic" },
+  { value: "none", label: "none" },
+];
+
+const codexFingerprintTypeOptions = computed<UiSelectOption[]>(() => [
+  { value: "header_exact", label: t("admin.settings.gatewayForwarding.codexFpTypeHeaderExact") },
+  { value: "header_prefix", label: t("admin.settings.gatewayForwarding.codexFpTypeHeaderPrefix") },
+  { value: "body_path", label: t("admin.settings.gatewayForwarding.codexFpTypeBodyPath") },
+]);
+
+const grokDefaultBaseURLModeOptions = computed<UiSelectOption[]>(() => [
+  { value: "cli", label: t("admin.settings.gatewayForwarding.grokBaseURLModeCLI") },
+  { value: "api", label: t("admin.settings.gatewayForwarding.grokBaseURLModeAPI") },
+  { value: "us-east-1", label: t("admin.settings.gatewayForwarding.grokBaseURLModeUSEast1") },
+  { value: "us-west-2", label: t("admin.settings.gatewayForwarding.grokBaseURLModeUSWest2") },
+  { value: "eu-west-1", label: t("admin.settings.gatewayForwarding.grokBaseURLModeEUWest1") },
+]);
+
+const openaiTTFTModeOptions = computed<UiSelectOption[]>(() => [
+  { value: "semantic", label: t("admin.settings.gatewayForwarding.openaiTTFTModeSemantic") },
+  { value: "visible", label: t("admin.settings.gatewayForwarding.openaiTTFTModeVisible") },
+]);
+
+const customMenuVisibilityOptions = computed<UiSelectOption[]>(() => [
+  { value: "user", label: t("admin.settings.customMenu.visibilityUser") },
+  { value: "admin", label: t("admin.settings.customMenu.visibilityAdmin") },
+]);
 </script>
 
 <style scoped>
@@ -13304,14 +13317,17 @@ const { resetDraft: resetSettingsDraft } = useAdminDraft(() => !loading.value, (
   @apply h-[42px];
 }
 
-/* ============ 系统设置 Tab 导航 ============ */
+/* ============ Atelier 系统设置 Underline Tab 导航 ============ */
 .settings-tabs-shell {
-  @apply sticky z-20 -mx-1 rounded-2xl border border-gray-200/80 bg-white/90 p-1.5 shadow-sm backdrop-blur-xl dark:border-dark-700/80 dark:bg-dark-900/90;
-  top: 4.75rem;
+  position: sticky;
+  top: calc(var(--shell-topbar-height, 52px) + 0.5rem);
+  z-index: 20;
+  border-bottom: 1px solid var(--atelier-border);
+  background-color: var(--atelier-canvas);
 }
 
 .settings-tabs-scroll {
-  @apply overflow-x-auto;
+  overflow-x: auto;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -13321,101 +13337,78 @@ const { resetDraft: resetSettingsDraft } = useAdminDraft(() => !loading.value, (
 }
 
 .settings-tabs {
-  @apply flex min-w-max items-center gap-1;
+  display: flex;
+  min-width: max-content;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .settings-tab {
-  @apply relative isolate flex h-10 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-all duration-150 ease-out dark:text-gray-300;
+  position: relative;
+  display: inline-flex;
+  height: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--atelier-ink-secondary);
+  outline: none;
+  transition: color var(--motion-fast, 140ms) ease;
 }
 
-@media (min-width: 768px) {
-  .settings-tabs {
-    @apply min-w-full;
-  }
-
-  .settings-tab {
-    @apply min-w-0 flex-1 basis-0 overflow-hidden px-2 text-[13px];
-  }
-
-  .settings-tab-icon {
-    @apply h-6 w-6;
-  }
-}
-
-.settings-tab::before {
-  @apply absolute inset-0 -z-10 rounded-xl opacity-0 transition-opacity duration-150;
-  content: "";
-  background: rgb(var(--color-primary-500) / 0.08);
-}
-
-.settings-tab:hover::before,
-.settings-tab:focus-visible::before {
-  opacity: 1;
+.settings-tab:hover,
+.settings-tab:focus-visible {
+  color: var(--atelier-ink);
 }
 
 .settings-tab:focus-visible {
-  @apply ring-2 ring-primary-500/40 ring-offset-2 ring-offset-white dark:ring-offset-dark-900;
+  outline: 2px solid var(--atelier-focus);
+  outline-offset: -2px;
+  border-radius: 6px;
 }
 
 .settings-tab-active {
-  @apply border-primary-300/70 bg-white text-primary-700 shadow-sm dark:border-primary-500/40 dark:bg-dark-800/95 dark:text-primary-300;
-}
-
-.settings-tab-active::before {
-  opacity: 0;
+  color: var(--atelier-ink);
+  font-weight: 600;
 }
 
 .settings-tab-active::after {
-  position: absolute;
-  right: 0.75rem;
-  bottom: 0.25rem;
-  left: 0.75rem;
-  height: 2px;
-  border-radius: 9999px;
   content: "";
-  background: rgb(var(--color-primary-500));
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background-color: var(--atelier-ink);
 }
 
 .settings-tab-icon {
-  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-150 dark:text-gray-400;
-}
-
-.settings-tab:hover .settings-tab-icon,
-.settings-tab:focus-visible .settings-tab-icon {
-  @apply text-gray-700 dark:text-gray-200;
-}
-
-.settings-tab-active .settings-tab-icon {
-  @apply bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-primary-300;
+  display: inline-flex;
+  height: 1.25rem;
+  width: 1.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
 }
 
 .settings-tab-label {
-  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap leading-none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
 }
-
 </style>
 
 <style>
-/* Dark-mode overrides for the settings tabs shell. Kept in an UNSCOPED block
-   because Vue's scoped-CSS compiler was dropping the `:global(.dark) ...`
-   rules in the production build, leaving inactive tabs unreadable on dark. */
 .dark .settings-tabs-shell {
-  border-color: rgb(var(--line));
-  background: rgb(var(--surface) / 0.92);
-  box-shadow:
-    0 16px 36px rgb(0 0 0 / 0.35),
-    0 1px 0 rgb(255 255 255 / 0.05) inset;
+  border-color: var(--atelier-border);
+  background-color: var(--atelier-canvas);
 }
-
-.dark .settings-tab::before {
-  background: rgb(var(--surface-2) / 0.85);
-}
-
-.dark .settings-tab-active {
-  box-shadow:
-    0 10px 22px rgb(0 0 0 / 0.25),
-    0 1px 0 rgb(255 255 255 / 0.06) inset;
-}
-
-
 </style>
