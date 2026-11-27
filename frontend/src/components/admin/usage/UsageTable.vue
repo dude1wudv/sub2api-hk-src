@@ -909,4 +909,10 @@ const formatOutputTps = (row: AdminUsageLog): string => {
 .usage-detail-popover .flex > :last-child {
   text-align: right;
 }
+
+@media (max-width: 767px) {
+  .usage-detail-popover .flex {
+    padding-block: 3px;
+  }
+}
 </style>

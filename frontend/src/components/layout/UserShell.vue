@@ -282,7 +282,7 @@
       :inert="overlayOpen ? true : undefined"
     >
       <!-- Unified Global 52px Topbar -->
-      <header class="user-topbar sticky top-0 z-30 flex h-[52px] shrink-0 items-center justify-between gap-3 border-b border-[var(--atelier-border)] bg-[var(--atelier-surface)]/95 px-4 backdrop-blur-sm sm:px-6">
+      <header class="user-topbar atelier-nav-surface sticky top-0 z-30 flex h-[52px] shrink-0 items-center justify-between gap-3 border-b border-[var(--atelier-border)] px-4 sm:px-6">
         <div class="flex min-w-0 items-center gap-2.5">
           <button
             v-if="!desktop"
@@ -419,19 +419,19 @@
       <!-- Mobile Bottom Navigation -->
       <nav
         v-if="!desktop && !railViewport && user"
-        class="fixed inset-x-0 bottom-0 z-30 flex h-14 items-center justify-around border-t border-[var(--atelier-border)] bg-[var(--atelier-surface)]/95 px-2 backdrop-blur-md"
+        class="atelier-nav-surface fixed inset-x-0 bottom-0 z-30 flex h-14 items-center justify-around border-t border-[var(--atelier-border)] px-2"
         :aria-label="zh ? '底部快捷导航' : 'Mobile quick navigation'"
       >
         <RouterLink
           v-for="item in mobileBottomItems"
           :key="item.path"
           :to="{ path: item.path, query: item.query }"
-          class="flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[11px]"
+          class="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px]"
           :class="isActive(item) ? 'font-semibold text-[var(--atelier-ink)]' : 'text-[var(--atelier-ink-muted)]'"
           :aria-current="isActive(item) ? 'page' : undefined"
         >
           <Icon :name="item.icon" size="sm" />
-          <span class="truncate">{{ item.label }}</span>
+          <span class="max-w-full truncate">{{ item.label }}</span>
         </RouterLink>
         <button
           type="button"

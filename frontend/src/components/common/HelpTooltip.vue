@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
         :data-placement="placement"
         tabindex="-1"
         :class="[
-          'ui-popover fixed z-[99999] rounded-lg text-xs leading-relaxed selection:bg-primary-200 selection:text-gray-900 before:absolute before:inset-x-0 before:h-2',
+          'ui-popover help-tooltip fixed z-[99999] rounded-lg text-xs leading-relaxed selection:bg-primary-200 selection:text-gray-900 before:absolute before:inset-x-0 before:h-2',
           placement === 'top' ? 'before:top-full' : 'before:bottom-full',
           props.widthClass,
         ]"
@@ -246,3 +246,19 @@ onBeforeUnmount(() => {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.help-tooltip {
+  background-color: rgb(var(--surface-elevated));
+  color: rgb(var(--ink));
+  box-shadow: 0 0 0 1px rgb(var(--line-strong)), var(--atelier-shadow-md);
+}
+
+@supports (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)) {
+  .help-tooltip {
+    background-color: rgb(var(--surface-elevated) / 0.98);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+</style>
