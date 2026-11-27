@@ -10,7 +10,7 @@ import "net/http"
 // document, so a stale copy would paint outdated branding until the next
 // revalidation.
 func applyHTMLNoCacheHeaders(header http.Header) {
-	header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	header.Set("Cache-Control", "no-cache, no-store, must-revalidate, no-transform")
 	header.Set("Pragma", "no-cache")
 	header.Set("Expires", "0")
 	header.Set("CDN-Cache-Control", "no-store")

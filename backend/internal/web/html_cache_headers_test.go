@@ -14,7 +14,7 @@ func TestApplyHTMLNoCacheHeaders(t *testing.T) {
 
 	applyHTMLNoCacheHeaders(header)
 
-	assert.Equal(t, "no-cache, no-store, must-revalidate", header.Get("Cache-Control"))
+	assert.Equal(t, "no-cache, no-store, must-revalidate, no-transform", header.Get("Cache-Control"))
 	assert.Equal(t, "no-cache", header.Get("Pragma"))
 	assert.Equal(t, "0", header.Get("Expires"))
 	assert.Equal(t, "no-store", header.Get("CDN-Cache-Control"))
@@ -32,7 +32,7 @@ func TestApplyHTMLNoCacheHeadersReplacesExistingValues(t *testing.T) {
 
 	applyHTMLNoCacheHeaders(header)
 
-	assert.Equal(t, "no-cache, no-store, must-revalidate", header.Get("Cache-Control"))
+	assert.Equal(t, "no-cache, no-store, must-revalidate, no-transform", header.Get("Cache-Control"))
 	assert.Equal(t, "no-cache", header.Get("Pragma"))
 	assert.Equal(t, "0", header.Get("Expires"))
 	assert.Equal(t, "no-store", header.Get("CDN-Cache-Control"))
