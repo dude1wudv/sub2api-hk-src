@@ -122,4 +122,17 @@ describe('PortalUsageTable latency states', () => {
     expect(wrapper.emitted('detail')?.[0]?.[0]).toMatchObject({ model: 'gpt-6.1-sol' })
     wrapper.unmount()
   })
+
+  it('renders a full provider-qualified model name in the desktop table', () => {
+    const wrapper = mount(PortalUsageTable, {
+      props: {
+        rows: [{ ...row(1_000, 3_000), model: 'deepseek/deepseek-v4-1-flash-1017' }],
+        columns: ['model', 'type'],
+        sortBy: 'created_at',
+        sortOrder: 'desc',
+      },
+    })
+    expect(wrapper.get('.usage-table .usage-model-text').text()).toBe('deepseek/deepseek-v4-1-flash-1017')
+    wrapper.unmount()
+  })
 })
