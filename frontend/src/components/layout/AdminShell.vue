@@ -224,7 +224,7 @@
       :inert="overlayOpen || undefined"
     >
       <!-- Unified Global 52px Topbar -->
-      <header class="admin-topbar sticky top-0 z-30 flex h-[52px] shrink-0 items-center gap-3 border-b border-[var(--atelier-border)] bg-[var(--atelier-surface)]/95 px-4 backdrop-blur-sm sm:px-6">
+      <header class="admin-topbar atelier-nav-surface sticky top-0 z-30 flex h-[52px] shrink-0 items-center gap-3 border-b border-[var(--atelier-border)] px-4 sm:px-6">
         <button
           ref="navToggle"
           type="button"

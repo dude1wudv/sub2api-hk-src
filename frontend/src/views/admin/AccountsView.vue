@@ -173,13 +173,13 @@
             {{ t('admin.accounts.listPendingSyncAction') }}
           </button>
         </div>
-        <div class="admin-list-status" role="status">
-          <span class="admin-list-status-count"><Icon name="server" size="sm" />{{ t('common.total') }} <strong>{{ loading ? '—' : pagination.total }}</strong></span>
+        <div class="admin-list-status mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--atelier-ink-secondary)]" role="status">
+          <span class="admin-list-status-count inline-flex items-center gap-2"><Icon name="server" size="sm" class="shrink-0" />{{ t('common.total') }} <strong>{{ loading ? '—' : pagination.total }}</strong></span>
           <span v-if="selIds.length" class="admin-list-status-selection">{{ t('admin.accounts.selectedCount', { count: selIds.length }) }}</span>
           <span v-if="params.status" class="admin-list-status-filter">{{ accountStatusLabel }}</span>
         </div>
-        <details class="admin-resource-summary" :open="!!activeQuotaPool">
-        <summary>{{ t('admin.accounts.summary.statusTitle') }} · {{ t('admin.accounts.quotaPools.oauthTitle') }}</summary>
+        <details class="admin-resource-summary mt-3 rounded-xl border border-[var(--atelier-border)] px-3" :open="!!activeQuotaPool">
+        <summary class="min-h-11 cursor-pointer py-3 text-sm">{{ t('admin.accounts.summary.statusTitle') }} · {{ t('admin.accounts.quotaPools.oauthTitle') }}</summary>
         <div class="mt-3 grid gap-3 lg:grid-cols-4 account-summary-grid">
           <div class="account-summary-panel">
             <div class="flex items-center justify-between gap-3">

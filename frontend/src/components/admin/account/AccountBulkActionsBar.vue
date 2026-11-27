@@ -1,6 +1,6 @@
 <template>
-  <div class="admin-bulk-action-bar mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg p-3" role="region" :aria-label="t('admin.accounts.bulkEdit.title')">
-    <div class="flex flex-wrap items-center gap-2">
+  <div class="admin-bulk-action-bar mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-lg border border-[var(--atelier-border)] p-3" role="region" :aria-label="t('admin.accounts.bulkEdit.title')">
+    <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
       <span v-if="allResultsSelected" class="text-sm font-medium text-primary-900 dark:text-primary-100">
         {{ t('admin.accounts.bulkActions.selectedAll', { count: selectedIds.length }) }}
       </span>

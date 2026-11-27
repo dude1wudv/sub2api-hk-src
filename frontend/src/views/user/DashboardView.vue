@@ -40,11 +40,11 @@
         <span class="rounded-md bg-[var(--atelier-subtle)] px-2 py-0.5 font-mono text-[11px] font-medium text-[var(--atelier-ink-secondary)]">
           Base URL
         </span>
-        <code class="truncate font-mono text-xs text-[var(--atelier-ink)] sm:text-[13px]">
+        <code class="min-w-0 font-mono text-xs text-[var(--atelier-ink)] [overflow-wrap:anywhere] sm:text-[13px]">
           {{ openAIBase }}
         </code>
       </div>
-      <div class="flex items-center gap-1.5">
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
         <UiButton variant="ghost" size="sm" @click="copyBaseUrl">
           <Icon name="copy" size="xs" aria-hidden="true" />
           {{ zh ? '复制地址' : 'Copy URL' }}

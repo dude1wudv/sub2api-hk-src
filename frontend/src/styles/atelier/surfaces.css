@@ -20,6 +20,18 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.atelier-nav-surface {
+  background-color: var(--atelier-surface);
+}
+
+@supports (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)) {
+  .atelier-nav-surface {
+    background-color: rgb(var(--surface) / 0.97);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
 /* Restrained Dot-Matrix Motif (1.5px dot, rgba(0,0,0,0.12), soft radial fade).
    STRICTLY reserved for Homepage Hero edges, Dashboard Ribbon edge, and Empty States. */
 .atelier-dot-matrix {

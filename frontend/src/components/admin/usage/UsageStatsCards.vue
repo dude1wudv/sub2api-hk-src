@@ -18,15 +18,13 @@
       <div class="min-w-0 flex-1">
         <p class="text-xs font-medium text-gray-500 dark:text-dark-300">{{ t('usage.totalTokens') }}</p>
         <p class="metric-value text-gray-900 tabular-nums dark:text-white">{{ formatTokens(stats?.total_tokens || 0) }}</p>
-        <p class="flex min-w-0 items-center gap-x-1 text-xs text-gray-400 dark:text-dark-400">
+        <p class="relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400 dark:text-dark-400">
           <span class="tabular-nums">{{ t('usage.in') }}: {{ formatTokens(stats?.total_input_tokens || 0) }}</span>
-          <span>/</span>
           <span class="tabular-nums">{{ t('usage.out') }}: {{ formatTokens(stats?.total_output_tokens || 0) }}</span>
-          <span>/</span>
-          <span class="group relative inline-flex cursor-help items-center gap-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40" tabindex="0">
+          <span class="group inline-flex min-w-0 cursor-help items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40" tabindex="0">
             <span class="tabular-nums">{{ cacheLabel() }}: {{ formatTokens(stats?.total_cache_tokens || 0) }}</span>
             <Icon name="infoCircle" size="xs" class="shrink-0 text-gray-400" />
-            <span class="pointer-events-none absolute right-0 top-full z-30 mt-2 hidden w-60 rounded-xl border border-gray-200 bg-white p-3 text-left text-xs text-gray-700 shadow-lg group-hover:block group-focus:block dark:border-dark-600 dark:bg-dark-800 dark:text-dark-200 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
+            <span class="pointer-events-none absolute right-0 top-full z-30 mt-2 hidden w-60 max-w-full rounded-xl border border-gray-200 bg-white p-3 text-left text-xs text-gray-700 shadow-lg group-hover:block group-focus:block dark:border-dark-600 dark:bg-dark-800 dark:text-dark-200">
               <span class="mb-2 block font-semibold text-gray-900 dark:text-white">{{ cacheDetailLabel() }}</span>
               <span class="flex items-center justify-between gap-3"><span>{{ t('usage.cacheCreationTokensLabel') }}</span><span class="font-mono tabular-nums">{{ formatTokens(stats?.total_cache_creation_tokens || 0) }}</span></span>
               <span class="mt-1 flex items-center justify-between gap-3"><span>{{ t('usage.cacheReadTokensLabel') }}</span><span class="font-mono tabular-nums">{{ formatTokens(stats?.total_cache_read_tokens || 0) }}</span></span>
@@ -100,3 +98,31 @@ const formatTokens = (value: number) => {
 const cacheLabel = () => t('usage.cacheTotal')
 const cacheDetailLabel = () => t('usage.cacheBreakdown')
 </script>
+
+<style scoped>
+.usage-metrics > .card {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 639px) {
+  .usage-metrics > .card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .usage-metrics .metric-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .usage-metrics > .card > .min-w-0 {
+    width: 100%;
+  }
+
+  .usage-metrics .metric-value {
+    margin-block: 2px 4px;
+  }
+}
+</style>

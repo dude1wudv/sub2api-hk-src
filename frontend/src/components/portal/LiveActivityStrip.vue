@@ -86,9 +86,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .live-activity-wrap {
-  width: calc(100% - 56px);
-  max-width: 1360px;
-  margin: 16px auto -12px;
+  margin-bottom: 20px;
   display: flex;
   align-items: center;
 }
@@ -185,22 +183,16 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-@media (max-width: 1023px) {
-  .live-activity-wrap {
-    width: calc(100% - 40px);
-  }
-}
-
 @media (max-width: 767px) {
-  .live-activity-wrap {
-    width: calc(100% - 32px);
-    margin: 12px auto -8px;
-  }
-
   .live-activity-strip {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     width: 100%;
     border-radius: 12px;
-    justify-content: space-between;
+  }
+
+  .live-activity-text code {
+    max-width: 100%;
   }
 
   .live-activity-link {
