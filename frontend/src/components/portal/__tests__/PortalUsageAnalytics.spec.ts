@@ -73,6 +73,21 @@ describe('PortalUsageAnalytics', () => {
     wrapper.unmount()
   })
 
+  it('drills down using the full provider-qualified model name', async () => {
+    const modelName = 'deepseek/deepseek-v4-1-flash-1017'
+    getDashboardModels.mockResolvedValueOnce({
+      models: [{ ...model, model: modelName }],
+    })
+    const wrapper = mountAnalytics()
+    await flushPromises()
+    const modelCell = wrapper.get('[data-distribution="models"] tbody td')
+    const button = modelCell.get('button')
+    expect(button.get('span').text()).toBe(modelName)
+    await button.trigger('click')
+    expect(wrapper.emitted('drilldown')?.[0]?.[0]).toMatchObject({ model: modelName })
+    wrapper.unmount()
+  })
+
   it('changes distribution metrics without requesting or changing the source amounts', async () => {
     const wrapper = mountAnalytics()
     await flushPromises()

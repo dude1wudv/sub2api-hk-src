@@ -83,7 +83,7 @@ function latencyColor(ms: number | null | undefined, first = false) {
       </dl>
     </article>
   </div>
-  <div v-else class="portal-table-wrap usage-table-wrap">
+  <div v-else class="portal-table-wrap usage-table-wrap min-w-0 max-w-full overflow-x-auto">
     <table class="portal-table usage-table"><thead><tr><th v-for="column in visible" :key="column.key" :aria-sort="'sortable' in column && column.sortable ? (sortBy === column.key ? sortOrder === 'asc' ? 'ascending' : 'descending' : 'none') : undefined"><button v-if="'sortable' in column && column.sortable" class="usage-sort" @click="emit('sort', column.key)">{{ usageColumnLabel(column.key, !zh) }} <span aria-hidden="true">{{ sortBy === column.key ? sortOrder === 'asc' ? '↑' : '↓' : '↕' }}</span></button><template v-else>{{ usageColumnLabel(column.key, !zh) }}</template></th></tr></thead>
       <tbody><tr v-if="!rows.length"><td :colspan="visible.length" class="usage-empty">{{ copy('暂无用量记录', 'No usage records') }}</td></tr><tr v-for="row in rows" :key="row.id">
         <td v-for="column in visible" :key="column.key" :class="`usage-${column.key}`">
@@ -93,7 +93,7 @@ function latencyColor(ms: number | null | undefined, first = false) {
           <PortalUsageTokens v-else-if="column.key === 'tokens'" :row="row" @detail="emit('detail', $event)" />
           <template v-else-if="column.key === 'cost'"><strong class="usage-actual-cost">{{ formatUsageMoney(row.actual_cost) }}</strong><small class="usage-standard-cost">{{ copy('标准', 'Standard') }} {{ formatUsageMoney(row.total_cost) }}</small><small v-if="row.billing_type === 1">{{ copy('订阅额度', 'Subscription quota') }}</small><small v-if="row.long_context_billing_applied">{{ copy('长上下文计费', 'Long-context pricing') }}</small></template>
           <template v-else-if="column.key === 'latency'"><div class="usage-latency-values" :style="{ '--latency-first': latencyColor(row.first_token_ms, true), '--latency-duration': latencyColor(row.duration_ms) }"><span>{{ copy('首字', 'First token') }}</span><b :style="{ color: latencyColor(row.first_token_ms, true) }">{{ formatUsageDuration(row.first_token_ms) }}</b><span>{{ copy('总耗时', 'Duration') }}</span><b :style="{ color: latencyColor(row.duration_ms) }">{{ formatUsageDuration(row.duration_ms) }}</b><template v-if="isTokenUsage(row)"><span :title="copy('输出 TPS = 输出 Token / 总耗时', 'Output TPS = output tokens / total duration')">{{ copy('输出 TPS', 'Output TPS') }}</span><b>{{ formatUsageRate(usageOutputRate(row)) }}</b></template></div></template>
-          <template v-else-if="column.key === 'api_key'">{{ row.api_key?.name || `#${row.api_key_id}` }}</template>
+          <template v-else-if="column.key === 'api_key'"><span class="usage-key-name">{{ row.api_key?.name || `#${row.api_key_id}` }}</span></template>
           <template v-else-if="column.key === 'group'"><span class="usage-group-tag">{{ row.group?.name || (row.group_id ? `#${row.group_id}` : '—') }}</span></template>
           <template v-else-if="column.key === 'endpoint'"><span class="usage-long-text" :title="row.inbound_endpoint || ''">{{ row.inbound_endpoint || '—' }}</span></template>
           <template v-else-if="column.key === 'ip_address'">{{ row.ip_address || '—' }}</template>
@@ -107,11 +107,12 @@ function latencyColor(ms: number | null | undefined, first = false) {
 </template>
 
 <style scoped>
-.usage-table-wrap { padding: 0; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); }
+.usage-table-wrap { padding:0; overscroll-behavior-inline:contain; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); }
 .usage-table { width:max-content; min-width:100%; white-space: nowrap; font-size: 13.5px; }
 .usage-table th { font-size: 12.5px; font-weight: 600; color: rgb(var(--ink-2)); text-transform: none; padding: 12px 14px; background: rgb(var(--surface-2)); }
 .usage-table td { padding: 15px 14px; font-size: 13.5px; }
 .usage-table .usage-api_key { font-weight: 550; }
+.usage-key-name { display:block; max-width:14rem; white-space:normal; overflow-wrap:break-word; }
 .usage-group-tag { display:inline-block; max-width:200px; padding:2px 9px; font-size:12.5px; font-weight:550; line-height:1.5; white-space:normal; overflow-wrap:anywhere; border:1px solid rgb(var(--brand-moss) / .24); border-radius:999px; background:rgb(var(--brand-moss) / .08); color:rgb(var(--brand-moss)); }
 .usage-sort { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; font: inherit; color: inherit; cursor: pointer; }
 .usage-sort:hover { color: rgb(var(--ink)); }
@@ -120,7 +121,7 @@ function latencyColor(ms: number | null | undefined, first = false) {
 .usage-detail-link { display: inline-block; margin-top: 6px; color: rgb(var(--ink-2)); text-decoration: underline; text-underline-offset: 3px; font-size: 12.5px; cursor: pointer; }
 .usage-detail-link:hover { color: rgb(var(--brand-moss)); }
 .usage-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; border: 0; background: rgb(var(--status-link-bg)); color:rgb(var(--text-link)); font-size:12px; font-weight:600; white-space:nowrap; }
-.usage-model-text { @apply font-mono font-medium; display: block; min-width: 140px; max-width: 220px; white-space: normal; overflow-wrap: break-word; font-size: 13px; }
+.usage-model-text { @apply font-mono font-medium; display: block; min-width: 220px; max-width: 320px; white-space: normal; word-break: normal; overflow-wrap: break-word; font-size: 13px; }
 .usage-model-name { display: flex; align-items: flex-start; gap: 8px; }
 .usage-model-name :deep(svg), .usage-model-name :deep(.model-icon-fallback) { flex-shrink: 0; }
 .usage-request-stream, .usage-request-ws_v2, .usage-request-live, .usage-request-sync { color: rgb(var(--text-link)); background: rgb(var(--status-link-bg)); }
@@ -135,8 +136,8 @@ function latencyColor(ms: number | null | undefined, first = false) {
 .usage-cards { display:grid; gap:12px; }
 .usage-card-sort { display:flex; flex-wrap:wrap; gap:8px 16px; }
 .usage-card { display:grid; gap:10px; padding:16px; border:1px solid rgb(var(--line)); border-radius:var(--radius-card); background:rgb(var(--surface)); box-shadow:var(--shadow-panel); }
-.usage-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-.usage-card .usage-model-name { min-width:0; flex:1; }
+.usage-card-head { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:8px 12px; }
+.usage-card .usage-model-name { min-width:0; flex:1 1 auto; }
 .usage-card .usage-model-text { min-width:0; max-width:none; }
 .usage-card-time { display:flex; align-items:center; justify-content:space-between; gap:12px; color:rgb(var(--ink-3)); font-size:12.5px; font-variant-numeric:tabular-nums; }
 .usage-card-time .usage-detail-link { margin-top:0; }

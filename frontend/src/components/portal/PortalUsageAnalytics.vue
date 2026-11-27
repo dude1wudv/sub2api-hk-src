@@ -368,14 +368,13 @@ onBeforeUnmount(() => { requestSequence++ })
         </div>
       </article>
 
-      <!-- Distribution Panels (Models 6 cols, Groups 6 cols, Endpoints 12 cols or 4/4/4) -->
       <article
         v-for="(section, idx) in sections"
         :key="section.id"
         :data-distribution="section.id"
         :class="[
           'atelier-surface flex min-w-0 flex-col',
-          idx === 0 ? 'xl:col-span-6' : idx === 1 ? 'xl:col-span-6' : 'xl:col-span-12'
+          idx === 0 ? 'xl:col-span-7' : idx === 1 ? 'xl:col-span-5' : 'xl:col-span-12'
         ]"
       >
         <header class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--atelier-border)] px-5 py-3.5">
@@ -402,7 +401,7 @@ onBeforeUnmount(() => { requestSequence++ })
           <p v-else-if="!section.rows.length" class="flex min-h-[200px] items-center justify-center text-sm text-[var(--atelier-ink-muted)]">
             {{ tx('所选时间段暂无记录', 'No requests in this period') }}
           </p>
-          <div v-else class="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+          <div v-else class="distribution-layout flex flex-col items-center gap-5">
             <div class="flex h-36 w-36 shrink-0 items-center justify-center">
               <Doughnut
                 v-if="hasDistribution(section.id, section.rows)"
@@ -420,7 +419,7 @@ onBeforeUnmount(() => { requestSequence++ })
             </div>
 
             <div class="max-h-64 w-full min-w-0 flex-1 overflow-auto">
-              <table class="atelier-table text-xs">
+              <table class="atelier-table distribution-table text-xs">
                 <thead>
                   <tr>
                     <th class="!pl-0">{{ section.column }}</th>
@@ -433,19 +432,25 @@ onBeforeUnmount(() => { requestSequence++ })
                 <tbody>
                   <tr v-for="row in section.rows" :key="row.id">
                     <td :title="row.name" class="!pl-0">
-                      <span class="flex max-w-[200px] items-center gap-2 break-all text-[var(--atelier-ink)]">
-                        <span class="h-2 w-2 shrink-0 rounded-full" :style="{ background: row.chartColor }" />
-                        <BrandModelIcon v-if="section.id === 'models'" :model="row.name" size="sm" />
+                      <span
+                        :class="[
+                          'flex items-start gap-2 text-[var(--atelier-ink)]',
+                          section.id === 'models' ? 'min-w-44 max-w-80' : 'max-w-60'
+                        ]"
+                      >
+                        <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full" :style="{ background: row.chartColor }" />
+                        <BrandModelIcon v-if="section.id === 'models'" :model="row.name" size="sm" class="shrink-0" />
                         <button
                           v-if="section.id === 'models'"
                           type="button"
-                          class="inline-flex items-center gap-1 text-left font-mono font-medium text-[var(--atelier-ink)] underline decoration-[var(--atelier-border-strong)] underline-offset-4 hover:decoration-[var(--atelier-ink)]"
+                          class="inline-flex min-w-0 items-start gap-1 text-left font-mono font-medium text-[var(--atelier-ink)] underline decoration-[var(--atelier-border-strong)] underline-offset-4 hover:decoration-[var(--atelier-ink)]"
                           :aria-label="tx(`查看 ${row.name} 的请求明细`, `View requests for ${row.name}`)"
                           @click="openModel(row.name)"
                         >
-                          {{ row.name }} <span class="text-[var(--atelier-ink-muted)]" aria-hidden="true">↗</span>
+                          <span class="min-w-0 break-words">{{ row.name }}</span>
+                          <span class="shrink-0 text-[var(--atelier-ink-muted)]" aria-hidden="true">↗</span>
                         </button>
-                        <span v-else class="font-mono">{{ row.name }}</span>
+                        <span v-else class="min-w-0 break-words font-mono">{{ row.name }}</span>
                       </span>
                     </td>
                     <td class="text-right font-mono tabular-nums text-[var(--atelier-ink-secondary)]">{{ number(row.requests) }}</td>
@@ -462,3 +467,19 @@ onBeforeUnmount(() => { requestSequence++ })
     </div>
   </section>
 </template>
+
+<style scoped>
+[data-distribution] {
+  container-type: inline-size;
+}
+
+.distribution-table :is(th, td) {
+  padding-inline: 0.5rem;
+}
+
+@container (min-width: 46rem) {
+  .distribution-layout {
+    flex-direction: row;
+  }
+}
+</style>
