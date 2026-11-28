@@ -213,6 +213,15 @@ func (r *ModelPricingResolver) lookupChannelPricingNormalized(ctx context.Contex
 	if pricing := r.channelService.GetChannelModelPricing(ctx, groupID, model); pricing != nil {
 		return pricing
 	}
+	deepSeekAlias := strings.ToLower(strings.TrimSpace(model))
+	const dotted = "deepseek-v4.1-"
+	const dashed = "deepseek-v4-1-"
+	switch {
+	case strings.HasPrefix(deepSeekAlias, dotted):
+		return r.channelService.GetChannelModelPricing(ctx, groupID, dashed+strings.TrimPrefix(deepSeekAlias, dotted))
+	case strings.HasPrefix(deepSeekAlias, dashed):
+		return r.channelService.GetChannelModelPricing(ctx, groupID, dotted+strings.TrimPrefix(deepSeekAlias, dashed))
+	}
 	normalized := normalizeKnownOpenAICodexModel(model)
 	if normalized == "" || strings.EqualFold(normalized, strings.TrimSpace(model)) {
 		return nil

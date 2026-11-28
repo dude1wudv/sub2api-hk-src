@@ -1,19 +1,20 @@
-export function formatUSD(value: number | null | undefined, digits = 2): string {
+import type { PriceCurrency } from './api'
+
+export function formatQuota(value: number | null | undefined, digits = 2): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
-    return '0.00'
+    return '0 单位'
   }
   if (value > 0 && value < 0.01) {
-    return value.toFixed(4)
+    return `${value.toFixed(6).replace(/0+$/, '')} 单位`
   }
-  return value.toFixed(digits)
+  return `${Number(value.toFixed(digits))} 单位`
 }
 
-export function formatPricePerMillion(value: number | null | undefined): string {
+export function formatPricePerMillion(value: number | null | undefined, currency: PriceCurrency): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return '—'
   }
-  if (value === 0) return '$0'
-  return value >= 1 ? `$${value.toFixed(2)}` : `$${value.toFixed(3)}`
+  return `${currency === 'CNY' ? '¥' : '$'}${value}`
 }
 
 export function formatCountdown(totalSeconds: number): string {

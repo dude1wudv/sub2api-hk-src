@@ -1087,7 +1087,11 @@ func (s *CharityService) loadPublicModelsByGroup(ctx context.Context, groupIDs [
 		}
 		models := make([]CharityPublicModel, 0, len(available))
 		for _, discovered := range available {
-			item := CharityPublicModel{Name: discovered.ID, Platform: group.Platform}
+			item := CharityPublicModel{
+				Name:          discovered.ID,
+				Platform:      group.Platform,
+				PriceCurrency: charityModelPriceCurrency(discovered.ID),
+			}
 			if s.plazaService != nil {
 				metadata := s.plazaService.metadataCatalog.Resolve(item.Name)
 				item.SupportsVision = slices.Contains(metadata.InputModalities, "image")
@@ -1109,6 +1113,21 @@ func (s *CharityService) loadPublicModelsByGroup(ctx context.Context, groupIDs [
 		out[groupID] = models
 	}
 	return out
+}
+
+func charityModelPriceCurrency(model string) string {
+	platform, _ := DetectModelPlatform(model)
+	switch platform {
+	case PlatformDeepseek, PlatformZhipu, PlatformKimi, PlatformMiniMax:
+		return "CNY"
+	}
+	name := lastSegment(strings.ToLower(strings.TrimSpace(model)))
+	for _, prefix := range []string{"qwen", "mimo-", "hy3", "hy4", "hunyuan-", "doubao-", "seed-", "ernie-", "ling-", "ring-", "step-"} {
+		if strings.HasPrefix(name, prefix) {
+			return "CNY"
+		}
+	}
+	return "USD"
 }
 
 func perTokenToPerMillion(perToken *float64) *float64 {

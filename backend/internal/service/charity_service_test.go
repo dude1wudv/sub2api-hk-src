@@ -517,8 +517,9 @@ func (r charityCatalogChannelRepo) GetGroupPlatforms(context.Context, []int64) (
 
 func TestCharityPublicOverviewUsesGroupCatalogAndUndiscountedPricing(t *testing.T) {
 	groupInput, groupOutput, channelInput := 7e-6, 21e-6, 3e-6
+	flashInput, flashOutput, flashCacheRead := 2e-6, 8e-6, 4e-8
 	group := &Group{ID: 255, Platform: PlatformOpenAI, Status: StatusActive, RateMultiplier: .2,
-		ModelAllowlist: GroupModelAllowlist{Enabled: true, Models: []string{"deepseek-v4.1-flash", "no-price", "qwen3-reranker-4b"}},
+		ModelAllowlist: GroupModelAllowlist{Enabled: true, Models: []string{"deepseek-v4.1-flash", "deepseek-v4.1-flash-1017", "no-price", "qwen3-reranker-4b"}},
 		ModelPricing:   []ChannelModelPricing{{Models: []string{"deepseek-v4.1-flash"}, InputPrice: &groupInput, OutputPrice: &groupOutput}},
 	}
 	otherGroup := &Group{ID: 256, Platform: PlatformOpenAI, Status: StatusActive}
@@ -528,7 +529,7 @@ func TestCharityPublicOverviewUsesGroupCatalogAndUndiscountedPricing(t *testing.
 	repo.groups[2] = &CharityGroup{ID: 2, GroupID: 256, Enabled: true, GroupStatus: StatusActive}
 	accounts := &modelsListAccountRepoStub{byGroup: map[int64][]Account{
 		255: {{Platform: PlatformOpenAI, Credentials: map[string]any{"model_mapping": map[string]any{
-			"deepseek-v4.1-flash": "deepseek-v4.1-flash", "no-price": "no-price",
+			"deepseek-v4.1-flash": "deepseek-v4.1-flash", "deepseek-v4.1-flash-1017": "deepseek-v4.1-flash", "no-price": "no-price",
 			"qwen3-reranker-4b": "qwen3-reranker-4b", "blocked": "blocked",
 		}}}},
 		256: {{Platform: PlatformOpenAI, Credentials: map[string]any{"model_mapping": map[string]any{
@@ -539,6 +540,9 @@ func TestCharityPublicOverviewUsesGroupCatalogAndUndiscountedPricing(t *testing.
 		ID: 1, Name: "shared", Status: StatusActive, GroupIDs: []int64{255, 256},
 		ModelPricing: []ChannelModelPricing{{
 			Platform: PlatformOpenAI, Models: []string{"deepseek-v4.1-flash", "gpt-5.6-sol", "channel-only"}, InputPrice: &channelInput,
+		}, {
+			Platform: PlatformOpenAI, Models: []string{"deepseek-v4-1-flash-1017"},
+			InputPrice: &flashInput, OutputPrice: &flashOutput, CacheReadPrice: &flashCacheRead,
 		}},
 	}}}
 	channelService := NewChannelService(channels, groupRepo, nil, nil, nil)
@@ -553,20 +557,28 @@ func TestCharityPublicOverviewUsesGroupCatalogAndUndiscountedPricing(t *testing.
 	for _, entry := range overview.Groups {
 		switch entry.GroupID {
 		case 255:
-			require.Len(t, entry.Models, 3)
+			require.Len(t, entry.Models, 4)
 			require.Equal(t, "deepseek-v4.1-flash", entry.Models[0].Name)
 			require.NotNil(t, entry.Models[0].InputPricePerMillion)
 			require.NotNil(t, entry.Models[0].OutputPricePerMillion)
 			require.InDelta(t, 7, *entry.Models[0].InputPricePerMillion, 1e-12)
 			require.InDelta(t, 21, *entry.Models[0].OutputPricePerMillion, 1e-12)
-			require.Equal(t, "no-price", entry.Models[1].Name)
-			require.Nil(t, entry.Models[1].InputPricePerMillion)
-			require.Equal(t, "qwen3-reranker-4b", entry.Models[2].Name)
-			require.NotNil(t, entry.Models[2].InputPricePerMillion)
-			require.InDelta(t, .14, *entry.Models[2].InputPricePerMillion, 1e-12)
+			flash := entry.Models[1]
+			require.Equal(t, "deepseek-v4.1-flash-1017", flash.Name)
+			require.Equal(t, "CNY", flash.PriceCurrency)
+			require.InDelta(t, 2, *flash.InputPricePerMillion, 1e-12)
+			require.InDelta(t, 8, *flash.OutputPricePerMillion, 1e-12)
+			require.InDelta(t, .04, *flash.CacheReadPerMillion, 1e-12)
+			require.Equal(t, "no-price", entry.Models[2].Name)
+			require.Nil(t, entry.Models[2].InputPricePerMillion)
+			require.Equal(t, "qwen3-reranker-4b", entry.Models[3].Name)
+			require.Equal(t, "CNY", entry.Models[3].PriceCurrency)
+			require.NotNil(t, entry.Models[3].InputPricePerMillion)
+			require.InDelta(t, .14, *entry.Models[3].InputPricePerMillion, 1e-12)
 		case 256:
 			require.Len(t, entry.Models, 1)
 			require.Equal(t, "gpt-5.6-sol", entry.Models[0].Name)
+			require.Equal(t, "USD", entry.Models[0].PriceCurrency)
 			require.NotNil(t, entry.Models[0].InputPricePerMillion)
 			require.InDelta(t, 3, *entry.Models[0].InputPricePerMillion, 1e-12)
 		default:

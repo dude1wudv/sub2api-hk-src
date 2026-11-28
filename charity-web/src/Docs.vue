@@ -25,7 +25,27 @@
 
         <section id="protocols"><h2>其他已开放协议</h2><h3>Anthropic Messages</h3><CodeBlock label="POST /v1/messages" :value="messagesExample" :copied="copied === messagesExample" @copy="copy" /><h3>Gemini generateContent</h3><CodeBlock label="POST /v1beta/models/{model}:generateContent" :value="geminiExample" :copied="copied === geminiExample" @copy="copy" /><h3>Embeddings</h3><CodeBlock label="POST /v1/embeddings" :value="embeddingsExample" :copied="copied === embeddingsExample" @copy="copy" /><h3>同步图片创建</h3><p>仅当当前分组的模型列表和能力支持图片生成时使用。接口会等待本次请求的结果，公共入口不提供异步任务查询。</p><CodeBlock label="POST /v1/images/generations" :value="imageExample" :copied="copied === imageExample" @copy="copy" /></section>
 
-        <section id="models"><h2>模型与价格</h2><p>首页会展示每个公益分组的模型和折前 1× 单价。下表同样来自实时公益状态接口，价格可能随上游配置变化。</p><div v-if="groups.length" class="price-table-wrap"><table><thead><tr><th>分组</th><th>模型</th><th>输入 / 1M</th><th>输出 / 1M</th></tr></thead><tbody><template v-for="group in groups" :key="group.id"><tr v-for="model in group.models" :key="`${group.id}-${model.name}`"><td>{{ group.name }}</td><td><code>{{ model.name }}</code></td><td>{{ price(model.input_price_per_million) }}</td><td>{{ price(model.output_price_per_million) }}</td></tr></template></tbody></table></div><p v-else class="callout">模型列表加载中，请回到首页查看实时状态。</p></section>
+        <section id="models">
+          <h2>模型与价格</h2>
+          <p>下表和首页均使用各分组的 Sub2API 折前 1× 单价。国产模型标人民币，Claude 和 GPT 标美元。每 ¥1 或 $1 都扣 1 单位共享额度，直接相加，不做汇率换算。</p>
+          <div v-if="groups.some((group) => group.models.length)" class="price-table-wrap">
+            <table>
+              <thead><tr><th>分组</th><th>模型</th><th>输入 / 1M</th><th>输出 / 1M</th><th>缓存读 / 1M</th></tr></thead>
+              <tbody>
+                <template v-for="group in groups" :key="group.id">
+                  <tr v-for="model in group.models" :key="`${group.id}-${model.name}`">
+                    <td>{{ group.name }}</td>
+                    <td><code>{{ model.name }}</code></td>
+                    <td>{{ formatPricePerMillion(model.input_price_per_million, model.price_currency) }}</td>
+                    <td>{{ formatPricePerMillion(model.output_price_per_million, model.price_currency) }}</td>
+                    <td>{{ formatPricePerMillion(model.cache_read_per_million, model.price_currency) }}</td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <p v-else class="callout">暂无可显示的模型，请回到首页查看实时状态。</p>
+        </section>
 
         <section id="limits"><h2>边界与排查</h2><ul><li>公益入口不开放共享公共 Key 的创建、查询或管理 API，也不开放管理员路由。</li><li>公益入口不承诺异步任务、实时流式通道或 WebSocket。请使用本页列出的单次 HTTP 请求。</li><li>如果返回 401，请检查 Key 是否是当天首页显示的公共 Key。</li><li>如果返回 403、429 或额度错误，请查看首页的总池、分组、并发和 IP 状态。</li></ul></section>
       </main>
@@ -36,6 +56,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { fetchCharityOverview, type CharityPublicGroup } from './api'
+import { formatPricePerMillion } from './utils'
 
 const theme = ref<'light' | 'dark'>('light')
 const groups = ref<CharityPublicGroup[]>([])
@@ -88,7 +109,6 @@ const CodeBlock = defineComponent({
   emits: ['copy'],
   setup(props, { emit }) { return () => h('div', { class: 'code-block' }, [h('div', { class: 'code-head' }, [h('span', props.label), h('button', { type: 'button', onClick: () => emit('copy', props.value) }, props.copied ? '已复制' : '复制')]), h('pre', [h('code', props.value)])]) }
 })
-function price(value: number | null | undefined) { return value === null || value === undefined ? '—' : `$${value}` }
 function toggleTheme() { theme.value = theme.value === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = theme.value }
 async function copy(value: string) { try { await navigator.clipboard.writeText(value); copied.value = value } catch { copied.value = '' } }
 onMounted(async () => { try { const data = await fetchCharityOverview(); groups.value = data.groups; siteTitle.value = data.site_title || siteTitle.value } catch { /* 首页提供实时状态 */ } })

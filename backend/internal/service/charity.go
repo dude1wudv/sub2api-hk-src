@@ -149,10 +149,11 @@ type CharityLiveConcurrency struct {
 	ByGroup map[int64]int `json:"by_group"`
 }
 
-// CharityPublicModel 公益站对外展示的模型与折前 1× 参考单价（USD per 1M tokens）。
+// CharityPublicModel 公益站对外展示的模型与折前 1× 参考单价（每百万 token）。
 type CharityPublicModel struct {
 	Name                  string   `json:"name"`
 	Platform              string   `json:"platform"`
+	PriceCurrency         string   `json:"price_currency"`
 	InputPricePerMillion  *float64 `json:"input_price_per_million,omitempty"`
 	OutputPricePerMillion *float64 `json:"output_price_per_million,omitempty"`
 	CacheReadPerMillion   *float64 `json:"cache_read_per_million,omitempty"`
