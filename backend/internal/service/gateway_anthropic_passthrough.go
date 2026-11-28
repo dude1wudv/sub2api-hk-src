@@ -680,6 +680,9 @@ func parseSSEUsagePassthrough(data string, usage *ClaudeUsage) {
 		if v := usageNode.Get("input_tokens").Int(); v > 0 {
 			usage.InputTokens = int(v)
 		}
+	}
+	switch eventType {
+	case "message_start", "message_delta", "error":
 		if v := usageNode.Get("output_tokens").Int(); v > 0 {
 			usage.OutputTokens = int(v)
 			usage.OutputTokensEstimated = usageNode.Get("output_tokens_estimated").Bool()

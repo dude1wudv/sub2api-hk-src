@@ -881,6 +881,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	needModelReplace := originalModel != mappedModel
 	clientModel := compositeClientModel(ctx, "")
 	clientDisconnected := false // 客户端断开标志，断开后继续读取上游以获取完整usage
+	toolNameRestorer := newToolNameStreamRestorer(toolNameRewriteFromContext(c))
 	sawTerminalEvent := false
 	defer func() {
 		outputUsage.ApplyFallback(usage)
@@ -1082,6 +1083,66 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 		return []string{block}, string(newData), usagePatch, nil
 	}
 
+	writeBlock := func(block string) {
+		if clientDisconnected {
+			return
+		}
+		if _, err := io.WriteString(w, reverseToolNamesIfPresentString(c, block)); err != nil {
+			clientDisconnected = true
+			_ = resp.Body.Close()
+			logger.LegacyPrintf("service.gateway", "Client disconnected during streaming, closing upstream and keeping received usage")
+			return
+		}
+		flusher.Flush()
+		lastDataAt = time.Now()
+		resetKeepaliveTimer()
+	}
+
+	const deltaEventPrefix = "event: content_block_delta\ndata: "
+	flushToolCarry := func() {
+		if clientDisconnected || !c.Writer.Written() || toolNameRestorer == nil {
+			return
+		}
+		for _, event := range toolNameRestorer.flush() {
+			writeBlock(deltaEventPrefix + string(event) + "\n\n")
+		}
+	}
+
+	writeToolRestoredBlock := func(block string) {
+		if toolNameRestorer == nil || clientDisconnected {
+			writeBlock(block)
+			return
+		}
+		dataAt := strings.Index(block, "data:")
+		if dataAt < 0 {
+			writeBlock(block)
+			return
+		}
+		start := dataAt + len("data:")
+		if start < len(block) && block[start] == ' ' {
+			start++
+		}
+		end := len(block) - len("\n\n")
+		if end < start {
+			writeBlock(block)
+			return
+		}
+		payload := streamEventBytes(block[start:end])
+		var restored [2][]byte
+		count := toolNameRestorer.restoreInto(payload, &restored)
+		for index, event := range restored[:count] {
+			if index == count-1 && bytes.Equal(event, payload) {
+				writeBlock(block)
+				continue
+			}
+			prefix := block[:start]
+			if index == 0 && count == 2 {
+				prefix = deltaEventPrefix
+			}
+			writeBlock(prefix + string(event) + "\n\n")
+		}
+	}
+
 	flushPendingSSEEvent := func(onlyComplete bool) error {
 		if len(pendingEventLines) == 0 {
 			return nil
@@ -1106,21 +1167,14 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 		clear(pendingEventLines)
 		pendingEventLines = pendingEventLines[:0]
 		if err != nil {
+			flushToolCarry()
 			return err
 		}
+		if sawTerminalEvent {
+			flushToolCarry()
+		}
 		for _, block := range outputBlocks {
-			if !clientDisconnected {
-				restored := reverseToolNamesIfPresentString(c, block)
-				if _, werr := io.WriteString(w, restored); werr != nil {
-					clientDisconnected = true
-					_ = resp.Body.Close()
-					logger.LegacyPrintf("service.gateway", "Client disconnected during streaming, closing upstream and keeping received usage")
-				} else {
-					flusher.Flush()
-					lastDataAt = time.Now()
-					resetKeepaliveTimer()
-				}
-			}
+			writeToolRestoredBlock(block)
 			if data != "" {
 				if firstTokenMs == nil && data != "[DONE]" {
 					ms := int(time.Since(startTime).Milliseconds())
@@ -1144,6 +1198,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 				if err := flushPendingSSEEvent(true); err != nil {
 					return nil, err
 				}
+				flushToolCarry()
 				// 上游完成，返回结果
 				if !sawTerminalEvent {
 					return &streamingResult{usage: usage, firstTokenMs: firstTokenMs, clientDisconnect: clientDisconnected}, fmt.Errorf("stream usage incomplete: missing terminal event")
@@ -1157,6 +1212,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 					}
 					return nil, err
 				}
+				flushToolCarry()
 				if sawTerminalEvent {
 					return &streamingResult{usage: usage, firstTokenMs: firstTokenMs, clientDisconnect: clientDisconnected}, nil
 				}
@@ -1219,6 +1275,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			if time.Since(lastRead) < streamInterval {
 				continue
 			}
+			flushToolCarry()
 			if clientDisconnected {
 				return &streamingResult{usage: usage, firstTokenMs: firstTokenMs, clientDisconnect: true}, fmt.Errorf("stream usage incomplete after timeout")
 			}

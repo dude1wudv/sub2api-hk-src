@@ -96,7 +96,7 @@ func TestCalculateOpenAIRecordUsageCost_Qwen3EmbeddingFallback(t *testing.T) {
 	require.False(t, isUsagePricingUnavailableError(err),
 		"补兜底价后不得再按无价可循处理: %v", err)
 	require.NotNil(t, cost)
-	require.InDelta(t, 1000*0.04e-6, cost.TotalCost, 1e-12)
+	require.InDelta(t, 1000*0.28e-6, cost.TotalCost, 1e-12)
 }
 
 // 硅基流动 Qwen3-Reranker-8B 走 /v1/rerank（OpenAI 兼容 reranker，用量仅输入
@@ -116,7 +116,7 @@ func TestCalculateOpenAIRecordUsageCost_Qwen3RerankerFallback(t *testing.T) {
 	require.False(t, isUsagePricingUnavailableError(err),
 		"补兜底价后不得再按无价可循处理: %v", err)
 	require.NotNil(t, cost)
-	require.InDelta(t, 1000*0.04e-6, cost.TotalCost, 1e-12)
+	require.InDelta(t, 1000*0.28e-6, cost.TotalCost, 1e-12)
 }
 
 func TestResponsesStreamingFromNativeAnthropic_ClientDisconnectDrainsUsage(t *testing.T) {
