@@ -89,3 +89,17 @@ func TestCharityCache_DailyCostsConcurrencyAndRPM(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, locked)
 }
+
+func TestCharityCache_ConfiguredLimitsRequireRedis(t *testing.T) {
+	cache := NewCharityCache(nil)
+	ctx := context.Background()
+	allowed, err := cache.CheckAndIncrIPRPM(ctx, "10.0.0.1", 1)
+	require.Error(t, err)
+	require.False(t, allowed)
+	acquired, _, err := cache.AcquireConcurrencySlots(ctx, "req", 1, 10, 0, "10.0.0.1", 0)
+	require.Error(t, err)
+	require.False(t, acquired)
+	acquired, _, err = cache.AcquireConcurrencySlots(ctx, "req", 0, 10, 0, "10.0.0.1", 0)
+	require.NoError(t, err)
+	require.True(t, acquired)
+}

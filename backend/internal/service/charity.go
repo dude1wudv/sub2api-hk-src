@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 )
 
@@ -15,6 +16,7 @@ const (
 	CharityDefaultDailyBudgetUSD = 100.0
 	CharityDefaultMaxConcurrency = 20
 	CharityKeyPrefix             = "sk-free-"
+	CharityDefaultHost           = "free.xjtu.shop"
 )
 
 var (
@@ -35,8 +37,26 @@ var (
 type CharityBillingMeta struct {
 	CharityGroupID int64
 	GroupID        int64
+	APIKeyID       int64
+	UserID         int64
 	ClientIP       string
 	UsageDate      string
+}
+
+func CharityAdmissionFromContext(ctx context.Context) *CharityBillingMeta {
+	if ctx == nil {
+		return nil
+	}
+	meta, _ := ctx.Value(ctxkey.CharityBilling).(*CharityBillingMeta)
+	if meta == nil || meta.GroupID <= 0 {
+		return nil
+	}
+	return meta
+}
+
+func CharityAdmittedKey(ctx context.Context, key *APIKey) bool {
+	meta := CharityAdmissionFromContext(ctx)
+	return meta != nil && key != nil && meta.APIKeyID == key.ID && meta.UserID == key.UserID
 }
 
 // CharityPoolSettings 对应 charity_pool_settings 单行配置。
@@ -125,20 +145,20 @@ type CharityDailyTrendPoint struct {
 
 // CharityLiveConcurrency 当前实时并发快照。
 type CharityLiveConcurrency struct {
-	Global  int             `json:"global"`
-	ByGroup map[int64]int   `json:"by_group"`
+	Global  int           `json:"global"`
+	ByGroup map[int64]int `json:"by_group"`
 }
 
 // CharityPublicModel 公益站对外展示的模型与折前 1× 参考单价（USD per 1M tokens）。
 type CharityPublicModel struct {
-	Name                   string   `json:"name"`
-	Platform               string   `json:"platform"`
-	InputPricePerMillion   *float64 `json:"input_price_per_million,omitempty"`
-	OutputPricePerMillion  *float64 `json:"output_price_per_million,omitempty"`
-	CacheReadPerMillion    *float64 `json:"cache_read_per_million,omitempty"`
-	CacheWritePerMillion   *float64 `json:"cache_write_per_million,omitempty"`
-	SupportsVision         bool     `json:"supports_vision,omitempty"`
-	SupportsReasoning      bool     `json:"supports_reasoning,omitempty"`
+	Name                  string   `json:"name"`
+	Platform              string   `json:"platform"`
+	InputPricePerMillion  *float64 `json:"input_price_per_million,omitempty"`
+	OutputPricePerMillion *float64 `json:"output_price_per_million,omitempty"`
+	CacheReadPerMillion   *float64 `json:"cache_read_per_million,omitempty"`
+	CacheWritePerMillion  *float64 `json:"cache_write_per_million,omitempty"`
+	SupportsVision        bool     `json:"supports_vision,omitempty"`
+	SupportsReasoning     bool     `json:"supports_reasoning,omitempty"`
 }
 
 // CharityPublicGroupView 公益用户界面单个分组展示数据。
@@ -221,20 +241,20 @@ type CharityAdminOverview struct {
 
 // CharityKeyLookupResult 公开按 Key 查询实时状态。
 type CharityKeyLookupResult struct {
-	Found              bool       `json:"found"`
-	Status             string     `json:"status"` // active | rotated_expired | disabled | not_found
-	GroupID            int64      `json:"group_id,omitempty"`
-	GroupName          string     `json:"group_name,omitempty"`
-	Platform           string     `json:"platform,omitempty"`
-	UsageDate          string     `json:"usage_date"`
-	PoolDailyBudgetUSD float64    `json:"pool_daily_budget_usd"`
-	PoolUsedTodayUSD   float64    `json:"pool_used_today_usd"`
-	PoolRemainingUSD   *float64   `json:"pool_remaining_usd"`
-	GroupDailyLimitUSD *float64   `json:"group_daily_limit_usd"`
-	GroupUsedTodayUSD  float64    `json:"group_used_today_usd"`
-	GroupRemainingUSD  *float64   `json:"group_remaining_usd"`
-	LastRotatedDate    string     `json:"last_rotated_date,omitempty"`
-	NextResetAt        time.Time  `json:"next_reset_at"`
+	Found              bool      `json:"found"`
+	Status             string    `json:"status"` // active | rotated_expired | disabled | not_found
+	GroupID            int64     `json:"group_id,omitempty"`
+	GroupName          string    `json:"group_name,omitempty"`
+	Platform           string    `json:"platform,omitempty"`
+	UsageDate          string    `json:"usage_date"`
+	PoolDailyBudgetUSD float64   `json:"pool_daily_budget_usd"`
+	PoolUsedTodayUSD   float64   `json:"pool_used_today_usd"`
+	PoolRemainingUSD   *float64  `json:"pool_remaining_usd"`
+	GroupDailyLimitUSD *float64  `json:"group_daily_limit_usd"`
+	GroupUsedTodayUSD  float64   `json:"group_used_today_usd"`
+	GroupRemainingUSD  *float64  `json:"group_remaining_usd"`
+	LastRotatedDate    string    `json:"last_rotated_date,omitempty"`
+	NextResetAt        time.Time `json:"next_reset_at"`
 }
 
 // UpdateCharitySettingsInput 管理端更新公益池全局配置入参。

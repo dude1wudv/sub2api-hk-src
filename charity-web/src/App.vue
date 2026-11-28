@@ -12,6 +12,7 @@
       </div>
 
       <div class="topbar-actions">
+        <a href="/docs" class="btn btn-sm">使用文档</a>
         <button type="button" class="btn btn-sm" :disabled="loading" @click="loadOverview">
           {{ loading ? '刷新中…' : '刷新状态' }}
         </button>

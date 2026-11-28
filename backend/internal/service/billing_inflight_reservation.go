@@ -298,6 +298,9 @@ func (s *BillingCacheService) reserveInflightScope(ctx context.Context, res *Inf
 }
 
 func (s *BillingCacheService) reserveInflight(ctx context.Context, user *User, group *Group, subscription *UserSubscription, estimate float64, renew, capped bool) (*InflightReservation, error) {
+	if meta := CharityAdmissionFromContext(ctx); meta != nil && user != nil && meta.UserID == user.ID {
+		return nil, nil
+	}
 	cfg, ok := s.inflightReservationConfig()
 	if !ok || user == nil {
 		return nil, nil

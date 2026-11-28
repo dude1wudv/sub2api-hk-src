@@ -258,23 +258,35 @@ func (s *CharityService) AdmitRequest(ctx context.Context, apiKey *APIKey, clien
 		ipUsed, loadErr := s.loadDailyIPCost(ctx, usageDate, meta.ClientIP)
 		if loadErr != nil {
 			slog.Warn("charity: failed to load daily ip cost", "ip", MaskCharityIP(meta.ClientIP), "error", loadErr)
-		} else if ipUsed >= snap.settings.PerIPDailyLimitUSD {
+			return &CharityAdmissionResult{IsCharity: true}, infraerrors.ServiceUnavailable("CHARITY_QUOTA_CHECK_FAILED", "公益额度检查暂时不可用，请稍后重试")
+		}
+		if ipUsed >= snap.settings.PerIPDailyLimitUSD {
 			return &CharityAdmissionResult{IsCharity: true}, ErrCharityIPDailyLimitExhausted
 		}
 	}
 
 	// 3. 校验可选单 IP RPM
-	if snap.settings.PerIPRPMLimit > 0 && meta.ClientIP != "" && s.cache != nil {
+	if snap.settings.PerIPRPMLimit > 0 && meta.ClientIP != "" {
+		if s.cache == nil {
+			return &CharityAdmissionResult{IsCharity: true}, infraerrors.ServiceUnavailable("CHARITY_RATE_CHECK_FAILED", "公益频率检查暂时不可用，请稍后重试")
+		}
 		allowed, rpmErr := s.cache.CheckAndIncrIPRPM(ctx, meta.ClientIP, snap.settings.PerIPRPMLimit)
 		if rpmErr != nil {
 			slog.Warn("charity: failed to check ip rpm", "error", rpmErr)
-		} else if !allowed {
+			return &CharityAdmissionResult{IsCharity: true}, infraerrors.ServiceUnavailable("CHARITY_RATE_CHECK_FAILED", "公益频率检查暂时不可用，请稍后重试")
+		}
+		if !allowed {
 			return &CharityAdmissionResult{IsCharity: true}, ErrCharityIPRPMExceeded
 		}
 	}
 
 	// 4. 获取并发租约（全局 / 分组 / 单 IP）
 	release := func() {}
+	concurrencyLimited := snap.settings.MaxConcurrency > 0 || cg.MaxConcurrency > 0 ||
+		(meta.ClientIP != "" && snap.settings.PerIPMaxConcurrency > 0)
+	if s.cache == nil && concurrencyLimited {
+		return &CharityAdmissionResult{IsCharity: true}, infraerrors.ServiceUnavailable("CHARITY_CONCURRENCY_CHECK_FAILED", "公益并发检查暂时不可用，请稍后重试")
+	}
 	if s.cache != nil {
 		reqID := generateCharitySlotRequestID()
 		acquired, _, concErr := s.cache.AcquireConcurrencySlots(
@@ -288,6 +300,9 @@ func (s *CharityService) AdmitRequest(ctx context.Context, apiKey *APIKey, clien
 		)
 		if concErr != nil {
 			slog.Warn("charity: failed to acquire concurrency slot", "error", concErr)
+			if concurrencyLimited {
+				return &CharityAdmissionResult{IsCharity: true}, infraerrors.ServiceUnavailable("CHARITY_CONCURRENCY_CHECK_FAILED", "公益并发检查暂时不可用，请稍后重试")
+			}
 		} else if !acquired {
 			return &CharityAdmissionResult{IsCharity: true}, ErrCharityConcurrencyExceeded
 		} else {
@@ -330,12 +345,6 @@ func (s *CharityService) RecordBilledUsage(ctx context.Context, usageDate string
 }
 
 func (s *CharityService) loadDailyGroupCosts(ctx context.Context, usageDate string) (map[int64]float64, error) {
-	if s.cache != nil {
-		costs, hit, err := s.cache.GetDailyGroupCosts(ctx, usageDate)
-		if err == nil && hit {
-			return costs, nil
-		}
-	}
 	rows, err := s.repo.GetDailyGroupUsage(ctx, usageDate)
 	if err != nil {
 		return nil, err
@@ -344,25 +353,13 @@ func (s *CharityService) loadDailyGroupCosts(ctx context.Context, usageDate stri
 	for _, r := range rows {
 		costs[r.GroupID] = r.TotalCostUSD
 	}
-	if s.cache != nil {
-		_ = s.cache.SetDailyGroupCosts(ctx, usageDate, costs)
-	}
 	return costs, nil
 }
 
 func (s *CharityService) loadDailyIPCost(ctx context.Context, usageDate string, clientIP string) (float64, error) {
-	if s.cache != nil {
-		cost, hit, err := s.cache.GetDailyIPCost(ctx, usageDate, clientIP)
-		if err == nil && hit {
-			return cost, nil
-		}
-	}
 	row, err := s.repo.GetDailyIPUsage(ctx, usageDate, clientIP)
 	if err != nil {
 		return 0, err
-	}
-	if s.cache != nil {
-		_ = s.cache.SetDailyIPCost(ctx, usageDate, clientIP, row.TotalCostUSD)
 	}
 	return row.TotalCostUSD, nil
 }

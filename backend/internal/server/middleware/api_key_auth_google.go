@@ -137,25 +137,12 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 		// 简易模式：跳过余额和订阅检查
 		admissionCleanup := InstallAPIKeyAdmissionOwner(c, apiKeyService, apiKeyString, ip.GetSecurityClientIP(c, cfg.TrustForwardedIPForAPIKeyACL()), apiKey, true)
 		defer admissionCleanup()
-		if cfg.RunMode == config.RunModeSimple {
-			c.Set(string(ContextKeyAPIKey), apiKey)
-			c.Set(string(ContextKeyUser), AuthSubject{
-				UserID:      apiKey.User.ID,
-				Concurrency: apiKey.User.Concurrency,
-			})
-			c.Set(string(ContextKeyUserRole), apiKey.User.Role)
-			setGroupContext(c, apiKey.Group)
-			_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
-			c.Next()
-			return
-		}
-
 		charityRes, charityAborted := checkCharityAPIKeyAdmission(c, apiKey, cfg, false, true)
 		if charityAborted {
 			return
 		}
-		if charityRes != nil && charityRes.IsCharity {
-			if charityRes.Release != nil {
+		if cfg.RunMode == config.RunModeSimple || (charityRes != nil && charityRes.IsCharity) {
+			if charityRes != nil && charityRes.Release != nil {
 				defer charityRes.Release()
 			}
 			c.Set(string(ContextKeyAPIKey), apiKey)

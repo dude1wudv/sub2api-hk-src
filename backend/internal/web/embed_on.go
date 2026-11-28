@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -598,7 +599,7 @@ func ServeEmbeddedCharityFrontend() gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		cleanPath := strings.TrimPrefix(filepath.Clean("/"+c.Request.URL.Path), "/")
+		cleanPath := strings.TrimPrefix(path.Clean("/"+c.Request.URL.Path), "/")
 		if cleanPath == "" || cleanPath == "." || cleanPath == "index.html" {
 			serveCharityIndex(c)
 			return
@@ -606,7 +607,7 @@ func ServeEmbeddedCharityFrontend() gin.HandlerFunc {
 		f, openErr := distFS.Open(cleanPath)
 		if openErr != nil {
 			// SPA fallback（静态资源路径缺失则返回 404，避免用 HTML 响应 .js/.css 请求）
-			if strings.HasPrefix(cleanPath, "assets/") || strings.Contains(filepath.Base(cleanPath), ".") {
+			if strings.HasPrefix(cleanPath, "assets/") || strings.Contains(path.Base(cleanPath), ".") {
 				c.Status(http.StatusNotFound)
 				c.Abort()
 				return

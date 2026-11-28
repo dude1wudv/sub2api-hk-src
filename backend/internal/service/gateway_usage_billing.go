@@ -341,7 +341,7 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 		}
 	}
 
-	if p.SimpleModeKeyRateLimitOnly {
+	if p.Charity == nil && p.SimpleModeKeyRateLimitOnly {
 		if p.Cost.ActualCost > 0 && p.APIKey.HasRateLimits() {
 			cmd.APIKeyRateLimitCost = p.Cost.ActualCost
 		}
@@ -400,6 +400,9 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 
 	cmd := buildUsageBillingCommand(requestID, usageLog, p)
 	if cmd == nil || cmd.RequestID == "" || repo == nil {
+		if p.Charity != nil {
+			return false, ErrBillingServiceUnavailable
+		}
 		if p.SimpleModeKeyRateLimitOnly {
 			return false, ErrSimpleModeKeyRateLimitBillingUnavailable
 		}
@@ -448,7 +451,7 @@ func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, de
 		return
 	}
 
-	if p.SimpleModeKeyRateLimitOnly {
+	if p.Charity == nil && p.SimpleModeKeyRateLimitOnly {
 		// Simple-mode key windows are DB-authoritative during preflight. Clear
 		// any Redis snapshot after the committed increment as a best-effort aid
 		// when switching back to standard mode. Enforcement here never relies on
@@ -698,17 +701,8 @@ func (s *GatewayService) billingDeps() *billingDeps {
 }
 
 func resolveCharityBillingMeta(ctx context.Context, charityService *CharityService, apiKey *APIKey, clientIP string) *CharityBillingMeta {
-	if ctx != nil {
-		if meta, ok := ctx.Value(ctxkey.CharityBilling).(*CharityBillingMeta); ok && meta != nil && meta.GroupID > 0 {
-			copyMeta := *meta
-			if copyMeta.ClientIP == "" {
-				copyMeta.ClientIP = strings.TrimSpace(clientIP)
-			}
-			if copyMeta.UsageDate == "" {
-				copyMeta.UsageDate, _, _ = CharityTimeWindow(time.Now(), CharityDefaultTimezone)
-			}
-			return &copyMeta
-		}
+	if CharityAdmittedKey(ctx, apiKey) {
+		return CharityAdmissionFromContext(ctx)
 	}
 	if charityService == nil || apiKey == nil || apiKey.GroupID == nil || *apiKey.GroupID <= 0 {
 		return nil
@@ -969,8 +963,9 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	}
 	s.rateLimitService.ObserveUsageFirstToken(ctx, usageLog, account.SlowTTFTConfig())
 
-	simpleModeKeyRateLimitOnly := simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
-	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly {
+	charityMeta := resolveCharityBillingMeta(ctx, s.charityService, apiKey, input.IPAddress)
+	simpleModeKeyRateLimitOnly := charityMeta == nil && simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
+	if charityMeta == nil && s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly {
 		writeUsageLogBestEffort(ctx, s.usageLogRepo, usageLog, "service.gateway")
 		logger.LegacyPrintf("service.gateway", "[SIMPLE MODE] Usage recorded (not billed): user=%d, tokens=%d", usageLog.UserID, usageLog.TotalTokens())
 		s.deferredService.ScheduleLastUsedUpdate(account.ID)
@@ -987,7 +982,6 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 			quotaPlatform = account.Platform
 		}
 	}
-	charityMeta := resolveCharityBillingMeta(ctx, s.charityService, apiKey, input.IPAddress)
 	if charityMeta != nil {
 		usageLog.ActualCost = 0
 	}

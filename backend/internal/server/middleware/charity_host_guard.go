@@ -36,12 +36,12 @@ func IsCharityHostRequest(c *gin.Context) bool {
 }
 
 // CharityHostGuard 负责公益独立域名（free.xjtu.shop）的路由隔离与独立前端托管：
-//   - 放行 /health、/api/v1/charity/* 与推理网关协议路径；
-//   - 拦截所有主站管理/登录/用户/聊天/支付接口返回 404；
-//   - 其余浏览器 GET/HEAD 路径全部交由独立 charity-web 前端，不落入主站 SPA。
+//   - 放行健康检查、公开公益 API 和支持的推理路径；
+//   - 首页、文档与静态资源交由独立前端托管；
+//   - 其余路径返回 404。
 func CharityHostGuard(charityService *service.CharityService, serveCharityFrontend gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		isCharityHost := strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Sub2API-Surface")), "charity")
+		isCharityHost := service.NormalizeCharityHost(c.Request.Host) == service.CharityDefaultHost
 		if !isCharityHost && charityService != nil {
 			isCharityHost = charityService.IsCharityHost(c.Request.Context(), c.Request.Host)
 		}
@@ -54,22 +54,17 @@ func CharityHostGuard(charityService *service.CharityService, serveCharityFronte
 		c.Request = c.Request.WithContext(ctx)
 
 		path := c.Request.URL.Path
-		if isCharityAllowedBackendPath(path) {
+		switch path {
+		case "/health", "/healthz", "/api/v1/charity/overview", "/api/v1/charity/key-status":
 			c.Next()
 			return
 		}
-		if isCharityBlockedMainSitePath(path) {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"error": gin.H{
-					"code":    "NOT_FOUND",
-					"message": "Not found",
-				},
-			})
+		if isCharityGatewayRequest(c.Request) {
+			c.Next()
 			return
 		}
-
-		// 公益域名下其余 GET/HEAD 页面与静态资源由独立公益前端托管。
-		if (c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead) && serveCharityFrontend != nil {
+		if (c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead) && serveCharityFrontend != nil &&
+			(path == "/" || path == "/index.html" || path == "/docs" || strings.HasPrefix(path, "/docs/") || path == "/favicon.svg" || path == "/favicon.ico" || strings.HasPrefix(path, "/assets/")) {
 			serveCharityFrontend(c)
 			c.Abort()
 			return
@@ -84,64 +79,44 @@ func CharityHostGuard(charityService *service.CharityService, serveCharityFronte
 	}
 }
 
-func isCharityAllowedBackendPath(path string) bool {
-	if path == "/health" || path == "/healthz" {
+func isCharityModelDiscovery(req *http.Request) bool {
+	if req.Method != http.MethodGet && req.Method != http.MethodHead {
+		return false
+	}
+	switch strings.TrimRight(req.URL.Path, "/") {
+	case "/models", "/v1/models", "/v1beta/models", "/antigravity/models", "/antigravity/v1/models", "/antigravity/v1beta/models", "/backend-api/codex/models":
 		return true
 	}
-	allowedPrefixes := []string{
-		"/api/v1/charity",
-		"/v1/",
-		"/v1beta/",
-		"/responses",
-		"/messages",
-		"/chat/completions",
-		"/models",
-		"/openai/",
-		"/antigravity/",
-		"/gemini/",
-		"/backend-api/",
-		"/images/",
-		"/videos/",
-		"/audio/",
-		"/embeddings",
-	}
-	for _, prefix := range allowedPrefixes {
-		if path == strings.TrimSuffix(prefix, "/") || strings.HasPrefix(path, prefix) {
-			return true
+	for _, prefix := range []string{"/models/", "/v1/models/", "/v1beta/models/", "/antigravity/v1beta/models/"} {
+		if model, ok := strings.CutPrefix(req.URL.Path, prefix); ok {
+			return model != "" && !strings.ContainsAny(model, "/:")
 		}
 	}
 	return false
 }
 
-func isCharityBlockedMainSitePath(path string) bool {
-	blockedPrefixes := []string{
-		"/api/",
-		"/internal/",
-		"/oauth/",
-		"/admin",
-		"/login",
-		"/register",
-		"/chat",
-		"/image2",
-		"/dashboard",
+func isCharityGatewayRequest(req *http.Request) bool {
+	if isCharityModelDiscovery(req) {
+		return true
 	}
-	for _, prefix := range blockedPrefixes {
-		if path == strings.TrimSuffix(prefix, "/") || strings.HasPrefix(path, prefix) {
-			return true
+	if req.Method != http.MethodPost {
+		return false
+	}
+	path := strings.TrimRight(req.URL.Path, "/")
+	switch path {
+	case "/chat/completions", "/v1/chat/completions", "/responses", "/v1/responses", "/backend-api/codex/responses",
+		"/v1/messages", "/messages/count_tokens", "/v1/messages/count_tokens", "/anthropic/v1/messages", "/anthropic/v1/messages/count_tokens",
+		"/antigravity/v1/messages", "/antigravity/v1/messages/count_tokens", "/embeddings", "/v1/embeddings",
+		"/images/generations", "/v1/images/generations", "/images/edits", "/v1/images/edits":
+		return true
+	}
+	for _, prefix := range []string{"/v1beta/models/", "/antigravity/v1beta/models/"} {
+		if rest, ok := strings.CutPrefix(path, prefix); ok {
+			model, action, found := strings.Cut(rest, ":")
+			return found && model != "" && !strings.Contains(model, "/") && (action == "generateContent" || action == "streamGenerateContent" || action == "countTokens")
 		}
 	}
 	return false
-}
-
-func isCharityReadOnlyEndpoint(c *gin.Context) bool {
-	if c == nil || c.Request == nil {
-		return false
-	}
-	if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
-		return false
-	}
-	p := strings.TrimRight(c.Request.URL.Path, "/")
-	return p == "/v1/models" || p == "/models" || p == "/v1beta/models" || p == "/openai/v1/models"
 }
 
 // checkCharityAPIKeyAdmission 在网关 API Key 鉴权中间件中处理公益 Key 准入与公益域名边界。
@@ -159,7 +134,11 @@ func checkCharityAPIKeyAdmission(
 	onCharityHost := IsCharityHostRequest(c)
 
 	if svc == nil {
-		if onCharityHost && apiKey != nil && !strings.HasPrefix(apiKey.Key, service.CharityKeyPrefix) {
+		if apiKey != nil && strings.HasPrefix(apiKey.Key, service.CharityKeyPrefix) {
+			abortCharityError(c, service.ErrBillingServiceUnavailable, googleStyle)
+			return nil, true
+		}
+		if onCharityHost {
 			abortCharityError(c, service.ErrCharityHostKeyNotAllowed, googleStyle)
 			return nil, true
 		}
@@ -167,7 +146,8 @@ func checkCharityAPIKeyAdmission(
 	}
 
 	clientIP := ip.GetSecurityClientIP(c, cfg != nil && cfg.TrustForwardedIPForAPIKeyACL())
-	res, err := svc.AdmitRequest(c.Request.Context(), apiKey, clientIP, skipBilling || isCharityReadOnlyEndpoint(c))
+	supported := isCharityGatewayRequest(c.Request)
+	res, err := svc.AdmitRequest(c.Request.Context(), apiKey, clientIP, !supported || skipBilling || isCharityModelDiscovery(c.Request))
 	if err != nil {
 		abortCharityError(c, err, googleStyle)
 		return nil, true
@@ -179,9 +159,19 @@ func checkCharityAPIKeyAdmission(
 		}
 		return nil, false
 	}
+	if !supported {
+		if res.Release != nil {
+			res.Release()
+		}
+		abortCharityError(c, infraerrors.NotFound("CHARITY_ENDPOINT_UNAVAILABLE", "该接口暂未对公益 Key 开放"), googleStyle)
+		return nil, true
+	}
 
 	if res.Meta != nil {
-		ctx := context.WithValue(c.Request.Context(), ctxkey.CharityBilling, res.Meta)
+		meta := *res.Meta
+		meta.APIKeyID = apiKey.ID
+		meta.UserID = apiKey.UserID
+		ctx := context.WithValue(c.Request.Context(), ctxkey.CharityBilling, &meta)
 		c.Request = c.Request.WithContext(ctx)
 	}
 	return res, false

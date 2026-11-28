@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -183,8 +184,11 @@ func (c *charityCache) IncrDailyIPCost(ctx context.Context, usageDate string, cl
 }
 
 func (c *charityCache) CheckAndIncrIPRPM(ctx context.Context, clientIP string, limit int) (bool, error) {
-	if c == nil || c.rdb == nil || limit <= 0 || strings.TrimSpace(clientIP) == "" {
+	if limit <= 0 || strings.TrimSpace(clientIP) == "" {
 		return true, nil
+	}
+	if c == nil || c.rdb == nil {
+		return false, errors.New("charity RPM cache unavailable")
 	}
 	nowMs := time.Now().UnixMilli()
 	windowStart := nowMs - charityRPMSlotWindow.Milliseconds()
@@ -207,7 +211,7 @@ func (c *charityCache) CheckAndIncrIPRPM(ctx context.Context, clientIP string, l
 		(charityRPMSlotWindow + 10*time.Second).Milliseconds(),
 	).Int()
 	if err != nil {
-		return true, err
+		return false, err
 	}
 	return res == 1, nil
 }
@@ -224,6 +228,9 @@ func (c *charityCache) AcquireConcurrencySlots(
 	ipLimit int,
 ) (bool, string, error) {
 	if c == nil || c.rdb == nil {
+		if globalLimit > 0 || groupLimit > 0 || (strings.TrimSpace(clientIP) != "" && ipLimit > 0) {
+			return false, "", errors.New("charity concurrency cache unavailable")
+		}
 		return true, "", nil
 	}
 	nowMs := time.Now().UnixMilli()
@@ -284,7 +291,7 @@ func (c *charityCache) AcquireConcurrencySlots(
 		ipLimit,
 	).Text()
 	if err != nil {
-		return true, "", err
+		return false, "", err
 	}
 	if res == "ok" {
 		return true, "", nil

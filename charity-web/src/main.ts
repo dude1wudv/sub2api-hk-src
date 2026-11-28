@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import Docs from './Docs.vue'
 import './style.css'
 
-createApp(App).mount('#app')
+createApp(window.location.pathname.replace(/\/+$/, '') === '/docs' ? Docs : App).mount('#app')

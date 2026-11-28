@@ -12,15 +12,15 @@ free.xjtu.shop {
 	# 边缘层双重防护：彻底屏蔽主站管理面、登录、用户与支付接口
 	@blocked_main_site {
 		path /api/v1/admin* /api/v1/auth* /api/v1/user* /api/v1/users* /api/v1/chat* /api/v1/payment* /api/v1/mcp* /api/v1/redeem* /api/v1/subscriptions* /api/v1/announcements* /api/v1/settings* /api/v1/model-plaza* /api/v1/workbench* /internal/* /oauth/* /admin* /login* /register* /chat* /image2* /dashboard*
+		not path /chat/completions /chat/completions/
 	}
 	respond @blocked_main_site 404
 
 	reverse_proxy 127.0.0.1:8080 {
 		flush_interval -1
-		header_up Host {host}
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up X-Sub2API-Surface charity
+		header_up Host free.xjtu.shop
+		header_up CF-Connecting-IP {client_ip}
+		header_up X-Real-IP {client_ip}
+		header_up X-Forwarded-For {client_ip}
 	}
 }

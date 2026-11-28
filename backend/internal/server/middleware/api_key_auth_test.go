@@ -21,6 +21,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCharityHostRejectsPaidKeysInBothRunModes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, mode := range []string{config.RunModeStandard, config.RunModeSimple} {
+		t.Run(mode, func(t *testing.T) {
+			cfg := &config.Config{RunMode: mode}
+			repo := &stubApiKeyRepo{getByKey: func(context.Context, string) (*service.APIKey, error) {
+				return &service.APIKey{ID: 1, Key: "sk-test-paid", Status: service.StatusActive, UserID: 2,
+					User: &service.User{ID: 2, Status: service.StatusActive, Balance: 10}}, nil
+			}}
+			svc := service.NewAPIKeyService(repo, nil, nil, nil, nil, nil, cfg)
+			for _, auth := range []gin.HandlerFunc{gin.HandlerFunc(NewAPIKeyAuthMiddleware(svc, nil, cfg)), APIKeyAuthWithSubscriptionGoogle(svc, nil, cfg)} {
+				router := gin.New()
+				router.Use(CharityHostGuard(nil, nil))
+				router.GET("/v1/models", auth, func(c *gin.Context) { c.Status(http.StatusOK) })
+				req := httptest.NewRequest(http.MethodGet, "https://free.xjtu.shop/v1/models", nil)
+				req.Header.Set("x-api-key", "sk-test-paid")
+				req.Header.Set("x-goog-api-key", "sk-test-paid")
+				response := httptest.NewRecorder()
+				router.ServeHTTP(response, req)
+				require.Equal(t, http.StatusForbidden, response.Code, response.Body.String())
+			}
+		})
+	}
+}
+
 func TestAPIKeyAuthRejectsOversizedCredentialsBeforeLookup(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var calls atomic.Int32

@@ -2,19 +2,24 @@ package service
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"testing"
 	"time"
 
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
 type stubCharityRepo struct {
-	settings  *CharityPoolSettings
-	groups    map[int64]*CharityGroup
-	nextID    int64
-	daily     map[string][]CharityGroupDailyUsage
-	ipDaily   map[string]*CharityIPDailyUsage
-	trend     []CharityDailyTrendPoint
+	settings   *CharityPoolSettings
+	groups     map[int64]*CharityGroup
+	nextID     int64
+	daily      map[string][]CharityGroupDailyUsage
+	ipDaily    map[string]*CharityIPDailyUsage
+	trend      []CharityDailyTrendPoint
+	dailyErr   error
+	ipDailyErr error
 }
 
 func newStubCharityRepo() *stubCharityRepo {
@@ -121,9 +126,12 @@ func (r *stubCharityRepo) SetActiveAPIKey(_ context.Context, id int64, keyID *in
 	return nil
 }
 func (r *stubCharityRepo) GetDailyGroupUsage(_ context.Context, usageDate string) ([]CharityGroupDailyUsage, error) {
-	return r.daily[usageDate], nil
+	return r.daily[usageDate], r.dailyErr
 }
 func (r *stubCharityRepo) GetDailyIPUsage(_ context.Context, usageDate string, clientIP string) (*CharityIPDailyUsage, error) {
+	if r.ipDailyErr != nil {
+		return nil, r.ipDailyErr
+	}
 	if u, ok := r.ipDaily[usageDate+"|"+clientIP]; ok {
 		return u, nil
 	}
@@ -134,13 +142,15 @@ func (r *stubCharityRepo) GetDailyTrend(context.Context, int) ([]CharityDailyTre
 }
 
 type stubCharityCache struct {
-	groupCosts map[string]map[int64]float64
-	ipCosts    map[string]float64
-	rpmCount   map[string]int
-	globalSlot map[string]bool
-	groupSlot  map[int64]map[string]bool
-	ipSlot     map[string]map[string]bool
-	rotLocks   map[string]bool
+	groupCosts     map[string]map[int64]float64
+	ipCosts        map[string]float64
+	rpmCount       map[string]int
+	globalSlot     map[string]bool
+	groupSlot      map[int64]map[string]bool
+	ipSlot         map[string]map[string]bool
+	rotLocks       map[string]bool
+	rpmErr         error
+	concurrencyErr error
 }
 
 func newStubCharityCache() *stubCharityCache {
@@ -195,6 +205,9 @@ func (c *stubCharityCache) IncrDailyIPCost(_ context.Context, d, ip string, delt
 	return nil
 }
 func (c *stubCharityCache) CheckAndIncrIPRPM(_ context.Context, ip string, limit int) (bool, error) {
+	if c.rpmErr != nil {
+		return false, c.rpmErr
+	}
 	if limit <= 0 {
 		return true, nil
 	}
@@ -205,6 +218,9 @@ func (c *stubCharityCache) CheckAndIncrIPRPM(_ context.Context, ip string, limit
 	return true, nil
 }
 func (c *stubCharityCache) AcquireConcurrencySlots(_ context.Context, reqID string, globalLimit int, gid int64, groupLimit int, ip string, ipLimit int) (bool, string, error) {
+	if c.concurrencyErr != nil {
+		return false, "", c.concurrencyErr
+	}
 	if globalLimit > 0 && len(c.globalSlot) >= globalLimit {
 		return false, "global", nil
 	}
@@ -311,6 +327,9 @@ func TestCharityAdmitRequest_PoolAndPerGroupSubCaps(t *testing.T) {
 	res.Release()
 
 	// 计入 DeepSeek 折前消费 $50，总池达到 $100 → DeepSeek 也被拦截
+	repo.daily["2026-11-28"] = append(repo.daily["2026-11-28"], CharityGroupDailyUsage{
+		UsageDate: "2026-11-28", GroupID: deepseekGID, TotalCostUSD: 50.0, RequestCount: 1,
+	})
 	svc.RecordBilledUsage(context.Background(), "2026-11-28", deepseekGID, "10.0.0.1", 50.0)
 	_, err = svc.AdmitRequest(context.Background(), deepseekKey, "10.0.0.2", false)
 	require.ErrorIs(t, err, ErrCharityDailyBudgetExhausted)
@@ -358,6 +377,86 @@ func TestCharityAdmitRequest_ConcurrencyAndIPLimits(t *testing.T) {
 	r2, err := svc.AdmitRequest(context.Background(), key, "5.6.7.8", false)
 	require.NoError(t, err)
 	r2.Release()
+}
+
+func TestCharityAdmitRequest_UsesPersistedDailyUsage(t *testing.T) {
+	repo := newStubCharityRepo()
+	cache := newStubCharityCache()
+	svc := NewCharityService(repo, cache, nil, nil, nil, nil, nil, nil)
+	svc.nowFn = func() time.Time { return time.Date(2026, 11, 28, 10, 0, 0, 0, time.UTC) }
+	groupID, keyID := int64(10), int64(101)
+	groupLimit := 50.0
+	repo.groups[1] = &CharityGroup{ID: 1, GroupID: groupID, Enabled: true, DailyLimitUSD: &groupLimit, ActiveAPIKeyID: &keyID, GroupStatus: StatusActive}
+	key := &APIKey{ID: keyID, UserID: 999, GroupID: &groupID, Key: "sk-free-test"}
+	date, ip := "2026-11-28", "10.0.0.1"
+	cache.groupCosts[date] = map[int64]float64{groupID: 0}
+	cache.ipCosts[date+"|"+ip] = 0
+
+	repo.daily[date] = []CharityGroupDailyUsage{{GroupID: groupID, TotalCostUSD: 50}}
+	_, err := svc.AdmitRequest(context.Background(), key, ip, false)
+	require.ErrorIs(t, err, ErrCharityGroupLimitExhausted)
+
+	repo.daily[date] = []CharityGroupDailyUsage{{GroupID: groupID, TotalCostUSD: 100}}
+	_, err = svc.AdmitRequest(context.Background(), key, ip, false)
+	require.ErrorIs(t, err, ErrCharityDailyBudgetExhausted)
+
+	repo.daily[date] = nil
+	repo.settings.PerIPDailyLimitUSD = 5
+	repo.ipDaily[date+"|"+ip] = &CharityIPDailyUsage{TotalCostUSD: 5}
+	svc.InvalidateSnapshot()
+	_, err = svc.AdmitRequest(context.Background(), key, ip, false)
+	require.ErrorIs(t, err, ErrCharityIPDailyLimitExhausted)
+}
+
+func TestCharityAdmitRequest_LimitChecksUnavailable(t *testing.T) {
+	tests := []struct {
+		name   string
+		setup  func(*stubCharityRepo, *stubCharityCache)
+		reason string
+	}{
+		{"group ledger", func(repo *stubCharityRepo, _ *stubCharityCache) { repo.dailyErr = errors.New("database unavailable") }, "CHARITY_QUOTA_CHECK_FAILED"},
+		{"IP ledger", func(repo *stubCharityRepo, _ *stubCharityCache) {
+			repo.settings.PerIPDailyLimitUSD = 5
+			repo.ipDailyErr = errors.New("database unavailable")
+		}, "CHARITY_QUOTA_CHECK_FAILED"},
+		{"RPM", func(repo *stubCharityRepo, cache *stubCharityCache) {
+			repo.settings.PerIPRPMLimit = 5
+			cache.rpmErr = errors.New("redis unavailable")
+		}, "CHARITY_RATE_CHECK_FAILED"},
+		{"concurrency", func(_ *stubCharityRepo, cache *stubCharityCache) {
+			cache.concurrencyErr = errors.New("redis unavailable")
+		}, "CHARITY_CONCURRENCY_CHECK_FAILED"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newStubCharityRepo()
+			cache := newStubCharityCache()
+			tt.setup(repo, cache)
+			groupID, keyID := int64(10), int64(101)
+			repo.groups[1] = &CharityGroup{ID: 1, GroupID: groupID, Enabled: true, ActiveAPIKeyID: &keyID, GroupStatus: StatusActive}
+			svc := NewCharityService(repo, cache, nil, nil, nil, nil, nil, nil)
+			key := &APIKey{ID: keyID, UserID: 999, GroupID: &groupID, Key: "sk-free-test"}
+			_, err := svc.AdmitRequest(context.Background(), key, "10.0.0.1", false)
+			require.Equal(t, http.StatusServiceUnavailable, infraerrors.Code(err))
+			require.Equal(t, tt.reason, infraerrors.Reason(err))
+		})
+	}
+}
+
+func TestCharityAdmitRequest_ConfiguredLimitsRequireCache(t *testing.T) {
+	repo := newStubCharityRepo()
+	groupID, keyID := int64(10), int64(101)
+	repo.groups[1] = &CharityGroup{ID: 1, GroupID: groupID, Enabled: true, ActiveAPIKeyID: &keyID, GroupStatus: StatusActive}
+	svc := NewCharityService(repo, nil, nil, nil, nil, nil, nil, nil)
+	key := &APIKey{ID: keyID, UserID: 999, GroupID: &groupID, Key: "sk-free-test"}
+	_, err := svc.AdmitRequest(context.Background(), key, "10.0.0.1", false)
+	require.Equal(t, "CHARITY_CONCURRENCY_CHECK_FAILED", infraerrors.Reason(err))
+
+	repo.settings.MaxConcurrency = 0
+	repo.settings.PerIPRPMLimit = 1
+	svc.InvalidateSnapshot()
+	_, err = svc.AdmitRequest(context.Background(), key, "10.0.0.1", false)
+	require.Equal(t, "CHARITY_RATE_CHECK_FAILED", infraerrors.Reason(err))
 }
 
 func TestBuildUsageBillingCommand_CharityUsesPreDiscountTotalCostAndZeroBalance(t *testing.T) {

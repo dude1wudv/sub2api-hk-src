@@ -216,31 +216,12 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		// generation consumes the key's remaining balance.
 		skipBilling := c.Request.URL.Path == "/v1/usage" || billingInfoRequest || isAsyncImageTaskRead(c.Request.Method, c.Request.URL.Path)
 
-		// ── 4. SimpleMode → early return ─────────────────────────────
-
-		if cfg.RunMode == config.RunModeSimple {
-			c.Set(string(ContextKeyAPIKey), apiKey)
-			c.Set(string(ContextKeyUser), AuthSubject{
-				UserID:      apiKey.User.ID,
-				Concurrency: apiKey.User.Concurrency,
-			})
-			c.Set(string(ContextKeyUserRole), apiKey.User.Role)
-			setGroupContext(c, apiKey.Group)
-			if !billingInfoRequest {
-				_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
-			}
-			c.Next()
-			return
-		}
-
-		// ── 4.5. 公益池准入与 free.xjtu.shop 域名 Key 隔离 ──────────────
-
 		charityRes, charityAborted := checkCharityAPIKeyAdmission(c, apiKey, cfg, skipBilling, false)
 		if charityAborted {
 			return
 		}
-		if charityRes != nil && charityRes.IsCharity {
-			if charityRes.Release != nil {
+		if cfg.RunMode == config.RunModeSimple || (charityRes != nil && charityRes.IsCharity) {
+			if charityRes != nil && charityRes.Release != nil {
 				defer charityRes.Release()
 			}
 			c.Set(string(ContextKeyAPIKey), apiKey)

@@ -75,7 +75,7 @@ func reserveInflightBalanceCtx(
 	subscription *service.UserSubscription,
 	req service.InflightEstimateRequest,
 ) (context.Context, func(), error) {
-	if billing == nil || estimator == nil || apiKey == nil || apiKey.User == nil || !billing.InflightReservationEnabled() {
+	if billing == nil || estimator == nil || apiKey == nil || apiKey.User == nil || !billing.InflightReservationEnabled() || service.CharityAdmittedKey(ctx, apiKey) {
 		return ctx, inflightNoop, nil
 	}
 	if apiKey.Group != nil && apiKey.Group.IsSubscriptionType() && subscription != nil {
