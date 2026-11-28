@@ -57,6 +57,7 @@ func TestCharityCache_DailyCostsConcurrencyAndRPM(t *testing.T) {
 	ok, reason, err = cache.AcquireConcurrencySlots(ctx, "req-3", 2, 20, 2, "10.0.0.1", 2)
 	require.NoError(t, err)
 	require.True(t, ok)
+	require.Empty(t, reason)
 
 	live, err := cache.GetLiveConcurrency(ctx, []int64{10, 20})
 	require.NoError(t, err)
