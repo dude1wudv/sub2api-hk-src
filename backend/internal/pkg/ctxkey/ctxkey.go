@@ -84,4 +84,10 @@ const (
 
 	// ClaudeCodeVersion stores the extracted Claude Code version from User-Agent (e.g. "2.1.22")
 	ClaudeCodeVersion Key = "ctx_claude_code_version"
+
+	// CharityHost 标识当前请求来自公益池独立域名（如 free.xjtu.shop）。
+	CharityHost Key = "ctx_charity_host"
+
+	// CharityBilling 保存公益池请求在鉴权阶段解析出的计费元数据（分组 ID 与客户端 IP）。
+	CharityBilling Key = "ctx_charity_billing"
 )

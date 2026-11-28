@@ -459,7 +459,6 @@ import { BrandModelIcon, DotMatrixBackdrop, UiSegmented, UiStatusDot } from '@/u
 import { useScrollLock } from '@/composables/useScrollLock'
 import { useClipboard } from '@/composables/useClipboard'
 import { usePatrickApiBase } from '@/composables/usePatrickApiBase'
-import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 
 const { locale } = useI18n()
@@ -560,7 +559,7 @@ const modelQuery = ref('')
 const copied = ref(false)
 const homeContent = computed(() => (app.cachedPublicSettings?.home_content || '').trim())
 const compact = computed(() => app.cachedPublicSettings?.compact_home_enabled === true)
-const docUrl = computed(() => sanitizeUrl(app.cachedPublicSettings?.doc_url || app.docUrl || ''))
+const docUrl = '/docs'
 const consolePath = computed(() => (!auth.isAuthenticated ? '/login' : auth.isAdmin ? '/admin/dashboard' : '/dashboard'))
 const modelPlazaEnabled = computed(
   () => isFeatureFlagEnabled(FeatureFlags.modelPlaza) && (auth.isAuthenticated || app.cachedPublicSettings?.model_plaza_require_auth !== true)

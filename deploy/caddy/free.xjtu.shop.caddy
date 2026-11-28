@@ -1,0 +1,26 @@
+# free.xjtu.shop 公益 AI API 独立入口 Caddy 配置片段
+# 使用方式（HK 生产）：
+#   1. 将本文件复制到 /etc/caddy/free.xjtu.shop.caddy
+#   2. 在 /etc/caddy/Caddyfile 中增加：import /etc/caddy/free.xjtu.shop.caddy
+#   3. 校验并安全重载：
+#        sudo caddy validate --config /etc/caddy/Caddyfile
+#        sudo systemctl reload caddy
+
+free.xjtu.shop {
+	encode zstd gzip
+
+	# 边缘层双重防护：彻底屏蔽主站管理面、登录、用户与支付接口
+	@blocked_main_site {
+		path /api/v1/admin* /api/v1/auth* /api/v1/user* /api/v1/users* /api/v1/chat* /api/v1/payment* /api/v1/mcp* /api/v1/redeem* /api/v1/subscriptions* /api/v1/announcements* /api/v1/settings* /api/v1/model-plaza* /api/v1/workbench* /internal/* /oauth/* /admin* /login* /register* /chat* /image2* /dashboard*
+		not path /chat/completions /chat/completions/
+	}
+	respond @blocked_main_site 404
+
+	reverse_proxy 127.0.0.1:8080 {
+		flush_interval -1
+		header_up Host free.xjtu.shop
+		header_up CF-Connecting-IP {client_ip}
+		header_up X-Real-IP {client_ip}
+		header_up X-Forwarded-For {client_ip}
+	}
+}

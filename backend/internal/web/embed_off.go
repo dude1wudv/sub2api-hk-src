@@ -43,6 +43,13 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 	}
 }
 
+func ServeEmbeddedCharityFrontend() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.String(http.StatusNotFound, "Charity frontend not embedded. Build with -tags embed to include frontend.")
+		c.Abort()
+	}
+}
+
 func HasEmbeddedFrontend() bool {
 	return false
 }

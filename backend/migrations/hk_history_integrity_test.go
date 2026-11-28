@@ -42,12 +42,13 @@ func TestMigrationCatalogPreservesBoth251FilesAndAppendsGPT62(t *testing.T) {
 	names, err := fs.Glob(FS, "*.sql")
 	require.NoError(t, err)
 	sort.Strings(names)
-	require.Len(t, names, 355)
+	require.Len(t, names, 356)
 	require.Contains(t, names, "252_channel_pricing_ultrafast_multiplier.sql")
 	require.Equal(t, []string{
 		"349_group_usage_rollup_retention_nonblocking.sql",
 		"350_external_quality_gpt62_models.sql",
-	}, names[len(names)-2:])
+		"351_charity_pool.sql",
+	}, names[len(names)-3:])
 	require.Contains(t, names, "251_group_force_openai_ultrafast.sql")
 	require.Contains(t, names, "251_group_usage_rollup_nonblocking_build.sql")
 }

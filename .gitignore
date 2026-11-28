@@ -104,6 +104,10 @@ backend/internal/web/dist/
 !backend/internal/web/dist/
 backend/internal/web/dist/*
 !backend/internal/web/dist/.keep
+backend/internal/web/charity-dist/
+!backend/internal/web/charity-dist/
+backend/internal/web/charity-dist/*
+!backend/internal/web/charity-dist/.keep
 
 # 后端运行时缓存数据
 backend/data/

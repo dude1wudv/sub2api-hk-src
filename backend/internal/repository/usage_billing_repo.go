@@ -211,6 +211,51 @@ func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, t
 		result.QuotaState = quotaState
 	}
 
+	if cmd.CharityGroupID > 0 && strings.TrimSpace(cmd.CharityUsageDate) != "" {
+		if err := incrementUsageBillingCharity(ctx, tx, cmd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func incrementUsageBillingCharity(ctx context.Context, tx *sql.Tx, cmd *service.UsageBillingCommand) error {
+	costUSD := cmd.CharityCostUSD
+	if costUSD < 0 {
+		costUSD = 0
+	}
+	tokens := cmd.CharityTokens
+	if tokens < 0 {
+		tokens = 0
+	}
+	const groupSQL = `
+		INSERT INTO charity_daily_group_usage (usage_date, group_id, total_cost_usd, request_count, total_tokens, updated_at)
+		VALUES ($1::date, $2, $3, 1, $4, NOW())
+		ON CONFLICT (usage_date, group_id)
+		DO UPDATE SET
+			total_cost_usd = charity_daily_group_usage.total_cost_usd + EXCLUDED.total_cost_usd,
+			request_count  = charity_daily_group_usage.request_count + 1,
+			total_tokens   = charity_daily_group_usage.total_tokens + EXCLUDED.total_tokens,
+			updated_at     = NOW()
+	`
+	if _, err := tx.ExecContext(ctx, groupSQL, strings.TrimSpace(cmd.CharityUsageDate), cmd.CharityGroupID, costUSD, tokens); err != nil {
+		return err
+	}
+	if clientIP := strings.TrimSpace(cmd.CharityClientIP); clientIP != "" {
+		const ipSQL = `
+			INSERT INTO charity_daily_ip_usage (usage_date, client_ip, total_cost_usd, request_count, updated_at)
+			VALUES ($1::date, $2, $3, 1, NOW())
+			ON CONFLICT (usage_date, client_ip)
+			DO UPDATE SET
+				total_cost_usd = charity_daily_ip_usage.total_cost_usd + EXCLUDED.total_cost_usd,
+				request_count  = charity_daily_ip_usage.request_count + 1,
+				updated_at     = NOW()
+		`
+		if _, err := tx.ExecContext(ctx, ipSQL, strings.TrimSpace(cmd.CharityUsageDate), clientIP, costUSD); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

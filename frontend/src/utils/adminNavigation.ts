@@ -25,6 +25,7 @@ export const adminNavigation: AdminNavGroup[] = [
   { id: 'resources', zh: '资源', en: 'Resources', items: [
     { path: '/admin/accounts', key: 'nav.accounts', icon: 'server' },
     { path: '/admin/groups', key: 'nav.groups', icon: 'grid' },
+    { path: '/admin/charity', key: 'nav.charityPool', icon: 'gift' },
     { path: '/admin/channels/pricing', key: 'nav.channelPricing', icon: 'dollar', standardOnly: true },
     { path: '/admin/channels/monitor', key: 'nav.channelMonitor', icon: 'bolt', standardOnly: true, flag: 'channelMonitor' },
     { path: '/admin/group-cache-tests', key: 'nav.groupCacheTests', icon: 'bolt' },

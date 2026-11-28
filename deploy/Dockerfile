@@ -28,6 +28,12 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
+# Build standalone charity frontend
+COPY charity-web/package.json charity-web/pnpm-lock.yaml /app/charity-web/
+RUN cd /app/charity-web && pnpm install --frozen-lockfile
+COPY charity-web/ /app/charity-web/
+RUN cd /app/charity-web && pnpm run build
+
 # Copy frontend source and build.
 # LegalDocumentView.vue (admin-compliance gate) build-time imports
 # ../../../../docs/legal/*.md?raw, so docs/legal/ must sit beside frontend/
@@ -64,8 +70,9 @@ RUN go mod download
 # Copy backend source first
 COPY backend/ ./
 
-# Copy frontend dist from previous stage (must be after backend copy to avoid being overwritten)
+# Copy frontend dist and charity-dist from previous stage (must be after backend copy to avoid being overwritten)
 COPY --from=frontend-builder /app/backend/internal/web/dist ./internal/web/dist
+COPY --from=frontend-builder /app/backend/internal/web/charity-dist ./internal/web/charity-dist
 
 # Build the binary (BuildType=release for CI builds, embed frontend)
 # Version precedence: build arg VERSION > exact git tag > cmd/server/VERSION

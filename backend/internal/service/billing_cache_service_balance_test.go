@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,6 +62,18 @@ func TestCheckBillingEligibility_AllowsBalanceAtMinimumReserve(t *testing.T) {
 
 	err := svc.CheckBillingEligibility(context.Background(), &User{ID: 1}, nil, nil, nil, "")
 	require.NoError(t, err)
+}
+
+func TestCharityAdmissionSkipsOnlyAdmittedKeysBalanceCheck(t *testing.T) {
+	cache := &balanceEligibilityCacheStub{}
+	svc := NewBillingCacheService(cache, nil, nil, nil, nil, nil, &config.Config{}, nil)
+	t.Cleanup(svc.Stop)
+	user := &User{ID: 1}
+	key := &APIKey{ID: 2, UserID: user.ID}
+	ctx := context.WithValue(context.Background(), ctxkey.CharityBilling, &CharityBillingMeta{APIKeyID: key.ID, UserID: user.ID, GroupID: 3})
+	require.NoError(t, svc.CheckBillingEligibility(ctx, user, key, nil, nil, ""))
+	require.ErrorIs(t, svc.CheckBillingEligibility(context.Background(), user, key, nil, nil, ""), ErrInsufficientBalance)
+	require.ErrorIs(t, svc.CheckBillingEligibility(ctx, user, &APIKey{ID: 4, UserID: user.ID}, nil, nil, ""), ErrInsufficientBalance)
 }
 
 func TestSyncBalanceCacheAfterDeduction_InvalidatesExhaustedBalance(t *testing.T) {

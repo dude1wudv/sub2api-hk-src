@@ -216,9 +216,14 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		// generation consumes the key's remaining balance.
 		skipBilling := c.Request.URL.Path == "/v1/usage" || billingInfoRequest || isAsyncImageTaskRead(c.Request.Method, c.Request.URL.Path)
 
-		// ── 4. SimpleMode → early return ─────────────────────────────
-
-		if cfg.RunMode == config.RunModeSimple {
+		charityRes, charityAborted := checkCharityAPIKeyAdmission(c, apiKey, cfg, skipBilling, false)
+		if charityAborted {
+			return
+		}
+		if cfg.RunMode == config.RunModeSimple || (charityRes != nil && charityRes.IsCharity) {
+			if charityRes != nil && charityRes.Release != nil {
+				defer charityRes.Release()
+			}
 			c.Set(string(ContextKeyAPIKey), apiKey)
 			c.Set(string(ContextKeyUser), AuthSubject{
 				UserID:      apiKey.User.ID,
@@ -473,6 +478,9 @@ func abortIfAPIKeyGroupNotAllowed(c *gin.Context, apiKey *service.APIKey) bool {
 
 func validateAPIKeyGroupAllowed(apiKey *service.APIKey) bool {
 	if apiKey == nil || apiKey.GroupID == nil || apiKey.User == nil || apiKey.Group == nil {
+		return true
+	}
+	if svc := getCharityAdmissionService(); svc != nil && svc.IsCharityAPIKey(context.Background(), apiKey) {
 		return true
 	}
 	group := apiKey.Group

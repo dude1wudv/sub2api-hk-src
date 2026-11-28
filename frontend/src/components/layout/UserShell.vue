@@ -610,7 +610,7 @@ watch(avatarUrl, () => {
 })
 const displayName = computed(() => user.value?.username || user.value?.email?.split('@')[0] || (zh.value ? '我的账户' : 'My account'))
 const accountInitials = computed(() => displayName.value.slice(0, 2).toUpperCase())
-const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
+const docUrl = computed(() => '/docs')
 const supportEmail = computed(() => appStore.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '')
 const availableBalance = computed(() => Number(user.value?.balance || 0))
 const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))

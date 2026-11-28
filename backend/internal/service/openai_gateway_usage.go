@@ -556,8 +556,9 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	}
 	s.rateLimitService.ObserveUsageFirstToken(ctx, usageLog, slowTTFTConfig)
 
-	simpleModeKeyRateLimitOnly := simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
-	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly {
+	charityMeta := resolveCharityBillingMeta(ctx, s.charityService, apiKey, input.IPAddress)
+	simpleModeKeyRateLimitOnly := charityMeta == nil && simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
+	if charityMeta == nil && s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly {
 		writeUsageLogBestEffort(ctx, s.usageLogRepo, usageLog, "service.openai_gateway")
 		logger.LegacyPrintf("service.openai_gateway", "[SIMPLE MODE] Usage recorded (not billed): user=%d, tokens=%d", usageLog.UserID, usageLog.TotalTokens())
 		s.deferredService.ScheduleLastUsedUpdate(account.ID)
@@ -571,6 +572,10 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		quotaPlatform = PlatformFromAPIKey(apiKey)
 	}
 
+	if charityMeta != nil {
+		usageLog.ActualCost = 0
+	}
+
 	post := &postUsageBillingParams{
 		Cost:                       cost,
 		User:                       user,
@@ -578,11 +583,12 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		Account:                    account,
 		Subscription:               subscription,
 		RequestPayloadHash:         resolveUsageBillingPayloadFingerprint(ctx, input.RequestPayloadHash),
-		IsSubscriptionBill:         isSubscriptionBilling && !simpleModeKeyRateLimitOnly,
+		IsSubscriptionBill:         isSubscriptionBilling && !simpleModeKeyRateLimitOnly && charityMeta == nil,
 		AccountRateMultiplier:      accountRateMultiplier,
 		APIKeyService:              input.APIKeyService,
 		Platform:                   quotaPlatform,
 		SimpleModeKeyRateLimitOnly: simpleModeKeyRateLimitOnly,
+		Charity:                    charityMeta,
 	}
 	if input.prepareBilling != nil {
 		return input.prepareBilling(usageLog, post)
