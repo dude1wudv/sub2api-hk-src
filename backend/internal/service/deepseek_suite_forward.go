@@ -175,7 +175,7 @@ func (s *OpenAIGatewayService) ForwardDeepSeekSuite(ctx context.Context, c *gin.
 		return nil, nil, err
 	}
 	request = request.WithContext(WithHTTPUpstreamProfile(request.Context(), HTTPUpstreamProfileOpenAI))
-	account.ApplyHeaderOverrides(request.Header)
+	account.ApplyHeaderOverrides(request.Context(), request.Header)
 	deleteHeaderAllForms(request.Header, "authorization")
 	deleteHeaderAllForms(request.Header, "x-api-key")
 	deleteHeaderAllForms(request.Header, "content-type")

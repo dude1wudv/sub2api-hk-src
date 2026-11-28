@@ -460,17 +460,14 @@
               </div>
 
               <div v-if="groupModalMode === 'existing'">
-                <label class="input-label">选择现有分组</label>
-                <select v-model.number="groupForm.group_id" class="input">
-                  <option :value="null" disabled>请选择一个分组</option>
-                  <option
-                    v-for="g in availableBaseGroups"
-                    :key="g.id"
-                    :value="g.id"
-                  >
-                    #{{ g.id }} {{ g.name }} ({{ g.platform }})
-                  </option>
-                </select>
+                <label for="charity-existing-group" class="input-label">选择现有分组</label>
+                <UiSelect
+                  id="charity-existing-group"
+                  :model-value="groupForm.group_id"
+                  :options="availableBaseGroups.map(group => ({ value: group.id, label: `#${group.id} ${group.name} (${group.platform})` }))"
+                  placeholder="请选择一个分组"
+                  @update:model-value="groupForm.group_id = typeof $event === 'number' ? $event : null"
+                />
               </div>
 
               <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -479,16 +476,13 @@
                   <input v-model="groupForm.create_group_name" type="text" class="input" placeholder="如：公益 Claude 组" />
                 </div>
                 <div>
-                  <label class="input-label">平台类型</label>
-                  <select v-model="groupForm.create_group_platform" class="input">
-                    <option value="openai">openai</option>
-                    <option value="anthropic">anthropic</option>
-                    <option value="gemini">gemini</option>
-                    <option value="deepseek">deepseek</option>
-                    <option value="composite">composite（多平台聚合）</option>
-                    <option value="antigravity">antigravity</option>
-                    <option value="grok">grok</option>
-                  </select>
+                  <label for="charity-group-platform" class="input-label">平台类型</label>
+                  <UiSelect
+                    id="charity-group-platform"
+                    :model-value="groupForm.create_group_platform"
+                    :options="groupPlatformOptions"
+                    @update:model-value="groupForm.create_group_platform = String($event)"
+                  />
                 </div>
               </div>
             </template>
@@ -559,6 +553,7 @@ import {
   type CharityAdminOverview
 } from '@/api/admin/charity'
 import type { AdminGroup } from '@/types'
+import { UiSelect } from '@/ui'
 
 const appStore = useAppStore()
 
@@ -587,6 +582,8 @@ const showGroupModal = ref(false)
 const editingGroup = ref<CharityAdminGroup | null>(null)
 const groupModalMode = ref<'existing' | 'create'>('existing')
 const savingGroup = ref(false)
+const groupPlatformOptions = ['openai', 'anthropic', 'gemini', 'deepseek', 'composite', 'antigravity', 'grok']
+  .map(value => ({ value, label: value === 'composite' ? 'composite（多平台聚合）' : value }))
 const groupForm = reactive({
   group_id: null as number | null,
   create_group_name: '',

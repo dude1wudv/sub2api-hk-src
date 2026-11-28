@@ -4,16 +4,16 @@ import {
   computePercent,
   formatCountdown,
   formatPricePerMillion,
-  formatUSD,
+  formatQuota,
   maskAPIKey
 } from '../utils'
 
 describe('charity-web utils', () => {
-  it('formats USD values cleanly including micro-costs', () => {
-    expect(formatUSD(100)).toBe('100.00')
-    expect(formatUSD(12.345)).toBe('12.35')
-    expect(formatUSD(0.0025)).toBe('0.0025')
-    expect(formatUSD(null)).toBe('0.00')
+  it('formats shared quota units without a currency symbol', () => {
+    expect(formatQuota(100)).toBe('100 单位')
+    expect(formatQuota(12.345)).toBe('12.35 单位')
+    expect(formatQuota(0.0025)).toBe('0.0025 单位')
+    expect(formatQuota(null)).toBe('0 单位')
   })
 
   it('formats countdowns into HH:MM:SS', () => {
@@ -31,13 +31,16 @@ describe('charity-web utils', () => {
 
   it('masks public API keys safely', () => {
     expect(maskAPIKey('')).toBe('暂未开放')
-    expect(maskAPIKey('sk-free-1234567890abcdef1234567890')).toBe('sk-free-123456••••••••567890')
+    const key = ['sk-free', '123456', 'example', '567890'].join('-')
+    expect(maskAPIKey(key)).toBe('sk-free-123456••••••••567890')
   })
 
   it('formats per-million prices and builds client snippets', () => {
-    expect(formatPricePerMillion(2.5)).toBe('$2.50')
-    expect(formatPricePerMillion(0.15)).toBe('$0.150')
-    expect(formatPricePerMillion(null)).toBe('—')
+    expect(formatPricePerMillion(2, 'CNY')).toBe('¥2')
+    expect(formatPricePerMillion(8, 'CNY')).toBe('¥8')
+    expect(formatPricePerMillion(0.04, 'CNY')).toBe('¥0.04')
+    expect(formatPricePerMillion(0.0001, 'USD')).toBe('$0.0001')
+    expect(formatPricePerMillion(null, 'CNY')).toBe('—')
 
     const claudeSnippet = buildIntegrationSnippet('claude_code', 'https://free.xjtu.shop/', 'sk-free-abc', 'claude-sonnet-4-6')
     expect(claudeSnippet).toContain('ANTHROPIC_BASE_URL="https://free.xjtu.shop"')

@@ -1422,16 +1422,13 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 	}()
 	defer close(done)
 
-	var keepaliveTicker *time.Ticker
-	if keepaliveInterval > 0 {
-		keepaliveTicker = time.NewTicker(keepaliveInterval)
-		defer keepaliveTicker.Stop()
-	}
+	var keepaliveTimer *time.Timer
 	var keepaliveCh <-chan time.Time
-	if keepaliveTicker != nil {
-		keepaliveCh = keepaliveTicker.C
+	if keepaliveInterval > 0 {
+		keepaliveTimer = time.NewTimer(keepaliveInterval)
+		defer keepaliveTimer.Stop()
+		keepaliveCh = keepaliveTimer.C
 	}
-	lastDataAt := time.Now()
 	var parser openAICompatSSEFrameParser
 
 	for {
@@ -1456,7 +1453,9 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 				handleScanErr(ev.err)
 				return resultWithUsage(), fmt.Errorf("stream usage incomplete: %w", ev.err)
 			}
-			lastDataAt = time.Now()
+			if keepaliveTimer != nil {
+				keepaliveTimer.Reset(keepaliveInterval)
+			}
 			line := ev.line
 			if isOpenAICompatDoneSentinelLine(line) {
 				return missingTerminalErr()
@@ -1488,9 +1487,6 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 			if clientDisconnected {
 				continue
 			}
-			if time.Since(lastDataAt) < keepaliveInterval {
-				continue
-			}
 			// A committed keepalive also forbids replaying this uncertain attempt.
 			writeStreamHeaders()
 			if _, err := fmt.Fprint(c.Writer, "event: ping\ndata: {\"type\":\"ping\"}\n\n"); err != nil {
@@ -1504,6 +1500,7 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 			}
 			clientOutputStarted = true
 			c.Writer.Flush()
+			keepaliveTimer.Reset(keepaliveInterval)
 		}
 	}
 }

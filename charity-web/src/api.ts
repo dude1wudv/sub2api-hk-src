@@ -1,6 +1,9 @@
+export type PriceCurrency = 'CNY' | 'USD'
+
 export interface CharityPublicModel {
   name: string
   platform: string
+  price_currency: PriceCurrency
   input_price_per_million?: number | null
   output_price_per_million?: number | null
   cache_read_per_million?: number | null

@@ -50,6 +50,7 @@ type CharityService struct {
 	apiKeyService *APIKeyService
 	adminService  AdminService
 	plazaService  *ModelPlazaService
+	modelCatalog  *GatewayModelCatalogService
 
 	mu       sync.RWMutex
 	snapshot *charitySnapshot
@@ -66,6 +67,7 @@ func NewCharityService(
 	apiKeyService *APIKeyService,
 	adminService AdminService,
 	plazaService *ModelPlazaService,
+	modelCatalog *GatewayModelCatalogService,
 ) *CharityService {
 	return &CharityService{
 		repo:          repo,
@@ -76,6 +78,7 @@ func NewCharityService(
 		apiKeyService: apiKeyService,
 		adminService:  adminService,
 		plazaService:  plazaService,
+		modelCatalog:  modelCatalog,
 		nowFn:         time.Now,
 	}
 }
@@ -1064,50 +1067,67 @@ func (s *CharityService) LookupPublicKeyStatus(ctx context.Context, rawKey strin
 
 func (s *CharityService) loadPublicModelsByGroup(ctx context.Context, groupIDs []int64) map[int64][]CharityPublicModel {
 	out := make(map[int64][]CharityPublicModel, len(groupIDs))
-	if s.plazaService == nil || len(groupIDs) == 0 {
-		return out
-	}
-	want := make(map[int64]struct{}, len(groupIDs))
-	for _, gid := range groupIDs {
-		want[gid] = struct{}{}
-	}
-	plazaGroups, err := s.plazaService.ListGroups(ctx)
-	if err != nil {
-		slog.Warn("charity: failed to load model plaza pricing", "error", err)
-		return out
-	}
-	for _, pg := range plazaGroups {
-		if _, ok := want[pg.ID]; !ok {
+	for _, groupID := range groupIDs {
+		out[groupID] = []CharityPublicModel{}
+		if s.modelCatalog == nil {
 			continue
 		}
-		models := make([]CharityPublicModel, 0, len(pg.Models))
-		for _, m := range pg.Models {
+		group, err := s.groupRepo.GetByIDLite(ctx, groupID)
+		if err != nil {
+			slog.Warn("charity: failed to load model group", "group_id", groupID, "error", err)
+			continue
+		}
+		if !group.IsActive() {
+			continue
+		}
+		available, err := s.modelCatalog.ListForGroup(ctx, group)
+		if err != nil {
+			slog.Warn("charity: failed to load group model catalog", "group_id", groupID, "error", err)
+			continue
+		}
+		models := make([]CharityPublicModel, 0, len(available))
+		for _, discovered := range available {
 			item := CharityPublicModel{
-				Name:              m.Name,
-				Platform:          m.Platform,
-				SupportsVision:    slices.Contains(m.InputModalities, "image"),
-				SupportsReasoning: m.Reasoning != nil && *m.Reasoning,
+				Name:          discovered.ID,
+				Platform:      group.Platform,
+				PriceCurrency: charityModelPriceCurrency(discovered.ID),
 			}
-			// 优先展示官方折前 1× 价，若缺失则回退至模型定价表 1× 原价（单位统一为 USD / 1M tokens）
-			if m.OfficialPricing != nil {
-				item.InputPricePerMillion = perTokenToPerMillion(m.OfficialPricing.InputPrice)
-				item.OutputPricePerMillion = perTokenToPerMillion(m.OfficialPricing.OutputPrice)
-				item.CacheReadPerMillion = perTokenToPerMillion(m.OfficialPricing.CacheReadPrice)
-				item.CacheWritePerMillion = perTokenToPerMillion(m.OfficialPricing.CacheWritePrice)
-			} else if m.Pricing != nil {
-				item.InputPricePerMillion = perTokenToPerMillion(m.Pricing.InputPrice)
-				item.OutputPricePerMillion = perTokenToPerMillion(m.Pricing.OutputPrice)
-				item.CacheReadPerMillion = perTokenToPerMillion(m.Pricing.CacheReadPrice)
-				item.CacheWritePerMillion = perTokenToPerMillion(m.Pricing.CacheWritePrice)
+			if s.plazaService != nil {
+				metadata := s.plazaService.metadataCatalog.Resolve(item.Name)
+				item.SupportsVision = slices.Contains(metadata.InputModalities, "image")
+				item.SupportsReasoning = metadata.Reasoning != nil && *metadata.Reasoning
+				priced := PlazaModel{Name: item.Name, Platform: item.Platform}
+				s.plazaService.fillDisplayPricing(ctx, &priced, group)
+				if pricing := priced.Pricing; pricing != nil {
+					item.InputPricePerMillion = perTokenToPerMillion(pricing.InputPrice)
+					item.OutputPricePerMillion = perTokenToPerMillion(pricing.OutputPrice)
+					item.CacheReadPerMillion = perTokenToPerMillion(pricing.CacheReadPrice)
+					item.CacheWritePerMillion = perTokenToPerMillion(pricing.CacheWritePrice)
+				}
 			}
 			models = append(models, item)
 		}
 		sort.SliceStable(models, func(i, j int) bool {
 			return models[i].Name < models[j].Name
 		})
-		out[pg.ID] = models
+		out[groupID] = models
 	}
 	return out
+}
+
+func charityModelPriceCurrency(model string) string {
+	platform, _ := DetectModelPlatform(model)
+	switch platform {
+	case PlatformDeepseek, PlatformZhipu, PlatformKimi, PlatformMiniMax:
+		return "CNY"
+	}
+	name := lastSegment(strings.ToLower(strings.TrimSpace(model)))
+	for _, prefix := range []string{"qwen", "mimo-", "hy3", "hy4", "hunyuan-", "doubao-", "seed-", "ernie-", "ling-", "ring-", "step-"} {
+		if strings.HasPrefix(name, prefix) {
+			return "CNY"
+		}
+	}
+	return "USD"
 }
 
 func perTokenToPerMillion(perToken *float64) *float64 {

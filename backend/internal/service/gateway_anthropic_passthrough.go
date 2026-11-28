@@ -373,7 +373,7 @@ func (s *GatewayService) buildUpstreamRequestAnthropicAPIKeyPassthrough(
 	}
 
 	// 账号级请求头覆写（最终生效，覆盖上面所有来源的同名头）
-	account.ApplyHeaderOverrides(req.Header)
+	account.ApplyHeaderOverrides(req.Context(), req.Header)
 	filterSonnet55ToolsetBetaHeader(req.Header, body, gjson.GetBytes(body, "model").String())
 
 	return req, body, nil
@@ -680,6 +680,9 @@ func parseSSEUsagePassthrough(data string, usage *ClaudeUsage) {
 		if v := usageNode.Get("input_tokens").Int(); v > 0 {
 			usage.InputTokens = int(v)
 		}
+	}
+	switch eventType {
+	case "message_start", "message_delta", "error":
 		if v := usageNode.Get("output_tokens").Int(); v > 0 {
 			usage.OutputTokens = int(v)
 			usage.OutputTokensEstimated = usageNode.Get("output_tokens_estimated").Bool()

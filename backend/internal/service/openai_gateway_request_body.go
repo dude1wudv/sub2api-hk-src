@@ -65,7 +65,7 @@ func buildOpenAIResponsesURLForPlatform(platform string, base string) string {
 	return buildOpenAIResponsesURL(base)
 }
 
-func shouldPreserveOpenAIResponsesNoneReasoningEffort(account *Account) bool {
+func shouldPreserveOpenAIResponsesNoneReasoningEffort(account *Account, requestedModel string) bool {
 	if account == nil {
 		return false
 	}
@@ -75,6 +75,9 @@ func shouldPreserveOpenAIResponsesNoneReasoningEffort(account *Account) bool {
 	if account.IsOpenAIOAuthLike() {
 		return true
 	}
+	if isKimiK31Model(account.GetMappedModel(requestedModel)) {
+		return false
+	}
 	return account.Type == AccountTypeAPIKey
 }
 
@@ -82,7 +85,7 @@ func shouldPreserveOpenAIResponsesNoneReasoningEffort(account *Account) bool {
 // non-reasoning model. Treat that catalog-only "none" value as omission for
 // compatible upstreams, while preserving official OpenAI request semantics.
 func filterOpenAIResponsesNoneReasoningEffortForAccount(account *Account, body []byte) ([]byte, error) {
-	if len(body) == 0 || shouldPreserveOpenAIResponsesNoneReasoningEffort(account) {
+	if len(body) == 0 || shouldPreserveOpenAIResponsesNoneReasoningEffort(account, gjson.GetBytes(body, "model").String()) {
 		return body, nil
 	}
 
@@ -109,7 +112,8 @@ func filterOpenAIResponsesNoneReasoningEffortForAccount(account *Account, body [
 }
 
 func deleteOpenAIResponsesNoneReasoningEffortFromObject(account *Account, body map[string]any) {
-	if body == nil || shouldPreserveOpenAIResponsesNoneReasoningEffort(account) {
+	requestedModel, _ := body["model"].(string)
+	if body == nil || shouldPreserveOpenAIResponsesNoneReasoningEffort(account, requestedModel) {
 		return
 	}
 	if effort, ok := body["reasoning_effort"].(string); ok && strings.EqualFold(strings.TrimSpace(effort), "none") {

@@ -177,7 +177,7 @@ func (s *OpenAIGatewayService) forwardDeepSeekToolJSON(ctx context.Context, c *g
 	request.Header = headers
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
-	account.ApplyHeaderOverrides(request.Header)
+	account.ApplyHeaderOverrides(request.Context(), request.Header)
 	if HasChatAuxiliaryScope(ctx) {
 		deleteHeaderAllForms(request.Header, "authorization")
 		deleteHeaderAllForms(request.Header, "x-api-key")

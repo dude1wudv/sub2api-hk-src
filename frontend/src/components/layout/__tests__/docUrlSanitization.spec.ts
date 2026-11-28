@@ -18,12 +18,9 @@ describe('doc_url sanitization', () => {
     expect(headerSource).toContain('sanitizeUrl(app.docUrl)')
   })
 
-  it('HomeView imports sanitizeUrl', () => {
-    expect(homeViewSource).toContain("import { sanitizeUrl } from '@/utils/url'")
-  })
-
-  it('HomeView applies sanitizeUrl to docUrl', () => {
-    expect(homeViewSource).toContain('sanitizeUrl(app.cachedPublicSettings?.doc_url || app.docUrl')
+  it('HomeView uses the built-in documentation route', () => {
+    expect(homeViewSource).toContain("const docUrl = '/docs'")
+    expect(homeViewSource).not.toContain('cachedPublicSettings?.doc_url')
   })
 
   it('KeyUsageView imports sanitizeUrl', () => {

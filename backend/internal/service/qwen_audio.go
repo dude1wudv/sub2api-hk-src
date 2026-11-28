@@ -240,7 +240,7 @@ func (s *OpenAIGatewayService) ForwardQwenASR(ctx context.Context, account *Acco
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-DashScope-SSE", "disable")
-	account.ApplyHeaderOverrides(req.Header)
+	account.ApplyHeaderOverrides(req.Context(), req.Header)
 
 	started := time.Now()
 	resp, err := s.httpUpstream.Do(req, resolveAccountProxyURL(account), account.ID, account.Concurrency)
@@ -344,7 +344,7 @@ func (s *OpenAIGatewayService) ForwardQwenTTS(ctx context.Context, account *Acco
 	}
 	dialCtx, dialCancel := context.WithTimeout(ctx, qwenAudioDialTimeout)
 	headers := http.Header{"Authorization": []string{"Bearer " + token}}
-	account.ApplyHeaderOverrides(headers)
+	account.ApplyHeaderOverrides(withHeaderOverrideConnectionScope(ctx), headers)
 	conn, status, responseHeaders, err := dialer.Dial(dialCtx, target, headers, resolveAccountProxyURL(account))
 	dialCancel()
 	if err != nil {

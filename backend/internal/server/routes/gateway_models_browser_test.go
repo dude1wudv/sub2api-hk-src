@@ -12,7 +12,7 @@ import (
 func TestGatewayRoutesModelsBrowserNavigationBeforeAuthentication(t *testing.T) {
 	// This registers the full gateway route chain with the real API key auth
 	// middleware. A handler-only test would miss the pre-auth ordering bug.
-	router, _, _ := newKeyBillingRouteTestRouter(config.RunModeSimple)
+	router, _, _ := newKeyBillingRouteTestRouter(config.RunModeSimple, nil)
 	for _, test := range []struct {
 		name      string
 		path      string

@@ -44,15 +44,15 @@
           <div class="hero-amount">
             <span class="hero-big tabular">
               <template v-if="overview && overview.remaining_today_usd !== null">
-                剩余 ${{ formatUSD(overview.remaining_today_usd) }}
+                剩余 {{ formatQuota(overview.remaining_today_usd) }}
               </template>
               <template v-else>
-                已用 ${{ formatUSD(overview?.used_today_usd ?? 0) }}
+                已用 {{ formatQuota(overview?.used_today_usd) }}
               </template>
             </span>
             <span class="hero-cap tabular">
               <template v-if="overview && overview.daily_budget_usd > 0">
-                已用 ${{ formatUSD(overview.used_today_usd) }} / 每日总池 ${{ formatUSD(overview.daily_budget_usd) }}
+                已用 {{ formatQuota(overview.used_today_usd) }} / 每日总池 {{ formatQuota(overview.daily_budget_usd) }}
               </template>
               <template v-else>
                 总池不设每日上限
@@ -144,7 +144,7 @@
           <div class="quota-row">
             <span>
               <template v-if="group.daily_limit_usd !== null && group.daily_limit_usd > 0">
-                本组今日配额（独立上限 ${{ formatUSD(group.daily_limit_usd) }}）
+                本组今日配额（独立上限 {{ formatQuota(group.daily_limit_usd) }}）
               </template>
               <template v-else>
                 不设单组上限 · 共享总池
@@ -152,10 +152,10 @@
             </span>
             <strong class="tabular">
               <template v-if="group.daily_limit_usd !== null && group.daily_limit_usd > 0">
-                ${{ formatUSD(group.used_today_usd) }} / ${{ formatUSD(group.daily_limit_usd) }}
+                {{ formatQuota(group.used_today_usd) }} / {{ formatQuota(group.daily_limit_usd) }}
               </template>
               <template v-else>
-                已用 ${{ formatUSD(group.used_today_usd) }}
+                已用 {{ formatQuota(group.used_today_usd) }}
               </template>
             </strong>
           </div>
@@ -175,7 +175,7 @@
             <span>
               实际可用余额：
               <strong>
-                {{ group.remaining_today_usd !== null ? `$${formatUSD(group.remaining_today_usd)}` : '不限' }}
+                {{ group.remaining_today_usd !== null ? formatQuota(group.remaining_today_usd) : '不限' }}
               </strong>
             </span>
             <span>
@@ -242,9 +242,9 @@
               <tbody>
                 <tr v-for="m in group.models" :key="`${m.platform}:${m.name}`">
                   <td class="mono">{{ m.name }}</td>
-                  <td class="tabular">{{ formatPricePerMillion(m.input_price_per_million) }}</td>
-                  <td class="tabular">{{ formatPricePerMillion(m.output_price_per_million) }}</td>
-                  <td class="tabular">{{ formatPricePerMillion(m.cache_read_per_million) }}</td>
+                  <td class="tabular">{{ formatPricePerMillion(m.input_price_per_million, m.price_currency) }}</td>
+                  <td class="tabular">{{ formatPricePerMillion(m.output_price_per_million, m.price_currency) }}</td>
+                  <td class="tabular">{{ formatPricePerMillion(m.cache_read_per_million, m.price_currency) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -266,14 +266,14 @@
         <div class="kv-list tabular">
           <div class="kv-item">
             <div class="kv-k">今日已用（折前）</div>
-            <div class="kv-v">${{ formatUSD(overview?.ip_status.used_today_usd ?? 0) }}</div>
+            <div class="kv-v">{{ formatQuota(overview?.ip_status.used_today_usd) }}</div>
           </div>
           <div class="kv-item">
             <div class="kv-k">单 IP 日限额</div>
             <div class="kv-v">
               {{
                 (overview?.ip_status.daily_limit_usd ?? 0) > 0
-                  ? `$${formatUSD(overview?.ip_status.daily_limit_usd)}`
+                  ? formatQuota(overview?.ip_status.daily_limit_usd)
                   : '不限（共享总池）'
               }}
             </div>
@@ -324,11 +324,11 @@
             </div>
             <div class="tabular" style="margin-top: 4px; color: var(--text-muted)">
               总池剩余：{{
-                lookupResult.pool_remaining_usd !== null ? `$${formatUSD(lookupResult.pool_remaining_usd)}` : '不限'
+                lookupResult.pool_remaining_usd !== null ? formatQuota(lookupResult.pool_remaining_usd) : '不限'
               }}
-              · 本组今日已用：${{ formatUSD(lookupResult.group_used_today_usd) }}
+              · 本组今日已用：{{ formatQuota(lookupResult.group_used_today_usd) }}
               <template v-if="lookupResult.group_daily_limit_usd">
-                / ${{ formatUSD(lookupResult.group_daily_limit_usd) }}
+                / {{ formatQuota(lookupResult.group_daily_limit_usd) }}
               </template>
             </div>
           </template>
@@ -394,7 +394,7 @@ import {
   computePercent,
   formatCountdown,
   formatPricePerMillion,
-  formatUSD,
+  formatQuota,
   maskAPIKey,
   type IntegrationClient
 } from './utils'

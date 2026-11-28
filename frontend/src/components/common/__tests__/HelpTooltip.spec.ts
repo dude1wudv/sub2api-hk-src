@@ -44,8 +44,6 @@ describe('HelpTooltip', () => {
     await trigger.trigger('mouseleave')
     await nextTick()
     expect(tooltip.style.display).toBe('none')
-
-    wrapper.unmount()
   })
 
   it('keeps a hover tooltip open while the pointer moves between the trigger and the tooltip', async () => {
@@ -74,8 +72,6 @@ describe('HelpTooltip', () => {
     tooltip.dispatchEvent(new MouseEvent('mouseleave', { relatedTarget: null }))
     await nextTick()
     expect(tooltip.style.display).toBe('none')
-
-    wrapper.unmount()
   })
 
   it('supports click-to-toggle details and closes on outside click', async () => {
@@ -112,8 +108,6 @@ describe('HelpTooltip', () => {
     document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await nextTick()
     expect(tooltip.style.display).toBe('none')
-
-    wrapper.unmount()
   })
 
   it('opens hover tooltips on focus, exposes the linked ARIA target, and closes on focusout or Escape', async () => {
