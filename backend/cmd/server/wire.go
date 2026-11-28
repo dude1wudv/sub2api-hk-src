@@ -137,6 +137,7 @@ func provideCleanup(
 	openAIAutoReset *service.OpenAIQuotaAutoResetService,
 	promptAudit *securityaudit.PromptService,
 	pluginManager *service.PluginManager,
+	charityRotation *service.CharityRotationService,
 ) func() {
 	return func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -149,6 +150,12 @@ func provideCleanup(
 
 		// 应用层清理步骤可并行执行，基础设施资源（Redis/Ent）最后按顺序关闭。
 		parallelSteps := []cleanupStep{
+			{"CharityRotationService", func() error {
+				if charityRotation != nil {
+					charityRotation.Stop()
+				}
+				return nil
+			}},
 			{"ChatService", func() error {
 				if handlers != nil && handlers.Chat != nil {
 					return handlers.Chat.Stop()

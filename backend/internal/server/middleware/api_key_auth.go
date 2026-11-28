@@ -233,6 +233,30 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			return
 		}
 
+		// ── 4.5. 公益池准入与 free.xjtu.shop 域名 Key 隔离 ──────────────
+
+		charityRes, charityAborted := checkCharityAPIKeyAdmission(c, apiKey, cfg, skipBilling, false)
+		if charityAborted {
+			return
+		}
+		if charityRes != nil && charityRes.IsCharity {
+			if charityRes.Release != nil {
+				defer charityRes.Release()
+			}
+			c.Set(string(ContextKeyAPIKey), apiKey)
+			c.Set(string(ContextKeyUser), AuthSubject{
+				UserID:      apiKey.User.ID,
+				Concurrency: apiKey.User.Concurrency,
+			})
+			c.Set(string(ContextKeyUserRole), apiKey.User.Role)
+			setGroupContext(c, apiKey.Group)
+			if !billingInfoRequest {
+				_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
+			}
+			c.Next()
+			return
+		}
+
 		// ── 5. 按端点需要加载订阅 ───────────────────────────────────
 
 		var subscription *service.UserSubscription
@@ -473,6 +497,9 @@ func abortIfAPIKeyGroupNotAllowed(c *gin.Context, apiKey *service.APIKey) bool {
 
 func validateAPIKeyGroupAllowed(apiKey *service.APIKey) bool {
 	if apiKey == nil || apiKey.GroupID == nil || apiKey.User == nil || apiKey.Group == nil {
+		return true
+	}
+	if svc := getCharityAdmissionService(); svc != nil && svc.IsCharityAPIKey(context.Background(), apiKey) {
 		return true
 	}
 	group := apiKey.Group

@@ -40,6 +40,13 @@ RUN --mount=type=cache,id=sub2api-pnpm-store,target=/root/.local/share/pnpm/stor
     cd /app/chat-demo && pnpm install --frozen-lockfile --prefer-offline
 COPY chat-demo/ /app/chat-demo/
 
+# Build standalone free.xjtu.shop charity frontend into /app/backend/internal/web/charity-dist.
+COPY charity-web/package.json charity-web/pnpm-lock.yaml /app/charity-web/
+RUN --mount=type=cache,id=sub2api-pnpm-store,target=/root/.local/share/pnpm/store \
+    cd /app/charity-web && pnpm install --frozen-lockfile --prefer-offline
+COPY charity-web/ /app/charity-web/
+RUN cd /app/charity-web && pnpm run build
+
 # Copy frontend source and build.
 # LegalDocumentView.vue (admin-compliance gate) build-time imports
 # ../../../../docs/legal/*.md?raw, so docs/legal/ must sit beside frontend/
@@ -92,8 +99,9 @@ COPY backend/ ./
 RUN find migrations -type f -name '*.sql' -exec sh -c \
     'for file; do sed "s/\r$//" "$file" > "$file.lf" && mv "$file.lf" "$file"; done' sh {} +
 
-# Copy frontend dist from previous stage (must be after backend copy to avoid being overwritten)
+# Copy frontend dist and charity-dist from previous stage (must be after backend copy to avoid being overwritten)
 COPY --from=frontend-builder /app/backend/internal/web/dist ./internal/web/dist
+COPY --from=frontend-builder /app/backend/internal/web/charity-dist ./internal/web/charity-dist
 
 # Build the binary (BuildType=release for CI builds, embed frontend)
 # Version precedence: build arg VERSION > exact git tag > cmd/server/VERSION

@@ -129,6 +129,25 @@ func RegisterAdminRoutes(
 
 		// 操作审计日志
 		registerAuditLogRoutes(admin, h, stepUpAuth)
+
+		// 公益池管理（free.xjtu.shop）
+		registerAdminCharityRoutes(admin, h)
+	}
+}
+
+func registerAdminCharityRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h == nil || h.Admin == nil || h.Admin.Charity == nil {
+		return
+	}
+	charity := admin.Group("/charity")
+	{
+		charity.GET("/overview", h.Admin.Charity.GetOverview)
+		charity.PUT("/settings", h.Admin.Charity.UpdateSettings)
+		charity.POST("/groups", h.Admin.Charity.AddGroup)
+		charity.PUT("/groups/:id", h.Admin.Charity.UpdateGroup)
+		charity.DELETE("/groups/:id", h.Admin.Charity.RemoveGroup)
+		charity.POST("/groups/:id/rotate-key", h.Admin.Charity.RotateGroupKey)
+		charity.POST("/rotate-all", h.Admin.Charity.RotateAllKeys)
 	}
 }
 

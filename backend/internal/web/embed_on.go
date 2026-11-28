@@ -32,6 +32,9 @@ var frontendFS embed.FS
 //go:embed all:image2-dist
 var image2FS embed.FS
 
+//go:embed all:charity-dist
+var charityFS embed.FS
+
 // PublicSettingsProvider is an interface to fetch public settings
 type PublicSettingsProvider interface {
 	GetPublicSettingsForInjection(ctx context.Context) (any, error)
@@ -558,4 +561,67 @@ func serveIndexHTML(c *gin.Context, fsys fs.FS) {
 func HasEmbeddedFrontend() bool {
 	_, err := frontendFS.ReadFile("dist/index.html")
 	return err == nil
+}
+
+// ServeEmbeddedCharityFrontend 托管独立的 free.xjtu.shop 公益站静态 SPA（charity-dist）。
+func ServeEmbeddedCharityFrontend() gin.HandlerFunc {
+	distFS, err := fs.Sub(charityFS, "charity-dist")
+	if err != nil {
+		return func(c *gin.Context) {
+			c.String(http.StatusNotFound, "Charity frontend not found")
+			c.Abort()
+		}
+	}
+	fileServer := http.FileServer(http.FS(distFS))
+
+	serveCharityIndex := func(c *gin.Context) {
+		file, openErr := distFS.Open("index.html")
+		if openErr != nil {
+			c.String(http.StatusNotFound, "Charity frontend not found")
+			c.Abort()
+			return
+		}
+		defer func() { _ = file.Close() }()
+
+		content, readErr := io.ReadAll(file)
+		if readErr != nil {
+			c.String(http.StatusInternalServerError, "Failed to read charity index.html")
+			c.Abort()
+			return
+		}
+		if nonce := middleware.GetNonceFromContext(c); nonce != "" {
+			content = bytes.ReplaceAll(content, []byte(NonceHTMLPlaceholder), []byte(nonce))
+		}
+		c.Header("Cache-Control", "no-cache")
+		c.Data(http.StatusOK, "text/html; charset=utf-8", content)
+		c.Abort()
+	}
+
+	return func(c *gin.Context) {
+		cleanPath := strings.TrimPrefix(filepath.Clean("/"+c.Request.URL.Path), "/")
+		if cleanPath == "" || cleanPath == "." || cleanPath == "index.html" {
+			serveCharityIndex(c)
+			return
+		}
+		f, openErr := distFS.Open(cleanPath)
+		if openErr != nil {
+			// SPA fallback（静态资源路径缺失则返回 404，避免用 HTML 响应 .js/.css 请求）
+			if strings.HasPrefix(cleanPath, "assets/") || strings.Contains(filepath.Base(cleanPath), ".") {
+				c.Status(http.StatusNotFound)
+				c.Abort()
+				return
+			}
+			serveCharityIndex(c)
+			return
+		}
+		info, statErr := f.Stat()
+		_ = f.Close()
+		if statErr != nil || info.IsDir() {
+			serveCharityIndex(c)
+			return
+		}
+		applyStaticAssetCacheHeaders(c.Writer.Header(), cleanPath)
+		fileServer.ServeHTTP(c.Writer, c.Request)
+		c.Abort()
+	}
 }

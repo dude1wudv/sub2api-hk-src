@@ -113,6 +113,7 @@ var ProviderSet = wire.NewSet(
 	NewAffiliateRepository,
 	NewUserPlatformQuotaRepository,     // T14: user × platform quota
 	NewUserPlatformQuotaServiceAdapter, // T14: adapter → service.UserPlatformQuotaRepository
+	NewCharityRepository,
 
 	// Cache implementations
 	NewGatewayCache,
@@ -147,6 +148,7 @@ var ProviderSet = wire.NewSet(
 	NewTLSFingerprintProfileCache,
 	NewChannelCache,
 	NewContentModerationHashCache,
+	NewCharityCache,
 
 	// Encryptors
 	NewAESEncryptor,

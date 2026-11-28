@@ -505,6 +505,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/charity',
+    name: 'AdminCharity',
+    component: () => import('@/views/admin/CharityPoolView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Charity Pool',
+      titleKey: 'nav.charityPool'
+    }
+  },
+  {
     path: '/admin/channels',
     redirect: '/admin/channels/pricing'
   },

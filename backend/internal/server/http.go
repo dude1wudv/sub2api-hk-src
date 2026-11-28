@@ -42,6 +42,7 @@ func ProvideRouter(
 	opsService *service.OpsService,
 	settingService *service.SettingService,
 	compositeResolver *service.CompositeRouteResolver,
+	charityService *service.CharityService,
 	redisClient *redis.Client,
 	balanceNotifyService *service.BalanceNotifyService,
 	chat *service.ChatService,
@@ -90,7 +91,7 @@ func ProvideRouter(
 		service.SetWebSearchManager(websearch.NewManager(configs, redisClient))
 	})
 
-	r = SetupRouter(r, handlers, jwtAuth, optionalJWTAuth, adminAuth, apiKeyAuth, auditLog, stepUpAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg, redisClient, balanceNotifyService)
+	r = SetupRouter(r, handlers, jwtAuth, optionalJWTAuth, adminAuth, apiKeyAuth, auditLog, stepUpAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, charityService, cfg, redisClient, balanceNotifyService)
 	if err := chat.BindGatewayDispatch(r.ServeHTTP); err != nil {
 		return nil, err
 	}

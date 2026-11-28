@@ -217,6 +217,7 @@ export default {
     channelPricing: 'Channel Pricing',
     traffic: 'Traffic',
     groupCacheTests: 'Group cache tests',
+    charityPool: 'Charity Pool',
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
     riskControl: 'Risk Control',

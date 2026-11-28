@@ -47,6 +47,13 @@ type UsageBillingCommand struct {
 	// 只用于选择账号配额累加语句，不参与幂等指纹；实际累加哪些维度以数据库中的账号配置为准。
 	AccountQuotaHasDailyLimit  bool
 	AccountQuotaHasWeeklyLimit bool
+
+	// Charity pool billing fields (pre-discount 1x TotalCost ledger).
+	CharityGroupID   int64
+	CharityUsageDate string
+	CharityCostUSD   float64
+	CharityTokens    int64
+	CharityClientIP  string
 }
 
 func (c *UsageBillingCommand) Normalize() {
@@ -91,6 +98,7 @@ func (c *UsageBillingCommand) quantizeMonetaryFields() {
 	c.APIKeyQuotaCost = QuantizeUsageBillingAmount(c.APIKeyQuotaCost)
 	c.APIKeyRateLimitCost = QuantizeUsageBillingAmount(c.APIKeyRateLimitCost)
 	c.AccountQuotaCost = QuantizeUsageBillingAmount(c.AccountQuotaCost)
+	c.CharityCostUSD = QuantizeUsageBillingAmount(c.CharityCostUSD)
 }
 
 // QuantizeUsageBillingAmount 把金额舍入到 UsageBillingMonetaryScale 位小数，
@@ -136,6 +144,9 @@ func buildUsageBillingFingerprint(c *UsageBillingCommand) string {
 	)
 	if payloadHash := strings.TrimSpace(c.RequestPayloadHash); payloadHash != "" {
 		raw += "|" + payloadHash
+	}
+	if c.CharityGroupID > 0 {
+		raw += fmt.Sprintf("|charity:%d|%s|%0.10f", c.CharityGroupID, strings.TrimSpace(c.CharityUsageDate), c.CharityCostUSD)
 	}
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])

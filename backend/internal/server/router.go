@@ -37,11 +37,13 @@ func SetupRouter(
 	opsService *service.OpsService,
 	settingService *service.SettingService,
 	compositeResolver *service.CompositeRouteResolver,
+	charityService *service.CharityService,
 	cfg *config.Config,
 	redisClient *redis.Client,
 	notifiers ...middleware2.InsufficientBalanceNotifier,
 ) *gin.Engine {
 	middleware2.SetIngressRejectRecorder(opsService)
+	middleware2.SetCharityAdmissionService(charityService)
 	service.SetUsageInflightStore(repository.NewUsageInflightCache(redisClient))
 	if handlers != nil && handlers.Admin != nil && handlers.Admin.Usage != nil {
 		if _, err := handlers.Admin.Usage.ConfigureTrafficDelivery(func() string {
@@ -86,6 +88,10 @@ func SetupRouter(
 		return nil
 	}))
 	r.Use(middleware2.ServerTiming(cfg.Server.EnableServerTiming))
+
+	// 公益站独立域名（free.xjtu.shop）守卫与独立前端托管，必须在主站 SPA 之前挂载，
+	// 确保公益域名永不暴露主站管理面或主站登录前端。
+	r.Use(middleware2.CharityHostGuard(charityService, web.ServeEmbeddedCharityFrontend()))
 
 	// Serve embedded frontend with settings injection if available
 	if web.HasEmbeddedFrontend() {
@@ -145,6 +151,7 @@ func registerRoutes(
 	routes.RegisterAuthRoutes(v1, h, jwtAuth, auditLog, redisClient, settingService, panelRateLimiter)
 	routes.RegisterUserRoutes(v1, h, jwtAuth, auditLog, settingService, panelRateLimiter)
 	routes.RegisterModelPlazaRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
+	routes.RegisterCharityRoutes(v1, h, panelRateLimiter)
 	routes.RegisterWorkbenchRoutes(v1, h, jwtAuth, auditLog, settingService, panelRateLimiter, redisClient)
 	routes.RegisterChatRoutes(v1, h, jwtAuth, auditLog, settingService, panelRateLimiter)
 	routes.RegisterAdminRoutes(v1, h, adminAuth, auditLog, stepUpAuth, settingService, panelRateLimiter)

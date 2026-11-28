@@ -111,6 +111,23 @@ func ProvideBatchImageCleanupService(repo BatchImageRepository, accountRepo Acco
 	return svc
 }
 
+// ProvideCharityRotationService 绑定公益池计费钩子到双网关并启动每日 00:00 Key 轮换协程。
+func ProvideCharityRotationService(
+	charityService *CharityService,
+	gatewayService *GatewayService,
+	openAIGatewayService *OpenAIGatewayService,
+) *CharityRotationService {
+	if gatewayService != nil {
+		gatewayService.SetCharityService(charityService)
+	}
+	if openAIGatewayService != nil {
+		openAIGatewayService.SetCharityService(charityService)
+	}
+	svc := NewCharityRotationService(charityService)
+	svc.Start()
+	return svc
+}
+
 // ProvideOpenAIOAuthService creates OpenAIOAuthService with privacy/account enrichment support.
 func ProvideOpenAIOAuthService(
 	proxyRepo ProxyRepository,
@@ -894,6 +911,8 @@ var ProviderSet = wire.NewSet(
 	NewAdminService,
 	NewGatewayService,
 	NewOpenAIGatewayService,
+	NewCharityService,
+	ProvideCharityRotationService,
 	ProvideImageStorageSettingService,
 	ProvideImageTaskService,
 	ProvideBatchImageModelPricingResolver,

@@ -89,6 +89,14 @@ func (r *usageBillingRepository) ApplyBatch(ctx context.Context, cmds []*service
 	if err := applyUsageBillingBatchAccountQuotas(ctx, tx, cmds, applied, outcomes); err != nil {
 		return nil, err
 	}
+	for i, cmd := range cmds {
+		if !applied[i] || cmd == nil || cmd.CharityGroupID <= 0 || strings.TrimSpace(cmd.CharityUsageDate) == "" {
+			continue
+		}
+		if err := incrementUsageBillingCharity(ctx, tx, cmd); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err

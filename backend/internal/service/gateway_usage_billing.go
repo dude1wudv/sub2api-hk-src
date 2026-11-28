@@ -88,6 +88,9 @@ type postUsageBillingParams struct {
 	// path that records only API-key 5h/1d/7d window usage. It must not trigger
 	// balance, subscription, account, platform, or lifetime-key-quota effects.
 	SimpleModeKeyRateLimitOnly bool
+	// Charity 非空时表示本次请求属于公益池：按折前 TotalCost 记入公益池日账本，
+	// 不扣系统用户余额、不触发余额告警与平台配额。
+	Charity *CharityBillingMeta
 }
 
 var ErrSimpleModeKeyRateLimitBillingUnavailable = errors.New("simple mode api key rate-limit billing unavailable")
@@ -346,6 +349,23 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 		return cmd
 	}
 
+	if p.Charity != nil {
+		cmd.CharityGroupID = p.Charity.GroupID
+		cmd.CharityUsageDate = p.Charity.UsageDate
+		cmd.CharityCostUSD = p.Cost.TotalCost
+		cmd.CharityClientIP = p.Charity.ClientIP
+		if usageLog != nil {
+			cmd.CharityTokens = int64(usageLog.TotalTokens())
+		}
+		if p.shouldUpdateAccountQuota() {
+			cmd.AccountQuotaCost = p.Cost.TotalCost * p.AccountRateMultiplier
+			cmd.AccountQuotaHasDailyLimit = p.Account.GetQuotaDailyLimit() > 0
+			cmd.AccountQuotaHasWeeklyLimit = p.Account.GetQuotaWeeklyLimit() > 0
+		}
+		cmd.Normalize()
+		return cmd
+	}
+
 	// Record subscription / balance cost using ActualCost so the group (and any
 	// user-specific) rate multiplier consumes subscription quota at the expected
 	// speed. TotalCost remains the raw (pre-multiplier) value; downstream guards
@@ -439,6 +459,17 @@ func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, de
 			}
 		}
 		deps.deferredService.ScheduleLastUsedUpdate(p.Account.ID)
+		return
+	}
+
+	if p.Charity != nil {
+		if deps.charityService != nil && p.Cost.TotalCost > 0 {
+			deps.charityService.RecordBilledUsage(ctx, p.Charity.UsageDate, p.Charity.GroupID, p.Charity.ClientIP, p.Cost.TotalCost)
+		}
+		deps.deferredService.ScheduleLastUsedUpdate(p.Account.ID)
+		if deps.balanceNotifyService != nil {
+			notifyAccountQuota(ctx, p, deps, result)
+		}
 		return
 	}
 
@@ -641,7 +672,15 @@ type billingDeps struct {
 	deferredService       *DeferredService
 	balanceNotifyService  *BalanceNotifyService
 	userPlatformQuotaRepo UserPlatformQuotaRepository
+	charityService        *CharityService
 	cfg                   *config.Config
+}
+
+// SetCharityService 注入公益池服务，用于识别公益 Key 并按折前原价结算公益日额度。
+func (s *GatewayService) SetCharityService(svc *CharityService) {
+	if s != nil {
+		s.charityService = svc
+	}
 }
 
 func (s *GatewayService) billingDeps() *billingDeps {
@@ -653,7 +692,39 @@ func (s *GatewayService) billingDeps() *billingDeps {
 		deferredService:       s.deferredService,
 		balanceNotifyService:  s.balanceNotifyService,
 		userPlatformQuotaRepo: s.userPlatformQuotaRepo,
+		charityService:        s.charityService,
 		cfg:                   s.cfg,
+	}
+}
+
+func resolveCharityBillingMeta(ctx context.Context, charityService *CharityService, apiKey *APIKey, clientIP string) *CharityBillingMeta {
+	if ctx != nil {
+		if meta, ok := ctx.Value(ctxkey.CharityBilling).(*CharityBillingMeta); ok && meta != nil && meta.GroupID > 0 {
+			copyMeta := *meta
+			if copyMeta.ClientIP == "" {
+				copyMeta.ClientIP = strings.TrimSpace(clientIP)
+			}
+			if copyMeta.UsageDate == "" {
+				copyMeta.UsageDate, _, _ = CharityTimeWindow(time.Now(), CharityDefaultTimezone)
+			}
+			return &copyMeta
+		}
+	}
+	if charityService == nil || apiKey == nil || apiKey.GroupID == nil || *apiKey.GroupID <= 0 {
+		return nil
+	}
+	if !charityService.IsCharityAPIKey(ctx, apiKey) {
+		return nil
+	}
+	tz := CharityDefaultTimezone
+	if snap, err := charityService.getSnapshot(ctx); err == nil && snap != nil && snap.settings != nil && snap.settings.RotationTimezone != "" {
+		tz = snap.settings.RotationTimezone
+	}
+	usageDate, _, _ := CharityTimeWindow(charityService.now(), tz)
+	return &CharityBillingMeta{
+		GroupID:   *apiKey.GroupID,
+		ClientIP:  strings.TrimSpace(clientIP),
+		UsageDate: usageDate,
 	}
 }
 
@@ -916,6 +987,11 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 			quotaPlatform = account.Platform
 		}
 	}
+	charityMeta := resolveCharityBillingMeta(ctx, s.charityService, apiKey, input.IPAddress)
+	if charityMeta != nil {
+		usageLog.ActualCost = 0
+	}
+
 	requestID := usageLog.RequestID
 	_, billingErr := applyUsageBilling(ctx, requestID, usageLog, &postUsageBillingParams{
 		Cost:                       cost,
@@ -924,11 +1000,12 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 		Account:                    account,
 		Subscription:               subscription,
 		RequestPayloadHash:         resolveUsageBillingPayloadFingerprint(ctx, input.RequestPayloadHash),
-		IsSubscriptionBill:         isSubscriptionBilling && !simpleModeKeyRateLimitOnly,
+		IsSubscriptionBill:         isSubscriptionBilling && !simpleModeKeyRateLimitOnly && charityMeta == nil,
 		AccountRateMultiplier:      accountRateMultiplier,
 		APIKeyService:              input.APIKeyService,
 		Platform:                   quotaPlatform,
 		SimpleModeKeyRateLimitOnly: simpleModeKeyRateLimitOnly,
+		Charity:                    charityMeta,
 	}, s.billingDeps(), s.usageBillingRepo)
 
 	if billingErr != nil {

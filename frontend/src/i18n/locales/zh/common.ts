@@ -217,6 +217,7 @@ export default {
     channelPricing: '渠道定价',
     traffic: '流量记录',
     groupCacheTests: '分组缓存测试',
+    charityPool: '公益池',
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
     riskControl: '风控中心',

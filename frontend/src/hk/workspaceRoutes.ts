@@ -28,6 +28,7 @@ const workspacePaths = new Set([
   '/admin/audit-logs',
   '/admin/users',
   '/admin/groups',
+  '/admin/charity',
   '/admin/channels/pricing',
   '/admin/channels/monitor',
   '/monitor',
