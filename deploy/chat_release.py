@@ -564,7 +564,10 @@ class Release:
             raise
 
     def fetch(self, url, *, resolve=None, expected=200, method='GET'):
-        command = ['curl', '--silent', '--show-error', '--compressed', '--max-time', '25', '--request', method]
+        command = ['curl', '--silent', '--show-error', '--compressed',
+                   '--connect-timeout', '8', '--max-time', '25',
+                   '--retry', '2', '--retry-connrefused', '--retry-max-time', '30',
+                   '--request', method]
         if resolve:
             command += ['--resolve', resolve]
         header = self.audit / 'http.headers'
