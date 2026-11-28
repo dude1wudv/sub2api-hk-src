@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -270,7 +271,7 @@ func (c *stubCharityCache) TryAcquireRotationLock(_ context.Context, dateKey str
 func TestCharityAdmitRequest_PoolAndPerGroupSubCaps(t *testing.T) {
 	repo := newStubCharityRepo()
 	cache := newStubCharityCache()
-	svc := NewCharityService(repo, cache, nil, nil, nil, nil, nil, nil)
+	svc := NewCharityService(repo, cache, nil, nil, nil, nil, nil, nil, nil)
 	fixedNow := time.Date(2026, 11, 28, 10, 0, 0, 0, time.FixedZone("CST", 8*3600))
 	svc.nowFn = func() time.Time { return fixedNow }
 
@@ -346,7 +347,7 @@ func TestCharityAdmitRequest_ConcurrencyAndIPLimits(t *testing.T) {
 	repo.settings.PerIPMaxConcurrency = 1
 	repo.settings.PerIPRPMLimit = 2
 	cache := newStubCharityCache()
-	svc := NewCharityService(repo, cache, nil, nil, nil, nil, nil, nil)
+	svc := NewCharityService(repo, cache, nil, nil, nil, nil, nil, nil, nil)
 
 	gid := int64(10)
 	kid := int64(101)
@@ -382,7 +383,7 @@ func TestCharityAdmitRequest_ConcurrencyAndIPLimits(t *testing.T) {
 func TestCharityAdmitRequest_UsesPersistedDailyUsage(t *testing.T) {
 	repo := newStubCharityRepo()
 	cache := newStubCharityCache()
-	svc := NewCharityService(repo, cache, nil, nil, nil, nil, nil, nil)
+	svc := NewCharityService(repo, cache, nil, nil, nil, nil, nil, nil, nil)
 	svc.nowFn = func() time.Time { return time.Date(2026, 11, 28, 10, 0, 0, 0, time.UTC) }
 	groupID, keyID := int64(10), int64(101)
 	groupLimit := 50.0
@@ -434,7 +435,7 @@ func TestCharityAdmitRequest_LimitChecksUnavailable(t *testing.T) {
 			tt.setup(repo, cache)
 			groupID, keyID := int64(10), int64(101)
 			repo.groups[1] = &CharityGroup{ID: 1, GroupID: groupID, Enabled: true, ActiveAPIKeyID: &keyID, GroupStatus: StatusActive}
-			svc := NewCharityService(repo, cache, nil, nil, nil, nil, nil, nil)
+			svc := NewCharityService(repo, cache, nil, nil, nil, nil, nil, nil, nil)
 			key := &APIKey{ID: keyID, UserID: 999, GroupID: &groupID, Key: "sk-free-test"}
 			_, err := svc.AdmitRequest(context.Background(), key, "10.0.0.1", false)
 			require.Equal(t, http.StatusServiceUnavailable, infraerrors.Code(err))
@@ -447,7 +448,7 @@ func TestCharityAdmitRequest_ConfiguredLimitsRequireCache(t *testing.T) {
 	repo := newStubCharityRepo()
 	groupID, keyID := int64(10), int64(101)
 	repo.groups[1] = &CharityGroup{ID: 1, GroupID: groupID, Enabled: true, ActiveAPIKeyID: &keyID, GroupStatus: StatusActive}
-	svc := NewCharityService(repo, nil, nil, nil, nil, nil, nil, nil)
+	svc := NewCharityService(repo, nil, nil, nil, nil, nil, nil, nil, nil)
 	key := &APIKey{ID: keyID, UserID: 999, GroupID: &groupID, Key: "sk-free-test"}
 	_, err := svc.AdmitRequest(context.Background(), key, "10.0.0.1", false)
 	require.Equal(t, "CHARITY_CONCURRENCY_CHECK_FAILED", infraerrors.Reason(err))
@@ -487,4 +488,89 @@ func TestBuildUsageBillingCommand_CharityUsesPreDiscountTotalCostAndZeroBalance(
 	require.InDelta(t, 1.25, cmd.CharityCostUSD, 1e-8)
 	require.Equal(t, int64(1500), cmd.CharityTokens)
 	require.Equal(t, "10.1.2.3", cmd.CharityClientIP)
+}
+
+type charityCatalogGroupRepo struct {
+	GroupRepository
+	groups map[int64]*Group
+}
+
+func (r charityCatalogGroupRepo) GetByIDLite(_ context.Context, id int64) (*Group, error) {
+	if group := r.groups[id]; group != nil {
+		return group, nil
+	}
+	return nil, ErrGroupNotFound
+}
+
+type charityCatalogChannelRepo struct {
+	ChannelRepository
+	channels []Channel
+}
+
+func (r charityCatalogChannelRepo) ListAll(context.Context) ([]Channel, error) {
+	return r.channels, nil
+}
+
+func (r charityCatalogChannelRepo) GetGroupPlatforms(context.Context, []int64) (map[int64]string, error) {
+	return map[int64]string{255: PlatformOpenAI, 256: PlatformOpenAI}, nil
+}
+
+func TestCharityPublicOverviewUsesGroupCatalogAndUndiscountedPricing(t *testing.T) {
+	groupInput, groupOutput, channelInput := 7e-6, 21e-6, 3e-6
+	group := &Group{ID: 255, Platform: PlatformOpenAI, Status: StatusActive, RateMultiplier: .2,
+		ModelAllowlist: GroupModelAllowlist{Enabled: true, Models: []string{"deepseek-v4.1-flash", "no-price", "qwen3-reranker-4b"}},
+		ModelPricing:   []ChannelModelPricing{{Models: []string{"deepseek-v4.1-flash"}, InputPrice: &groupInput, OutputPrice: &groupOutput}},
+	}
+	otherGroup := &Group{ID: 256, Platform: PlatformOpenAI, Status: StatusActive}
+	groupRepo := charityCatalogGroupRepo{groups: map[int64]*Group{255: group, 256: otherGroup}}
+	repo := newStubCharityRepo()
+	repo.groups[1] = &CharityGroup{ID: 1, GroupID: 255, Enabled: true, GroupStatus: StatusActive}
+	repo.groups[2] = &CharityGroup{ID: 2, GroupID: 256, Enabled: true, GroupStatus: StatusActive}
+	accounts := &modelsListAccountRepoStub{byGroup: map[int64][]Account{
+		255: {{Platform: PlatformOpenAI, Credentials: map[string]any{"model_mapping": map[string]any{
+			"deepseek-v4.1-flash": "deepseek-v4.1-flash", "no-price": "no-price",
+			"qwen3-reranker-4b": "qwen3-reranker-4b", "blocked": "blocked",
+		}}}},
+		256: {{Platform: PlatformOpenAI, Credentials: map[string]any{"model_mapping": map[string]any{
+			"gpt-5.6-sol": "gpt-5.6-sol",
+		}}}},
+	}}
+	channels := charityCatalogChannelRepo{channels: []Channel{{
+		ID: 1, Name: "shared", Status: StatusActive, GroupIDs: []int64{255, 256},
+		ModelPricing: []ChannelModelPricing{{
+			Platform: PlatformOpenAI, Models: []string{"deepseek-v4.1-flash", "gpt-5.6-sol", "channel-only"}, InputPrice: &channelInput,
+		}},
+	}}}
+	channelService := NewChannelService(channels, groupRepo, nil, nil, nil)
+	billing := NewBillingService(&config.Config{}, nil)
+	plaza := NewModelPlazaService(channels, groupRepo, nil, billing, NewModelPricingResolver(channelService, billing))
+	catalog := NewGatewayModelCatalogService(&GatewayService{accountRepo: accounts}, nil, 10)
+	svc := NewCharityService(repo, nil, nil, groupRepo, nil, nil, nil, plaza, catalog)
+
+	overview, err := svc.GetPublicOverview(t.Context(), "192.0.2.1")
+	require.NoError(t, err)
+	require.Len(t, overview.Groups, 2)
+	for _, entry := range overview.Groups {
+		switch entry.GroupID {
+		case 255:
+			require.Len(t, entry.Models, 3)
+			require.Equal(t, "deepseek-v4.1-flash", entry.Models[0].Name)
+			require.NotNil(t, entry.Models[0].InputPricePerMillion)
+			require.NotNil(t, entry.Models[0].OutputPricePerMillion)
+			require.InDelta(t, 7, *entry.Models[0].InputPricePerMillion, 1e-12)
+			require.InDelta(t, 21, *entry.Models[0].OutputPricePerMillion, 1e-12)
+			require.Equal(t, "no-price", entry.Models[1].Name)
+			require.Nil(t, entry.Models[1].InputPricePerMillion)
+			require.Equal(t, "qwen3-reranker-4b", entry.Models[2].Name)
+			require.NotNil(t, entry.Models[2].InputPricePerMillion)
+			require.InDelta(t, .14, *entry.Models[2].InputPricePerMillion, 1e-12)
+		case 256:
+			require.Len(t, entry.Models, 1)
+			require.Equal(t, "gpt-5.6-sol", entry.Models[0].Name)
+			require.NotNil(t, entry.Models[0].InputPricePerMillion)
+			require.InDelta(t, 3, *entry.Models[0].InputPricePerMillion, 1e-12)
+		default:
+			t.Fatalf("unexpected public group %d", entry.GroupID)
+		}
+	}
 }

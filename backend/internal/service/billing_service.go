@@ -939,15 +939,15 @@ func (s *BillingService) initFallbackPricing() {
 		SupportsCacheBreakdown: false,
 	}
 	s.fallbackPrices["kimi-k2-thinking"] = &ModelPricing{
-		InputPricePerToken:     0.56e-6, // ¥4/百万 ≈ $0.56
-		OutputPricePerToken:    2.24e-6, // ¥16/百万
-		CacheReadPricePerToken: 0.14e-6, // ¥1/百万
+		InputPricePerToken:     4e-6,
+		OutputPricePerToken:    16e-6,
+		CacheReadPricePerToken: 1e-6,
 		SupportsCacheBreakdown: false,
 	}
 	s.fallbackPrices["kimi-k2"] = &ModelPricing{
-		InputPricePerToken:     0.56e-6, // ¥4/百万
-		OutputPricePerToken:    2.24e-6, // ¥16/百万
-		CacheReadPricePerToken: 0.14e-6, // ¥1/百万
+		InputPricePerToken:     4e-6,
+		OutputPricePerToken:    16e-6,
+		CacheReadPricePerToken: 1e-6,
 		SupportsCacheBreakdown: false,
 	}
 
@@ -994,57 +994,51 @@ func (s *BillingService) initFallbackPricing() {
 
 	// ---- 硅基流动 Qwen3-Embedding 系列（纯文本向量化）----
 	// /v1/embeddings 只按输入计费，无 output，OutputPricePerToken 置 0。
-	// 国际站 USD 官方价（https://www.siliconflow.com/models/qwen3-embedding-8b 及同站
-	// 4B / 0.6B 模型页，2026-09-23 读取）：8B $0.04/MTok、4B $0.02/MTok、0.6B $0.01/MTok，
-	// ×1e-6 换算为 USD per token。
-	// 国内站 CNY 参考价（https://www.siliconflow.cn/pricing）：8B ¥0.28/MTok、
+	// 国内站价格按 1:1 记账（https://www.siliconflow.cn/pricing）：8B ¥0.28/MTok、
 	// 4B ¥0.14/MTok、0.6B ¥0.07/MTok，输出 ¥0。
 	s.fallbackPrices["qwen3-embedding-8b"] = &ModelPricing{
-		InputPricePerToken:     0.04e-6, // $0.04/MTok
+		InputPricePerToken:     0.28e-6,
 		OutputPricePerToken:    0,
 		SupportsCacheBreakdown: false,
 	}
 	s.fallbackPrices["qwen3-embedding-4b"] = &ModelPricing{
-		InputPricePerToken:     0.02e-6, // $0.02/MTok
+		InputPricePerToken:     0.14e-6,
 		OutputPricePerToken:    0,
 		SupportsCacheBreakdown: false,
 	}
 	s.fallbackPrices["qwen3-embedding-0.6b"] = &ModelPricing{
-		InputPricePerToken:     0.01e-6, // $0.01/MTok
+		InputPricePerToken:     0.07e-6,
 		OutputPricePerToken:    0,
 		SupportsCacheBreakdown: false,
 	}
 
 	// ---- 硅基流动 Qwen3-Reranker 系列（文本重排序）----
 	// /v1/rerank 仅按输入计费，无 output，OutputPricePerToken 置 0。
-	// 国际站 USD 官方价（https://www.siliconflow.com/models?q=Reranker，2026-09-25 读取）：
-	// 8B $0.04/MTok、0.6B $0.01/MTok；4B 国际站未上架，取国内站 ¥0.14/MTok 按家族
-	// 隐含汇率（¥7≈$1，与 8B / 0.6B 两档一致）折算 $0.02/MTok，×1e-6 换算为 USD per token。
-	// 国内站 CNY 参考价（https://www.siliconflow.cn/models?q=reranker）：
+	// 国内站价格按 1:1 记账（https://www.siliconflow.cn/models?q=reranker）：
 	// 8B ¥0.28/MTok、4B ¥0.14/MTok、0.6B ¥0.07/MTok，输出 ¥0。
 	s.fallbackPrices["qwen3-reranker-8b"] = &ModelPricing{
-		InputPricePerToken:     0.04e-6, // $0.04/MTok
+		InputPricePerToken:     0.28e-6,
 		OutputPricePerToken:    0,
 		SupportsCacheBreakdown: false,
 	}
 	s.fallbackPrices["qwen3-reranker-4b"] = &ModelPricing{
-		InputPricePerToken:     0.02e-6, // $0.02/MTok（国内站 ¥0.14 折算）
+		InputPricePerToken:     0.14e-6,
 		OutputPricePerToken:    0,
 		SupportsCacheBreakdown: false,
 	}
 	s.fallbackPrices["qwen3-reranker-0.6b"] = &ModelPricing{
-		InputPricePerToken:     0.01e-6, // $0.01/MTok
+		InputPricePerToken:     0.07e-6,
 		OutputPricePerToken:    0,
 		SupportsCacheBreakdown: false,
 	}
 
 	// ---- 火山方舟 豆包 Embedding（多模态向量化）----
 	// doubao-embedding-vision 图文向量化：上游 usage 回传 prompt_tokens_details.{text_tokens,image_tokens}，
-	// 按量付费官方价 文本 ¥0.7/MTok、图片 ¥1.8/MTok；汇率口径 ÷7.14（与本表其他国产模型一致，¥1≈$0.14）。
+	// 按量付费官方价：文本 ¥0.7/MTok、图片 ¥1.8/MTok，按 1:1 记账。
 	// embedding 无 output，OutputPricePerToken 置 0。
 	s.fallbackPrices["doubao-embedding-vision"] = &ModelPricing{
-		InputPricePerToken:      0.098e-6, // ¥0.7/MTok ≈ $0.098（文本输入）
-		ImageInputPricePerToken: 0.252e-6, // ¥1.8/MTok ≈ $0.252（图片输入）
+		InputPricePerToken:      0.7e-6,
+		ImageInputPricePerToken: 1.8e-6,
 		OutputPricePerToken:     0,
 		SupportsCacheBreakdown:  false,
 	}

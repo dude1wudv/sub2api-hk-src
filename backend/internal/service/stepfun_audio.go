@@ -48,7 +48,7 @@ func (s *OpenAIGatewayService) ForwardStepFunAudio(ctx context.Context, c *gin.C
 	}
 	upstreamReq.Header = headers
 	upstreamReq.Header.Set("Content-Type", req.ContentType)
-	account.ApplyHeaderOverrides(upstreamReq.Header)
+	account.ApplyHeaderOverrides(upstreamReq.Context(), upstreamReq.Header)
 
 	proxyURL := ""
 	if account.ProxyID != nil && account.Proxy != nil {

@@ -185,6 +185,24 @@
                   formatTokens(stats.summary.today?.tokens || 0)
                 }}</span>
               </div>
+              <div
+                v-if="stats.summary.today_upstream_errors != null"
+                class="flex items-center justify-between"
+                data-testid="today-upstream-errors"
+              >
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{
+                  t('admin.accounts.stats.upstreamErrors')
+                }}</span>
+                <span
+                  :class="[
+                    'text-sm font-semibold',
+                    stats.summary.today_upstream_errors > 0
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-gray-900 dark:text-white'
+                  ]"
+                  >{{ formatNumber(stats.summary.today_upstream_errors) }}</span
+                >
+              </div>
             </div>
           </div>
 
@@ -335,6 +353,18 @@
                 <span class="text-sm font-semibold text-gray-900 dark:text-white"
                   >{{ stats.summary.actual_days_used }} / {{ stats.summary.days }}</span
                 >
+              </div>
+              <div
+                v-if="stats.summary.total_upstream_errors != null"
+                class="flex items-center justify-between"
+                data-testid="total-upstream-errors"
+              >
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{
+                  t('admin.accounts.stats.totalUpstreamErrors')
+                }}</span>
+                <span class="text-sm font-semibold text-gray-900 dark:text-white">{{
+                  formatNumber(stats.summary.total_upstream_errors)
+                }}</span>
               </div>
             </div>
           </div>
@@ -550,7 +580,16 @@ const trendChartData = computed(() => {
         fill: false,
         tension: 0.3,
         yAxisID: 'y1'
-      }
+      },
+      ...(stats.value.summary.total_upstream_errors != null ? [{
+        label: t('admin.accounts.stats.upstreamErrors'),
+        data: stats.value.history.map((entry) => entry.upstream_errors ?? 0),
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        fill: false,
+        tension: 0.3,
+        yAxisID: 'y1'
+      }] : [])
     ]
   }
 })

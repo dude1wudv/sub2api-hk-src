@@ -1318,6 +1318,10 @@ func (s *GatewayService) extractSSEUsagePatch(event map[string]any) *sseUsagePat
 			patch.hasCacheReadInput = true
 		}
 		applyAnthropicCacheReadAliases(patch, usageObj)
+		if value, ok := parseSSEUsageInt(usageObj["output_tokens"]); ok && value > 0 {
+			patch.outputTokens = value
+			patch.hasOutputTokens = true
+		}
 		if cc, ok := usageObj["cache_creation"].(map[string]any); ok {
 			if v, exists := parseSSEUsageInt(cc["ephemeral_5m_input_tokens"]); exists {
 				patch.cacheCreation5mTokens = v

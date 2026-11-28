@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { reactive } from 'vue'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { nextTick, reactive } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MCPOAuthAuthorizeView from '../MCPOAuthAuthorizeView.vue'
 import { UiSelect } from '@/ui'
@@ -37,6 +37,20 @@ function render() {
   mounted.push(wrapper)
   return wrapper
 }
+async function openDropdown(wrapper: VueWrapper, id: string) {
+  for (const trigger of wrapper.findAll('button[role="combobox"][aria-expanded="true"]')) {
+    await trigger.trigger('keydown', { key: 'Escape' })
+  }
+  await nextTick()
+  const trigger = wrapper.get(`#${id}`)
+  await trigger.trigger('keydown', { key: 'ArrowDown' })
+  await flushPromises()
+  expect(trigger.attributes('aria-expanded')).toBe('true')
+  const panel = document.getElementById(trigger.attributes('aria-controls'))
+  expect(panel).not.toBeNull()
+  return panel!
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   auth.isAdmin = false
@@ -47,6 +61,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  document.body.innerHTML = ''
   Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
 })
 
@@ -67,6 +82,15 @@ describe('MCP OAuth consent', () => {
     await flushPromises()
     expect(authorize).toHaveBeenCalledWith({ authorization: request, approved: true, scope: 'user', read_only: true })
     expect(assign).toHaveBeenCalledWith(redirectURL)
+  })
+
+  it('renders the scope and permission pickers as themed custom dropdown panels', async () => {
+    const wrapper = render()
+    await flushPromises()
+    const permissionsLabels = [...(await openDropdown(wrapper, 'mcp-consent-permissions')).querySelectorAll('[role="option"]')].map((el) => el.textContent?.trim())
+    expect(permissionsLabels).toEqual(['mcp.readOnly', 'mcp.readWrite'])
+    const scopeLabels = [...(await openDropdown(wrapper, 'mcp-consent-scope')).querySelectorAll('[role="option"]')].map((el) => el.textContent?.trim())
+    expect(scopeLabels).toEqual(['mcp.userScope'])
   })
 
   it('allows an omitted OAuth scope without adding or changing request parameters', async () => {

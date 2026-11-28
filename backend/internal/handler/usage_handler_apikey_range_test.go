@@ -36,7 +36,7 @@ func (r *keyUsageDetailsRepo) GetAPIKeyDailyUsageInTimezone(_ context.Context, u
 func keyUsageDetailsRouter(repo *keyUsageDetailsRepo, owner int64) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	keys := &dailyUsageAPIKeyRepoStub{keys: map[int64]*service.APIKey{7: {ID: 7, UserID: owner}}}
-	h := NewUsageHandler(service.NewUsageService(repo, nil, nil, nil), service.NewAPIKeyService(keys, nil, nil, nil, nil, nil, nil), nil, nil)
+	h := NewUsageHandler(service.NewUsageService(repo, nil, nil, nil), service.NewAPIKeyService(keys, nil, nil, nil, nil, nil, nil), nil, nil, nil)
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
 		c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 8})
